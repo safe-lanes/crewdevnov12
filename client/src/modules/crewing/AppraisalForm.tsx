@@ -1076,6 +1076,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     setIsTrainingNeedsDialogOpen(false);
   };
 
+  const handleTrainingNeedsSelect = (templates: any[]) => {
+    addTrainingNeedsFromDatabase(templates);
+  };
+
   const deleteTrainingNeed = (id: string) => {
     showConfirmDialog(
       "Delete Training Need",
@@ -1157,6 +1161,46 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       c.id === id ? { ...c, [field]: value } : c
     );
     form.setValue("seafarerComments", updatedComments);
+  };
+
+  const deleteSeafarerComment = (id: string) => {
+    showConfirmDialog(
+      "Delete Seafarer Comment",
+      "Are you sure you want to delete this seafarer comment?",
+      () => {
+        const currentComments = form.getValues("seafarerComments");
+        form.setValue("seafarerComments", currentComments.filter(c => c.id !== id));
+        closeConfirmDialog();
+      }
+    );
+  };
+
+  // Parameter-less wrappers for Part component props
+  const addAppraiserCommentNoArgs = () => addAppraiserComment("", "");
+  const addSeafarerCommentNoArgs = () => {
+    const newComment = {
+      id: Date.now().toString(),
+      name: form.getValues("seafarersName") || "",
+      rank: form.getValues("seafarersRank") || "",
+      comment: "",
+    };
+    const currentComments = form.getValues("seafarerComments");
+    form.setValue("seafarerComments", [...currentComments, newComment]);
+    setEditingSeafarerComment(newComment.id);
+  };
+  const addTrainingFollowupNoArgs = () => {
+    const newFollowup = {
+      id: Date.now().toString(),
+      training: "",
+      correspondingInDB: "Select Training from DB",
+      category: "Select Rating",
+      status: "Proposed" as const,
+      targetDate: "",
+      comment: "",
+    };
+    const currentFollowups = form.getValues("trainingFollowups");
+    form.setValue("trainingFollowups", [...currentFollowups, newFollowup]);
+    setEditingTrainingFollowupComment(newFollowup.id);
   };
 
   // Office Review management
@@ -1519,739 +1563,93 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     );
   };
 
-  // Function to render continuous sections 2 (C-F)
+  // Function to render continuous sections 2 (C-F) - using extracted Part components
   const renderContinuousSections2 = () => {
+    const competenceSectionScore = calculateSectionScore();
+    const behaviouralSectionScore = calculateBehaviouralSectionScore();
+    const overallScore = calculateOverallScore();
+
     return (
       <div className="space-y-4 sm:space-y-6">
-        {/* Part C: Competence Assessment */}
-        <div ref={partCRef} data-section-id="C">
-          <Card className="bg-white">
-            <CardContent className="p-6">
-              <div className="pb-4 mb-6">
-                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part C: Competence Assessment (Professional Knowledge & Skills)</h3>
-                <div style={{ color: '#16569e' }} className="text-sm">Select the most appropriate rating basis assessment of the specific criterion</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {form.watch("competenceAssessments").map((assessment, index) => (
-                      <React.Fragment key={assessment.id}>
-                        <tr className="border-t">
-                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
-                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.weight}%</td>
-                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select
-                              value={assessment.effectiveness}
-                              onValueChange={(value) => updateCompetenceAssessment(assessment.id, "effectiveness", value)}
-                            >
-                              <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                                <SelectValue placeholder="Select Rating" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="5-exceeds-expectations">5- Exceeds Expectations</SelectItem>
-                                <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
-                                <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
-                                <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
-                                <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => setCompetenceComments(prev => ({
-                                  ...prev,
-                                  [assessment.id]: prev[assessment.id] || ""
-                                }))}
-                              >
-                                <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
-                              </Button>
+        <PartC
+          form={form}
+          partRef={partCRef}
+          appraisalStatus={appraisalStatus}
+          isFieldVisible={isFieldVisible}
+          isSectionVisible={isSectionVisible}
+          competenceComments={competenceComments}
+          setCompetenceComments={setCompetenceComments}
+          editingCompetenceComment={editingCompetenceComment}
+          setEditingCompetenceComment={setEditingCompetenceComment}
+          updateCompetenceAssessment={updateCompetenceAssessment}
+          competenceSectionScore={competenceSectionScore}
+          getScoreColors={getScoreColors}
+        />
 
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                              >
-                                <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                        {competenceComments[assessment.id] !== undefined && (
-                          <tr>
-                            <td></td>
-                            <td colSpan={4} className="p-3">
-                              {editingCompetenceComment === assessment.id ? (
-                                <Textarea
-                                  value={competenceComments[assessment.id]}
-                                  onChange={(e) => {
-                                    setCompetenceComments(prev => ({
-                                      ...prev,
-                                      [assessment.id]: e.target.value
-                                    }));
-                                    updateCompetenceAssessment(assessment.id, "comment", e.target.value);
-                                  }}
-                                  onBlur={() => setEditingCompetenceComment(null)}
-                                  placeholder="Comment: Add your observations here..."
-                                  className="text-blue-600 italic border-blue-200"
-                                  rows={2}
-                                  autoFocus
-                                />
-                              ) : (
-                                <div className="flex justify-between items-start">
-                                  <div 
-                                    className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
-                                    onClick={() => setEditingCompetenceComment(assessment.id)}
-                                  >
-                                    {competenceComments[assessment.id] || "Click to add comment..."}
-                                  </div>
-                                  <div className="ml-2">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => deleteCompetenceComment(assessment.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        <PartD
+          form={form}
+          partRef={partDRef}
+          appraisalStatus={appraisalStatus}
+          isFieldVisible={isFieldVisible}
+          isSectionVisible={isSectionVisible}
+          behaviouralComments={behaviouralComments}
+          setBehaviouralComments={setBehaviouralComments}
+          editingBehaviouralComment={editingBehaviouralComment}
+          setEditingBehaviouralComment={setEditingBehaviouralComment}
+          updateBehaviouralAssessment={updateBehaviouralAssessment}
+          behaviouralSectionScore={behaviouralSectionScore}
+          getScoreColors={getScoreColors}
+        />
 
-              {/* Section Score */}
-              <div className="flex justify-between items-center mt-6 p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Section Score:</div>
-                <div className={`px-4 py-2 rounded text-lg font-semibold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateSectionScore())).bgColor} ${getScoreColors(parseFloat(calculateSectionScore())).textColor}`}>
-                  {calculateSectionScore()}
-                </div>
-              </div>
+        <PartE
+          form={form}
+          partRef={partERef}
+          appraisalStatus={appraisalStatus}
+          isFieldVisible={isFieldVisible}
+          isSectionVisible={isSectionVisible}
+          trainingNeedsComments={trainingNeedsComments}
+          setTrainingNeedsComments={setTrainingNeedsComments}
+          editingTrainingNeedsComment={editingTrainingNeedsComment}
+          setEditingTrainingNeedsComment={setEditingTrainingNeedsComment}
+          isTrainingNeedsDialogOpen={isTrainingNeedsDialogOpen}
+          setIsTrainingNeedsDialogOpen={setIsTrainingNeedsDialogOpen}
+          addTrainingNeed={addTrainingNeed}
+          updateTrainingNeed={updateTrainingNeed}
+          deleteTrainingNeed={deleteTrainingNeed}
+          handleTrainingNeedsSelect={handleTrainingNeedsSelect}
+        />
 
-              <div className="flex justify-end mt-6">
-                <Button className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8">
-                  Save
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Part D: Behavioural Assessment */}
-        {isSectionVisible('partD') && (
-        <div ref={partDRef} data-section-id="D">
-          <Card className="bg-white">
-            <CardContent className="p-6">
-              <div className="pb-4 mb-6">
-                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part D: Behavioural Assessment (Soft Skills)</h3>
-                <div style={{ color: '#16569e' }} className="text-sm">Select the most appropriate rating basis assessment of the specific criterion</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                  {form.watch("behaviouralAssessments").map((assessment, index) => (
-                    <React.Fragment key={assessment.id}>
-                      <tr className="border-t">
-                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
-                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">{assessment.weight}%</td>
-                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                          <Select
-                            value={assessment.effectiveness}
-                            onValueChange={(value) => updateBehaviouralAssessment(assessment.id, "effectiveness", value)}
-                          >
-                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                              <SelectValue placeholder="Select Rating" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="5-exceeds-expectations">5- Exceeds Expectations</SelectItem>
-                              <SelectItem value="4-meets-expectations">4- Meets Expectations</SelectItem>
-                              <SelectItem value="3-somewhat-meets-expectations">3- Somewhat Meets Expectations</SelectItem>
-                              <SelectItem value="2-below-expectations">2- Below Expectations</SelectItem>
-                              <SelectItem value="1-significantly-below-expectations">1- Significantly Below Expectations</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                          <div className="flex gap-2 justify-center">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => setBehaviouralComments(prev => ({
-                                ...prev,
-                                [assessment.id]: prev[assessment.id] || ""
-                              }))}
-                            >
-                              <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                            >
-                              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                      {behaviouralComments[assessment.id] !== undefined && (
-                        <tr>
-                          <td></td>
-                          <td colSpan={4} className="p-3">
-                            {editingBehaviouralComment === assessment.id ? (
-                              <Textarea
-                                value={behaviouralComments[assessment.id]}
-                                onChange={(e) => {
-                                  setBehaviouralComments(prev => ({
-                                    ...prev,
-                                    [assessment.id]: e.target.value
-                                  }));
-                                  updateBehaviouralAssessment(assessment.id, "comment", e.target.value);
-                                }}
-                                onBlur={() => setEditingBehaviouralComment(null)}
-                                placeholder="Comment: Add your observations here..."
-                                className="text-blue-600 italic border-blue-200"
-                                rows={2}
-                                autoFocus
-                              />
-                            ) : (
-                              <div className="flex justify-between items-start">
-                                <div 
-                                  className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
-                                  onClick={() => setEditingBehaviouralComment(assessment.id)}
-                                >
-                                  {behaviouralComments[assessment.id] || "Click to add comment..."}
-                                </div>
-                                <div className="ml-2">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteBehaviouralComment(assessment.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-between items-center mt-6 p-4 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium text-gray-600">Section Score:</span>
-                <div className={`px-4 py-2 rounded text-lg font-semibold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateBehaviouralSectionScore())).bgColor} ${getScoreColors(parseFloat(calculateBehaviouralSectionScore())).textColor}`}>
-                  {calculateBehaviouralSectionScore()}
-                </div>
-              </div>
-
-              <div className="flex justify-end mt-6">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                  Save
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        )}
-
-        {/* Part E: Training Needs & Development */}
-        <div ref={partERef} data-section-id="E">
-          <Card className="bg-white">
-            <CardContent className="p-6">
-              <div className="pb-4 mb-6">
-                <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part E Training Needs & Development</h3>
-                <div style={{ color: '#16569e' }} className="text-sm">Specify any training needs identified during the appraisals period</div>
-                <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-              </div>
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-gray-600 border-gray-300"
-                      onClick={() => addTrainingNeed('database')}
-                    >
-                      + Add Training from Database
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-gray-600 border-gray-300"
-                      onClick={() => addTrainingNeed('new')}
-                    >
-                      + Add New Training
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                  {form.watch("trainingNeeds").map((trainingNeed, index) => (
-                    <React.Fragment key={trainingNeed.id}>
-                      <tr className="border-t">
-                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                          <Input
-                            value={trainingNeed.training}
-                            onChange={(e) => updateTrainingNeed(trainingNeed.id, "training", e.target.value)}
-                            placeholder={`Training ${index + 1}`}
-                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          />
-                        </td>
-                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                          <div className="flex gap-2 justify-center">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => setTrainingNeedsComments(prev => ({
-                                ...prev,
-                                [trainingNeed.id]: prev[trainingNeed.id] || ""
-                              }))}
-                            >
-                              <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => deleteTrainingNeed(trainingNeed.id)}
-                            >
-                              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                      {trainingNeedsComments[trainingNeed.id] !== undefined && (
-                        <tr>
-                          <td></td>
-                          <td colSpan={2} className="p-3">
-                            {editingTrainingNeedsComment === trainingNeed.id ? (
-                              <Textarea
-                                value={trainingNeedsComments[trainingNeed.id]}
-                                onChange={(e) => {
-                                  setTrainingNeedsComments(prev => ({
-                                    ...prev,
-                                    [trainingNeed.id]: e.target.value
-                                  }));
-                                  updateTrainingNeed(trainingNeed.id, "comment", e.target.value);
-                                }}
-                                onBlur={() => setEditingTrainingNeedsComment(null)}
-                                placeholder="Comment: Add your observations here..."
-                                className="text-blue-600 italic border-blue-200"
-                                rows={2}
-                                autoFocus
-                              />
-                            ) : (
-                              <div className="flex justify-between items-start">
-                                <div 
-                                  className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
-                                  onClick={() => setEditingTrainingNeedsComment(trainingNeed.id)}
-                                >
-                                  {trainingNeedsComments[trainingNeed.id] || "Click to add comment..."}
-                                </div>
-                                <div className="ml-2">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteTrainingNeedsComment(trainingNeed.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                  {form.watch("trainingNeeds").length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="p-8 text-center text-gray-500">
-                        No training needs added yet. Click "Add Training from Database" or "Add New Training" to get started.
-                      </td>
-                    </tr>
-                  )}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-end mt-6">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                  Save
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Part F: Summary & Recommendations */}
-        <div ref={partFRef} data-section-id="F">
-          <div className="space-y-6">
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                <div className="pb-4 mb-6">
-                  <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part F Comments & Recommendations</h3>
-                  <div style={{ color: '#16569e' }} className="text-sm">Add any recommendations related to following</div>
-                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-                </div>
-
-                {/* F1: Overall Score */}
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F1. Overall Score</h3>
-                  <div className={`px-4 py-2 rounded text-lg font-bold min-w-[64px] text-center ${getScoreColors(parseFloat(calculateOverallScore())).bgColor} ${getScoreColors(parseFloat(calculateOverallScore())).textColor}`}>
-                    {calculateOverallScore()}
-                  </div>
-                </div>
-
-                {/* F2: Appraiser's Recommendations */}
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F2. Appraiser's Recommendations</h3>
-                  </div>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Yes</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">No</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">NA</th>
-                          <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {form.watch("recommendations").map((recommendation, index) => (
-                          <React.Fragment key={recommendation.id}>
-                            <tr className="border-t">
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{recommendation.question}</td>
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
-                                <input
-                                  type="radio"
-                                  name={`recommendation-${recommendation.id}`}
-                                  checked={recommendation.answer === "Yes"}
-                                  onChange={() => updateRecommendation(recommendation.id, "answer", "Yes")}
-                                  onClick={() => {
-                                    if (recommendation.answer === "Yes") {
-                                      updateRecommendation(recommendation.id, "answer", "");
-                                    }
-                                  }}
-                                  className="w-4 h-4 cursor-pointer"
-                                />
-                              </td>
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
-                                <input
-                                  type="radio"
-                                  name={`recommendation-${recommendation.id}`}
-                                  checked={recommendation.answer === "No"}
-                                  onChange={() => updateRecommendation(recommendation.id, "answer", "No")}
-                                  onClick={() => {
-                                    if (recommendation.answer === "No") {
-                                      updateRecommendation(recommendation.id, "answer", "");
-                                    }
-                                  }}
-                                  className="w-4 h-4 cursor-pointer"
-                                />
-                              </td>
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4 text-center">
-                                <input
-                                  type="radio"
-                                  name={`recommendation-${recommendation.id}`}
-                                  checked={recommendation.answer === "NA"}
-                                  onChange={() => updateRecommendation(recommendation.id, "answer", "NA")}
-                                  onClick={() => {
-                                    if (recommendation.answer === "NA") {
-                                      updateRecommendation(recommendation.id, "answer", "");
-                                    }
-                                  }}
-                                  className="w-4 h-4 cursor-pointer"
-                                />
-                              </td>
-                              <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                <div className="flex justify-center">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setRecommendationComments(prev => ({
-                                      ...prev,
-                                      [recommendation.id]: prev[recommendation.id] || ""
-                                    }))}
-                                    className="h-6 w-6"
-                                  >
-                                    <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                            {recommendationComments[recommendation.id] !== undefined && (
-                              <tr>
-                                <td></td>
-                                <td colSpan={5} className="p-3">
-                                  {editingRecommendationComment === recommendation.id ? (
-                                    <Textarea
-                                      value={recommendationComments[recommendation.id]}
-                                      onChange={(e) => {
-                                        setRecommendationComments(prev => ({
-                                          ...prev,
-                                          [recommendation.id]: e.target.value
-                                        }));
-                                        updateRecommendation(recommendation.id, "comment", e.target.value);
-                                      }}
-                                      onBlur={() => setEditingRecommendationComment(null)}
-                                      placeholder="Comment: Add your observations here..."
-                                      className="text-blue-600 italic border-blue-200"
-                                      rows={2}
-                                      autoFocus
-                                    />
-                                  ) : (
-                                    <div className="flex justify-between items-start">
-                                      <div 
-                                        className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
-                                        onClick={() => setEditingRecommendationComment(recommendation.id)}
-                                      >
-                                        {recommendationComments[recommendation.id] || "Click to add comment..."}
-                                      </div>
-                                      <div className="ml-2">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => deleteRecommendationComment(recommendation.id)}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* F3: Appraiser Comments */}
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F3. Appraiser Comments</h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-gray-600 border-gray-300"
-                      onClick={() => {
-                        addAppraiserComment("Ashok Kumar", "Chief Officer");
-                      }}
-                    >
-                      + Add Appraiser
-                    </Button>
-                  </div>
-                  <div className="space-y-4">
-                    {form.watch("appraiserComments").map((appraiser, index) => (
-                      <div key={appraiser.id} className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium text-[14px] text-[#3164f4]">
-                              {index === 0 ? (() => {
-                                const appraiserValue = form.watch("primaryAppraiser");
-                                const appraiserLabels: Record<string, string> = {
-                                  "master": "Master",
-                                  "chief-officer": "Chief Officer",
-                                  "chief-engineer": "Chief Engineer",
-                                  "2nd-engineer": "2nd Engineer",
-                                  "marine-superintendent": "Marine Superintendent",
-                                  "technical-superintendent": "Technical Superintendent",
-                                  "crew-manager": "Crew Manager"
-                                };
-                                return appraiserValue ? `${appraiserLabels[appraiserValue] || appraiserValue} (Primary Appraiser)` : "Select Primary Appraiser";
-                              })() : `${appraiser.name}, ${appraiser.rank}`}
-                            </p>
-                          </div>
-                          <div className="flex space-x-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingAppraiserComment(appraiser.id)}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            {index > 0 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteAppraiserComment(appraiser.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                        {editingAppraiserComment === appraiser.id ? (
-                          <Textarea
-                            value={appraiser.comment}
-                            onChange={(e) => updateAppraiserComment(appraiser.id, "comment", e.target.value)}
-                            onBlur={() => setEditingAppraiserComment(null)}
-                            placeholder="Add your comment here..."
-                            className="text-blue-600 italic"
-                            rows={3}
-                            autoFocus
-                          />
-                        ) : (
-                          appraiser.comment && (
-                            <p className="text-blue-600 italic text-sm pl-4">
-                              {appraiser.comment || (index === 0 ? "Officer X has performed consistently throughout the contract and participated in upgradation of the XXX. The inspection performance has been satisfactory, no major findings received in 2 SIRE and 1 PSC inspections." : "Officer X has performed consistently throughout the contract and participated in upgradation of the XXX. The inspection performance has been satisfactory, no major findings received in 2 SIRE and 1 PSC inspections.")}
-                            </p>
-                          )
-                        )}
-                        {editingAppraiserComment !== appraiser.id && !appraiser.comment && (
-                          <div 
-                            className="border-2 border-dashed border-blue-200 p-3 rounded cursor-pointer hover:bg-blue-50"
-                            onClick={() => setEditingAppraiserComment(appraiser.id)}
-                          >
-                            <p className="text-gray-500 text-[13px]">Click to add comment...</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* F4: Seafarer Comments */}
-                <div className="space-y-4">
-                  <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F4. Seafarer Comments</h3>
-                  <div className="space-y-4">
-                    {form.watch("seafarerComments").map((seafarer, index) => (
-                      <div key={seafarer.id} className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium text-[14px] text-[#3164f4]">
-                              {`${form.watch("seafarersName") || "Derek Cole"}, ${form.watch("seafarersRank") || "3rd Officer"}`}
-                            </p>
-                          </div>
-                          <div className="flex space-x-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingSeafarerComment(seafarer.id)}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        {editingSeafarerComment === seafarer.id ? (
-                          <Textarea
-                            value={seafarer.comment}
-                            onChange={(e) => updateSeafarerComment(seafarer.id, "comment", e.target.value)}
-                            onBlur={() => setEditingSeafarerComment(null)}
-                            placeholder="Add your comment here..."
-                            className="text-blue-600 italic"
-                            rows={3}
-                            autoFocus
-                          />
-                        ) : (
-                          seafarer.comment && (
-                            <p className="text-blue-600 italic text-sm pl-4">
-                              {seafarer.comment || "I have received a very good opportunity to learn effectively during my tenure on board. I was able to practically apply the skills I had gained to enhance the operational performance. I would like to return on this vessel."}
-                            </p>
-                          )
-                        )}
-                        {editingSeafarerComment !== seafarer.id && !seafarer.comment && (
-                          <div 
-                            className="border-2 border-dashed border-blue-200 p-3 rounded cursor-pointer hover:bg-blue-50"
-                            onClick={() => setEditingSeafarerComment(seafarer.id)}
-                          >
-                            <p className="text-gray-500 text-[13px]">Click to add comment...</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex justify-end gap-4 mt-6">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                    Save Draft
-                  </Button>
-                  <Button 
-                    className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
-                    onClick={() => handleStageSubmission('stage2')}
-                    disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending}
-                  >
-                    {stage2Mutation.isPending ? 'Submitting...' : 'Submit Stage 2'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
+        <PartF
+          form={form}
+          partRef={partFRef}
+          appraisalStatus={appraisalStatus}
+          isFieldVisible={isFieldVisible}
+          isSectionVisible={isSectionVisible}
+          recommendationComments={recommendationComments}
+          setRecommendationComments={setRecommendationComments}
+          editingRecommendationComment={editingRecommendationComment}
+          setEditingRecommendationComment={setEditingRecommendationComment}
+          editingAppraiserComment={editingAppraiserComment}
+          setEditingAppraiserComment={setEditingAppraiserComment}
+          editingSeafarerComment={editingSeafarerComment}
+          setEditingSeafarerComment={setEditingSeafarerComment}
+          updateRecommendation={updateRecommendation}
+          addAppraiserComment={addAppraiserCommentNoArgs}
+          updateAppraiserComment={updateAppraiserComment}
+          deleteAppraiserComment={deleteAppraiserComment}
+          addSeafarerComment={addSeafarerCommentNoArgs}
+          updateSeafarerComment={updateSeafarerComment}
+          deleteSeafarerComment={deleteSeafarerComment}
+          competenceSectionScore={competenceSectionScore}
+          behaviouralSectionScore={behaviouralSectionScore}
+          overallScore={overallScore}
+          getScoreColors={getScoreColors}
+          availableRanks={availableRanks}
+          handleStageSubmission={handleStageSubmission}
+          stage1Mutation={stage1Mutation}
+          stage2Mutation={stage2Mutation}
+          saveAppraisalMutation={saveAppraisalMutation}
+        />
       </div>
     );
   };
@@ -2411,262 +1809,31 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 
                 {/* Part G: Office Review & Followup - Traditional Stepper */}
                 {activeSection === "G" && (
-                  <Card className="bg-white">
-                    <CardContent className="p-6">
-                      <div className="pb-4 mb-6">
-                        <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G Office Review & Followup</h3>
-                        <div style={{ color: '#16569e' }} className="text-sm">This section is visible to office users only</div>
-                        <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
-                      </div>
-
-                      {/* G1: Office Review */}
-                      <div className="space-y-4 mb-6">
-                        <div className="flex justify-between items-center">
-                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G1. Office Review</h3>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="text-gray-600 border-gray-300"
-                            onClick={addOfficeReview}
-                          >
-                            + Add Reviewer
-                          </Button>
-                        </div>
-                        <div className="space-y-4">
-                          {form.watch("officeReviews").map((review, index) => (
-                            <div key={review.id} className="space-y-2">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  {/* Display current user's name and position (auto-populated from sessionStorage) */}
-                                  <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
-                                    {review.name}{review.position && <>, <span className="font-normal italic">{review.position}</span></>}:
-                                  </p>
-                                  {editingOfficeReview === review.id ? (
-                                    <Textarea
-                                      value={review.feedback}
-                                      onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)}
-                                      onBlur={() => setEditingOfficeReview(null)}
-                                      placeholder="Add office review feedback..."
-                                      className="text-blue-600 italic border-blue-200 mt-1"
-                                      rows={2}
-                                      autoFocus
-                                    />
-                                  ) : (
-                                    <p 
-                                      className="text-blue-600 italic text-sm mt-1 cursor-pointer p-2 rounded hover:bg-gray-50"
-                                      onClick={() => setEditingOfficeReview(review.id)}
-                                    >
-                                      {review.feedback || "Click to add feedback..."}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex space-x-2 ml-4">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteOfficeReview(review.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* G2: Training Followup */}
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G2. Training Followup</h3>
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="text-gray-600 border-gray-300"
-                              onClick={() => addTrainingFollowup('database')}
-                            >
-                              + Add Training from Database
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="text-gray-600 border-gray-300"
-                              onClick={() => addTrainingFollowup('new')}
-                            >
-                              + Add New Training
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="border rounded-lg overflow-hidden">
-                          <table className="w-full">
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Corresponding in DB</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Category</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Status</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target or Compl. Date</th>
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {form.watch("trainingFollowups").map((followup, index) => (
-                                <React.Fragment key={followup.id}>
-                                  <tr className="border-t">
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <Input
-                                        value={followup.training}
-                                        onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)}
-                                        className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                                      />
-                                    </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <select
-                                        value={followup.correspondingInDB}
-                                        onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
-                                        className="w-full p-1 border rounded text-[13px] h-6"
-                                      >
-                                        <option>Select Training from DB</option>
-                                        <option>Training Option 1</option>
-                                        <option>Training Option 2</option>
-                                      </select>
-                                    </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <select
-                                        value={followup.category}
-                                        onChange={(e) => updateTrainingFollowup(followup.id, "category", e.target.value)}
-                                        className="w-full p-1 border rounded text-[13px] h-6"
-                                      >
-                                        <option>Select Rating</option>
-                                        <option>1. Competence</option>
-                                        <option>2- Soft Skills</option>
-                                      </select>
-                                    </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <select
-                                        value={followup.status}
-                                        onChange={(e) => updateTrainingFollowup(followup.id, "status", e.target.value)}
-                                        className={`w-full p-1 border rounded text-[13px] h-6 ${
-                                          followup.status === "Proposed" ? "bg-gray-200" :
-                                          followup.status === "Approved" ? "bg-blue-200" :
-                                          followup.status === "Planned" ? "bg-yellow-200" :
-                                          followup.status === "Declined" ? "bg-red-200" :
-                                          followup.status === "Completed" ? "bg-green-200" : ""
-                                        }`}
-                                      >
-                                        <option value="Proposed">Proposed</option>
-                                        <option value="Approved">Approved</option>
-                                        <option value="Planned">Planned</option>
-                                        <option value="Declined">Declined</option>
-                                        <option value="Completed">Completed</option>
-                                      </select>
-                                    </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <Input
-                                        type="date"
-                                        value={followup.targetDate}
-                                        onChange={(e) => updateTrainingFollowup(followup.id, "targetDate", e.target.value)}
-                                        className="w-full text-[13px] h-6"
-                                      />
-                                    </td>
-                                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                      <div className="flex justify-center gap-2">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
-                                          onClick={() => setTrainingFollowupComments(prev => ({
-                                            ...prev,
-                                            [followup.id]: prev[followup.id] || ""
-                                          }))}
-                                        >
-                                          <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
-                                          onClick={() => deleteTrainingFollowup(followup.id)}
-                                        >
-                                          <Trash2 className="h-[18px] w-[18px] text-gray-500" />
-                                        </Button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                  {trainingFollowupComments[followup.id] !== undefined && (
-                                    <tr>
-                                      <td></td>
-                                      <td colSpan={6} className="p-3">
-                                        {editingTrainingFollowupComment === followup.id ? (
-                                          <Textarea
-                                            value={trainingFollowupComments[followup.id]}
-                                            onChange={(e) => {
-                                              setTrainingFollowupComments(prev => ({
-                                                ...prev,
-                                                [followup.id]: e.target.value
-                                              }));
-                                              updateTrainingFollowup(followup.id, "comment", e.target.value);
-                                            }}
-                                            onBlur={() => setEditingTrainingFollowupComment(null)}
-                                            placeholder="Comment: Add your observations here..."
-                                            className="text-blue-600 italic border-blue-200"
-                                            rows={2}
-                                            autoFocus
-                                          />
-                                        ) : (
-                                          <div className="flex justify-between items-start">
-                                            <div 
-                                              className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[14px]"
-                                              onClick={() => setEditingTrainingFollowupComment(followup.id)}
-                                            >
-                                              {trainingFollowupComments[followup.id] || "Click to add comment..."}
-                                            </div>
-                                            <div className="ml-2">
-                                              <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => deleteTrainingFollowupComment(followup.id)}
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  )}
-                                </React.Fragment>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex justify-end gap-4 mt-6">
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
-                          Save Draft
-                        </Button>
-                        <Button 
-                          className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
-                          onClick={() => handleStageSubmission('stage3')}
-                          disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending}
-                        >
-                          {stage3Mutation.isPending ? 'Submitting...' : 'Submit Stage 3'}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <PartG
+                    form={form}
+                    partRef={partGRef}
+                    appraisalStatus={appraisalData?.status || 'draft'}
+                    isFieldVisible={isFieldVisible}
+                    isSectionVisible={isSectionVisible}
+                    trainingFollowupComments={trainingFollowupComments}
+                    setTrainingFollowupComments={setTrainingFollowupComments}
+                    editingTrainingFollowupComment={editingTrainingFollowupComment}
+                    setEditingTrainingFollowupComment={setEditingTrainingFollowupComment}
+                    editingOfficeReview={editingOfficeReview}
+                    setEditingOfficeReview={setEditingOfficeReview}
+                    isTrainingFollowupDialogOpen={isTrainingFollowupDialogOpen}
+                    setIsTrainingFollowupDialogOpen={setIsTrainingFollowupDialogOpen}
+                    addOfficeReview={addOfficeReview}
+                    updateOfficeReview={updateOfficeReview}
+                    deleteOfficeReview={deleteOfficeReview}
+                    addTrainingFollowup={addTrainingFollowupNoArgs}
+                    updateTrainingFollowup={updateTrainingFollowup}
+                    deleteTrainingFollowup={deleteTrainingFollowup}
+                    handleTrainingNeedsSelect={handleTrainingNeedsSelect}
+                    handleStageSubmission={handleStageSubmission}
+                    stage3Mutation={stage3Mutation}
+                    saveAppraisalMutation={saveAppraisalMutation}
+                  />
                 )}
                 
                 {/* Part A: Seafarer's Information - moved to continuous function */}
