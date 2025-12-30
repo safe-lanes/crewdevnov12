@@ -3,7 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { BaseSubmoduleForm, FormSection } from '@/components/BaseSubmoduleForm';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Info, Plus, Edit, Trash2 } from 'lucide-react';
+import { Info, Plus, Edit, Trash2, ChevronDown } from 'lucide-react';
 import { z } from 'zod';
 import { PromotionChecklistForm } from './PromotionChecklistForm';
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
@@ -12,10 +12,13 @@ import type { Form, RankGroup, CrewMember, CrewDashboardSummary, PromotionReview
 import type { PromotionA2Config } from '@shared/schema';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
+import { useExternalUsers } from '@/hooks/useExternalUsers';
 import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 
 import {
   CriteriaRow,
@@ -87,6 +90,22 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const { data: externalVesselTypesData } = useExternalVesselTypes();
   const { normalizeRank } = useRankNormalization();
+  
+  const { data: externalUsersData, isLoading: isLoadingUsers } = useExternalUsers();
+  
+  const approverMasterData = useMemo(() => {
+    const users = (externalUsersData as any)?.users || externalUsersData || [];
+    if (users.length > 0) {
+      const displayNames = users
+        .filter((user: any) => user.userType?.toLowerCase() === 'office')
+        .map((user: any) => user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`)
+        .filter((name: string) => name && name.trim());
+      return displayNames;
+    }
+    return [];
+  }, [externalUsersData]);
+  
+  const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<string[]>([]);
 
   const presentRank = crewMemberData?.presentRank ?? '';
 
@@ -571,6 +590,17 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         } catch {}
       }
       
+      if ((existingReviewData as any).selectedApproversForSubmission) {
+        try {
+          const selectedApprovers = typeof (existingReviewData as any).selectedApproversForSubmission === 'string'
+            ? JSON.parse((existingReviewData as any).selectedApproversForSubmission)
+            : (existingReviewData as any).selectedApproversForSubmission;
+          if (Array.isArray(selectedApprovers)) {
+            setSelectedApproversForSubmission(selectedApprovers);
+          }
+        } catch {}
+      }
+      
       if (existingReviewData.promotionConfirmed) {
         setPromotionConfirmed(existingReviewData.promotionConfirmed);
       }
@@ -665,9 +695,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partANotes: formData.partANotes || null,
       partBNotes: formData.partBNotes || null,
       partCNotes: formData.partCNotes || null,
+      selectedApproversForSubmission: JSON.stringify(selectedApproversForSubmission),
       status: 'draft',
     };
-  }, [criteriaData, cesTests, criteriaComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData]);
+  }, [criteriaData, cesTests, criteriaComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission]);
 
   const handleSaveDraft = useCallback(() => {
     const reviewData = collectFormData({
@@ -899,6 +930,75 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     setComments(prev => prev.filter(c => c.id !== id));
   }, []);
 
+  const toggleApproverSelection = useCallback((approverName: string) => {
+    setSelectedApproversForSubmission(prev => {
+      if (prev.includes(approverName)) {
+        return prev.filter(a => a !== approverName);
+      } else {
+        return [...prev, approverName];
+      }
+    });
+  }, []);
+
+  const handleSubmitForApproval = useCallback(() => {
+    if (selectedApproversForSubmission.length === 0) {
+      toast({
+        title: "No Approvers Selected",
+        description: "Please select at least one approver before submitting for approval.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const currentDate = new Date().toISOString().split('T')[0];
+    
+    const newApprovers: Approver[] = selectedApproversForSubmission.map((approverName, index) => ({
+      id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+      date: currentDate,
+      approver: approverName,
+      status: 'pending',
+      approval: '',
+      comments: '',
+    }));
+    
+    setApprovers(newApprovers);
+    
+    const reviewData = collectFormData({
+      partANotes: '',
+      partBNotes: '',
+      partCNotes: '',
+    });
+    
+    reviewData.approvalData = JSON.stringify(newApprovers);
+    reviewData.status = 'submitted';
+    
+    const approverCount = selectedApproversForSubmission.length;
+    
+    const endpoint = savedReviewId
+      ? `/api/promotion-reviews/${savedReviewId}`
+      : '/api/promotion-reviews';
+    const method = savedReviewId ? 'PATCH' : 'POST';
+    
+    apiRequest(method, endpoint, reviewData)
+      .then((data: any) => {
+        if (data?.id) {
+          setSavedReviewId(data.id);
+        }
+        toast({
+          title: "Submitted for Approval",
+          description: `Promotion review has been submitted to ${approverCount} approver(s).`,
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/promotion-reviews'] });
+      })
+      .catch((error: any) => {
+        toast({
+          title: "Submission Failed",
+          description: error.message || "Failed to submit for approval",
+          variant: "destructive",
+        });
+      });
+  }, [selectedApproversForSubmission, toast, collectFormData, savedReviewId]);
+
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
   }, []);
@@ -1081,20 +1181,71 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button 
-                    variant="outline" 
-                    className="px-8"
-                    data-testid="button-save-part-a"
-                  >
-                    Save
-                  </Button>
-                  <Button 
-                    className="px-8 bg-green-600 hover:bg-green-700"
-                    data-testid="button-submit-part-a"
-                  >
-                    Submit
-                  </Button>
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-4 mb-4">
+                    <Label className="text-sm text-gray-600 whitespace-nowrap">Submit for Approval to:</Label>
+                    <div className="relative flex-1 max-w-md">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className="w-full justify-between text-sm font-normal"
+                            data-testid="button-approver-multi-select"
+                          >
+                            {selectedApproversForSubmission.length === 0
+                              ? "Approver"
+                              : selectedApproversForSubmission.length === 1
+                                ? selectedApproversForSubmission[0]
+                                : `${selectedApproversForSubmission.length} Approvers Selected`}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[350px] p-0" align="start">
+                          <div className="max-h-[300px] overflow-y-auto">
+                            {isLoadingUsers ? (
+                              <div className="px-3 py-4 text-sm text-gray-500 text-center">Loading approvers...</div>
+                            ) : approverMasterData.length === 0 ? (
+                              <div className="px-3 py-4 text-sm text-gray-500 text-center">No office users found</div>
+                            ) : (
+                              approverMasterData.map((approverName: string) => (
+                                <div
+                                  key={approverName}
+                                  className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
+                                  onClick={() => toggleApproverSelection(approverName)}
+                                  data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                                >
+                                  <Checkbox
+                                    checked={selectedApproversForSubmission.includes(approverName)}
+                                    className="mr-3"
+                                  />
+                                  <span className="text-sm">{approverName}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <Button 
+                      variant="outline" 
+                      className="px-8"
+                      onClick={handleSaveDraft}
+                      data-testid="button-save-part-a"
+                    >
+                      Save
+                    </Button>
+                    <Button 
+                      className="px-8 bg-green-600 hover:bg-green-700"
+                      onClick={handleSubmitForApproval}
+                      data-testid="button-submit-part-a"
+                    >
+                      Submit for Approval
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
