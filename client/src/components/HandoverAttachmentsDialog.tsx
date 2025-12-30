@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Trash2, FileText, Image as ImageIcon, Eye } from 'lucide-react';
+import { Upload, Trash2, FileText, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 
@@ -47,8 +47,6 @@ export function HandoverAttachmentsDialog({
 }: HandoverAttachmentsDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewType, setPreviewType] = useState<string | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
 
   const { data: attachments = [], isLoading, refetch } = useQuery<HandoverAttachment[]>({
@@ -165,13 +163,31 @@ export function HandoverAttachmentsDialog({
   };
 
   const handlePreview = (attachment: HandoverAttachment) => {
-    setPreviewUrl(attachment.fileData);
-    setPreviewType(attachment.fileType);
-  };
-
-  const closePreview = () => {
-    setPreviewUrl(null);
-    setPreviewType(null);
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      if (attachment.fileType === 'application/pdf') {
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head><title>${attachment.filename}</title></head>
+            <body style="margin:0;padding:0;height:100vh;">
+              <embed src="${attachment.fileData}" type="application/pdf" width="100%" height="100%" />
+            </body>
+          </html>
+        `);
+      } else {
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head><title>${attachment.filename}</title></head>
+            <body style="margin:0;padding:20px;display:flex;justify-content:center;align-items:flex-start;background:#f5f5f5;">
+              <img src="${attachment.fileData}" alt="${attachment.filename}" style="max-width:100%;height:auto;" />
+            </body>
+          </html>
+        `);
+      }
+      newWindow.document.close();
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -264,7 +280,7 @@ export function HandoverAttachmentsDialog({
                           className="h-8 w-8"
                           data-testid={`button-preview-${attachment.id}`}
                         >
-                          <Eye className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" />
                         </Button>
                         <Button
                           type="button"
@@ -294,31 +310,6 @@ export function HandoverAttachmentsDialog({
           </div>
         </DialogContent>
       </Dialog>
-
-      {previewUrl && (
-        <Dialog open={!!previewUrl} onOpenChange={() => closePreview()}>
-          <DialogContent className="sm:max-w-[80vw] sm:max-h-[90vh]">
-            <DialogHeader>
-              <DialogTitle>File Preview</DialogTitle>
-            </DialogHeader>
-            <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
-              {previewType === 'application/pdf' ? (
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-[70vh]"
-                  title="PDF Preview"
-                />
-              ) : (
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="max-w-full max-h-[70vh] object-contain"
-                />
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </>
   );
 }
