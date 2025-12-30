@@ -1968,8 +1968,8 @@ export class DatabaseStorage implements IStorage {
         // Note: proposalStatus uses lowercase values ("deployed", "rejected", "proposed")
         if (assignment.proposalStatus === 'deployed' || assignment.proposalStatus === 'rejected') continue;
         
-        // Apply vessel filter - compare vesselId (which is in VSL-XXX format) against the filter
-        // Filter passes vessel IDs from frontend (e.g., ["VSL-001", "VSL-002"])
+        // Apply vessel filter - compare vesselId (UUID format from Master 014) against the filter
+        // Filter passes vessel UUIDs from frontend
         const assignmentVesselId = assignment.vesselId || assignment.vessel;
         if (filters?.vessels && filters.vessels.length > 0 && !filters.vessels.includes(assignmentVesselId)) continue;
         
@@ -2015,36 +2015,31 @@ export class DatabaseStorage implements IStorage {
       
       const assignment = assignments[assignmentIndex];
       
-      // Translate vessel name/id to vessel code
-      // assignment.vessel contains vessel NAME (e.g., "MT Nordic Star" or "Vessel 5")
-      // assignment.vesselId contains vessel CODE - could be UUID or VSL-XXX format
+      // Translate vessel name/id to vessel code (UUID from Master 014)
+      // assignment.vessel contains vessel NAME (e.g., "Vessel 5")
+      // assignment.vesselId contains vessel UUID from Master 014
       const vesselMasterData = await this.getMasterDataEntries('014');
       
-      // Build lookup maps for vessel translation
-      // Support both VSL-XXX format and UUID format entry_ids
+      // Build lookup maps for vessel translation from Master 014
       const vesselNameToCodeMap = new Map<string, string>();
       const vesselUuidToCodeMap = new Map<string, string>();
       for (const v of vesselMasterData) {
         const entryId = (v as any).entry_id; // Type assertion needed for snake_case field
         if (v.name && entryId) {
           vesselNameToCodeMap.set(v.name, entryId);
-          // Also map the entry_id to itself for UUID lookups
+          // Also map the entry_id (UUID) to itself for direct lookups
           vesselUuidToCodeMap.set(entryId, entryId);
         }
       }
       
-      // Determine vessel code - check multiple sources
+      // Determine vessel code - check multiple sources (source of truth: Master 014)
       let vesselCode: string | undefined;
       
-      // 1. Check if vesselId is already a valid entry_id (UUID or VSL-XXX)
+      // 1. Check if vesselId is already a valid entry_id (UUID from Master 014)
       if (assignment.vesselId && vesselUuidToCodeMap.has(assignment.vesselId)) {
         vesselCode = assignment.vesselId;
       }
-      // 2. Check if vesselId matches VSL-XXX format
-      else if (assignment.vesselId && assignment.vesselId.match(/^VSL-\d+$/)) {
-        vesselCode = assignment.vesselId;
-      }
-      // 3. Translate from vessel name
+      // 2. Translate from vessel name
       else if (assignment.vessel) {
         vesselCode = vesselNameToCodeMap.get(assignment.vessel);
       }
@@ -2433,7 +2428,7 @@ export class DatabaseStorage implements IStorage {
   async getArchivedAssignments(filters?: { vessels?: string[]; ranks?: string[]; dateFrom?: string; dateTo?: string }): Promise<RotationArchiveEntry[]> {
     let conditions = [];
     
-    // Apply filters if provided - filter by vesselId (VSL-XXX format)
+    // Apply filters if provided - filter by vesselId (UUID format from Master 014)
     if (filters?.vessels && filters.vessels.length > 0) {
       conditions.push(inArray(rotationArchive.vesselId, filters.vessels));
     }

@@ -9,41 +9,26 @@ import {
 } from "@shared/dateUtils";
 
 // Static vessel mapping for testing/development (MemStorage/PersistentFileStorage)
-// In production (DatabaseStorage), vessel codes are fetched from master data
-// Supports both UUID-style vessel IDs (from database) and legacy VSL-XXX format
-// Also includes legacy vessel names for backward compatibility with existing seed data
+// In production (DatabaseStorage), vessel data is fetched from Master 014
+// Source of truth: Master 014 with UUID-format vessel IDs
 const STATIC_VESSEL_MAPPING: Record<string, string> = {
-  // Current database vessel names -> UUID
+  // Vessel names -> UUID (from Master 014)
   "Vessel 1": "743ef9d1-841a-11ed-aa7c-7003bca91a86",
   "Vessel 2": "743feb08-841a-11ed-aa7c-7003bca91a86",
   "Vessel 3": "7440571a-841a-11ed-aa7c-7003bca91a86",
   "Vessel 4": "744535d0-841a-11ed-aa7c-7003bca91a86",
   "Vessel 5": "7446783c-841a-11ed-aa7c-7003bca91a86",
   "Vessel 6": "74481b72-841a-11ed-aa7c-7003bca91a86",
-  // Legacy vessel names -> UUID (for backward compatibility with seed data)
-  "MV Atlantic Explorer": "743ef9d1-841a-11ed-aa7c-7003bca91a86",
-  "MV Pacific Voyager": "743feb08-841a-11ed-aa7c-7003bca91a86",
-  "Nordic Star": "7440571a-841a-11ed-aa7c-7003bca91a86",
-  "Oceanic Pride": "744535d0-841a-11ed-aa7c-7003bca91a86",
-  "Harbor Master": "7446783c-841a-11ed-aa7c-7003bca91a86",
-  "Coastal Guardian": "74481b72-841a-11ed-aa7c-7003bca91a86",
 };
 
+// UUID -> Vessel Name reverse mapping (from Master 014)
 const STATIC_VESSEL_CODE_TO_NAME: Record<string, string> = {
-  // UUID -> Vessel Name (using database names)
   "743ef9d1-841a-11ed-aa7c-7003bca91a86": "Vessel 1",
   "743feb08-841a-11ed-aa7c-7003bca91a86": "Vessel 2",
   "7440571a-841a-11ed-aa7c-7003bca91a86": "Vessel 3",
   "744535d0-841a-11ed-aa7c-7003bca91a86": "Vessel 4",
   "7446783c-841a-11ed-aa7c-7003bca91a86": "Vessel 5",
   "74481b72-841a-11ed-aa7c-7003bca91a86": "Vessel 6",
-  // Legacy VSL-XXX -> Legacy Names (for backward compatibility)
-  "VSL-001": "MV Atlantic Explorer",
-  "VSL-002": "MV Pacific Voyager",
-  "VSL-003": "Nordic Star",
-  "VSL-004": "Oceanic Pride",
-  "VSL-005": "Harbor Master",
-  "VSL-006": "Coastal Guardian",
 };
 
 // UUID pattern for vessel IDs (matches format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
@@ -458,7 +443,7 @@ export function deriveEndorsementCode(
 
 // Helper function to translate vessel name to vessel code
 // Provides static mapping for storage backends that don't have master data
-// Supports both UUID-style vessel IDs and legacy VSL-XXX format
+// Source of truth: Master 014 with UUID-format vessel IDs
 export function translateVesselNameToCode(vesselName: string): string {
   // Check static mapping first (vessel name -> UUID)
   const staticCode = STATIC_VESSEL_MAPPING[vesselName];
@@ -466,13 +451,8 @@ export function translateVesselNameToCode(vesselName: string): string {
     return staticCode;
   }
   
-  // If already a UUID format, return it
+  // If already a UUID format, return it (source of truth: Master 014)
   if (vesselName && UUID_PATTERN.test(vesselName)) {
-    return vesselName;
-  }
-  
-  // If already in VSL-XXX format (legacy), return it
-  if (vesselName && vesselName.match(/^VSL-\d+$/)) {
     return vesselName;
   }
   
@@ -481,10 +461,10 @@ export function translateVesselNameToCode(vesselName: string): string {
     return vesselName;
   }
   
-  // Fail loudly if vessel cannot be translated
+  // Fail loudly if vessel cannot be translated - must be UUID format from Master 014
   throw new Error(
     `Cannot translate vessel name "${vesselName}" to canonical vessel code. ` +
-    `Vessel must be in STATIC_VESSEL_MAPPING or already in UUID/VSL-XXX format. ` +
+    `Vessel must be in STATIC_VESSEL_MAPPING or already in UUID format (from Master 014). ` +
     `Available vessels: ${Object.keys(STATIC_VESSEL_MAPPING).join(', ')}`
   );
 }
@@ -2552,23 +2532,23 @@ export class MemStorage implements IStorage {
             // Determine vesselId for lookup
             let vesselIdToMatch: string | null = null;
             if (assignment.vesselId) {
-              // Use existing vesselId directly - supports both UUID and VSL-XXX formats
+              // Use existing vesselId directly (UUID from Master 014)
               vesselIdToMatch = String(assignment.vesselId);
             } else if (assignment.vessel || assignment.vesselName) {
               // Legacy assignment without vesselId
               const vesselValue = assignment.vessel || assignment.vesselName;
               
-              // Check if the vessel field already contains a vessel ID (UUID or VSL-XXX format)
-              if (UUID_PATTERN.test(vesselValue) || /^VSL-\d{3}$/.test(vesselValue)) {
-                // It's already a vessel ID, use it directly
+              // Check if the vessel field already contains a vessel ID (UUID format)
+              if (UUID_PATTERN.test(vesselValue)) {
+                // It's already a vessel UUID, use it directly
                 vesselIdToMatch = vesselValue;
               } else {
-                // It's a vessel name, need to look it up in master data (master ID "014")
+                // It's a vessel name, need to look it up in Master 014
                 const vesselMasterData = await this.getMasterDataEntries("014");
                 const vessel = vesselMasterData?.find((v: any) => v.name === vesselValue);
                 
                 if (vessel && vessel.entryId) {
-                  // Use the entryId (UUID format)
+                  // Use the entryId (UUID from Master 014)
                   vesselIdToMatch = vessel.entryId;
                 }
               }
@@ -2576,7 +2556,7 @@ export class MemStorage implements IStorage {
             
             if (vesselIdToMatch && assignment.rank) {
               // Look for crew members currently on this vessel with this rank
-              // Note: crew.presentVessel stores vessel ID (UUID or VSL-XXX format)
+              // Note: crew.presentVessel stores vessel UUID from Master 014
               const crewOnBoard = Array.from(this.crewMembers.values()).find(crew => 
                 crew.presentVessel === vesselIdToMatch && crew.presentRank === assignment.rank
               );
@@ -5079,14 +5059,14 @@ export class PersistentFileStorage implements IStorage {
 
     // Initialize with sample rest hours vessel records
     const currentDate = new Date();
-    // Use the 6 vessels from master data (vessel master ID: 014)
+    // Use the 6 vessels from Master 014 (UUID format)
     const vessels = [
-      { id: "VSL-AP-001", name: "MV Atlantic Pioneer" },
-      { id: "VSL-OE-002", name: "MV Ocean Explorer" },
-      { id: "VSL-NS-003", name: "MT Nordic Star" },
-      { id: "VSL-PV-004", name: "MV Pacific Voyager" },
-      { id: "VSL-LG-005", name: "MT Liberty Gas" },
-      { id: "VSL-GT-006", name: "MV Global Trader" }
+      { id: "743ef9d1-841a-11ed-aa7c-7003bca91a86", name: "Vessel 1" },
+      { id: "743feb08-841a-11ed-aa7c-7003bca91a86", name: "Vessel 2" },
+      { id: "7440571a-841a-11ed-aa7c-7003bca91a86", name: "Vessel 3" },
+      { id: "744535d0-841a-11ed-aa7c-7003bca91a86", name: "Vessel 4" },
+      { id: "7446783c-841a-11ed-aa7c-7003bca91a86", name: "Vessel 5" },
+      { id: "74481b72-841a-11ed-aa7c-7003bca91a86", name: "Vessel 6" }
     ];
 
     let rhRecordId = 1;
@@ -6168,14 +6148,14 @@ export class PersistentFileStorage implements IStorage {
   private initializeRestHoursSampleData(): void {
     // Initialize with sample rest hours vessel records
     const currentDate = new Date();
-    // Use the 6 vessels from master data (vessel master ID: 014)
+    // Use the 6 vessels from Master 014 (UUID format)
     const vessels = [
-      { id: "VSL-AP-001", name: "MV Atlantic Pioneer" },
-      { id: "VSL-OE-002", name: "MV Ocean Explorer" },
-      { id: "VSL-NS-003", name: "MT Nordic Star" },
-      { id: "VSL-PV-004", name: "MV Pacific Voyager" },
-      { id: "VSL-LG-005", name: "MT Liberty Gas" },
-      { id: "VSL-GT-006", name: "MV Global Trader" }
+      { id: "743ef9d1-841a-11ed-aa7c-7003bca91a86", name: "Vessel 1" },
+      { id: "743feb08-841a-11ed-aa7c-7003bca91a86", name: "Vessel 2" },
+      { id: "7440571a-841a-11ed-aa7c-7003bca91a86", name: "Vessel 3" },
+      { id: "744535d0-841a-11ed-aa7c-7003bca91a86", name: "Vessel 4" },
+      { id: "7446783c-841a-11ed-aa7c-7003bca91a86", name: "Vessel 5" },
+      { id: "74481b72-841a-11ed-aa7c-7003bca91a86", name: "Vessel 6" }
     ];
 
     let rhRecordId = this.currentRestHoursVesselRecordId;
@@ -6931,23 +6911,23 @@ export class PersistentFileStorage implements IStorage {
             // Determine vesselId for lookup
             let vesselIdToMatch: string | null = null;
             if (assignment.vesselId) {
-              // Use existing vesselId directly - supports both UUID and VSL-XXX formats
+              // Use existing vesselId directly (UUID from Master 014)
               vesselIdToMatch = String(assignment.vesselId);
             } else if (assignment.vessel || assignment.vesselName) {
               // Legacy assignment without vesselId
               const vesselValue = assignment.vessel || assignment.vesselName;
               
-              // Check if the vessel field already contains a vessel ID (UUID or VSL-XXX format)
-              if (UUID_PATTERN.test(vesselValue) || /^VSL-\d{3}$/.test(vesselValue)) {
-                // It's already a vessel ID, use it directly
+              // Check if the vessel field already contains a vessel ID (UUID format)
+              if (UUID_PATTERN.test(vesselValue)) {
+                // It's already a vessel UUID, use it directly
                 vesselIdToMatch = vesselValue;
               } else {
-                // It's a vessel name, need to look it up in master data (master ID "014")
+                // It's a vessel name, need to look it up in Master 014
                 const vesselMasterData = await this.getMasterDataEntries("014");
                 const vessel = vesselMasterData?.find((v: any) => v.name === vesselValue);
                 
                 if (vessel && vessel.entryId) {
-                  // Use the entryId (UUID format)
+                  // Use the entryId (UUID from Master 014)
                   vesselIdToMatch = vessel.entryId;
                 }
               }
@@ -6955,7 +6935,7 @@ export class PersistentFileStorage implements IStorage {
             
             if (vesselIdToMatch && assignment.rank) {
               // Look for crew members currently on this vessel with this rank
-              // Note: crew.presentVessel stores vessel ID (UUID or VSL-XXX format)
+              // Note: crew.presentVessel stores vessel UUID from Master 014
               const crewOnBoard = Array.from(this.crewMembers.values()).find(crew => 
                 crew.presentVessel === vesselIdToMatch && crew.presentRank === assignment.rank
               );
@@ -7289,7 +7269,7 @@ export class PersistentFileStorage implements IStorage {
   async getArchivedAssignments(filters?: { vessels?: string[]; ranks?: string[]; dateFrom?: string; dateTo?: string }): Promise<RotationArchiveEntry[]> {
     let entries = Array.from(this.rotationArchive.values());
     
-    // Apply filters if provided - filter by vesselId (VSL-XXX format)
+    // Apply filters if provided - filter by vesselId (UUID format from Master 014)
     if (filters?.vessels && filters.vessels.length > 0) {
       entries = entries.filter(e => e.vesselId && filters.vessels!.includes(e.vesselId));
     }

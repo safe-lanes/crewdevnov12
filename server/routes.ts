@@ -2787,10 +2787,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let { vesselId } = req.params;
       console.log(`📜 [VESSEL RANKS API] Fetching ranks for vessel: ${vesselId}`);
       
-      // BACKWARD COMPATIBILITY: If vesselId doesn't start with VSL-, try to translate to canonical ID
-      if (!vesselId.startsWith('VSL-')) {
-        console.log(`📜 [VESSEL RANKS API] vesselId doesn't start with VSL-, attempting translation`);
-        const vessels = await storage.getMasterDataEntries("014"); // Get all vessels
+      // Translate vessel name to UUID if needed (source of truth: Master 014)
+      const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!UUID_PATTERN.test(vesselId)) {
+        console.log(`📜 [VESSEL RANKS API] vesselId is not UUID format, attempting translation`);
+        const vessels = await storage.getMasterDataEntries("014"); // Get all vessels from Master 014
         
         // Try matching by name first, then by numeric ID
         let matchedVessel = vessels.find((v: any) => 
@@ -2807,7 +2808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (matchedVessel) {
           const translatedId = matchedVessel.entryId;
-          console.log(`📜 [VESSEL RANKS API] Translated "${vesselId}" to canonical ID "${translatedId}"`);
+          console.log(`📜 [VESSEL RANKS API] Translated "${vesselId}" to UUID "${translatedId}"`);
           vesselId = translatedId;
         } else {
           console.log(`📜 [VESSEL RANKS API] No vessel found matching "${vesselId}"`);
@@ -4624,9 +4625,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             violationDates = Array.from(allViolationDates).sort((a, b) => a - b);
             predictedViolationDates = Array.from(allPredictedViolationDates).sort((a, b) => a - b);
             
-            // Debug logging for MT Nordic Star
-            if (vesselId === 'VSL-003' && targetMonth === '2025-11') {
-              console.log(`🔍 [DEBUG] VSL-003 violations - Mode: ${mode}, OPA: ${isOpaMode}`);
+            // Debug logging for Vessel 3 (formerly MT Nordic Star)
+            if (vesselId === '7440571a-841a-11ed-aa7c-7003bca91a86' && targetMonth === '2025-11') {
+              console.log(`🔍 [DEBUG] Vessel 3 violations - Mode: ${mode}, OPA: ${isOpaMode}`);
               console.log(`🔍 Total violation days: ${totalViolations}`);
               console.log(`🔍 Total unique crew with violations: ${crewWithViolations}`);
               console.log(`🔍 Daily records (before dedup): ${dailyRecords.length}`);
@@ -6889,14 +6890,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { filterType, vessels, fleet, addGroup, dueIn, rank } = req.query;
       
-      // Fetch vessel master data for code-to-name translation
-      // Uses canonical vessel codes (VSL-XXX) as keys after recent vessel code enforcement
+      // Fetch vessel master data for UUID-to-name translation
+      // Source of truth: Master 014 with UUID-format vessel IDs
       const vesselMasterData = await storage.getMasterDataEntries("014");
       const vesselCodeToNameMap = new Map<string, string>();
       if (vesselMasterData) {
         vesselMasterData.forEach((vessel: any) => {
-          // Use entry_id (canonical vessel code) as the key for translation
-          // Master data stores VSL-XXX codes in entry_id field (snake_case from database)
+          // Use entry_id (UUID) as the key for translation
+          // Master 014 stores UUID-format IDs in entry_id field
           if (vessel.entry_id && vessel.name) {
             vesselCodeToNameMap.set(vessel.entry_id, vessel.name);
           }
