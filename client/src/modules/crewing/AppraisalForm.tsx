@@ -22,6 +22,7 @@ import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import { useMasterDataEntries } from "@/hooks/useDataMasters";
+import { useExternalUsers } from "@/hooks/useExternalUsers";
 
 // Comprehensive list of world nationalities
 const NATIONALITIES = [
@@ -362,6 +363,29 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     enabled: !!crewMember?.rank,
   });
 
+  // Fetch external users for office reviewer selection (like Section A4 in Promotion Review Form)
+  const { data: externalUsersData, isLoading: isLoadingUsers } = useExternalUsers();
+  
+  const reviewerOptions = useMemo(() => {
+    const users = (externalUsersData as any)?.users || externalUsersData || [];
+    if (users.length > 0) {
+      const displayNames = users
+        .filter((user: any) => user.userType?.toLowerCase() === 'office')
+        .map((user: any) => {
+          const name = user.fullname || user.userName || '';
+          const designation = user.designation || '';
+          return {
+            displayName: `${name}${designation ? `, ${designation}` : ''}`,
+            name: name,
+            position: designation
+          };
+        })
+        .filter((item: any) => item.displayName && item.displayName.trim());
+      return displayNames;
+    }
+    return [];
+  }, [externalUsersData]);
+
   // Log form configuration for debugging
   useEffect(() => {
     if (formConfig) {
@@ -434,11 +458,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         { id: "seafarer", name: "", rank: "", comment: "" }
       ],
       
-      // Part G: Office Review & Followup
-      officeReviews: [
-        { id: "1", name: "Roxanne", position: "Crewing Executive", feedback: "Candidate's feedback over conduct was positive. No issues reported" },
-        { id: "2", name: "Joseph Hall", position: "Crew Manager", feedback: "Exception granted to this candidate as per discussion with Department Manager" }
-      ],
+      // Part G: Office Review & Followup - Start with empty reviews (use Add Reviewer to add)
+      officeReviews: [],
       trainingFollowups: [
         { id: "1", training: "Training 1", correspondingInDB: "Select Training from DB", category: "Select Rating", status: "Proposed", targetDate: "", comment: "" },
         { id: "2", training: "Training 2", correspondingInDB: "Select Training from DB", category: "1. Competence", status: "Approved", targetDate: "", comment: "" },
@@ -2896,9 +2917,38 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             <div key={review.id} className="space-y-2">
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                  <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
-                                    {review.name}, <span className="font-normal italic">{review.position}:</span>
-                                  </p>
+                                  {/* Show dropdown if no name set (new reviewer), otherwise show read-only text */}
+                                  {!review.name ? (
+                                    <Select
+                                      value=""
+                                      onValueChange={(value) => {
+                                        const selectedUser = reviewerOptions.find((u: any) => u.displayName === value);
+                                        if (selectedUser) {
+                                          updateOfficeReview(review.id, "name", selectedUser.name);
+                                          updateOfficeReview(review.id, "position", selectedUser.position);
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="w-full" data-testid={`select-reviewer-${review.id}`}>
+                                        <SelectValue placeholder={isLoadingUsers ? "Loading users..." : "Select Reviewer"} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {reviewerOptions.length === 0 && !isLoadingUsers ? (
+                                          <div className="px-2 py-1 text-sm text-muted-foreground">No reviewers available</div>
+                                        ) : (
+                                          reviewerOptions.map((user: any, idx: number) => (
+                                            <SelectItem key={idx} value={user.displayName}>
+                                              {user.displayName}
+                                            </SelectItem>
+                                          ))
+                                        )}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
+                                      {review.name}{review.position && <>, <span className="font-normal italic">{review.position}</span></>}:
+                                    </p>
+                                  )}
                                   {editingOfficeReview === review.id ? (
                                     <Textarea
                                       value={review.feedback}
@@ -4484,9 +4534,38 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               <div key={review.id} className="space-y-2">
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
-                                    <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
-                                      {review.name}, <span className="font-normal italic">{review.position}:</span>
-                                    </p>
+                                    {/* Show dropdown if no name set (new reviewer), otherwise show read-only text */}
+                                    {!review.name ? (
+                                      <Select
+                                        value=""
+                                        onValueChange={(value) => {
+                                          const selectedUser = reviewerOptions.find((u: any) => u.displayName === value);
+                                          if (selectedUser) {
+                                            updateOfficeReview(review.id, "name", selectedUser.name);
+                                            updateOfficeReview(review.id, "position", selectedUser.position);
+                                          }
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-full" data-testid={`select-reviewer-alt-${review.id}`}>
+                                          <SelectValue placeholder={isLoadingUsers ? "Loading users..." : "Select Reviewer"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {reviewerOptions.length === 0 && !isLoadingUsers ? (
+                                            <div className="px-2 py-1 text-sm text-muted-foreground">No reviewers available</div>
+                                          ) : (
+                                            reviewerOptions.map((user: any, idx: number) => (
+                                              <SelectItem key={idx} value={user.displayName}>
+                                                {user.displayName}
+                                              </SelectItem>
+                                            ))
+                                          )}
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <p className="font-medium text-[14px]" style={{ color: '#3164f4' }}>
+                                        {review.name}{review.position && <>, <span className="font-normal italic">{review.position}</span></>}:
+                                      </p>
+                                    )}
                                     {editingOfficeReview === review.id ? (
                                       <Textarea
                                         value={review.feedback}
@@ -4517,8 +4596,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     </Button>
                                   </div>
                                 </div>
-                          </div>
-                        ))}
+                              </div>
+                            ))}
                           </div>
                         </div>
 
