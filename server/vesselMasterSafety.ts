@@ -241,7 +241,6 @@ export function transformVesselIds(data: any, direction: 'toDatabase' | 'fromDat
     const vesselIdsArray = data.vesselIds || data.VesselIDs;
     
     if (Array.isArray(vesselIdsArray)) {
-      console.log(`🎯 [VESSEL_IDS] Converting array to JSON string:`, vesselIdsArray);
       const result = {
         ...data,
         vesselIds: JSON.stringify(vesselIdsArray)
@@ -250,7 +249,6 @@ export function transformVesselIds(data: any, direction: 'toDatabase' | 'fromDat
       delete result.VesselIDs;
       return result;
     } else if (typeof vesselIdsArray === 'string') {
-      console.log(`🎯 [VESSEL_IDS] VesselIds already string, keeping as-is:`, vesselIdsArray);
       const result = {
         ...data,
         vesselIds: vesselIdsArray
@@ -264,13 +262,11 @@ export function transformVesselIds(data: any, direction: 'toDatabase' | 'fromDat
     if (data.vesselIds && typeof data.vesselIds === 'string') {
       try {
         const parsed = JSON.parse(data.vesselIds);
-        console.log(`🎯 [VESSEL_IDS] Converting JSON string to array:`, parsed);
         return {
           ...data,
           vesselIds: Array.isArray(parsed) ? parsed : []
         };
       } catch (error) {
-        console.warn(`🎯 [VESSEL_IDS] Failed to parse vesselIds JSON:`, data.vesselIds, error);
         return {
           ...data,
           vesselIds: []
@@ -290,12 +286,8 @@ export function filterAdditionalGroupsData(data: any, masterId: string): Partial
     return data; // No filtering needed for non-additional-groups masters
   }
 
-  console.log(`🎯 [GROUPS FILTER] Filtering additional groups data for masterId: ${masterId}`);
-  console.log(`🎯 [GROUPS FILTER] Original data:`, data);
-
   // Apply vesselIds transformation first
   const transformedData = transformVesselIds(data, 'toDatabase');
-  console.log(`🎯 [GROUPS FILTER] After vesselIds transformation:`, transformedData);
 
   // Handle field naming consistency - accept both "VesselIDs" and "vesselIds"  
   const normalizedData = { ...transformedData };
@@ -316,7 +308,6 @@ export function filterAdditionalGroupsData(data: any, masterId: string): Partial
   // Remove alternative casing to avoid duplication
   delete normalizedData.VesselIDs;
 
-  console.log(`🎯 [GROUPS FILTER] After field normalization:`, normalizedData);
   return normalizedData;
 }
 
@@ -325,8 +316,6 @@ export function filterAdditionalGroupsData(data: any, masterId: string): Partial
  */
 export function mapDatabaseToGroupsDisplay(dbEntry: any): any {
   if (!dbEntry) return dbEntry;
-
-  console.log(`🎯 [GROUPS MAP] Mapping database entry to display format:`, dbEntry);
   
   // First apply basic field transformation (snake_case to camelCase)
   const basicTransformed = { ...dbEntry };
@@ -354,7 +343,6 @@ export function mapDatabaseToGroupsDisplay(dbEntry: any): any {
   
   // Apply vesselIds transformation from database
   const transformedEntry = transformVesselIds(basicTransformed, 'fromDatabase');
-  console.log(`🎯 [GROUPS MAP] After vesselIds transformation:`, transformedEntry);
 
   return transformedEntry;
 }
