@@ -17,18 +17,35 @@ import { DueCrewTable } from './DueCrewTable';
 import { RotationPlanTable } from './RotationPlanTable';
 import { ApprovalTable } from './ApprovalTable';
 
-// Hook to fetch vessels from Master Data (ID 014)
+// Hook to fetch vessels from external SAIL ERP API (same source as Vessel Database)
 const useVessels = () => {
     return useQuery({
-        queryKey: ['/api/masters/014/data'],
+        queryKey: ['/api/external/vessels'],
+        queryFn: async () => {
+            const domain = localStorage.getItem('domain') || 'rsms';
+            const response = await fetch(
+                `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
+                {
+                    method: 'GET',
+                    headers: { 'accept': '*/*' }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch vessels: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.vessels || [];
+        },
+        staleTime: 5 * 60 * 1000,
+        retry: 2,
         select: (data: any[]) => {
-            return data
-                .filter((vessel: any) => !vessel.isDeleted)
-                .map((vessel: any) => ({
-                    id: vessel.id,
-                    vesselId: vessel.entryId,
-                    name: vessel.name || vessel.vessel || 'Unknown Vessel',
-                }));
+            return data.map((vessel: any) => ({
+                id: vessel.id,
+                vesselId: vessel.vuid,
+                name: vessel.vessel || 'Unknown Vessel',
+            }));
         }
     });
 };
