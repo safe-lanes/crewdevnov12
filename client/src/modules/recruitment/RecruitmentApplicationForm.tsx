@@ -303,12 +303,34 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Get company ranks from shared hook
   const { data: companyRanks, isLoading: ranksLoading, rankNames } = useCompanyRanks();
 
-  // Current user state - placeholder for now, will be connected to User Master later
-  // TODO: Replace with actual user data from User Master API when available
-  const [currentUser, setCurrentUser] = useState({
-    name: "(Current User Name)",
-    position: "(Position)"
+  // Current user from sessionStorage - reads crewUserName and crewDesignation
+  // Updates dynamically when user logs in with different credentials
+  const [currentUser, setCurrentUser] = useState(() => {
+    const name = sessionStorage.getItem('crewUserName') || 'Unknown User';
+    const position = sessionStorage.getItem('crewDesignation') || 'Unknown Position';
+    return { name, position };
   });
+
+  // Listen for sessionStorage changes (for when user logs in with different credentials)
+  useEffect(() => {
+    const updateCurrentUser = () => {
+      const name = sessionStorage.getItem('crewUserName') || 'Unknown User';
+      const position = sessionStorage.getItem('crewDesignation') || 'Unknown Position';
+      setCurrentUser({ name, position });
+    };
+
+    // Listen for storage events (triggered when sessionStorage changes in another tab/window)
+    window.addEventListener('storage', updateCurrentUser);
+    
+    // Also check periodically for changes within the same tab
+    const intervalId = setInterval(updateCurrentUser, 1000);
+
+    return () => {
+      window.removeEventListener('storage', updateCurrentUser);
+      clearInterval(intervalId);
+    };
+  }, []);
+
   const currentUserDisplay = `${currentUser.name}, ${currentUser.position}`;
 
   // Create a save-only mutation (for individual section buttons)
