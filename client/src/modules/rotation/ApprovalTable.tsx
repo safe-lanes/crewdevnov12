@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog';
 
 // Hook to fetch proposed assignments
 const useProposals = (filters: any) => {
@@ -327,8 +328,10 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
   const [gridScrollTop, setGridScrollTop] = useState(0);
   const [displayedRowData, setDisplayedRowData] = useState<ProposalRow[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
   const gridApiRef = useRef<any>(null);
   const { toast } = useToast();
+  const { getVesselIds } = useVesselLookup();
   
   const { data: rawProposals = [], isLoading, refetch } = useProposals({
     selectedVessels,
@@ -446,6 +449,58 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
       const [planId, assignmentIndex] = key.split('-').map(Number);
       rejectMutation.mutate({ planId, assignmentIndex });
     });
+  };
+
+  // Check if exactly 1 vessel is selected for Check Compliance button
+  const isOneVesselSelected = selectedVessels.length === 1;
+  
+  // Get selected crew data for simulated compliance check
+  const selectedCrewForCompliance = useMemo(() => {
+    const selected: Array<{ rank: string; crewMemberId: string; crewName: string; joiningDate?: string }> = [];
+    selectedAssignments.forEach(key => {
+      const [planId, assignmentIndex] = key.split('-').map(Number);
+      const proposal = proposals.find(
+        (p: ProposalRow) => p.planId === planId && p.assignmentIndex === assignmentIndex
+      );
+      if (proposal) {
+        selected.push({
+          rank: proposal.rank,
+          crewMemberId: proposal.crewId,
+          crewName: proposal.crewName,
+          joiningDate: proposal.joiningDate,
+        });
+      }
+    });
+    return selected;
+  }, [selectedAssignments, proposals]);
+
+  // Get the vesselId for the selected vessel (when exactly 1 is selected)
+  const selectedVesselId = useMemo(() => {
+    if (selectedVessels.length !== 1) return null;
+    const vesselIds = getVesselIds(selectedVessels);
+    return vesselIds.length === 1 ? vesselIds[0] : null;
+  }, [selectedVessels, getVesselIds]);
+
+  const handleCheckCompliance = () => {
+    if (!isOneVesselSelected) {
+      toast({
+        title: "Vessel Selection Required",
+        description: "Please select exactly 1 vessel from the dropdown to check compliance",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (selectedAssignments.size === 0) {
+      toast({
+        title: "Crew Selection Required",
+        description: "Please check at least one proposed crew member to simulate compliance",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setComplianceDialogOpen(true);
   };
 
   const toggleAssignment = (planId: number, assignmentIndex: number) => {
@@ -650,23 +705,36 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
           )}
         </div>
         
-        {/* Show Archived Checkbox */}
-        <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
-          <Checkbox
-            id="show-archived"
-            checked={showArchived}
-            onCheckedChange={(checked) => {
-              setShowArchived(checked === true);
-              setSelectedAssignments(new Set());
-            }}
-            data-testid="checkbox-show-archived"
-          />
-          <label 
-            htmlFor="show-archived" 
-            className="text-sm text-gray-700 cursor-pointer select-none"
+        {/* Check Compliance Button and Show Archived */}
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={handleCheckCompliance}
+            disabled={!isOneVesselSelected}
+            variant="outline"
+            className={!isOneVesselSelected ? "opacity-50 cursor-not-allowed" : ""}
+            data-testid="button-check-compliance"
           >
-            Show Archived
-          </label>
+            Check Compliance
+          </Button>
+          
+          {/* Show Archived Checkbox */}
+          <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
+            <Checkbox
+              id="show-archived"
+              checked={showArchived}
+              onCheckedChange={(checked) => {
+                setShowArchived(checked === true);
+                setSelectedAssignments(new Set());
+              }}
+              data-testid="checkbox-show-archived"
+            />
+            <label 
+              htmlFor="show-archived" 
+              className="text-sm text-gray-700 cursor-pointer select-none"
+            >
+              Show Archived
+            </label>
+          </div>
         </div>
       </div>
 
@@ -715,6 +783,14 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
           />
         </div>
       </div>
+
+      {/* Compliance Matrix Dialog for simulated crew check */}
+      <ComplianceMatrixDialog
+        open={complianceDialogOpen}
+        onOpenChange={setComplianceDialogOpen}
+        vesselId={selectedVesselId || undefined}
+        simulatedCrew={selectedCrewForCompliance}
+      />
     </div>
   );
 }

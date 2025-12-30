@@ -6,10 +6,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Loader2, AlertCircle } from 'lucide-react';
 
+interface SimulatedCrewMember {
+    rank: string;
+    crewMemberId: string;
+    crewName?: string;
+    joiningDate?: string;
+}
+
 interface ComplianceMatrixDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     vesselId?: string;
+    simulatedCrew?: SimulatedCrewMember[];
 }
 
 interface ComplianceRuleResult {
@@ -171,19 +179,46 @@ function formatRequirementValue(req: ComplianceRuleResult): { required: string; 
 export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
     open,
     onOpenChange,
-    vesselId
+    vesselId,
+    simulatedCrew
 }) => {
     const [selectedMajor, setSelectedMajor] = useState<{ id: number; name: string; status: string } | null>(null);
     const [selectedResult, setSelectedResult] = useState<ComplianceCheckResult | null>(null);
+
+    const isSimulatedMode = simulatedCrew && simulatedCrew.length > 0;
 
     const { data: oilMajorRules = [], isLoading: isLoadingRules } = useQuery<OilMajorRule[]>({
         queryKey: ['/api/oil-major-rules'],
         enabled: open
     });
 
-    const { data: complianceData, isLoading: isLoadingCompliance } = useQuery<{ vesselId: string; results: ComplianceCheckResult[]; message?: string }>({
-        queryKey: [`/api/compliance/matrix/${vesselId}`],
-        enabled: open && !!vesselId && oilMajorRules.length > 0
+    // Fetch compliance data - use POST for simulated mode, GET for normal mode
+    const { data: complianceData, isLoading: isLoadingCompliance } = useQuery<{ vesselId: string; results: ComplianceCheckResult[]; message?: string; simulated?: boolean }>({
+        queryKey: isSimulatedMode 
+            ? [`/api/compliance/matrix/${vesselId}/simulated`, JSON.stringify(simulatedCrew)]
+            : [`/api/compliance/matrix/${vesselId}`],
+        enabled: open && !!vesselId && oilMajorRules.length > 0,
+        queryFn: async () => {
+            if (isSimulatedMode) {
+                // Use POST for simulated compliance check
+                const response = await fetch(`/api/compliance/matrix/${vesselId}/simulated`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ simulatedCrew })
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to fetch simulated compliance data');
+                }
+                return response.json();
+            } else {
+                // Use GET for normal compliance check
+                const response = await fetch(`/api/compliance/matrix/${vesselId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch compliance data');
+                }
+                return response.json();
+            }
+        }
     });
 
     const oilMajors = useMemo(() => {
@@ -227,9 +262,14 @@ export const ComplianceMatrixDialog: React.FC<ComplianceMatrixDialogProps> = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden p-0">
                 <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200">
-                    <DialogTitle className="text-lg font-medium text-[#16569e]">
-                        Compliance Matrix
+                    <DialogTitle className="text-lg font-medium text-[#16569e]" data-testid="dialog-title-compliance">
+                        {isSimulatedMode ? 'Compliance Matrix - Simulated Crew' : 'Compliance Matrix'}
                     </DialogTitle>
+                    {isSimulatedMode && simulatedCrew && (
+                        <p className="text-sm text-muted-foreground mt-1" data-testid="text-simulated-crew-info">
+                            Simulating: {simulatedCrew.map(c => `${c.crewName || c.crewMemberId} as ${c.rank}`).join(', ')}
+                        </p>
+                    )}
                 </DialogHeader>
 
                 <div className="flex h-[calc(90vh-120px)]">

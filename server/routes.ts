@@ -8379,6 +8379,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check compliance for a vessel with simulated crew replacements (for Rotation Approval)
+  app.post("/api/compliance/matrix/:vesselId/simulated", async (req, res) => {
+    try {
+      const vesselId = req.params.vesselId;
+      const { simulatedCrew } = req.body;
+      
+      // simulatedCrew is an array of { rank: string, crewMemberId: string } representing proposed replacements
+      if (!simulatedCrew || !Array.isArray(simulatedCrew) || simulatedCrew.length === 0) {
+        return res.status(400).json({ error: "simulatedCrew array is required with at least one crew replacement" });
+      }
+      
+      // Get all oil major rules
+      const allRules = await storage.getOilMajorRules();
+      if (allRules.length === 0) {
+        return res.json({ 
+          vesselId, 
+          results: [],
+          simulated: true,
+          message: "No oil major rules configured. Please import rules first."
+        });
+      }
+      
+      // Get vessel details from Master Data 014 to determine vessel type
+      const vessels = await storage.getMasterDataEntries('014');
+      const vessel = vessels.find((v: any) => v.id?.toString() === vesselId || v.vesselId === vesselId);
+      const vesselTypeCode = vessel?.vesselType || '';
+      
+      // Get current crew from vessel planning
+      const vesselPlanning = await storage.getVesselPlanningByVessel(vesselId);
+      const crewExperienceData: any[] = [];
+      
+      // Build a map of simulated replacements by rank (includes crewMemberId and joiningDate)
+      const simulatedReplacementMap = new Map<string, { crewMemberId: string; joiningDate?: string }>();
+      for (const sim of simulatedCrew) {
+        if (sim.rank && sim.crewMemberId) {
+          simulatedReplacementMap.set(sim.rank, { 
+            crewMemberId: sim.crewMemberId, 
+            joiningDate: sim.joiningDate 
+          });
+        }
+      }
+      
+      if (vesselPlanning && vesselPlanning.length > 0) {
+        for (const position of vesselPlanning) {
+          const positionRank = position.rank || '';
+          
+          // Check if this rank has a simulated replacement
+          const simulatedReplacement = simulatedReplacementMap.get(positionRank);
+          const simulatedCrewId = simulatedReplacement?.crewMemberId;
+          const simulatedJoiningDate = simulatedReplacement?.joiningDate;
+          const crewIdToUse = simulatedCrewId || position.onBoardCrewId || position.crewMemberId;
+          
+          if (crewIdToUse) {
+            const crew = await storage.getCrewMember(crewIdToUse);
+            if (crew) {
+              let companySeaService: any[] = [];
+              let externalSeaService: any[] = [];
+              try {
+                companySeaService = crew.currentCompanySeaService 
+                  ? JSON.parse(crew.currentCompanySeaService as string) 
+                  : [];
+              } catch (e) {
+                companySeaService = [];
+              }
+              try {
+                externalSeaService = crew.externalSeaService 
+                  ? JSON.parse(crew.externalSeaService as string) 
+                  : [];
+              } catch (e) {
+                externalSeaService = [];
+              }
+              
+              const currentRank = positionRank || crew.presentRank || '';
+              const experience = calculateExperienceFromSeaService(companySeaService, externalSeaService, currentRank);
+              const tankerTypeYears = calculateVesselTypeSpecificExperience(companySeaService, externalSeaService, vesselTypeCode);
+              
+              // Calculate time on board
+              let timeOnboardMonths = 0;
+              let signOnDateToUse: string | null = null;
+              
+              if (simulatedCrewId) {
+                // For simulated crew, use the proposed joining date or today as fallback
+                signOnDateToUse = simulatedJoiningDate || new Date().toISOString();
+                // If joining date is in the future, time on board would be 0
+                const joiningDateObj = new Date(signOnDateToUse);
+                const today = new Date();
+                if (joiningDateObj <= today) {
+                  const diffMs = today.getTime() - joiningDateObj.getTime();
+                  const diffMonths = diffMs / (1000 * 60 * 60 * 24 * 30.44);
+                  timeOnboardMonths = Math.round(diffMonths * 10) / 10;
+                }
+                // If future date, timeOnboardMonths stays at 0
+              } else {
+                // Use existing crew's actual sign-on date
+                signOnDateToUse = crew.signOnDate || position.signOnDate;
+                if (signOnDateToUse) {
+                  try {
+                    const signOnDate = new Date(signOnDateToUse);
+                    const today = new Date();
+                    const diffMs = today.getTime() - signOnDate.getTime();
+                    const diffMonths = diffMs / (1000 * 60 * 60 * 24 * 30.44);
+                    timeOnboardMonths = Math.round(diffMonths * 10) / 10;
+                  } catch (e) {
+                    timeOnboardMonths = 0;
+                  }
+                }
+              }
+              
+              crewExperienceData.push({
+                rank: currentRank,
+                yearsWithOperator: experience.company,
+                yearsInRank: experience.rank,
+                yearsOnTankerType: tankerTypeYears,
+                yearsOnAllTankers: experience.tankers,
+                yearsAsOOW: experience.oow,
+                timeOnboardMonths: timeOnboardMonths,
+                signOnDate: signOnDateToUse || new Date().toISOString(),
+                languageProficiency: crew.englishProficiency || '',
+                isSimulated: !!simulatedCrewId
+              });
+            }
+          }
+        }
+      }
+      
+      // Check compliance against all oil majors
+      const results: ComplianceCheckResult[] = [];
+      
+      for (const rule of allRules) {
+        if (!rule.isActive) continue;
+        
+        const rulesConfig: OilMajorRulesConfig = typeof rule.rules === 'string' 
+          ? JSON.parse(rule.rules) 
+          : rule.rules;
+        
+        const complianceResult = evaluateCompliance(rule.oilMajorName, rulesConfig, crewExperienceData);
+        results.push(complianceResult);
+      }
+      
+      results.sort((a, b) => a.oilMajorName.localeCompare(b.oilMajorName));
+      
+      res.json({ vesselId, results, simulated: true });
+    } catch (error) {
+      console.error("Error generating simulated compliance matrix:", error);
+      res.status(500).json({ error: "Failed to generate simulated compliance matrix" });
+    }
+  });
+
   // ============================================
   // Training Master API Routes
   // ============================================
