@@ -7062,6 +7062,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (rankList.includes(crew.rank)) return true;
             // Base rank match (crew rank is the base of a queried variant)
             if (baseRanksFromVariants.has(crew.rank)) return true;
+            // Parent-to-variant match: if parent rank is selected (e.g., "3rd Officer"),
+            // also match crew with variants like "3rd Officer_1", "3rd Officer_2"
+            // Check if crew rank is a variant of any selected parent rank
+            for (const selectedRank of rankList) {
+              if (crew.rank.startsWith(selectedRank + '_')) {
+                return true;
+              }
+            }
             return false;
           });
         }
