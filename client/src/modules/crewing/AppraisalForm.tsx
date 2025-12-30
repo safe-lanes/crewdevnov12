@@ -24,7 +24,7 @@ import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplate
 import { useMasterDataEntries } from "@/hooks/useDataMasters";
 
 // Import extracted Part components for code splitting
-import { PartA, PartB } from "@/components/appraisal-form-parts";
+import { PartA, PartB, PartC, PartD, PartE, PartF, PartG } from "@/components/appraisal-form-parts";
 
 // Comprehensive list of world nationalities
 const NATIONALITIES = [
