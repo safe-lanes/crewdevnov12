@@ -1890,6 +1890,37 @@ export class DatabaseStorage implements IStorage {
       plan.planStatus === "Proposed" || plan.planStatus === "Partially Approved"
     );
     
+    // Fetch all vessel planning data to look up current crew on board
+    const allVesselPlanning = await this.db.select().from(vesselPlanning);
+    
+    // Create a lookup map: vesselId+rank -> current crew data
+    const currentCrewMap = new Map<string, any>();
+    for (const vp of allVesselPlanning) {
+      if (vp.vesselId && vp.rank && vp.crewMemberId) {
+        const key = `${vp.vesselId}:${vp.rank}`;
+        // Only include crew with sign-on date (actually on board or planned)
+        if (vp.signOnDate) {
+          // Calculate range end date (relief due + 1 month grace period)
+          let rangeEndDate = vp.reliefDue;
+          if (vp.reliefDue) {
+            const reliefDueDate = new Date(vp.reliefDue);
+            const rangeEnd = new Date(reliefDueDate);
+            rangeEnd.setMonth(rangeEnd.getMonth() + 1);
+            rangeEndDate = rangeEnd.toISOString().split('T')[0];
+          }
+          
+          currentCrewMap.set(key, {
+            id: vp.crewMemberId,
+            name: vp.onBoardCrewName || vp.crewMemberId,
+            contractStartDate: vp.signOnDate,
+            contractEndDate: vp.reliefDue || vp.signOnDate,
+            rangeStartDate: vp.signOnDate,
+            rangeEndDate: rangeEndDate || vp.reliefDue || vp.signOnDate
+          });
+        }
+      }
+    }
+    
     // Extract and flatten assignments from all proposed/partially approved plans
     const proposedAssignments: any[] = [];
     
@@ -1931,6 +1962,10 @@ export class DatabaseStorage implements IStorage {
         // Strip any existing assignmentIndex to ensure correct index from loop
         const { assignmentIndex: _, ...assignmentWithoutIndex } = assignment;
         
+        // Look up current on-board crew for this vessel/rank combination
+        const currentCrewKey = `${assignmentVesselId}:${assignment.rank}`;
+        const currentCrew = currentCrewMap.get(currentCrewKey) || null;
+        
         proposedAssignments.push({
           ...assignmentWithoutIndex,
           planId: plan.id,
@@ -1938,7 +1973,8 @@ export class DatabaseStorage implements IStorage {
           planFromDate: plan.planFromDate,
           planToDate: plan.planToDate,
           proposedBy: plan.proposedBy,
-          proposedDate: plan.proposedDate
+          proposedDate: plan.proposedDate,
+          currentCrew: currentCrew
         });
       }
     }
