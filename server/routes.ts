@@ -8385,6 +8385,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const vesselId = req.params.vesselId;
       const { simulatedCrew } = req.body;
       
+      console.log(`[SIMULATED COMPLIANCE] vesselId: ${vesselId}, simulatedCrew:`, JSON.stringify(simulatedCrew, null, 2));
+      
       // simulatedCrew is an array of { rank: string, crewMemberId: string } representing proposed replacements
       if (!simulatedCrew || !Array.isArray(simulatedCrew) || simulatedCrew.length === 0) {
         return res.status(400).json({ error: "simulatedCrew array is required with at least one crew replacement" });
@@ -8392,6 +8394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all oil major rules
       const allRules = await storage.getOilMajorRules();
+      console.log(`[SIMULATED COMPLIANCE] Found ${allRules.length} oil major rules`);
       if (allRules.length === 0) {
         return res.json({ 
           vesselId, 
@@ -8405,9 +8408,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const vessels = await storage.getMasterDataEntries('014');
       const vessel = vessels.find((v: any) => v.id?.toString() === vesselId || v.vesselId === vesselId);
       const vesselTypeCode = vessel?.vesselType || '';
+      console.log(`[SIMULATED COMPLIANCE] Vessel found: ${!!vessel}, vesselTypeCode: ${vesselTypeCode}`);
       
       // Get current crew from vessel planning
       const vesselPlanning = await storage.getVesselPlanningByVessel(vesselId);
+      console.log(`[SIMULATED COMPLIANCE] vesselPlanning count: ${vesselPlanning?.length || 0}`);
       const crewExperienceData: any[] = [];
       
       // Build a map of simulated replacements by planId (vesselPlanning.id) for precise slot matching
@@ -8515,6 +8520,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log(`[SIMULATED COMPLIANCE] crewExperienceData count: ${crewExperienceData.length}`);
+      if (crewExperienceData.length > 0) {
+        console.log(`[SIMULATED COMPLIANCE] First crew:`, JSON.stringify(crewExperienceData[0], null, 2));
+      }
+      
       // Check compliance against all oil majors
       const results: ComplianceCheckResult[] = [];
       
@@ -8527,6 +8537,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const complianceResult = evaluateCompliance(rule.oilMajorName, rulesConfig, crewExperienceData);
         results.push(complianceResult);
+      }
+      
+      console.log(`[SIMULATED COMPLIANCE] Generated ${results.length} compliance results`);
+      if (results.length > 0) {
+        console.log(`[SIMULATED COMPLIANCE] First result rules count: ${results[0].results?.length || 0}`);
       }
       
       results.sort((a, b) => a.oilMajorName.localeCompare(b.oilMajorName));
