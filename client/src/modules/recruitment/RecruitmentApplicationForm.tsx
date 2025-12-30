@@ -28,6 +28,7 @@ import { useExternalVessels } from '@/hooks/useExternalVessels';
 import { useExternalFleetGroups } from '@/hooks/useExternalFleetGroups';
 import { useExternalLanguages } from '@/hooks/useExternalLanguages';
 import { useExternalCountries } from '@/hooks/useExternalCountries';
+import { useExternalUsers } from '@/hooks/useExternalUsers';
 import { LicenseSelectionDialog } from '@/modules/crew-pool/LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import { TravelDocumentSelectionDialog } from '@/modules/crew-pool/TravelDocumentSelectionDialog';
@@ -2011,14 +2012,21 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Rank data now comes from shared hook useCompanyRanks
   // Vessel, Fleet Groups, and Additional Groups data now comes from API queries above (vesselFleetOptions)
 
-  const approverMasterData = [
-    'Capt. Nick, Marine Superintendent',
-    'John Smith, Fleet Manager', 
-    'Sarah Johnson, Technical Manager',
-    'David Brown, Operations Manager',
-    'Lisa Wilson, Crew Manager',
-    'Michael Davis, Training Manager'
-  ];
+  // Fetch users from external API (User Master 024)
+  const { data: externalUsersData, isLoading: isLoadingUsers } = useExternalUsers();
+  
+  // Filter users by userType === "Office" and extract displayName for approver dropdown
+  const approverMasterData = useMemo(() => {
+    const users = (externalUsersData as any)?.users || externalUsersData || [];
+    if (users.length > 0) {
+      return users
+        .filter((user: any) => user.userType?.toLowerCase() === 'office')
+        .map((user: any) => user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`)
+        .filter(Boolean)
+        .sort();
+    }
+    return [];
+  }, [externalUsersData]);
 
   // Photo upload handling
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
