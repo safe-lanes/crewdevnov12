@@ -302,7 +302,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   const transferCompletedRef = React.useRef(candidate?.status === 'Recruited');
 
   // Get company ranks from shared hook
-  const { data: companyRanks, isLoading: ranksLoading, rankNames } = useCompanyRanks();
+  const { data: companyRanks, isLoading: ranksLoading, rankNames, rankOptions } = useCompanyRanks();
 
   // Current user from sessionStorage - reads crewUserName and crewDesignation
   // Updates dynamically when user logs in with different credentials
@@ -2003,6 +2003,12 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
 
   // Rank data now comes from shared hook useCompanyRanks
+  // Helper function to convert rank value to abbreviated label
+  const getRankLabel = (rankValue: string) => {
+    if (!rankOptions?.length) return rankValue;
+    const option = rankOptions.find(opt => opt.value === rankValue);
+    return option?.label || rankValue;
+  };
   // Vessel, Fleet Groups, and Additional Groups data now comes from API queries above (vesselFleetOptions)
 
   // Fetch users from external API (User Master 024)
@@ -2207,14 +2213,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       {ranksLoading ? (
                         <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                       ) : (
-                        rankNames.map(rank => (
-                          <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                        rankOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))
                       )}
                     </SelectContent>
                   </Select>
                 ) : (
-                  <div className="mt-1 text-sm text-gray-900">{formData.rankAppliedFor}</div>
+                  <div className="mt-1 text-sm text-gray-900">{ranksLoading ? '...' : getRankLabel(formData.rankAppliedFor)}</div>
                 )}
               </div>
               
@@ -2360,14 +2366,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                     {ranksLoading ? (
                       <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                     ) : (
-                      rankNames.map(rank => (
-                        <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                      rankOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                       ))
                     )}
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.presentRank}</div>
+                <div className="mt-1 text-sm text-gray-900">{ranksLoading ? '...' : getRankLabel(formData.presentRank)}</div>
               )}
             </div>
             
@@ -3403,9 +3409,9 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                       {ranksLoading ? (
                         <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                       ) : (
-                        rankNames.map((rank) => (
-                          <SelectItem key={rank} value={rank}>
-                            {rank}
+                        rankOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
                           </SelectItem>
                         ))
                       )}
