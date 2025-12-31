@@ -465,11 +465,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     },
   });
 
-  // Load rank-group-specific configuration when available
+  // Load rank-group-specific configuration when available (only for new appraisals)
   useEffect(() => {
     const config = formConfig as any;
-    if (config?.rankGroupConfig) {
-      console.log('📋 Loading rank group configuration:', config.rankGroupName, config.rankGroupConfig);
+    // Skip loading rank group defaults if we have existing appraisal data
+    // existingAppraisal is loaded via useQuery and will populate the form separately
+    if (config?.rankGroupConfig && !appraisalId) {
+      console.log('📋 Loading rank group configuration (new appraisal):', config.rankGroupName, config.rankGroupConfig);
       
       // Load competence assessments from rank group config
       if (config.rankGroupConfig.competenceAssessments && config.rankGroupConfig.competenceAssessments.length > 0) {
@@ -503,7 +505,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         })));
       }
       
-      // Load hidden fields/sections from rank group config
+      // Load hidden fields/sections from rank group config (always load these regardless of new/existing)
+    }
+    
+    // Always load hidden fields/sections from rank group config
+    if (config?.rankGroupConfig) {
       if (config.rankGroupConfig.hiddenFields && Array.isArray(config.rankGroupConfig.hiddenFields)) {
         setHiddenFields(config.rankGroupConfig.hiddenFields);
         console.log('📋 Hidden fields loaded:', config.rankGroupConfig.hiddenFields);
@@ -514,7 +520,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         console.log('📋 Hidden sections loaded:', config.rankGroupConfig.hiddenSections);
       }
     }
-  }, [formConfig, form]);
+  }, [formConfig, form, appraisalId]);
 
   // Mutation for saving appraisal
   const saveAppraisalMutation = useMutation({
