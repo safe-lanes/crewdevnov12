@@ -389,8 +389,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   }, [formConfig, crewMember?.rank]);
 
   // Fetch existing appraisal data when editing
+  // Note: queryKey must include full URL since default fetcher uses queryKey[0] as the URL
   const { data: existingAppraisal } = useQuery<ExistingAppraisal | undefined>({
-    queryKey: ['/api/appraisals', appraisalId],
+    queryKey: [`/api/appraisals/${appraisalId}`],
     enabled: !!appraisalId,
   });
 
@@ -404,7 +405,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       nationality: crewMember?.nationality || "",
       vessel: crewMember?.vessel || "",
       signOn: crewMember?.signOn || "",
-      appraisalType: "draft",
+      appraisalType: "",
       appraisalPeriodFrom: crewMember?.signOn || "",
       appraisalPeriodTo: "",
       personalityIndexCategory: "",
@@ -627,7 +628,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     onSuccess: () => {
       setAppraisalStatus('preliminary');
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/appraisals', appraisalId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/appraisals/${appraisalId}`] });
       toast({ title: 'Stage 1 submitted' });
       onClose();
     },
@@ -658,7 +659,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     onSuccess: () => {
       setAppraisalStatus('submitted');
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/appraisals', appraisalId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/appraisals/${appraisalId}`] });
       toast({ title: 'Stage 2 Submitted', description: 'Performance assessment (Parts C-F) submitted successfully.' });
       onClose();
     },
@@ -685,7 +686,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     onSuccess: () => {
       setAppraisalStatus('reviewed');
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/appraisals', appraisalId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/appraisals/${appraisalId}`] });
       toast({ title: 'Stage 3 Submitted', description: 'Office review (Part G) submitted successfully. Form is now locked.' });
       onClose();
     },
