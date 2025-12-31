@@ -97,6 +97,17 @@ interface ExistingCrew {
   rangeEndDate: string;
 }
 
+// Deployed crew assignment from vessel_planning - used for global conflict detection
+interface DeployedCrewAssignment {
+  crewMemberId: string | null;
+  relieverCrewId: string | null;
+  vesselId: string;
+  signOnDate: string | null;
+  reliefDue: string | null;
+  relieverSignOnDate: string | null;
+  contractPeriodMonths: number | null; // Used to calculate reliever's end date
+}
+
 interface Assignment {
   id?: string; // Unique identifier for each assignment
   vessel: string;
@@ -336,17 +347,36 @@ function CrewFilterDialog({
   );
 }
 
+// Helper function to check if two date ranges overlap
+function dateRangesOverlap(
+  start1: Date, end1: Date | null,
+  start2: Date, end2: Date | null
+): boolean {
+  // If either end date is null, treat as far future (ongoing assignment)
+  const effectiveEnd1 = end1 || new Date('2100-12-31');
+  const effectiveEnd2 = end2 || new Date('2100-12-31');
+  
+  // Ranges overlap if one starts before the other ends and vice versa
+  return start1 <= effectiveEnd2 && start2 <= effectiveEnd1;
+}
+
 // Crew Column Component - displays available crew for a specific rank
 function CrewColumn({ 
   rank, 
   onCrewSelect, 
   assignments,
-  currentlyDeployedCrewIds
+  currentlyDeployedCrewIds,
+  allDeployedAssignments,
+  planDateRange,
+  selectedVessels
 }: { 
   rank: string; 
   onCrewSelect: (crew: { id: string; name: string; rank: string }) => void;
   assignments: Assignment[];
   currentlyDeployedCrewIds: Set<string>;
+  allDeployedAssignments: DeployedCrewAssignment[];
+  planDateRange: { start: Date; end: Date };
+  selectedVessels: string[];
 }) {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [filters, setFilters] = useState<CrewFilters>({
@@ -526,14 +556,54 @@ function CrewColumn({
   };
   
   // Get color based on deployment status and assignment count
-  // Priority: Red (deployed) > Brown (2+ vessels) > Blue (1 vessel) > Default
+  // Priority: Red (deployed on overlapping period) > Brown (2+ vessels) > Blue (1 vessel) > Default
   const getCrewNameColor = (crewId: string) => {
-    // First priority: Check if crew is currently deployed on a vessel
-    if (currentlyDeployedCrewIds.has(crewId)) {
-      return 'text-red-600'; // Red for currently deployed crew
+    // First priority: Check if crew has an overlapping deployment on ANY vessel
+    // This checks all vessels, not just the selected ones for planning
+    const hasOverlappingDeployment = allDeployedAssignments.some(assignment => {
+      // Check if this crew member is the primary crew or reliever
+      const isThisCrew = assignment.crewMemberId === crewId || assignment.relieverCrewId === crewId;
+      if (!isThisCrew) return false;
+      
+      // Skip assignments on the currently selected vessels (we're replacing them)
+      if (selectedVessels.includes(assignment.vesselId)) return false;
+      
+      // Determine the assignment date range for this crew member
+      let assignmentStart: Date | null = null;
+      let assignmentEnd: Date | null = null;
+      
+      if (assignment.crewMemberId === crewId) {
+        // Primary crew - uses signOnDate and reliefDue
+        assignmentStart = assignment.signOnDate ? new Date(assignment.signOnDate) : null;
+        assignmentEnd = assignment.reliefDue ? new Date(assignment.reliefDue) : null;
+      } else if (assignment.relieverCrewId === crewId) {
+        // Reliever - uses relieverSignOnDate and calculates end date from contractPeriodMonths
+        assignmentStart = assignment.relieverSignOnDate ? new Date(assignment.relieverSignOnDate) : null;
+        // Calculate reliever end date using contractPeriodMonths (defaulting to 6 months only if not available)
+        if (assignmentStart) {
+          const contractMonths = assignment.contractPeriodMonths || 6; // Use actual contract period or 6-month default
+          assignmentEnd = new Date(assignmentStart);
+          assignmentEnd.setMonth(assignmentEnd.getMonth() + contractMonths);
+        }
+      }
+      
+      // If we don't have a start date, we can't determine overlap - be conservative and show as available
+      if (!assignmentStart) return false;
+      
+      // Check if this assignment overlaps with the plan date range
+      return dateRangesOverlap(planDateRange.start, planDateRange.end, assignmentStart, assignmentEnd);
+    });
+    
+    if (hasOverlappingDeployment) {
+      return 'text-red-600'; // Red for crew with overlapping deployment on another vessel
     }
     
-    // Second priority: Check draft assignments
+    // Second priority: Check if crew is deployed on the currently selected vessels
+    if (currentlyDeployedCrewIds.has(crewId)) {
+      return 'text-red-600'; // Red for currently deployed crew on selected vessels
+    }
+    
+    // Third priority: Check draft assignments
     const count = getCrewAssignmentCount(crewId);
     if (count >= 2) return 'text-[#814C02]'; // Brown for 2+ vessels in draft
     if (count === 1) return 'text-blue-600'; // Blue for 1 vessel in draft
@@ -1372,10 +1442,21 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     enabled: selectedVessels.length > 0 && selectedRanks.length > 0,
   });
 
+  // Fetch ALL vessel planning data to check for global assignment conflicts
+  // This checks crew assignments across ALL vessels, not just selected ones
+  const { data: allVesselPlanning = [] } = useQuery<DeployedCrewAssignment[]>({
+    queryKey: ['/api/vessel-planning'],
+  });
+
   // Create Set of currently deployed crew IDs for O(1) lookup
   const currentlyDeployedCrewIds = useMemo(() => {
     return new Set(existingCrew.map(crew => crew.id));
   }, [existingCrew]);
+
+  // Get vessel IDs for the selected vessels (for conflict detection)
+  const selectedVesselIds = useMemo(() => {
+    return getVesselIds(selectedVessels);
+  }, [selectedVessels, getVesselIds]);
 
   // Determine if we're updating an existing plan (either from prop or from previous save)
   const existingPlanId = editPlan?.id ?? savedPlanId;
@@ -2077,6 +2158,9 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
                     onCrewSelect={handleCrewSelect}
                     assignments={assignments}
                     currentlyDeployedCrewIds={currentlyDeployedCrewIds}
+                    allDeployedAssignments={allVesselPlanning}
+                    planDateRange={dateRange}
+                    selectedVessels={selectedVesselIds}
                   />
                 ))}
               </div>
