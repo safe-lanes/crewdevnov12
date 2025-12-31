@@ -1976,8 +1976,12 @@ export class DatabaseStorage implements IStorage {
         const assignment = assignments[i];
         
         // Skip deployed or rejected assignments - they are now in the archive
-        // Note: proposalStatus uses lowercase values ("deployed", "rejected", "proposed")
-        if (assignment.proposalStatus === 'deployed' || assignment.proposalStatus === 'rejected') continue;
+        // Note: Check both 'status' (used by deploy) and 'proposalStatus' (legacy) fields
+        // Also handle case-insensitivity for robust filtering
+        const assignmentStatus = (assignment.status || '').toLowerCase();
+        const proposalStatus = (assignment.proposalStatus || '').toLowerCase();
+        if (assignmentStatus === 'deployed' || assignmentStatus === 'rejected' ||
+            proposalStatus === 'deployed' || proposalStatus === 'rejected') continue;
         
         // Apply vessel filter - compare vesselId (UUID format from Master 014) against the filter
         // Filter passes vessel UUIDs from frontend

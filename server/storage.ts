@@ -2521,8 +2521,12 @@ export class MemStorage implements IStorage {
           const assignment = planAssignments[i];
           
           // Determine which assignments to include based on archived filter
-          const isArchived = assignment.proposalStatus === "deployed" || assignment.proposalStatus === "rejected";
-          const isPending = !assignment.proposalStatus || assignment.proposalStatus === "proposed";
+          // Note: Check both 'status' (used by deploy) and 'proposalStatus' (legacy) fields
+          const assignmentStatus = (assignment.status || '').toLowerCase();
+          const proposalStatus = (assignment.proposalStatus || '').toLowerCase();
+          const isArchived = assignmentStatus === "deployed" || assignmentStatus === "rejected" ||
+                             proposalStatus === "deployed" || proposalStatus === "rejected";
+          const isPending = !isArchived && (!proposalStatus || proposalStatus === "proposed");
           
           // If archived filter is set, only include archived assignments; otherwise only pending
           if (filters?.archived ? isArchived : isPending) {
@@ -6904,8 +6908,12 @@ export class PersistentFileStorage implements IStorage {
           const assignment = planAssignments[i];
           
           // Determine which assignments to include based on archived filter
-          const isArchived = assignment.proposalStatus === "deployed" || assignment.proposalStatus === "rejected";
-          const isPending = !assignment.proposalStatus || assignment.proposalStatus === "proposed";
+          // Note: Check both 'status' (used by deploy) and 'proposalStatus' (legacy) fields
+          const assignmentStatus = (assignment.status || '').toLowerCase();
+          const proposalStatus = (assignment.proposalStatus || '').toLowerCase();
+          const isArchived = assignmentStatus === "deployed" || assignmentStatus === "rejected" ||
+                             proposalStatus === "deployed" || proposalStatus === "rejected";
+          const isPending = !isArchived && (!proposalStatus || proposalStatus === "proposed");
           
           // If archived filter is set, only include archived assignments; otherwise only pending
           if (filters?.archived ? isArchived : isPending) {
