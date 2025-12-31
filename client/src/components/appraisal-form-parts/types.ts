@@ -213,9 +213,7 @@ export interface PartFProps extends AppraisalFormSectionBaseProps {
   addAppraiserComment: () => void;
   updateAppraiserComment: (id: string, field: string, value: string) => void;
   deleteAppraiserComment: (id: string) => void;
-  addSeafarerComment: () => void;
   updateSeafarerComment: (id: string, field: string, value: string) => void;
-  deleteSeafarerComment: (id: string) => void;
   competenceSectionScore: string;
   behaviouralSectionScore: string;
   overallScore: string;

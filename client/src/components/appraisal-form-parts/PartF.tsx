@@ -25,9 +25,7 @@ const PartFComponent: React.FC<PartFProps> = ({
   addAppraiserComment,
   updateAppraiserComment,
   deleteAppraiserComment,
-  addSeafarerComment,
   updateSeafarerComment,
-  deleteSeafarerComment,
   competenceSectionScore,
   behaviouralSectionScore,
   overallScore,
@@ -258,24 +256,9 @@ const PartFComponent: React.FC<PartFProps> = ({
               </div>
             </div>
 
-            {/* F4. Seafarer Comments - Styled like Promotion Review A4 */}
+            {/* F4. Seafarer Comments - Single fixed comment box */}
             <div className="border border-[#EAEBEF] rounded-lg p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="text-base font-medium" style={{ color: '#16569e' }}>F4. Seafarer Comments</h4>
-                {form.watch("seafarerComments").length === 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={addSeafarerComment}
-                    data-testid="button-add-seafarer-comment"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Comment
-                  </Button>
-                )}
-              </div>
+              <h4 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>F4. Seafarer Comments</h4>
 
               <div className="space-y-3">
                 {form.watch("seafarerComments").map((comment) => {
@@ -326,28 +309,16 @@ const PartFComponent: React.FC<PartFProps> = ({
                             <span className="text-sm font-medium" data-testid={`text-seafarer-name-${comment.id}`}>
                               {comment.name}{comment.rank ? `, ${comment.rank}` : ""}
                             </span>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                onClick={() => setEditingSeafarerComment(comment.id)}
-                                data-testid={`button-edit-seafarer-${comment.id}`}
-                              >
-                                <Pencil className="h-3.5 w-3.5 text-gray-400" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                onClick={() => deleteSeafarerComment(comment.id)}
-                                data-testid={`button-delete-seafarer-${comment.id}`}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-gray-400" />
-                              </Button>
-                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => setEditingSeafarerComment(comment.id)}
+                              data-testid={`button-edit-seafarer-${comment.id}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5 text-gray-400" />
+                            </Button>
                           </div>
                           <p
                             className="text-sm text-gray-600 italic cursor-pointer"

@@ -1259,31 +1259,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     form.setValue("seafarerComments", updatedComments);
   };
 
-  const deleteSeafarerComment = (id: string) => {
-    showConfirmDialog(
-      "Delete Seafarer Comment",
-      "Are you sure you want to delete this seafarer comment?",
-      () => {
-        const currentComments = form.getValues("seafarerComments");
-        form.setValue("seafarerComments", currentComments.filter(c => c.id !== id));
-        closeConfirmDialog();
-      }
-    );
-  };
-
   // Parameter-less wrappers for Part component props
   const addAppraiserCommentNoArgs = () => addAppraiserComment("", "");
-  const addSeafarerCommentNoArgs = () => {
-    const newComment = {
-      id: Date.now().toString(),
-      name: form.getValues("seafarersName") || "",
-      rank: form.getValues("seafarersRank") || "",
-      comment: "",
-    };
-    const currentComments = form.getValues("seafarerComments");
-    form.setValue("seafarerComments", [...currentComments, newComment]);
-    setEditingSeafarerComment(newComment.id);
-  };
   const addTrainingFollowupNoArgs = () => {
     const newFollowup = {
       id: Date.now().toString(),
@@ -1729,9 +1706,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           addAppraiserComment={addAppraiserCommentNoArgs}
           updateAppraiserComment={updateAppraiserComment}
           deleteAppraiserComment={deleteAppraiserComment}
-          addSeafarerComment={addSeafarerCommentNoArgs}
           updateSeafarerComment={updateSeafarerComment}
-          deleteSeafarerComment={deleteSeafarerComment}
           competenceSectionScore={competenceSectionScore}
           behaviouralSectionScore={behaviouralSectionScore}
           overallScore={overallScore}
