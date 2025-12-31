@@ -1538,19 +1538,32 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
     
+    // Parse existing appraisal data from JSON string if needed
+    let existingData = {};
+    if (current.appraisalData) {
+      try {
+        existingData = typeof current.appraisalData === 'string' 
+          ? JSON.parse(current.appraisalData) 
+          : current.appraisalData;
+      } catch (e) {
+        console.error('Failed to parse existing appraisalData:', e);
+        existingData = {};
+      }
+    }
+    
     // Merge new data into existing appraisal data
     const updatedData = {
-      ...(current.appraisalData as any || {}),
+      ...existingData,
       ...data,
       [`${stage}SubmittedBy`]: submittedBy,
       [`${stage}SubmittedAt`]: new Date().toISOString()
     };
     
-    // Update appraisal with new data and status
+    // Update appraisal with new data and status (stringify for storage)
     const result = await this.db
       .update(appraisalResults)
       .set({
-        appraisalData: updatedData,
+        appraisalData: JSON.stringify(updatedData),
         status: newStatus,
         submittedAt: new Date()
       })
