@@ -468,44 +468,62 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Load rank-group-specific configuration when available (only for new appraisals)
   useEffect(() => {
     const config = formConfig as any;
+    console.log('🔄 Config loading effect triggered:', { 
+      hasConfig: !!config, 
+      hasRankGroupConfig: !!config?.rankGroupConfig,
+      appraisalId,
+      competenceCount: config?.rankGroupConfig?.competenceAssessments?.length 
+    });
+    
     // Skip loading rank group defaults if we have existing appraisal data
     // existingAppraisal is loaded via useQuery and will populate the form separately
     if (config?.rankGroupConfig && !appraisalId) {
-      console.log('📋 Loading rank group configuration (new appraisal):', config.rankGroupName, config.rankGroupConfig);
+      console.log('📋 Loading rank group configuration (new appraisal):', config.rankGroupName);
+      
+      // Get current form values and merge with config values
+      const currentValues = form.getValues();
+      const updates: Partial<AppraisalFormData> = {};
       
       // Load competence assessments from rank group config
       if (config.rankGroupConfig.competenceAssessments && config.rankGroupConfig.competenceAssessments.length > 0) {
-        form.setValue('competenceAssessments', config.rankGroupConfig.competenceAssessments.map((ca: any) => ({
+        updates.competenceAssessments = config.rankGroupConfig.competenceAssessments.map((ca: any) => ({
           id: ca.id,
           assessmentCriteria: ca.assessmentCriteria,
           weight: ca.weight,
           effectiveness: ca.effectiveness || '',
           comment: ca.comment || '',
-        })));
+        }));
+        console.log('📋 Will set competenceAssessments:', updates.competenceAssessments.length, 'items');
       }
       
       // Load behavioural assessments from rank group config
       if (config.rankGroupConfig.behaviouralAssessments && config.rankGroupConfig.behaviouralAssessments.length > 0) {
-        form.setValue('behaviouralAssessments', config.rankGroupConfig.behaviouralAssessments.map((ba: any) => ({
+        updates.behaviouralAssessments = config.rankGroupConfig.behaviouralAssessments.map((ba: any) => ({
           id: ba.id,
           assessmentCriteria: ba.assessmentCriteria,
           weight: ba.weight,
           effectiveness: ba.effectiveness || '',
           comment: ba.comment || '',
-        })));
+        }));
+        console.log('📋 Will set behaviouralAssessments:', updates.behaviouralAssessments.length, 'items');
       }
       
       // Load recommendations from rank group config
       if (config.rankGroupConfig.recommendations && config.rankGroupConfig.recommendations.length > 0) {
-        form.setValue('recommendations', config.rankGroupConfig.recommendations.map((rec: any) => ({
+        updates.recommendations = config.rankGroupConfig.recommendations.map((rec: any) => ({
           id: rec.id,
           question: rec.recommendation || rec.question,
-          answer: rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes',
+          answer: rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : '',
           comment: rec.comment || '',
-        })));
+        }));
+        console.log('📋 Will set recommendations:', updates.recommendations.length, 'items');
       }
       
-      // Load hidden fields/sections from rank group config (always load these regardless of new/existing)
+      // Use form.reset() to apply all updates at once - this triggers proper re-renders
+      if (Object.keys(updates).length > 0) {
+        console.log('📋 Resetting form with config values');
+        form.reset({ ...currentValues, ...updates }, { keepDefaultValues: false });
+      }
     }
     
     // Always load hidden fields/sections from rank group config
@@ -522,9 +540,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }
   }, [formConfig, form, appraisalId]);
 
-  // Mutation for saving appraisal
+  // Mutation for saving appraisal (uses PUT for existing, POST for new)
   const saveAppraisalMutation = useMutation({
-    mutationFn: async (payload: { data: AppraisalFormData; status: string }) => {
+    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null }) => {
       if (!crewMember?.id) {
         throw new Error('Crew member ID is required to save appraisal');
       }
@@ -543,8 +561,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         status: payload.status,
       };
 
-      console.log('📤 Sending appraisal payload:', appraisalPayload);
-      const response = await apiRequest('POST', '/api/appraisals', appraisalPayload);
+      // Use PUT for existing appraisals, POST for new ones
+      const idToUse = payload.existingId || appraisalId;
+      const method = idToUse ? 'PUT' : 'POST';
+      const url = idToUse ? `/api/appraisals/${idToUse}` : '/api/appraisals';
+      
+      console.log(`📤 ${method} ${url}:`, appraisalPayload);
+      const response = await apiRequest(method, url, appraisalPayload);
       const result = await response.json();
       console.log('✅ Appraisal saved successfully:', result);
       return result;
