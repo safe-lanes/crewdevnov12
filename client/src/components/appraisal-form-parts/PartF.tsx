@@ -44,6 +44,21 @@ const PartFComponent: React.FC<PartFProps> = ({
   const overallScoreValue = parseFloat(overallScore) || 0;
   const { bgColor: overallBgColor, textColor: overallTextColor } = getScoreColors(overallScoreValue);
 
+  // Map primaryAppraiser value to rank name
+  const primaryAppraiserToRank: Record<string, string> = {
+    "master": "Master",
+    "chief-officer": "Chief Officer",
+    "chief-engineer": "Chief Engineer",
+    "2nd-engineer": "2nd Engineer",
+    "marine-superintendent": "Marine Superintendent",
+    "technical-superintendent": "Technical Superintendent",
+    "crew-manager": "Crew Manager",
+  };
+
+  // Get the primary appraiser rank from Part A selection
+  const primaryAppraiserValue = form.watch("primaryAppraiser");
+  const primaryAppraiserRank = primaryAppraiserToRank[primaryAppraiserValue || ""] || "";
+
   return (
     <div ref={partRef} data-section-id="F">
       <Card className="bg-white">
@@ -216,8 +231,13 @@ const PartFComponent: React.FC<PartFProps> = ({
               </div>
 
               <div className="space-y-3">
-                {form.watch("appraiserComments").map((comment) => {
+                {form.watch("appraiserComments").map((comment, index) => {
+                  const isPrimary = index === 0;
                   const isEditing = editingAppraiserComment === comment.id || (!comment.name && !comment.comment);
+                  // Auto-fill primary appraiser's rank from Part A selection
+                  const displayRank = isPrimary && !comment.rank && primaryAppraiserRank 
+                    ? primaryAppraiserRank 
+                    : comment.rank;
                   return (
                     <div key={comment.id} className="bg-gray-50 p-3 rounded" data-testid={`appraiser-comment-${comment.id}`}>
                       {isEditing ? (
@@ -234,7 +254,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                             </div>
                             <div className="flex-1">
                               <Select
-                                value={comment.rank}
+                                value={isPrimary && !comment.rank && primaryAppraiserRank ? primaryAppraiserRank : comment.rank}
                                 onValueChange={(value) => updateAppraiserComment(comment.id, "rank", value)}
                               >
                                 <SelectTrigger data-testid={`select-appraiser-rank-${comment.id}`}>
@@ -247,6 +267,18 @@ const PartFComponent: React.FC<PartFProps> = ({
                                 </SelectContent>
                               </Select>
                             </div>
+                            {!isPrimary && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={() => deleteAppraiserComment(comment.id)}
+                                data-testid={`button-delete-appraiser-${comment.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-gray-400" />
+                              </Button>
+                            )}
                           </div>
                           <Textarea
                             value={comment.comment}
@@ -262,8 +294,8 @@ const PartFComponent: React.FC<PartFProps> = ({
                         <>
                           <div className="flex justify-between items-start mb-2">
                             <span className="text-sm font-medium" data-testid={`text-appraiser-name-${comment.id}`}>
-                              {comment.name}{comment.rank ? `, ${comment.rank}` : ""}
-                              {!comment.name && "(Primary Appraiser)"}
+                              {comment.name}{displayRank ? `, ${displayRank}` : ""}
+                              {!comment.name && isPrimary && " (Primary Appraiser)"}
                             </span>
                             <div className="flex gap-1">
                               <Button
@@ -276,16 +308,18 @@ const PartFComponent: React.FC<PartFProps> = ({
                               >
                                 <Pencil className="h-3.5 w-3.5 text-gray-400" />
                               </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                onClick={() => deleteAppraiserComment(comment.id)}
-                                data-testid={`button-delete-appraiser-${comment.id}`}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-gray-400" />
-                              </Button>
+                              {!isPrimary && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => deleteAppraiserComment(comment.id)}
+                                  data-testid={`button-delete-appraiser-${comment.id}`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-gray-400" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                           <p
