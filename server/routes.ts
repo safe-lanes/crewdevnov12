@@ -1657,9 +1657,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to normalize rank strings for comparison (case-insensitive, trimmed)
+  // Helper function to normalize rank strings for comparison (case-insensitive, trimmed, variant suffix stripped)
   function normalizeRankForComparison(rank: string): string {
-    return rank.trim().toLowerCase();
+    let normalized = rank.trim();
+    // Strip variant suffix (e.g., "3rd Officer_2" -> "3rd Officer")
+    const suffixMatch = normalized.match(/^(.+?)_\d+$/);
+    if (suffixMatch) {
+      normalized = suffixMatch[1];
+    }
+    return normalized.toLowerCase();
   }
 
   // Check if a rank has an assigned rank group for a specific form type
