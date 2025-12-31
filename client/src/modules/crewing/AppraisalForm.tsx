@@ -506,6 +506,17 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         updates.appraisalPeriodFrom = crewMember.signOn;
       }
       
+      // Pre-populate seafarer comment entry with crew member's name and rank
+      if (currentValues.seafarerComments.length === 0) {
+        const fullName = `${crewMember.name?.first || ''} ${crewMember.name?.middle || ''} ${crewMember.name?.last || ''}`.trim();
+        updates.seafarerComments = [{
+          id: `seafarer-${Date.now()}`,
+          name: fullName || '',
+          rank: crewMember.rank || '',
+          comment: ''
+        }];
+      }
+      
       if (Object.keys(updates).length > 0) {
         console.log('📋 Pre-populating crew member fields:', Object.keys(updates));
         form.reset({ ...currentValues, ...updates }, { keepDefaultValues: false });
@@ -1710,10 +1721,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           appraisalStatus={appraisalStatus}
           isFieldVisible={isFieldVisible}
           isSectionVisible={isSectionVisible}
-          recommendationComments={recommendationComments}
-          setRecommendationComments={setRecommendationComments}
-          editingRecommendationComment={editingRecommendationComment}
-          setEditingRecommendationComment={setEditingRecommendationComment}
           editingAppraiserComment={editingAppraiserComment}
           setEditingAppraiserComment={setEditingAppraiserComment}
           editingSeafarerComment={editingSeafarerComment}
@@ -1731,6 +1738,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           getScoreColors={getScoreColors}
           availableRanks={availableRanks}
           handleStageSubmission={handleStageSubmission}
+          handleSaveDraft={handleSaveDraft}
           stage1Mutation={stage1Mutation}
           stage2Mutation={stage2Mutation}
           saveAppraisalMutation={saveAppraisalMutation}
