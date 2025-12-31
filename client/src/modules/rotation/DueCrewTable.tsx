@@ -150,14 +150,25 @@ const TimelineCellRenderer = (params: ICellRendererParams<CrewMember>) => {
           }}
         />
       )}
+      
+      {/* Today's vertical line (orange) */}
+      <div
+        className="absolute top-0 bottom-0 z-20"
+        style={{
+          left: `${todayPct}%`,
+          width: '2px',
+          backgroundColor: '#f59e0b',
+        }}
+      />
     </div>
   );
 };
 
 // Timeline Header Component - renders month labels
 const TimelineHeaderComponent = (params: IHeaderParams) => {
-  const { startDate, endDate, totalDays } = useMemo(() => getTimelineRange(), []);
+  const { today, startDate, endDate, totalDays } = useMemo(() => getTimelineRange(), []);
   const monthsData = useMemo(() => getMonthsData(startDate, endDate, totalDays), [startDate, endDate, totalDays]);
+  const todayPct = clamp((differenceInDays(today, startDate) / totalDays) * 100);
   
   return (
     <div className="relative w-full h-full bg-[#52baf3] flex items-center">
@@ -176,6 +187,15 @@ const TimelineHeaderComponent = (params: IHeaderParams) => {
           </div>
         );
       })}
+      {/* Today's vertical line (orange) in header */}
+      <div
+        className="absolute top-0 bottom-0 z-20"
+        style={{
+          left: `${todayPct}%`,
+          width: '2px',
+          backgroundColor: '#f59e0b',
+        }}
+      />
     </div>
   );
 };
@@ -359,48 +379,6 @@ export const DueCrewTable: FC<DueCrewTableProps> = ({
   const handleGridReady = useCallback((event: any) => {
     gridApiRef.current = event.api;
   }, []);
-
-  // Calculate today's position for the overlay line
-  const todayLinePosition = useMemo(() => {
-    const { today, startDate, totalDays } = getTimelineRange();
-    return clamp((differenceInDays(today, startDate) / totalDays) * 100);
-  }, []);
-
-  // Effect to create/update the today line overlay
-  useEffect(() => {
-    // Delay to ensure AG Grid has rendered
-    const timeoutId = setTimeout(() => {
-      if (!containerRef.current) return;
-
-      const container = containerRef.current;
-      const pinnedContainer = container.querySelector('.ag-pinned-right-cols-container');
-      
-      if (!pinnedContainer) return;
-
-      // Find or create the today line overlay
-      let todayLine = pinnedContainer.querySelector('.today-line-overlay') as HTMLDivElement;
-      
-      if (!todayLine) {
-        todayLine = document.createElement('div');
-        todayLine.className = 'today-line-overlay';
-        pinnedContainer.appendChild(todayLine);
-      }
-
-      // Always update the position
-      todayLine.style.cssText = `
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background-color: #f59e0b;
-        pointer-events: none;
-        z-index: 100;
-        left: ${todayLinePosition}%;
-      `;
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [todayLinePosition, crewData]);
 
   if (isLoading) {
     return (
