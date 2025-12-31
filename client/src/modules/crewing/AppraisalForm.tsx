@@ -756,6 +756,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     saveAppraisalMutation.mutate({ data, status: 'draft' });
   };
 
+  const handleSaveDraft = () => {
+    console.log('💾 handleSaveDraft called - bypassing validation');
+    const data = form.getValues();
+    console.log('💾 Form values:', data);
+    console.log('💾 Form errors (ignored for draft):', form.formState.errors);
+    saveAppraisalMutation.mutate({ data, status: 'draft' });
+  };
+
   const onSubmitAppraisal = () => {
     console.log('🟢 onSubmitAppraisal called');
     console.log('🟢 Form errors:', form.formState.errors);
@@ -1547,7 +1555,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         {/* Stage 1 Action Buttons - kept in parent for form-level control */}
         {isSectionVisible('partB') && (
           <div className="flex justify-end gap-4">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
               Save Draft
             </Button>
             <Button 
@@ -1669,7 +1677,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => form.handleSubmit(onSubmit)()}
+              onClick={handleSaveDraft}
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
             >
               <Save className="h-4 w-4 mr-2" />
@@ -1678,7 +1686,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => form.handleSubmit(onSubmit)()}
+              onClick={handleSaveDraft}
               className="sm:hidden"
             >
               <Save className="h-4 w-4" />
@@ -2421,7 +2429,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end gap-4 mt-6">
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
                           Save Draft
                         </Button>
                         <Button 
@@ -2700,7 +2708,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
                           Save
                         </Button>
                       </div>
@@ -2846,7 +2854,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
                           Save
                         </Button>
                       </div>
@@ -3148,7 +3156,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
                         {/* Action buttons */}
                         <div className="flex justify-end gap-4 mt-6">
-                          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
+                          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
                             Save Draft
                           </Button>
                           <Button 
@@ -3410,7 +3418,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
                         {/* Action buttons */}
                         <div className="flex justify-end gap-4 mt-6">
-                          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={() => form.handleSubmit(onSubmit)()}>
+                          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
                             Save
                           </Button>
                           <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" onClick={onSubmitAppraisal}>
