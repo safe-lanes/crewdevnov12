@@ -205,6 +205,10 @@ export interface PartEProps extends AppraisalFormSectionBaseProps {
 
 export interface PartFProps extends AppraisalFormSectionBaseProps {
   partRef: RefObject<HTMLDivElement>;
+  recommendationComments: Record<string, string>;
+  setRecommendationComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  editingRecommendationComment: string | null;
+  setEditingRecommendationComment: (id: string | null) => void;
   editingAppraiserComment: string | null;
   setEditingAppraiserComment: (id: string | null) => void;
   editingSeafarerComment: string | null;

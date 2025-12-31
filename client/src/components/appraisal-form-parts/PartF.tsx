@@ -10,13 +10,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, MessageSquare } from "lucide-react";
 import { PartFProps } from "./types";
 
 const PartFComponent: React.FC<PartFProps> = ({
   form,
   partRef,
   appraisalStatus,
+  recommendationComments,
+  setRecommendationComments,
+  editingRecommendationComment,
+  setEditingRecommendationComment,
   editingAppraiserComment,
   setEditingAppraiserComment,
   editingSeafarerComment,
@@ -83,68 +87,111 @@ const PartFComponent: React.FC<PartFProps> = ({
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="text-gray-600 text-xs font-medium py-3 px-4 text-left w-12">S.No</th>
-                      <th className="text-gray-600 text-xs font-medium py-3 px-4 text-left">Recommendations</th>
-                      <th className="text-gray-600 text-xs font-medium py-3 px-2 text-center w-16">Yes</th>
-                      <th className="text-gray-600 text-xs font-medium py-3 px-2 text-center w-16">No</th>
-                      <th className="text-gray-600 text-xs font-medium py-3 px-2 text-center w-16">NA</th>
-                      <th className="text-gray-600 text-xs font-medium py-3 px-4 text-center w-20">Actions</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-12">S.No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">Yes</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">NA</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center w-20">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {form.watch("recommendations").map((rec, index) => (
-                      <tr key={rec.id} className="border-t border-gray-100">
-                        <td className="text-[#4f5863] text-[13px] font-normal py-3 px-4">{index + 1}.</td>
-                        <td className="text-[#4f5863] text-[13px] font-normal py-3 px-4">{rec.question}</td>
-                        <td className="py-3 px-2 text-center">
-                          <input
-                            type="radio"
-                            name={`recommendation-${rec.id}`}
-                            checked={rec.answer === "Yes"}
-                            onChange={() => updateRecommendation(rec.id, "answer", "Yes")}
-                            className="w-4 h-4 text-blue-600 cursor-pointer"
-                            data-testid={`radio-recommendation-yes-${rec.id}`}
-                          />
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <input
-                            type="radio"
-                            name={`recommendation-${rec.id}`}
-                            checked={rec.answer === "No"}
-                            onChange={() => updateRecommendation(rec.id, "answer", "No")}
-                            className="w-4 h-4 text-blue-600 cursor-pointer"
-                            data-testid={`radio-recommendation-no-${rec.id}`}
-                          />
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <input
-                            type="radio"
-                            name={`recommendation-${rec.id}`}
-                            checked={rec.answer === "NA"}
-                            onChange={() => updateRecommendation(rec.id, "answer", "NA")}
-                            className="w-4 h-4 text-blue-600 cursor-pointer"
-                            data-testid={`radio-recommendation-na-${rec.id}`}
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              const comment = rec.comment || "";
-                              const newComment = prompt("Enter comment for this recommendation:", comment);
-                              if (newComment !== null) {
-                                updateRecommendation(rec.id, "comment", newComment);
-                              }
-                            }}
-                            data-testid={`button-recommendation-comment-${rec.id}`}
-                          >
-                            <Pencil className="h-4 w-4 text-gray-500" />
-                          </Button>
-                        </td>
-                      </tr>
+                      <Fragment key={rec.id}>
+                        <tr className="border-t border-gray-100">
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{rec.question}</td>
+                          <td className="py-2 px-2 text-center">
+                            <input
+                              type="radio"
+                              name={`recommendation-${rec.id}`}
+                              checked={rec.answer === "Yes"}
+                              onChange={() => updateRecommendation(rec.id, "answer", "Yes")}
+                              className="w-4 h-4 text-blue-600 cursor-pointer"
+                              data-testid={`radio-recommendation-yes-${rec.id}`}
+                            />
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            <input
+                              type="radio"
+                              name={`recommendation-${rec.id}`}
+                              checked={rec.answer === "No"}
+                              onChange={() => updateRecommendation(rec.id, "answer", "No")}
+                              className="w-4 h-4 text-blue-600 cursor-pointer"
+                              data-testid={`radio-recommendation-no-${rec.id}`}
+                            />
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            <input
+                              type="radio"
+                              name={`recommendation-${rec.id}`}
+                              checked={rec.answer === "NA"}
+                              onChange={() => updateRecommendation(rec.id, "answer", "NA")}
+                              className="w-4 h-4 text-blue-600 cursor-pointer"
+                              data-testid={`radio-recommendation-na-${rec.id}`}
+                            />
+                          </td>
+                          <td className="py-2 px-4 text-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => setRecommendationComments(prev => ({ ...prev, [rec.id]: prev[rec.id] ?? rec.comment ?? "" }))}
+                              data-testid={`button-recommendation-comment-${rec.id}`}
+                            >
+                              <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
+                            </Button>
+                          </td>
+                        </tr>
+                        {recommendationComments[rec.id] !== undefined && (
+                          <tr>
+                            <td></td>
+                            <td colSpan={5} className="p-3">
+                              {editingRecommendationComment === rec.id ? (
+                                <Textarea
+                                  value={recommendationComments[rec.id]}
+                                  onChange={(e) => {
+                                    setRecommendationComments(prev => ({ ...prev, [rec.id]: e.target.value }));
+                                    updateRecommendation(rec.id, "comment", e.target.value);
+                                  }}
+                                  onBlur={() => setEditingRecommendationComment(null)}
+                                  placeholder="Comment: Add your observations here..."
+                                  className="text-blue-600 italic border-blue-200"
+                                  rows={2}
+                                  autoFocus
+                                />
+                              ) : (
+                                <div className="flex justify-between items-start">
+                                  <div
+                                    className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]"
+                                    onClick={() => setEditingRecommendationComment(rec.id)}
+                                  >
+                                    {recommendationComments[rec.id] || "Click to add comment..."}
+                                  </div>
+                                  <div className="ml-2">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setRecommendationComments(prev => {
+                                          const newComments = { ...prev };
+                                          delete newComments[rec.id];
+                                          return newComments;
+                                        });
+                                        updateRecommendation(rec.id, "comment", "");
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
