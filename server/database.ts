@@ -2010,7 +2010,7 @@ export class DatabaseStorage implements IStorage {
     return proposedAssignments;
   }
 
-  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }> {
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string; vesselId?: string }> {
     try {
       // Get current plan
       const plans = await this.db
@@ -2025,6 +2025,9 @@ export class DatabaseStorage implements IStorage {
       if (!assignments[assignmentIndex]) return { success: false };
       
       const assignment = assignments[assignmentIndex];
+      
+      // Keep original vesselId (UUID) for cache invalidation - this is what VesselModule uses
+      const originalVesselId = assignment.vesselId;
       
       // Translate vessel name/id to vessel code (UUID from Master 014)
       // assignment.vessel contains vessel NAME (e.g., "Vessel 5")
@@ -2068,6 +2071,7 @@ export class DatabaseStorage implements IStorage {
       console.log('🔄 Vessel translation (DatabaseStorage):', { 
         vesselName: assignment.vessel || assignment.vesselId, 
         vesselCode,
+        originalVesselId,
         found: true
       });
       
@@ -2240,10 +2244,12 @@ export class DatabaseStorage implements IStorage {
         fullAssignmentSnapshot: JSON.stringify(assignment),
       });
       
+      // Return both vesselCode (for storage) and originalVesselId (for cache invalidation)
       return { 
         success: true, 
         vesselPlanningId: vesselPlanningRecord?.id,
-        vesselCode: vesselCode  // Return vessel code for cache invalidation
+        vesselCode: vesselCode,
+        vesselId: originalVesselId  // Return original vesselId (UUID) for proper cache invalidation
       };
     } catch (error) {
       console.error('Error deploying assignment:', error);

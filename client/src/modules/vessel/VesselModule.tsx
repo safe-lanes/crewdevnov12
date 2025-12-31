@@ -3842,10 +3842,10 @@ export const VesselModule = (): JSX.Element => {
                                                                     {planningData?.relieverCrewId ? (planningData?.relieverCrewName || '') : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-date-${rowIndex + 1}`}>
-                                                                    {planningData?.relieverCrewId ? formatDateOnly(planningData?.joiningDate) : ''}
+                                                                    {planningData?.relieverCrewId ? formatDateOnly(planningData?.relieverSignOnDate || planningData?.joiningDate) : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-port-${rowIndex + 1}`}>
-                                                                    {planningData?.relieverCrewId ? (planningData?.joiningPort ? (portLookup.get(planningData.joiningPort) || planningData.joiningPort) : '') : ''}
+                                                                    {planningData?.relieverCrewId ? ((planningData?.relieverSignOnPort || planningData?.joiningPort) ? (portLookup.get(planningData.relieverSignOnPort || planningData.joiningPort || '') || planningData.relieverSignOnPort || planningData.joiningPort) : '') : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-planning-joining-status-${rowIndex + 1}`}>
                                                                     {planningData?.relieverCrewId ? (planningData?.joiningStatus || '') : ''}

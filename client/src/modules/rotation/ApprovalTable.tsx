@@ -364,11 +364,16 @@ export function ApprovalTable({ selectedVessels, selectedRanks, draftIdFilter, d
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/rotation/proposals'] });
-      // Invalidate vessel-specific planning cache using vesselCode from response
-      // Backend translates vessel name → vessel code and returns it
-      if (data?.vesselCode) {
+      // Invalidate vessel-specific planning cache using vesselId (UUID) from response
+      // This matches the queryKey format used in VesselModule's useVesselPlanning hook
+      if (data?.vesselId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', data.vesselId] });
+        console.log('✅ Invalidated cache for vessel (vesselId):', data.vesselId);
+      }
+      // Fallback: Also invalidate using vesselCode in case of legacy data
+      if (data?.vesselCode && data.vesselCode !== data.vesselId) {
         queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', data.vesselCode] });
-        console.log('✅ Invalidated cache for vessel:', data.vesselCode);
+        console.log('✅ Also invalidated cache for vessel (vesselCode):', data.vesselCode);
       }
       toast({
         title: "Success",

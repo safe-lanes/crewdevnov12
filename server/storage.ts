@@ -2647,7 +2647,7 @@ export class MemStorage implements IStorage {
     return assignments;
   }
 
-  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }> {
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string; vesselId?: string }> {
     const plan = this.rotationPlans.get(planId);
     if (!plan || !plan.assignments) return { success: false };
 
@@ -2693,9 +2693,12 @@ export class MemStorage implements IStorage {
 
     // MemStorage doesn't have master data - use static vessel mapping for testing
     const vesselCode = translateVesselNameToCode(assignment.vesselId);
+    // Keep original vesselId (UUID) for cache invalidation - this is what VesselModule uses
+    const originalVesselId = assignment.vesselId;
     console.log(`🔄 Vessel translation (MemStorage):`, { 
       vesselName: assignment.vesselId, 
-      vesselCode
+      vesselCode,
+      originalVesselId
     });
 
     // Find existing vessel planning record for this vessel + rank
@@ -2764,7 +2767,8 @@ export class MemStorage implements IStorage {
       fullAssignmentSnapshot: JSON.stringify(assignment),
     });
 
-    return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode };
+    // Return both vesselCode (for storage) and originalVesselId (for cache invalidation)
+    return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode, vesselId: originalVesselId };
   }
 
   async rejectAssignment(planId: number, assignmentIndex: number, rejectedBy?: string): Promise<RotationPlan | undefined> {
@@ -7026,7 +7030,7 @@ export class PersistentFileStorage implements IStorage {
     return assignments;
   }
 
-  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string }> {
+  async deployAssignment(planId: number, assignmentIndex: number, deployedBy: string): Promise<{ success: boolean; conflicts?: any[]; vesselPlanningId?: number; vesselCode?: string; vesselId?: string }> {
     const plan = this.rotationPlans.get(planId);
     if (!plan || !plan.assignments) return { success: false };
 
@@ -7073,9 +7077,12 @@ export class PersistentFileStorage implements IStorage {
 
     // PersistentFileStorage doesn't have master data - use static vessel mapping for testing
     const vesselCode = translateVesselNameToCode(assignment.vesselId);
+    // Keep original vesselId (UUID) for cache invalidation - this is what VesselModule uses
+    const originalVesselId = assignment.vesselId;
     console.log(`🔄 Vessel translation (PersistentFileStorage):`, { 
       vesselName: assignment.vesselId, 
-      vesselCode
+      vesselCode,
+      originalVesselId
     });
 
     // Find existing vessel planning record for this vessel + rank
@@ -7144,7 +7151,8 @@ export class PersistentFileStorage implements IStorage {
       fullAssignmentSnapshot: JSON.stringify(assignment),
     });
 
-    return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode };
+    // Return both vesselCode (for storage) and originalVesselId (for cache invalidation)
+    return { success: true, vesselPlanningId: existingPlanningId || undefined, vesselCode, vesselId: originalVesselId };
   }
 
   async rejectAssignment(planId: number, assignmentIndex: number, rejectedBy?: string): Promise<RotationPlan | undefined> {
