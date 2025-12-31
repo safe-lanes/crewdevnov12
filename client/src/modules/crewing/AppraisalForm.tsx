@@ -1893,16 +1893,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                     setEditingTrainingFollowupComment={setEditingTrainingFollowupComment}
                     editingOfficeReview={editingOfficeReview}
                     setEditingOfficeReview={setEditingOfficeReview}
-                    isTrainingFollowupDialogOpen={isTrainingFollowupDialogOpen}
-                    setIsTrainingFollowupDialogOpen={setIsTrainingFollowupDialogOpen}
                     addOfficeReview={addOfficeReview}
                     updateOfficeReview={updateOfficeReview}
                     deleteOfficeReview={deleteOfficeReview}
                     addTrainingFollowup={addTrainingFollowupNoArgs}
                     updateTrainingFollowup={updateTrainingFollowup}
                     deleteTrainingFollowup={deleteTrainingFollowup}
-                    handleTrainingNeedsSelect={handleTrainingNeedsSelect}
                     handleStageSubmission={handleStageSubmission}
+                    handleSaveDraft={handleSaveDraft}
                     stage3Mutation={stage3Mutation}
                     saveAppraisalMutation={saveAppraisalMutation}
                   />

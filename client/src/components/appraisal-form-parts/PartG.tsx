@@ -30,6 +30,7 @@ const PartGComponent: React.FC<PartGProps> = ({
   updateTrainingFollowup,
   deleteTrainingFollowup,
   handleStageSubmission,
+  handleSaveDraft,
   stage3Mutation,
   saveAppraisalMutation,
 }) => {
@@ -52,9 +53,10 @@ const PartGComponent: React.FC<PartGProps> = ({
           </div>
 
           <div className="space-y-8">
-            <div>
+            {/* G1. Office Reviews */}
+            <div className="border border-[#EAEBEF] rounded-lg p-4">
               <div className="flex justify-between items-center mb-4">
-                <h4 className="font-medium" style={{ color: '#16569e' }}>Office Reviews</h4>
+                <h4 className="text-base font-medium" style={{ color: '#16569e' }}>G1. Office Reviews</h4>
                 <Button type="button" onClick={addOfficeReview} variant="outline" size="sm">
                   <Plus className="h-4 w-4 mr-1" />
                   Add Reviewer
@@ -87,46 +89,64 @@ const PartGComponent: React.FC<PartGProps> = ({
               </div>
             </div>
 
-            <div>
+            {/* G2. Training Followup */}
+            <div className="border border-[#EAEBEF] rounded-lg p-4">
               <div className="flex justify-between items-center mb-4">
-                <h4 className="font-medium" style={{ color: '#16569e' }}>Training Followups</h4>
-                <Button type="button" onClick={addTrainingFollowup} variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Training Followup
-                </Button>
+                <h4 className="text-base font-medium" style={{ color: '#16569e' }}>G2. Training Followup</h4>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Training from Database
+                  </Button>
+                  <Button type="button" onClick={addTrainingFollowup} variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add New Training
+                  </Button>
+                </div>
               </div>
-              <div className="border rounded-lg overflow-hidden">
+              <div className="overflow-hidden">
                 <table className="w-full">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-12">S.No</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Corresponding in DB</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Category</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Status</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Date</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target or Compl. Date</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {form.watch("trainingFollowups").map((followup, index) => (
                       <Fragment key={followup.id}>
-                        <tr className="border-t">
+                        <tr className="border-t border-gray-100">
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Input value={followup.training} onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)} placeholder="Training name" className="border-0 bg-transparent p-0 h-6" />
+                            <Input value={followup.training} onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)} placeholder="Training name" className="h-8" />
+                          </td>
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                            <Select value={followup.correspondingInDB || ""} onValueChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Training from DB" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="training-1">Training 1</SelectItem>
+                                <SelectItem value="training-2">Training 2</SelectItem>
+                                <SelectItem value="training-3">Training 3</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <Select value={followup.category} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)}>
-                              <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Category" /></SelectTrigger>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Rating" /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Statutory">Statutory</SelectItem>
-                                <SelectItem value="Non-Statutory">Non-Statutory</SelectItem>
+                                <SelectItem value="1. Competence">1. Competence</SelectItem>
+                                <SelectItem value="2- Soft Skills">2- Soft Skills</SelectItem>
                               </SelectContent>
                             </Select>
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <Select value={followup.status} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)}>
-                              <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Status" /></SelectTrigger>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Status" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Proposed">Proposed</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
@@ -137,10 +157,10 @@ const PartGComponent: React.FC<PartGProps> = ({
                             </Select>
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Input type="date" value={followup.targetDate || ""} onChange={(e) => updateTrainingFollowup(followup.id, "targetDate", e.target.value)} className="h-8 w-32" />
+                            <Input type="date" value={followup.targetDate || ""} onChange={(e) => updateTrainingFollowup(followup.id, "targetDate", e.target.value)} className="h-8" placeholder="dd/mm/yyyy" />
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <div className="flex gap-2 justify-center">
+                            <div className="flex gap-1 justify-center">
                               <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTrainingFollowupComments(prev => ({ ...prev, [followup.id]: prev[followup.id] || "" }))}>
                                 <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                               </Button>
@@ -153,7 +173,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                         {trainingFollowupComments[followup.id] !== undefined && (
                           <tr>
                             <td></td>
-                            <td colSpan={5} className="p-3">
+                            <td colSpan={6} className="p-3">
                               {editingTrainingFollowupComment === followup.id ? (
                                 <Textarea
                                   value={trainingFollowupComments[followup.id]}
@@ -183,8 +203,8 @@ const PartGComponent: React.FC<PartGProps> = ({
                     ))}
                     {form.watch("trainingFollowups").length === 0 && (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-gray-500">
-                          No training followups added yet. Click "Add Training Followup" to get started.
+                        <td colSpan={7} className="p-8 text-center text-gray-500">
+                          No training followups added yet. Click "Add New Training" to get started.
                         </td>
                       </tr>
                     )}
@@ -193,9 +213,25 @@ const PartGComponent: React.FC<PartGProps> = ({
               </div>
             </div>
 
-            {appraisalStatus === 'submitted' && (
+            {/* Action Buttons - Save Draft and Submit Stage 3 */}
+            {(appraisalStatus === 'submitted' || appraisalStatus === 'draft' || appraisalStatus === 'preliminary') && (
               <div className="flex justify-end gap-4 mt-6">
-                <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" onClick={() => handleStageSubmission('stage3')} disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending}>
+                <Button 
+                  type="button"
+                  className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8"
+                  onClick={handleSaveDraft}
+                  disabled={saveAppraisalMutation.isPending}
+                  data-testid="button-save-draft-part-g"
+                >
+                  {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+                </Button>
+                <Button 
+                  type="button"
+                  className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                  onClick={() => handleStageSubmission('stage3')} 
+                  disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending}
+                  data-testid="button-submit-stage-3"
+                >
                   {stage3Mutation.isPending ? 'Submitting...' : 'Submit Stage 3'}
                 </Button>
               </div>
