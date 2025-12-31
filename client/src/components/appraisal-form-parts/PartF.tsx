@@ -64,8 +64,8 @@ const PartFComponent: React.FC<PartFProps> = ({
       <Card className="bg-white">
         <CardContent className="p-6">
           <div className="pb-4 mb-6">
-            <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part F: Summary & Recommendations</h3>
-            <div style={{ color: '#16569e' }} className="text-sm">Complete the recommendations and provide comments</div>
+            <h3 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part F Comments & Recommendations</h3>
+            <div style={{ color: '#16569e' }} className="text-sm">Add any recommendations related to following</div>
             <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
           </div>
 
