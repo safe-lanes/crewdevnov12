@@ -508,7 +508,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   };
 
   // Handle C3 final decision submit
-  const handleC3Submit = () => {
+  const handleC3Submit = (submittedBy?: string, submittedDate?: string) => {
     if (!formData.firstName || !formData.familyName) {
       toast({
         title: "Validation Error",
@@ -538,6 +538,13 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
     // Use existing file number (generated during A5 Submit for Screening)
     const fileNo = candidate?.fileNo || formData.fileNo || '';
+
+    // Create updated formData with submittedBy values passed directly
+    const updatedFormData = {
+      ...formData,
+      c3SubmittedBy: submittedBy || formData.c3SubmittedBy,
+      c3SubmittedDate: submittedDate || formData.c3SubmittedDate
+    };
     
     const candidateData: InsertRecruitmentCandidate = {
       id: currentCandidateId || new Date().toISOString().split('T')[0] + '-' + Date.now(),
@@ -551,10 +558,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       presentRank: formData.presentRank || '',
       vesselType: Array.isArray(formData.vesselType) ? formData.vesselType.join(', ') : formData.vesselType || '',
       status: finalStatus, // Set final recruitment status
-      applicationData: JSON.stringify(normalizeFormDataForSave({
-        ...formData,
-        c3SubmittedDate: new Date().toLocaleDateString()
-      }))
+      applicationData: JSON.stringify(normalizeFormDataForSave(updatedFormData))
     };
 
     // Use the save-only mutation for final decision
@@ -7123,14 +7127,25 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
           <div className="mt-6 pt-4 border-t border-gray-200">
             <div className="flex justify-between items-center">
               <div className="text-xs text-gray-500">
-                Submitted by: {formData.c3SubmittedBy}
+                {formData.c3SubmittedBy ? (
+                  <>Submitted by: {formData.c3SubmittedBy}</>
+                ) : (
+                  <span className="text-gray-400">Not yet submitted</span>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button
                   type="button"
                   size="sm"
                   className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={handleC3Submit}
+                  onClick={() => {
+                    const currentDate = new Date().toLocaleDateString();
+                    // Update UI immediately for user feedback
+                    updateFormData('c3SubmittedBy', currentUserDisplay);
+                    updateFormData('c3SubmittedDate', currentDate);
+                    // Pass values directly to avoid stale closure issues
+                    handleC3Submit(currentUserDisplay, currentDate);
+                  }}
                   disabled={saveOnlyMutation.isPending}
                 >
                   {saveOnlyMutation.isPending ? 'Saving...' : 'Submit'}
