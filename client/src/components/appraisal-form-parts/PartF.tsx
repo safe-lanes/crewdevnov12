@@ -395,11 +395,11 @@ const PartFComponent: React.FC<PartFProps> = ({
             </div>
 
             {/* Action Buttons - Save Draft and Submit Stage 2 */}
-            {appraisalStatus === 'preliminary' && (
+            {(appraisalStatus === 'draft' || appraisalStatus === 'preliminary') && (
               <div className="flex justify-end gap-4 mt-6">
                 <Button
                   type="button"
-                  className="bg-[#16569e] hover:bg-[#134b87] text-white px-8"
+                  className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8"
                   onClick={handleSaveDraft}
                   disabled={saveAppraisalMutation.isPending}
                   data-testid="button-save-draft-part-f"
