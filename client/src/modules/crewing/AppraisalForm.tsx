@@ -606,6 +606,55 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         throw new Error('Crew member ID is required to save appraisal');
       }
 
+      // Helper function to calculate competence score from assessments
+      const calcCompetenceScore = (assessments: any[]) => {
+        let totalScore = 0;
+        let totalWeight = 0;
+        assessments?.forEach(assessment => {
+          if (assessment.effectiveness && assessment.weight) {
+            let rating = 0;
+            switch (assessment.effectiveness) {
+              case "5-exceeds-expectations": rating = 5; break;
+              case "4-meets-expectations": rating = 4; break;
+              case "3-somewhat-meets-expectations": rating = 3; break;
+              case "2-below-expectations": rating = 2; break;
+              case "1-significantly-below-expectations": rating = 1; break;
+            }
+            totalScore += (rating * assessment.weight) / 100;
+            totalWeight += assessment.weight;
+          }
+        });
+        return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : null;
+      };
+
+      // Helper function to calculate behavioral score from assessments
+      const calcBehavioralScore = (assessments: any[]) => {
+        let totalScore = 0;
+        let totalWeight = 0;
+        assessments?.forEach(assessment => {
+          if (assessment.effectiveness && assessment.weight) {
+            let rating = 0;
+            switch (assessment.effectiveness) {
+              case "5-exceeds-expectations": rating = 5; break;
+              case "4-meets-expectations": rating = 4; break;
+              case "3-somewhat-meets-expectations": rating = 3; break;
+              case "2-below-expectations": rating = 2; break;
+              case "1-significantly-below-expectations": rating = 1; break;
+            }
+            totalScore += (rating * assessment.weight) / 100;
+            totalWeight += assessment.weight;
+          }
+        });
+        return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : null;
+      };
+
+      // Calculate ratings from form data
+      const competenceScore = calcCompetenceScore(payload.data.competenceAssessments);
+      const behavioralScore = calcBehavioralScore(payload.data.behaviouralAssessments);
+      const overallScore = (competenceScore && behavioralScore) 
+        ? ((parseFloat(competenceScore) + parseFloat(behavioralScore)) / 2).toFixed(1) 
+        : null;
+
       // Transform form data to backend schema
       const appraisalPayload = {
         crewMemberId: crewMember.id,
@@ -613,9 +662,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         appraisalType: payload.data.appraisalType,
         appraisalDate: new Date().toISOString().split('T')[0],
         appraisalData: payload.data, // Send as object - backend handles JSON.stringify
-        competenceRating: null,
-        behavioralRating: null,
-        overallRating: null,
+        competenceRating: competenceScore,
+        behavioralRating: behavioralScore,
+        overallRating: overallScore,
         submittedBy: "Current User", // TODO: Replace with actual user
         status: payload.status,
       };
