@@ -466,6 +466,53 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     },
   });
 
+  // Pre-populate crew member fields when data loads (only for new appraisals)
+  useEffect(() => {
+    // Only for new appraisals - existing appraisals will be populated from existingAppraisal data
+    if (!appraisalId && crewMember) {
+      const currentValues = form.getValues();
+      const updates: Partial<AppraisalFormData> = {};
+      
+      // Pre-populate seafarer's rank if not already set
+      if (!currentValues.seafarersRank && crewMember.rank) {
+        updates.seafarersRank = crewMember.rank;
+      }
+      
+      // Pre-populate sign on date if not already set
+      if (!currentValues.signOn && crewMember.signOn) {
+        updates.signOn = crewMember.signOn;
+      }
+      
+      // Pre-populate seafarer's name if not already set
+      if (!currentValues.seafarersName && crewMember.name) {
+        const fullName = `${crewMember.name.first || ''} ${crewMember.name.middle || ''} ${crewMember.name.last || ''}`.trim();
+        if (fullName) {
+          updates.seafarersName = fullName;
+        }
+      }
+      
+      // Pre-populate nationality if not already set
+      if (!currentValues.nationality && crewMember.nationality) {
+        updates.nationality = crewMember.nationality;
+      }
+      
+      // Pre-populate vessel if not already set
+      if (!currentValues.vessel && crewMember.vessel) {
+        updates.vessel = crewMember.vessel;
+      }
+      
+      // Pre-populate appraisal period from (same as sign on date)
+      if (!currentValues.appraisalPeriodFrom && crewMember.signOn) {
+        updates.appraisalPeriodFrom = crewMember.signOn;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        console.log('📋 Pre-populating crew member fields:', Object.keys(updates));
+        form.reset({ ...currentValues, ...updates }, { keepDefaultValues: false });
+      }
+    }
+  }, [crewMember, appraisalId, form]);
+
   // Load rank-group-specific configuration when available (only for new appraisals)
   useEffect(() => {
     const config = formConfig as any;
