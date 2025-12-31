@@ -13,9 +13,12 @@ const PartEComponent: React.FC<PartEProps> = ({
   setTrainingNeedsComments,
   editingTrainingNeedsComment,
   setEditingTrainingNeedsComment,
+  isTrainingNeedsDialogOpen,
+  setIsTrainingNeedsDialogOpen,
   addTrainingNeed,
   updateTrainingNeed,
   deleteTrainingNeed,
+  handleTrainingNeedsSelect,
 }) => {
   const deleteTrainingNeedsComment = (id: string) => {
     setTrainingNeedsComments(prev => {
@@ -35,10 +38,28 @@ const PartEComponent: React.FC<PartEProps> = ({
             <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
           </div>
           <div className="space-y-4">
-            <div className="flex justify-end">
-              <Button type="button" onClick={addTrainingNeed} variant="outline" size="sm" className="text-gray-600 border-gray-300">
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                onClick={() => setIsTrainingNeedsDialogOpen(true)} 
+                variant="outline" 
+                size="sm" 
+                className="text-gray-600 border-gray-300"
+                data-testid="button-add-training-from-database"
+              >
                 <Plus className="h-4 w-4 mr-1" />
-                Add Training Need
+                Add Training from Database
+              </Button>
+              <Button 
+                type="button" 
+                onClick={addTrainingNeed} 
+                variant="outline" 
+                size="sm" 
+                className="text-gray-600 border-gray-300"
+                data-testid="button-add-new-training"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add New Training
               </Button>
             </div>
             <div className="border rounded-lg overflow-hidden">

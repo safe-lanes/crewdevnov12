@@ -238,6 +238,8 @@ export interface PartGProps extends AppraisalFormSectionBaseProps {
   setEditingTrainingFollowupComment: (id: string | null) => void;
   editingOfficeReview: string | null;
   setEditingOfficeReview: (id: string | null) => void;
+  isTrainingFollowupDialogOpen: boolean;
+  setIsTrainingFollowupDialogOpen: (open: boolean) => void;
   addOfficeReview: () => void;
   updateOfficeReview: (id: string, field: string, value: string) => void;
   deleteOfficeReview: (id: string) => void;

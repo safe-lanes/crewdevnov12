@@ -23,6 +23,8 @@ const PartGComponent: React.FC<PartGProps> = ({
   setEditingTrainingFollowupComment,
   editingOfficeReview,
   setEditingOfficeReview,
+  isTrainingFollowupDialogOpen,
+  setIsTrainingFollowupDialogOpen,
   addOfficeReview,
   updateOfficeReview,
   deleteOfficeReview,
@@ -94,11 +96,23 @@ const PartGComponent: React.FC<PartGProps> = ({
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-base font-medium" style={{ color: '#16569e' }}>G2. Training Followup</h4>
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" size="sm">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsTrainingFollowupDialogOpen(true)}
+                    data-testid="button-add-training-from-database-g2"
+                  >
                     <Plus className="h-4 w-4 mr-1" />
                     Add Training from Database
                   </Button>
-                  <Button type="button" onClick={addTrainingFollowup} variant="outline" size="sm">
+                  <Button 
+                    type="button" 
+                    onClick={addTrainingFollowup} 
+                    variant="outline" 
+                    size="sm"
+                    data-testid="button-add-new-training-g2"
+                  >
                     <Plus className="h-4 w-4 mr-1" />
                     Add New Training
                   </Button>
