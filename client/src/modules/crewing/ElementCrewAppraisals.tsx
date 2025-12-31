@@ -28,6 +28,7 @@ import SectionTitleComponents from "@/components/Section/SectionTitleComponents"
 import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
+import { useExternalVessels } from "@/hooks/useExternalVessels";
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 
 // Interface for combined crew member and appraisal data
@@ -205,9 +206,20 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     queryKey: ["/api/available-ranks"],
   });
 
-  const { data: vesselMasterData = [] } = useQuery<Array<{ entryId: string; name: string }>>({
-    queryKey: ["/api/masters/014/data"],
-  });
+  // Use external SAIL ERP API for vessels (Master 014) - consistent with other modules
+  const { data: externalVessels = [] } = useExternalVessels();
+  
+  // Transform external vessels data to match the expected format for dropdown
+  const vesselMasterData = useMemo(() => {
+    if (externalVessels && externalVessels.length > 0) {
+      return externalVessels.map((v: any, index: number) => ({
+        // Use deterministic ID: vuid > id > vessel name > index (for stable React keys)
+        entryId: v.vuid || v.id || v.vessel || `vessel-${index}`,
+        name: v.vessel || v.name || 'Unknown Vessel'
+      }));
+    }
+    return [];
+  }, [externalVessels]);
 
   const { data: vesselTypeMasterData = [] } = useQuery<Array<{ entryId: string; name: string; level?: number; parentId?: string | null; code?: string }>>({
     queryKey: ["/api/masters/004/data"],
