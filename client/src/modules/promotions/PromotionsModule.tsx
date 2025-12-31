@@ -10,6 +10,7 @@ import { Filter, Search as SearchIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 
 export function PromotionsModule() {
     const [selectedPromotionsPage, setSelectedPromotionsPage] = useState('all');
@@ -26,6 +27,9 @@ export function PromotionsModule() {
     
     // Fetch vessel options from vessel master
     const { vessels: vesselOptions } = useVesselLookup();
+    
+    // Fetch company ranks for dynamic rank dropdown
+    const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
     
     // Fetch vessel types from Master 004 API with fallback to static data
     const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
@@ -104,14 +108,13 @@ export function PromotionsModule() {
                                 <SelectValue placeholder="Promotion to Rank" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Master">Master</SelectItem>
-                                <SelectItem value="Chief Engineer">Chief Engineer</SelectItem>
-                                <SelectItem value="Chief Mate">Chief Mate</SelectItem>
-                                <SelectItem value="Second Officer">Second Officer</SelectItem>
-                                <SelectItem value="Third Engineer">Third Engineer</SelectItem>
-                                <SelectItem value="Able Seaman">Able Seaman</SelectItem>
-                                <SelectItem value="Bosun">Bosun</SelectItem>
-                                <SelectItem value="Electrician">Electrician</SelectItem>
+                                {ranksLoading ? (
+                                    <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                                ) : (
+                                    rankOptions.map(option => (
+                                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))
+                                )}
                             </SelectContent>
                         </Select>
 

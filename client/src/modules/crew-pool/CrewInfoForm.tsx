@@ -353,7 +353,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   // Crew ID will be auto-assigned by the API during creation
 
   // Get company ranks from shared hook
-  const { data: companyRanks, isLoading: ranksLoading, rankNames, error: ranksError } = useCompanyRanks();
+  const { data: companyRanks, isLoading: ranksLoading, rankOptions, error: ranksError } = useCompanyRanks();
   
   // Get rank normalization functions to convert positions to actual ranks
   const { normalizeRank } = useRankNormalization();
@@ -2428,11 +2428,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                   ) : ranksError ? (
                     <SelectItem value="error" disabled>Failed to load ranks</SelectItem>
-                  ) : rankNames.length === 0 ? (
+                  ) : rankOptions.length === 0 ? (
                     <SelectItem value="empty" disabled>No ranks available</SelectItem>
                   ) : (
-                    rankNames.map(rank => (
-                      <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                    rankOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                     ))
                   )}
                 </SelectContent>
@@ -4008,12 +4008,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                               <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                             ) : ranksError ? (
                               <SelectItem value="error" disabled>Failed to load ranks</SelectItem>
-                            ) : rankNames.length === 0 ? (
+                            ) : rankOptions.length === 0 ? (
                               <SelectItem value="empty" disabled>No ranks available</SelectItem>
                             ) : (
-                              rankNames.map((rank) => (
-                                <SelectItem key={rank} value={rank}>
-                                  {rank}
+                              rankOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
                                 </SelectItem>
                               ))
                             )}
@@ -4308,12 +4308,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                               <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                             ) : ranksError ? (
                               <SelectItem value="error" disabled>Failed to load ranks</SelectItem>
-                            ) : rankNames.length === 0 ? (
+                            ) : rankOptions.length === 0 ? (
                               <SelectItem value="empty" disabled>No ranks available</SelectItem>
                             ) : (
-                              rankNames.map((rank) => (
-                                <SelectItem key={rank} value={rank}>
-                                  {rank}
+                              rankOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
                                 </SelectItem>
                               ))
                             )}

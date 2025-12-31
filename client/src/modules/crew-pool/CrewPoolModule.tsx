@@ -64,7 +64,7 @@ export const CrewPoolModule = (): JSX.Element => {
     const { getVesselName } = useVesselLookup();
     
     // Company ranks hook for dynamic rank dropdown
-    const { rankNames, isLoading: ranksLoading } = useCompanyRanks();
+    const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
     
     // Rank normalization hook to convert positions (e.g., "OS_1") to actual ranks (e.g., "OS")
     const { normalizeRank } = useRankNormalization();
@@ -591,8 +591,8 @@ export const CrewPoolModule = (): JSX.Element => {
                                             {ranksLoading ? (
                                                 <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                                             ) : (
-                                                rankNames.map(rank => (
-                                                    <SelectItem key={rank} value={rank} data-testid={`rank-option-${rank}`}>{rank}</SelectItem>
+                                                rankOptions.map(option => (
+                                                    <SelectItem key={option.value} value={option.value} data-testid={`rank-option-${option.value}`}>{option.label}</SelectItem>
                                                 ))
                                             )}
                                         </SelectContent>
@@ -711,8 +711,8 @@ export const CrewPoolModule = (): JSX.Element => {
                                             {ranksLoading ? (
                                                 <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                                             ) : (
-                                                rankNames.map(rank => (
-                                                    <SelectItem key={rank} value={rank} data-testid={`rank-option-${rank}`}>{rank}</SelectItem>
+                                                rankOptions.map(option => (
+                                                    <SelectItem key={option.value} value={option.value} data-testid={`rank-option-${option.value}`}>{option.label}</SelectItem>
                                                 ))
                                             )}
                                         </SelectContent>
@@ -824,8 +824,8 @@ export const CrewPoolModule = (): JSX.Element => {
                                             {ranksLoading ? (
                                                 <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                                             ) : (
-                                                rankNames.map(rank => (
-                                                    <SelectItem key={rank} value={rank} data-testid={`rank-option-${rank}`}>{rank}</SelectItem>
+                                                rankOptions.map(option => (
+                                                    <SelectItem key={option.value} value={option.value} data-testid={`rank-option-${option.value}`}>{option.label}</SelectItem>
                                                 ))
                                             )}
                                         </SelectContent>

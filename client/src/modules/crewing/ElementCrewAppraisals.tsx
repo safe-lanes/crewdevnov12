@@ -29,6 +29,7 @@ import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { useExternalVessels } from "@/hooks/useExternalVessels";
+import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 
 // Interface for combined crew member and appraisal data
@@ -201,10 +202,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     },
   });
 
-  // Fetch master data for filters
-  const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
-    queryKey: ["/api/available-ranks"],
-  });
+  // Fetch company ranks for filters (uses labels from Admin > Rank Admin)
+  const { rankOptions: availableRankOptions = [], isLoading: ranksLoading } = useCompanyRanks();
 
   // Use external SAIL ERP API for vessels (Master 014) - consistent with other modules
   const { data: externalVessels = [] } = useExternalVessels();
@@ -616,8 +615,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                     <SelectValue placeholder="Rank" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableRanks.map((rank) => (
-                      <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
+                    {availableRankOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -708,8 +707,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                       <SelectValue placeholder="Rank" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableRanks.map((rank) => (
-                        <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
+                      {availableRankOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -805,8 +804,8 @@ export const ElementCrewAppraisals = (): JSX.Element => {
                       <SelectValue placeholder="Rank" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableRanks.map((rank) => (
-                        <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
+                      {availableRankOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

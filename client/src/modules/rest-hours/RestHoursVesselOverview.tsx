@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { RHCrewRecordsTable } from './RHCrewRecordsTable';
 import RestHoursSideBar from './RestHoursSideBar';
 import MainLayout from '@/components/main/MainLayout';
@@ -48,6 +49,9 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   const [dateLineDialogOpen, setDateLineDialogOpen] = useState(false);
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
+  
+  // Fetch company ranks for dynamic rank dropdown
+  const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
 
   // Fetch date line adjustments for badge count
   const { data: dateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
@@ -86,21 +90,6 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     return option?.label || '';
   }, [periodOptions, periodValue]);
 
-  // Available ranks (would typically come from API)
-  const ranks = useMemo(() => [
-    'Master',
-    'Chief Engineer',
-    'Chief Officer',
-    'Second Engineer',
-    'Third Engineer',
-    'Second Officer',
-    'Third Officer',
-    'Able Seaman',
-    'Bosun',
-    'Cook',
-    'Electrician',
-    'Steward',
-  ], []);
 
   const handleBack = () => {
     setLocation('/rest-hours/record');
@@ -257,11 +246,15 @@ export const RestHoursVesselOverview = (): JSX.Element => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Ranks</SelectItem>
-              {ranks.map((rank) => (
-                <SelectItem key={rank} value={rank}>
-                  {rank}
-                </SelectItem>
-              ))}
+              {ranksLoading ? (
+                <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+              ) : (
+                rankOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
