@@ -337,78 +337,56 @@ const PartFComponent: React.FC<PartFProps> = ({
               </div>
             </div>
 
-            {/* F4. Seafarer Comments - Single fixed comment box */}
+            {/* F4. Seafarer Comments - Single fixed comment box with pre-filled name/rank */}
             <div className="border border-[#EAEBEF] rounded-lg p-4">
               <h4 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>F4. Seafarer Comments</h4>
 
               <div className="space-y-3">
                 {form.watch("seafarerComments").map((comment) => {
-                  const isEditing = editingSeafarerComment === comment.id || (!comment.name && !comment.comment);
+                  // Use seafarer's name and rank from Part A (pre-filled and non-editable)
+                  const seafarerName = form.watch("seafarersName") || comment.name || "";
+                  const seafarerRank = form.watch("seafarersRank") || comment.rank || "";
+                  const isEditing = editingSeafarerComment === comment.id;
                   return (
                     <div key={comment.id} className="bg-gray-50 p-3 rounded" data-testid={`seafarer-comment-${comment.id}`}>
-                      {isEditing ? (
-                        <div className="space-y-3">
-                          <div className="flex gap-4">
-                            <div className="flex-1">
-                              <Input
-                                value={comment.name}
-                                onChange={(e) => updateSeafarerComment(comment.id, "name", e.target.value)}
-                                placeholder="Seafarer name"
-                                className="text-sm"
-                                data-testid={`input-seafarer-name-${comment.id}`}
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <Select
-                                value={comment.rank}
-                                onValueChange={(value) => updateSeafarerComment(comment.id, "rank", value)}
-                              >
-                                <SelectTrigger data-testid={`select-seafarer-rank-${comment.id}`}>
-                                  <SelectValue placeholder="Select rank" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {availableRanks.map((rank) => (
-                                    <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <Textarea
-                            value={comment.comment}
-                            onChange={(e) => updateSeafarerComment(comment.id, "comment", e.target.value)}
-                            onBlur={() => setEditingSeafarerComment(null)}
-                            placeholder="Enter seafarer comments..."
-                            rows={2}
-                            className="text-sm"
-                            data-testid={`textarea-seafarer-comment-${comment.id}`}
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-sm font-medium" data-testid={`text-seafarer-name-${comment.id}`}>
-                              {comment.name}{comment.rank ? `, ${comment.rank}` : ""}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={() => setEditingSeafarerComment(comment.id)}
-                              data-testid={`button-edit-seafarer-${comment.id}`}
-                            >
-                              <Pencil className="h-3.5 w-3.5 text-gray-400" />
-                            </Button>
-                          </div>
-                          <p
-                            className="text-sm text-gray-600 italic cursor-pointer"
+                      {/* Seafarer name and rank - pre-filled and non-editable */}
+                      <div className="flex justify-between items-start mb-3">
+                        <span className="text-sm font-medium" data-testid={`text-seafarer-name-${comment.id}`}>
+                          {seafarerName}{seafarerRank ? `, ${seafarerRank}` : ""}
+                        </span>
+                        {!isEditing && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
                             onClick={() => setEditingSeafarerComment(comment.id)}
-                            data-testid={`text-seafarer-comment-${comment.id}`}
+                            data-testid={`button-edit-seafarer-${comment.id}`}
                           >
-                            {comment.comment || "Click to add comment..."}
-                          </p>
-                        </>
+                            <Pencil className="h-3.5 w-3.5 text-gray-400" />
+                          </Button>
+                        )}
+                      </div>
+                      {/* Comment textarea - editable */}
+                      {isEditing ? (
+                        <Textarea
+                          value={comment.comment}
+                          onChange={(e) => updateSeafarerComment(comment.id, "comment", e.target.value)}
+                          onBlur={() => setEditingSeafarerComment(null)}
+                          placeholder="Enter seafarer comments..."
+                          rows={3}
+                          className="text-sm"
+                          autoFocus
+                          data-testid={`textarea-seafarer-comment-${comment.id}`}
+                        />
+                      ) : (
+                        <p
+                          className="text-sm text-gray-600 italic cursor-pointer"
+                          onClick={() => setEditingSeafarerComment(comment.id)}
+                          data-testid={`text-seafarer-comment-${comment.id}`}
+                        >
+                          {comment.comment || "Click to add comment..."}
+                        </p>
                       )}
                     </div>
                   );
