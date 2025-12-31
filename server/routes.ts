@@ -7500,7 +7500,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/appraisals", async (req, res) => {
     try {
-      const result = insertAppraisalResultSchema.safeParse(req.body);
+      // Stringify appraisalData if it's an object (frontend sends object, backend stores as JSON string)
+      const bodyWithStringifiedData = {
+        ...req.body,
+        appraisalData: typeof req.body.appraisalData === 'object' 
+          ? JSON.stringify(req.body.appraisalData) 
+          : req.body.appraisalData
+      };
+      
+      const result = insertAppraisalResultSchema.safeParse(bodyWithStringifiedData);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid appraisal data", details: result.error.issues });
       }
@@ -7514,7 +7522,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/appraisals/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const result = insertAppraisalResultSchema.partial().safeParse(req.body);
+      
+      // Stringify appraisalData if it's an object (frontend sends object, backend stores as JSON string)
+      const bodyWithStringifiedData = {
+        ...req.body,
+        ...(req.body.appraisalData && {
+          appraisalData: typeof req.body.appraisalData === 'object' 
+            ? JSON.stringify(req.body.appraisalData) 
+            : req.body.appraisalData
+        })
+      };
+      
+      const result = insertAppraisalResultSchema.partial().safeParse(bodyWithStringifiedData);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid appraisal data", details: result.error.issues });
       }

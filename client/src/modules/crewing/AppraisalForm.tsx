@@ -529,7 +529,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         formId: 1, // Default form ID
         appraisalType: payload.data.appraisalType,
         appraisalDate: new Date().toISOString().split('T')[0],
-        appraisalData: JSON.stringify(payload.data), // Stringify for backend
+        appraisalData: payload.data, // Send as object - backend handles JSON.stringify
         competenceRating: null,
         behavioralRating: null,
         overallRating: null,
