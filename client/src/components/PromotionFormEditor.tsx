@@ -604,14 +604,17 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                           }
                         </span>
                       ) : (
-                        <Input
-                          type="number"
-                          placeholder="Min Recommendations"
-                          className="h-8 w-40 text-xs"
-                          value={watch('minRecommendations') ?? ''}
-                          onChange={(e) => setValue('minRecommendations', e.target.value ? parseInt(e.target.value) : null)}
-                          data-testid="input-min-recommendations"
-                        />
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Min Recommendations"
+                            className="h-8 w-40 text-xs"
+                            value={watch('minRecommendations') ?? ''}
+                            onChange={(e) => setValue('minRecommendations', e.target.value ? parseInt(e.target.value) : null)}
+                            data-testid="input-min-recommendations"
+                          />
+                          <span className="text-xs text-gray-500">Recommendation(s) Required</span>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -628,14 +631,17 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                           }
                         </span>
                       ) : (
-                        <Input
-                          type="number"
-                          placeholder="Min No. of Verifications"
-                          className="h-8 w-40 text-xs"
-                          value={watch('minChecklistVerifications') ?? ''}
-                          onChange={(e) => setValue('minChecklistVerifications', e.target.value ? parseInt(e.target.value) : null)}
-                          data-testid="input-min-verifications"
-                        />
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Min No. of Verifications"
+                            className="h-8 w-40 text-xs"
+                            value={watch('minChecklistVerifications') ?? ''}
+                            onChange={(e) => setValue('minChecklistVerifications', e.target.value ? parseInt(e.target.value) : null)}
+                            data-testid="input-min-verifications"
+                          />
+                          <span className="text-xs text-gray-500">Verification(s) Required</span>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -652,21 +658,24 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                           }
                         </span>
                       ) : (
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          placeholder="% Completion required"
-                          className="h-8 w-40 text-xs"
-                          value={watch('minChecklistCompletionPercent') ?? ''}
-                          onChange={(e) => {
-                            const value = e.target.value ? parseInt(e.target.value) : null;
-                            if (value === null || (value >= 0 && value <= 100)) {
-                              setValue('minChecklistCompletionPercent', value);
-                            }
-                          }}
-                          data-testid="input-min-checklist-completion-percent"
-                        />
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            placeholder="% Completion required"
+                            className="h-8 w-40 text-xs"
+                            value={watch('minChecklistCompletionPercent') ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value ? parseInt(e.target.value) : null;
+                              if (value === null || (value >= 0 && value <= 100)) {
+                                setValue('minChecklistCompletionPercent', value);
+                              }
+                            }}
+                            data-testid="input-min-checklist-completion-percent"
+                          />
+                          <span className="text-xs text-gray-500">% Min Required to be Completed</span>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
