@@ -2890,7 +2890,11 @@ export const VesselModule = (): JSX.Element => {
                                                             // Secondary sort: if same sortOrder, sort by suffix number (e.g., _1 before _2)
                                                             const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
                                                             const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
-                                                            return aSuffix - bSuffix;
+                                                            if (aSuffix !== bSuffix) return aSuffix - bSuffix;
+                                                            // Tertiary sort: primary crew before secondary crew
+                                                            const aIsPrimary = a.crewStatus === 'primary' ? 0 : 1;
+                                                            const bIsPrimary = b.crewStatus === 'primary' ? 0 : 1;
+                                                            return aIsPrimary - bIsPrimary;
                                                         });
                                                     
                                                     if (vesselCrew.length === 0) {

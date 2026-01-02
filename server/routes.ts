@@ -4043,6 +4043,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // AUTO-CALCULATE RELIEF DUE: When signOnDate + contractPeriodMonths exist but reliefDue is missing
+      // This ensures Relief Due is always stored when crew is signed on
+      const effectiveSignOnDate = req.body.signOnDate || existingPlanning.signOnDate;
+      const effectiveContractPeriod = req.body.contractPeriodMonths ?? existingPlanning.contractPeriodMonths;
+      const currentReliefDue = req.body.reliefDue ?? existingPlanning.reliefDue;
+      
+      if (effectiveSignOnDate && effectiveContractPeriod && !currentReliefDue) {
+        try {
+          const signOnDateObj = new Date(effectiveSignOnDate);
+          signOnDateObj.setMonth(signOnDateObj.getMonth() + effectiveContractPeriod);
+          const calculatedReliefDue = signOnDateObj.toISOString().split('T')[0];
+          req.body.reliefDue = calculatedReliefDue;
+          console.log(`📅 [VESSEL-PLANNING] Auto-calculated reliefDue: ${calculatedReliefDue} (signOnDate: ${effectiveSignOnDate} + ${effectiveContractPeriod} months)`);
+        } catch (calcError) {
+          console.warn(`⚠️ [VESSEL-PLANNING] Failed to auto-calculate reliefDue:`, calcError);
+        }
+      }
+      
       const planning = await storage.updateVesselPlanning(id, req.body);
       if (!planning) {
         return res.status(404).json({ error: "Vessel planning not found" });
