@@ -484,11 +484,19 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Checkbox
-                        checked={point.completed}
-                        onCheckedChange={() => handleToggleComplete(section.id, point.id)}
-                        data-testid={`checkbox-completed-${point.id}`}
-                      />
+                      <div 
+                        className="flex items-center justify-center cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleComplete(section.id, point.id);
+                        }}
+                      >
+                        <Checkbox
+                          checked={point.completed}
+                          onCheckedChange={() => handleToggleComplete(section.id, point.id)}
+                          data-testid={`checkbox-completed-${point.id}`}
+                        />
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge
