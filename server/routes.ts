@@ -4340,10 +4340,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
+        // Runtime fallback: reconstruct currentCrewInfo for entries archived before the fix
+        // Uses data from fullAssignmentSnapshot which contains the rotation assignment at archive time
+        const entriesWithCurrentCrew = archivedEntries.map((entry) => {
+          // If currentCrewInfo already exists, use it
+          if (entry.currentCrewInfo) {
+            return { ...entry, reconstructedCurrentCrew: JSON.parse(entry.currentCrewInfo) };
+          }
+          
+          // Fallback: extract on-board crew info from fullAssignmentSnapshot
+          // The snapshot contains the rotation plan assignment which may have:
+          // - snapshot.currentCrew (nested object with id, name, dates)
+          // - snapshot.onBoardCrew (alternative name for relieved crew)
+          // - or flattened onBoardCrewId/onBoardCrewName fields
+          if (entry.fullAssignmentSnapshot) {
+            try {
+              const snapshot = JSON.parse(entry.fullAssignmentSnapshot);
+              
+              // Check for nested currentCrew or onBoardCrew objects first
+              const crewData = snapshot.currentCrew || snapshot.onBoardCrew;
+              
+              // Fall back to flattened fields if no nested object
+              const onBoardCrewId = crewData?.id || snapshot.onBoardCrewId || snapshot.currentCrewId;
+              const onBoardCrewName = crewData?.name || snapshot.onBoardCrewName || snapshot.currentCrewName;
+              
+              if (onBoardCrewId || onBoardCrewName) {
+                // Use contract start date from crewData, snapshot, or archived date as fallback
+                const archivedDateStr = entry.archivedDate ? 
+                  (typeof entry.archivedDate === 'string' ? entry.archivedDate.split('T')[0] : new Date(entry.archivedDate).toISOString().split('T')[0]) :
+                  new Date().toISOString().split('T')[0];
+                
+                const contractStartDate = crewData?.contractStartDate || 
+                                          crewData?.rangeStartDate ||
+                                          snapshot.onBoardSignOnDate || 
+                                          snapshot.currentCrewSignOnDate ||
+                                          archivedDateStr;
+                
+                const contractEndDate = crewData?.contractEndDate || 
+                                        snapshot.onBoardContractEndDate || 
+                                        snapshot.currentCrewContractEndDate || 
+                                        null;
+                
+                // Calculate range end date - must always have a value
+                let rangeEndDate: string;
+                if (crewData?.rangeEndDate) {
+                  rangeEndDate = crewData.rangeEndDate;
+                } else if (contractEndDate) {
+                  const endDate = new Date(contractEndDate);
+                  endDate.setMonth(endDate.getMonth() + 1);
+                  rangeEndDate = endDate.toISOString().split('T')[0];
+                } else {
+                  // Fallback: 7 months from contract start (6 month contract + 1 month grace)
+                  const fallbackDate = new Date(contractStartDate);
+                  fallbackDate.setMonth(fallbackDate.getMonth() + 7);
+                  rangeEndDate = fallbackDate.toISOString().split('T')[0];
+                }
+                
+                return {
+                  ...entry,
+                  reconstructedCurrentCrew: {
+                    id: onBoardCrewId,
+                    name: onBoardCrewName || onBoardCrewId,
+                    contractStartDate: contractStartDate,
+                    contractEndDate: contractEndDate,
+                    rangeStartDate: contractStartDate,
+                    rangeEndDate: rangeEndDate,
+                  }
+                };
+              }
+            } catch (parseError) {
+              console.warn(`Failed to parse fullAssignmentSnapshot for archive ${entry.id}:`, parseError);
+            }
+          }
+          
+          return { ...entry, reconstructedCurrentCrew: null };
+        });
+        
         // Transform archive entries to match the proposal format expected by frontend
         // Return distinct archiveId and originalAssignmentIndex to avoid index collisions
         // Also provide assignmentIndex for legacy compatibility (maps to originalAssignmentIndex)
-        const proposals = archivedEntries.map((entry) => ({
+        const proposals = entriesWithCurrentCrew.map((entry) => ({
           // Archive-specific identifiers - kept distinct from live plan indices
           archiveId: entry.id,
           originalPlanId: entry.originalPlanId,
@@ -4374,8 +4450,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           archivedDate: entry.archivedDate,
           archivedBy: entry.archivedBy,
           vesselPlanningId: entry.vesselPlanningId,
-          // Full snapshot data for historical reference
-          currentCrew: entry.currentCrewInfo ? JSON.parse(entry.currentCrewInfo) : null,
+          // Full snapshot data for historical reference - use reconstructed if original missing
+          currentCrew: entry.reconstructedCurrentCrew,
           fullAssignmentSnapshot: entry.fullAssignmentSnapshot ? JSON.parse(entry.fullAssignmentSnapshot) : null,
         }));
         return res.json(proposals);
