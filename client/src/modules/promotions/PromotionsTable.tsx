@@ -523,55 +523,61 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'Crew ID',
       field: 'crewId',
-      width: 110,
+      minWidth: 110,
+      flex: 1,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: false,
+      resizable: true,
       hide: true
     },
     {
       headerName: 'Name',
       field: 'name',
-      width: 180,
+      minWidth: 150,
+      flex: 2,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: false
+      resizable: true
     },
     {
       headerName: 'DOB',
       field: 'dob',
-      width: 110,
+      minWidth: 100,
+      flex: 1,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: false,
+      resizable: true,
       hide: true
     },
     {
       headerName: 'Nationality',
       field: 'nationality',
-      width: 110,
+      minWidth: 100,
+      flex: 1.5,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: false
+      resizable: true
     },
     {
       headerName: 'Next Promotion Rank',
       field: 'promotionToRank',
-      width: 170,
+      minWidth: 140,
+      flex: 2,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: false
+      resizable: true
     },
     {
       headerName: 'Vessel/ Leave',
       field: 'vesselLeave',
-      width: 130,
+      minWidth: 110,
+      flex: 1.5,
       cellStyle: (params) => ({
         fontSize: '13px',
         color: params.value === 'On Leave' ? '#3b82f6' : '#4f5863'
       }),
       sortable: true,
-      resizable: false
+      resizable: true
     },
     {
       headerName: 'License',
@@ -620,10 +626,11 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'Promotion Checklist',
       field: 'promotionChecklist',
-      width: 140,
+      minWidth: 120,
+      flex: 1.5,
       cellRenderer: ProgressBarRenderer,
       sortable: true,
-      resizable: false
+      resizable: true
     },
     {
       headerName: 'Other',
@@ -661,10 +668,11 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     {
       headerName: 'Status',
       field: 'status',
-      width: 120,
+      minWidth: 100,
+      flex: 1,
       cellRenderer: StatusBadgeRenderer,
       sortable: true,
-      resizable: false
+      resizable: true
     },
     {
       headerName: '',
