@@ -2224,6 +2224,52 @@ export class DatabaseStorage implements IStorage {
       // Create independent archive entry for this deployment with full snapshot
       // Preserve exact source values - use null if not available (no synthetic defaults)
       const archivedDate = new Date().toISOString().split('T')[0];
+      
+      // Build currentCrewInfo from existing on-board crew record if available
+      // This captures who was relieved (the current crew on board before deployment)
+      let currentCrewInfo: string | null = null;
+      if (existingRecords.length > 0) {
+        const onBoardCrew = existingRecords[0];
+        const contractStartDate = onBoardCrew.signOnDate;
+        
+        // Calculate contract end date - clone date to avoid mutation
+        // If reliefDue is missing, calculate from signOnDate + contractPeriodMonths
+        let contractEndDate: string | null = onBoardCrew.reliefDue;
+        if (!contractEndDate && contractStartDate && onBoardCrew.contractPeriodMonths) {
+          const calcDate = new Date(contractStartDate);
+          calcDate.setMonth(calcDate.getMonth() + onBoardCrew.contractPeriodMonths);
+          contractEndDate = calcDate.toISOString().split('T')[0];
+        }
+        
+        // Calculate range end date (contractEndDate + 1 month grace period)
+        // Fallback: use contractStartDate + 7 months if no contract end date
+        let rangeEndDate: string;
+        if (contractEndDate) {
+          const endDate = new Date(contractEndDate);
+          endDate.setMonth(endDate.getMonth() + 1);
+          rangeEndDate = endDate.toISOString().split('T')[0];
+        } else if (contractStartDate) {
+          // Fallback: use contractStartDate + 7 months (6 month default + 1 grace)
+          const fallbackDate = new Date(contractStartDate);
+          fallbackDate.setMonth(fallbackDate.getMonth() + 7);
+          rangeEndDate = fallbackDate.toISOString().split('T')[0];
+        } else {
+          // Last resort: use today + 1 month
+          const fallbackDate = new Date();
+          fallbackDate.setMonth(fallbackDate.getMonth() + 1);
+          rangeEndDate = fallbackDate.toISOString().split('T')[0];
+        }
+        
+        currentCrewInfo = JSON.stringify({
+          id: onBoardCrew.crewMemberId,
+          name: onBoardCrew.onBoardCrewName || onBoardCrew.crewMemberId,
+          contractStartDate: contractStartDate,
+          contractEndDate: contractEndDate,
+          rangeStartDate: contractStartDate,
+          rangeEndDate: rangeEndDate,
+        });
+      }
+      
       await this.createArchiveEntry({
         originalPlanId: planId,
         originalDraftId: plans[0].draftId || null,
@@ -2244,7 +2290,7 @@ export class DatabaseStorage implements IStorage {
         archivedDate,
         archivedBy: deployedBy || null,
         vesselPlanningId: vesselPlanningRecord?.id || null,
-        currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+        currentCrewInfo: currentCrewInfo,
         fullAssignmentSnapshot: JSON.stringify(assignment),
       });
       
@@ -2296,6 +2342,85 @@ export class DatabaseStorage implements IStorage {
         .where(eq(rotationPlans.id, planId))
         .returning();
       
+      // Look up current crew on board for this vessel/rank to include in archive
+      // Need to translate vessel ID to code format for lookup
+      const vesselMasterData = await this.getMasterDataEntries('014');
+      const vesselUuidToCodeMap = new Map<string, string>();
+      const vesselNameToCodeMap = new Map<string, string>();
+      for (const v of vesselMasterData) {
+        const entryId = (v as any).entry_id;
+        if (v.name && entryId) {
+          vesselNameToCodeMap.set(v.name, entryId);
+          vesselUuidToCodeMap.set(entryId, entryId);
+        }
+      }
+      
+      // Determine vessel code - check multiple sources (same logic as deployAssignment)
+      let vesselCode: string | null = null;
+      if (assignment.vesselId && vesselUuidToCodeMap.has(assignment.vesselId)) {
+        vesselCode = assignment.vesselId;
+      } else if (assignment.vessel) {
+        vesselCode = vesselNameToCodeMap.get(assignment.vessel) || null;
+      } else {
+        vesselCode = assignment.vesselId || assignment.vessel || null;
+      }
+      
+      const rankName = assignment.rank;
+      let currentCrewInfo: string | null = null;
+      
+      if (vesselCode && rankName) {
+        const existingRecords = await this.db
+          .select()
+          .from(vesselPlanning)
+          .where(
+            and(
+              eq(vesselPlanning.vesselId, vesselCode),
+              or(
+                eq(vesselPlanning.rank, rankName),
+                eq(vesselPlanning.rankId, rankName)
+              ),
+              eq(vesselPlanning.crewStatus, 'primary')
+            )
+          );
+        
+        if (existingRecords.length > 0) {
+          const onBoardCrew = existingRecords[0];
+          const contractStartDate = onBoardCrew.signOnDate;
+          
+          // Calculate contract end date - clone date to avoid mutation
+          // If reliefDue is missing, calculate from signOnDate + contractPeriodMonths
+          let contractEndDate: string | null = onBoardCrew.reliefDue;
+          if (!contractEndDate && contractStartDate && onBoardCrew.contractPeriodMonths) {
+            const calcDate = new Date(contractStartDate);
+            calcDate.setMonth(calcDate.getMonth() + onBoardCrew.contractPeriodMonths);
+            contractEndDate = calcDate.toISOString().split('T')[0];
+          }
+          
+          // Calculate range end date (contractEndDate + 1 month grace period)
+          // Default to today + 1 month if no contract end date available
+          let rangeEndDate: string;
+          if (contractEndDate) {
+            const endDate = new Date(contractEndDate);
+            endDate.setMonth(endDate.getMonth() + 1);
+            rangeEndDate = endDate.toISOString().split('T')[0];
+          } else {
+            // Fallback: use today + 1 month as range end
+            const fallbackDate = new Date();
+            fallbackDate.setMonth(fallbackDate.getMonth() + 1);
+            rangeEndDate = fallbackDate.toISOString().split('T')[0];
+          }
+          
+          currentCrewInfo = JSON.stringify({
+            id: onBoardCrew.crewMemberId,
+            name: onBoardCrew.onBoardCrewName || onBoardCrew.crewMemberId,
+            contractStartDate: contractStartDate,
+            contractEndDate: contractEndDate,
+            rangeStartDate: contractStartDate,
+            rangeEndDate: rangeEndDate,
+          });
+        }
+      }
+      
       // Create independent archive entry for this rejection with full snapshot
       // Preserve exact source values - use null if not available (no synthetic defaults)
       const archivedDate = new Date().toISOString().split('T')[0];
@@ -2303,7 +2428,7 @@ export class DatabaseStorage implements IStorage {
         originalPlanId: planId,
         originalDraftId: plans[0].draftId || null,
         originalAssignmentIndex: assignmentIndex,
-        vesselId: assignment.vesselId || assignment.vessel || null,
+        vesselId: vesselId,
         rankId: assignment.rankId || null,
         rank: assignment.rank,
         crewId: assignment.crewId,
@@ -2319,7 +2444,7 @@ export class DatabaseStorage implements IStorage {
         archivedDate,
         archivedBy: rejectedBy || null,
         vesselPlanningId: null,
-        currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+        currentCrewInfo: currentCrewInfo,
         fullAssignmentSnapshot: JSON.stringify(assignment),
       });
       

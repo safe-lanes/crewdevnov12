@@ -2747,6 +2747,52 @@ export class MemStorage implements IStorage {
     // Create independent archive entry for this deployment with full snapshot
     // Preserve exact source values - use null if not available (no synthetic defaults)
     const archivedDate = new Date().toISOString().split('T')[0];
+    
+    // Build currentCrewInfo from existing on-board crew record if available
+    let currentCrewInfo: string | null = null;
+    if (existingPlanningId !== null) {
+      const onBoardCrew = this.vesselPlanning.get(existingPlanningId);
+      if (onBoardCrew) {
+        const contractStartDate = onBoardCrew.signOnDate;
+        
+        // Calculate contract end date - clone date to avoid mutation
+        let contractEndDate: string | null | undefined = onBoardCrew.reliefDue;
+        if (!contractEndDate && contractStartDate && onBoardCrew.contractPeriodMonths) {
+          const calcDate = new Date(contractStartDate);
+          calcDate.setMonth(calcDate.getMonth() + onBoardCrew.contractPeriodMonths);
+          contractEndDate = calcDate.toISOString().split('T')[0];
+        }
+        
+        // Calculate range end date with fallback
+        // Fallback: use contractStartDate + 7 months if no contract end date
+        let rangeEndDate: string;
+        if (contractEndDate) {
+          const endDate = new Date(contractEndDate);
+          endDate.setMonth(endDate.getMonth() + 1);
+          rangeEndDate = endDate.toISOString().split('T')[0];
+        } else if (contractStartDate) {
+          // Fallback: use contractStartDate + 7 months (6 month default + 1 grace)
+          const fallbackDate = new Date(contractStartDate);
+          fallbackDate.setMonth(fallbackDate.getMonth() + 7);
+          rangeEndDate = fallbackDate.toISOString().split('T')[0];
+        } else {
+          // Last resort: use today + 1 month
+          const fallbackDate = new Date();
+          fallbackDate.setMonth(fallbackDate.getMonth() + 1);
+          rangeEndDate = fallbackDate.toISOString().split('T')[0];
+        }
+        
+        currentCrewInfo = JSON.stringify({
+          id: onBoardCrew.crewMemberId,
+          name: onBoardCrew.onBoardCrewName || onBoardCrew.crewMemberId,
+          contractStartDate: contractStartDate,
+          contractEndDate: contractEndDate,
+          rangeStartDate: contractStartDate,
+          rangeEndDate: rangeEndDate,
+        });
+      }
+    }
+    
     await this.createArchiveEntry({
       originalPlanId: planId,
       originalDraftId: plan.draftId || null,
@@ -2767,7 +2813,7 @@ export class MemStorage implements IStorage {
       archivedDate,
       archivedBy: deployedBy || null,
       vesselPlanningId: existingPlanningId || null,
-      currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+      currentCrewInfo: currentCrewInfo,
       fullAssignmentSnapshot: JSON.stringify(assignment),
     });
 
@@ -2813,6 +2859,52 @@ export class MemStorage implements IStorage {
     // Use original vesselId without translation - preserve exact source value
     const vesselCode = assignment.vesselId || assignment.vessel || null;
     
+    // Build currentCrewInfo by looking up existing vessel planning record
+    // Try to match both the raw vesselCode and normalized vesselId
+    let currentCrewInfo: string | null = null;
+    const normalizedVesselCode = vesselCode ? translateVesselNameToCode(vesselCode) : null;
+    const vesselCodesToMatch = [vesselCode, normalizedVesselCode].filter(Boolean);
+    
+    if (vesselCodesToMatch.length > 0 && assignment.rank) {
+      for (const [id, vp] of Array.from(this.vesselPlanning.entries())) {
+        if (vesselCodesToMatch.includes(vp.vesselId) && 
+            (vp.rank === assignment.rank || vp.rankId === assignment.rank) &&
+            vp.crewStatus === 'primary') {
+          const contractStartDate = vp.signOnDate;
+          
+          // Calculate contract end date - clone date to avoid mutation
+          let contractEndDate: string | null | undefined = vp.reliefDue;
+          if (!contractEndDate && contractStartDate && vp.contractPeriodMonths) {
+            const calcDate = new Date(contractStartDate);
+            calcDate.setMonth(calcDate.getMonth() + vp.contractPeriodMonths);
+            contractEndDate = calcDate.toISOString().split('T')[0];
+          }
+          
+          // Calculate range end date with fallback
+          let rangeEndDate: string;
+          if (contractEndDate) {
+            const endDate = new Date(contractEndDate);
+            endDate.setMonth(endDate.getMonth() + 1);
+            rangeEndDate = endDate.toISOString().split('T')[0];
+          } else {
+            const fallbackDate = new Date();
+            fallbackDate.setMonth(fallbackDate.getMonth() + 1);
+            rangeEndDate = fallbackDate.toISOString().split('T')[0];
+          }
+          
+          currentCrewInfo = JSON.stringify({
+            id: vp.crewMemberId,
+            name: vp.onBoardCrewName || vp.crewMemberId,
+            contractStartDate: contractStartDate,
+            contractEndDate: contractEndDate,
+            rangeStartDate: contractStartDate,
+            rangeEndDate: rangeEndDate,
+          });
+          break;
+        }
+      }
+    }
+    
     await this.createArchiveEntry({
       originalPlanId: planId,
       originalDraftId: plan.draftId || null,
@@ -2833,7 +2925,7 @@ export class MemStorage implements IStorage {
       archivedDate,
       archivedBy: rejectedBy || null,
       vesselPlanningId: null,
-      currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+      currentCrewInfo: currentCrewInfo,
       fullAssignmentSnapshot: JSON.stringify(assignment),
     });
 
@@ -7135,6 +7227,52 @@ export class PersistentFileStorage implements IStorage {
     // Create independent archive entry for this deployment with full snapshot
     // Preserve exact source values - use null if not available (no synthetic defaults)
     const archivedDate = new Date().toISOString().split('T')[0];
+    
+    // Build currentCrewInfo from existing on-board crew record if available
+    let currentCrewInfo: string | null = null;
+    if (existingPlanningId !== null) {
+      const onBoardCrew = this.vesselPlanning.get(existingPlanningId);
+      if (onBoardCrew) {
+        const contractStartDate = onBoardCrew.signOnDate;
+        
+        // Calculate contract end date - clone date to avoid mutation
+        let contractEndDate: string | null | undefined = onBoardCrew.reliefDue;
+        if (!contractEndDate && contractStartDate && onBoardCrew.contractPeriodMonths) {
+          const calcDate = new Date(contractStartDate);
+          calcDate.setMonth(calcDate.getMonth() + onBoardCrew.contractPeriodMonths);
+          contractEndDate = calcDate.toISOString().split('T')[0];
+        }
+        
+        // Calculate range end date with fallback
+        // Fallback: use contractStartDate + 7 months if no contract end date
+        let rangeEndDate: string;
+        if (contractEndDate) {
+          const endDate = new Date(contractEndDate);
+          endDate.setMonth(endDate.getMonth() + 1);
+          rangeEndDate = endDate.toISOString().split('T')[0];
+        } else if (contractStartDate) {
+          // Fallback: use contractStartDate + 7 months (6 month default + 1 grace)
+          const fallbackDate = new Date(contractStartDate);
+          fallbackDate.setMonth(fallbackDate.getMonth() + 7);
+          rangeEndDate = fallbackDate.toISOString().split('T')[0];
+        } else {
+          // Last resort: use today + 1 month
+          const fallbackDate = new Date();
+          fallbackDate.setMonth(fallbackDate.getMonth() + 1);
+          rangeEndDate = fallbackDate.toISOString().split('T')[0];
+        }
+        
+        currentCrewInfo = JSON.stringify({
+          id: onBoardCrew.crewMemberId,
+          name: onBoardCrew.onBoardCrewName || onBoardCrew.crewMemberId,
+          contractStartDate: contractStartDate,
+          contractEndDate: contractEndDate,
+          rangeStartDate: contractStartDate,
+          rangeEndDate: rangeEndDate,
+        });
+      }
+    }
+    
     await this.createArchiveEntry({
       originalPlanId: planId,
       originalDraftId: plan.draftId || null,
@@ -7155,7 +7293,7 @@ export class PersistentFileStorage implements IStorage {
       archivedDate,
       archivedBy: deployedBy || null,
       vesselPlanningId: existingPlanningId || null,
-      currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+      currentCrewInfo: currentCrewInfo,
       fullAssignmentSnapshot: JSON.stringify(assignment),
     });
 
@@ -7201,6 +7339,52 @@ export class PersistentFileStorage implements IStorage {
     // Use original vesselId without translation - preserve exact source value
     const vesselCode = assignment.vesselId || assignment.vessel || null;
     
+    // Build currentCrewInfo by looking up existing vessel planning record
+    // Try to match both the raw vesselCode and normalized vesselId
+    let currentCrewInfo: string | null = null;
+    const normalizedVesselCode = vesselCode ? translateVesselNameToCode(vesselCode) : null;
+    const vesselCodesToMatch = [vesselCode, normalizedVesselCode].filter(Boolean);
+    
+    if (vesselCodesToMatch.length > 0 && assignment.rank) {
+      for (const [id, vp] of Array.from(this.vesselPlanning.entries())) {
+        if (vesselCodesToMatch.includes(vp.vesselId) && 
+            (vp.rank === assignment.rank || vp.rankId === assignment.rank) &&
+            vp.crewStatus === 'primary') {
+          const contractStartDate = vp.signOnDate;
+          
+          // Calculate contract end date - clone date to avoid mutation
+          let contractEndDate: string | null | undefined = vp.reliefDue;
+          if (!contractEndDate && contractStartDate && vp.contractPeriodMonths) {
+            const calcDate = new Date(contractStartDate);
+            calcDate.setMonth(calcDate.getMonth() + vp.contractPeriodMonths);
+            contractEndDate = calcDate.toISOString().split('T')[0];
+          }
+          
+          // Calculate range end date with fallback
+          let rangeEndDate: string;
+          if (contractEndDate) {
+            const endDate = new Date(contractEndDate);
+            endDate.setMonth(endDate.getMonth() + 1);
+            rangeEndDate = endDate.toISOString().split('T')[0];
+          } else {
+            const fallbackDate = new Date();
+            fallbackDate.setMonth(fallbackDate.getMonth() + 1);
+            rangeEndDate = fallbackDate.toISOString().split('T')[0];
+          }
+          
+          currentCrewInfo = JSON.stringify({
+            id: vp.crewMemberId,
+            name: vp.onBoardCrewName || vp.crewMemberId,
+            contractStartDate: contractStartDate,
+            contractEndDate: contractEndDate,
+            rangeStartDate: contractStartDate,
+            rangeEndDate: rangeEndDate,
+          });
+          break;
+        }
+      }
+    }
+    
     await this.createArchiveEntry({
       originalPlanId: planId,
       originalDraftId: plan.draftId || null,
@@ -7221,7 +7405,7 @@ export class PersistentFileStorage implements IStorage {
       archivedDate,
       archivedBy: rejectedBy || null,
       vesselPlanningId: null,
-      currentCrewInfo: assignment.currentCrew ? JSON.stringify(assignment.currentCrew) : null,
+      currentCrewInfo: currentCrewInfo,
       fullAssignmentSnapshot: JSON.stringify(assignment),
     });
 
