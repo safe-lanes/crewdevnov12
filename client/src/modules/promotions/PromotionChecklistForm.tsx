@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { z } from 'zod';
-import type { CrewMember } from '@shared/schema';
+import type { CrewMember, PromotionA2Config } from '@shared/schema';
 
 interface PromotionData {
   crewMemberId: string;
@@ -81,11 +81,13 @@ interface ChecklistSection {
 interface PromotionChecklistFormProps {
   promotionData: PromotionData;
   onClose: () => void;
+  checklistConfig?: PromotionA2Config | null;
 }
 
 export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   promotionData,
   onClose,
+  checklistConfig,
 }) => {
 
   // Fetch crew member data including sea service
@@ -125,248 +127,36 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     role: 'Department Head' // or 'Crewmember'
   };
 
-  // Mock checklist sections data
-  const [checklistSections, setChecklistSections] = React.useState<ChecklistSection[]>([
-    {
-      id: 'B1',
-      number: 'B1',
-      title: 'Practical Training & Ship Handling',
-      assessmentPoints: [
-        {
-          id: 'B1.1',
-          number: 'B1.1',
-          text: 'Preparations before anchoring (Master & Officer on Bridge, Officer in charge on forecastle, bosun, crew)',
+  // Initialize checklist sections from configuration or use empty array
+  const initializeSectionsFromConfig = React.useCallback((): ChecklistSection[] => {
+    if (checklistConfig?.checklistSections?.length) {
+      // Transform configuration sections into runtime format with completed/verifications/comments/attachments
+      return checklistConfig.checklistSections.map((configSection) => ({
+        id: configSection.id,
+        number: configSection.id,
+        title: configSection.title,
+        assessmentPoints: configSection.assessmentPoints.map((configPoint) => ({
+          id: configPoint.id,
+          number: configPoint.id,
+          text: configPoint.text,
           completed: false,
           verifications: [],
           comments: [],
-          attachments: []
-        },
-        {
-          id: 'B1.2',
-          number: 'B1.2',
-          text: 'Anchoring - approaching anchorage / speed reducing stopping engine etc astern when to drop anchor. Effective management of traffic around the anchor position.',
-          completed: true,
-          verifications: [
-            {
-              id: 'v1',
-              verifierName: 'James Smith',
-              rank: 'Master',
-              date: '14 Jan 24'
-            }
-          ],
-          comments: [
-            {
-              id: 'c1',
-              userName: 'James Smith',
-              rank: 'Master',
-              text: 'Officer demonstrated an effective command via the bridge team, communication was effective overall, and the approach - confident.',
-              date: '14 Jan 24'
-            }
-          ],
-          attachments: []
-        },
-        {
-          id: 'B1.3',
-          number: 'B1.3',
-          text: 'Vessel at Anchor, frequent position checks, weather report, current / tide check and etc',
-          completed: true,
-          verifications: [
-            {
-              id: 'v2',
-              verifierName: 'James Smith',
-              rank: 'Master',
-              date: '14 Jan 24'
-            },
-            {
-              id: 'v3',
-              verifierName: 'Wilbur Pace',
-              rank: 'Master',
-              date: '17 Aug 24'
-            }
-          ],
-          comments: [
-            {
-              id: 'c2',
-              userName: 'James Smith',
-              rank: 'Master',
-              text: 'Officer demonstrated a thorough knowledge of the checks and monitoring of the situation.',
-              date: '14 Jan 24'
-            },
-            {
-              id: 'c3',
-              userName: 'Wilbur Pace',
-              rank: 'Master',
-              text: '',
-              date: '17 Aug 24'
-            }
-          ],
-          attachments: []
-        }
-      ]
-    },
-    {
-      id: 'B2',
-      number: 'B2',
-      title: 'Pilotage',
-      assessmentPoints: [
-        {
-          id: 'B2.1',
-          number: 'B2.1',
-          text: 'Preparations before embarking Master & Officer on Bridge, Officer in charge on forecaslte, bosun, crew',
-          completed: false,
-          verifications: [],
-          comments: [],
-          attachments: []
-        },
-        {
-          id: 'B2.2',
-          number: 'B2.2',
-          text: 'Anchoring - approaching anchorage / speed reducing stopping engine etc astern when to drop anchor. Effective management of traffic around the anchor position.',
-          completed: true,
-          verifications: [
-            {
-              id: 'v4',
-              verifierName: 'John Doe',
-              rank: 'Master',
-              date: '20 Feb 24'
-            }
-          ],
-          comments: [],
-          attachments: []
-        },
-        {
-          id: 'B2.3',
-          number: 'B2.3',
-          text: 'Arrival at Anchor, frequent position checks, weather report, current / tide check and etc',
-          completed: true,
-          verifications: [
-            {
-              id: 'v5',
-              verifierName: 'James Smith',
-              rank: 'Master',
-              date: '14 Jan 24'
-            },
-            {
-              id: 'v6',
-              verifierName: 'Wilbur Pace',
-              rank: 'Master',
-              date: '17 Aug 24'
-            }
-          ],
-          comments: [],
-          attachments: []
-        }
-      ]
-    },
-    {
-      id: 'B3',
-      number: 'B3',
-      title: 'Anchoring / Berthing',
-      assessmentPoints: [
-        {
-          id: 'B3.1',
-          number: 'B3.1',
-          text: 'Preparations before anchoring (Master & Officer on Bridge, Officer in charge on forecastle, bosun, crew)',
-          completed: false,
-          verifications: [],
-          comments: [],
-          attachments: []
-        },
-        {
-          id: 'B3.2',
-          number: 'B3.2',
-          text: 'Anchoring - approaching anchorage / speed reducing stopping engine etc astern when to drop anchor. Effective management of traffic around the anchor position.',
-          completed: true,
-          verifications: [
-            {
-              id: 'v7',
-              verifierName: 'James Smith',
-              rank: 'Master',
-              date: '14 Jan 24'
-            }
-          ],
-          comments: [],
-          attachments: []
-        },
-        {
-          id: 'B3.3',
-          number: 'B3.3',
-          text: 'Arrival at Anchor, frequent position checks, weather report, current / tide check and etc',
-          completed: true,
-          verifications: [
-            {
-              id: 'v8',
-              verifierName: 'James Smith',
-              rank: 'Master',
-              date: '14 Jan 24'
-            },
-            {
-              id: 'v9',
-              verifierName: 'Wilbur Pace',
-              rank: 'Master',
-              date: '17 Aug 24'
-            }
-          ],
-          comments: [],
-          attachments: []
-        }
-      ]
-    },
-    {
-      id: 'B4',
-      number: 'B4',
-      title: 'Advance Navigation',
-      assessmentPoints: [
-        {
-          id: 'B4.1',
-          number: 'B4.1',
-          text: 'Advance Point 1',
-          completed: false,
-          verifications: [],
-          comments: [],
-          attachments: []
-        },
-        {
-          id: 'B4.2',
-          number: 'B4.2',
-          text: 'Advance Point 2',
-          completed: true,
-          verifications: [
-            {
-              id: 'v10',
-              verifierName: 'James Smith',
-              rank: 'Master',
-              date: '14 Jan 24'
-            }
-          ],
-          comments: [],
-          attachments: []
-        },
-        {
-          id: 'B4.3',
-          number: 'B4.3',
-          text: 'Advance Point 3',
-          completed: true,
-          verifications: [
-            {
-              id: 'v11',
-              verifierName: 'James Smith',
-              rank: 'Master',
-              date: '14 Jan 24'
-            },
-            {
-              id: 'v12',
-              verifierName: 'Wilbur Pace',
-              rank: 'Master',
-              date: '17 Aug 24'
-            }
-          ],
-          comments: [],
-          attachments: []
-        }
-      ]
+          attachments: [],
+        })),
+      }));
     }
-  ]);
+    // Return empty array if no configuration - admin needs to configure Part B
+    return [];
+  }, [checklistConfig]);
+
+  const [checklistSections, setChecklistSections] = React.useState<ChecklistSection[]>(initializeSectionsFromConfig);
+
+  // Update sections when checklistConfig changes (always sync, even if empty)
+  React.useEffect(() => {
+    const newSections = initializeSectionsFromConfig();
+    setChecklistSections(newSections);
+  }, [initializeSectionsFromConfig]);
 
   // State for managing UI interactions
   const [activeCommentBox, setActiveCommentBox] = React.useState<string | null>(null);
@@ -631,6 +421,12 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
 
   const renderPartB = () => (
     <div className="space-y-6">
+      {checklistSections.length === 0 ? (
+        <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+          <p className="text-sm font-medium">No checklist sections configured</p>
+          <p className="text-xs mt-1">Please configure Part B in Admin &gt; Forms Configuration &gt; Promotion Review Form</p>
+        </div>
+      ) : null}
       {checklistSections.map((section) => (
         <div key={section.id} className="border border-[#EAEBEF] rounded-lg p-4">
           <h3 className="text-base font-medium text-[#16569e] mb-4" data-testid={`section-title-${section.id}`}>
@@ -841,7 +637,12 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <div className="border-b pb-4 mb-6">
               <h3 className="text-lg font-semibold text-[#16569e]">Part B: Promotion Checklist</h3>
-              <p className="text-sm text-[#60a5fa] mt-1">At least 2 verifications are required</p>
+              <p className="text-sm text-[#60a5fa] mt-1">
+                {checklistConfig?.minChecklistVerifications 
+                  ? `At least ${checklistConfig.minChecklistVerifications} verification${checklistConfig.minChecklistVerifications !== 1 ? 's' : ''} required for each question`
+                  : 'Verifications required as per configuration'
+                }
+              </p>
             </div>
             {renderPartB()}
           </div>

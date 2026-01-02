@@ -1331,6 +1331,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         <PromotionChecklistForm 
           promotionData={promotionData}
           onClose={() => setShowChecklistForm(false)}
+          checklistConfig={a2Config}
         />
       )}
 

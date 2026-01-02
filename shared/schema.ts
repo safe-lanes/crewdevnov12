@@ -2052,6 +2052,26 @@ export const promotionA2CesTestSchema = z.object({
   minScore: z.number().nullable(), // Minimum score required
 });
 
+// ===============================================
+// Part B: Promotion Checklist Configuration Schema
+// ===============================================
+// Schema for configuring Promotion Checklist sections and assessment points
+// Numbers are auto-generated: B1, B2... for sections; B1.1, B1.2... for points
+
+export const promotionChecklistAssessmentPointSchema = z.object({
+  id: z.string(), // Auto-generated: "B1.1", "B1.2", "B2.1", etc.
+  text: z.string(), // Description of the assessment point
+});
+
+export const promotionChecklistSectionSchema = z.object({
+  id: z.string(), // Auto-generated: "B1", "B2", "B3", etc.
+  title: z.string(), // Section title (e.g., "Practical Training & Ship Handling")
+  assessmentPoints: z.array(promotionChecklistAssessmentPointSchema).default([]),
+});
+
+export type PromotionChecklistAssessmentPoint = z.infer<typeof promotionChecklistAssessmentPointSchema>;
+export type PromotionChecklistSection = z.infer<typeof promotionChecklistSectionSchema>;
+
 export const promotionA2ConfigSchema = z.object({
   // A2.1 Higher License Criteria - selected license IDs from Master 016
   higherLicenseIds: z.array(z.string()).default([]),
@@ -2087,6 +2107,10 @@ export const promotionA2ConfigSchema = z.object({
   
   // A2.7 CES / Language Tests Criteria - dynamic sub-items with min scores
   cesTests: z.array(promotionA2CesTestSchema).default([]),
+  
+  // Part B: Promotion Checklist Configuration
+  // Sections with assessment points - uses minChecklistVerifications from A2.5 for verification requirement
+  checklistSections: z.array(promotionChecklistSectionSchema).default([]),
   
   // Metadata
   savedAt: z.string().optional(),

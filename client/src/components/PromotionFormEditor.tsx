@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, Save, Settings, Plus, Trash2, Info } from "lucide-react";
-import { Form, promotionA2ConfigSchema, type PromotionA2Config } from "@shared/schema";
+import { Form, promotionA2ConfigSchema, type PromotionA2Config, type PromotionChecklistSection, type PromotionChecklistAssessmentPoint } from "@shared/schema";
 import {
   Table,
   TableBody,
@@ -86,6 +86,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
       minChecklistCompletionPercent: null,
       otherCriteria: [],
       cesTests: [],
+      checklistSections: [],
     },
   });
 
@@ -126,6 +127,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   const otherCriteria = watch('otherCriteria');
   const cesTests = watch('cesTests');
   const experienceMonths = watch('experienceMonths');
+  const checklistSections = watch('checklistSections');
 
   const onSubmit = (data: PromotionA2Config) => {
     const configurationJson = JSON.stringify({
@@ -194,6 +196,80 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     const updated = [...cesTests];
     updated[index].minScore = score;
     setValue('cesTests', updated);
+  };
+
+  // Part B: Promotion Checklist Section management
+  const addChecklistSection = () => {
+    const nextNumber = checklistSections.length + 1;
+    const newSection: PromotionChecklistSection = {
+      id: `B${nextNumber}`,
+      title: '',
+      assessmentPoints: [],
+    };
+    setValue('checklistSections', [...checklistSections, newSection]);
+  };
+
+  const removeChecklistSection = (sectionIndex: number) => {
+    const updated = checklistSections.filter((_, i) => i !== sectionIndex);
+    // Renumber remaining sections
+    const renumbered = updated.map((section, i) => ({
+      ...section,
+      id: `B${i + 1}`,
+      assessmentPoints: section.assessmentPoints.map((point, j) => ({
+        ...point,
+        id: `B${i + 1}.${j + 1}`,
+      })),
+    }));
+    setValue('checklistSections', renumbered);
+  };
+
+  const updateSectionTitle = (sectionIndex: number, title: string) => {
+    const updated = [...checklistSections];
+    updated[sectionIndex] = { ...updated[sectionIndex], title };
+    setValue('checklistSections', updated);
+  };
+
+  const addAssessmentPoint = (sectionIndex: number) => {
+    const updated = [...checklistSections];
+    const section = updated[sectionIndex];
+    const nextNumber = section.assessmentPoints.length + 1;
+    const newPoint: PromotionChecklistAssessmentPoint = {
+      id: `${section.id}.${nextNumber}`,
+      text: '',
+    };
+    updated[sectionIndex] = {
+      ...section,
+      assessmentPoints: [...section.assessmentPoints, newPoint],
+    };
+    setValue('checklistSections', updated);
+  };
+
+  const removeAssessmentPoint = (sectionIndex: number, pointIndex: number) => {
+    const updated = [...checklistSections];
+    const section = updated[sectionIndex];
+    const updatedPoints = section.assessmentPoints.filter((_, i) => i !== pointIndex);
+    // Renumber remaining points
+    const renumberedPoints = updatedPoints.map((point, i) => ({
+      ...point,
+      id: `${section.id}.${i + 1}`,
+    }));
+    updated[sectionIndex] = {
+      ...section,
+      assessmentPoints: renumberedPoints,
+    };
+    setValue('checklistSections', updated);
+  };
+
+  const updateAssessmentPointText = (sectionIndex: number, pointIndex: number, text: string) => {
+    const updated = [...checklistSections];
+    const section = updated[sectionIndex];
+    const updatedPoints = [...section.assessmentPoints];
+    updatedPoints[pointIndex] = { ...updatedPoints[pointIndex], text };
+    updated[sectionIndex] = {
+      ...section,
+      assessmentPoints: updatedPoints,
+    };
+    setValue('checklistSections', updated);
   };
 
   // License selection handlers
@@ -793,6 +869,127 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                   </TableRow>
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+
+          {/* Part B: Promotion Checklist Configuration */}
+          <Card className="mt-6">
+            <CardContent className="p-6">
+              <div className="border-b pb-4 mb-6 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-[#16569e]">Part B: Promotion Checklist</h3>
+                  <p className="text-sm text-gray-500 mt-1">Configure the assessment sections and points for the promotion checklist</p>
+                </div>
+                {!isPreviewMode && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addChecklistSection}
+                    className="text-xs"
+                    data-testid="button-add-section"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add New Section
+                  </Button>
+                )}
+              </div>
+
+              {checklistSections.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="text-sm">No sections configured yet.</p>
+                  {!isPreviewMode && (
+                    <p className="text-xs mt-1">Click "Add New Section" to start building the promotion checklist.</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {checklistSections.map((section, sectionIndex) => (
+                    <div key={section.id} className="border rounded-lg p-4 bg-gray-50/50 dark:bg-gray-800/50">
+                      {/* Section Header */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="font-semibold text-[#16569e] min-w-[40px]">{section.id}</span>
+                        {isPreviewMode ? (
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {section.title || <span className="text-gray-400 italic">Untitled Section</span>}
+                          </span>
+                        ) : (
+                          <>
+                            <Input
+                              type="text"
+                              placeholder="Enter section title (e.g., Practical Training & Ship Handling)"
+                              className="h-8 flex-1 text-sm"
+                              value={section.title}
+                              onChange={(e) => updateSectionTitle(sectionIndex, e.target.value)}
+                              data-testid={`input-section-title-${sectionIndex}`}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeChecklistSection(sectionIndex)}
+                              className="h-8 w-8 p-0"
+                              data-testid={`button-remove-section-${sectionIndex}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Assessment Points */}
+                      <div className="space-y-2 ml-8">
+                        {section.assessmentPoints.map((point, pointIndex) => (
+                          <div key={point.id} className="flex items-start gap-3">
+                            <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[50px] pt-1">{point.id}</span>
+                            {isPreviewMode ? (
+                              <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
+                                {point.text || <span className="text-gray-400 italic">No description</span>}
+                              </span>
+                            ) : (
+                              <>
+                                <Input
+                                  type="text"
+                                  placeholder="Enter assessment point description"
+                                  className="h-8 flex-1 text-xs"
+                                  value={point.text}
+                                  onChange={(e) => updateAssessmentPointText(sectionIndex, pointIndex, e.target.value)}
+                                  data-testid={`input-point-text-${sectionIndex}-${pointIndex}`}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeAssessmentPoint(sectionIndex, pointIndex)}
+                                  className="h-8 w-8 p-0"
+                                  data-testid={`button-remove-point-${sectionIndex}-${pointIndex}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Add Point Button */}
+                        {!isPreviewMode && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => addAssessmentPoint(sectionIndex)}
+                            className="text-xs text-blue-600 hover:text-blue-700 ml-[50px]"
+                            data-testid={`button-add-point-${sectionIndex}`}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add New Point
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
