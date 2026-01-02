@@ -49,6 +49,7 @@ interface FormData {
   firstName: string;
   middleName: string;
   familyName: string;
+  gender: string; // Male or Female
   nationality: string;
   presentRank: string;
   vesselType: string[];
@@ -809,6 +810,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     firstName: candidate?.firstName || '',
     middleName: candidate?.middleName || '',
     familyName: candidate?.familyName || '',
+    gender: savedData.gender || candidate?.gender || 'Male',
     nationality: candidate?.nationality || '',
     presentRank: candidate?.presentRank || '',
     vesselType: (() => {
@@ -2338,6 +2340,23 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.familyName}</div>
+              )}
+            </div>
+            
+            <div>
+              <Label className="text-xs text-gray-500 tracking-wide">Gender</Label>
+              {isEditing ? (
+                <Select value={formData.gender} onValueChange={(value) => updateFormData('gender', value)}>
+                  <SelectTrigger className="mt-1" data-testid="select-gender">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="mt-1 text-sm text-gray-900">{formData.gender}</div>
               )}
             </div>
             

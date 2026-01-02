@@ -1669,6 +1669,7 @@ export class DatabaseStorage implements IStorage {
       firstName: candidate.firstName,
       middleName: candidate.middleName,
       familyName: candidate.familyName,
+      gender: applicationData.gender || candidate.gender || 'Male',
       dateOfBirth: candidate.dob,
       nationality: candidate.nationality,
       presentRank: candidate.rankAppliedFor,

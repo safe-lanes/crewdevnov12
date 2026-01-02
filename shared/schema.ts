@@ -107,6 +107,7 @@ export const crewMembers = pgTable("crew_members", {
   firstName: text("first_name").notNull(),
   middleName: text("middle_name"),
   familyName: text("family_name"), // Changed from lastName to match form
+  gender: text("gender"), // Male or Female
   dateOfBirth: text("date_of_birth"), // DOB
   age: text("age"), // Age in years
   nationality: text("nationality").notNull(),
@@ -218,6 +219,7 @@ export const recruitmentCandidates = pgTable("recruitment_candidates", {
   firstName: text("first_name").notNull(),
   middleName: text("middle_name"),
   familyName: text("family_name").notNull(),
+  gender: text("gender"), // Male or Female
   dob: text("dob").notNull(),
   nationality: text("nationality").notNull(),
   rankAppliedFor: text("rank_applied_for").notNull(),

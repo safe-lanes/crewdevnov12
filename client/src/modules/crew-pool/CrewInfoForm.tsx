@@ -64,6 +64,7 @@ interface FormData {
   firstName: string;
   middleName: string;
   familyName: string;
+  gender: string; // Male or Female
   nationality: string;
   presentRank: string;
   dateOfBirth: string;
@@ -647,6 +648,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     firstName: crewMember?.firstName || '',
     middleName: crewMember?.middleName || '',
     familyName: crewMember?.familyName || '',
+    gender: 'Male', // Default to Male, will be loaded from fetched data
     nationality: crewMember?.nationality || '',
     presentRank: normalizeRank(crewMember?.presentRank || '') || crewMember?.presentRank || '',
     dateOfBirth: crewMember?.dob || '',
@@ -816,6 +818,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         firstName: detailedCrewData.firstName || '',
         middleName: detailedCrewData.middleName || '',
         familyName: detailedCrewData.familyName || '',
+        gender: detailedCrewData.gender || 'Male',
         nationality: detailedCrewData.nationality || '',
         presentRank: normalizeRank(detailedCrewData.presentRank || '') || detailedCrewData.presentRank || '',
         dateOfBirth: detailedCrewData.dob || detailedCrewData.dateOfBirth || '',
@@ -2400,19 +2403,21 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             )}
           </div>
           
-          {/* Row 2: Crew ID (Auto Generated) | Rank / | Vessel Type */}
+          {/* Row 2: Gender | Rank | Vessel Type */}
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Crew ID (Auto Generated)</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Gender</Label>
             {isEditing ? (
-              <Input
-                value={formData.employeeId}
-                onChange={(e) => updateFormData('employeeId', e.target.value)}
-                className="mt-1 bg-gray-50"
-                placeholder="Auto-generated"
-                readOnly
-              />
+              <Select value={formData.gender} onValueChange={(value) => updateFormData('gender', value)}>
+                <SelectTrigger className="mt-1" data-testid="select-gender-crew">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                </SelectContent>
+              </Select>
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.employeeId}</div>
+              <div className="mt-1 text-sm text-gray-900">{formData.gender}</div>
             )}
           </div>
           
@@ -5283,8 +5288,18 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionBRef} data-section="B">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
-                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B Seafarers' Particulars</h2>
-                  <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
+                  <div className="flex justify-between items-start gap-4">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B Seafarers' Particulars</h2>
+                      <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
+                    </div>
+                    {formData.employeeId && (
+                      <div className="text-right">
+                        <span className="text-sm text-gray-500">Crew ID:</span>
+                        <span className="ml-2 text-base font-medium" style={{ color: '#16569e' }} data-testid="text-crew-id">{formData.employeeId}</span>
+                      </div>
+                    )}
+                  </div>
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
                 <div className="space-y-6">
