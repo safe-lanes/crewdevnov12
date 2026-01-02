@@ -124,10 +124,10 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     }
   }, [rankGroupConfig, form.configuration, reset]);
 
-  const otherCriteria = watch('otherCriteria');
-  const cesTests = watch('cesTests');
+  const otherCriteria = watch('otherCriteria') ?? [];
+  const cesTests = watch('cesTests') ?? [];
   const experienceMonths = watch('experienceMonths');
-  const checklistSections = watch('checklistSections');
+  const checklistSections = watch('checklistSections') ?? [];
 
   const onSubmit = (data: PromotionA2Config) => {
     const configurationJson = JSON.stringify({
