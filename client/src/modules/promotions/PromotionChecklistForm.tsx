@@ -488,12 +488,13 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                         className="flex items-center justify-center cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
+                          e.preventDefault();
                           handleToggleComplete(section.id, point.id);
                         }}
                       >
                         <Checkbox
                           checked={point.completed}
-                          onCheckedChange={() => handleToggleComplete(section.id, point.id)}
+                          className="pointer-events-none"
                           data-testid={`checkbox-completed-${point.id}`}
                         />
                       </div>
