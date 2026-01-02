@@ -1234,17 +1234,11 @@ const AdminModuleInner = (): JSX.Element => {
   
   // Function to force refresh masters data
   const refreshMastersData = () => {
-    if (import.meta.env.DEV) {
-      console.log('🔄 [REFRESH] Clearing masters cache and refetching...');
-    }
     rq.invalidateQueries({ queryKey: ['/api/masters'] });
   };
   
   // Function to navigate directly to Port Master
   const navigateToPortMaster = () => {
-    if (import.meta.env.DEV) {
-      console.log('🚢 [NAVIGATION] Navigating to Port Master (018)...');
-    }
     setSelectedAdminPage('masters');
     setSelectedMaster('018');
     // Use wouter's navigate for proper routing
@@ -1284,10 +1278,6 @@ const AdminModuleInner = (): JSX.Element => {
     ? externalVesselTypeData 
     : (externalVesselTypeData as any)?.vesseltypes || [];
   
-  // Add debug logging
-  if (import.meta.env.DEV) {
-    console.log('🔧 [External Vessel Types] Processed Data:', vesselTypeData);
-  }
   
   // Designation Master Data (for users master dropdown)
   // PERFORMANCE: Only fetch when on masters tab
@@ -1314,10 +1304,6 @@ const AdminModuleInner = (): JSX.Element => {
     ? externalVesselMasterData 
     : (externalVesselMasterData as any)?.vessels || [];
   
-  // Add debug logging
-  if (import.meta.env.DEV) {
-    console.log('🚢 [External Vessels] Processed Data:', vesselMasterData);
-  }
   
   // NEW: External nationality data from API
   const { 
@@ -1332,10 +1318,6 @@ const AdminModuleInner = (): JSX.Element => {
     ? externalNationalityData 
     : (externalNationalityData as any)?.nationalities || [];
   
-  // Add debug logging
-  if (import.meta.env.DEV) {
-    console.log('🌍 [External Nationalities] Processed Data:', nationalityData);
-  }
   
   // NEW: External fleet groups data from API
   const { 
@@ -1347,10 +1329,6 @@ const AdminModuleInner = (): JSX.Element => {
   // Process external API response structure (cast to any to handle dynamic API response)
   const fleetGroupsData = (externalFleetGroupsData as any)?.fleetGroups || [];
   
-  // Add debug logging
-  if (import.meta.env.DEV) {
-    console.log('🚢 [External Fleet Groups] Processed Data:', fleetGroupsData);
-  }
   
   // NEW: External additional groups data from API (Master 017)
   const {
@@ -1362,10 +1340,6 @@ const AdminModuleInner = (): JSX.Element => {
   // Process response - some APIs return an object with `additionalGroups`, others return array directly
   const additionalGroupsData = (externalAdditionalGroupsData as any)?.additionalGroups || externalAdditionalGroupsData || [];
   
-  // Add debug logging (development only)
-  if (import.meta.env.DEV) {
-    console.log('🧩 [External Additional Groups] Processed Data:', additionalGroupsData);
-  }
   
   // NEW: External ports data from API (Master 018)
   const {
@@ -1377,10 +1351,6 @@ const AdminModuleInner = (): JSX.Element => {
   // Process response - some APIs return an object with `ports`, others return array directly
   const portsData = (externalPortsData as any)?.ports || externalPortsData || [];
   
-  // Add debug logging (development only)
-  if (import.meta.env.DEV) {
-    console.log('⚓ [External Ports] Processed Data:', portsData);
-  }
   
   // NEW: External languages data from API (Master 019)
   const {
@@ -1395,10 +1365,6 @@ const AdminModuleInner = (): JSX.Element => {
     ? externalLanguagesData 
     : (externalLanguagesData as any)?.languages || [];
   
-  // Add debug logging (development only)
-  if (import.meta.env.DEV) {
-    console.log('🗣️ [External Languages] Processed Data:', languagesData);
-  }
   
   // NEW: External countries data from API (Master 020)
   const {
@@ -1413,10 +1379,6 @@ const AdminModuleInner = (): JSX.Element => {
     ? externalCountriesData 
     : (externalCountriesData as any)?.countries || [];
   
-  // Add debug logging (development only)
-  if (import.meta.env.DEV) {
-    console.log('🌍 [External Countries] Processed Data:', countriesData);
-  }
   
   // NEW: External users data from API (Master 024)
   const {
@@ -1431,10 +1393,6 @@ const AdminModuleInner = (): JSX.Element => {
     ? externalUsersData 
     : (externalUsersData as any)?.users || [];
   
-  // Add debug logging (development only)
-  if (import.meta.env.DEV) {
-    console.log('👥 [External Users] Processed Data:', externalUsersApiData);
-  }
   
   // Vessel Groups Data (for vessel group selection)
   // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)
@@ -1488,41 +1446,31 @@ const AdminModuleInner = (): JSX.Element => {
 
   // URL parsing and routing handler
   useEffect(() => {
-    console.log('🔗 [ROUTING] Location changed:', location);
-    
     // Parse the URL path to extract admin page and parameters
     const path = location.replace(/^\//, ''); // Remove leading slash
     const pathParts = path.split('/');
     
-    console.log('🔗 [ROUTING] Path parts:', pathParts);
-    
     if (pathParts[0] === 'admin') {
       if (pathParts.length === 1) {
         // /admin - show default page (forms)
-        console.log('🔗 [ROUTING] Default admin page - showing forms');
         setSelectedAdminPage('forms');
       } else if (pathParts[1] === 'masters' && pathParts[2]) {
         // /admin/masters/018 - show masters page with specific master
         const masterId = pathParts[2];
-        console.log('🔗 [ROUTING] Masters page with master ID:', masterId);
         setSelectedAdminPage('masters');
         setSelectedMaster(masterId);
       } else if (pathParts[1] === 'masters') {
         // /admin/masters - show masters page with default master
-        console.log('🔗 [ROUTING] Masters page with default master');
         setSelectedAdminPage('masters');
         setSelectedMaster('001'); // Default to first master
       } else if (pathParts[1] === 'forms') {
         // /admin/forms - show forms page
-        console.log('🔗 [ROUTING] Forms page');
         setSelectedAdminPage('forms');
       } else if (pathParts[1] === 'rank-admin') {
         // /admin/rank-admin - show rank admin page
-        console.log('🔗 [ROUTING] Rank admin page');
         setSelectedAdminPage('rank-admin');
       } else {
         // Unknown admin path - default to forms
-        console.log('🔗 [ROUTING] Unknown admin path, defaulting to forms');
         setSelectedAdminPage('forms');
       }
     }
@@ -1683,11 +1631,6 @@ const AdminModuleInner = (): JSX.Element => {
     }
     prevCompanyRankSyncRef.current = syncKey;
     
-    console.log('🔍 [DEBUG] Syncing company rank data with rank master', {
-      allRanksCount: allRanks.length,
-      savedCompanyRanksCount: savedCompanyRanks.length
-    });
-    
     // Create a map of existing company data from saved backend data
     const existingCompanyData = new Map<string, CompanyRankData>();
     savedCompanyRanks.forEach(item => {
@@ -1805,7 +1748,6 @@ const AdminModuleInner = (): JSX.Element => {
     
     // Only update if there's a meaningful change
     if (JSON.stringify(companyRankData) !== JSON.stringify(finalCompanyRanks)) {
-      console.log('🔍 [DEBUG] Updating company rank data with role variants preserved');
       setCompanyRankData(finalCompanyRanks);
     }
     
@@ -1977,15 +1919,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Load saved vessel data when vessels are selected
   React.useEffect(() => {
-    console.log('🔍 [VESSEL LOAD CHECK]', {
-      selectedVesselsLength: selectedVessels.length,
-      companyRankDataLength: companyRankData.length,
-      selectedVessels,
-      loadedVessels: Array.from(loadedVesselsRef.current)
-    });
-    
     if (selectedVessels.length === 0 || companyRankData.length === 0) {
-      console.log('🔍 [VESSEL LOAD SKIP] Early return - no vessels selected or no company data');
       return;
     }
 
@@ -1993,28 +1927,9 @@ const AdminModuleInner = (): JSX.Element => {
       // Determine which vessels need to be loaded (haven't been loaded yet)
       const vesselsToLoad = selectedVessels.filter(vesselId => !loadedVesselsRef.current.has(vesselId));
       
-      console.log('🔍 [VESSEL LOAD] Vessels to load:', vesselsToLoad);
-      
       if (vesselsToLoad.length === 0) {
-        console.info('📥 All selected vessels already loaded, skipping fetch');
-        // Show what data we have for the current vessel
-        const currentVesselId = selectedVessels[0];
-        const currentData = vesselRankDataMap.get(currentVesselId);
-        console.log(`🔍 [CURRENT DATA] Vessel ${currentVesselId} has ${currentData?.length || 0} ranks`);
-        if (currentData && currentData.length > 0) {
-          const sample = currentData[0];
-          console.log('🔍 [SAMPLE RANK]', {
-            id: sample.id,
-            rank: sample.rank,
-            actualManningFlag: sample.actualManningFlag,
-            safeManning: sample.safeManning,
-            optimumManning: sample.optimumManning
-          });
-        }
         return;
       }
-
-      console.info(`📥 Loading data for ${vesselsToLoad.length} vessel(s) in ${revisionMode ? 'REVISION' : 'NON-REVISION'} mode`);
 
       try {
         // Load all vessels in parallel using Promise.all for better performance
@@ -2083,9 +1998,7 @@ const AdminModuleInner = (): JSX.Element => {
                   });
                   
                   loadedVesselsRef.current.add(vesselId);
-                  console.log(`📥 ✓ Loaded and merged draft for vessel ${vesselId} (${mergedData.length} ranks)`);
                 } else {
-                  console.info(`📥 No draft found for vessel ${vesselId} - initializing from company structure`);
                   // CRITICAL FIX: Initialize vessel data from company structure when no draft exists
                   const freshData = companyRankData.map(companyRank => ({
                     ...companyRank,
@@ -2103,7 +2016,6 @@ const AdminModuleInner = (): JSX.Element => {
                   });
                   
                   loadedVesselsRef.current.add(vesselId);
-                  console.log(`📥 ✓ Initialized vessel ${vesselId} from company structure (${freshData.length} ranks)`);
                 }
               }
             } else {
@@ -2186,9 +2098,7 @@ const AdminModuleInner = (): JSX.Element => {
                   }
                   
                   loadedVesselsRef.current.add(vesselId);
-                  console.log(`📥 ✓ Loaded and merged revision ${latestRevision.revision} for vessel ${vesselId} (${mergedData.length} ranks, date: ${latestRevision.revisionDate})`);
                 } else {
-                  console.info(`📥 No revisions found for vessel ${vesselId} - initializing from company structure`);
                   setFlexDate(''); // Clear date when no revisions exist
                   
                   // CRITICAL FIX: Initialize vessel data from company structure when no revisions exist
@@ -2208,17 +2118,15 @@ const AdminModuleInner = (): JSX.Element => {
                   });
                   
                   loadedVesselsRef.current.add(vesselId);
-                  console.log(`📥 ✓ Initialized vessel ${vesselId} from company structure (${freshData.length} ranks)`);
                 }
               }
             }
           } catch (vesselError) {
-            console.error(`📥 ✗ Error loading data for vessel ${vesselId}:`, vesselError);
             // Continue loading other vessels even if one fails
           }
         }));
       } catch (error) {
-        console.error('📥 ✗ Error loading vessel data:', error);
+        // Error loading vessel data
       }
     };
 
@@ -2437,41 +2345,16 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Edit handlers with baseline capture
   const handleEditMaster = () => {
-    if (import.meta.env.DEV) {
-      console.log(`🔧 [EDIT_SESSION] Starting edit for master ${selectedMaster} with baseline data`);
-      console.log('📊 [BASELINE] Capturing masterData:', masterData);
-      console.log('📊 [BASELINE] masterData length:', masterData.length);
-      console.log('📊 [BASELINE] Current edit state before starting:', { isEditing, activeMasterId: isEditingMaster(selectedMaster) });
-    }
-    
     // Capture baseline data when entering edit mode
     startEdit(selectedMaster, masterData);
-    
-    if (import.meta.env.DEV) {
-      console.log('🔧 [EDIT_SESSION] startEdit() called - edit mode should now be active');
-    }
   };
 
   const handleCancelEditMaster = () => {
-    if (import.meta.env.DEV) {
-      console.log(`❌ [EDIT_SESSION] Discarding changes for master ${selectedMaster}`);
-    }
     discardChanges();
     stopEdit();
   };
 
   const handleSaveMaster = async () => {
-    if (import.meta.env.DEV) {
-      console.log('💾 [SAVE] Starting EditSession commit save operation');
-      console.log('💾 [SAVE] Current edit state:', { 
-        isEditing, 
-        isDirty, 
-        saving, 
-        activeMaster: isEditingMaster(selectedMaster),
-        pendingChangesCount: pendingChanges.size
-      });
-    }
-    
     try {
       // Use EditSession's commitSave which will:
       // 1. Call handleEditSessionSave with pending changes
@@ -2497,15 +2380,7 @@ const AdminModuleInner = (): JSX.Element => {
       // Stop edit mode after successful save
       stopEdit();
       
-      if (import.meta.env.DEV) {
-        console.log('✅ [SAVE] EditSession commit save completed successfully');
-      }
-      
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('❌ [SAVE] EditSession commit save failed:', error);
-      }
-      
       toast({
         title: "Error",
         description: `Failed to save changes: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -2515,17 +2390,8 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const updateMasterField = (itemId: number, field: 'name' | 'description' | 'countryName' | 'country' | 'countryCode' | 'vesselType' | 'vtuid' | 'tanker' | 'oilTanker' | 'gasTanker' | 'chemicalTanker' | 'bulk' | 'vessel' | 'imoNumber' | 'cid' | 'firstname' | 'lastname' | 'designationId' | 'email', value: string | boolean) => {
-    if (import.meta.env.DEV) {
-      console.log(`🎯 [INPUT_HANDLER] updateMasterField called - Entry ${itemId}, Field: ${field}, Value: ${JSON.stringify(value)}`);
-      console.log(`🎯 [INPUT_HANDLER] Current edit state - isEditing: ${isEditing}, activemaster: ${isEditingMaster(selectedMaster)}`);
-    }
-    
     // Only track the change locally - no immediate API calls
     markDirty(itemId, field, value);
-    
-    if (import.meta.env.DEV) {
-      console.log(`✅ [INPUT_HANDLER] Called markDirty for ${itemId}.${field} - changes tracked locally`);
-    }
   };
 
   const deleteMasterEntry = (itemId: number) => {
@@ -2604,7 +2470,6 @@ const AdminModuleInner = (): JSX.Element => {
         };
       } else if (selectedMaster === "014") {
         // Vessel master - create entry with safe field mapping
-        console.log('🚢 [NEW ENTRY] Creating new vessel master entry with safe field mapping');
         const vesselData: Partial<VesselMasterEntry> = {
           entryId: newEntryId,
           vessel: 'New Vessel', // Vessel name - will map to 'name' field
@@ -2615,7 +2480,6 @@ const AdminModuleInner = (): JSX.Element => {
         
         // Apply safe field mapping before creating entry
         const safeData = mapVesselDataToSafeFields(vesselData, selectedMaster);
-        console.log('🚢 [NEW ENTRY] Safe vessel data:', safeData);
         
         // Ensure name field is set (required for vessel master)
         if (!safeData.name) {
@@ -2661,7 +2525,6 @@ const AdminModuleInner = (): JSX.Element => {
 
     createEntryMutation.mutate(newEntryData, {
       onSuccess: (data) => {
-        console.log('✅ [UI] New entry created successfully:', data);
         toast({
           title: "Success",
           description: "New entry created successfully",
@@ -2671,10 +2534,6 @@ const AdminModuleInner = (): JSX.Element => {
         // This ensures fresh baseline data when entering edit mode
         (async () => {
           try {
-            if (import.meta.env.DEV) {
-              console.log('🔄 [AUTO_EDIT] Waiting for fresh data before auto-starting edit mode...');
-            }
-            
             // Refetch the query and get fresh data
             // Use correct queryKey format matching useMasterDataEntries hook
             await rq.refetchQueries({ 
@@ -2696,22 +2555,15 @@ const AdminModuleInner = (): JSX.Element => {
               return freshRawData;
             })();
             
-            if (import.meta.env.DEV) {
-              console.log('🎯 [AUTO_EDIT] Fresh data loaded - auto-starting edit mode with proper baseline');
-              console.log('📊 [AUTO_EDIT] Fresh master data entries:', freshMasterData.length);
-            }
-            
             // Start edit with fresh data directly (not using handleEditMaster)
             startEdit(selectedMaster, freshMasterData);
           } catch (error) {
-            console.error('❌ [AUTO_EDIT] Failed to refetch data for auto-edit:', error);
             // Fallback: still try to enter edit mode even if refetch failed
             handleEditMaster();
           }
         })();
       },
       onError: (error) => {
-        console.error('❌ [UI] Failed to create new entry:', error);
         toast({
           title: "Error",
           description: `Failed to create new entry: ${error.message}`,
@@ -2724,20 +2576,16 @@ const AdminModuleInner = (): JSX.Element => {
   // Company handlers
   
   const handleCompanyRankDataChange = (id: string, field: keyof CompanyRankData, value: any) => {
-    console.log('🎯 [CHECKBOX] Handler called:', { id, field, value });
     setCompanyRankData(prev => {
       const newData = [...prev];
       const rowIndex = newData.findIndex(row => row.id === id);
       if (rowIndex !== -1) {
         newData[rowIndex] = { ...newData[rowIndex], [field]: value };
-        console.log('🎯 [CHECKBOX] Updated row:', newData[rowIndex]);
         
         // Track changes that affect the main rank database
         if (field === 'rank' || field === 'rankId') {
           setChangedCompanyRanks(prev => new Set(prev).add(id));
         }
-      } else {
-        console.log('🎯 [CHECKBOX] Row not found for id:', id);
       }
       return newData;
     });
@@ -2753,21 +2601,13 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleSaveCompany = async () => {
     try {
-      console.log('🔄 [COMPANY_SAVE] Starting save process', {
-        changedCompanyRanks: Array.from(changedCompanyRanks),
-        companyRankDataCount: companyRankData.length
-      });
-
       // First, save role variants as new ranks in the database
       const roleVariants = companyRankData.filter(rank => rank.isRoleRow);
-      console.log('🔄 [COMPANY_SAVE] Found role variants to save:', roleVariants.length);
       
       for (const roleVariant of roleVariants) {
         // Check if this role variant doesn't have a numeric ID (needs to be created)
         const numericId = parseInt(roleVariant.id, 10);
         if (isNaN(numericId)) {
-          console.log('🔄 [COMPANY_SAVE] Creating new role variant:', roleVariant.role);
-          
           // Find the original rank to get category and other info
           const originalRank = sharedRankMasterData?.find(rank => rank.id.toString() === roleVariant.originalRankId);
           
@@ -2787,14 +2627,12 @@ const AdminModuleInner = (): JSX.Element => {
       for (const changedId of Array.from(changedCompanyRanks)) {
         // Skip new ranks that haven't been saved yet (they have 'new_' prefix)
         if (changedId.startsWith('new_')) {
-          console.log('🔄 [COMPANY_SAVE] Skipping new unsaved rank:', changedId);
           continue;
         }
         
         // Guard against invalid IDs
         const numericId = parseInt(changedId, 10);
         if (isNaN(numericId)) {
-          console.error('🔄 [COMPANY_SAVE] Invalid rank ID:', changedId);
           continue;
         }
         
@@ -2807,13 +2645,6 @@ const AdminModuleInner = (): JSX.Element => {
             // Get the updated applicableToCompany value from rank master data
             const updatedRankMasterData = rankMasterData.find(r => r.id.toString() === changedId);
             const updatedApplicableToCompany = updatedRankMasterData?.applicableToCompany ?? originalRank.applicableToCompany;
-            
-            console.log('🔄 [COMPANY_SAVE] Updating rank:', {
-              id: changedId,
-              name: originalRank.rank,
-              updatedLabel: companyRank.rank,
-              applicableToCompany: updatedApplicableToCompany
-            });
 
             await updateRankMutation.mutateAsync({
               id: numericId,
@@ -2832,7 +2663,6 @@ const AdminModuleInner = (): JSX.Element => {
       }
 
       // CRITICAL: Bulk save ALL company rank data with checkbox settings
-      console.log('🔄 [COMPANY_SAVE] Bulk saving all company rank data to persistent storage');
       const companyRankDataForSave = companyRankData.map(rank => ({
         id: rank.id,
         rank: rank.rank,
@@ -2862,7 +2692,6 @@ const AdminModuleInner = (): JSX.Element => {
       }));
 
       await saveCompanyRanksMutation.mutateAsync(companyRankDataForSave);
-      console.log('✅ [COMPANY_SAVE] Successfully bulk saved all company rank data');
 
       // Clear change tracking for both company and rank master
       setChangedCompanyRanks(new Set());
@@ -2893,21 +2722,15 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const handleMultiple = (rankId: string) => {
-    console.log('🔄 [MULTIPLE DEBUG] Multiple button clicked for rankId:', rankId);
-    console.log('🔄 [MULTIPLE DEBUG] Current companyRankData count:', companyRankData.length);
-    
     // Find the rank to multiply - could be original rank or originalRankId from role
     let originalRankId = rankId;
     let rankToMultiply = companyRankData.find(rank => rank.id === rankId);
-    
-    console.log('🔄 [MULTIPLE DEBUG] Found rankToMultiply:', rankToMultiply);
     
     // If this is a role row, get the original rank ID
     if (rankToMultiply?.isRoleRow && rankToMultiply.originalRankId) {
       originalRankId = rankToMultiply.originalRankId;
       // Get the parent rank data for creating new roles
       rankToMultiply = companyRankData.find(rank => rank.id === originalRankId);
-      console.log('🔄 [MULTIPLE DEBUG] This is a role row, using originalRankId:', originalRankId);
     }
     
     if (rankToMultiply) {
@@ -2977,16 +2800,8 @@ const AdminModuleInner = (): JSX.Element => {
           currentData.splice(lastRoleIndex + 1, 0, newRole);
         }
         
-        console.log('🔄 [MULTIPLE DEBUG] Updated companyRankData count:', currentData.length);
-        console.log('🔄 [MULTIPLE DEBUG] Role rows created for originalRankId:', originalRankId);
-        const roleRows = currentData.filter(r => r.originalRankId === originalRankId);
-        console.log('🔄 [MULTIPLE DEBUG] Total role rows for this rank:', roleRows.length);
-        console.log('🔄 [MULTIPLE DEBUG] Role rows:', roleRows.map(r => ({ id: r.id, role: r.role, isRoleRow: r.isRoleRow })));
-        
         return currentData;
       });
-    } else {
-      console.error('🔄 [MULTIPLE DEBUG] rankToMultiply not found for rankId:', rankId);
     }
   };
 
@@ -3216,15 +3031,12 @@ const AdminModuleInner = (): JSX.Element => {
             
             if (response.ok) {
               const result = await response.json();
-              console.log(`💾 ${result.action === 'created' ? 'Created' : 'Updated'} draft for vessel ${vesselId}`);
               savedVessels.push(vesselId);
             } else {
               const error = await response.json();
-              console.error(`Failed to save draft for vessel ${vesselId}:`, error);
               failedVessels.push(vesselId);
             }
           } catch (vesselError) {
-            console.error(`Error saving draft for vessel ${vesselId}:`, vesselError);
             failedVessels.push(vesselId);
           }
         }
@@ -3245,7 +3057,6 @@ const AdminModuleInner = (): JSX.Element => {
         });
       }
     } catch (error) {
-      console.error("Error saving draft:", error);
       toast({
         title: "Error saving draft",
         description: "Please try again",
@@ -3265,8 +3076,6 @@ const AdminModuleInner = (): JSX.Element => {
     
     // Clear loaded vessels tracking to allow fresh load next time
     loadedVesselsRef.current.clear();
-    
-    console.log("Cancelled vessel revision mode");
   };
 
   const handleSubmit = async () => {
@@ -3314,15 +3123,12 @@ const AdminModuleInner = (): JSX.Element => {
             
             if (response.ok) {
               const result = await response.json();
-              console.log(`✅ Submitted revision ${result.metadata.autoAssignedRevision} for vessel ${vesselId}`);
               submittedVessels.push(vesselId);
             } else {
               const error = await response.json();
-              console.error(`Failed to submit for vessel ${vesselId}:`, error);
               failedVessels.push(vesselId);
             }
           } catch (vesselError) {
-            console.error(`Error submitting for vessel ${vesselId}:`, vesselError);
             failedVessels.push(vesselId);
           }
         }
@@ -3697,9 +3503,6 @@ const AdminModuleInner = (): JSX.Element => {
 
   const deleteFormMutation = useMutation({
     mutationFn: async (formId: number) => {
-      if (import.meta.env.DEV) {
-        console.log('🗑️ [DELETE DEBUG] Making DELETE request for form ID:', formId);
-      }
       return await apiRequest("DELETE", `/api/forms/${formId}`);
     },
     onSuccess: () => {
@@ -3709,9 +3512,6 @@ const AdminModuleInner = (): JSX.Element => {
         title: "Success",
         description: "Form deleted successfully",
       });
-      if (import.meta.env.DEV) {
-        console.log('✅ [DELETE DEBUG] Form deleted successfully');
-      }
     },
     onError: (error: any) => {
       // Also invalidate cache on error to refresh state
@@ -3730,27 +3530,11 @@ const AdminModuleInner = (): JSX.Element => {
         description: errorMessage,
         variant: "destructive",
       });
-      
-      if (import.meta.env.DEV) {
-        console.error('❌ [DELETE DEBUG] Form deletion failed:', error);
-        console.error('❌ [DELETE DEBUG] Error details:', {
-          status: error?.response?.status,
-          data: error?.response?.data,
-          message: error?.message
-        });
-      }
     },
   });
 
 
   const handleDeleteForm = (form: Form) => {
-    // Debug logging for ID mismatch prevention
-    if (import.meta.env.DEV) {
-      console.log('🗑️ [DELETE DEBUG] Attempting to delete form:', form);
-      console.log('🗑️ [DELETE DEBUG] Form ID:', form.id);
-      console.log('🗑️ [DELETE DEBUG] Form name:', form.name);
-    }
-    
     if (window.confirm(`Are you sure you want to delete the form "${form.name}"?`)) {
       deleteFormMutation.mutate(form.id);
     }
@@ -3858,9 +3642,8 @@ const AdminModuleInner = (): JSX.Element => {
     if (createFormType === "template" && selectedTemplate) {
       try {
         createFormEditor(selectedTemplate);
-        console.log(`Form Editor created for: ${selectedTemplate}`);
       } catch (error) {
-        console.error("Error creating form editor:", error);
+        // Error creating form editor
       }
     }
   };
@@ -3912,8 +3695,6 @@ const AdminModuleInner = (): JSX.Element => {
   });
 
   const handleFormSave = (formData: any) => {
-    console.log("Saving form configuration:", formData);
-    
     if (!formData.formId) return;
     
     const rankGroup = allRankGroups.find(
@@ -3924,13 +3705,11 @@ const AdminModuleInner = (): JSX.Element => {
     if (formData.configuration && typeof formData.configuration === 'string') {
       // Promotion form data - save directly to rank group
       if (rankGroup) {
-        console.log("Saving Promotion A2 configuration to rank group:", rankGroup.id);
         updateRankGroupConfigMutation.mutate({
           rankGroupId: rankGroup.id,
           configuration: formData.configuration,
         });
       } else {
-        console.log("No rank group found, saving to form directly");
         updateFormMutation.mutate({
           formId: formData.formId,
           sharedConfig: formData.configuration,
@@ -3949,7 +3728,6 @@ const AdminModuleInner = (): JSX.Element => {
     };
     
     if (rankGroup) {
-      console.log("Saving rank-group-specific configuration to rank group:", rankGroup.id, rankGroupConfig);
       updateRankGroupConfigMutation.mutate({
         rankGroupId: rankGroup.id,
         configuration: JSON.stringify(rankGroupConfig),
@@ -4501,13 +4279,7 @@ const AdminModuleInner = (): JSX.Element => {
                         Cancel
                       </Button>
                       <Button
-                        onClick={() => {
-                          console.log('🔴 [CLICK DEBUG] Save Draft button clicked!');
-                          console.log('🔴 [CLICK DEBUG] selectedVessels length:', selectedVessels.length);
-                          console.log('🔴 [CLICK DEBUG] selectedVessels:', selectedVessels);
-                          console.log('🔴 [CLICK DEBUG] revisionMode:', revisionMode);
-                          handleSaveDraft();
-                        }}
+                        onClick={handleSaveDraft}
                         className="h-8 bg-[#15569e] hover:bg-[#0f4078] text-white text-xs"
                       >
                         Save Draft
@@ -4978,7 +4750,6 @@ const AdminModuleInner = (): JSX.Element => {
                                       : "Click to toggle Actual Manning"}
                                   onClick={() => {
                                     if (!revisionMode || selectedVessels.length === 0) return;
-                                    console.log('🔧 [CELL CLICKED] Toggling actual manning for rank:', rank.id);
                                     const firstVesselId = selectedVessels[0];
                                     if (firstVesselId) {
                                       const vesselRank = currentVesselRankLookup.get(rank.id);
@@ -6982,10 +6753,6 @@ const AdminModuleInner = (): JSX.Element => {
                       <div
                         key={master.id}
                         onClick={() => {
-                          if (import.meta.env.DEV) {
-                            console.log(`🔍 [CLICK] Selected master: ${master.id} - ${master.name}`);
-                          }
-                          
                           // Check for unsaved changes before navigating
                           if (hasUnsavedChanges()) {
                             setPendingTarget(`/admin/masters/${master.id}`);
@@ -8951,10 +8718,6 @@ export const AdminModule = (): JSX.Element => {
 
   // Define handlers here that will be passed to the provider
   const handleEditSessionSave = async (masterId: string, changes: Map<string | number, Record<string, any>>) => {
-    if (import.meta.env.DEV) {
-      console.log(`💾 [EDIT_SESSION] Saving ${changes.size} changes for master ${masterId}`);
-    }
-
     // Check if this is vessel or port master for special handling
     const isVesselMasterSave = isVesselMaster(masterId);
     const isPortMasterSave = isPortMaster(masterId);
@@ -9033,9 +8796,6 @@ export const AdminModule = (): JSX.Element => {
   };
 
   const handleEditSessionNavigate = (target: string) => {
-    if (import.meta.env.DEV) {
-      console.log(`🔗 [EDIT_SESSION] Navigating to: ${target}`);
-    }
     navigate(target);
   };
 
