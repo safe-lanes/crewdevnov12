@@ -4340,32 +4340,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
+        // Build current crew lookup from vessel_planning - same source as active proposals
+        // This allows archived entries to show the current on-board crew for each vessel:rank
+        const vesselPlanningData = await storage.getAllVesselPlanning();
+        const allCrewMembers = await storage.getCrewMembers();
+        
+        // Build crew name lookup map
+        const crewMemberNameMap = new Map<string, string>();
+        for (const crew of allCrewMembers) {
+          if (crew.id) {
+            const nameParts = [crew.firstName, crew.middleName, crew.familyName].filter(Boolean);
+            const fullName = nameParts.join(' ').trim();
+            if (fullName) {
+              crewMemberNameMap.set(crew.id, fullName);
+            }
+          }
+        }
+        
+        // Build vesselId:rank -> current crew data lookup map (same as getProposedAssignments)
+        const currentCrewMap = new Map<string, any>();
+        for (const vp of vesselPlanningData) {
+          if (vp.vesselId && vp.rank && vp.crewMemberId) {
+            const key = `${vp.vesselId}:${vp.rank}`;
+            if (vp.signOnDate) {
+              // Calculate range end date (relief due + 1 month grace period)
+              let rangeEndDate: string;
+              if (vp.reliefDue) {
+                const reliefDueDate = new Date(vp.reliefDue);
+                const rangeEnd = new Date(reliefDueDate);
+                rangeEnd.setMonth(rangeEnd.getMonth() + 1);
+                rangeEndDate = rangeEnd.toISOString().split('T')[0];
+              } else {
+                // Fallback: 7 months from sign on (6 month contract + 1 month grace)
+                const fallbackDate = new Date(vp.signOnDate);
+                fallbackDate.setMonth(fallbackDate.getMonth() + 7);
+                rangeEndDate = fallbackDate.toISOString().split('T')[0];
+              }
+              
+              // Look up crew name from crew members table
+              const crewName = crewMemberNameMap.get(vp.crewMemberId) || vp.crewMemberId;
+              
+              currentCrewMap.set(key, {
+                id: vp.crewMemberId,
+                name: crewName,
+                contractStartDate: vp.signOnDate,
+                contractEndDate: vp.reliefDue || null,
+                rangeStartDate: vp.signOnDate,
+                rangeEndDate: rangeEndDate,
+              });
+            }
+          }
+        }
+        
         // Runtime fallback: reconstruct currentCrewInfo for entries archived before the fix
-        // Uses data from fullAssignmentSnapshot which contains the rotation assignment at archive time
+        // Priority: 1) currentCrewInfo stored at archive time, 2) live vessel_planning lookup, 3) snapshot parsing
         const entriesWithCurrentCrew = archivedEntries.map((entry) => {
-          // If currentCrewInfo already exists, use it
+          // Priority 1: If currentCrewInfo already exists from archive time, use it
           if (entry.currentCrewInfo) {
             return { ...entry, reconstructedCurrentCrew: JSON.parse(entry.currentCrewInfo) };
           }
           
-          // Fallback: extract on-board crew info from fullAssignmentSnapshot
-          // The snapshot contains the rotation plan assignment which may have:
-          // - snapshot.currentCrew (nested object with id, name, dates)
-          // - snapshot.onBoardCrew (alternative name for relieved crew)
-          // - or flattened onBoardCrewId/onBoardCrewName fields
+          // Priority 2: Lookup current crew from vessel_planning using vesselId:rank key
+          // This shows whoever is currently on board in that position
+          if (entry.vesselId && entry.rank) {
+            const key = `${entry.vesselId}:${entry.rank}`;
+            const currentCrew = currentCrewMap.get(key);
+            if (currentCrew) {
+              return { ...entry, reconstructedCurrentCrew: currentCrew };
+            }
+          }
+          
+          // Priority 3: Try to extract on-board crew from fullAssignmentSnapshot if present
+          // The snapshot may have: currentCrew/onBoardCrew objects or flattened fields
           if (entry.fullAssignmentSnapshot) {
             try {
               const snapshot = JSON.parse(entry.fullAssignmentSnapshot);
-              
-              // Check for nested currentCrew or onBoardCrew objects first
               const crewData = snapshot.currentCrew || snapshot.onBoardCrew;
-              
-              // Fall back to flattened fields if no nested object
               const onBoardCrewId = crewData?.id || snapshot.onBoardCrewId || snapshot.currentCrewId;
               const onBoardCrewName = crewData?.name || snapshot.onBoardCrewName || snapshot.currentCrewName;
               
               if (onBoardCrewId || onBoardCrewName) {
-                // Use contract start date from crewData, snapshot, or archived date as fallback
                 const archivedDateStr = entry.archivedDate ? 
                   (typeof entry.archivedDate === 'string' ? entry.archivedDate.split('T')[0] : new Date(entry.archivedDate).toISOString().split('T')[0]) :
                   new Date().toISOString().split('T')[0];
