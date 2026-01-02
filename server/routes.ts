@@ -4327,6 +4327,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dateFrom: filters.dateFrom,
           dateTo: filters.dateTo,
         });
+        
+        // Build vessel ID to name mapping from master data (Master 014)
+        const vesselMasterData = await storage.getMasterDataEntries('014');
+        const vesselIdToNameMap = new Map<string, string>();
+        vesselMasterData.forEach((entry: any) => {
+          // Master data entries use entryId/entry_id/nuid as identifiers
+          const entryId = entry.entryId || entry.entry_id || entry.nuid;
+          const entryName = entry.name || entry.label;
+          if (entryId && entryName) {
+            vesselIdToNameMap.set(entryId, entryName);
+          }
+        });
+        
         // Transform archive entries to match the proposal format expected by frontend
         // Return distinct archiveId and originalAssignmentIndex to avoid index collisions
         // Also provide assignmentIndex for legacy compatibility (maps to originalAssignmentIndex)
@@ -4340,8 +4353,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           planId: entry.originalPlanId,
           draftId: entry.originalDraftId,
           assignmentIndex: entry.originalAssignmentIndex, // Legacy compatibility
-          // Core assignment data
-          vessel: entry.vesselName,
+          // Core assignment data - look up vessel name from master data using vesselId
+          vessel: entry.vesselId ? (vesselIdToNameMap.get(entry.vesselId) || entry.vesselId) : '',
           vesselId: entry.vesselId,
           rankId: entry.rankId,
           rank: entry.rank,
