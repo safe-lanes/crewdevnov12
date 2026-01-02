@@ -401,7 +401,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         
         <div className="space-y-3">
           <div className="text-sm text-gray-600 mb-3">
-            Note: No of verifications required for each question: <span className="text-green-600 font-medium">2</span>
+            Note: No of verifications required for each question: <span className="text-green-600 font-medium">{checklistConfig?.minChecklistVerifications ?? 'N/A'}</span>
           </div>
           
           <div className="flex items-center gap-4">
