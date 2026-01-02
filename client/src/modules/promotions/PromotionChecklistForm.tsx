@@ -152,11 +152,18 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
 
   const [checklistSections, setChecklistSections] = React.useState<ChecklistSection[]>(initializeSectionsFromConfig);
 
-  // Update sections when checklistConfig changes (always sync, even if empty)
+  // Track config ID to only reset when config actually changes
+  const configIdRef = React.useRef<string | null>(null);
+  const currentConfigId = checklistConfig?.checklistSections?.map(s => s.id).join(',') ?? null;
+
+  // Update sections only when checklistConfig structure actually changes (not on every render)
   React.useEffect(() => {
-    const newSections = initializeSectionsFromConfig();
-    setChecklistSections(newSections);
-  }, [initializeSectionsFromConfig]);
+    if (configIdRef.current !== currentConfigId) {
+      configIdRef.current = currentConfigId;
+      const newSections = initializeSectionsFromConfig();
+      setChecklistSections(newSections);
+    }
+  }, [currentConfigId, initializeSectionsFromConfig]);
 
   // State for managing UI interactions
   const [activeCommentBox, setActiveCommentBox] = React.useState<string | null>(null);
