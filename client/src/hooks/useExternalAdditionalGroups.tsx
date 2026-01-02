@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const useExternalAdditionalGroups = () => {
+interface UseExternalAdditionalGroupsOptions {
+  enabled?: boolean;
+}
+
+export const useExternalAdditionalGroups = (options?: UseExternalAdditionalGroupsOptions) => {
   return useQuery({
     queryKey: ['/api/external/additionalgroups'],
     queryFn: async () => {
@@ -19,7 +23,8 @@ export const useExternalAdditionalGroups = () => {
 
       return response.json();
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     retry: 2,
+    enabled: options?.enabled ?? true,
   });
 };

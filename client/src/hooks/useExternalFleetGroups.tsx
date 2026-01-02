@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const useExternalFleetGroups = () => {
+interface UseExternalFleetGroupsOptions {
+  enabled?: boolean;
+}
+
+export const useExternalFleetGroups = (options?: UseExternalFleetGroupsOptions) => {
   return useQuery({
     queryKey: ['/api/external/fleetgroups'],
     queryFn: async () => {
@@ -19,7 +23,8 @@ export const useExternalFleetGroups = () => {
 
       return response.json();
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     retry: 2,
+    enabled: options?.enabled ?? true,
   });
 };

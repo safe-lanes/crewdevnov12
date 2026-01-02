@@ -10,12 +10,15 @@ export interface ExternalUser {
   email: string;
 }
 
-export const useExternalUsers = () => {
+interface UseExternalUsersOptions {
+  enabled?: boolean;
+}
+
+export const useExternalUsers = (options?: UseExternalUsersOptions) => {
   return useQuery({
     queryKey: ['/api/external/users'],
     queryFn: async () => {
       const domain = localStorage.getItem('domain') || 'rsms';
-      // TODO: Replace with actual SAIL Audits API endpoint when provided
       const response = await fetch(
         `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/users?domain=${domain}`,
         {
@@ -29,11 +32,10 @@ export const useExternalUsers = () => {
       }
 
       const data = await response.json();
-      // Extract users array from wrapper object { success: true, users: [...] }
-      // Note: Field mapping may need adjustment based on actual API response
       return data.users || [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     retry: 2,
+    enabled: options?.enabled ?? true,
   });
 };

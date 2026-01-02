@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const useExternalLanguages = () => {
+interface UseExternalLanguagesOptions {
+  enabled?: boolean;
+}
+
+export const useExternalLanguages = (options?: UseExternalLanguagesOptions) => {
   return useQuery({
     queryKey: ['/api/external/languages'],
     queryFn: async () => {
@@ -18,11 +22,10 @@ export const useExternalLanguages = () => {
       }
 
       const data = await response.json();
-      // Extract languages array from wrapper object { success: true, languages: [...] }
-      // Note: Language names are in the 'languageName' field
       return data.languages || [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     retry: 2,
+    enabled: options?.enabled ?? true,
   });
 };

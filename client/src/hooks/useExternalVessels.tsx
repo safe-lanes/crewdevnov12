@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const useExternalVessels = () => {
+interface UseExternalVesselsOptions {
+  enabled?: boolean;
+}
+
+export const useExternalVessels = (options?: UseExternalVesselsOptions) => {
   return useQuery({
     queryKey: ['/api/external/vessels'],
     queryFn: async () => {
@@ -18,11 +22,10 @@ export const useExternalVessels = () => {
       }
 
       const data = await response.json();
-      // Extract vessels array from wrapper object { success: true, vessels: [...] }
-      // Note: Vessel names are in the 'vessel' field, ID is in 'vuid'
       return data.vessels || [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     retry: 2,
+    enabled: options?.enabled ?? true,
   });
 };

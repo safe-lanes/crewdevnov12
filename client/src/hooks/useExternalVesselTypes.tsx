@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const useExternalVesselTypes = () => {
+interface UseExternalVesselTypesOptions {
+  enabled?: boolean;
+}
+
+export const useExternalVesselTypes = (options?: UseExternalVesselTypesOptions) => {
   return useQuery({
     queryKey: ['/api/external/vessel-types'],
     queryFn: async () => {
@@ -19,11 +23,10 @@ export const useExternalVesselTypes = () => {
       }
 
       const data = await response.json();
-      // Extract vesseltypes array from wrapper object { success: true, vesseltypes: [...] }
-      // Note: Vessel type names are in the 'vesselType' field, ID is in 'vtuid'
       return data.vesseltypes || [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     retry: 2,
+    enabled: options?.enabled ?? true,
   });
 };

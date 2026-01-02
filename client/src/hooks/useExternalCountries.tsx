@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const useExternalCountries = () => {
+interface UseExternalCountriesOptions {
+  enabled?: boolean;
+}
+
+export const useExternalCountries = (options?: UseExternalCountriesOptions) => {
   return useQuery({
     queryKey: ['/api/external/countries'],
     queryFn: async () => {
@@ -18,11 +22,10 @@ export const useExternalCountries = () => {
       }
 
       const data = await response.json();
-      // Extract countries array from wrapper object { success: true, countries: [...] }
-      // Note: Country names are in the 'countryName' field
       return data.countries || [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     retry: 2,
+    enabled: options?.enabled ?? true,
   });
 };

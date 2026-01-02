@@ -1266,11 +1266,12 @@ const AdminModuleInner = (): JSX.Element => {
   // });
   
   // NEW: External vessel type data from API
+  // PERFORMANCE: Only load when on masters tab
   const { 
     data: externalVesselTypeData, 
     isLoading: vesselTypeLoading,
     error: vesselTypeError 
-  } = useExternalVesselTypes();
+  } = useExternalVesselTypes({ enabled: selectedAdminPage === "masters" });
   
   // Process external API response structure - hooks now return arrays directly
   // Also handle legacy wrapper format for backwards compatibility
@@ -1292,11 +1293,12 @@ const AdminModuleInner = (): JSX.Element => {
   // });
   
   // NEW: External vessel master data from API
+  // PERFORMANCE: Only load when on masters or rank-admin tab
   const { 
     data: externalVesselMasterData, 
     isLoading: vesselMasterLoading,
     error: vesselMasterError 
-  } = useExternalVessels();
+  } = useExternalVessels({ enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin" });
   
   // Process external API response structure - hooks now return arrays directly
   // Also handle legacy wrapper format for backwards compatibility
@@ -1306,11 +1308,12 @@ const AdminModuleInner = (): JSX.Element => {
   
   
   // NEW: External nationality data from API
+  // PERFORMANCE: Only load when on masters tab
   const { 
     data: externalNationalityData, 
     isLoading: nationalityLoading,
     error: nationalityError 
-  } = useExternalNationalities();
+  } = useExternalNationalities({ enabled: selectedAdminPage === "masters" });
   
   // Process external API response structure - hooks now return arrays directly
   // Also handle legacy wrapper format for backwards compatibility
@@ -1320,44 +1323,48 @@ const AdminModuleInner = (): JSX.Element => {
   
   
   // NEW: External fleet groups data from API
+  // PERFORMANCE: Only load when on masters tab
   const { 
     data: externalFleetGroupsData, 
     isLoading: fleetGroupsLoading, 
     error: fleetGroupsError 
-  } = useExternalFleetGroups();
+  } = useExternalFleetGroups({ enabled: selectedAdminPage === "masters" });
   
   // Process external API response structure (cast to any to handle dynamic API response)
   const fleetGroupsData = (externalFleetGroupsData as any)?.fleetGroups || [];
   
   
   // NEW: External additional groups data from API (Master 017)
+  // PERFORMANCE: Only load when on masters tab
   const {
     data: externalAdditionalGroupsData,
     isLoading: additionalGroupsLoading,
     error: additionalGroupsError,
-  } = useExternalAdditionalGroups();
+  } = useExternalAdditionalGroups({ enabled: selectedAdminPage === "masters" });
   
   // Process response - some APIs return an object with `additionalGroups`, others return array directly
   const additionalGroupsData = (externalAdditionalGroupsData as any)?.additionalGroups || externalAdditionalGroupsData || [];
   
   
   // NEW: External ports data from API (Master 018)
+  // PERFORMANCE: Only load when on masters tab
   const {
     data: externalPortsData,
     isLoading: portsLoading,
     error: portsError,
-  } = useExternalPorts();
+  } = useExternalPorts({ enabled: selectedAdminPage === "masters" });
   
   // Process response - some APIs return an object with `ports`, others return array directly
   const portsData = (externalPortsData as any)?.ports || externalPortsData || [];
   
   
   // NEW: External languages data from API (Master 019)
+  // PERFORMANCE: Only load when on masters tab
   const {
     data: externalLanguagesData,
     isLoading: languagesLoading,
     error: languagesError,
-  } = useExternalLanguages();
+  } = useExternalLanguages({ enabled: selectedAdminPage === "masters" });
   
   // Process external API response structure - hooks now return arrays directly
   // Also handle legacy wrapper format for backwards compatibility
@@ -1367,11 +1374,12 @@ const AdminModuleInner = (): JSX.Element => {
   
   
   // NEW: External countries data from API (Master 020)
+  // PERFORMANCE: Only load when on masters tab
   const {
     data: externalCountriesData,
     isLoading: countriesLoading,
     error: countriesError,
-  } = useExternalCountries();
+  } = useExternalCountries({ enabled: selectedAdminPage === "masters" });
   
   // Process external API response structure - hooks now return arrays directly
   // Also handle legacy wrapper format for backwards compatibility
@@ -1381,11 +1389,12 @@ const AdminModuleInner = (): JSX.Element => {
   
   
   // NEW: External users data from API (Master 024)
+  // PERFORMANCE: Only load when on masters tab
   const {
     data: externalUsersData,
     isLoading: externalUsersLoading,
     error: externalUsersError,
-  } = useExternalUsers();
+  } = useExternalUsers({ enabled: selectedAdminPage === "masters" });
   
   // Process external API response structure - hooks now return arrays directly
   // Also handle legacy wrapper format for backwards compatibility

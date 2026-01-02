@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const useExternalPorts = () => {
+interface UseExternalPortsOptions {
+  enabled?: boolean;
+}
+
+export const useExternalPorts = (options?: UseExternalPortsOptions) => {
   return useQuery({
     queryKey: ['/api/external/ports'],
     queryFn: async () => {
@@ -19,7 +23,8 @@ export const useExternalPorts = () => {
 
       return response.json();
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     retry: 2,
+    enabled: options?.enabled ?? true,
   });
 };

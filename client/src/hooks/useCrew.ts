@@ -39,7 +39,7 @@ export function useCrewMembers(filters?: CrewSearchData) {
   return useQuery({
     queryKey: crewQueryKeys.list(filters),
     queryFn: () => fetchCrewMembers(filters),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 15 * 60 * 1000, // 15 minutes - reduced API calls
   });
 }
 
@@ -141,7 +141,7 @@ export function useAppraisals(filters?: { crewMemberId?: string; status?: string
   return useQuery({
     queryKey: [...crewQueryKeys.appraisals(), filters],
     queryFn: () => fetchAppraisals(filters),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 15 * 60 * 1000, // 15 minutes - reduced API calls
   });
 }
 

@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const useExternalNationalities = () => {
+interface UseExternalNationalitiesOptions {
+  enabled?: boolean;
+}
+
+export const useExternalNationalities = (options?: UseExternalNationalitiesOptions) => {
   return useQuery({
     queryKey: ['/api/external/nationalities'],
     queryFn: async () => {
@@ -18,10 +22,10 @@ export const useExternalNationalities = () => {
       }
 
       const data = await response.json();
-      // Extract nationalities array from wrapper object { success: true, nationalities: [...] }
       return data.nationalities || [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
     retry: 2,
+    enabled: options?.enabled ?? true,
   });
 };
