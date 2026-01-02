@@ -4362,8 +4362,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           crewName: entry.crewName,
           crewMemberId: entry.crewMemberId,
           signOnDate: entry.signOnDate,
+          joiningDate: entry.signOnDate, // Timeline component uses joiningDate
           joiningPort: entry.joiningPort,
-          contractPeriod: entry.contractPeriod,
+          contractPeriod: entry.contractPeriod || 6, // Default to 6 months if not set
           signOffDate: entry.signOffDate,
           // Proposal metadata
           proposedBy: entry.proposedBy,
