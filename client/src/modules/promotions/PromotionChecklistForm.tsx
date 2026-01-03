@@ -182,6 +182,37 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
 
   const [checklistSections, setChecklistSections] = React.useState<ChecklistSection[]>(initializeSectionsFromConfig);
 
+  // Calculate A3 Checklist Progress
+  const checklistProgress = React.useMemo(() => {
+    const requiredPerPoint = checklistConfig?.minChecklistVerifications ?? 0;
+    const thresholdPercent = checklistConfig?.minChecklistCompletionPercent ?? 100;
+    
+    // Count total assessment points and completed verifications (capped at required)
+    let totalPoints = 0;
+    let completedVerifications = 0;
+    
+    checklistSections.forEach(section => {
+      section.assessmentPoints.forEach(point => {
+        totalPoints++;
+        // Cap verifications at the required number per point
+        const pointVerifications = Math.min(point.verifications.length, requiredPerPoint);
+        completedVerifications += pointVerifications;
+      });
+    });
+    
+    const totalRequired = totalPoints * requiredPerPoint;
+    const percentage = totalRequired > 0 ? Math.round((completedVerifications / totalRequired) * 100) : 0;
+    const meetsThreshold = percentage >= thresholdPercent;
+    
+    return {
+      completedVerifications,
+      totalRequired,
+      percentage,
+      thresholdPercent,
+      meetsThreshold,
+    };
+  }, [checklistSections, checklistConfig?.minChecklistVerifications, checklistConfig?.minChecklistCompletionPercent]);
+
   // Track config ID to only reset when config actually changes
   const configIdRef = React.useRef<string | null>(null);
   const currentConfigId = checklistConfig?.checklistSections?.map(s => s.id).join(',') ?? null;
@@ -444,11 +475,15 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="w-full bg-gray-200 rounded-full h-3">
-                <div className="bg-[#EAB308] h-3 rounded-full" style={{ width: '60%' }}></div>
+                <div 
+                  className={`h-3 rounded-full ${checklistProgress.meetsThreshold ? 'bg-green-500' : 'bg-[#EAB308]'}`}
+                  style={{ width: `${checklistProgress.percentage}%` }}
+                  data-testid="progress-bar-fill"
+                ></div>
               </div>
             </div>
-            <div className="text-sm font-medium text-gray-700 whitespace-nowrap">
-              60% (44/110 Verifications)
+            <div className="text-sm font-medium text-gray-700 whitespace-nowrap" data-testid="progress-status-text">
+              {checklistProgress.percentage}% ({checklistProgress.completedVerifications}/{checklistProgress.totalRequired} Verifications)
             </div>
           </div>
         </div>
