@@ -2405,9 +2405,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to find next promotion rank (replicates frontend promotionUtils.ts logic)
+  // rankPath is stored senior→junior (index 0 = most senior like Master)
+  // So we need to move towards index 0 to get more senior ranks
+  function findNextPromotionRank(currentRank: string, hierarchies: any[]): string | null {
+    // Find the hierarchy that contains the current rank
+    for (const hierarchy of hierarchies) {
+      let rankPath: string[];
+      try {
+        rankPath = typeof hierarchy.rankPath === 'string' 
+          ? JSON.parse(hierarchy.rankPath) 
+          : (Array.isArray(hierarchy.rankPath) ? hierarchy.rankPath : []);
+      } catch (e) {
+        rankPath = [];
+      }
+      
+      // Check if this hierarchy contains the current rank
+      if (!rankPath.includes(currentRank)) {
+        continue; // Try next hierarchy
+      }
+      
+      const currentIndex = rankPath.indexOf(currentRank);
+      
+      // Check if there's a next rank (more senior position)
+      if (currentIndex > 0) {
+        // Next rank exists (one position lower index = more senior)
+        return rankPath[currentIndex - 1];
+      } else {
+        // Already at senior position (index 0 = top of the ladder)
+        return null;
+      }
+    }
+    // No hierarchy found containing this rank
+    return null;
+  }
+
+  // Helper function to sync promotion reviews for eligible crew members
+  async function ensurePromotionReviewsForEligibleCrew(): Promise<{ created: number; existing: number }> {
+    let created = 0;
+    let existing = 0;
+    
+    try {
+      // Get all crew members and promotion hierarchies
+      const [crewMembers, hierarchies, existingReviews] = await Promise.all([
+        storage.getCrewMembers(),
+        storage.getPromotionHierarchies(),
+        storage.getPromotionReviews()
+      ]);
+
+      // Build a set of existing review keys for fast lookup
+      const existingKeys = new Set(
+        existingReviews.map(r => `${r.crewMemberId}__${r.promotionToRank}`)
+      );
+
+      // Build set of all ranks that appear in any hierarchy
+      const ranksInHierarchies = new Set<string>();
+      for (const h of hierarchies) {
+        const rankPath: string[] = typeof h.rankPath === 'string' 
+          ? JSON.parse(h.rankPath) 
+          : h.rankPath || [];
+        rankPath.forEach(r => ranksInHierarchies.add(r));
+      }
+
+      // Find eligible crew and create missing reviews
+      const reviewsToCreate: { crewMemberId: string; promotionToRank: string }[] = [];
+      
+      for (const crew of crewMembers) {
+        const currentRank = crew.presentRank || '';
+        
+        // Skip if crew has no rank or rank not in any hierarchy
+        if (!currentRank || !ranksInHierarchies.has(currentRank)) {
+          continue;
+        }
+
+        // Find next promotion rank
+        const nextRank = findNextPromotionRank(currentRank, hierarchies);
+        
+        // Skip if at top of hierarchy (no next rank)
+        if (!nextRank) {
+          continue;
+        }
+
+        // Check if review already exists
+        const key = `${crew.id}__${nextRank}`;
+        if (existingKeys.has(key)) {
+          existing++;
+          continue;
+        }
+
+        // Add to batch for creation
+        reviewsToCreate.push({
+          crewMemberId: crew.id,
+          promotionToRank: nextRank
+        });
+      }
+
+      // Create missing reviews in batches
+      for (const reviewData of reviewsToCreate) {
+        try {
+          await storage.createPromotionReview({
+            crewMemberId: reviewData.crewMemberId,
+            promotionToRank: reviewData.promotionToRank,
+            status: 'In Progress'
+          });
+          created++;
+        } catch (error: any) {
+          // Handle duplicate key errors gracefully (race condition protection)
+          if (error?.code === '23505') {
+            existing++;
+          } else {
+            console.error(`Failed to create promotion review for ${reviewData.crewMemberId}:`, error);
+          }
+        }
+      }
+
+      if (created > 0) {
+        console.log(`✅ [Sync] Created ${created} new promotion reviews, ${existing} already existed`);
+      }
+
+      return { created, existing };
+    } catch (error) {
+      console.error("❌ Failed to sync promotion reviews:", error);
+      return { created: 0, existing: 0 };
+    }
+  }
+
   // Promotion Reviews API routes
   app.get("/api/promotion-reviews", async (req, res) => {
     try {
+      // Auto-sync: ensure all eligible crew have promotion review records
+      await ensurePromotionReviewsForEligibleCrew();
+      
       const reviews = await storage.getPromotionReviews();
       res.json(reviews);
     } catch (error) {

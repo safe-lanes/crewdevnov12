@@ -148,7 +148,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return '';
   }, [promotionRecommendationsData]);
 
-  const [savedReviewId, setSavedReviewId] = useState<number | null>(null);
+  // Initialize savedReviewId from promotionData if available (from table's persisted review)
+  const [savedReviewId, setSavedReviewId] = useState<number | null>(
+    promotionData?.promotionReviewId ?? null
+  );
   const [isSubmittingForApproval, setIsSubmittingForApproval] = useState(false);
 
   const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReview>({

@@ -463,6 +463,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         return {
           crewId: crew.employeeId || crew.id || '-',
           crewMemberId: crew.id, // Database ID for API calls
+          promotionReviewId: review?.id || null, // Persisted promotion review ID from database
           name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
           dob: dobString,
           ageValue: calculatedAge !== null ? calculatedAge : '-', // Numeric age for downstream use
