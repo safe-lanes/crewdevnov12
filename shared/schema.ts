@@ -2168,6 +2168,10 @@ export const promotionReviews = pgTable("promotion_reviews", {
   partBNotes: text("part_b_notes"),
   partCNotes: text("part_c_notes"),
   
+  // Part B - Promotion Checklist Progress Data (JSON string)
+  // Stores the full checklist state including completed status, verifications, comments, attachments
+  checklistProgressData: text("checklist_progress_data"),
+  
   // Form status
   status: text("status").notNull().default("draft"), // 'draft', 'submitted', 'approved', 'rejected'
   

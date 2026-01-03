@@ -1332,6 +1332,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           promotionData={promotionData}
           onClose={() => setShowChecklistForm(false)}
           checklistConfig={a2Config}
+          promotionReviewId={savedReviewId ?? existingReviewData?.id ?? null}
+          existingChecklistData={existingReviewData?.checklistProgressData}
         />
       )}
 

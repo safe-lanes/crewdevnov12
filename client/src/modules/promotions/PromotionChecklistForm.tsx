@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Paperclip, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { X, Paperclip, MessageSquare, CheckCircle2, Loader2 } from 'lucide-react';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -84,14 +85,19 @@ interface PromotionChecklistFormProps {
   promotionData: PromotionData;
   onClose: () => void;
   checklistConfig?: PromotionA2Config | null;
+  promotionReviewId?: number | null;
+  existingChecklistData?: string | null;
 }
 
 export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   promotionData,
   onClose,
   checklistConfig,
+  promotionReviewId,
+  existingChecklistData,
 }) => {
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = React.useState(false);
 
   // Fetch crew member data including sea service
   const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery<CrewMember>({
@@ -160,28 +166,52 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   };
 
-  // Initialize checklist sections from configuration or use empty array
+  // Parse existing checklist data if available
+  const parsedExistingData = React.useMemo((): ChecklistSection[] | null => {
+    if (!existingChecklistData) return null;
+    try {
+      const parsed = typeof existingChecklistData === 'string' 
+        ? JSON.parse(existingChecklistData) 
+        : existingChecklistData;
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      console.error('Failed to parse existing checklist data');
+      return null;
+    }
+  }, [existingChecklistData]);
+
+  // Initialize checklist sections from configuration, merging with existing saved data
   const initializeSectionsFromConfig = React.useCallback((): ChecklistSection[] => {
     if (checklistConfig?.checklistSections?.length) {
       // Transform configuration sections into runtime format with completed/verifications/comments/attachments
-      return checklistConfig.checklistSections.map((configSection) => ({
-        id: configSection.id,
-        number: configSection.id,
-        title: configSection.title,
-        assessmentPoints: configSection.assessmentPoints.map((configPoint) => ({
-          id: configPoint.id,
-          number: configPoint.id,
-          text: configPoint.text,
-          completed: false,
-          verifications: [],
-          comments: [],
-          attachments: [],
-        })),
-      }));
+      return checklistConfig.checklistSections.map((configSection) => {
+        // Check if we have saved data for this section
+        const savedSection = parsedExistingData?.find(s => s.id === configSection.id);
+        
+        return {
+          id: configSection.id,
+          number: configSection.id,
+          title: configSection.title,
+          assessmentPoints: configSection.assessmentPoints.map((configPoint) => {
+            // Check if we have saved data for this assessment point
+            const savedPoint = savedSection?.assessmentPoints?.find(p => p.id === configPoint.id);
+            
+            return {
+              id: configPoint.id,
+              number: configPoint.id,
+              text: configPoint.text,
+              completed: savedPoint?.completed ?? false,
+              verifications: savedPoint?.verifications ?? [],
+              comments: savedPoint?.comments ?? [],
+              attachments: savedPoint?.attachments ?? [],
+            };
+          }),
+        };
+      });
     }
     // Return empty array if no configuration - admin needs to configure Part B
     return [];
-  }, [checklistConfig]);
+  }, [checklistConfig, parsedExistingData]);
 
   const [checklistSections, setChecklistSections] = React.useState<ChecklistSection[]>(initializeSectionsFromConfig);
 
@@ -216,28 +246,67 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     };
   }, [checklistSections, checklistConfig?.minChecklistVerifications, checklistConfig?.minChecklistCompletionPercent]);
 
-  // Track config ID to only reset when config actually changes
+  // Track config ID and existing data to reset when either changes
   const configIdRef = React.useRef<string | null>(null);
+  const existingDataRef = React.useRef<string | null>(null);
   const currentConfigId = checklistConfig?.checklistSections?.map(s => s.id).join(',') ?? null;
+  const currentExistingData = existingChecklistData ?? null;
 
-  // Update sections only when checklistConfig structure actually changes (not on every render)
+  // Update sections when checklistConfig structure OR existing data changes
   React.useEffect(() => {
-    if (configIdRef.current !== currentConfigId) {
+    const configChanged = configIdRef.current !== currentConfigId;
+    const existingDataChanged = existingDataRef.current !== currentExistingData;
+    
+    if (configChanged || existingDataChanged) {
       configIdRef.current = currentConfigId;
+      existingDataRef.current = currentExistingData;
       const newSections = initializeSectionsFromConfig();
       setChecklistSections(newSections);
     }
-  }, [currentConfigId, initializeSectionsFromConfig]);
+  }, [currentConfigId, currentExistingData, initializeSectionsFromConfig]);
 
   // State for managing UI interactions
   const [activeCommentBox, setActiveCommentBox] = React.useState<string | null>(null);
   const [commentText, setCommentText] = React.useState<string>('');
 
-  const handleSave = () => {
-    console.log('Saving Promotion Checklist...');
-    console.log('Checklist Data:', checklistSections);
-    // Add save logic here
-    onClose();
+  const handleSave = async () => {
+    if (!promotionReviewId) {
+      toast({
+        title: 'Cannot save',
+        description: 'No promotion review ID found. Please save the promotion review form first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const checklistProgressData = JSON.stringify(checklistSections);
+      
+      await apiRequest('PATCH', `/api/promotion-reviews/${promotionReviewId}`, { checklistProgressData });
+      
+      // Invalidate the query cache to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/promotion-reviews'] });
+      queryClient.invalidateQueries({ 
+        queryKey: [`/api/promotion-reviews/crew/${promotionData.crewMemberId}/rank/${promotionData.promotionToRank}`] 
+      });
+      
+      toast({
+        title: 'Saved successfully',
+        description: 'Promotion checklist progress has been saved.',
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error('Failed to save checklist progress:', error);
+      toast({
+        title: 'Save failed',
+        description: 'Failed to save checklist progress. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Handler for toggling completion checkbox
@@ -859,8 +928,16 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
               onClick={handleSave}
               className="bg-[#60a5fa] hover:bg-[#3b82f6] text-white"
               data-testid="button-save-checklist"
+              disabled={isSaving}
             >
-              Save
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save'
+              )}
             </Button>
             <button
               onClick={onClose}
