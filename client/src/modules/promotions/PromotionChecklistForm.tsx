@@ -120,12 +120,17 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   }, [crewMember]);
 
-  // Mock current user (for testing)
-  const currentUser = {
-    name: 'Current User',
-    rank: 'Chief Officer',
-    role: 'Department Head' // or 'Crewmember'
-  };
+  // Get current user from sessionStorage with fallbacks
+  const currentUser = React.useMemo(() => {
+    const storedName = sessionStorage.getItem('crewUserName');
+    const storedDesignation = sessionStorage.getItem('crewDesignation');
+    
+    return {
+      name: storedName || 'Unknown User',
+      rank: storedDesignation || 'Unknown Position',
+      role: 'Department Head'
+    };
+  }, []);
 
   // Initialize checklist sections from configuration or use empty array
   const initializeSectionsFromConfig = React.useCallback((): ChecklistSection[] => {
