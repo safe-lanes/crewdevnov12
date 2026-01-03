@@ -120,17 +120,38 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   }, [crewMember]);
 
-  // Get current user from sessionStorage with fallbacks
-  const currentUser = React.useMemo(() => {
-    const storedName = sessionStorage.getItem('crewUserName');
-    const storedDesignation = sessionStorage.getItem('crewDesignation');
-    
+  // Check if user name is available in sessionStorage
+  const storedDesignation = sessionStorage.getItem('crewDesignation');
+  const [userName, setUserName] = React.useState<string>(() => {
+    return sessionStorage.getItem('crewUserName') || '';
+  });
+  const [wasNameFromStorage] = React.useState<boolean>(() => {
+    return !!sessionStorage.getItem('crewUserName');
+  });
+  
+  // Determine if we should show the name input (only when name was not initially in storage AND user hasn't entered a valid name yet)
+  const showNameInput = !wasNameFromStorage && !userName.trim();
+  
+  // Function to get current user with the latest name
+  const getCurrentUser = React.useCallback(() => {
     return {
-      name: storedName || 'Unknown User',
+      name: userName.trim() || 'Unknown User',
       rank: storedDesignation || 'Unknown Position',
       role: 'Department Head'
     };
-  }, []);
+  }, [userName, storedDesignation]);
+  
+  // For backward compatibility, keep currentUser reference
+  const currentUser = getCurrentUser();
+  
+  // Handler to save manually entered name to sessionStorage
+  const handleNameChange = (newName: string) => {
+    const trimmedName = newName.trim();
+    setUserName(newName); // Keep raw value for input display
+    if (trimmedName) {
+      sessionStorage.setItem('crewUserName', trimmedName);
+    }
+  };
 
   // Initialize checklist sections from configuration or use empty array
   const initializeSectionsFromConfig = React.useCallback((): ChecklistSection[] => {
@@ -428,6 +449,38 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           </div>
         </div>
       </div>
+
+      {/* A4: Verifier Information - Show input when name not available */}
+      {showNameInput && (
+        <div className="border border-[#EAEBEF] rounded-lg p-4 bg-amber-50 dark:bg-amber-950/20">
+          <h3 className="text-base font-medium text-[#16569e] mb-4">A4. Verifier Information</h3>
+          
+          <div className="space-y-3">
+            <div className="text-sm text-gray-600 mb-2">
+              Your name was not found in the system. Please enter your name below for verification records.
+            </div>
+            
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <Label className="text-xs text-gray-500">Your Name <span className="text-red-500">*</span></Label>
+                <Input
+                  value={userName}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="Enter your name"
+                  className="mt-1"
+                  data-testid="input-verifier-name"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">Position / Rank</Label>
+                <div className="text-sm font-medium mt-2" data-testid="text-verifier-rank">
+                  {storedDesignation || 'Unknown Position'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
