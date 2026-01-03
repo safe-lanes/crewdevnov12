@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Eye, Plus, Info, MessageSquare, Trash2 } from 'lucide-react';
 import type { CriteriaRow, Comment } from './types';
+import { calculateChecklistProgressFromJson, type ChecklistProgressResult } from '@/modules/promotions/checklistProgressUtils';
 
 interface PartACriteriaTableProps extends React.HTMLAttributes<HTMLDivElement> {
   criteriaData: CriteriaRow[];
@@ -28,6 +29,9 @@ interface PartACriteriaTableProps extends React.HTMLAttributes<HTMLDivElement> {
   onAddCesTest: () => void;
   onShowChecklistForm: () => void;
   cesTestsSection: React.ReactNode;
+  checklistProgressData?: string | null;
+  minChecklistVerifications?: number;
+  minChecklistCompletionPercent?: number;
 }
 
 const getCurrentUserDisplay = (): string => {
@@ -56,9 +60,20 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
   onAddCesTest,
   onShowChecklistForm,
   cesTestsSection,
+  checklistProgressData,
+  minChecklistVerifications = 0,
+  minChecklistCompletionPercent = 100,
   ...restProps
 }: PartACriteriaTableProps) {
   const currentUserDisplay = getCurrentUserDisplay();
+  
+  const checklistProgress = useMemo<ChecklistProgressResult>(() => {
+    return calculateChecklistProgressFromJson(
+      checklistProgressData,
+      minChecklistVerifications,
+      minChecklistCompletionPercent
+    );
+  }, [checklistProgressData, minChecklistVerifications, minChecklistCompletionPercent]);
   const renderCriteriaRow = (row: CriteriaRow) => (
     <React.Fragment key={row.id}>
       <TableRow className={row.id.includes('.') && row.id.split('.').length > 2 ? 'bg-gray-50' : ''}>
@@ -313,6 +328,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
           <TableBody>
             {criteriaData.map((row) => {
               if (row.id === 'a2.5a') {
+                const progressBarColor = checklistProgress.meetsThreshold ? 'bg-green-500' : 'bg-[#EAB308]';
                 return (
                   <React.Fragment key={row.id}>
                     <TableRow 
@@ -325,9 +341,15 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                       <TableCell colSpan={4}>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '60%' }}></div>
+                            <div 
+                              className={`h-2 rounded-full ${progressBarColor}`} 
+                              style={{ width: `${checklistProgress.percentage}%` }}
+                              data-testid="progress-bar-fill-a25"
+                            ></div>
                           </div>
-                          <span className="text-sm text-gray-600">60%</span>
+                          <span className="text-sm text-gray-600" data-testid="progress-text-a25">
+                            {checklistProgress.percentage}%
+                          </span>
                         </div>
                       </TableCell>
                     </TableRow>

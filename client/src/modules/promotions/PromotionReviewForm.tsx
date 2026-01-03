@@ -1141,6 +1141,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   onAddCesTest={addCesTest}
                   onShowChecklistForm={() => setShowChecklistForm(true)}
                   cesTestsSection={cesTestsSection}
+                  checklistProgressData={existingReviewData?.checklistProgressData}
+                  minChecklistVerifications={a2Config?.minChecklistVerifications ?? undefined}
+                  minChecklistCompletionPercent={a2Config?.minChecklistCompletionPercent ?? undefined}
                 />
 
                 <PartATrainingNeeds

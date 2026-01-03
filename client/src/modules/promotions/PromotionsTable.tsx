@@ -4,9 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Button } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { findNextPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
+import { calculateChecklistProgressFromJson } from './checklistProgressUtils';
 import { PromotionHierarchy } from '@shared/schema';
 import { PromotionReviewForm } from './PromotionReviewForm';
 
@@ -81,25 +83,33 @@ const StatusIndicatorRenderer = (params: ICellRendererParams) => {
   );
 };
 
-// Progress bar cell renderer for Promotion Checklist
+// Progress bar cell renderer for Promotion Checklist with tooltip showing percentage
 const ProgressBarRenderer = (params: ICellRendererParams) => {
-  const percentage = params.value || 0; // 0-100
+  const progressData = params.data?.checklistProgressData;
+  const meetsThreshold = progressData?.meetsThreshold ?? false;
+  const percentage = progressData?.percentage ?? 0;
   
-  const getBarColor = () => {
-    if (percentage >= 75) return 'bg-green-500';
-    if (percentage >= 40) return 'bg-yellow-500';
-    return 'bg-orange-500';
-  };
+  const barColor = meetsThreshold ? 'bg-green-500' : 'bg-[#EAB308]';
 
   return (
-    <div className="flex items-center justify-center h-full px-2">
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className={`h-2 rounded-full ${getBarColor()}`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div 
+          className="flex items-center justify-center h-full px-2 cursor-pointer"
+          data-testid={`progress-bar-tooltip-${params.data?.crewId}`}
+        >
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full ${barColor}`}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{percentage}% ({progressData?.completedVerifications ?? 0}/{progressData?.totalRequired ?? 0} Verifications)</p>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -440,13 +450,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         // Recommendations (A2.4): Single criterion - check verified status
         const recoStatus = computeCriteriaStatus(review, 'a2.4');
         
-        // Promotion Checklist (A2.5): Progress percentage from checklistProgress field
-        let checklistProgress = 0;
-        if (review?.checklistProgress !== undefined && review?.checklistProgress !== null) {
-          checklistProgress = typeof review.checklistProgress === 'number' 
-            ? review.checklistProgress 
-            : parseInt(review.checklistProgress) || 0;
-        }
+        // Promotion Checklist (A2.5): Calculate progress from checklistProgressData JSON
+        // Uses the shared utility to ensure consistent calculation across all displays
+        const checklistProgressResult = calculateChecklistProgressFromJson(
+          review?.checklistProgressData,
+          0, // Default minChecklistVerifications (will be overridden when config is available)
+          100 // Default minChecklistCompletionPercent
+        );
         
         // Other Criteria (A2.6): Parent criterion - check all children (a2.6a, a2.6b)
         const otherCriteriaStatus = computeParentCriteriaStatus(review, 'a2.6');
@@ -476,7 +486,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           license: licenseStatus,
           sea: seaStatus,
           reco: recoStatus,
-          promotionChecklist: checklistProgress,
+          promotionChecklist: checklistProgressResult.percentage,
+          checklistProgressData: checklistProgressResult, // Full progress data for ProgressBarRenderer
           otherCriteria: otherCriteriaStatus,
           cesIndex: cesIndexStatus,
           trainDocs: trainDocsStatus,
