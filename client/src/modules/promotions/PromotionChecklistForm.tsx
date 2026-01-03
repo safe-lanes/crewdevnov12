@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import type { CrewMember, PromotionA2Config } from '@shared/schema';
 
@@ -89,6 +91,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   onClose,
   checklistConfig,
 }) => {
+  const { toast } = useToast();
 
   // Fetch crew member data including sea service
   const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery<CrewMember>({
@@ -239,6 +242,20 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
 
   // Handler for toggling completion checkbox
   const handleToggleComplete = (sectionId: string, pointId: string) => {
+    // Find the point to check if it has verifications
+    const section = checklistSections.find(s => s.id === sectionId);
+    const point = section?.assessmentPoints.find(p => p.id === pointId);
+    
+    // Block unchecking if there are verifications
+    if (point?.completed && point.verifications.length > 0) {
+      toast({
+        title: 'Cannot uncheck',
+        description: 'Please cancel all verifications before unchecking this point.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setChecklistSections(prev => prev.map(section => 
       section.id === sectionId 
         ? {
@@ -325,6 +342,29 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
 
   // Handler for verification badge click
   const handleVerify = (sectionId: string, pointId: string) => {
+    // Check if user has a valid name
+    if (!hasValidName) {
+      toast({
+        title: 'Name required',
+        description: 'Please enter your name in the Verifier Information section before verifying.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Check if point is completed
+    const section = checklistSections.find(s => s.id === sectionId);
+    const point = section?.assessmentPoints.find(p => p.id === pointId);
+    
+    if (!point?.completed) {
+      toast({
+        title: 'Not completed',
+        description: 'Please mark this assessment point as completed before verifying.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     const now = new Date();
     const formattedDate = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, ' ');
 
@@ -360,6 +400,57 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           }
         : section
     ));
+  };
+  
+  // Handler for canceling a verification (only by the user who created it)
+  const handleCancelVerification = (sectionId: string, pointId: string, verificationId: string) => {
+    // Find the verification
+    const section = checklistSections.find(s => s.id === sectionId);
+    const point = section?.assessmentPoints.find(p => p.id === pointId);
+    const verification = point?.verifications.find(v => v.id === verificationId);
+    
+    if (!verification) return;
+    
+    // Check if current user is the one who created this verification
+    const currentUserName = currentUser.name.trim().toLowerCase();
+    const verifierName = verification.verifierName.trim().toLowerCase();
+    
+    if (currentUserName !== verifierName) {
+      toast({
+        title: 'Cannot cancel',
+        description: 'You can only cancel your own verifications.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Remove the verification and its associated comment
+    setChecklistSections(prev => prev.map(section =>
+      section.id === sectionId
+        ? {
+            ...section,
+            assessmentPoints: section.assessmentPoints.map(p =>
+              p.id === pointId
+                ? {
+                    ...p,
+                    verifications: p.verifications.filter(v => v.id !== verificationId),
+                    // Also remove the associated comment (matches by userName and date)
+                    comments: p.comments.filter(c => 
+                      !(c.userName === verification.verifierName && 
+                        c.date === verification.date && 
+                        c.text === '')
+                    )
+                  }
+                : p
+            )
+          }
+        : section
+    ));
+    
+    toast({
+      title: 'Verification cancelled',
+      description: 'Your verification has been removed.',
+    });
   };
 
   // Handler for deleting comment
@@ -559,34 +650,63 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                         <div>{point.text}</div>
                         
                         {/* Display existing comments */}
-                        {point.comments.map((comment) => (
-                          <div key={comment.id} className="text-sm text-blue-600 italic flex items-start gap-2">
-                            <div className="flex-1">
-                              {comment.text ? (
-                                <>
-                                  <span className="font-medium">Verified by:</span> {comment.userName}, {comment.rank}, {comment.date}
-                                  {comment.text && (
-                                    <>
-                                      <br />
-                                      <span className="font-medium">Comment:</span> {comment.text}
-                                    </>
-                                  )}
-                                </>
+                        {point.comments.map((comment) => {
+                          // Check if this is a verification comment (empty text means it's a verification record)
+                          const isVerificationComment = comment.text === '';
+                          // Find the associated verification for this comment
+                          const associatedVerification = isVerificationComment 
+                            ? point.verifications.find(v => 
+                                v.verifierName === comment.userName && v.date === comment.date
+                              )
+                            : null;
+                          // Only show cancel button if current user owns this verification
+                          const canCancel = isVerificationComment && 
+                            associatedVerification && 
+                            currentUser.name.trim().toLowerCase() === comment.userName.trim().toLowerCase();
+                          
+                          return (
+                            <div key={comment.id} className="text-sm text-blue-600 italic flex items-start gap-2">
+                              <div className="flex-1">
+                                {comment.text ? (
+                                  <>
+                                    <span className="font-medium">Comment by:</span> {comment.userName}, {comment.rank}, {comment.date}
+                                    <br />
+                                    <span className="font-medium">Comment:</span> {comment.text}
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="font-medium">Verified by:</span> {comment.userName}, {comment.rank}, {comment.date}
+                                  </>
+                                )}
+                              </div>
+                              {isVerificationComment && associatedVerification ? (
+                                canCancel ? (
+                                  <button
+                                    onClick={() => handleCancelVerification(section.id, point.id, associatedVerification.id)}
+                                    className="text-gray-400 hover:text-red-600"
+                                    title="Cancel your verification"
+                                    data-testid={`button-cancel-verification-${associatedVerification.id}`}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-300 cursor-not-allowed" title="Only the verifier can cancel">
+                                    <X className="h-3 w-3" />
+                                  </span>
+                                )
                               ) : (
-                                <>
-                                  <span className="font-medium">Verified by:</span> {comment.userName}, {comment.rank}, {comment.date}
-                                </>
+                                <button
+                                  onClick={() => handleDeleteComment(section.id, point.id, comment.id)}
+                                  className="text-gray-400 hover:text-red-600"
+                                  title="Delete comment"
+                                  data-testid={`button-delete-comment-${comment.id}`}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
                               )}
                             </div>
-                            <button
-                              onClick={() => handleDeleteComment(section.id, point.id, comment.id)}
-                              className="text-gray-400 hover:text-red-600"
-                              data-testid={`button-delete-comment-${comment.id}`}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
@@ -637,14 +757,29 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                         >
                           <MessageSquare className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleVerify(section.id, point.id)}
-                          className="text-gray-500 hover:text-green-600"
-                          title="Verify"
-                          data-testid={`button-verify-${point.id}`}
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handleVerify(section.id, point.id)}
+                              className={`${
+                                point.completed && hasValidName
+                                  ? 'text-gray-500 hover:text-green-600'
+                                  : 'text-gray-300 cursor-not-allowed'
+                              }`}
+                              disabled={!point.completed || !hasValidName}
+                              data-testid={`button-verify-${point.id}`}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {!hasValidName 
+                              ? 'Enter your name first'
+                              : !point.completed 
+                              ? 'Mark as completed first'
+                              : 'Verify this point'}
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>
