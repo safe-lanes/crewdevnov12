@@ -164,6 +164,8 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     const trimmedName = newName.trim();
     if (trimmedName) {
       sessionStorage.setItem('crewUserName', trimmedName);
+      // Dispatch custom event to notify same-tab listeners of the change
+      window.dispatchEvent(new CustomEvent('crewUserUpdated'));
     }
   };
 

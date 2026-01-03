@@ -321,15 +321,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       setCurrentUser({ name, position });
     };
 
-    // Listen for storage events (triggered when sessionStorage changes in another tab/window)
+    // Listen for cross-tab storage events
     window.addEventListener('storage', updateCurrentUser);
-    
-    // Also check periodically for changes within the same tab
-    const intervalId = setInterval(updateCurrentUser, 1000);
+    // Listen for same-tab custom event (dispatched when sessionStorage is updated)
+    window.addEventListener('crewUserUpdated', updateCurrentUser);
 
     return () => {
       window.removeEventListener('storage', updateCurrentUser);
-      clearInterval(intervalId);
+      window.removeEventListener('crewUserUpdated', updateCurrentUser);
     };
   }, []);
 

@@ -93,11 +93,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const updateCurrentUser = () => {
       setCurrentUserDisplay(getCurrentUserDisplay());
     };
+    // Listen for cross-tab storage events
     window.addEventListener('storage', updateCurrentUser);
-    const intervalId = setInterval(updateCurrentUser, 1000);
+    // Listen for same-tab custom event (dispatched when sessionStorage is updated)
+    window.addEventListener('crewUserUpdated', updateCurrentUser);
     return () => {
       window.removeEventListener('storage', updateCurrentUser);
-      clearInterval(intervalId);
+      window.removeEventListener('crewUserUpdated', updateCurrentUser);
     };
   }, []);
 
