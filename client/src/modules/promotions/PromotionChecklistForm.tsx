@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import type { CrewMember, PromotionA2Config } from '@shared/schema';
+import { calculateChecklistProgress } from './checklistProgressUtils';
 
 interface PromotionData {
   crewMemberId: string;
@@ -166,13 +167,18 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   };
 
-  // Parse existing checklist data if available
+  // Parse existing checklist data if available (handles both legacy and new format)
   const parsedExistingData = React.useMemo((): ChecklistSection[] | null => {
     if (!existingChecklistData) return null;
     try {
       const parsed = typeof existingChecklistData === 'string' 
         ? JSON.parse(existingChecklistData) 
         : existingChecklistData;
+      // New format: { sections: [...], progress: {...} }
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.sections) {
+        return Array.isArray(parsed.sections) ? parsed.sections : null;
+      }
+      // Legacy format: direct array of sections
       return Array.isArray(parsed) ? parsed : null;
     } catch {
       console.error('Failed to parse existing checklist data');
@@ -281,7 +287,24 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     
     setIsSaving(true);
     try {
-      const checklistProgressData = JSON.stringify(checklistSections);
+      // Calculate progress using the shared utility with actual config values
+      const minVerifications = checklistConfig?.minChecklistVerifications ?? 1;
+      const minCompletionPercent = checklistConfig?.minChecklistCompletionPercent ?? 100;
+      const progressResult = calculateChecklistProgress(checklistSections, minVerifications, minCompletionPercent);
+      
+      // Store both sections and calculated progress in the JSON
+      // This allows the table to display progress without needing rank-specific config
+      const checklistProgressData = JSON.stringify({
+        sections: checklistSections,
+        progress: {
+          percentage: progressResult.percentage,
+          meetsThreshold: progressResult.meetsThreshold,
+          completedVerifications: progressResult.completedVerifications,
+          totalRequired: progressResult.totalRequired,
+          thresholdPercent: minCompletionPercent,
+          requiredPerPoint: minVerifications,
+        }
+      });
       
       await apiRequest('PATCH', `/api/promotion-reviews/${promotionReviewId}`, { checklistProgressData });
       

@@ -74,7 +74,16 @@ export function calculateChecklistProgress(
 }
 
 /**
+ * Result of parsing checklistProgressData JSON which may contain pre-calculated progress
+ */
+export interface ParsedChecklistData {
+  sections: ChecklistSection[];
+  preCalculatedProgress: ChecklistProgressResult | null;
+}
+
+/**
  * Parses checklistProgressData JSON string to sections array
+ * Handles both legacy format (array of sections) and new format (object with sections + progress)
  * @param checklistProgressData - JSON string from database or null/undefined
  * @returns Parsed sections array or empty array
  */
@@ -85,6 +94,11 @@ export function parseChecklistProgressData(
   
   try {
     const parsed = JSON.parse(checklistProgressData);
+    // New format: { sections: [...], progress: {...} }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.sections) {
+      return Array.isArray(parsed.sections) ? parsed.sections : [];
+    }
+    // Legacy format: direct array of sections
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -92,17 +106,61 @@ export function parseChecklistProgressData(
 }
 
 /**
- * Convenience function that parses JSON and calculates progress in one call
+ * Parses checklistProgressData and extracts pre-calculated progress if available
  * @param checklistProgressData - JSON string from database
- * @param minChecklistVerifications - Required verifications per point
- * @param minChecklistCompletionPercent - Threshold percentage
+ * @returns Object with sections and optional pre-calculated progress
+ */
+export function parseChecklistDataWithProgress(
+  checklistProgressData: string | null | undefined
+): ParsedChecklistData {
+  if (!checklistProgressData) {
+    return { sections: [], preCalculatedProgress: null };
+  }
+  
+  try {
+    const parsed = JSON.parse(checklistProgressData);
+    // New format: { sections: [...], progress: {...} }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
+      const preCalculatedProgress = parsed.progress ? {
+        completedVerifications: parsed.progress.completedVerifications ?? 0,
+        totalRequired: parsed.progress.totalRequired ?? 0,
+        percentage: parsed.progress.percentage ?? 0,
+        thresholdPercent: parsed.progress.thresholdPercent ?? parsed.progress.requiredPerPoint ?? 100,
+        meetsThreshold: parsed.progress.meetsThreshold ?? (parsed.progress.percentage >= (parsed.progress.thresholdPercent ?? 100)),
+      } : null;
+      return { sections, preCalculatedProgress };
+    }
+    // Legacy format: direct array of sections
+    return { 
+      sections: Array.isArray(parsed) ? parsed : [], 
+      preCalculatedProgress: null 
+    };
+  } catch {
+    return { sections: [], preCalculatedProgress: null };
+  }
+}
+
+/**
+ * Convenience function that parses JSON and returns progress
+ * Uses pre-calculated values if available (new format), otherwise calculates from sections (legacy)
+ * @param checklistProgressData - JSON string from database
+ * @param minChecklistVerifications - Required verifications per point (used for legacy format)
+ * @param minChecklistCompletionPercent - Threshold percentage (used for legacy format)
  * @returns ChecklistProgressResult
  */
 export function calculateChecklistProgressFromJson(
   checklistProgressData: string | null | undefined,
-  minChecklistVerifications: number = 0,
+  minChecklistVerifications: number = 1,
   minChecklistCompletionPercent: number = 100
 ): ChecklistProgressResult {
-  const sections = parseChecklistProgressData(checklistProgressData);
+  const { sections, preCalculatedProgress } = parseChecklistDataWithProgress(checklistProgressData);
+  
+  // If we have pre-calculated progress (new format), use it directly
+  if (preCalculatedProgress) {
+    return preCalculatedProgress;
+  }
+  
+  // Otherwise, calculate from sections (legacy format)
   return calculateChecklistProgress(sections, minChecklistVerifications, minChecklistCompletionPercent);
 }
