@@ -129,8 +129,12 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     return !!sessionStorage.getItem('crewUserName');
   });
   
-  // Determine if we should show the name input (only when name was not initially in storage AND user hasn't entered a valid name yet)
-  const showNameInput = !wasNameFromStorage && !userName.trim();
+  // Show the name input section for users who didn't have a name in storage initially
+  // Keep it visible throughout the session so they can enter and edit their name
+  const showNameInput = !wasNameFromStorage;
+  
+  // Check if name is valid for verification actions
+  const hasValidName = !!userName.trim();
   
   // Function to get current user with the latest name
   const getCurrentUser = React.useCallback(() => {
@@ -146,8 +150,8 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   
   // Handler to save manually entered name to sessionStorage
   const handleNameChange = (newName: string) => {
-    const trimmedName = newName.trim();
     setUserName(newName); // Keep raw value for input display
+    const trimmedName = newName.trim();
     if (trimmedName) {
       sessionStorage.setItem('crewUserName', trimmedName);
     }
@@ -450,14 +454,16 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         </div>
       </div>
 
-      {/* A4: Verifier Information - Show input when name not available */}
+      {/* A4: Verifier Information - Show input when name not available in storage */}
       {showNameInput && (
-        <div className="border border-[#EAEBEF] rounded-lg p-4 bg-amber-50 dark:bg-amber-950/20">
+        <div className={`border border-[#EAEBEF] rounded-lg p-4 ${hasValidName ? 'bg-green-50 dark:bg-green-950/20' : 'bg-amber-50 dark:bg-amber-950/20'}`}>
           <h3 className="text-base font-medium text-[#16569e] mb-4">A4. Verifier Information</h3>
           
           <div className="space-y-3">
             <div className="text-sm text-gray-600 mb-2">
-              Your name was not found in the system. Please enter your name below for verification records.
+              {hasValidName 
+                ? 'Your name has been saved. You can edit it if needed.'
+                : 'Your name was not found in the system. Please enter your name below for verification records.'}
             </div>
             
             <div className="grid grid-cols-2 gap-6">
