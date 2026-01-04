@@ -353,14 +353,52 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     queryKey: ['/api/available-ranks'],
   });
 
-  // Create a map of rank name to sortOrder for sorting (includes aliases)
+  // Fetch vessel-specific ranks (includes variants with correct sortOrder)
+  const { data: vesselRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/vessel-revisions/ranks', vesselId],
+    queryFn: async () => {
+      if (!vesselId) return [];
+      const res = await fetch(`/api/vessel-revisions/ranks/${vesselId}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!vesselId,
+  });
+
+  // Create a comprehensive map of rank name to sortOrder for sorting
+  // First add base ranks from available ranks, then add vessel ranks (which have accurate sortOrder for variants)
   const rankOrderMap = useMemo(() => {
     const map = new Map<string, number>();
+    
+    // First add base ranks from available ranks (with aliases like "2nd Officer" -> "Second Officer")
     availableRanks.forEach((rank: any) => {
       addRankAliasesToMap(map, rank.name, rank.sortOrder || 0);
     });
+    
+    // Then add all vessel ranks (including variants) - these have accurate sortOrder from backend
+    vesselRanks.forEach((rank: any) => {
+      const sortOrder = rank.sortOrder;
+      if (sortOrder === undefined) return;
+      
+      // Add mapping for 'rank' field (e.g., "Second Officer")
+      if (rank.rank) {
+        addRankAliasesToMap(map, rank.rank, sortOrder);
+      }
+      // Add mapping for 'role' field (e.g., "2nd Officer" or "Oiler_1")
+      if (rank.role && rank.role !== rank.rank) {
+        map.set(rank.role, sortOrder);
+      }
+      // Add mapping for base rank extracted from role (e.g., "Oiler" from "Oiler_1")
+      if (rank.role && rank.role.includes('_')) {
+        const baseRank = rank.role.split('_')[0];
+        if (!map.has(baseRank)) {
+          map.set(baseRank, sortOrder);
+        }
+      }
+    });
+    
     return map;
-  }, [availableRanks]);
+  }, [availableRanks, vesselRanks]);
 
   // Build query params
   const queryParams = new URLSearchParams();
