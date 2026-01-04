@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, Fragment, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, Fragment, memo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -239,6 +239,8 @@ CrewRow.displayName = 'CrewRow';
 export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode, newMonthTrigger, onSaveHandlerReady }: FixedTasksTableProps): JSX.Element => {
   const { toast } = useToast();
   const [crewTasks, setCrewTasks] = useState<CrewTaskData[]>([]);
+  const isSavingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
   // Fetch crew members assigned to this vessel
   const { data: allCrewMembers = [] } = useQuery<any[]>({
@@ -294,13 +296,82 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     return existingTasks.map(t => `${t.crewMemberId}-${t.id}`).join(',');
   }, [existingTasks]);
 
-  // Initialize crew tasks from existing data or create empty
+  // Reset initialization flag when vessel or month changes
   useEffect(() => {
-    if (vesselCrewMembers.length === 0) {
-      setCrewTasks([]);
+    hasInitializedRef.current = false;
+  }, [vesselId, monthYear]);
+
+  // Initialize crew tasks from existing data or merge roster changes
+  useEffect(() => {
+    // Skip if currently saving to prevent race condition
+    if (isSavingRef.current) {
       return;
     }
 
+    if (vesselCrewMembers.length === 0) {
+      setCrewTasks([]);
+      hasInitializedRef.current = false;
+      return;
+    }
+
+    // If already initialized, merge roster changes while preserving local edits
+    if (hasInitializedRef.current && crewTasks.length > 0) {
+      const currentCrewIds = new Set(crewTasks.map(t => t.crewMemberId));
+      const newCrewIds = new Set(vesselCrewMembers.map((c: any) => c.id));
+      
+      // Check if crew roster has changed (added or removed members)
+      const hasRosterChange = 
+        vesselCrewMembers.some((c: any) => !currentCrewIds.has(c.id)) ||
+        crewTasks.some(t => !newCrewIds.has(t.crewMemberId));
+      
+      // Check if we need to update taskIds (after initial save creates new tasks)
+      const needsTaskIdUpdate = crewTasks.some(task => {
+        const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId);
+        return serverTask && !task.taskId && serverTask.id;
+      });
+      
+      if (hasRosterChange) {
+        // Merge: keep existing crew data, add new crew, remove departed crew
+        setCrewTasks(prev => {
+          const existingByCrewId = new Map(prev.map(t => [t.crewMemberId, t]));
+          
+          return vesselCrewMembers.map((crew: any) => {
+            const existingLocal = existingByCrewId.get(crew.id);
+            const existingServer = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.id);
+            
+            if (existingLocal) {
+              // Preserve local edits, update taskId if needed
+              return {
+                ...existingLocal,
+                taskId: existingServer?.id || existingLocal.taskId,
+              };
+            }
+            
+            // New crew member - initialize from server or empty
+            return {
+              crewMemberId: crew.id,
+              crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
+              rank: crew.presentRank || '',
+              seaHours: Array.isArray(existingServer?.seaHours) ? existingServer.seaHours : Array(48).fill(''),
+              portHours: Array.isArray(existingServer?.portHours) ? existingServer.portHours : Array(48).fill(''),
+              taskId: existingServer?.id,
+            };
+          });
+        });
+      } else if (needsTaskIdUpdate) {
+        // Only update taskIds, preserve local seaHours/portHours data
+        setCrewTasks(prev => prev.map(task => {
+          const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId);
+          return {
+            ...task,
+            taskId: serverTask?.id || task.taskId,
+          };
+        }));
+      }
+      return;
+    }
+
+    // Initial load - build from server data
     const tasks: CrewTaskData[] = vesselCrewMembers.map((crew: any) => {
       const existingTask = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.id);
       
@@ -315,13 +386,16 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     });
 
     setCrewTasks(tasks);
+    hasInitializedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crewMemberIds, existingTaskIds, vesselId, monthYear]);
 
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const promises = crewTasks.map(async (task) => {
+      isSavingRef.current = true;
+      
+      const results = await Promise.all(crewTasks.map(async (task) => {
         const data = {
           crewMemberId: task.crewMemberId,
           vesselId,
@@ -351,11 +425,23 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
           if (!response.ok) throw new Error('Failed to create task');
           return response.json();
         }
-      });
+      }));
 
-      await Promise.all(promises);
+      return results;
     },
-    onSuccess: () => {
+    onSuccess: (savedTasks: FixedTask[]) => {
+      // Update local state with the new taskIds from server response
+      setCrewTasks(prev => prev.map(task => {
+        const savedTask = savedTasks.find(st => st.crewMemberId === task.crewMemberId);
+        return {
+          ...task,
+          taskId: savedTask?.id || task.taskId,
+        };
+      }));
+      
+      // Clear saving flag before invalidating to allow proper re-fetch
+      isSavingRef.current = false;
+      
       queryClient.invalidateQueries({ queryKey: ['/api/fixed-tasks'] });
       setIsEditMode(false);
       toast({
@@ -364,6 +450,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       });
     },
     onError: (error) => {
+      isSavingRef.current = false;
       toast({
         title: 'Error',
         description: 'Failed to save fixed tasks',
