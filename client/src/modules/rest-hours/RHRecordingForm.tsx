@@ -213,6 +213,9 @@ export const RHRecordingForm = ({
   // Ref to track if template has been applied (prevents re-running on recordMode changes)
   const templateAppliedRef = useRef(false);
   
+  // Ref to track last applied violations hash (prevents infinite loop with timeline effect)
+  const lastViolationsHashRef = useRef<string>('');
+  
   // Violation highlighting state
   const [hoveredViolation, setHoveredViolation] = useState<{ dayIndex: number; code: number } | null>(null);
   
@@ -319,6 +322,9 @@ export const RHRecordingForm = ({
     
     // Reset template applied flag so template can be re-applied for new crew/vessel/month
     templateAppliedRef.current = false;
+    
+    // Reset violations hash so violations can be re-applied for new crew/vessel/month
+    lastViolationsHashRef.current = '';
     
     const [year, month] = selectedPeriod.split('-');
     const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
@@ -927,9 +933,21 @@ export const RHRecordingForm = ({
   // Extract for easier access
   const timelineViolations = timelineData.violationMap;
 
-  // Apply timeline violations to dailyRecords whenever they change
+  // Apply timeline violations to dailyRecords only when violations actually change
+  // Uses hash comparison to prevent infinite loop (timelineViolations depends on dailyRecords)
   useEffect(() => {
     if (timelineViolations.size === 0 || dailyRecords.length === 0) return;
+    
+    // Create a hash of the violations to detect actual changes
+    const violationsHash = JSON.stringify(
+      Array.from(timelineViolations.entries()).map(([idx, data]) => 
+        `${idx}:${data.violations.join(',')}:${data.metrics.anyPeriodRest24hr}:${data.metrics.anyPeriodRest7day}`
+      )
+    );
+    
+    // Skip if violations haven't actually changed
+    if (lastViolationsHashRef.current === violationsHash) return;
+    lastViolationsHashRef.current = violationsHash;
     
     setDailyRecords(prevRecords => {
       return prevRecords.map((record, dayIndex) => {
