@@ -10,7 +10,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
-import type { RestHoursDailyRecord, FixedTask, VesselDateLineAdjustment, DateLineAdjustmentItem } from '@shared/schema';
+import type { RestHoursDailyRecord, FixedTask, VesselDateLineAdjustment, DateLineAdjustmentItem, VariableTask } from '@shared/schema';
 import { filterViolations } from './violationFilters';
 import {
   buildTimeline,
@@ -48,6 +48,127 @@ const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
   6: "ILO Work - Maximum 72 hours of work in any 7 day period",
   7: "OPA - Maximum 15 hours of work in any 24 hour period",
   8: "OPA - Maximum 36 hours of work in 72 hours",
+};
+
+// Helper: Check if a crew member is involved in a variable task
+const isCrewMemberInTask = (task: VariableTask, crewMemberId: string): boolean => {
+  if (!task.crewInvolvedDetails) return false;
+  try {
+    const details = JSON.parse(task.crewInvolvedDetails);
+    if (details.crew && Array.isArray(details.crew)) {
+      return details.crew.some((c: { id: string }) => c.id === crewMemberId);
+    }
+  } catch {
+    return false;
+  }
+  return false;
+};
+
+// Helper: Parse variable task date/time and return day number and half-hour cell indices
+// startDateTime format: "01/12/2025 17:00" (DD/MM/YYYY HH:mm)
+// Returns: { day: number, startCell: number, endCell: number } for each day the task spans
+interface VariableTaskCells {
+  day: number;
+  startCell: number;
+  endCell: number;
+}
+
+const parseVariableTaskToCells = (task: VariableTask, monthYear: string): VariableTaskCells[] => {
+  const results: VariableTaskCells[] = [];
+  
+  try {
+    // Parse start and finish date/times (format: "DD/MM/YYYY HH:mm")
+    const parseDateTime = (dateTimeStr: string): { day: number; month: number; year: number; hour: number; minute: number } | null => {
+      const match = dateTimeStr.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+      if (!match) return null;
+      return {
+        day: parseInt(match[1], 10),
+        month: parseInt(match[2], 10),
+        year: parseInt(match[3], 10),
+        hour: parseInt(match[4], 10),
+        minute: parseInt(match[5], 10),
+      };
+    };
+    
+    const start = parseDateTime(task.startDateTime);
+    const finish = parseDateTime(task.finishDateTime);
+    
+    if (!start || !finish) return results;
+    
+    // Extract month/year from the form's monthYear (format: "YYYY-MM")
+    const [targetYear, targetMonth] = monthYear.split('-').map(Number);
+    
+    // Convert time to half-hour cell index (0-47)
+    // Cell 0 = 00:00-00:30, Cell 1 = 00:30-01:00, ..., Cell 47 = 23:30-24:00
+    const timeToCell = (hour: number, minute: number): number => {
+      return hour * 2 + (minute >= 30 ? 1 : 0);
+    };
+    
+    // Create date objects for comparison
+    const startDate = new Date(start.year, start.month - 1, start.day);
+    const finishDate = new Date(finish.year, finish.month - 1, finish.day);
+    const targetMonthStart = new Date(targetYear, targetMonth - 1, 1);
+    const targetMonthEnd = new Date(targetYear, targetMonth, 0); // Last day of target month
+    
+    // Check if task overlaps with target month at all
+    if (finishDate < targetMonthStart || startDate > targetMonthEnd) {
+      return results; // Task doesn't overlap with target month
+    }
+    
+    // Single day task in target month
+    if (start.day === finish.day && start.month === finish.month && start.year === finish.year) {
+      if (start.month === targetMonth && start.year === targetYear) {
+        const startCell = timeToCell(start.hour, start.minute);
+        let endCell = timeToCell(finish.hour, finish.minute);
+        if (finish.minute === 0 && endCell > 0) {
+          endCell = endCell - 1;
+        }
+        if (startCell <= endCell) {
+          results.push({ day: start.day, startCell, endCell });
+        }
+      }
+      return results;
+    }
+    
+    // Multi-day task - iterate through each day
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= finishDate) {
+      const currentDay = currentDate.getDate();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      
+      // Only process days in the target month
+      if (currentMonth === targetMonth && currentYear === targetYear) {
+        const isFirstDay = currentDate.getTime() === startDate.getTime();
+        const isLastDay = currentDate.getTime() === finishDate.getTime();
+        
+        let startCell = 0;
+        let endCell = 47;
+        
+        if (isFirstDay) {
+          startCell = timeToCell(start.hour, start.minute);
+        }
+        
+        if (isLastDay) {
+          endCell = timeToCell(finish.hour, finish.minute);
+          if (finish.minute === 0 && endCell > 0) {
+            endCell = endCell - 1;
+          }
+        }
+        
+        if (startCell <= endCell && endCell >= 0) {
+          results.push({ day: currentDay, startCell, endCell });
+        }
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  } catch (e) {
+    console.error('Failed to parse variable task time range:', e);
+  }
+  
+  return results;
 };
 
 // Using ExtendedDailyRecord from shared types
@@ -265,6 +386,29 @@ export const RHRecordingForm = ({
     staleTime: 0,
   });
 
+  // Fetch variable tasks for the vessel/period to overlay onto crew records
+  const { data: variableTasks = [] } = useQuery<VariableTask[]>({
+    queryKey: ['/api/variable-tasks', selectedVesselId, selectedPeriod],
+    queryFn: async () => {
+      if (!selectedVesselId || !selectedPeriod) return [];
+      const response = await fetch(`/api/variable-tasks?vesselId=${selectedVesselId}&periodValue=${selectedPeriod}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch variable tasks');
+      }
+      return response.json();
+    },
+    enabled: open && !!selectedVesselId && !!selectedPeriod,
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
+  });
+
+  // Filter variable tasks to only those involving the selected crew member
+  const crewVariableTasks = useMemo(() => {
+    if (!selectedCrewMemberId || !variableTasks.length) return [];
+    return variableTasks.filter(task => isCrewMemberInTask(task, selectedCrewMemberId));
+  }, [variableTasks, selectedCrewMemberId]);
+
   // Fetch date line adjustments for the selected vessel and month
   const { data: dateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
     queryKey: ['/api/vessel-dateline-adjustments', selectedVesselId, selectedPeriod],
@@ -481,6 +625,68 @@ export const RHRecordingForm = ({
       });
     });
   }, [fixedTask, open, existingRecord]);
+
+  // Apply variable tasks hours to daily records when available
+  // Variable tasks overlay work hours ('w') onto the applicable day/time cells
+  const variableTasksAppliedRef = useRef<string>('');
+  
+  // Reset ref when crew member or period changes
+  useEffect(() => {
+    variableTasksAppliedRef.current = '';
+  }, [selectedCrewMemberId, selectedPeriod]);
+  
+  useEffect(() => {
+    if (!open || !selectedPeriod) return;
+    if (crewVariableTasks.length === 0) return;
+    if (dailyRecords.length === 0) return;
+    
+    // Create a hash to track if we've already applied these specific tasks
+    const tasksHash = `${selectedCrewMemberId}-${crewVariableTasks.map(t => `${t.id}-${t.startDateTime}-${t.finishDateTime}`).join('|')}`;
+    if (variableTasksAppliedRef.current === tasksHash) return;
+    
+    // Parse all variable tasks into day/cell ranges
+    const allCells: VariableTaskCells[] = [];
+    for (const task of crewVariableTasks) {
+      const cells = parseVariableTaskToCells(task, selectedPeriod);
+      allCells.push(...cells);
+    }
+    
+    if (allCells.length === 0) return;
+    
+    // Apply variable task hours to daily records
+    setDailyRecords(prevRecords => {
+      return prevRecords.map(record => {
+        // Find any variable task cells for this day
+        const dayCells = allCells.filter(c => c.day === record.day);
+        if (dayCells.length === 0) return record;
+        
+        // Clone the hours array and overlay work hours
+        // Variable tasks override fixed task templates (duty 'd' markers)
+        // since variable tasks are specific scheduled work assignments
+        const newHours = [...record.hours];
+        for (const cellRange of dayCells) {
+          for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
+            // Variable tasks always mark cells as work ('w')
+            // This overrides fixed task duty markers ('d') and empty cells
+            newHours[i] = 'w';
+          }
+        }
+        
+        // Recalculate rest/work hours
+        const restHours = newHours.filter(h => h === '').length / 2;
+        const workHours = 24 - restHours;
+        
+        return {
+          ...record,
+          hours: newHours,
+          hoursOfRest24hr: restHours,
+          hoursOfWork24hr: workHours,
+        };
+      });
+    });
+    
+    variableTasksAppliedRef.current = tasksHash;
+  }, [crewVariableTasks, selectedPeriod, open, dailyRecords.length]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
