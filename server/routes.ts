@@ -1170,6 +1170,177 @@ function calculateNCs(dailyRecordsJson: string, complianceMode: 'Rest' | 'Work',
   }
 }
 
+// Server-side violation calculation - simplified version for backfill
+// Regulatory thresholds
+const RH_THRESHOLDS = {
+  MIN_REST_10H_IN_24H: 10,
+  MAX_WORK_14H_IN_24H: 14,
+  MIN_REST_77H_IN_168H: 77,
+  MAX_WORK_72H_IN_168H: 72,
+  MIN_CONSECUTIVE_REST_6H: 6,
+  OPA_MAX_WORK_15H_IN_24H: 15,
+  OPA_MAX_WORK_36H_IN_72H: 36,
+};
+
+// Calculate violations for a single record's daily data
+function calculateViolationsFromHours(dailyRecords: any[]): any[] {
+  if (!Array.isArray(dailyRecords) || dailyRecords.length === 0) {
+    return dailyRecords;
+  }
+
+  // Build a continuous timeline from all days (48 slots per day = 30 min each)
+  const timeline: { isRest: boolean; day: number; isPlan: boolean }[] = [];
+  
+  for (const record of dailyRecords) {
+    const hours = record.hours || [];
+    const day = record.day;
+    const isPlan = record.isPlan === true;
+    
+    for (let i = 0; i < 48; i++) {
+      const value = hours[i] || '';
+      // Empty string = rest, anything else (w, d, a) = work/duty
+      const isRest = value === '';
+      timeline.push({ isRest, day, isPlan });
+    }
+  }
+
+  // Calculate cumulative rest/work for rolling window calculations
+  const cumulativeRest: number[] = [];
+  const cumulativeWork: number[] = [];
+  let runningRest = 0;
+  let runningWork = 0;
+  
+  for (let i = 0; i < timeline.length; i++) {
+    if (timeline[i].isRest) {
+      runningRest += 0.5; // Each slot is 30 minutes
+    } else {
+      runningWork += 0.5;
+    }
+    cumulativeRest.push(runningRest);
+    cumulativeWork.push(runningWork);
+  }
+
+  // Helper to calculate rolling metrics at a given slot
+  const getRollingMetrics = (slotIdx: number) => {
+    // 24h = 48 slots, 168h = 336 slots, 72h = 144 slots
+    const rest24h = slotIdx >= 47 
+      ? cumulativeRest[slotIdx] - (slotIdx >= 48 ? cumulativeRest[slotIdx - 48] : 0)
+      : cumulativeRest[slotIdx];
+    const work24h = slotIdx >= 47
+      ? cumulativeWork[slotIdx] - (slotIdx >= 48 ? cumulativeWork[slotIdx - 48] : 0)
+      : cumulativeWork[slotIdx];
+    const rest168h = slotIdx >= 335
+      ? cumulativeRest[slotIdx] - cumulativeRest[slotIdx - 336]
+      : cumulativeRest[slotIdx];
+    const work168h = slotIdx >= 335
+      ? cumulativeWork[slotIdx] - cumulativeWork[slotIdx - 336]
+      : cumulativeWork[slotIdx];
+    const work72h = slotIdx >= 143
+      ? cumulativeWork[slotIdx] - cumulativeWork[slotIdx - 144]
+      : cumulativeWork[slotIdx];
+    
+    return { rest24h, work24h, rest168h, work168h, work72h };
+  };
+
+  // Check Code [3] - Rest period distribution (need 1 period >= 6h, total of 2 largest >= 10h)
+  const checkCode3 = (slotIdx: number): boolean => {
+    if (slotIdx < 47) return false;
+    
+    // Analyze rest periods in the last 24 hours
+    const startIdx = slotIdx - 47;
+    const restPeriods: number[] = [];
+    let currentPeriod = 0;
+    
+    for (let i = startIdx; i <= slotIdx; i++) {
+      if (timeline[i].isRest) {
+        currentPeriod++;
+      } else {
+        if (currentPeriod > 0) {
+          restPeriods.push(currentPeriod);
+          currentPeriod = 0;
+        }
+      }
+    }
+    if (currentPeriod > 0) {
+      restPeriods.push(currentPeriod);
+    }
+    
+    if (restPeriods.length === 0) return true; // No rest periods = violation
+    
+    // Sort descending
+    restPeriods.sort((a, b) => b - a);
+    const largestHours = restPeriods[0] * 0.5;
+    const secondLargestHours = (restPeriods[1] || 0) * 0.5;
+    
+    // Need largest >= 6h AND sum of two largest >= 10h
+    return largestHours < 6 || (largestHours + secondLargestHours) < 10;
+  };
+
+  // Detect violations for each day
+  const updatedRecords = dailyRecords.map((record, dayIndex) => {
+    const violations: number[] = [];
+    
+    // Calculate the last slot index for this day (end of day in timeline)
+    const lastSlotIndex = (dayIndex + 1) * 48 - 1;
+    
+    if (lastSlotIndex >= 47) {
+      const metrics = getRollingMetrics(lastSlotIndex);
+      
+      // Code [1]: Min 10h rest in 24h
+      if (metrics.rest24h < RH_THRESHOLDS.MIN_REST_10H_IN_24H) {
+        violations.push(1);
+      }
+      
+      // Code [2]: Min 77h rest in 168h (only after 7 days)
+      if (lastSlotIndex >= 335 && metrics.rest168h < RH_THRESHOLDS.MIN_REST_77H_IN_168H) {
+        violations.push(2);
+      }
+      
+      // Code [3]: Rest period distribution
+      if (checkCode3(lastSlotIndex)) {
+        violations.push(3);
+      }
+      
+      // Code [5]: Max 14h work in 24h
+      if (metrics.work24h > RH_THRESHOLDS.MAX_WORK_14H_IN_24H) {
+        violations.push(5);
+      }
+      
+      // Code [6]: Max 72h work in 168h (only after 7 days)
+      if (lastSlotIndex >= 335 && metrics.work168h > RH_THRESHOLDS.MAX_WORK_72H_IN_168H) {
+        violations.push(6);
+      }
+      
+      // Code [7]: OPA Max 15h work in 24h
+      if (metrics.work24h > RH_THRESHOLDS.OPA_MAX_WORK_15H_IN_24H) {
+        violations.push(7);
+      }
+      
+      // Code [8]: OPA Max 36h work in 72h (only after 3 days)
+      if (lastSlotIndex >= 143 && metrics.work72h > RH_THRESHOLDS.OPA_MAX_WORK_36H_IN_72H) {
+        violations.push(8);
+      }
+      
+      // Store metrics for reference
+      return {
+        ...record,
+        violations,
+        anyPeriodRest24hr: metrics.rest24h,
+        anyPeriodRest7day: metrics.rest168h,
+        anyPeriodWork24hr: metrics.work24h,
+        anyPeriodWork7day: metrics.work168h,
+      };
+    }
+    
+    return {
+      ...record,
+      violations: [],
+    };
+  });
+
+  return updatedRecords;
+}
+
 // Helper function to update crew and vessel recording percentages
 async function updateRecordingPercentages(crewMemberId: string, vesselId: string, monthYear: string) {
   try {
@@ -6025,6 +6196,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete rest hours daily record:", error);
       res.status(500).json({ error: "Failed to delete rest hours daily record" });
+    }
+  });
+
+  // Backfill violations for all existing rest hours records
+  app.post("/api/rest-hours-daily-records/backfill-violations", async (req, res) => {
+    try {
+      // Get all rest hours daily records
+      const allRecords = await storage.getRestHoursDailyRecords();
+      
+      let updatedCount = 0;
+      let errorCount = 0;
+      const results: { id: number; crewMemberId: string; status: string; violationsFound?: number }[] = [];
+      
+      for (const record of allRecords) {
+        try {
+          // Parse daily records JSON
+          const dailyRecords = JSON.parse(record.dailyRecords);
+          
+          // Recalculate violations from hours data
+          const updatedDailyRecords = calculateViolationsFromHours(dailyRecords);
+          
+          // Count total violations found
+          const totalViolations = updatedDailyRecords.reduce((sum: number, day: any) => {
+            return sum + (day.violations?.length || 0);
+          }, 0);
+          
+          // Update the record with recalculated violations
+          await storage.updateRestHoursDailyRecord(record.id, {
+            dailyRecords: JSON.stringify(updatedDailyRecords)
+          });
+          
+          updatedCount++;
+          results.push({
+            id: record.id,
+            crewMemberId: record.crewMemberId,
+            status: 'updated',
+            violationsFound: totalViolations
+          });
+        } catch (err) {
+          errorCount++;
+          results.push({
+            id: record.id,
+            crewMemberId: record.crewMemberId,
+            status: 'error'
+          });
+          console.error(`Failed to backfill violations for record ${record.id}:`, err);
+        }
+      }
+      
+      res.json({
+        success: true,
+        totalRecords: allRecords.length,
+        updatedCount,
+        errorCount,
+        results
+      });
+    } catch (error) {
+      console.error("Failed to backfill violations:", error);
+      res.status(500).json({ error: "Failed to backfill violations" });
     }
   });
 
