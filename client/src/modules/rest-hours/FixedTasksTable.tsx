@@ -314,7 +314,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       return;
     }
 
-    // If already initialized, merge roster changes while preserving local edits
+    // If already initialized, check for updates needed
     if (hasInitializedRef.current && crewTasks.length > 0) {
       const currentCrewIds = new Set(crewTasks.map(t => t.crewMemberId));
       const newCrewIds = new Set(vesselCrewMembers.map((c: any) => c.id));
@@ -330,8 +330,22 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         return serverTask && !task.taskId && serverTask.id;
       });
       
-      if (hasRosterChange) {
-        // Merge: keep existing crew data, add new crew, remove departed crew
+      // Check if server data arrived after we initialized with empty arrays
+      // This happens when crew members load before fixed tasks query completes
+      const needsServerDataMerge = crewTasks.some(task => {
+        const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId);
+        if (!serverTask) return false;
+        
+        // Check if local task has empty data but server has real data
+        const localIsEmpty = task.seaHours.every(h => h === '') && task.portHours.every(h => h === '');
+        const serverHasData = (Array.isArray(serverTask.seaHours) && serverTask.seaHours.some(h => h !== '')) ||
+                              (Array.isArray(serverTask.portHours) && serverTask.portHours.some(h => h !== ''));
+        
+        return localIsEmpty && serverHasData;
+      });
+      
+      if (hasRosterChange || needsServerDataMerge) {
+        // Merge: keep existing crew data (if has local edits), add new crew, remove departed crew
         setCrewTasks(prev => {
           const existingByCrewId = new Map(prev.map(t => [t.crewMemberId, t]));
           
@@ -340,7 +354,23 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
             const existingServer = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.id);
             
             if (existingLocal) {
-              // Preserve local edits, update taskId if needed
+              // Check if local data is empty but server has data
+              const localIsEmpty = existingLocal.seaHours.every(h => h === '') && existingLocal.portHours.every(h => h === '');
+              const serverHasData = existingServer && 
+                ((Array.isArray(existingServer.seaHours) && existingServer.seaHours.some(h => h !== '')) ||
+                 (Array.isArray(existingServer.portHours) && existingServer.portHours.some(h => h !== '')));
+              
+              if (localIsEmpty && serverHasData) {
+                // Replace empty local data with server data
+                return {
+                  ...existingLocal,
+                  seaHours: Array.isArray(existingServer?.seaHours) ? existingServer.seaHours : existingLocal.seaHours,
+                  portHours: Array.isArray(existingServer?.portHours) ? existingServer.portHours : existingLocal.portHours,
+                  taskId: existingServer?.id || existingLocal.taskId,
+                };
+              }
+              
+              // Preserve local edits, only update taskId if needed
               return {
                 ...existingLocal,
                 taskId: existingServer?.id || existingLocal.taskId,
