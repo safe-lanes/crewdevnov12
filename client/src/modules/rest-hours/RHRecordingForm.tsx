@@ -623,6 +623,7 @@ export const RHRecordingForm = ({
   }, [crewVariableTasks, selectedPeriod]);
 
   // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms)
+  // Note: isPlan is set to false (Rec mode) since initialization always resets recordMode to 'Rec'
   useEffect(() => {
     if (!open || existingRecord) return;
     
@@ -635,11 +636,8 @@ export const RHRecordingForm = ({
     
     if (!hasFixedTask && !hasVariableTasks) return;
     
-    // Mark template as applied to prevent re-application when recordMode changes
+    // Mark template as applied to prevent re-application
     templateAppliedRef.current = true;
-    
-    // Capture current recordMode value: 'Rec' means actual recording (isPlan=false)
-    const isPlanValue = recordMode === 'Plan';
     
     // Use seaHours as the template (assuming vessel is at sea by default)
     const seaHoursArray = Array.isArray(fixedTask?.seaHours) ? (fixedTask.seaHours as string[]) : [];
@@ -667,13 +665,13 @@ export const RHRecordingForm = ({
         return {
           ...record,
           hours: newHours,
-          isPlan: isPlanValue,
+          isPlan: false, // Default to 'Rec' mode (actual recording) - initialization resets recordMode to 'Rec'
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
         };
       });
     });
-  }, [fixedTask, open, existingRecord, variableTaskCellsMap, recordMode]);
+  }, [fixedTask, open, existingRecord, variableTaskCellsMap]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
