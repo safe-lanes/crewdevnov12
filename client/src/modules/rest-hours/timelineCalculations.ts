@@ -548,7 +548,89 @@ export function detectViolations(
 }
 
 /**
- * Groups violations by source day for display in the daily records table
+ * Feature flag for violation day assignment mode.
+ * - 'legacy': Violations appear on every day where the violation window is detected
+ * - 'end_day': Violations only appear on the day where the violation window ends
+ *              (This prevents duplicate counting when a 24-hour window spans two days)
+ */
+export const VIOLATION_DAY_ASSIGNMENT_MODE: 'legacy' | 'end_day' = 'end_day';
+
+/**
+ * 24-hour violation codes that should use end-day deduplication.
+ * 7-day violations (codes 2, 6) are excluded as they behave differently.
+ */
+const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
+  '[1]', // MIN_REST_10H_IN_24H
+  '[3]', // REST_PERIOD_STRUCTURE
+  '[4]', // MAX_WORK_INTERVAL
+  '[5]', // MAX_WORK_14H_IN_24H
+  '[7]', // OPA 90: MAX_WORK_15H_IN_24H
+  '[8]', // OPA 90: MAX_WORK_36H_IN_72H
+];
+
+/**
+ * Represents a continuous violation event (consecutive slots with same violation code)
+ */
+interface ViolationEvent {
+  code: string;
+  startSlotIndex: number;
+  endSlotIndex: number;
+  endDay: number;
+}
+
+/**
+ * Groups consecutive violation slots into discrete events.
+ * A new event starts when there's a gap in slot indices or different violation code.
+ * 
+ * @param violations - Array of violations sorted by slotIndex
+ * @param code - The violation code to group
+ * @returns Array of violation events
+ */
+function groupConsecutiveViolations(violations: Violation[], code: string): ViolationEvent[] {
+  const codeViolations = violations
+    .filter(v => v.code === code)
+    .sort((a, b) => a.slotIndex - b.slotIndex);
+  
+  if (codeViolations.length === 0) return [];
+  
+  const events: ViolationEvent[] = [];
+  let currentEvent: ViolationEvent = {
+    code,
+    startSlotIndex: codeViolations[0].slotIndex,
+    endSlotIndex: codeViolations[0].slotIndex,
+    endDay: codeViolations[0].sourceDay,
+  };
+  
+  for (let i = 1; i < codeViolations.length; i++) {
+    const v = codeViolations[i];
+    if (v.slotIndex === currentEvent.endSlotIndex + 1) {
+      currentEvent.endSlotIndex = v.slotIndex;
+      currentEvent.endDay = v.sourceDay;
+    } else {
+      events.push(currentEvent);
+      currentEvent = {
+        code,
+        startSlotIndex: v.slotIndex,
+        endSlotIndex: v.slotIndex,
+        endDay: v.sourceDay,
+      };
+    }
+  }
+  events.push(currentEvent);
+  
+  return events;
+}
+
+/**
+ * Groups violations by source day for display in the daily records table.
+ * 
+ * When VIOLATION_DAY_ASSIGNMENT_MODE is 'end_day':
+ * - 24-hour violations are grouped into continuous events
+ * - Each event only shows on the day where the violation window ENDS
+ * - This prevents the same violation from appearing on multiple days
+ * 
+ * When mode is 'legacy':
+ * - Violations appear on every day where detected (original behavior)
  * 
  * @param violations - Array of all violations from timeline
  * @returns Map of day number to array of violation codes
@@ -556,12 +638,41 @@ export function detectViolations(
 export function groupViolationsByDay(violations: Violation[]): Map<number, string[]> {
   const dayViolations = new Map<number, string[]>();
   
-  for (const violation of violations) {
-    const existing = dayViolations.get(violation.sourceDay) || [];
-    if (!existing.includes(violation.code)) {
-      existing.push(violation.code);
+  if (VIOLATION_DAY_ASSIGNMENT_MODE === 'end_day') {
+    const processedCodes = new Set<string>();
+    
+    for (const violation of violations) {
+      const is24HourViolation = TWENTY_FOUR_HOUR_VIOLATION_CODES.includes(violation.code);
+      
+      if (is24HourViolation) {
+        if (!processedCodes.has(violation.code)) {
+          processedCodes.add(violation.code);
+          const events = groupConsecutiveViolations(violations, violation.code);
+          
+          for (const event of events) {
+            const existing = dayViolations.get(event.endDay) || [];
+            if (!existing.includes(event.code)) {
+              existing.push(event.code);
+            }
+            dayViolations.set(event.endDay, existing);
+          }
+        }
+      } else {
+        const existing = dayViolations.get(violation.sourceDay) || [];
+        if (!existing.includes(violation.code)) {
+          existing.push(violation.code);
+        }
+        dayViolations.set(violation.sourceDay, existing);
+      }
     }
-    dayViolations.set(violation.sourceDay, existing);
+  } else {
+    for (const violation of violations) {
+      const existing = dayViolations.get(violation.sourceDay) || [];
+      if (!existing.includes(violation.code)) {
+        existing.push(violation.code);
+      }
+      dayViolations.set(violation.sourceDay, existing);
+    }
   }
   
   return dayViolations;
