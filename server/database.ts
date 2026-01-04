@@ -2771,6 +2771,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRestHoursDailyRecord(record: InsertRestHoursDailyRecord): Promise<RestHoursDailyRecord> {
+    // Check if a record already exists for this crew/vessel/month (upsert logic)
+    const existing = await this.getRestHoursDailyRecordByKey(
+      record.crewMemberId,
+      record.vesselId,
+      record.monthYear
+    );
+    
+    if (existing) {
+      // Update existing record instead of creating duplicate
+      const [updated] = await this.db
+        .update(restHoursDailyRecords)
+        .set({
+          ...record,
+          updatedAt: new Date(),
+        })
+        .where(eq(restHoursDailyRecords.id, existing.id))
+        .returning();
+      return updated;
+    }
+    
+    // Create new record only if none exists
     const [created] = await this.db
       .insert(restHoursDailyRecords)
       .values(record)
