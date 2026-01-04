@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Globe } from 'lucide-react';
@@ -41,18 +41,49 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     return options;
   }, []);
 
-  const [periodValue, setPeriodValue] = useState(urlMonthValue || periodOptions[0]?.value || "");
-  const [selectedVessel, setSelectedVessel] = useState(urlVesselId || "");
   const [selectedRank, setSelectedRank] = useState("");
   const [searchText, setSearchText] = useState("");
   const [dateLineDialogOpen, setDateLineDialogOpen] = useState(false);
   
   const { 
+    periodValue: storePeriodValue,
+    setPeriodValue: setStorePeriodValue,
+    planVesselId,
+    setPlanVesselId,
     complianceMode, 
     setComplianceMode,
     opaMode,
     setOpaMode,
   } = useRestHoursFiltersStore();
+
+  // Convert store's PeriodFilterValue to string format for dropdown
+  const periodValueString = useMemo(() => {
+    if (storePeriodValue.mode === 'year-month' && storePeriodValue.year && storePeriodValue.month) {
+      return `${storePeriodValue.year}-${String(storePeriodValue.month).padStart(2, '0')}`;
+    }
+    return periodOptions[0]?.value || "";
+  }, [storePeriodValue, periodOptions]);
+
+  // Store is the source of truth - dropdown changes update store
+  const periodValue = periodValueString;
+  
+  // Store is the source of truth for vessel selection
+  const selectedVessel = planVesselId || "";
+
+  // Update store when period changes via dropdown
+  const handlePeriodChange = (value: string) => {
+    const [year, month] = value.split('-').map(Number);
+    setStorePeriodValue({
+      mode: 'year-month',
+      year,
+      month,
+    });
+  };
+
+  // Update store when vessel changes via dropdown
+  const handleVesselChange = (value: string) => {
+    setPlanVesselId(value);
+  };
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
   
@@ -102,17 +133,48 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   };
 
   const handleClearFilters = () => {
-    setPeriodValue(periodOptions[0]?.value || "");
-    setSelectedVessel(urlVesselId || "");
+    // Reset period to current month in store
+    const defaultOption = periodOptions[0]?.value || "";
+    if (defaultOption) {
+      const [year, month] = defaultOption.split('-').map(Number);
+      setStorePeriodValue({ mode: 'year-month', year, month });
+    }
+    // Reset vessel to URL param or clear
+    setPlanVesselId(urlVesselId || "");
     setSelectedRank("");
     setSearchText("");
   };
 
-  // Pre-populate filters from URL params on mount
+  // Track the last synced URL params to detect when URL actually changes
+  // This prevents dropdown changes from being overwritten by stale URL params
+  const prevUrlParams = useRef<{ vesselId?: string; monthValue?: string }>({
+    vesselId: undefined,
+    monthValue: undefined,
+  });
+
+  // Sync URL params to store only when URL actually changes (not when store changes)
   useEffect(() => {
-    if (urlVesselId) setSelectedVessel(urlVesselId);
-    if (urlMonthValue) setPeriodValue(urlMonthValue);
-  }, [urlVesselId, urlMonthValue]);
+    const prevVessel = prevUrlParams.current.vesselId;
+    const prevMonth = prevUrlParams.current.monthValue;
+    
+    // Only sync if URL param has actually changed (new deep link)
+    if (urlVesselId !== prevVessel) {
+      prevUrlParams.current.vesselId = urlVesselId;
+      if (urlVesselId) {
+        setPlanVesselId(urlVesselId);
+      }
+    }
+    
+    if (urlMonthValue !== prevMonth) {
+      prevUrlParams.current.monthValue = urlMonthValue;
+      if (urlMonthValue) {
+        const [year, month] = urlMonthValue.split('-').map(Number);
+        if (year && month) {
+          setStorePeriodValue({ mode: 'year-month', year, month });
+        }
+      }
+    }
+  }, [urlVesselId, urlMonthValue, setPlanVesselId, setStorePeriodValue]);
 
   // Handle sidebar navigation
   const setSelectedRestHoursPage = (page: string) => {
@@ -201,7 +263,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         {/* Period Dropdown */}
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-[#4f5863] dark:text-neutral-300">Period</Label>
-          <Select value={periodValue} onValueChange={setPeriodValue}>
+          <Select value={periodValue} onValueChange={handlePeriodChange}>
             <SelectTrigger 
               className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
               data-testid="select-period"
@@ -222,7 +284,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         {/* Vessel Single Select */}
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-[#4f5863] dark:text-neutral-300">Vessel</Label>
-          <Select value={selectedVessel} onValueChange={setSelectedVessel}>
+          <Select value={selectedVessel} onValueChange={handleVesselChange}>
             <SelectTrigger 
               className="h-8 w-52 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
               disabled={vesselsLoading}
