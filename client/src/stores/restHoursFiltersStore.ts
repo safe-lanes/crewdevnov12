@@ -16,7 +16,7 @@ interface RestHoursFiltersState {
   opaMode: boolean;
   filterType: 'vessel' | 'fleet' | 'addGroup';
   selectedVessels: string[];
-  selectedVessel: string;
+  planVesselId: string;
   fleetValue: string;
   addGroupValue: string;
   
@@ -25,7 +25,7 @@ interface RestHoursFiltersState {
   setOpaMode: (enabled: boolean) => void;
   setFilterType: (type: 'vessel' | 'fleet' | 'addGroup') => void;
   setSelectedVessels: (vessels: string[]) => void;
-  setSelectedVessel: (vessel: string) => void;
+  setPlanVesselId: (vesselId: string) => void;
   toggleVessel: (vesselName: string) => void;
   setFleetValue: (value: string) => void;
   setAddGroupValue: (value: string) => void;
@@ -45,7 +45,7 @@ const initialState = {
   opaMode: false,
   filterType: 'vessel' as const,
   selectedVessels: [] as string[],
-  selectedVessel: '',
+  planVesselId: '',
   fleetValue: '',
   addGroupValue: '',
 };
@@ -65,7 +65,7 @@ export const useRestHoursFiltersStore = create<RestHoursFiltersState>()(
       
       setSelectedVessels: (vessels: string[]) => set({ selectedVessels: vessels }),
       
-      setSelectedVessel: (vessel: string) => set({ selectedVessel: vessel }),
+      setPlanVesselId: (vesselId: string) => set({ planVesselId: vesselId }),
       
       toggleVessel: (vesselName: string) => {
         const { selectedVessels } = get();
@@ -89,7 +89,7 @@ export const useRestHoursFiltersStore = create<RestHoursFiltersState>()(
         opaMode: state.opaMode,
         filterType: state.filterType,
         selectedVessels: state.selectedVessels,
-        selectedVessel: state.selectedVessel,
+        planVesselId: state.planVesselId,
         fleetValue: state.fleetValue,
         addGroupValue: state.addGroupValue,
       }),

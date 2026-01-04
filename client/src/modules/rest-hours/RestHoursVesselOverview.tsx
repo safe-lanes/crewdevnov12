@@ -14,6 +14,7 @@ import RestHoursSideBar from './RestHoursSideBar';
 import MainLayout from '@/components/main/MainLayout';
 import { DateLineAdjustmentsDialog } from './DateLineAdjustmentsDialog';
 import type { VesselDateLineAdjustment } from '@shared/schema';
+import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
 
 export const RestHoursVesselOverview = (): JSX.Element => {
   const params = useParams();
@@ -44,9 +45,14 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   const [selectedVessel, setSelectedVessel] = useState(urlVesselId || "");
   const [selectedRank, setSelectedRank] = useState("");
   const [searchText, setSearchText] = useState("");
-  const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
-  const [opaMode, setOpaMode] = useState(false);
   const [dateLineDialogOpen, setDateLineDialogOpen] = useState(false);
+  
+  const { 
+    complianceMode, 
+    setComplianceMode,
+    opaMode,
+    setOpaMode,
+  } = useRestHoursFiltersStore();
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
   
@@ -137,7 +143,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
           <div className="flex items-center gap-1">
             <span className="text-xs text-[#4f5863]">Rest</span>
             <button
-              onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
+              onClick={() => setComplianceMode(complianceMode === 'Rest' ? 'Work' : 'Rest')}
               className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
                 complianceMode === 'Work' ? 'bg-blue-600' : 'bg-gray-300'
               }`}

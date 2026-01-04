@@ -8,9 +8,10 @@ import { VariableTasksTable } from './VariableTasksTable';
 import { FixedTasksTable } from './FixedTasksTable';
 import { useToast } from '@/hooks/use-toast';
 import type { FixedTask } from '@shared/schema';
-import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
-import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from './utils/filterParams';
+import { PeriodFilter } from '@/components/filters/PeriodFilter';
+import { parseRestHoursFilters, partToPeriodFilter } from './utils/filterParams';
 import { useViewport } from '@/hooks/useViewport';
+import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
 
 export const RestHoursPlan = (): JSX.Element => {
   const viewport = useViewport();
@@ -18,7 +19,6 @@ export const RestHoursPlan = (): JSX.Element => {
   const isTablet = viewport === 'tablet';
 
   const [location, setLocation] = useLocation();
-  const hasSyncedFromUrl = useRef(false);
   const { toast } = useToast();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -29,77 +29,41 @@ export const RestHoursPlan = (): JSX.Element => {
 
   const [showFilters, setShowFilters] = useState(true);
   const [selectedTab, setSelectedTab] = useState<"fixed" | "variable">("fixed");
-  const [periodValue, setPeriodValue] = useState<PeriodFilterValue>({
-    mode: 'year-month',
-    year: currentYear,
-    month: currentMonth,
-  });
-  const [selectedVessel, setSelectedVessel] = useState("");
+  
+  const {
+    periodValue,
+    setPeriodValue,
+    planVesselId: selectedVessel,
+    setPlanVesselId: setSelectedVessel,
+  } = useRestHoursFiltersStore();
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
-  // Parse URL parameters or restore from localStorage on mount
+  // Parse URL parameters on mount (localStorage is handled by the store automatically)
   useEffect(() => {
     const search = window.location.search;
-    if (!search) {
-      // No URL params - try to restore from localStorage
-      try {
-        const stored = localStorage.getItem('rh-plan-filters');
-        if (stored) {
-          const filters = JSON.parse(stored);
-          if (filters.period) setPeriodValue(filters.period);
-          if (filters.selectedVessel) setSelectedVessel(filters.selectedVessel);
-        }
-      } catch (e) {
-        console.error('Failed to restore filters from localStorage:', e);
-      }
-      return;
-    }
+    if (!search) return;
     
     const filters = parseRestHoursFilters(search);
     
-    // Apply period filter (only if different from current state)
     const parsedPeriod = partToPeriodFilter(filters);
-    if (parsedPeriod && JSON.stringify(parsedPeriod) !== JSON.stringify(periodValue)) {
+    if (parsedPeriod) {
       setPeriodValue(parsedPeriod);
     }
     
-    // Apply vessel selection (only if different and vesselIds has exactly one vessel)
-    if (filters.vesselIds && filters.vesselIds.length === 1 && filters.vesselIds[0] !== selectedVessel) {
+    if (filters.vesselIds && filters.vesselIds.length === 1) {
       setSelectedVessel(filters.vesselIds[0]);
     }
-    // Note: Mark as synced in the vessel load effect, not here
-  }, []); // Run only on mount
+  }, []);
 
-  // Auto-select first vessel when vessels load (only if no URL params) and mark as synced
+  // Auto-select first vessel when vessels load (only if no vessel selected)
   useEffect(() => {
     if (vesselsLoading || vessels.length === 0) return;
     
-    const search = window.location.search;
-    if (!search && !selectedVessel) {
-      // No URL params, auto-select first vessel
+    if (!selectedVessel) {
       setSelectedVessel(vessels[0].entryId);
     }
-    
-    // CRITICAL: Only mark as synced AFTER vessel data is loaded
-    hasSyncedFromUrl.current = true;
-  }, [vesselsLoading, vessels, selectedVessel]);
-  
-  // Save filter state to localStorage whenever filters change
-  useEffect(() => {
-    // Skip if still syncing from URL
-    if (!hasSyncedFromUrl.current) return;
-    
-    try {
-      const filters = {
-        period: periodValue,
-        selectedVessel,
-      };
-      localStorage.setItem('rh-plan-filters', JSON.stringify(filters));
-    } catch (e) {
-      console.error('Failed to save filters to localStorage:', e);
-    }
-  }, [periodValue, selectedVessel]);
+  }, [vesselsLoading, vessels, selectedVessel, setSelectedVessel]);
 
   // Convert PeriodFilterValue to string format (YYYY-MM)
   const periodValueString = useMemo(() => {
