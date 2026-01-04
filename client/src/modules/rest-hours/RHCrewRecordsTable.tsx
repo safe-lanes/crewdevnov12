@@ -1,3 +1,4 @@
+import '@/lib/agGridSetup';
 import { useRef, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgGridReact } from 'ag-grid-react';
