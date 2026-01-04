@@ -5611,6 +5611,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all crew members from storage
       const allCrewMembers = await storage.getCrewMembers();
       
+      // Get all vessel planning to get proper rank variants (like "3rd Officer_1", "3rd Officer_2")
+      const allVesselPlanning = await storage.getAllVesselPlanning();
+      
+      // Build a map of crewMemberId -> planning record for quick lookup of rank variants
+      const crewPlanningMap = new Map<string, any>();
+      allVesselPlanning.forEach((planning: any) => {
+        if (planning.crewMemberId && !planning.isArchived) {
+          // Key by crewMemberId and vesselId to get the correct planning for each vessel
+          const key = `${planning.crewMemberId}-${planning.vesselId}`;
+          crewPlanningMap.set(key, planning);
+        }
+      });
+      
       // Get persisted crew records from storage (if any exist)
       const persistedRecords = await storage.getRestHoursCrewRecords();
       const persistedRecordsMap = new Map<string, any>();
@@ -5727,8 +5740,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const crewAny = crew as any; // Cast for legacy field access
           const vesselId = getVesselId(crew)!;
           const vesselName = vesselIdToNameMap.get(vesselId) || crew.presentVessel || crewAny.vessel || '';
-          const rank = crew.presentRank || crewAny.rank || 'Unknown';
           const fullName = `${crew.firstName || ''} ${crew.familyName || crewAny.lastName || ''}`.trim();
+          
+          // Get rank from vessel planning if available (includes variants like "3rd Officer_1")
+          // This matches VesselModule's approach for consistent rank display
+          const planningKey = `${crew.id}-${vesselId}`;
+          const planning = crewPlanningMap.get(planningKey);
+          const rank = planning?.rank || crew.presentRank || crewAny.rank || 'Unknown';
+          
           const crewMemberId = crew.id || `${fullName}-${rank}-${vesselId}`;
           
           // Look up persisted record and daily record for this crew/vessel/month
