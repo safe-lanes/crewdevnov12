@@ -548,18 +548,26 @@ export function detectViolations(
 }
 
 /**
- * Feature flag for violation day assignment mode.
- * - 'legacy': Violations appear on every day where the violation window is detected
- * - 'end_day': Violations only appear on the day where the violation window ends
- *              (This prevents duplicate counting when a 24-hour window spans two days)
+ * Violation day assignment strategy configuration.
+ * 
+ * - 'legacy': Violations appear on every day where the violation window is detected (original behavior)
+ * - 'hybrid': Uses code-specific strategies:
+ *     - 24-hour violations (codes 1, 3, 4, 5, 7, 8): Show on END day of violation window
+ *     - 7-day violations (codes 2, 6): Show on FIRST day of violation window
+ * 
+ * To revert to original behavior, change mode to 'legacy'
  */
-export const VIOLATION_DAY_ASSIGNMENT_MODE: 'legacy' | 'end_day' = 'end_day';
+export const VIOLATION_ASSIGNMENT_STRATEGY: {
+  mode: 'legacy' | 'hybrid';
+} = {
+  mode: 'hybrid',
+};
 
 /**
- * 24-hour violation codes that should use end-day deduplication.
- * 7-day violations (codes 2, 6) are excluded as they behave differently.
+ * 24-hour violation codes that should use END-day assignment.
+ * These violations are assigned to the day where the 24-hour window ends.
  */
-const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
+const END_DAY_VIOLATION_CODES = [
   '[1]', // MIN_REST_10H_IN_24H
   '[3]', // REST_PERIOD_STRUCTURE
   '[4]', // MAX_WORK_INTERVAL
@@ -569,12 +577,23 @@ const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
 ];
 
 /**
+ * 7-day violation codes that should use START-day (first occurrence) assignment.
+ * These violations are assigned to the first day where the violation is detected.
+ * If the first day is in the previous month (negative sourceDay), clamp to day 1.
+ */
+const START_DAY_VIOLATION_CODES = [
+  '[2]', // MIN_REST_77H_IN_168H
+  '[6]', // MAX_WORK_72H_IN_168H
+];
+
+/**
  * Represents a continuous violation event (consecutive slots with same violation code)
  */
 interface ViolationEvent {
   code: string;
   startSlotIndex: number;
   endSlotIndex: number;
+  startDay: number;
   endDay: number;
 }
 
@@ -584,7 +603,7 @@ interface ViolationEvent {
  * 
  * @param violations - Array of violations sorted by slotIndex
  * @param code - The violation code to group
- * @returns Array of violation events
+ * @returns Array of violation events with startDay and endDay
  */
 function groupConsecutiveViolations(violations: Violation[], code: string): ViolationEvent[] {
   const codeViolations = violations
@@ -598,6 +617,7 @@ function groupConsecutiveViolations(violations: Violation[], code: string): Viol
     code,
     startSlotIndex: codeViolations[0].slotIndex,
     endSlotIndex: codeViolations[0].slotIndex,
+    startDay: codeViolations[0].sourceDay,
     endDay: codeViolations[0].sourceDay,
   };
   
@@ -612,6 +632,7 @@ function groupConsecutiveViolations(violations: Violation[], code: string): Viol
         code,
         startSlotIndex: v.slotIndex,
         endSlotIndex: v.slotIndex,
+        startDay: v.sourceDay,
         endDay: v.sourceDay,
       };
     }
@@ -624,9 +645,9 @@ function groupConsecutiveViolations(violations: Violation[], code: string): Viol
 /**
  * Groups violations by source day for display in the daily records table.
  * 
- * When VIOLATION_DAY_ASSIGNMENT_MODE is 'end_day':
- * - 24-hour violations are grouped into continuous events
- * - Each event only shows on the day where the violation window ENDS
+ * When VIOLATION_ASSIGNMENT_STRATEGY.mode is 'hybrid':
+ * - 24-hour violations (codes 1, 3, 4, 5, 7, 8): Show on END day of violation window
+ * - 7-day violations (codes 2, 6): Show on FIRST day of violation window (clamped to >=1 for visibility)
  * - This prevents the same violation from appearing on multiple days
  * 
  * When mode is 'legacy':
@@ -638,24 +659,35 @@ function groupConsecutiveViolations(violations: Violation[], code: string): Viol
 export function groupViolationsByDay(violations: Violation[]): Map<number, string[]> {
   const dayViolations = new Map<number, string[]>();
   
-  if (VIOLATION_DAY_ASSIGNMENT_MODE === 'end_day') {
+  if (VIOLATION_ASSIGNMENT_STRATEGY.mode === 'hybrid') {
     const processedCodes = new Set<string>();
     
     for (const violation of violations) {
-      const is24HourViolation = TWENTY_FOUR_HOUR_VIOLATION_CODES.includes(violation.code);
+      if (processedCodes.has(violation.code)) continue;
       
-      if (is24HourViolation) {
-        if (!processedCodes.has(violation.code)) {
-          processedCodes.add(violation.code);
-          const events = groupConsecutiveViolations(violations, violation.code);
+      const isEndDayViolation = END_DAY_VIOLATION_CODES.includes(violation.code);
+      const isStartDayViolation = START_DAY_VIOLATION_CODES.includes(violation.code);
+      
+      if (isEndDayViolation || isStartDayViolation) {
+        processedCodes.add(violation.code);
+        const events = groupConsecutiveViolations(violations, violation.code);
+        
+        for (const event of events) {
+          let assignedDay: number;
           
-          for (const event of events) {
-            const existing = dayViolations.get(event.endDay) || [];
-            if (!existing.includes(event.code)) {
-              existing.push(event.code);
-            }
-            dayViolations.set(event.endDay, existing);
+          if (isStartDayViolation) {
+            assignedDay = Math.max(1, event.startDay);
+          } else {
+            assignedDay = event.endDay;
           }
+          
+          if (assignedDay < 1) continue;
+          
+          const existing = dayViolations.get(assignedDay) || [];
+          if (!existing.includes(event.code)) {
+            existing.push(event.code);
+          }
+          dayViolations.set(assignedDay, existing);
         }
       } else {
         const existing = dayViolations.get(violation.sourceDay) || [];
