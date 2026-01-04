@@ -5649,21 +5649,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return vesselNameToIdMap.get(vesselName) || null;
       };
       
-      // Helper function to format sign-on/off info
-      const getSignOnOffInfo = (crew: any): string => {
-        if (crew.signOnDate) {
-          const date = new Date(crew.signOnDate);
-          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      // Helper function to format sign-on/off info - only show events within the current month
+      const getSignOnOffInfo = (crew: any, currentMonth: string): string => {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const isOfficer = ['Master', 'Chief Officer', 'Chief Engineer', '2nd Officer', 'Second Officer', '3rd Officer', 'Third Officer', '2nd Engineer', 'Second Engineer', '3rd Engineer', 'Third Engineer', '4th Engineer', 'Fourth Engineer', 'Fifth Engineer', 'Electrical Officer', 'Gas Engineer', 'Cargo/ Gas Engineer'].includes(crew.presentRank || crew.rank || '');
+        const role = isOfficer ? 'Officer' : 'Rating';
+        
+        // Parse the current month (format: "YYYY-MM")
+        if (!currentMonth) return '';
+        const [targetYear, targetMonthNum] = currentMonth.split('-').map(Number);
+        
+        // Helper to check if a date falls within the target month
+        const isInTargetMonth = (dateStr: string): boolean => {
+          if (!dateStr) return false;
+          const date = new Date(dateStr);
+          return date.getFullYear() === targetYear && (date.getMonth() + 1) === targetMonthNum;
+        };
+        
+        // Helper to format a date
+        const formatDate = (dateStr: string): string => {
+          const date = new Date(dateStr);
           const day = date.getDate();
           const month = monthNames[date.getMonth()];
           const year = date.getFullYear();
-          
-          const isOfficer = ['Master', 'Chief Officer', 'Chief Engineer', '2nd Officer', 'Second Officer', '3rd Officer', 'Third Officer', '2nd Engineer', 'Second Engineer', '3rd Engineer', 'Third Engineer', '4th Engineer', 'Fourth Engineer', 'Fifth Engineer', 'Electrical Officer', 'Gas Engineer', 'Cargo/ Gas Engineer'].includes(crew.presentRank || crew.rank || '');
-          const role = isOfficer ? 'Officer' : 'Rating';
-          
-          return `S.On / ${day}-${month}-${year} / ${role}`;
+          return `${day}-${month}-${year}`;
+        };
+        
+        const results: string[] = [];
+        
+        // Check if sign-on date is within current month
+        if (crew.signOnDate && isInTargetMonth(crew.signOnDate)) {
+          results.push(`S.On / ${formatDate(crew.signOnDate)} / ${role}`);
         }
-        return '';
+        
+        // Check if sign-off date is within current month
+        if (crew.signOffDate && isInTargetMonth(crew.signOffDate)) {
+          results.push(`S.Off / ${formatDate(crew.signOffDate)} / ${role}`);
+        }
+        
+        return results.join(' | ');
       };
       
       // Format month display from monthValue
@@ -5762,7 +5786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: fullName,
               month: formatMonth(targetMonth),
               monthValue: targetMonth,
-              signOnOffInfo: getSignOnOffInfo(crew),
+              signOnOffInfo: getSignOnOffInfo(crew, targetMonth),
               recordingStatusPercent: recordingPercent,
               activityConflicting: false,
               totalViolations: totalViolations,
