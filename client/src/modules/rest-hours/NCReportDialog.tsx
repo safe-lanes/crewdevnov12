@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import type { NCReport, RestHoursCrewRecord, RestHoursDailyRecord, MasterDataEntry } from "@shared/schema";
 import { filterViolations } from './violationFilters';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useExternalUsers, type ExternalUser } from '@/hooks/useExternalUsers';
 
 interface NCReportDialogProps {
   open: boolean;
@@ -54,12 +55,19 @@ interface DailyRecord {
   violationDiagnostics?: ViolationDiagnostic[];
 }
 
-// Dummy office users data
-const OFFICE_USERS = [
-  { name: "John Smith", position: "Marine Superintendent" },
-  { name: "Sarah Johnson", position: "Marine Superintendent" },
-  { name: "Michael Chen", position: "Marine Superintendent" },
-];
+// Helper to get current user from sessionStorage
+function getCurrentUserFromSession(): { name: string; designation: string } | null {
+  try {
+    const name = sessionStorage.getItem('crewUserName');
+    const designation = sessionStorage.getItem('crewDesignation');
+    if (name && designation) {
+      return { name, designation };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: vesselIdProp }: NCReportDialogProps) {
   const { toast } = useToast();
@@ -70,6 +78,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   const [preventiveActionDueDate, setPreventiveActionDueDate] = useState<Date | undefined>(undefined);
   const [preventiveActionDateCompleted, setPreventiveActionDateCompleted] = useState<Date | undefined>(undefined);
   const [officeClosureVerifiedByName, setOfficeClosureVerifiedByName] = useState("");
+  const [officeClosureVerifiedByPositionFallback, setOfficeClosureVerifiedByPositionFallback] = useState("");
   const [officeClosureDate, setOfficeClosureDate] = useState<Date | undefined>(undefined);
   const [submissionStatus, setSubmissionStatus] = useState<"draft" | "vessel-submitted" | "office-submitted">("draft");
   const [status, setStatus] = useState<"Open" | "Closed">("Open");
@@ -82,6 +91,30 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
     const vessel = masterData.find(v => v.entryId === crewRecord.vesselId);
     return vessel?.name || crewRecord.vesselId;
   }, [masterData, crewRecord.vesselId]);
+
+  // Fetch external users and filter to Office users only
+  const { data: allExternalUsers, isLoading: usersLoading } = useExternalUsers({ enabled: open });
+  
+  const officeUsers = useMemo(() => {
+    if (!allExternalUsers) return [];
+    return (allExternalUsers as ExternalUser[]).filter(
+      (user) => user.userType === 'Office'
+    );
+  }, [allExternalUsers]);
+
+  // Get position from selected office user, with fallback to server-provided value
+  const selectedUserPosition = useMemo(() => {
+    if (!officeClosureVerifiedByName) return "";
+    // If external users have loaded, try to find the position from the list
+    if (officeUsers.length > 0) {
+      const selectedUser = officeUsers.find(u => u.userName === officeClosureVerifiedByName);
+      if (selectedUser?.designation) {
+        return selectedUser.designation;
+      }
+    }
+    // Fallback to the server-provided position if users haven't loaded yet
+    return officeClosureVerifiedByPositionFallback;
+  }, [officeClosureVerifiedByName, officeUsers, officeClosureVerifiedByPositionFallback]);
 
   // Fetch daily records to get violation details
   const { data: dailyRecordContainer } = useQuery<RestHoursDailyRecord | null>({
@@ -118,6 +151,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       setPreventiveActionDueDate(existingReport.preventiveActionDueDate ? new Date(existingReport.preventiveActionDueDate) : undefined);
       setPreventiveActionDateCompleted(existingReport.preventiveActionDateCompleted ? new Date(existingReport.preventiveActionDateCompleted) : undefined);
       setOfficeClosureVerifiedByName(existingReport.officeClosureVerifiedByName || "");
+      setOfficeClosureVerifiedByPositionFallback(existingReport.officeClosureVerifiedByPosition || "");
       setOfficeClosureDate(existingReport.officeClosureDate ? new Date(existingReport.officeClosureDate) : undefined);
       setSubmissionStatus(existingReport.submissionStatus as any);
       setStatus((existingReport.status as any) || "Open");
@@ -130,14 +164,30 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       setPreventiveActionDueDate(undefined);
       setPreventiveActionDateCompleted(undefined);
       setOfficeClosureVerifiedByName("");
+      setOfficeClosureVerifiedByPositionFallback("");
       setOfficeClosureDate(undefined);
       setSubmissionStatus("draft");
       setStatus("Open");
     }
   }, [existingReport]);
 
-  // Get office user position based on selected name
-  const selectedUserPosition = OFFICE_USERS.find(u => u.name === officeClosureVerifiedByName)?.position || "";
+  // Auto-select current user from sessionStorage when opening new report
+  useEffect(() => {
+    // Only auto-select if no existing report and no name already selected
+    if (!existingReport && !officeClosureVerifiedByName && officeUsers.length > 0) {
+      const currentUser = getCurrentUserFromSession();
+      if (currentUser) {
+        // Try to find matching user in office users list by name
+        const matchingUser = officeUsers.find(
+          (u: ExternalUser) => u.userName === currentUser.name || 
+                              u.userName.toLowerCase() === currentUser.name.toLowerCase()
+        );
+        if (matchingUser) {
+          setOfficeClosureVerifiedByName(matchingUser.userName);
+        }
+      }
+    }
+  }, [existingReport, officeUsers, officeClosureVerifiedByName]);
 
   // Save/Submit mutation
   const saveMutation = useMutation({
@@ -497,11 +547,17 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
                       <SelectValue placeholder="Select office user" />
                     </SelectTrigger>
                     <SelectContent>
-                      {OFFICE_USERS.map((user) => (
-                        <SelectItem key={user.name} value={user.name}>
-                          {user.name}
-                        </SelectItem>
-                      ))}
+                      {usersLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : officeUsers.length === 0 ? (
+                        <SelectItem value="none" disabled>No office users found</SelectItem>
+                      ) : (
+                        officeUsers.map((user: ExternalUser) => (
+                          <SelectItem key={user.uuid} value={user.userName}>
+                            {user.userName}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
