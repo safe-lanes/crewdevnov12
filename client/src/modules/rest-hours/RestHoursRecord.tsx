@@ -13,6 +13,7 @@ import { RHRecordsTable } from './RHRecordsTable';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from './utils/filterParams';
 import { useViewport } from '@/hooks/useViewport';
+import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
 
 export const RestHoursRecord = (): JSX.Element => {
   const viewport = useViewport();
@@ -25,17 +26,24 @@ export const RestHoursRecord = (): JSX.Element => {
   const currentMonth = new Date().getMonth() + 1;
   
   const [showFilters, setShowFilters] = useState(true);
-  const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
-  const [opaMode, setOpaMode] = useState(false);
-  const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
-  const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
-  const [fleetValue, setFleetValue] = useState("");
-  const [addGroupValue, setAddGroupValue] = useState("");
-  const [periodValue, setPeriodValue] = useState<PeriodFilterValue>({
-    mode: 'year-month',
-    year: currentYear,
-    month: currentMonth,
-  });
+  
+  const {
+    periodValue,
+    setPeriodValue,
+    complianceMode,
+    setComplianceMode,
+    opaMode,
+    setOpaMode,
+    filterType,
+    setFilterType,
+    selectedVessels,
+    setSelectedVessels,
+    fleetValue,
+    setFleetValue,
+    addGroupValue,
+    setAddGroupValue,
+    toggleVessel,
+  } = useRestHoursFiltersStore();
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
@@ -47,77 +55,52 @@ export const RestHoursRecord = (): JSX.Element => {
     return '';
   }, [periodValue]);
 
-  
-  // Parse URL parameters or restore from localStorage on mount
+  // Parse URL parameters on mount (localStorage is handled by the store automatically)
   useEffect(() => {
     const search = window.location.search;
     if (!search) {
-      // No URL params - try to restore from localStorage
-      try {
-        const stored = localStorage.getItem('rh-records-filters');
-        if (stored) {
-          const filters = JSON.parse(stored);
-          if (filters.period) setPeriodValue(filters.period);
-          if (filters.complianceMode) setComplianceMode(filters.complianceMode);
-          if (filters.opaMode !== undefined) setOpaMode(filters.opaMode);
-          if (filters.filterType) setFilterType(filters.filterType);
-          if (filters.fleetValue) setFleetValue(filters.fleetValue);
-          if (filters.addGroupValue) setAddGroupValue(filters.addGroupValue);
-          if (filters.selectedVessels) setSelectedVessels(filters.selectedVessels);
-        }
-      } catch (e) {
-        console.error('Failed to restore filters from localStorage:', e);
-      }
-      return;
-    }
-    
-    const filters = parseRestHoursFilters(search);
-    
-    // Apply period filter (only if different from current state)
-    const parsedPeriod = partToPeriodFilter(filters);
-    if (parsedPeriod && JSON.stringify(parsedPeriod) !== JSON.stringify(periodValue)) {
-      setPeriodValue(parsedPeriod);
-    }
-    
-    // Apply compliance mode (only if different)
-    if (filters.complianceMode && filters.complianceMode !== complianceMode) {
-      setComplianceMode(filters.complianceMode);
-    }
-    
-    // Apply OPA mode (only if different)
-    if (filters.opaMode !== undefined && filters.opaMode !== opaMode) {
-      setOpaMode(filters.opaMode);
-    }
-    
-    // Apply filter type (only if different)
-    if (filters.filterType && filters.filterType !== filterType) {
-      setFilterType(filters.filterType);
-    }
-    
-    // Apply fleet/group values (only if different)
-    if (filters.fleetGroup && filters.fleetGroup !== fleetValue) {
-      setFleetValue(filters.fleetGroup);
-    }
-    if (filters.addGroup && filters.addGroup !== addGroupValue) {
-      setAddGroupValue(filters.addGroup);
-    }
-    // Note: vessel selection is handled in the next effect after vessels load
-  }, []); // Run only on mount
-  
-  // Update vessel selection once vessels are loaded and mark as synced
-  useEffect(() => {
-    if (vesselsLoading || vessels.length === 0) return;
-    
-    const search = window.location.search;
-    if (!search) {
-      // No URL params, mark as synced now
       hasSyncedFromUrl.current = true;
       return;
     }
     
     const filters = parseRestHoursFilters(search);
+    
+    const parsedPeriod = partToPeriodFilter(filters);
+    if (parsedPeriod) {
+      setPeriodValue(parsedPeriod);
+    }
+    
+    if (filters.complianceMode) {
+      setComplianceMode(filters.complianceMode);
+    }
+    
+    if (filters.opaMode !== undefined) {
+      setOpaMode(filters.opaMode);
+    }
+    
+    if (filters.filterType) {
+      setFilterType(filters.filterType);
+    }
+    
+    if (filters.fleetGroup) {
+      setFleetValue(filters.fleetGroup);
+    }
+    if (filters.addGroup) {
+      setAddGroupValue(filters.addGroup);
+    }
+    
+    hasSyncedFromUrl.current = true;
+  }, []);
+  
+  // Update vessel selection once vessels are loaded
+  useEffect(() => {
+    if (vesselsLoading || vessels.length === 0) return;
+    
+    const search = window.location.search;
+    if (!search) return;
+    
+    const filters = parseRestHoursFilters(search);
     if (filters.vesselIds && filters.vesselIds.length > 0) {
-      // Convert vessel IDs to vessel names
       const vesselNames = filters.vesselIds
         .map(id => vessels.find((v: any) => v.entryId === id)?.name)
         .filter((name): name is string => name !== undefined);
@@ -126,42 +109,7 @@ export const RestHoursRecord = (): JSX.Element => {
         setSelectedVessels(vesselNames);
       }
     }
-    
-    // CRITICAL: Only mark as synced AFTER vessel data is loaded and applied
-    hasSyncedFromUrl.current = true;
   }, [vessels, vesselsLoading]);
-  
-  // Save filter state to localStorage whenever filters change
-  useEffect(() => {
-    // Skip if still syncing from URL
-    if (!hasSyncedFromUrl.current) return;
-    
-    try {
-      const filters = {
-        period: periodValue,
-        complianceMode,
-        opaMode,
-        filterType,
-        selectedVessels,
-        fleetValue,
-        addGroupValue,
-      };
-      localStorage.setItem('rh-records-filters', JSON.stringify(filters));
-    } catch (e) {
-      console.error('Failed to save filters to localStorage:', e);
-    }
-  }, [periodValue, complianceMode, opaMode, filterType, selectedVessels, fleetValue, addGroupValue]);
-
-  const toggleVessel = (vesselName: string) => {
-    console.log('[toggleVessel] Called with:', vesselName);
-    setSelectedVessels(prev => {
-      const newValue = prev.includes(vesselName) 
-        ? prev.filter(v => v !== vesselName)
-        : [...prev, vesselName];
-      console.log('[toggleVessel] Previous:', prev, '→ New:', newValue);
-      return newValue;
-    });
-  };
 
   const handleClearFilters = () => {
     setFilterType("vessel");
@@ -503,7 +451,7 @@ export const RestHoursRecord = (): JSX.Element => {
           <div className="flex items-center gap-1">
             <span className="text-xs text-[#4f5863]">Rest</span>
             <button
-              onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
+              onClick={() => setComplianceMode(complianceMode === 'Rest' ? 'Work' : 'Rest')}
               className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
                 complianceMode === 'Work' ? 'bg-blue-600' : 'bg-gray-300'
               }`}

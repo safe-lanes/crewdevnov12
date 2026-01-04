@@ -2,10 +2,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface PeriodFilterValue {
-  mode: 'year-month' | 'year-quarter' | 'year' | 'date-range';
+  mode: 'year-month' | 'year-quarter' | 'date-range';
   year?: number;
   month?: number;
-  quarter?: number;
+  quarter?: 1 | 2 | 3 | 4;
   startDate?: string;
   endDate?: string;
 }
