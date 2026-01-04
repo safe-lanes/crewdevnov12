@@ -27,6 +27,33 @@ interface CrewTaskData {
 // Memoize static hour headers (0-23) to prevent rebuilding on every render
 const HOUR_HEADERS = Array.from({ length: 24 }, (_, i) => i);
 
+// Helper function to parse hours data from server (can be JSON string or array)
+// Always returns a new array to avoid mutating cached React Query data
+const parseHoursData = (data: string | string[] | null | undefined): string[] => {
+  if (!data) return Array(48).fill('');
+  
+  // Already an array - clone it to avoid mutating cached data
+  if (Array.isArray(data)) return [...data];
+  
+  // JSON string - try to parse
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return [...parsed];
+    } catch {
+      // Not valid JSON, return empty
+    }
+  }
+  
+  return Array(48).fill('');
+};
+
+// Helper function to check if hours data has any actual values
+const hasActualHoursData = (data: string | string[] | null | undefined): boolean => {
+  const parsed = parseHoursData(data);
+  return parsed.some(h => h !== '');
+};
+
 // Helper function to get cell background color
 const getCellBackgroundColor = (value: string): string => {
   if (value === 'w' || value === 'd') return '#E5E7EB'; // Grey for all work
@@ -338,8 +365,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         
         // Check if local task has empty data but server has real data
         const localIsEmpty = task.seaHours.every(h => h === '') && task.portHours.every(h => h === '');
-        const serverHasData = (Array.isArray(serverTask.seaHours) && serverTask.seaHours.some(h => h !== '')) ||
-                              (Array.isArray(serverTask.portHours) && serverTask.portHours.some(h => h !== ''));
+        const serverHasData = hasActualHoursData(serverTask.seaHours) || hasActualHoursData(serverTask.portHours);
         
         return localIsEmpty && serverHasData;
       });
@@ -357,15 +383,14 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
               // Check if local data is empty but server has data
               const localIsEmpty = existingLocal.seaHours.every(h => h === '') && existingLocal.portHours.every(h => h === '');
               const serverHasData = existingServer && 
-                ((Array.isArray(existingServer.seaHours) && existingServer.seaHours.some(h => h !== '')) ||
-                 (Array.isArray(existingServer.portHours) && existingServer.portHours.some(h => h !== '')));
+                (hasActualHoursData(existingServer.seaHours) || hasActualHoursData(existingServer.portHours));
               
               if (localIsEmpty && serverHasData) {
-                // Replace empty local data with server data
+                // Replace empty local data with server data (parse JSON strings if needed)
                 return {
                   ...existingLocal,
-                  seaHours: Array.isArray(existingServer?.seaHours) ? existingServer.seaHours : existingLocal.seaHours,
-                  portHours: Array.isArray(existingServer?.portHours) ? existingServer.portHours : existingLocal.portHours,
+                  seaHours: parseHoursData(existingServer?.seaHours),
+                  portHours: parseHoursData(existingServer?.portHours),
                   taskId: existingServer?.id || existingLocal.taskId,
                 };
               }
@@ -377,13 +402,13 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
               };
             }
             
-            // New crew member - initialize from server or empty
+            // New crew member - initialize from server or empty (parse JSON strings if needed)
             return {
               crewMemberId: crew.id,
               crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
               rank: crew.presentRank || '',
-              seaHours: Array.isArray(existingServer?.seaHours) ? existingServer.seaHours : Array(48).fill(''),
-              portHours: Array.isArray(existingServer?.portHours) ? existingServer.portHours : Array(48).fill(''),
+              seaHours: parseHoursData(existingServer?.seaHours),
+              portHours: parseHoursData(existingServer?.portHours),
               taskId: existingServer?.id,
             };
           });
@@ -401,7 +426,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       return;
     }
 
-    // Initial load - build from server data
+    // Initial load - build from server data (parse JSON strings if needed)
     const tasks: CrewTaskData[] = vesselCrewMembers.map((crew: any) => {
       const existingTask = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.id);
       
@@ -409,8 +434,8 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         crewMemberId: crew.id,
         crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
         rank: crew.presentRank || '',
-        seaHours: Array.isArray(existingTask?.seaHours) ? existingTask.seaHours : Array(48).fill(''),
-        portHours: Array.isArray(existingTask?.portHours) ? existingTask.portHours : Array(48).fill(''),
+        seaHours: parseHoursData(existingTask?.seaHours),
+        portHours: parseHoursData(existingTask?.portHours),
         taskId: existingTask?.id,
       };
     });
@@ -533,8 +558,8 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         if (prevTask) {
           return {
             ...task,
-            seaHours: Array.isArray(prevTask.seaHours) ? Array.from(prevTask.seaHours) : [],
-            portHours: Array.isArray(prevTask.portHours) ? Array.from(prevTask.portHours) : [],
+            seaHours: parseHoursData(prevTask.seaHours),
+            portHours: parseHoursData(prevTask.portHours),
           };
         }
         return task;
