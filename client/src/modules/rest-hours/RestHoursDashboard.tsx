@@ -19,6 +19,7 @@ import { PerformanceOverviewCard } from './PerformanceOverviewCard';
 import { VesselAnalysisChart } from './VesselAnalysisChart';
 import { VesselStatusChart } from './VesselStatusChart';
 import { useViewport } from '@/hooks/useViewport';
+import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
 
 export const RestHoursDashboard = (): JSX.Element => {
   const viewport = useViewport();
@@ -26,10 +27,6 @@ export const RestHoursDashboard = (): JSX.Element => {
   const isTablet = viewport === 'tablet';
 
   const [showFilters, setShowFilters] = useState(true);
-  const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
-  const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
-  const [fleetValue, setFleetValue] = useState("");
-  const [addGroupValue, setAddGroupValue] = useState("");
   const [chart1Toolbar, setChart1Toolbar] = useState<JSX.Element | null>(null);
   const [chart2Toolbar, setChart2Toolbar] = useState<JSX.Element | null>(null);
   const [rankViolationsToolbar, setRankViolationsToolbar] = useState<JSX.Element | null>(null);
@@ -48,21 +45,22 @@ export const RestHoursDashboard = (): JSX.Element => {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilterValue>({
-    mode: 'year-month',
-    year: currentYear,
-    month: currentMonth,
-  });
+  // Use shared store for filter state persistence across pages
+  const {
+    periodValue: periodFilter,
+    setPeriodValue: setPeriodFilter,
+    filterType,
+    setFilterType,
+    selectedVessels,
+    setSelectedVessels,
+    fleetValue,
+    setFleetValue,
+    addGroupValue,
+    setAddGroupValue,
+    toggleVessel,
+  } = useRestHoursFiltersStore();
 
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
-
-  const toggleVessel = (vesselName: string) => {
-    setSelectedVessels(prev => 
-      prev.includes(vesselName) 
-        ? prev.filter(v => v !== vesselName)
-        : [...prev, vesselName]
-    );
-  };
 
   const handleClearFilters = () => {
     setFilterType("vessel");
