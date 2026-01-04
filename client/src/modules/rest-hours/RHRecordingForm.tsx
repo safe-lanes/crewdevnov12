@@ -210,6 +210,9 @@ export const RHRecordingForm = ({
   const [previousMonthRecords, setPreviousMonthRecords] = useState<DailyRecord[]>([]);
   const [formId, setFormId] = useState<number | null>(null);
   
+  // Ref to track if template has been applied (prevents re-running on recordMode changes)
+  const templateAppliedRef = useRef(false);
+  
   // Violation highlighting state
   const [hoveredViolation, setHoveredViolation] = useState<{ dayIndex: number; code: number } | null>(null);
   
@@ -313,6 +316,9 @@ export const RHRecordingForm = ({
     setRecordMode('Rec');
     setShowPlanning(true);
     setOpaMode(false);
+    
+    // Reset template applied flag so template can be re-applied for new crew/vessel/month
+    templateAppliedRef.current = false;
     
     const [year, month] = selectedPeriod.split('-');
     const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
@@ -599,94 +605,75 @@ export const RHRecordingForm = ({
     }
   }, [previousMonthRecord, open]);
 
-  // Apply fixed tasks template to daily records when available (for new forms)
-  useEffect(() => {
-    if (!open || !fixedTask || existingRecord) return;
+  // Compute variable task cells map for overlay onto daily records
+  // Note: This is computed as a derived value rather than an effect to avoid infinite loops
+  const variableTaskCellsMap = useMemo(() => {
+    if (!selectedPeriod || crewVariableTasks.length === 0) return new Map<number, VariableTaskCells[]>();
     
-    // Only apply fixed tasks if there's no existing record
-    // Use seaHours as the template (assuming vessel is at sea by default)
-    // TODO: Add vessel condition state to switch between seaHours/portHours
-    const template = fixedTask.seaHours;
-    
-    if (!Array.isArray(template) || template.length !== 48) return;
-    
-    setDailyRecords(prevRecords => {
-      return prevRecords.map(record => {
-        const newHours = [...template];
-        const restHours = newHours.filter(h => h === '').length / 2;
-        const workHours = 24 - restHours;
-        return {
-          ...record,
-          hours: newHours,
-          isPlan: true,
-          hoursOfRest24hr: restHours,
-          hoursOfWork24hr: workHours,
-        };
-      });
-    });
-  }, [fixedTask, open, existingRecord]);
-
-  // Apply variable tasks hours to daily records when available
-  // Variable tasks overlay work hours ('w') onto the applicable day/time cells
-  const variableTasksAppliedRef = useRef<string>('');
-  
-  // Reset ref when crew member or period changes
-  useEffect(() => {
-    variableTasksAppliedRef.current = '';
-  }, [selectedCrewMemberId, selectedPeriod]);
-  
-  useEffect(() => {
-    if (!open || !selectedPeriod) return;
-    if (crewVariableTasks.length === 0) return;
-    if (dailyRecords.length === 0) return;
-    
-    // Create a hash to track if we've already applied these specific tasks
-    const tasksHash = `${selectedCrewMemberId}-${crewVariableTasks.map(t => `${t.id}-${t.startDateTime}-${t.finishDateTime}`).join('|')}`;
-    if (variableTasksAppliedRef.current === tasksHash) return;
-    
-    // Parse all variable tasks into day/cell ranges
-    const allCells: VariableTaskCells[] = [];
+    const cellsMap = new Map<number, VariableTaskCells[]>();
     for (const task of crewVariableTasks) {
       const cells = parseVariableTaskToCells(task, selectedPeriod);
-      allCells.push(...cells);
+      for (const cell of cells) {
+        const existing = cellsMap.get(cell.day) || [];
+        existing.push(cell);
+        cellsMap.set(cell.day, existing);
+      }
     }
+    return cellsMap;
+  }, [crewVariableTasks, selectedPeriod]);
+
+  // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms)
+  useEffect(() => {
+    if (!open || existingRecord) return;
     
-    if (allCells.length === 0) return;
+    // Only apply template once per crew/vessel/month combination
+    if (templateAppliedRef.current) return;
     
-    // Apply variable task hours to daily records
+    // Only apply if we have fixed task template or variable tasks
+    const hasFixedTask = fixedTask && Array.isArray(fixedTask.seaHours) && fixedTask.seaHours.length === 48;
+    const hasVariableTasks = variableTaskCellsMap.size > 0;
+    
+    if (!hasFixedTask && !hasVariableTasks) return;
+    
+    // Mark template as applied to prevent re-application when recordMode changes
+    templateAppliedRef.current = true;
+    
+    // Capture current recordMode value: 'Rec' means actual recording (isPlan=false)
+    const isPlanValue = recordMode === 'Plan';
+    
+    // Use seaHours as the template (assuming vessel is at sea by default)
+    const seaHoursArray = Array.isArray(fixedTask?.seaHours) ? (fixedTask.seaHours as string[]) : [];
+    const template: string[] = hasFixedTask ? seaHoursArray.slice() : Array(48).fill('');
+    
     setDailyRecords(prevRecords => {
       return prevRecords.map(record => {
-        // Find any variable task cells for this day
-        const dayCells = allCells.filter(c => c.day === record.day);
-        if (dayCells.length === 0) return record;
+        // Start with fixed task template
+        const newHours = [...template];
         
-        // Clone the hours array and overlay work hours
-        // Variable tasks override fixed task templates (duty 'd' markers)
-        // since variable tasks are specific scheduled work assignments
-        const newHours = [...record.hours];
-        for (const cellRange of dayCells) {
-          for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
-            // Variable tasks always mark cells as work ('w')
-            // This overrides fixed task duty markers ('d') and empty cells
-            newHours[i] = 'w';
+        // Overlay variable task work hours if any exist for this day
+        const dayCells = variableTaskCellsMap.get(record.day);
+        if (dayCells && dayCells.length > 0) {
+          for (const cellRange of dayCells) {
+            for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
+              // Variable tasks always mark cells as work ('w')
+              // This overrides fixed task duty markers ('d') and empty cells
+              newHours[i] = 'w';
+            }
           }
         }
         
-        // Recalculate rest/work hours
         const restHours = newHours.filter(h => h === '').length / 2;
         const workHours = 24 - restHours;
-        
         return {
           ...record,
           hours: newHours,
+          isPlan: isPlanValue,
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
         };
       });
     });
-    
-    variableTasksAppliedRef.current = tasksHash;
-  }, [crewVariableTasks, selectedPeriod, open, dailyRecords.length]);
+  }, [fixedTask, open, existingRecord, variableTaskCellsMap, recordMode]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
@@ -1024,6 +1011,9 @@ export const RHRecordingForm = ({
     setRecordMode('Rec');
     setShowPlanning(true);
     setOpaMode(false);
+    
+    // Reset template applied flag to allow reapplication of fixed/variable task templates
+    templateAppliedRef.current = false;
   };
 
   // Generate display rows - now 1:1 mapping since retarded days have separate records
