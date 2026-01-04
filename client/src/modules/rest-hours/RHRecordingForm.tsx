@@ -996,13 +996,31 @@ export const RHRecordingForm = ({
   });
 
   const handleSave = () => {
+    // Merge the latest violations from timelineViolations into dailyRecords before saving
+    // This ensures violations calculated client-side are persisted to the database
+    const recordsWithViolations = dailyRecords.map((record, dayIndex) => {
+      const violationData = timelineViolations.get(dayIndex);
+      if (violationData) {
+        return {
+          ...record,
+          violations: violationData.violations,
+          violationDiagnostics: violationData.diagnostics,
+          anyPeriodRest24hr: violationData.metrics.anyPeriodRest24hr,
+          anyPeriodRest7day: violationData.metrics.anyPeriodRest7day,
+          anyPeriodWork24hr: violationData.metrics.anyPeriodWork24hr,
+          anyPeriodWork7day: violationData.metrics.anyPeriodWork7day,
+        };
+      }
+      return record;
+    });
+    
     const payload = {
       crewMemberId: selectedCrewMemberId,
       vesselId: selectedVesselId,
       rank,
       name: crewMemberName,
       monthYear: selectedPeriod,
-      dailyRecords: JSON.stringify(dailyRecords),
+      dailyRecords: JSON.stringify(recordsWithViolations),
       showPlanning,
       opaMode,
     };
