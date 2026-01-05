@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { addRankAliasesToMap } from '@/hooks/useRankNormalization';
 
 // Equipment entry schema
 const equipmentEntrySchema = z.object({
@@ -233,25 +234,57 @@ export function DrugAlcoholTestForm({
   // Watch the vessel ID from form to filter crew dynamically
   const formVesselId = form.watch('vesselId');
   
+  // Active vessel ID: prefer form selection, fallback to prop
+  const activeVesselIdForRanks = formVesselId || vesselId || '';
+  
+  // Fetch vessel-specific ranks (includes variants with accurate sortOrder)
+  // Query refetches when form's vessel selection changes
+  const { data: vesselRanksRaw = [] } = useQuery<any[]>({
+    queryKey: ['/api/vessel-revisions/ranks', activeVesselIdForRanks],
+    queryFn: activeVesselIdForRanks ? () => fetch(`/api/vessel-revisions/ranks/${activeVesselIdForRanks}`).then(res => res.json()) : undefined,
+    enabled: !!activeVesselIdForRanks,
+  });
+  
   // Watch alcohol/drug type to conditionally show fields
   const alcoholDrugType = form.watch('alcoholDrugType') || [];
   const showAlcoholFields = alcoholDrugType.includes('Alcohol');
   const showDrugFields = alcoholDrugType.includes('Drug');
   
-  // Create rank order map for sorting (using sortOrder from available ranks, not id)
+  // Create comprehensive rank order map (matching VesselModule logic with aliases and vessel-specific ranks)
   const rankOrderMap = useMemo(() => {
-    const orderMap = new Map<string, number>();
+    const map = new Map<string, number>();
+    
+    // First add base ranks from available ranks (with aliases like "2nd Officer" -> "Second Officer")
     availableRanks.forEach((rank: any) => {
-      // Map rank name to its sort order (using sortOrder field, matching Crew List logic)
-      const sortOrder = rank.sortOrder ?? 999;
-      orderMap.set(rank.name, sortOrder);
-      // Also handle variations with suffixes like "3rd Officer_1"
-      if (rank.name) {
-        orderMap.set(rank.name.toLowerCase(), sortOrder);
+      addRankAliasesToMap(map, rank.name, rank.sortOrder ?? 999);
+    });
+    
+    // Then add all vessel ranks (including variants) - these have accurate sortOrder from backend
+    vesselRanksRaw.forEach((rank: any) => {
+      const sortOrder = rank.sortOrder;
+      if (sortOrder === undefined) return;
+      
+      // Add mapping for 'rank' field (e.g., "Second Officer")
+      if (rank.rank) {
+        addRankAliasesToMap(map, rank.rank, sortOrder);
+      }
+      // Add mapping for 'role' field (e.g., "2nd Officer" or "Oiler_1")
+      if (rank.role && rank.role !== rank.rank) {
+        map.set(rank.role, sortOrder);
+        map.set(rank.role.toLowerCase(), sortOrder);
+      }
+      // Add mapping for base rank extracted from role (e.g., "Oiler" from "Oiler_1")
+      if (rank.role && rank.role.includes('_')) {
+        const baseRank = rank.role.split('_')[0];
+        if (!map.has(baseRank)) {
+          map.set(baseRank, sortOrder);
+          map.set(baseRank.toLowerCase(), sortOrder);
+        }
       }
     });
-    return orderMap;
-  }, [availableRanks]);
+    
+    return map;
+  }, [availableRanks, vesselRanksRaw]);
 
   // Get sort order for a rank (handles variants like "3rd Officer_1")
   const getRankSortOrder = useCallback((rankName: string): number => {
