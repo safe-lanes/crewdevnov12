@@ -238,15 +238,16 @@ export function DrugAlcoholTestForm({
   const showAlcoholFields = alcoholDrugType.includes('Alcohol');
   const showDrugFields = alcoholDrugType.includes('Drug');
   
-  // Create rank order map for sorting (lower id = higher rank priority)
+  // Create rank order map for sorting (using sortOrder from available ranks, not id)
   const rankOrderMap = useMemo(() => {
     const orderMap = new Map<string, number>();
     availableRanks.forEach((rank: any) => {
-      // Map rank name to its sort order (using id as the order)
-      orderMap.set(rank.name, rank.id);
+      // Map rank name to its sort order (using sortOrder field, matching Crew List logic)
+      const sortOrder = rank.sortOrder ?? 999;
+      orderMap.set(rank.name, sortOrder);
       // Also handle variations with suffixes like "3rd Officer_1"
       if (rank.name) {
-        orderMap.set(rank.name.toLowerCase(), rank.id);
+        orderMap.set(rank.name.toLowerCase(), sortOrder);
       }
     });
     return orderMap;
