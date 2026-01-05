@@ -36,7 +36,7 @@ export const RANK_CATEGORIES: RankCategory[] = [
     name: 'Ratings',
     ranks: [
       'Bosun',
-      'Able Seaman',
+      'Able Bodied Seaman',
       'Ordinary Seaman',
       'Oiler',
       'Wiper',
