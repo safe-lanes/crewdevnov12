@@ -1,5 +1,5 @@
 
-import { pgTable, text, integer, boolean, timestamp, varchar, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, varchar, serial, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -737,7 +737,15 @@ export const restHoursDailyRecords = pgTable("rest_hours_daily_records", {
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // Unique constraint: One record per crew member per vessel per month
+  // This prevents duplicate records and works with the application-level upsert logic
+  uniqueCrewVesselMonth: uniqueIndex("rest_hours_daily_records_unique_idx").on(
+    table.crewMemberId, 
+    table.vesselId, 
+    table.monthYear
+  ),
+}));
 
 export const vesselViolationComments = pgTable("vessel_violation_comments", {
   id: serial("id").primaryKey(),
