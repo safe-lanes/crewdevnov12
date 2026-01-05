@@ -329,6 +329,32 @@ export function DrugAlcoholTestForm({
     }
   }, [vesselCrewPersonnel, formVesselId, draftData, recordId, personnelFields.length, replacePersonnel]);
 
+  // Watch dateTimeTestCompleted to auto-populate date fields in Part B1
+  const dateTimeTestCompleted = form.watch('dateTimeTestCompleted');
+  
+  // Auto-copy date from Part A1 to all personnel date fields in Part B1
+  useEffect(() => {
+    if (!dateTimeTestCompleted || personnelFields.length === 0) return;
+    
+    // Extract date portion from datetime-local format (YYYY-MM-DDTHH:mm)
+    const datePortion = dateTimeTestCompleted.split('T')[0];
+    if (!datePortion) return;
+    
+    // Update all personnel entries with the date (only if their current date is empty)
+    personnelFields.forEach((_, index) => {
+      const currentAlcoholDate = form.getValues(`personnelTested.${index}.alcoholTest.date`);
+      const currentDrugDate = form.getValues(`personnelTested.${index}.drugTest.date`);
+      
+      // Only auto-fill if the field is empty (don't overwrite user edits)
+      if (!currentAlcoholDate) {
+        form.setValue(`personnelTested.${index}.alcoholTest.date`, datePortion);
+      }
+      if (!currentDrugDate) {
+        form.setValue(`personnelTested.${index}.drugTest.date`, datePortion);
+      }
+    });
+  }, [dateTimeTestCompleted, personnelFields.length, form]);
+
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
       ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
