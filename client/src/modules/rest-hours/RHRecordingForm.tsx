@@ -22,7 +22,6 @@ import {
   groupViolationsByDay,
   prependPreviousMonthTimeline,
   analyzeRestPeriodsWithRanges,
-  checkCode4ViolationWithRange,
   type DateLineAdjustment,
   type TimelineSlot,
   type Violation as TimelineViolation,
@@ -766,18 +765,9 @@ export const RHRecordingForm = ({
         slotsToHighlight = timeline.slice(start24Code3, violation.slotIndex + 1);
         break;
         
-      case 4: // Work gap >14h
-        try {
-          const code4Result = checkCode4ViolationWithRange(timeline, violation.slotIndex);
-          if (code4Result.hasViolation && code4Result.violatingRange) {
-            slotsToHighlight = timeline.slice(
-              code4Result.violatingRange.startSlot,
-              code4Result.violatingRange.endSlot + 1
-            );
-          }
-        } catch (e) {
-          console.error('Error computing Code 4 ranges:', e);
-        }
+      case 4: // Work gap >14h - show full 24-hour window like codes 1 and 3
+        const start24Code4 = Math.max(0, violation.slotIndex - 47);
+        slotsToHighlight = timeline.slice(start24Code4, violation.slotIndex + 1);
         break;
     }
     
