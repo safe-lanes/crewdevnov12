@@ -626,6 +626,7 @@ export function DrugsAlcoholModule() {
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onAdd={() => handleOpenForm('annual')}
+                            onEdit={(recordId) => handleOpenForm('annual', undefined, recordId)}
                         />
                     </div>
                 );
@@ -653,6 +654,7 @@ export function DrugsAlcoholModule() {
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onAdd={() => handleOpenForm('periodic')}
+                            onEdit={(recordId) => handleOpenForm('periodic', undefined, recordId)}
                         />
                     </div>
                 );
@@ -680,6 +682,7 @@ export function DrugsAlcoholModule() {
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onAdd={() => handleOpenForm('monthly')}
+                            onEdit={(recordId) => handleOpenForm('monthly', undefined, recordId)}
                         />
                     </div>
                 );
@@ -802,6 +805,7 @@ export function DrugsAlcoholModule() {
                 <DrugAlcoholTestForm
                     testType={formTestType}
                     vesselId={formVesselId}
+                    recordId={editingRecordId}
                     onClose={handleCloseForm}
                     onSave={handleSaveForm}
                     onSubmit={handleSubmitForm}

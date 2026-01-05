@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Save, Send, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText } from 'lucide-react';
+import { ArrowLeft, Save, Send, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -82,6 +82,7 @@ type DrugAlcoholTestFormData = z.infer<typeof drugAlcoholTestFormSchema>;
 interface DrugAlcoholTestFormProps {
   testType?: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others';
   vesselId?: string;
+  recordId?: number;
   draftData?: any;
   onClose: () => void;
   onSave: (data: any) => void;
@@ -92,6 +93,7 @@ interface DrugAlcoholTestFormProps {
 export function DrugAlcoholTestForm({
   testType,
   vesselId,
+  recordId,
   draftData,
   onClose,
   onSave,
@@ -121,6 +123,19 @@ export function DrugAlcoholTestForm({
   // Fetch crew members for the vessel
   const { data: allCrewMembers = [] } = useQuery<any[]>({
     queryKey: ['/api/crew-members'],
+  });
+
+  // Fetch existing record for editing
+  const { data: existingRecord, isLoading: recordLoading, isError: recordError } = useQuery<any>({
+    queryKey: ['/api/drug-alcohol-tests', recordId],
+    queryFn: async () => {
+      if (!recordId) return null;
+      const response = await fetch(`/api/drug-alcohol-tests/${recordId}`);
+      if (!response.ok) throw new Error('Failed to fetch record');
+      return response.json();
+    },
+    enabled: !!recordId,
+    retry: 1,
   });
 
   const form = useForm<DrugAlcoholTestFormData>({
@@ -154,6 +169,55 @@ export function DrugAlcoholTestForm({
       attachmentFile: '',
     },
   });
+
+  // Populate form with existing record data when editing
+  useEffect(() => {
+    if (existingRecord && recordId) {
+      // Parse JSON fields that may be stored as strings
+      const parseJsonField = (value: any) => {
+        if (!value) return undefined;
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value);
+          } catch {
+            return value;
+          }
+        }
+        return value;
+      };
+
+      const formData: Partial<DrugAlcoholTestFormData> = {
+        testType: existingRecord.testType || testType || '',
+        vesselId: existingRecord.vesselId || '',
+        placeLocation: existingRecord.placeLocation || '',
+        alcoholDrugType: parseJsonField(existingRecord.alcoholDrugType) || [],
+        initiatedBy: existingRecord.initiatedBy || '',
+        dateTimeTestCompleted: existingRecord.dateTimeTestCompleted || '',
+        incidentTitle: existingRecord.incidentTitle || '',
+        incidentId: existingRecord.incidentId || '',
+        incidentDateTime: existingRecord.incidentDateTime || '',
+        alcoholTestDateTime: existingRecord.alcoholTestDateTime || '',
+        drugTestDateTime: existingRecord.drugTestDateTime || '',
+        reasonForTesting: existingRecord.reasonForTesting || '',
+        description: existingRecord.description || '',
+        externalTestResultsDate: existingRecord.externalTestResultsDate || '',
+        equipmentNotApplicable: existingRecord.equipmentNotApplicable || false,
+        testingEquipment: parseJsonField(existingRecord.testingEquipment) || [
+          { id: `eq-${Date.now()}`, equipmentId: '', makeModel: '', serialNo: '', lastCalibrated: '' }
+        ],
+        personnelTested: parseJsonField(existingRecord.personnelTested) || [],
+        comments: existingRecord.comments || '',
+        masterDeputySignature: parseJsonField(existingRecord.masterDeputySignature) || {
+          confirmed: false,
+          name: '',
+          date: '',
+        },
+        attachmentFile: existingRecord.attachmentFile || '',
+      };
+
+      form.reset(formData as DrugAlcoholTestFormData);
+    }
+  }, [existingRecord, recordId, testType, form]);
 
   // Watch the vessel ID from form to filter crew dynamically
   const formVesselId = form.watch('vesselId');
@@ -230,8 +294,9 @@ export function DrugAlcoholTestForm({
   }, [activeContinuousSection, sections]);
 
   // Populate personnelTested when crew members are loaded or vessel changes
+  // Skip if editing (recordId provided) as personnel will be loaded from the existing record
   useEffect(() => {
-    if (!draftData && formVesselId) {
+    if (!draftData && !recordId && formVesselId) {
       const currentPersonnel = form.getValues('personnelTested');
       
       // Check if we should update personnel:
@@ -247,7 +312,7 @@ export function DrugAlcoholTestForm({
         form.setValue('personnelTested', vesselCrewPersonnel);
       }
     }
-  }, [vesselCrewPersonnel, formVesselId, draftData, form]);
+  }, [vesselCrewPersonnel, formVesselId, draftData, recordId, form]);
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
@@ -1245,6 +1310,36 @@ export function DrugAlcoholTestForm({
     );
   };
 
+  // Show loading state while fetching existing record
+  if (recordId && recordLoading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+        <div className="bg-white rounded-lg w-full max-w-lg p-8 flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading test record...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if record fetch failed
+  if (recordId && recordError) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+        <div className="bg-white rounded-lg w-full max-w-lg p-8 flex flex-col items-center justify-center">
+          <div className="text-red-500 mb-4">
+            <AlertTriangle className="h-12 w-12" />
+          </div>
+          <p className="text-gray-800 font-semibold mb-2">Failed to load record</p>
+          <p className="text-gray-600 text-center mb-4">The test record could not be loaded. Please try again.</p>
+          <Button onClick={onClose} variant="outline" data-testid="button-close-error">
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
       <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
@@ -1254,7 +1349,7 @@ export function DrugAlcoholTestForm({
             <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-lg sm:text-xl font-bold">Drug & Alcohol Test</h1>
+            <h1 className="text-lg sm:text-xl font-bold">{recordId ? 'Edit' : 'New'} Drug & Alcohol Test</h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
             <Button 

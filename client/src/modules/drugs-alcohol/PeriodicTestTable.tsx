@@ -13,6 +13,7 @@ interface TestRecord {
   date: string;
   port: string;
   violations: number;
+  recordId?: number;
 }
 
 interface PeriodicTestData {
@@ -32,6 +33,7 @@ interface PeriodicTestTableProps {
   fleetValue: string;
   addGroupValue: string;
   onAdd?: () => void;
+  onEdit?: (recordId: number) => void;
 }
 
 const useDrugAlcoholTests = (filters: any) => {
@@ -128,6 +130,7 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
   if (!params.colDef || !params.data) return null;
   
   const testData = params.value as TestRecord | undefined;
+  const { onEdit } = params.context || {};
 
   if (!testData || !testData.date) {
     return <div className="flex items-center h-full text-gray-400 text-xs">No data</div>;
@@ -137,8 +140,18 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
   const violationText = violations === 1 ? '1 Violation' : `${violations} Violation`;
   const violationColor = violations > 0 ? '#E54E60' : '#22C55E';
 
+  const handleClick = () => {
+    if (onEdit && testData.recordId) {
+      onEdit(testData.recordId);
+    }
+  };
+
   return (
-    <div className="flex flex-col justify-center h-full py-1 px-2">
+    <div 
+      className="flex flex-col justify-center h-full py-1 px-2 cursor-pointer hover:bg-gray-50 rounded transition-colors"
+      onClick={handleClick}
+      data-testid={`cell-test-history-${testData.recordId || 'unknown'}`}
+    >
       <div className="text-xs text-gray-700 font-medium">{testData.date}</div>
       <div className="text-xs text-gray-600 mt-0.5">{testData.port}</div>
       <div
@@ -276,6 +289,7 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
   fleetValue,
   addGroupValue,
   onAdd,
+  onEdit,
 }) => {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [globalFrequency, setGlobalFrequency] = useState<number>(3);
@@ -454,11 +468,12 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
       const vesselRecords = periodicRecordsByVessel[vessel.vesselId] || [];
       const latestRecord = vesselRecords[0]; // Most recent record
       
-      // Build testHistory from individual records
+      // Build testHistory from individual records (include recordId for editing)
       const testHistory: TestRecord[] = vesselRecords.map((record: any) => ({
         date: formatTestDate(record.dateTimeTestCompleted),
         port: record.placeLocation || '',
         violations: calculateViolations(record.personnelTested),
+        recordId: record.id,
       })).filter((t: TestRecord) => t.date); // Only include records with valid dates
 
       // Calculate nextDue based on last test date and frequency
@@ -582,8 +597,9 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
       vesselFrequencies,
       setVesselFrequency,
       onAdd,
+      onEdit,
     }),
-    [showAllHistory, globalFrequency, vesselFrequencies, handleGlobalFrequencyChange, setVesselFrequency, onAdd]
+    [showAllHistory, globalFrequency, vesselFrequencies, handleGlobalFrequencyChange, setVesselFrequency, onAdd, onEdit]
   );
 
   if (testsLoading || vesselsLoading) {
