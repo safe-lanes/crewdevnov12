@@ -382,17 +382,51 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
   }, [externalVessels]);
 
   const tableData: AnnualTestData[] = useMemo(() => {
-    // Get annual test records indexed by vesselId for quick lookup
-    const annualTestsByVessel: Record<string, any> = {};
+    // Helper to calculate violations from personnelTested array
+    const calculateViolations = (personnelTested: any): number => {
+      if (!personnelTested) return 0;
+      try {
+        const personnel = typeof personnelTested === 'string' ? JSON.parse(personnelTested) : personnelTested;
+        if (!Array.isArray(personnel)) return 0;
+        return personnel.filter((p: any) => p.alcoholViolation === true || p.drugViolation === true).length;
+      } catch {
+        return 0;
+      }
+    };
+
+    // Helper to format date for display (DD-MMM-YYYY)
+    const formatTestDate = (dateStr: string | null): string => {
+      if (!dateStr) return '';
+      try {
+        const date = new Date(dateStr);
+        return format(date, 'dd-MMM-yyyy');
+      } catch {
+        return '';
+      }
+    };
+
+    // Group annual test records by vesselId and build testHistory from individual records
+    const annualRecordsByVessel: Record<string, any[]> = {};
     const orphanedVesselIds = new Set<string>();
     
     testRecords
       .filter((record: any) => record.testType === 'annual')
       .forEach((record: any) => {
-        annualTestsByVessel[record.vesselId] = record;
-        // Track vessels that have records but might not be in Master 014
+        if (!annualRecordsByVessel[record.vesselId]) {
+          annualRecordsByVessel[record.vesselId] = [];
+        }
+        annualRecordsByVessel[record.vesselId].push(record);
         orphanedVesselIds.add(record.vesselId);
       });
+
+    // Sort each vessel's records by date (newest first) to build proper history
+    Object.keys(annualRecordsByVessel).forEach((vesselId) => {
+      annualRecordsByVessel[vesselId].sort((a: any, b: any) => {
+        const dateA = a.dateTimeTestCompleted ? new Date(a.dateTimeTestCompleted).getTime() : 0;
+        const dateB = b.dateTimeTestCompleted ? new Date(b.dateTimeTestCompleted).getTime() : 0;
+        return dateB - dateA; // Newest first
+      });
+    });
 
     // Start with all vessels from the master list
     const vesselIdSet = new Set<string>();
@@ -404,7 +438,6 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
     // Add orphaned vessels (have test records but not in Master 014)
     orphanedVesselIds.forEach((vesselId) => {
       if (!vesselIdSet.has(vesselId)) {
-        const record = annualTestsByVessel[vesselId];
         allVessels.push({
           vesselId,
           vesselName: vesselLookup[vesselId] || vesselId,
@@ -418,38 +451,42 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
         selectedVessels.includes(vessel.vesselName)
       );
     }
-    // Fleet and addGroup filtering can be added here when fleet/group data is available
 
-    // Map all vessels to table data, merging with test records if they exist
+    // Map all vessels to table data, building testHistory from individual records
     return allVessels.map((vessel: any) => {
-      const record = annualTestsByVessel[vessel.vesselId];
+      const vesselRecords = annualRecordsByVessel[vessel.vesselId] || [];
+      const latestRecord = vesselRecords[0]; // Most recent record
       
-      let testHistory: TestRecord[] = [];
-      if (record) {
+      // Build testHistory from individual records
+      const testHistory: TestRecord[] = vesselRecords.map((record: any) => ({
+        date: formatTestDate(record.dateTimeTestCompleted),
+        port: record.placeLocation || '',
+        violations: calculateViolations(record.personnelTested),
+      })).filter((t: TestRecord) => t.date); // Only include records with valid dates
+
+      // Calculate nextDue based on last test date and frequency
+      const lastTest = testHistory[0];
+      const currentFrequency = vesselFrequencies[vessel.vesselId] || (latestRecord?.frequencyMonths) || globalFrequency;
+      let nextDue = '';
+      if (lastTest?.date) {
         try {
-          testHistory = record.testHistory ? JSON.parse(record.testHistory) : [];
-        } catch (e) {
-          testHistory = [];
+          const lastDate = parse(lastTest.date, 'dd-MMM-yyyy', new Date());
+          nextDue = format(addMonths(lastDate, currentFrequency), 'dd-MMM-yyyy');
+        } catch {
+          nextDue = '';
         }
       }
 
-      // Calculate initial nextDue based on current frequency (global or vessel-specific)
-      const lastTest = testHistory[0];
-      const currentFrequency = vesselFrequencies[vessel.vesselId] || (record?.frequencyMonths) || globalFrequency;
-      const nextDue = lastTest?.date
-        ? format(addMonths(new Date(lastTest.date), currentFrequency), 'yyyy-MM-dd')
-        : '';
-
       return {
-        id: record?.id || `vessel-${vessel.vesselId}`,
+        id: latestRecord?.id || `vessel-${vessel.vesselId}`,
         vesselId: vessel.vesselId,
         vesselName: vessel.vesselName,
-        testHistory: testHistory.slice(0, 3),
-        frequencyMonths: record?.frequencyMonths || 12,
+        testHistory: testHistory.slice(0, 3), // Keep up to 3 for history display
+        frequencyMonths: latestRecord?.frequencyMonths || 12,
         nextDue,
-        plannedPort: record?.plannedPort || '',
-        plannedDate: record?.plannedDate || '',
-        plannedComments: record?.plannedComments || '',
+        plannedPort: latestRecord?.plannedPort || '',
+        plannedDate: latestRecord?.plannedDate || '',
+        plannedComments: latestRecord?.plannedComments || '',
       };
     });
   }, [testRecords, vesselsList, vesselLookup, filterType, selectedVessels, fleetValue, addGroupValue, globalFrequency, vesselFrequencies]);
