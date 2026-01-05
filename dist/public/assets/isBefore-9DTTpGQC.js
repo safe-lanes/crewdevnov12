@@ -1,0 +1,1 @@
+import{t as o}from"./format-B6omtjwJ.js";function r(e){const t=o(e);return t.setDate(1),t.setHours(0,0,0,0),t}function i(e,t){const s=o(e),a=o(t);return s.getTime()>a.getTime()}function c(e,t){const s=o(e),a=o(t);return+s<+a}export{c as a,i,r as s};

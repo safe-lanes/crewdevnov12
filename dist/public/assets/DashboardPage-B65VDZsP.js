@@ -1,0 +1,1 @@
+import{j as a}from"./index-D11ArGlt.js";const e=()=>a.jsx("div",{className:"p-6 space-y-6 bg-gray-50 min-h-[calc(100vh-67px)]","data-testid":"dashboard-page",children:a.jsx("div",{className:"space-y-1",children:a.jsx("h1",{className:"text-2xl font-bold text-gray-900","data-testid":"dashboard-title",children:"Dashboard Overview"})})});export{e as DashboardPage};
