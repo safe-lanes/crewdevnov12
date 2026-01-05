@@ -84,9 +84,10 @@ export function DrugsAlcoholModule() {
     };
 
     // Form handlers
-    const handleOpenForm = (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', vesselId?: string) => {
+    const handleOpenForm = (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', vesselId?: string, recordId?: number) => {
         setFormTestType(testType);
         setFormVesselId(vesselId);
+        setEditingRecordId(recordId);
         setShowForm(true);
     };
 
@@ -99,25 +100,40 @@ export function DrugsAlcoholModule() {
 
     // Helper function to transform form data to API format
     const transformFormDataForAPI = (data: any, status: 'draft' | 'submitted') => {
-        const frequencyMap: Record<string, number> = {
-            'annual': 12,
-            'periodic': 3,
-            'monthly': 1,
-            'post-incident': 0,
-            'others': 0
+        // Only derive frequencyMonths if not provided by the form
+        const getFrequencyMonths = () => {
+            if (data.frequencyMonths !== undefined && data.frequencyMonths !== null) {
+                return data.frequencyMonths;
+            }
+            // Default mapping based on test type
+            const frequencyMap: Record<string, number> = {
+                'annual': 12,
+                'periodic': 3,
+                'monthly': 1,
+                'post-incident': 0,
+                'others': 0
+            };
+            return frequencyMap[data.testType] ?? 12;
+        };
+
+        // Helper to stringify only if value is an array/object, otherwise pass through
+        const toJsonString = (value: any): string | null => {
+            if (value === undefined || value === null) return null;
+            if (typeof value === 'string') return value; // Already a string
+            return JSON.stringify(value);
         };
 
         return {
             vesselId: data.vesselId,
             testType: data.testType,
-            alcoholDrugType: JSON.stringify(data.alcoholDrugType || []),
+            alcoholDrugType: toJsonString(data.alcoholDrugType),
             placeLocation: data.placeLocation || null,
             dateTimeTestCompleted: data.dateTimeTestCompleted || null,
             externalTestResultsDate: data.externalTestResultsDate || null,
             incidentId: data.incidentId || null,
-            testingEquipment: JSON.stringify(data.testingEquipment || []),
+            testingEquipment: toJsonString(data.testingEquipment),
             equipmentNotApplicable: data.equipmentNotApplicable || false,
-            frequencyMonths: frequencyMap[data.testType] || 12,
+            frequencyMonths: getFrequencyMonths(),
             incidentTitle: data.incidentTitle || null,
             incidentDateTime: data.incidentDateTime || null,
             alcoholTestDateTime: data.alcoholTestDateTime || null,
@@ -125,9 +141,9 @@ export function DrugsAlcoholModule() {
             reasonForTesting: data.reasonForTesting || null,
             description: data.description || null,
             initiatedBy: data.initiatedBy || null,
-            personnelTested: JSON.stringify(data.personnelTested || []),
+            personnelTested: toJsonString(data.personnelTested),
             comments: data.comments || null,
-            masterDeputySignature: JSON.stringify(data.masterDeputySignature || {}),
+            masterDeputySignature: toJsonString(data.masterDeputySignature),
             attachmentFile: data.attachmentFile || null,
             status: status,
         };
