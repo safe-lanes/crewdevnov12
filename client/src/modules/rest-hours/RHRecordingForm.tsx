@@ -212,6 +212,9 @@ export const RHRecordingForm = ({
   const [previousMonthRecords, setPreviousMonthRecords] = useState<DailyRecord[]>([]);
   const [formId, setFormId] = useState<number | null>(null);
   
+  // Track if user has made changes that need auto-save
+  const [isDirty, setIsDirty] = useState(false);
+  
   // Ref to track if template has been applied (prevents re-running on recordMode changes)
   const templateAppliedRef = useRef(false);
   
@@ -321,6 +324,7 @@ export const RHRecordingForm = ({
     setRecordMode('Rec');
     setShowPlanning(true);
     setOpaMode(false);
+    setIsDirty(false); // Reset dirty flag on form initialization
     
     // Reset template applied flag so template can be re-applied for new crew/vessel/month
     templateAppliedRef.current = false;
@@ -985,6 +989,9 @@ export const RHRecordingForm = ({
     });
   }, [timelineViolations]);
 
+  // Ref to track if close should happen after save
+  const closeAfterSaveRef = useRef(false);
+  
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -996,14 +1003,27 @@ export const RHRecordingForm = ({
     },
     onSuccess: (data: any) => {
       setFormId(data.id);
+      setIsDirty(false); // Reset dirty flag after successful save
       queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-daily-records'] });
       queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-crew-records'] });
-      toast({
-        title: 'Success',
-        description: 'Rest hours record saved successfully',
-      });
+      
+      // Check if we should close the dialog after auto-save
+      if (closeAfterSaveRef.current) {
+        closeAfterSaveRef.current = false;
+        onOpenChange(false);
+        toast({
+          title: 'Auto-saved',
+          description: 'Rest hours record saved automatically',
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Rest hours record saved successfully',
+        });
+      }
     },
     onError: (error) => {
+      closeAfterSaveRef.current = false;
       toast({
         title: 'Error',
         description: 'Failed to save rest hours record',
@@ -1045,6 +1065,64 @@ export const RHRecordingForm = ({
     
     saveMutation.mutate(payload);
   };
+  
+  // Handler: Request dialog close with auto-save
+  // Automatically saves any unsaved changes before closing to prevent data loss
+  const handleRequestClose = useCallback(() => {
+    // Prevent double-submit if save is already in progress
+    if (saveMutation.isPending) {
+      return;
+    }
+    
+    // If there are unsaved changes, auto-save before closing
+    if (isDirty && dailyRecords.length > 0 && selectedCrewMemberId && selectedVesselId) {
+      closeAfterSaveRef.current = true;
+      
+      // Merge the latest violations before saving
+      const recordsWithViolations = dailyRecords.map((record, dayIndex) => {
+        const violationData = timelineViolations.get(dayIndex);
+        if (violationData) {
+          return {
+            ...record,
+            violations: violationData.violations,
+            violationDiagnostics: violationData.diagnostics,
+            anyPeriodRest24hr: violationData.metrics.anyPeriodRest24hr,
+            anyPeriodRest7day: violationData.metrics.anyPeriodRest7day,
+            anyPeriodWork24hr: violationData.metrics.anyPeriodWork24hr,
+            anyPeriodWork7day: violationData.metrics.anyPeriodWork7day,
+          };
+        }
+        return record;
+      });
+      
+      const payload = {
+        crewMemberId: selectedCrewMemberId,
+        vesselId: selectedVesselId,
+        rank,
+        name: crewMemberName,
+        monthYear: selectedPeriod,
+        dailyRecords: JSON.stringify(recordsWithViolations),
+        showPlanning,
+        opaMode,
+      };
+      
+      saveMutation.mutate(payload);
+    } else {
+      // No unsaved changes, just close
+      onOpenChange(false);
+    }
+  }, [isDirty, dailyRecords, timelineViolations, selectedCrewMemberId, selectedVesselId, rank, crewMemberName, selectedPeriod, showPlanning, opaMode, saveMutation, onOpenChange]);
+  
+  // Handle Dialog's onOpenChange - intercept close requests to trigger auto-save
+  const handleDialogOpenChange = useCallback((isOpen: boolean) => {
+    if (isOpen) {
+      // Opening the dialog - pass through
+      onOpenChange(true);
+    } else {
+      // Closing the dialog - trigger auto-save flow
+      handleRequestClose();
+    }
+  }, [onOpenChange, handleRequestClose]);
 
   const handleClear = () => {
     // Reset to initial state
@@ -1063,6 +1141,7 @@ export const RHRecordingForm = ({
     setRecordMode('Rec');
     setShowPlanning(true);
     setOpaMode(false);
+    setIsDirty(true); // Mark as dirty since Clear is a user action that changes data
     
     // Reset template applied flag to allow reapplication of fixed/variable task templates
     templateAppliedRef.current = false;
@@ -1143,6 +1222,7 @@ export const RHRecordingForm = ({
       newRecords[dayIndex] = record;
       return newRecords;
     });
+    setIsDirty(true);
   }, []);
 
   // Handler: Edit hour cell
@@ -1173,6 +1253,7 @@ export const RHRecordingForm = ({
       
       return newRecords;
     });
+    setIsDirty(true);
   }, [recordMode]);
 
   // Handler: Edit comments
@@ -1185,6 +1266,7 @@ export const RHRecordingForm = ({
       };
       return newRecords;
     });
+    setIsDirty(true);
   }, []);
 
   // Get cell background color based on isPlan and value
@@ -1269,7 +1351,7 @@ export const RHRecordingForm = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -1784,10 +1866,11 @@ export const RHRecordingForm = ({
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={handleRequestClose}
+            disabled={saveMutation.isPending}
             data-testid="button-cancel"
           >
-            Cancel
+            {saveMutation.isPending ? 'Saving...' : 'Close'}
           </Button>
           <Button
             onClick={handleSave}
