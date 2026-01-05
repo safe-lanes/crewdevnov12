@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
-import { addRankAliasesToMap } from '@/hooks/useRankNormalization';
+import { useRankOrdering } from '@/hooks/useRankOrdering';
 
 // Equipment entry schema
 const equipmentEntrySchema = z.object({
@@ -126,11 +126,6 @@ export function DrugAlcoholTestForm({
     queryKey: ['/api/crew-members'],
   });
 
-  // Fetch available ranks for sorting crew by rank order
-  const { data: availableRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/available-ranks'],
-  });
-
   // Fetch existing record for editing
   const { data: existingRecord, isLoading: recordLoading, isError: recordError } = useQuery<any>({
     queryKey: ['/api/drug-alcohol-tests', recordId],
@@ -235,94 +230,30 @@ export function DrugAlcoholTestForm({
   const formVesselId = form.watch('vesselId');
   
   // Active vessel ID: prefer form selection, fallback to prop
-  const activeVesselIdForRanks = formVesselId || vesselId || '';
+  const activeVesselId = formVesselId || vesselId || '';
   
-  // Fetch vessel-specific ranks (includes variants with accurate sortOrder)
-  // Query refetches when form's vessel selection changes
-  const { data: vesselRanksRaw = [] } = useQuery<any[]>({
-    queryKey: ['/api/vessel-revisions/ranks', activeVesselIdForRanks],
-    queryFn: activeVesselIdForRanks ? () => fetch(`/api/vessel-revisions/ranks/${activeVesselIdForRanks}`).then(res => res.json()) : undefined,
-    enabled: !!activeVesselIdForRanks,
-  });
+  // Use centralized rank ordering hook (single source of truth for all modules)
+  const { getSortOrder } = useRankOrdering(activeVesselId);
   
   // Watch alcohol/drug type to conditionally show fields
   const alcoholDrugType = form.watch('alcoholDrugType') || [];
   const showAlcoholFields = alcoholDrugType.includes('Alcohol');
   const showDrugFields = alcoholDrugType.includes('Drug');
-  
-  // Create comprehensive rank order map (matching VesselModule logic with aliases and vessel-specific ranks)
-  const rankOrderMap = useMemo(() => {
-    const map = new Map<string, number>();
-    
-    // First add base ranks from available ranks (with aliases like "2nd Officer" -> "Second Officer")
-    availableRanks.forEach((rank: any) => {
-      addRankAliasesToMap(map, rank.name, rank.sortOrder ?? 999);
-    });
-    
-    // Then add all vessel ranks (including variants) - these have accurate sortOrder from backend
-    vesselRanksRaw.forEach((rank: any) => {
-      const sortOrder = rank.sortOrder;
-      if (sortOrder === undefined) return;
-      
-      // Add mapping for 'rank' field (e.g., "Second Officer")
-      if (rank.rank) {
-        addRankAliasesToMap(map, rank.rank, sortOrder);
-      }
-      // Add mapping for 'role' field (e.g., "2nd Officer" or "Oiler_1")
-      if (rank.role && rank.role !== rank.rank) {
-        map.set(rank.role, sortOrder);
-        map.set(rank.role.toLowerCase(), sortOrder);
-      }
-      // Add mapping for base rank extracted from role (e.g., "Oiler" from "Oiler_1")
-      if (rank.role && rank.role.includes('_')) {
-        const baseRank = rank.role.split('_')[0];
-        if (!map.has(baseRank)) {
-          map.set(baseRank, sortOrder);
-          map.set(baseRank.toLowerCase(), sortOrder);
-        }
-      }
-    });
-    
-    return map;
-  }, [availableRanks, vesselRanksRaw]);
-
-  // Get sort order for a rank (handles variants like "3rd Officer_1")
-  const getRankSortOrder = useCallback((rankName: string): number => {
-    if (!rankName) return 999; // Unranked go to end
-    
-    // Direct match
-    if (rankOrderMap.has(rankName)) {
-      return rankOrderMap.get(rankName)!;
-    }
-    
-    // Try lowercase match
-    if (rankOrderMap.has(rankName.toLowerCase())) {
-      return rankOrderMap.get(rankName.toLowerCase())!;
-    }
-    
-    // Handle variants like "3rd Officer_1" -> "3rd Officer"
-    const baseRank = rankName.replace(/_\d+$/, '').trim();
-    if (rankOrderMap.has(baseRank)) {
-      return rankOrderMap.get(baseRank)!;
-    }
-    if (rankOrderMap.has(baseRank.toLowerCase())) {
-      return rankOrderMap.get(baseRank.toLowerCase())!;
-    }
-    
-    return 999; // Unknown ranks go to end
-  }, [rankOrderMap]);
 
   // Filter crew by vessel, sort by rank order, and map to personnel tested format
   const vesselCrewPersonnel = useMemo(() => {
-    const activeVesselId = formVesselId || vesselId;
     if (!activeVesselId) return [];
     
     return allCrewMembers
       .filter((crew: any) => crew.presentVessel === activeVesselId)
       .sort((a: any, b: any) => {
-        const orderA = getRankSortOrder(a.presentRank);
-        const orderB = getRankSortOrder(b.presentRank);
-        return orderA - orderB;
+        const orderA = getSortOrder(a.presentRank);
+        const orderB = getSortOrder(b.presentRank);
+        if (orderA !== orderB) return orderA - orderB;
+        // Secondary sort by suffix number (e.g., AB_1 before AB_2)
+        const aSuffix = a.presentRank?.includes('_') ? parseInt(a.presentRank.split('_')[1]) || 0 : 0;
+        const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
+        return aSuffix - bSuffix;
       })
       .map((crew: any) => ({
         id: crew.id || `crew-${Date.now()}-${Math.random()}`,
@@ -336,7 +267,7 @@ export function DrugAlcoholTestForm({
         drugViolation: false,
         witness: '',
       }));
-  }, [allCrewMembers, formVesselId, vesselId, getRankSortOrder]);
+  }, [allCrewMembers, activeVesselId, getSortOrder]);
 
   // Sections definition
   const sections = useMemo(() => [
