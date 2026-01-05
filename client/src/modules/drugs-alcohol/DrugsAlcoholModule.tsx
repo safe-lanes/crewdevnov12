@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import MainLayout from '@/components/main/MainLayout';
 import DrugsAlcoholSideBar from './DrugsAlcoholSideBar';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
@@ -18,10 +19,13 @@ import { SummaryTable } from './SummaryTable';
 import { DrugAlcoholTestForm } from './DrugAlcoholTestForm';
 import { useViewport } from '@/hooks/useViewport';
 import { useExternalVessels } from '@/hooks/useExternalVessels';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 export function DrugsAlcoholModule() {
     const [selectedDrugsAlcoholPage, setSelectedDrugsAlcoholPage] = useState<string>("annual");
     const allowedPages = ["annual", "periodic", "monthly", "post-incident", "others", "summary"];
+    const { toast } = useToast();
 
     // Viewport detection for responsive layout
     const viewport = useViewport();
@@ -43,6 +47,7 @@ export function DrugsAlcoholModule() {
     const [showForm, setShowForm] = useState(false);
     const [formTestType, setFormTestType] = useState<'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others'>();
     const [formVesselId, setFormVesselId] = useState<string>();
+    const [editingRecordId, setEditingRecordId] = useState<number | undefined>();
 
     // Fetch vessels from external SAIL ERP API (all 11 vessels)
     const { data: externalVessels = [], isLoading: vesselsLoading } = useExternalVessels();
@@ -89,23 +94,129 @@ export function DrugsAlcoholModule() {
         setShowForm(false);
         setFormTestType(undefined);
         setFormVesselId(undefined);
+        setEditingRecordId(undefined);
     };
 
+    // Helper function to transform form data to API format
+    const transformFormDataForAPI = (data: any, status: 'draft' | 'submitted') => {
+        const frequencyMap: Record<string, number> = {
+            'annual': 12,
+            'periodic': 3,
+            'monthly': 1,
+            'post-incident': 0,
+            'others': 0
+        };
+
+        return {
+            vesselId: data.vesselId,
+            testType: data.testType,
+            alcoholDrugType: JSON.stringify(data.alcoholDrugType || []),
+            placeLocation: data.placeLocation || null,
+            dateTimeTestCompleted: data.dateTimeTestCompleted || null,
+            externalTestResultsDate: data.externalTestResultsDate || null,
+            incidentId: data.incidentId || null,
+            testingEquipment: JSON.stringify(data.testingEquipment || []),
+            equipmentNotApplicable: data.equipmentNotApplicable || false,
+            frequencyMonths: frequencyMap[data.testType] || 12,
+            incidentTitle: data.incidentTitle || null,
+            incidentDateTime: data.incidentDateTime || null,
+            alcoholTestDateTime: data.alcoholTestDateTime || null,
+            drugTestDateTime: data.drugTestDateTime || null,
+            reasonForTesting: data.reasonForTesting || null,
+            description: data.description || null,
+            initiatedBy: data.initiatedBy || null,
+            personnelTested: JSON.stringify(data.personnelTested || []),
+            comments: data.comments || null,
+            masterDeputySignature: JSON.stringify(data.masterDeputySignature || {}),
+            attachmentFile: data.attachmentFile || null,
+            status: status,
+        };
+    };
+
+    // Mutation for saving (create or update)
+    const saveMutation = useMutation({
+        mutationFn: async ({ data, status }: { data: any; status: 'draft' | 'submitted' }) => {
+            const payload = transformFormDataForAPI(data, status);
+            
+            if (editingRecordId) {
+                return await apiRequest('PUT', `/api/drug-alcohol-tests/${editingRecordId}`, payload);
+            } else {
+                return await apiRequest('POST', '/api/drug-alcohol-tests', payload);
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
+            toast({
+                title: variables.status === 'submitted' ? "Form Submitted" : "Draft Saved",
+                description: variables.status === 'submitted' 
+                    ? "The Drug & Alcohol test record has been submitted successfully."
+                    : "Your draft has been saved. You can continue editing later.",
+            });
+            if (variables.status === 'submitted') {
+                handleCloseForm();
+            }
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to save the record. Please try again.",
+                variant: "destructive",
+            });
+        },
+    });
+
+    // Mutation for deleting
+    const deleteMutation = useMutation({
+        mutationFn: async (id: number) => {
+            return await apiRequest('DELETE', `/api/drug-alcohol-tests/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
+            toast({
+                title: "Record Deleted",
+                description: "The Drug & Alcohol test record has been deleted.",
+            });
+            handleCloseForm();
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to delete the record. Please try again.",
+                variant: "destructive",
+            });
+        },
+    });
+
     const handleSaveForm = (data: any) => {
-        console.log('Save draft:', data);
-        // TODO: Implement draft saving logic
+        if (!data.vesselId || !data.testType) {
+            toast({
+                title: "Missing Required Fields",
+                description: "Please select a vessel and test type before saving.",
+                variant: "destructive",
+            });
+            return;
+        }
+        saveMutation.mutate({ data, status: 'draft' });
     };
 
     const handleSubmitForm = (data: any) => {
-        console.log('Submit form:', data);
-        // TODO: Implement form submission logic
-        handleCloseForm();
+        if (!data.vesselId || !data.testType) {
+            toast({
+                title: "Missing Required Fields",
+                description: "Please select a vessel and test type before submitting.",
+                variant: "destructive",
+            });
+            return;
+        }
+        saveMutation.mutate({ data, status: 'submitted' });
     };
 
     const handleDeleteForm = () => {
-        console.log('Delete form');
-        // TODO: Implement form deletion logic
-        handleCloseForm();
+        if (editingRecordId) {
+            deleteMutation.mutate(editingRecordId);
+        } else {
+            handleCloseForm();
+        }
     };
 
     // Vessel multi-select popover component (shared across layouts)

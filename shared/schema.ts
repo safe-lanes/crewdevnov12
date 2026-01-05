@@ -643,6 +643,9 @@ export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
   masterDeputySignature: text("master_deputy_signature"), // JSON: {confirmed: boolean, name: string, date: string}
   attachmentFile: text("attachment_file"), // Filename for uploaded document
   
+  // Record status
+  status: text("status").notNull().default("draft"), // 'draft' or 'submitted'
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
