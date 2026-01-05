@@ -352,16 +352,16 @@ export function ViolationsOverviewDialog({
           ) : violationRecords.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No violations found</div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
               <table className="w-full">
-                <thead className="bg-blue-50">
+                <thead className="bg-blue-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Vessel</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Rank</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Name</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Date</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Violations</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Comments</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50">Vessel</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50">Rank</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50">Name</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50">Date</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50">Violations</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50">Comments</th>
                   </tr>
                 </thead>
                 <tbody>
