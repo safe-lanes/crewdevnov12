@@ -518,7 +518,20 @@ export function detectViolations(
         });
       }
       
-      if (checkCode3Violation(timeline, slotIdx)) {
+      // Check for Code [3] violation with optional work-anchored window filtering
+      // When WORK_ANCHORED_24H_WINDOW.enabled is true, only check windows that START with work ('w') or duty ('d')
+      let shouldCheckCode3 = true;
+      if (WORK_ANCHORED_24H_WINDOW.enabled) {
+        // The 24-hour window starts 47 slots before the current slot (48 slots total, 0-indexed)
+        const windowStartIdx = slotIdx - 47;
+        if (windowStartIdx >= 0) {
+          const windowStartStatus = timeline[windowStartIdx].status.toLowerCase();
+          // Only check if window starts with work 'w' or duty 'd' (not blank/rest)
+          shouldCheckCode3 = windowStartStatus === 'w' || windowStartStatus === 'd';
+        }
+      }
+      
+      if (shouldCheckCode3 && checkCode3Violation(timeline, slotIdx)) {
         // Get actual rest period lengths for diagnostic message
         const restPeriods = analyzeRestPeriods(timeline, slotIdx);
         const sorted = [...restPeriods].sort((a, b) => b - a); // Clone to avoid mutation
@@ -629,6 +642,33 @@ export const VIOLATION_ASSIGNMENT_STRATEGY: {
   mode: 'legacy' | 'hybrid';
 } = {
   mode: 'hybrid',
+};
+
+/**
+ * EXPERIMENTAL: Work-anchored 24-hour window for Violation [3] only.
+ * 
+ * ⚠️ WARNING: This setting is NON-COMPLIANT with MLC 2006 Std. A2.3.13 ⚠️
+ * 
+ * MLC 2006 requires checking "any 24-hour period" as a continuous sliding window,
+ * meaning ALL possible 24-hour intervals must be evaluated, not just those starting
+ * when work begins. Port State Control inspections use the same approach.
+ * 
+ * This experimental flag is for TESTING PURPOSES ONLY:
+ * - When enabled: Violation [3] only checks 24-hour windows that START with 'w' (work) or 'd' (duty)
+ * - When disabled (default): Standard compliant behavior - all 24-hour windows are checked
+ * 
+ * TO REVERT: Set enabled to false (single-line change)
+ * 
+ * SCOPE: This flag ONLY affects Violation [3] detection.
+ * It does NOT affect:
+ * - The "RH in 24 Hr" column display values
+ * - Other violation calculations (1, 2, 4, 5, 6, 7, 8)
+ * - Any other metrics or rolling window calculations
+ */
+export const WORK_ANCHORED_24H_WINDOW: {
+  enabled: boolean;
+} = {
+  enabled: true, // Set to false to revert to MLC-compliant behavior
 };
 
 /**
