@@ -31,6 +31,13 @@ export const RankWiseViolationsChart = ({
   const [chartType, setChartType] = useState<ChartType>('bar');
   const [showDrillDown, setShowDrillDown] = useState(false);
   const [selectedRank, setSelectedRank] = useState<string | null>(null);
+  
+  // Defer chart rendering until component is mounted to prevent AG Charts errors during navigation
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   const queryParams = useMemo(() => {
     const params: Record<string, any> = {};
@@ -321,11 +328,13 @@ export const RankWiseViolationsChart = ({
           </div>
         )}
         <div className="flex-1 min-h-0">
-          <AgCharts 
-            ref={chartRef}
-            options={chartOptions} 
-            style={{ width: '100%', height: '100%' }}
-          />
+          {isMounted && (
+            <AgCharts 
+              ref={chartRef}
+              options={chartOptions} 
+              style={{ width: '100%', height: '100%' }}
+            />
+          )}
         </div>
       </div>
 

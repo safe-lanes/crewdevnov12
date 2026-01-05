@@ -57,6 +57,13 @@ export const PeriodicAnalysisChart = ({
   const chartRef = useRef<AgChartInstance | null>(null);
   const [chartType, setChartType] = useState<ChartType>('line');
   const [periodType, setPeriodType] = useState<'years' | 'quarters' | 'months'>('years');
+  
+  // Defer chart rendering until component is mounted to prevent AG Charts errors during navigation
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // For Years view, we ignore the monthValue prop and fetch data for last 4 years
   const currentYear = new Date().getFullYear();
@@ -780,11 +787,13 @@ export const PeriodicAnalysisChart = ({
 
       {/* Chart Area */}
       <div className="flex-1 min-h-0">
-        <AgCharts 
-          ref={chartRef}
-          options={chartOptions} 
-          style={{ width: '100%', height: '100%' }}
-        />
+        {isMounted && (
+          <AgCharts 
+            ref={chartRef}
+            options={chartOptions} 
+            style={{ width: '100%', height: '100%' }}
+          />
+        )}
       </div>
     </div>
   );
