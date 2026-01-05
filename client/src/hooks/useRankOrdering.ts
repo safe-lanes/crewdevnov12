@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { addRankAliasesToMap } from './useRankNormalization';
 
 interface VesselRank {
   id: string;
@@ -33,8 +34,7 @@ export function useRankOrdering(vesselId: string | null | undefined) {
     
     availableRanks.forEach((rank) => {
       if (rank.sortOrder !== undefined) {
-        map.set(rank.name, rank.sortOrder);
-        map.set(rank.name.toLowerCase(), rank.sortOrder);
+        addRankAliasesToMap(map, rank.name, rank.sortOrder);
       }
     });
 
@@ -43,8 +43,7 @@ export function useRankOrdering(vesselId: string | null | undefined) {
       if (sortOrder === undefined) return;
 
       if (vr.rank) {
-        map.set(vr.rank, sortOrder);
-        map.set(vr.rank.toLowerCase(), sortOrder);
+        addRankAliasesToMap(map, vr.rank, sortOrder);
       }
 
       if (vr.role) {
