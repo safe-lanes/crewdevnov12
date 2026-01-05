@@ -21,13 +21,17 @@ export function useRankOrdering(vesselId: string | null | undefined) {
     queryKey: ['/api/available-ranks'],
   });
 
-  const { data: vesselRanks = [] } = useQuery<VesselRank[]>({
+  const { data: vesselRanks = [], isLoading: isLoadingVessel, isFetched: isVesselFetched } = useQuery<VesselRank[]>({
     queryKey: ['/api/vessel-revisions/ranks', vesselId],
     queryFn: vesselId
       ? () => fetch(`/api/vessel-revisions/ranks/${vesselId}`).then(res => res.json())
       : undefined,
     enabled: !!vesselId,
   });
+  
+  // Loading state: only track vessel-specific query (not global availableRanks refetches)
+  // True if vessel is specified but ranks haven't been fetched yet
+  const isLoading = !!vesselId && !isVesselFetched && isLoadingVessel;
 
   const rankOrderMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -106,5 +110,6 @@ export function useRankOrdering(vesselId: string | null | undefined) {
     getSortOrder,
     sortCrewByRank,
     rankOrderMap,
+    isLoading,
   };
 }

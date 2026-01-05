@@ -233,7 +233,7 @@ export function DrugAlcoholTestForm({
   const activeVesselId = formVesselId || vesselId || '';
   
   // Use centralized rank ordering hook (single source of truth for all modules)
-  const { getSortOrder } = useRankOrdering(activeVesselId);
+  const { getSortOrder, isLoading: isLoadingRanks } = useRankOrdering(activeVesselId);
   
   // Watch alcohol/drug type to conditionally show fields
   const alcoholDrugType = form.watch('alcoholDrugType') || [];
@@ -316,9 +316,11 @@ export function DrugAlcoholTestForm({
 
   // Populate personnelTested when crew members are loaded or vessel changes
   // Skip if editing (recordId provided) as personnel will be loaded from the existing record
+  // IMPORTANT: Wait for ranks to load before populating to ensure correct sort order
   useEffect(() => {
-    if (!draftData && !recordId && formVesselId) {
+    if (!draftData && !recordId && formVesselId && !isLoadingRanks) {
       // Only populate when creating new records, not when editing
+      // Wait until rank ordering is loaded to ensure correct sort order
       // Use personnelFields.length from useFieldArray for accurate count
       const shouldUpdate = personnelFields.length === 0 && vesselCrewPersonnel.length > 0;
       
@@ -327,7 +329,7 @@ export function DrugAlcoholTestForm({
         replacePersonnel(vesselCrewPersonnel);
       }
     }
-  }, [vesselCrewPersonnel, formVesselId, draftData, recordId, personnelFields.length, replacePersonnel]);
+  }, [vesselCrewPersonnel, formVesselId, draftData, recordId, personnelFields.length, replacePersonnel, isLoadingRanks]);
 
   // Watch dateTimeTestCompleted to auto-populate date fields in Part B1
   const dateTimeTestCompleted = form.watch('dateTimeTestCompleted');
