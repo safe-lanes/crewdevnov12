@@ -625,7 +625,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onAdd={() => handleOpenForm('annual')}
+                            onAdd={(vesselId) => handleOpenForm('annual', vesselId)}
                             onEdit={(recordId) => handleOpenForm('annual', undefined, recordId)}
                         />
                     </div>
@@ -653,7 +653,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onAdd={() => handleOpenForm('periodic')}
+                            onAdd={(vesselId) => handleOpenForm('periodic', vesselId)}
                             onEdit={(recordId) => handleOpenForm('periodic', undefined, recordId)}
                         />
                     </div>
@@ -681,7 +681,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onAdd={() => handleOpenForm('monthly')}
+                            onAdd={(vesselId) => handleOpenForm('monthly', vesselId)}
                             onEdit={(recordId) => handleOpenForm('monthly', undefined, recordId)}
                         />
                     </div>
@@ -719,7 +719,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onAdd={() => handleOpenForm('post-incident')}
+                            onAdd={(vesselId) => handleOpenForm('post-incident', vesselId)}
                         />
                     </div>
                 );
@@ -756,7 +756,7 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onAdd={() => handleOpenForm('others')}
+                            onAdd={(vesselId) => handleOpenForm('others', vesselId)}
                         />
                     </div>
                 );

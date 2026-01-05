@@ -33,7 +33,7 @@ interface AnnualTestTableProps {
   selectedVessels: string[];
   fleetValue: string;
   addGroupValue: string;
-  onAdd?: () => void;
+  onAdd?: (vesselId?: string) => void;
   onEdit?: (recordId: number) => void;
 }
 
@@ -265,7 +265,7 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
   
   const handleAdd = () => {
     if (onAdd) {
-      onAdd();
+      onAdd(params.data.vesselId);
     }
   };
 

@@ -22,7 +22,7 @@ interface OtherTestsTableProps {
   selectedVessels: string[];
   fleetValue: string;
   addGroupValue: string;
-  onAdd?: () => void;
+  onAdd?: (vesselId?: string) => void;
 }
 
 // Violations cell renderer with color coding
@@ -49,7 +49,7 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   
   const handleAdd = () => {
     if (onAdd) {
-      onAdd();
+      onAdd(props.data?.vesselId);
     }
   };
   

@@ -23,7 +23,7 @@ interface PostIncidentTestTableProps {
   selectedVessels: string[];
   fleetValue: string;
   addGroupValue: string;
-  onAdd?: () => void;
+  onAdd?: (vesselId?: string) => void;
 }
 
 // Calculate time difference in hours between two datetime strings
@@ -84,7 +84,7 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   
   const handleAdd = () => {
     if (onAdd) {
-      onAdd();
+      onAdd(props.data?.vesselId);
     }
   };
   
