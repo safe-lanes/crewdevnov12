@@ -5035,6 +5035,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid drug/alcohol test record data", details: result.error.issues });
       }
+      
+      // Check for duplicate: one test record per vessel per date (also on updates)
+      const { vesselId, dateTimeTestCompleted } = result.data;
+      if (vesselId && dateTimeTestCompleted) {
+        const extractDate = (dateStr: string): string => {
+          const match = dateStr.match(/^(\d{1,2}\s+\w+\s+\d{4})/);
+          return match ? match[1] : dateStr.split(' - ')[0] || dateStr;
+        };
+        const newDate = extractDate(dateTimeTestCompleted);
+        
+        const existingRecords = await storage.getDrugAlcoholTestRecordsByVessel(vesselId);
+        const duplicate = existingRecords.find(record => {
+          // Skip the current record being updated
+          if (record.id === id) return false;
+          if (!record.dateTimeTestCompleted) return false;
+          const existingDate = extractDate(record.dateTimeTestCompleted);
+          return existingDate === newDate;
+        });
+        
+        if (duplicate) {
+          return res.status(409).json({ 
+            error: "A test record already exists for this vessel on this date. Please edit the existing record instead.",
+            existingRecordId: duplicate.id
+          });
+        }
+      }
+      
       const record = await storage.updateDrugAlcoholTestRecord(id, result.data);
       if (!record) {
         return res.status(404).json({ error: "Drug/alcohol test record not found" });

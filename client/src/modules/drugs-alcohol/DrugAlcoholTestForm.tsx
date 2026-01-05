@@ -1174,14 +1174,18 @@ export function DrugAlcoholTestForm({
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          {vesselCrew.map(crew => (
-                                            <SelectItem 
-                                              key={crew.id} 
-                                              value={crew.id}
-                                            >
-                                              {`${crew.firstName || ''} ${crew.familyName || ''}`.trim()}
-                                            </SelectItem>
-                                          ))}
+                                          {vesselCrew.map((crew, crewIndex) => {
+                                            const uniqueKey = crew.id || `crew-${crewIndex}-${crew.firstName}-${crew.familyName}`;
+                                            const uniqueValue = crew.id || `crew-${crewIndex}`;
+                                            return (
+                                              <SelectItem 
+                                                key={uniqueKey} 
+                                                value={uniqueValue}
+                                              >
+                                                {`${crew.firstName || ''} ${crew.familyName || ''}`.trim()}
+                                              </SelectItem>
+                                            );
+                                          })}
                                         </SelectContent>
                                       </Select>
                                     </FormItem>
