@@ -125,6 +125,11 @@ export function DrugAlcoholTestForm({
     queryKey: ['/api/crew-members'],
   });
 
+  // Fetch available ranks for sorting crew by rank order
+  const { data: availableRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/available-ranks'],
+  });
+
   // Fetch existing record for editing
   const { data: existingRecord, isLoading: recordLoading, isError: recordError } = useQuery<any>({
     queryKey: ['/api/drug-alcohol-tests', recordId],
@@ -233,13 +238,58 @@ export function DrugAlcoholTestForm({
   const showAlcoholFields = alcoholDrugType.includes('Alcohol');
   const showDrugFields = alcoholDrugType.includes('Drug');
   
-  // Filter crew by vessel and map to personnel tested format
+  // Create rank order map for sorting (lower id = higher rank priority)
+  const rankOrderMap = useMemo(() => {
+    const orderMap = new Map<string, number>();
+    availableRanks.forEach((rank: any) => {
+      // Map rank name to its sort order (using id as the order)
+      orderMap.set(rank.name, rank.id);
+      // Also handle variations with suffixes like "3rd Officer_1"
+      if (rank.name) {
+        orderMap.set(rank.name.toLowerCase(), rank.id);
+      }
+    });
+    return orderMap;
+  }, [availableRanks]);
+
+  // Get sort order for a rank (handles variants like "3rd Officer_1")
+  const getRankSortOrder = useCallback((rankName: string): number => {
+    if (!rankName) return 999; // Unranked go to end
+    
+    // Direct match
+    if (rankOrderMap.has(rankName)) {
+      return rankOrderMap.get(rankName)!;
+    }
+    
+    // Try lowercase match
+    if (rankOrderMap.has(rankName.toLowerCase())) {
+      return rankOrderMap.get(rankName.toLowerCase())!;
+    }
+    
+    // Handle variants like "3rd Officer_1" -> "3rd Officer"
+    const baseRank = rankName.replace(/_\d+$/, '').trim();
+    if (rankOrderMap.has(baseRank)) {
+      return rankOrderMap.get(baseRank)!;
+    }
+    if (rankOrderMap.has(baseRank.toLowerCase())) {
+      return rankOrderMap.get(baseRank.toLowerCase())!;
+    }
+    
+    return 999; // Unknown ranks go to end
+  }, [rankOrderMap]);
+
+  // Filter crew by vessel, sort by rank order, and map to personnel tested format
   const vesselCrewPersonnel = useMemo(() => {
     const activeVesselId = formVesselId || vesselId;
     if (!activeVesselId) return [];
     
     return allCrewMembers
       .filter((crew: any) => crew.presentVessel === activeVesselId)
+      .sort((a: any, b: any) => {
+        const orderA = getRankSortOrder(a.presentRank);
+        const orderB = getRankSortOrder(b.presentRank);
+        return orderA - orderB;
+      })
       .map((crew: any) => ({
         id: crew.id || `crew-${Date.now()}-${Math.random()}`,
         rank: crew.presentRank || '',
@@ -252,7 +302,7 @@ export function DrugAlcoholTestForm({
         drugViolation: false,
         witness: '',
       }));
-  }, [allCrewMembers, formVesselId, vesselId]);
+  }, [allCrewMembers, formVesselId, vesselId, getRankSortOrder]);
 
   // Sections definition
   const sections = useMemo(() => [
