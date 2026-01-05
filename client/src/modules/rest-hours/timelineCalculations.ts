@@ -192,6 +192,74 @@ export function calculateRollingMetrics(
 }
 
 /**
+ * Calculates the minimum rest hours in ANY 24-hour rolling window that ends
+ * on the given day. This checks all 48 possible 24-hour windows (one ending
+ * at each half-hour slot of the day) and returns the minimum.
+ * 
+ * For "any 24-hour period" compliance (MLC 2006), we need to find the worst-case
+ * scenario across all possible 24-hour windows, not just the one ending at midnight.
+ * 
+ * IMPORTANT: arrayIndices must be actual array positions in the full timeline (0, 1, 2...),
+ * NOT the logical slotIndex values which may be negative for previous month data.
+ * 
+ * @param arrayIndices - Array of positions in the full timeline array for this day's slots
+ * @param cumulativeRest - Prefix sum array for rest hours (built from full timeline)
+ * @returns Minimum rest hours found in any 24-hour window ending on this day
+ */
+export function calculateMinRestInAny24HourPeriod(
+  arrayIndices: number[],
+  cumulativeRest: number[]
+): number {
+  const WINDOW_SIZE_24H = 48; // 24 hours = 48 half-hour slots
+  
+  let minRest = 24; // Maximum possible rest in 24 hours
+  
+  for (const arrayIdx of arrayIndices) {
+    // Only check windows that have full 24-hour history
+    if (arrayIdx >= WINDOW_SIZE_24H - 1) {
+      const startIdx = arrayIdx - WINDOW_SIZE_24H + 1;
+      const restIn24h = cumulativeRest[arrayIdx + 1] - cumulativeRest[startIdx];
+      minRest = Math.min(minRest, restIn24h);
+    }
+  }
+  
+  return minRest;
+}
+
+/**
+ * Calculates the maximum work hours in ANY 24-hour rolling window that ends
+ * on the given day. This checks all 48 possible 24-hour windows and returns
+ * the maximum work hours found.
+ * 
+ * For work mode compliance, we track the worst-case (maximum) work hours.
+ * 
+ * IMPORTANT: arrayIndices must be actual array positions in the full timeline (0, 1, 2...),
+ * NOT the logical slotIndex values which may be negative for previous month data.
+ * 
+ * @param arrayIndices - Array of positions in the full timeline array for this day's slots
+ * @param cumulativeWork - Prefix sum array for work hours (built from full timeline)
+ * @returns Maximum work hours found in any 24-hour window ending on this day
+ */
+export function calculateMaxWorkInAny24HourPeriod(
+  arrayIndices: number[],
+  cumulativeWork: number[]
+): number {
+  const WINDOW_SIZE_24H = 48;
+  
+  let maxWork = 0;
+  
+  for (const arrayIdx of arrayIndices) {
+    if (arrayIdx >= WINDOW_SIZE_24H - 1) {
+      const startIdx = arrayIdx - WINDOW_SIZE_24H + 1;
+      const workIn24h = cumulativeWork[arrayIdx + 1] - cumulativeWork[startIdx];
+      maxWork = Math.max(maxWork, workIn24h);
+    }
+  }
+  
+  return maxWork;
+}
+
+/**
  * Prepends previous month's timeline to support cross-month rolling windows
  * 
  * @param currentTimeline - Timeline for current month

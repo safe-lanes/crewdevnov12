@@ -16,6 +16,8 @@ import {
   buildTimeline,
   buildPrefixSums,
   calculateRollingMetrics as calculateTimelineRollingMetrics,
+  calculateMinRestInAny24HourPeriod,
+  calculateMaxWorkInAny24HourPeriod,
   detectViolations as detectTimelineViolations,
   groupViolationsByDay,
   prependPreviousMonthTimeline,
@@ -895,9 +897,18 @@ export const RHRecordingForm = ({
       });
       
       // Calculate metrics from timeline for this day
-      // Find the last slot for this day in the timeline
-      const daySlots = fullTimeline.filter(slot => slot.sourceDay === record.day && slot.occurrence === 'primary');
-      const lastSlotIndex = daySlots.length > 0 ? daySlots[daySlots.length - 1].slotIndex : -1;
+      // IMPORTANT: We need the ARRAY INDICES (positions in fullTimeline array), not slot.slotIndex
+      // because the prefix sums are built from the array order, not the logical slotIndex values
+      // (slotIndex can be negative for previous month data)
+      const dayArrayIndices: number[] = [];
+      let lastArrayIndex = -1;
+      for (let i = 0; i < fullTimeline.length; i++) {
+        const slot = fullTimeline[i];
+        if (slot.sourceDay === record.day && slot.occurrence === 'primary') {
+          dayArrayIndices.push(i);
+          lastArrayIndex = i;
+        }
+      }
       
       let metrics = {
         anyPeriodRest24hr: 24,
@@ -906,13 +917,20 @@ export const RHRecordingForm = ({
         anyPeriodWork7day: 0,
       };
       
-      if (lastSlotIndex >= 47) { // Need at least 48 slots for 24-hour window
-        const rollingMetrics = calculateTimelineRollingMetrics(lastSlotIndex, cumulativeRest, cumulativeWork);
+      if (lastArrayIndex >= 47) { // Need at least 48 slots for 24-hour window
+        // Calculate MINIMUM rest in ANY 24-hour window ending on this day
+        // This checks all 48 possible windows, not just the one ending at midnight
+        const minRestIn24hr = calculateMinRestInAny24HourPeriod(dayArrayIndices, cumulativeRest);
+        const maxWorkIn24hr = calculateMaxWorkInAny24HourPeriod(dayArrayIndices, cumulativeWork);
+        
+        // For 7-day metrics, use the rolling window ending at the last slot of the day
+        const rollingMetrics = calculateTimelineRollingMetrics(lastArrayIndex, cumulativeRest, cumulativeWork);
+        
         metrics = {
-          anyPeriodRest24hr: rollingMetrics.rest24h,
-          anyPeriodRest7day: lastSlotIndex >= 335 ? rollingMetrics.rest168h : 168,
-          anyPeriodWork24hr: rollingMetrics.work24h,
-          anyPeriodWork7day: lastSlotIndex >= 335 ? rollingMetrics.work168h : 0,
+          anyPeriodRest24hr: minRestIn24hr,
+          anyPeriodRest7day: lastArrayIndex >= 335 ? rollingMetrics.rest168h : 168,
+          anyPeriodWork24hr: maxWorkIn24hr,
+          anyPeriodWork7day: lastArrayIndex >= 335 ? rollingMetrics.work168h : 0,
         };
       }
       
