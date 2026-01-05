@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
@@ -170,6 +170,12 @@ export function DrugAlcoholTestForm({
     },
   });
 
+  // Use useFieldArray for proper nested array management of personnelTested
+  const { fields: personnelFields, replace: replacePersonnel, append: appendPersonnel } = useFieldArray({
+    control: form.control,
+    name: 'personnelTested',
+  });
+
   // Populate form with existing record data when editing
   useEffect(() => {
     if (existingRecord && recordId) {
@@ -297,22 +303,16 @@ export function DrugAlcoholTestForm({
   // Skip if editing (recordId provided) as personnel will be loaded from the existing record
   useEffect(() => {
     if (!draftData && !recordId && formVesselId) {
-      const currentPersonnel = form.getValues('personnelTested');
-      
-      // Check if we should update personnel:
-      // 1. Currently empty and we have crew to populate
-      // 2. Vessel changed (compare first crew ID)
-      // 3. Vessel changed to one with no crew (should clear)
-      const shouldUpdate = !currentPersonnel || currentPersonnel.length === 0 || 
-        (currentPersonnel.length > 0 && vesselCrewPersonnel.length > 0 &&
-         vesselCrewPersonnel[0].id !== currentPersonnel[0]?.id) ||
-        (currentPersonnel.length > 0 && vesselCrewPersonnel.length === 0);
+      // Only populate when creating new records, not when editing
+      // Use personnelFields.length from useFieldArray for accurate count
+      const shouldUpdate = personnelFields.length === 0 && vesselCrewPersonnel.length > 0;
       
       if (shouldUpdate) {
-        form.setValue('personnelTested', vesselCrewPersonnel);
+        // Use replacePersonnel from useFieldArray for proper state management
+        replacePersonnel(vesselCrewPersonnel);
       }
     }
-  }, [vesselCrewPersonnel, formVesselId, draftData, recordId, form]);
+  }, [vesselCrewPersonnel, formVesselId, draftData, recordId, personnelFields.length, replacePersonnel]);
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
@@ -860,22 +860,18 @@ export function DrugAlcoholTestForm({
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const current = form.watch('personnelTested') || [];
-                        form.setValue('personnelTested', [
-                          ...current,
-                          {
-                            id: `other-${Date.now()}`,
-                            rank: '',
-                            name: '',
-                            alcoholTest: { checked: false, date: '', time: '' },
-                            alcoholResults: '',
-                            alcoholViolation: false,
-                            drugTest: { checked: false, date: '', time: '' },
-                            drugResults: '',
-                            drugViolation: false,
-                            witness: '',
-                          }
-                        ]);
+                        appendPersonnel({
+                          id: `other-${Date.now()}`,
+                          rank: '',
+                          name: '',
+                          alcoholTest: { checked: false, date: '', time: '' },
+                          alcoholResults: '',
+                          alcoholViolation: false,
+                          drugTest: { checked: false, date: '', time: '' },
+                          drugResults: '',
+                          drugViolation: false,
+                          witness: '',
+                        });
                       }}
                       className="flex items-center gap-1"
                       data-testid="button-add-other-personnel"
@@ -940,13 +936,13 @@ export function DrugAlcoholTestForm({
                         </tr>
                       </thead>
                       <tbody>
-                        {(form.watch('personnelTested') || []).map((person, index) => (
+                        {personnelFields.map((person, index) => (
                           <tr key={person.id} className="border-b hover:bg-gray-50">
                             <td className="px-3 py-2 text-sm border-r" style={{ position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 20 }}>
-                              <div className="min-w-[60px]">{person.rank || 'N/A'}</div>
+                              <div className="min-w-[60px]">{(person as any).rank || 'N/A'}</div>
                             </td>
                             <td className="px-3 py-2 text-sm border-r" style={{ position: 'sticky', left: '80px', backgroundColor: 'white', zIndex: 20 }}>
-                              <div className="min-w-[150px]">{person.name || 'N/A'}</div>
+                              <div className="min-w-[150px]">{(person as any).name || 'N/A'}</div>
                             </td>
                             
                             {showAlcoholFields && (
@@ -1159,30 +1155,38 @@ export function DrugAlcoholTestForm({
                               <FormField
                                 control={form.control}
                                 name={`personnelTested.${index}.witness`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger className="bg-white text-xs h-8" data-testid={`select-witness-${index}`}>
-                                          <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {allCrewMembers
-                                          .filter(crew => crew.presentVessel === formVesselId || crew.presentVessel === vesselId)
-                                          .map(crew => (
+                                render={({ field }) => {
+                                  const vesselCrew = allCrewMembers.filter(
+                                    crew => crew.presentVessel === formVesselId || crew.presentVessel === vesselId
+                                  );
+                                  const getCrewDisplayName = (crewId: string) => {
+                                    const crew = vesselCrew.find(c => c.id === crewId);
+                                    return crew ? `${crew.firstName || ''} ${crew.familyName || ''}`.trim() : crewId;
+                                  };
+                                  return (
+                                    <FormItem>
+                                      <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                          <SelectTrigger className="bg-white text-xs h-8" data-testid={`select-witness-${index}`}>
+                                            <SelectValue placeholder="Select">
+                                              {field.value ? getCrewDisplayName(field.value) : 'Select'}
+                                            </SelectValue>
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          {vesselCrew.map(crew => (
                                             <SelectItem 
                                               key={crew.id} 
-                                              value={`${crew.firstName || ''} ${crew.familyName || ''}`.trim()}
+                                              value={crew.id}
                                             >
                                               {`${crew.firstName || ''} ${crew.familyName || ''}`.trim()}
                                             </SelectItem>
-                                          ))
-                                        }
-                                      </SelectContent>
-                                    </Select>
-                                  </FormItem>
-                                )}
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </FormItem>
+                                  );
+                                }}
                               />
                             </td>
                           </tr>
