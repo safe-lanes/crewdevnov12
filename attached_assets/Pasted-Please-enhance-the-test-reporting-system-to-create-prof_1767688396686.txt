@@ -1,0 +1,344 @@
+Please enhance the test reporting system to create professional, interactive HTML reports that meet industry standards for automation testing.
+
+## Current Issues with Reports:
+
+The current `simple-report.html` is too basic:
+- ❌ Not interactive (static HTML)
+- ❌ No individual test details
+- ❌ No error stack traces when tests fail
+- ❌ No drill-down capability
+- ❌ No search/filter functionality
+- ❌ No performance metrics per test
+- ❌ No code coverage visualization
+- ❌ No regression detection highlights
+- ❌ Basic styling, not production-quality
+
+## Requirements for Enhanced Report:
+
+### 1. Interactive Test Explorer
+Create a collapsible tree structure showing:
+```
+📁 Unit Tests (51 tests) ▼
+  📁 Business Logic ▼
+    ✅ Compliance Engine (6 tests) ▼
+      ✅ should check MLC 2006 rest hour requirements (12ms)
+      ✅ should validate STCW certification requirements (8ms)
+      [click to expand/collapse]
+    ✅ Violations Detection (13 tests) ▼
+    ✅ Experience Calculations (8 tests) ▼
+  📁 Utilities ▼
+    ✅ Date Utils (22 tests)
+    ✅ Crew Mapping (14 tests)
+
+📁 Integration Tests (55 tests) ▼
+  📁 API Tests ▼
+    ✅ Crew Members API (13 tests)
+    ✅ Forms API (20 tests)
+    ✅ Rest Hours API (25 tests)
+```
+
+### 2. Rich Dashboard (Top of Report)
+Include:
+- **Summary Cards:**
+  - Total Tests (large number)
+  - Pass Rate (percentage with circular progress)
+  - Total Duration (with performance indicator)
+  - Code Coverage (with progress bar)
+  - Regressions (highlighted if any)
+  - New Tests (informational badge)
+
+- **Visual Charts:**
+  - Pass/Fail pie chart
+  - Test duration histogram
+  - Coverage by file (horizontal bars)
+  - Test categories breakdown
+
+### 3. Individual Test Details
+When clicking any test, show:
+```
+✅ Test: should validate STCW certification requirements
+   Status: PASSED
+   Duration: 8ms
+   File: tests/unit/business-logic/compliance-engine.test.ts
+   Suite: Compliance Engine > STCW Compliance
+   
+   Test Code:
+   [syntax-highlighted code snippet]
+   
+   If Failed:
+   ❌ Error Message
+   Stack Trace (with file links)
+   Expected vs Received (diff view)
+   Screenshot (for E2E tests)
+```
+
+### 4. Search and Filter Panel
+Add a search bar and filters:
+- 🔍 Search by test name
+- 🎯 Filter by: Status (All/Passed/Failed)
+- 📁 Filter by: Suite/File
+- ⏱️ Sort by: Name/Duration/Status
+- 🏷️ Filter by: Tags (Unit/Integration/E2E)
+
+### 5. Regression Detection Section
+Prominent section showing:
+```
+⚠️  REGRESSIONS DETECTED (2)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ Code 1 violation detection
+   Was: PASSING (Jan 5, 10:30)
+   Now: FAILING
+   Impact: HIGH - Compliance feature broken
+   [View Details] [View Diff]
+
+❌ Unique constraint enforcement
+   Was: PASSING (Jan 5, 10:30)
+   Now: FAILING
+   Impact: CRITICAL - Data integrity
+   [View Details] [View Diff]
+
+ℹ️  NEW TESTS DETECTED (3)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Code 9 violation detection (NEW)
+   Status: PASSING
+   Note: New feature test
+```
+
+### 6. Code Coverage Visualization
+Show coverage with:
+- Overall percentage (large gauge)
+- Coverage by directory (bar chart)
+- Coverage by file (sortable table)
+- Uncovered lines highlighted
+- Coverage trends (if history available)
+
+Example:
+```
+Overall Coverage: 85.2%
+
+By Directory:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Business Logic  ████████████████ 92.5%
+API Routes      ███████████████  87.3%
+Utilities       █████████████    78.9%
+Components      ██████████       65.2%
+
+Top Uncovered Files:
+1. crew-mapping.ts - 65.2% (34 uncovered lines)
+2. date-utils.ts - 78.9% (18 uncovered lines)
+```
+
+### 7. Performance Metrics
+Add section showing:
+- Slowest tests (top 10)
+- Average test duration
+- Suite duration comparison
+- Performance trends
+- Memory usage (if available)
+
+### 8. Timeline View
+Visual timeline showing:
+```
+Test Execution Timeline
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0s     0.5s    1.0s    1.5s    2.0s
+│      │       │       │       │
+├─Setup (848ms)
+        ├─Unit Tests (45ms)
+               ├─Integration Tests (35ms)
+                       ├─E2E Tests (180ms)
+                              ├─Teardown (23ms)
+```
+
+### 9. Enhanced Styling
+Use modern UI framework styling:
+- Dark mode support (toggle)
+- Smooth animations
+- Hover effects
+- Loading states
+- Responsive design (mobile-friendly)
+- Professional color scheme
+- Icons (✅ ❌ ⚠️ 📊 🔍 etc.)
+- Progress indicators
+- Tooltips for additional info
+
+### 10. Action Buttons
+Add interactive buttons:
+- 🔄 Re-run failed tests
+- 📥 Download report (PDF/HTML)
+- 📋 Copy results to clipboard
+- 🔗 Share report link
+- 📊 Export to CSV
+- 🎯 Jump to failed test
+- 📝 Add notes/comments
+
+### 11. Historical Comparison
+If baseline.json exists, show:
+```
+Comparison with Previous Run
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tests:     106 → 106 (no change)
+Passed:    104 → 106 (+2) ↗️
+Failed:    2 → 0 (-2) ↘️
+Duration:  2.1s → 1.9s (-0.2s) ⚡
+Coverage:  83.5% → 85.2% (+1.7%) 📈
+```
+
+## Implementation Requirements:
+
+### Technology Stack:
+- Use vanilla JavaScript (no framework dependencies)
+- Include Chart.js for visualizations (from CDN)
+- Use Tailwind CSS for styling (from CDN)
+- Make it a single self-contained HTML file
+- All assets inline or from CDN
+
+### File Structure:
+Update the report generator to create:
+```
+test-results/
+├── index.html                    ← Main interactive report
+├── results.json                  ← Keep existing
+├── junit.xml                     ← Keep existing
+├── baseline.json                 ← For comparison
+└── history/
+    └── 2025-01-06.json          ← Daily snapshots
+```
+
+### Update `tests/helpers/generate-report.js`:
+Enhance to:
+1. Parse results.json fully
+2. Compare with baseline.json (if exists)
+3. Detect regressions vs new tests
+4. Calculate statistics
+5. Generate rich HTML with:
+   - All sections listed above
+   - Interactive JavaScript
+   - Charts and visualizations
+   - Search and filter functionality
+6. Save as test-results/index.html
+
+### Features Required in HTML:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Report - 106 Tests</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Custom styles for animations, dark mode, etc. */
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+  <!-- Dashboard Section -->
+  <div id="dashboard">
+    <!-- Summary cards, charts, statistics -->
+  </div>
+  
+  <!-- Search and Filter Panel -->
+  <div id="filters">
+    <!-- Search box, filter dropdowns, sort options -->
+  </div>
+  
+  <!-- Regression Detection Section -->
+  <div id="regressions">
+    <!-- Highlighted regressions and new tests -->
+  </div>
+  
+  <!-- Interactive Test Tree -->
+  <div id="test-tree">
+    <!-- Collapsible test hierarchy -->
+  </div>
+  
+  <!-- Coverage Section -->
+  <div id="coverage">
+    <!-- Coverage visualization -->
+  </div>
+  
+  <!-- Performance Section -->
+  <div id="performance">
+    <!-- Duration charts, slowest tests -->
+  </div>
+  
+  <script>
+    // JavaScript for:
+    // - Expand/collapse tree
+    // - Search and filter
+    // - Chart rendering
+    // - Dark mode toggle
+    // - Export functions
+  </script>
+</body>
+</html>
+```
+
+## Example of Professional Report:
+Reference these industry-standard test reporters:
+- Jest HTML Reporter style
+- Cypress Dashboard style
+- Playwright Report style
+- Allure Report style
+
+Key elements to include:
+✅ Clean, modern UI
+✅ Interactive elements
+✅ Visual data representation
+✅ Easy navigation
+✅ Clear status indicators
+✅ Actionable insights
+✅ Professional appearance
+
+## Acceptance Criteria:
+
+The enhanced report must:
+1. ✅ Load instantly (< 1 second)
+2. ✅ Work without internet (inline assets)
+3. ✅ Be fully interactive (click, filter, search)
+4. ✅ Show all 106 test results individually
+5. ✅ Highlight regressions clearly
+6. ✅ Include coverage visualization
+7. ✅ Have dark mode support
+8. ✅ Be mobile responsive
+9. ✅ Include performance metrics
+10. ✅ Look professional (suitable for stakeholders)
+
+## Additional Enhancements:
+
+### 1. Add npm script:
+```json
+"test:report": "npm test && open test-results/index.html"
+```
+
+### 2. Auto-open report after tests:
+After `npm test` completes, automatically open the report in browser.
+
+### 3. Update README:
+Add section explaining:
+- How to view reports
+- What each section means
+- How to interpret regressions
+- How to use filters
+
+## Verification:
+
+After implementation:
+1. Run `npm test`
+2. Open `test-results/index.html`
+3. Verify all sections present and working
+4. Test interactivity (expand/collapse, search, filter)
+5. Verify charts render correctly
+6. Test dark mode toggle
+7. Verify mobile responsiveness
+
+## Expected Outcome:
+
+A professional, interactive test report that:
+- Looks like a production-grade dashboard
+- Provides actionable insights at a glance
+- Makes it easy to identify and fix failures
+- Clearly shows regressions vs new tests
+- Includes comprehensive metrics and visualizations
+- Is suitable for sharing with stakeholders
+
+Please implement this enhanced reporting system and show me the result!

@@ -270,6 +270,8 @@ function runDetection(options = {}) {
     return {
       hasRegressions: false,
       isFirstRun: true,
+      regressions: [],
+      newTests: Object.entries(currentStatuses).map(([key, val]) => ({ name: key.split('::').pop(), testKey: key, status: val.status })),
       summary: {
         passing,
         failing,
@@ -303,6 +305,8 @@ function runDetection(options = {}) {
   
   return {
     hasRegressions: regressions.length > 0,
+    regressions: regressions.map(r => ({ name: r.testKey.split('::').pop(), ...r })),
+    newTests: newTests.map(t => ({ name: t.testKey.split('::').pop(), ...t })),
     summary: {
       regressions: regressions.length,
       newTests: newTests.length,
