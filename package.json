@@ -11,7 +11,21 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "setup-microfrontend": "node scripts/setup-microfrontend.js"
+    "setup-microfrontend": "node scripts/setup-microfrontend.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "npx playwright test",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:debug": "npx playwright test --debug",
+    "test:report": "node tests/helpers/generate-report.cjs",
+    "test:failed": "vitest run --bail",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "pre-deploy": "node scripts/pre-deploy-check.cjs",
+    "safety-check": "node scripts/safety-check.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
