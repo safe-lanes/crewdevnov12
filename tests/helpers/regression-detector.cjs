@@ -6,6 +6,7 @@ const path = require('path');
 
 const BASELINE_PATH = path.join(process.cwd(), 'test-results', 'baseline.json');
 const RESULTS_PATH = path.join(process.cwd(), 'test-results', 'results.json');
+const PLAYWRIGHT_PATH = path.join(process.cwd(), 'test-results', 'playwright-results.json');
 const REGRESSIONS_PATH = path.join(process.cwd(), 'test-results', 'REGRESSIONS.md');
 const NEW_FEATURES_PATH = path.join(process.cwd(), 'test-results', 'NEW-FEATURES.md');
 const FAILURES_PATH = path.join(process.cwd(), 'test-results', 'FAILURES.md');
@@ -38,6 +39,70 @@ function loadResults() {
     }
   }
   return null;
+}
+
+/**
+ * Load Playwright E2E results
+ */
+function loadPlaywrightResults() {
+  if (fs.existsSync(PLAYWRIGHT_PATH)) {
+    try {
+      return JSON.parse(fs.readFileSync(PLAYWRIGHT_PATH, 'utf8'));
+    } catch (e) {
+      console.warn('Warning: Could not parse Playwright results file');
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract test statuses from Playwright results
+ */
+function extractPlaywrightStatuses(playwrightResults) {
+  if (!playwrightResults || !playwrightResults.suites) return {};
+  
+  const statuses = {};
+  
+  function extractFromSuites(suites, parentName = '') {
+    for (const suite of suites) {
+      const suiteName = parentName ? `${parentName} > ${suite.title}` : suite.title;
+      
+      if (suite.specs) {
+        for (const spec of suite.specs) {
+          const testKey = `e2e::${suiteName}::${spec.title}`;
+          const testResult = spec.tests?.[0]?.results?.[0];
+          const status = spec.ok ? 'passed' : 'failed';
+          const failureMessages = [];
+          
+          if (!spec.ok && spec.tests) {
+            for (const t of spec.tests) {
+              if (t.results) {
+                for (const r of t.results) {
+                  if (r.error && r.error.message) {
+                    failureMessages.push(r.error.message);
+                  }
+                }
+              }
+            }
+          }
+          
+          statuses[testKey] = {
+            status,
+            duration: testResult?.duration || 0,
+            failureMessages,
+          };
+        }
+      }
+      
+      if (suite.suites) {
+        extractFromSuites(suite.suites, suiteName);
+      }
+    }
+  }
+  
+  extractFromSuites(playwrightResults.suites);
+  return statuses;
 }
 
 /**
@@ -244,28 +309,93 @@ function updateBaseline(results) {
 }
 
 /**
+ * Merge Vitest and Playwright statuses
+ */
+function mergeAllStatuses(vitestResults, playwrightResults) {
+  const vitestStatuses = extractTestStatuses(vitestResults);
+  const playwrightStatuses = extractPlaywrightStatuses(playwrightResults);
+  return { ...vitestStatuses, ...playwrightStatuses };
+}
+
+/**
+ * Detect regressions across all test types
+ */
+function detectAllRegressions(baselineStatuses, currentStatuses) {
+  const regressions = [];
+  const newTests = [];
+  const stillPassing = [];
+  const stillFailing = [];
+  
+  Object.entries(currentStatuses).forEach(([testKey, currentStatus]) => {
+    const baselineStatus = baselineStatuses[testKey];
+    
+    if (!baselineStatus) {
+      newTests.push({
+        testKey,
+        status: currentStatus.status,
+        failureMessages: currentStatus.failureMessages,
+      });
+    } else if (baselineStatus.status === 'passed' && currentStatus.status === 'failed') {
+      regressions.push({
+        testKey,
+        previousStatus: 'passed',
+        currentStatus: 'failed',
+        failureMessages: currentStatus.failureMessages,
+      });
+    } else if (currentStatus.status === 'passed') {
+      stillPassing.push({ testKey });
+    } else if (currentStatus.status === 'failed') {
+      stillFailing.push({
+        testKey,
+        failureMessages: currentStatus.failureMessages,
+      });
+    }
+  });
+  
+  return { regressions, newTests, stillPassing, stillFailing };
+}
+
+/**
  * Main detection function
  */
 function runDetection(options = {}) {
   console.log('\nRunning regression detection...\n');
   
   const baseline = loadBaseline();
-  const current = loadResults();
+  const vitestResults = loadResults();
+  const playwrightResults = loadPlaywrightResults();
   
-  if (!current) {
+  // Check if we have any results
+  if (!vitestResults && !playwrightResults) {
     console.log('No test results found. Run tests first.');
     return { hasRegressions: false, summary: null };
+  }
+  
+  // Merge all current statuses
+  const currentStatuses = mergeAllStatuses(vitestResults, playwrightResults);
+  const currentTotal = Object.keys(currentStatuses).length;
+  const currentPassing = Object.values(currentStatuses).filter(s => s.status === 'passed').length;
+  const currentFailing = Object.values(currentStatuses).filter(s => s.status === 'failed').length;
+  
+  // Log test sources
+  const vitestCount = vitestResults ? (vitestResults.numTotalTests || 0) : 0;
+  const playwrightCount = playwrightResults ? Object.keys(extractPlaywrightStatuses(playwrightResults)).length : 0;
+  if (playwrightCount > 0) {
+    console.log(`Test Sources: Vitest (${vitestCount}) + E2E (${playwrightCount}) = ${currentTotal} total`);
   }
   
   // First run - no baseline exists
   if (!baseline) {
     console.log('No baseline found. This is the first test run.');
     console.log('Creating baseline from current results...');
-    updateBaseline(current);
     
-    const currentStatuses = extractTestStatuses(current);
-    const passing = Object.values(currentStatuses).filter(s => s.status === 'passed').length;
-    const failing = Object.values(currentStatuses).filter(s => s.status === 'failed').length;
+    // Save merged baseline (guard against null vitestResults)
+    const mergedBaseline = {
+      ...(vitestResults || {}),
+      _playwrightStatuses: playwrightResults ? extractPlaywrightStatuses(playwrightResults) : {},
+      _mergedStatuses: currentStatuses,
+    };
+    updateBaseline(mergedBaseline);
     
     return {
       hasRegressions: false,
@@ -273,16 +403,19 @@ function runDetection(options = {}) {
       regressions: [],
       newTests: Object.entries(currentStatuses).map(([key, val]) => ({ name: key.split('::').pop(), testKey: key, status: val.status })),
       summary: {
-        passing,
-        failing,
+        passing: currentPassing,
+        failing: currentFailing,
         regressions: 0,
-        newTests: Object.keys(currentStatuses).length,
+        newTests: currentTotal,
       },
     };
   }
   
+  // Load baseline statuses (support both old and new format)
+  const baselineStatuses = baseline._mergedStatuses || mergeAllStatuses(baseline, null);
+  
   // Compare against baseline
-  const { regressions, newTests, stillPassing, stillFailing } = detectRegressions(baseline, current);
+  const { regressions, newTests, stillPassing, stillFailing } = detectAllRegressions(baselineStatuses, currentStatuses);
   
   // Generate reports
   generateRegressionsReport(regressions);
@@ -297,11 +430,22 @@ function runDetection(options = {}) {
   console.log(`  Still Failing: ${stillFailing.length}`);
   console.log('');
   
-  // Update baseline only if all passing
-  const allPassing = regressions.length === 0 && stillFailing.length === 0;
+  // Update baseline only if all passing (no regressions and no stillFailing)
+  const newTestFailures = newTests.filter(t => t.status === 'failed').length;
+  const allPassing = regressions.length === 0 && stillFailing.length === 0 && newTestFailures === 0;
   if (allPassing && options.updateBaseline !== false) {
-    updateBaseline(current);
+    const mergedBaseline = {
+      ...(vitestResults || {}),
+      _playwrightStatuses: playwrightResults ? extractPlaywrightStatuses(playwrightResults) : {},
+      _mergedStatuses: currentStatuses,
+    };
+    updateBaseline(mergedBaseline);
   }
+  
+  // Calculate summary counts explicitly
+  const newTestPassing = newTests.filter(t => t.status === 'passed').length;
+  const totalPassing = stillPassing.length + newTestPassing;
+  const totalFailing = stillFailing.length + regressions.length + newTestFailures;
   
   return {
     hasRegressions: regressions.length > 0,
@@ -310,8 +454,8 @@ function runDetection(options = {}) {
     summary: {
       regressions: regressions.length,
       newTests: newTests.length,
-      passing: stillPassing.length,
-      failing: stillFailing.length,
+      passing: totalPassing,
+      failing: totalFailing,
     },
   };
 }
@@ -320,8 +464,13 @@ module.exports = {
   runDetection,
   loadBaseline,
   loadResults,
+  loadPlaywrightResults,
   detectRegressions,
+  detectAllRegressions,
   updateBaseline,
+  extractTestStatuses,
+  extractPlaywrightStatuses,
+  mergeAllStatuses,
 };
 
 // Run if executed directly

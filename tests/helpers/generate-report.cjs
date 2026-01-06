@@ -89,6 +89,74 @@ function parseTestResults() {
   }
 }
 
+// Parse Playwright E2E results
+function parsePlaywrightResults() {
+  const playwrightPath = path.join(RESULTS_DIR, 'playwright-results.json');
+  if (!fs.existsSync(playwrightPath)) return null;
+  
+  try {
+    const data = JSON.parse(fs.readFileSync(playwrightPath, 'utf8'));
+    return data;
+  } catch (e) {
+    console.error('Error parsing playwright-results.json:', e);
+    return null;
+  }
+}
+
+// Convert Playwright results to match Vitest format for unified display
+function normalizePlaywrightResults(playwrightData) {
+  if (!playwrightData || !playwrightData.suites) return { tests: [], passed: 0, failed: 0, total: 0, duration: 0 };
+  
+  const results = { tests: [], passed: 0, failed: 0, total: 0, duration: 0 };
+  
+  function extractTests(suites, parentName = '') {
+    for (const suite of suites) {
+      const suiteName = parentName ? `${parentName} > ${suite.title}` : suite.title;
+      
+      // Extract specs (tests)
+      if (suite.specs) {
+        for (const spec of suite.specs) {
+          const test = {
+            name: spec.title,
+            fullName: `${suiteName} > ${spec.title}`,
+            suite: suite.title || 'E2E Tests',
+            status: spec.ok ? 'passed' : 'failed',
+            duration: spec.tests?.[0]?.results?.[0]?.duration || 0,
+            failureMessages: []
+          };
+          
+          // Extract failure messages
+          if (!spec.ok && spec.tests) {
+            for (const t of spec.tests) {
+              if (t.results) {
+                for (const r of t.results) {
+                  if (r.error && r.error.message) {
+                    test.failureMessages.push(r.error.message);
+                  }
+                }
+              }
+            }
+          }
+          
+          results.tests.push(test);
+          results.total++;
+          if (test.status === 'passed') results.passed++;
+          else results.failed++;
+          results.duration += test.duration;
+        }
+      }
+      
+      // Recurse into nested suites
+      if (suite.suites) {
+        extractTests(suite.suites, suiteName);
+      }
+    }
+  }
+  
+  extractTests(playwrightData.suites);
+  return results;
+}
+
 function loadBaseline() {
   const baselinePath = path.join(RESULTS_DIR, 'baseline.json');
   if (!fs.existsSync(baselinePath)) return null;
@@ -110,57 +178,94 @@ function loadPreviousRun() {
   }
 }
 
-function buildTestTree(testResults) {
+function buildTestTree(testResults, playwrightResults = null) {
   const tree = { unit: {}, integration: {}, e2e: {} };
   
-  if (!testResults || !testResults.testResults) return tree;
+  // Process Vitest results
+  if (testResults && testResults.testResults) {
+    testResults.testResults.forEach(file => {
+      const filePath = file.name || '';
+      let category = 'unit';
+      if (filePath.includes('/integration/')) category = 'integration';
+      else if (filePath.includes('/e2e/')) category = 'e2e';
+      
+      const fileName = path.basename(filePath, '.test.ts').replace('.spec', '');
+      const suiteName = fileName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      
+      if (!tree[category][suiteName]) {
+        tree[category][suiteName] = { tests: [], passed: 0, failed: 0, duration: 0 };
+      }
+      
+      if (file.assertionResults) {
+        file.assertionResults.forEach(test => {
+          const testData = {
+            name: test.title || test.fullName || 'Unknown Test',
+            fullName: test.fullName || test.title || '',
+            status: test.status === 'passed' ? 'passed' : 'failed',
+            duration: test.duration || 0,
+            failureMessages: test.failureMessages || [],
+            ancestorTitles: test.ancestorTitles || []
+          };
+          tree[category][suiteName].tests.push(testData);
+          tree[category][suiteName].duration += testData.duration;
+          if (testData.status === 'passed') {
+            tree[category][suiteName].passed++;
+          } else {
+            tree[category][suiteName].failed++;
+          }
+        });
+      }
+    });
+  }
   
-  testResults.testResults.forEach(file => {
-    const filePath = file.name || '';
-    let category = 'unit';
-    if (filePath.includes('/integration/')) category = 'integration';
-    else if (filePath.includes('/e2e/')) category = 'e2e';
+  // Process Playwright E2E results
+  if (playwrightResults && playwrightResults.tests) {
+    // Group by suite name
+    const suiteMap = {};
+    playwrightResults.tests.forEach(test => {
+      const suiteName = test.suite || 'E2E Tests';
+      if (!suiteMap[suiteName]) {
+        suiteMap[suiteName] = { tests: [], passed: 0, failed: 0, duration: 0 };
+      }
+      suiteMap[suiteName].tests.push(test);
+      suiteMap[suiteName].duration += test.duration || 0;
+      if (test.status === 'passed') {
+        suiteMap[suiteName].passed++;
+      } else {
+        suiteMap[suiteName].failed++;
+      }
+    });
     
-    const fileName = path.basename(filePath, '.test.ts').replace('.spec', '');
-    const suiteName = fileName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    
-    if (!tree[category][suiteName]) {
-      tree[category][suiteName] = { tests: [], passed: 0, failed: 0, duration: 0 };
-    }
-    
-    if (file.assertionResults) {
-      file.assertionResults.forEach(test => {
-        const testData = {
-          name: test.title || test.fullName || 'Unknown Test',
-          fullName: test.fullName || test.title || '',
-          status: test.status === 'passed' ? 'passed' : 'failed',
-          duration: test.duration || 0,
-          failureMessages: test.failureMessages || [],
-          ancestorTitles: test.ancestorTitles || []
-        };
-        tree[category][suiteName].tests.push(testData);
-        tree[category][suiteName].duration += testData.duration;
-        if (testData.status === 'passed') {
-          tree[category][suiteName].passed++;
-        } else {
-          tree[category][suiteName].failed++;
-        }
-      });
-    }
-  });
+    // Merge into e2e category
+    Object.entries(suiteMap).forEach(([name, data]) => {
+      tree.e2e[name] = data;
+    });
+  }
   
   return tree;
 }
 
 function generateEnhancedHTML(testResults, regressionData, baseline, previousRun) {
-  const tree = buildTestTree(testResults);
-  const totalTests = testResults?.numTotalTests || 0;
-  const passedTests = testResults?.numPassedTests || 0;
-  const failedTests = testResults?.numFailedTests || 0;
+  // Parse Playwright E2E results
+  const playwrightRaw = parsePlaywrightResults();
+  const playwrightResults = normalizePlaywrightResults(playwrightRaw);
+  
+  // Build tree with both Vitest and Playwright results
+  const tree = buildTestTree(testResults, playwrightResults);
+  
+  // Calculate totals including E2E
+  const vitestTotal = testResults?.numTotalTests || 0;
+  const vitestPassed = testResults?.numPassedTests || 0;
+  const vitestFailed = testResults?.numFailedTests || 0;
+  
+  const totalTests = vitestTotal + playwrightResults.total;
+  const passedTests = vitestPassed + playwrightResults.passed;
+  const failedTests = vitestFailed + playwrightResults.failed;
   const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100).toFixed(1) : 0;
   
-  // Use enhanced duration calculation
-  const totalDuration = calculateTotalDuration(testResults);
+  // Use enhanced duration calculation (Vitest + Playwright)
+  const vitestDuration = calculateTotalDuration(testResults);
+  const totalDuration = vitestDuration + playwrightResults.duration;
   
   // Load coverage data
   const coverage = parseCoverage();
@@ -699,6 +804,7 @@ function generateEnhancedHTML(testResults, regressionData, baseline, previousRun
       const durations = [];
       Object.entries(treeData.unit).forEach(([name, data]) => { suites.push(name); durations.push(data.duration); });
       Object.entries(treeData.integration).forEach(([name, data]) => { suites.push(name); durations.push(data.duration); });
+      Object.entries(treeData.e2e).forEach(([name, data]) => { suites.push('E2E: ' + name); durations.push(data.duration); });
       
       new Chart(document.getElementById('durationChart'), {
         type: 'bar',
@@ -799,10 +905,18 @@ function generateReports() {
     console.log('Note: First test run. Baseline created for future comparisons.\n');
   }
   
+  // Check for Playwright results
+  const playwrightPath = path.join(RESULTS_DIR, 'playwright-results.json');
+  const hasPlaywright = fs.existsSync(playwrightPath);
+  
   console.log('Reports Generated:');
-  console.log('  - test-results/index.html (Interactive Report)');
-  console.log('  - test-results/results.json');
+  console.log('  - test-results/index.html (Unified Report)');
+  console.log('  - test-results/results.json (Vitest)');
   console.log('  - test-results/junit.xml');
+  if (hasPlaywright) {
+    console.log('  - test-results/playwright-results.json (E2E)');
+    console.log('  - test-results/playwright-report/ (Detailed E2E)');
+  }
   if (fs.existsSync(path.join(RESULTS_DIR, 'REGRESSIONS.md'))) console.log('  - test-results/REGRESSIONS.md');
   if (fs.existsSync(path.join(RESULTS_DIR, 'NEW-FEATURES.md'))) console.log('  - test-results/NEW-FEATURES.md');
   console.log('');
