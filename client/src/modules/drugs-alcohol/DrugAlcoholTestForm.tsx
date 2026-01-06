@@ -122,6 +122,9 @@ export function DrugAlcoholTestForm({
   const partARef = useRef<HTMLDivElement>(null);
   const partBRef = useRef<HTMLDivElement>(null);
   const continuousScrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Track if witness has been auto-copied (first witness selection copies to all empty rows)
+  const witnessAutoCopied = useRef(false);
 
   // Test type labels
   const testTypeLabels = {
@@ -237,6 +240,10 @@ export function DrugAlcoholTestForm({
       };
 
       form.reset(formData as DrugAlcoholTestFormData);
+      
+      // Reset witness auto-copy flag when loading existing record
+      // (witnesses are already populated from saved data)
+      witnessAutoCopied.current = true;
     }
   }, [existingRecord, recordId, testType, form]);
 
@@ -1297,9 +1304,24 @@ export function DrugAlcoholTestForm({
                                     const rank = crew.presentRank || '';
                                     return rank ? `${name}, ${rank}` : name;
                                   };
+                                  const handleWitnessChange = (value: string) => {
+                                    field.onChange(value);
+                                    
+                                    // Auto-copy: first witness selection copies to all rows with empty witness
+                                    if (!witnessAutoCopied.current && value) {
+                                      witnessAutoCopied.current = true;
+                                      const personnelTested = form.getValues('personnelTested') || [];
+                                      personnelTested.forEach((person, i) => {
+                                        if (i !== index && !person.witness) {
+                                          form.setValue(`personnelTested.${i}.witness`, value);
+                                        }
+                                      });
+                                    }
+                                  };
+                                  
                                   return (
                                     <FormItem>
-                                      <Select onValueChange={field.onChange} value={field.value}>
+                                      <Select onValueChange={handleWitnessChange} value={field.value}>
                                         <FormControl>
                                           <SelectTrigger className="bg-white text-xs h-8" data-testid={`select-witness-${index}`}>
                                             <SelectValue placeholder="Select">
