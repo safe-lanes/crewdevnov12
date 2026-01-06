@@ -154,13 +154,15 @@ export function DrugsAlcoholModule() {
         mutationFn: async ({ data, status }: { data: any; status: 'draft' | 'submitted' }) => {
             const payload = transformFormDataForAPI(data, status);
             
+            let response: Response;
             if (editingRecordId) {
-                return await apiRequest('PUT', `/api/drug-alcohol-tests/${editingRecordId}`, payload);
+                response = await apiRequest('PUT', `/api/drug-alcohol-tests/${editingRecordId}`, payload);
             } else {
-                return await apiRequest('POST', '/api/drug-alcohol-tests', payload);
+                response = await apiRequest('POST', '/api/drug-alcohol-tests', payload);
             }
+            return await response.json();
         },
-        onSuccess: (_, variables) => {
+        onSuccess: (record: any, variables) => {
             queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
             toast({
                 title: variables.status === 'submitted' ? "Form Submitted" : "Draft Saved",
@@ -170,6 +172,8 @@ export function DrugsAlcoholModule() {
             });
             if (variables.status === 'submitted') {
                 handleCloseForm();
+            } else if (record?.id && !editingRecordId) {
+                setEditingRecordId(record.id);
             }
         },
         onError: (error: any) => {
