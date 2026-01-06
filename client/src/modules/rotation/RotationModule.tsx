@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { API_BASE_URL } from '@/config/api';
 import { useViewport } from '@/hooks/useViewport';
 import RotationSideBar from './RotationSideBar';
 import MainLayout from '@/components/main/MainLayout';
@@ -24,7 +25,7 @@ const useVessels = () => {
         queryFn: async () => {
             const domain = localStorage.getItem('domain') || 'rsms';
             const response = await fetch(
-                `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
+                `${API_BASE_URL}/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
                 {
                     method: 'GET',
                     headers: { 'accept': '*/*' }

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { API_BASE_URL } from "@/config/api";
 
 export interface ExternalUser {
   uuid: string;
@@ -20,7 +21,7 @@ export const useExternalUsers = (options?: UseExternalUsersOptions) => {
     queryFn: async () => {
       const domain = localStorage.getItem('domain') || 'rsms';
       const response = await fetch(
-        `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/users?domain=${domain}`,
+        `${API_BASE_URL}/crewmasterdata/getallmasterdata/users?domain=${domain}`,
         {
           method: 'GET',
           headers: { 'accept': '*/*' }

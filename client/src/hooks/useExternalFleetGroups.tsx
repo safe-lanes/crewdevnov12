@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { API_BASE_URL } from "@/config/api";
 
 interface UseExternalFleetGroupsOptions {
   enabled?: boolean;
@@ -10,7 +11,7 @@ export const useExternalFleetGroups = (options?: UseExternalFleetGroupsOptions) 
     queryFn: async () => {
       const domain = localStorage.getItem('domain') || 'rsms';
       const response = await fetch(
-        `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/fleetgroups?domain=${domain}`,
+        `${API_BASE_URL}/crewmasterdata/getallmasterdata/fleetgroups?domain=${domain}`,
         {
           method: 'GET',
           headers: { 'accept': '*/*' }

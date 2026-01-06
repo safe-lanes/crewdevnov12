@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { API_BASE_URL } from "@/config/api";
 
 interface UseExternalVesselTypesOptions {
   enabled?: boolean;
@@ -11,7 +12,7 @@ export const useExternalVesselTypes = (options?: UseExternalVesselTypesOptions) 
       const domain = localStorage.getItem('domain') || 'rsms';
 
       const response = await fetch(
-        `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/vesseltypes?domain=${domain}`,
+        `${API_BASE_URL}/crewmasterdata/getallmasterdata/vesseltypes?domain=${domain}`,
         {
           method: 'GET',
           headers: { 'accept': '*/*' }

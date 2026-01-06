@@ -46,6 +46,7 @@ import { HandoverAttachmentsDialog, getHandoverAttachmentCount } from '@/compone
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
+import { API_BASE_URL } from '@/config/api';
 
 // Helper function to check if crew member has valid GMDSS certificate
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
@@ -269,7 +270,7 @@ const useVessels = () => {
         queryFn: async () => {
             const domain = localStorage.getItem('domain') || 'rsms';
             const response = await fetch(
-                `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
+                `${API_BASE_URL}/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
                 {
                     method: 'GET',
                     headers: { 'accept': '*/*' }
@@ -410,7 +411,7 @@ const usePorts = () => {
         queryFn: async () => {
             const domain = localStorage.getItem('domain') || 'rsms';
             const response = await fetch(
-                `https://dev.sl-sail.com/b/api/v1/crewmasterdata/getallmasterdata/ports?domain=${domain}`,
+                `${API_BASE_URL}/crewmasterdata/getallmasterdata/ports?domain=${domain}`,
                 {
                     method: 'GET',
                     headers: { 'accept': '*/*' }
