@@ -472,7 +472,18 @@ export function DrugAlcoholTestForm({
   };
 
   const handleFormSubmit = (data: DrugAlcoholTestFormData) => {
-    onSubmit(data);
+    const cleanedData = {
+      ...data,
+      personnelTested: (data.personnelTested || []).map(person => {
+        const hasAlcoholTest = person.alcoholTest?.checked;
+        const hasDrugTest = person.drugTest?.checked;
+        if (!hasAlcoholTest && !hasDrugTest) {
+          return { ...person, witness: '' };
+        }
+        return person;
+      })
+    };
+    onSubmit(cleanedData);
   };
 
   const handleDelete = () => {
