@@ -10,6 +10,44 @@ const HISTORY_DIR = path.join(RESULTS_DIR, 'history');
 const LOGS_DIR = path.join(process.cwd(), 'test-logs');
 const COVERAGE_DIR = path.join(process.cwd(), 'coverage');
 
+// Enhanced duration calculation - tries multiple sources
+function calculateTotalDuration(testResults) {
+  if (!testResults || !testResults.testResults) return 0;
+  
+  let totalMs = 0;
+  
+  testResults.testResults.forEach(file => {
+    // Try file-level timing first
+    if (file.endTime && file.startTime) {
+      totalMs += (file.endTime - file.startTime);
+    } else if (file.perfStats && file.perfStats.runtime) {
+      totalMs += file.perfStats.runtime;
+    } else {
+      // Fallback: sum individual test durations
+      if (file.assertionResults) {
+        file.assertionResults.forEach(test => {
+          totalMs += (test.duration || 0);
+        });
+      }
+    }
+  });
+  
+  return totalMs;
+}
+
+// Parse coverage data
+function parseCoverage() {
+  const coveragePath = path.join(COVERAGE_DIR, 'coverage-summary.json');
+  if (!fs.existsSync(coveragePath)) return null;
+  
+  try {
+    const coverage = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
+    return coverage;
+  } catch (e) {
+    return null;
+  }
+}
+
 function ensureDirectories() {
   [RESULTS_DIR, HISTORY_DIR, LOGS_DIR, COVERAGE_DIR].forEach(dir => {
     if (!fs.existsSync(dir)) {
@@ -120,13 +158,12 @@ function generateEnhancedHTML(testResults, regressionData, baseline, previousRun
   const passedTests = testResults?.numPassedTests || 0;
   const failedTests = testResults?.numFailedTests || 0;
   const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100).toFixed(1) : 0;
-  // Calculate total duration from individual test durations in the tree
-  let totalDuration = 0;
-  Object.values(tree).forEach(category => {
-    Object.values(category).forEach(suite => {
-      totalDuration += suite.duration || 0;
-    });
-  });
+  
+  // Use enhanced duration calculation
+  const totalDuration = calculateTotalDuration(testResults);
+  
+  // Load coverage data
+  const coverage = parseCoverage();
   
   const unitTests = Object.values(tree.unit).reduce((acc, s) => acc + s.tests.length, 0);
   const integrationTests = Object.values(tree.integration).reduce((acc, s) => acc + s.tests.length, 0);
@@ -335,7 +372,7 @@ function generateEnhancedHTML(testResults, regressionData, baseline, previousRun
             </div>
             <div class="collapse-content ml-6" id="content-unit-${suite.replace(/\s+/g, '-')}">
               ${data.tests.map(t => `
-              <div class="test-item p-2 rounded flex items-center gap-2 my-1" data-status="${t.status}" data-name="${t.name.toLowerCase()}">
+              <div class="test-item p-2 rounded flex items-center gap-2 my-1 cursor-pointer" data-status="${t.status}" data-name="${t.name.toLowerCase()}" onclick='showTestDetails(${JSON.stringify(t).replace(/'/g, "&apos;")})'>
                 <span class="${t.status === 'passed' ? 'text-green-500' : 'text-red-500'}">${t.status === 'passed' ? '&#10003;' : '&#10007;'}</span>
                 <span class="flex-1">${t.name}</span>
                 <span class="text-xs" style="color: var(--text-secondary)">${t.duration}ms</span>
@@ -365,7 +402,7 @@ function generateEnhancedHTML(testResults, regressionData, baseline, previousRun
             </div>
             <div class="collapse-content ml-6" id="content-integration-${suite.replace(/\s+/g, '-')}">
               ${data.tests.map(t => `
-              <div class="test-item p-2 rounded flex items-center gap-2 my-1" data-status="${t.status}" data-name="${t.name.toLowerCase()}">
+              <div class="test-item p-2 rounded flex items-center gap-2 my-1 cursor-pointer" data-status="${t.status}" data-name="${t.name.toLowerCase()}" onclick='showTestDetails(${JSON.stringify(t).replace(/'/g, "&apos;")})'>
                 <span class="${t.status === 'passed' ? 'text-green-500' : 'text-red-500'}">${t.status === 'passed' ? '&#10003;' : '&#10007;'}</span>
                 <span class="flex-1">${t.name}</span>
                 <span class="text-xs" style="color: var(--text-secondary)">${t.duration}ms</span>
@@ -396,7 +433,7 @@ function generateEnhancedHTML(testResults, regressionData, baseline, previousRun
             </div>
             <div class="collapse-content ml-6" id="content-e2e-${suite.replace(/\s+/g, '-')}">
               ${data.tests.map(t => `
-              <div class="test-item p-2 rounded flex items-center gap-2 my-1" data-status="${t.status}" data-name="${t.name.toLowerCase()}">
+              <div class="test-item p-2 rounded flex items-center gap-2 my-1 cursor-pointer" data-status="${t.status}" data-name="${t.name.toLowerCase()}" onclick='showTestDetails(${JSON.stringify(t).replace(/'/g, "&apos;")})'>
                 <span class="${t.status === 'passed' ? 'text-green-500' : 'text-red-500'}">${t.status === 'passed' ? '&#10003;' : '&#10007;'}</span>
                 <span class="flex-1">${t.name}</span>
                 <span class="text-xs" style="color: var(--text-secondary)">${t.duration}ms</span>
@@ -408,6 +445,49 @@ function generateEnhancedHTML(testResults, regressionData, baseline, previousRun
         </div>
       </div>
     </div>
+    
+    <!-- Coverage Section -->
+    ${coverage && coverage.total ? `
+    <div class="card rounded-xl p-6 mt-6">
+      <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+        <span>&#128202;</span> Code Coverage
+      </h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div class="text-center">
+          <div class="text-3xl font-bold text-blue-500">${coverage.total.lines?.pct?.toFixed(1) || 0}%</div>
+          <div class="text-sm" style="color: var(--text-secondary)">Lines</div>
+          <div class="text-xs" style="color: var(--text-secondary)">${coverage.total.lines?.covered || 0}/${coverage.total.lines?.total || 0}</div>
+        </div>
+        <div class="text-center">
+          <div class="text-3xl font-bold text-green-500">${coverage.total.statements?.pct?.toFixed(1) || 0}%</div>
+          <div class="text-sm" style="color: var(--text-secondary)">Statements</div>
+          <div class="text-xs" style="color: var(--text-secondary)">${coverage.total.statements?.covered || 0}/${coverage.total.statements?.total || 0}</div>
+        </div>
+        <div class="text-center">
+          <div class="text-3xl font-bold text-purple-500">${coverage.total.functions?.pct?.toFixed(1) || 0}%</div>
+          <div class="text-sm" style="color: var(--text-secondary)">Functions</div>
+          <div class="text-xs" style="color: var(--text-secondary)">${coverage.total.functions?.covered || 0}/${coverage.total.functions?.total || 0}</div>
+        </div>
+        <div class="text-center">
+          <div class="text-3xl font-bold text-orange-500">${coverage.total.branches?.pct?.toFixed(1) || 0}%</div>
+          <div class="text-sm" style="color: var(--text-secondary)">Branches</div>
+          <div class="text-xs" style="color: var(--text-secondary)">${coverage.total.branches?.covered || 0}/${coverage.total.branches?.total || 0}</div>
+        </div>
+      </div>
+      <div class="text-center">
+        <a href="../coverage/index.html" target="_blank" class="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">View Detailed Coverage Report</a>
+      </div>
+    </div>
+    ` : `
+    <div class="card rounded-xl p-6 mt-6">
+      <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+        <span>&#128202;</span> Code Coverage
+      </h2>
+      <div class="text-center py-4" style="color: var(--text-secondary)">
+        No coverage data available. Run: <code class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">npm run test:coverage</code>
+      </div>
+    </div>
+    `}
 
     <!-- Performance Section -->
     <div class="card rounded-xl p-6 mt-6">
@@ -506,9 +586,78 @@ function generateEnhancedHTML(testResults, regressionData, baseline, previousRun
       });
     }
 
-    // Export report
+    // Show test details modal
+    function showTestDetails(testInfo) {
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+      
+      const failureHtml = testInfo.failureMessages && testInfo.failureMessages.length > 0 
+        ? '<div><label class="font-semibold block mb-1 text-red-500">Error Details:</label><pre class="text-xs bg-red-50 dark:bg-red-900/20 p-4 rounded overflow-auto max-h-64 border border-red-200 dark:border-red-800">' + testInfo.failureMessages.join('\\n\\n') + '</pre></div>' 
+        : '';
+      
+      modal.innerHTML = 
+        '<div class="card rounded-xl p-6 max-w-3xl max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">' +
+          '<div class="flex items-center justify-between mb-4">' +
+            '<h3 class="text-xl font-bold">Test Details</h3>' +
+            '<button onclick="this.closest(\\'.fixed\\').remove()" class="px-3 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700">X</button>' +
+          '</div>' +
+          '<div class="space-y-4">' +
+            '<div><label class="font-semibold block mb-1">Test Name:</label><p class="text-sm" style="color: var(--text-secondary)">' + testInfo.name + '</p></div>' +
+            '<div><label class="font-semibold block mb-1">Full Name:</label><p class="text-sm" style="color: var(--text-secondary)">' + (testInfo.fullName || testInfo.name) + '</p></div>' +
+            '<div class="grid grid-cols-2 gap-4">' +
+              '<div><label class="font-semibold block mb-1">Status:</label><span class="inline-block px-3 py-1 rounded text-sm ' + (testInfo.status === 'passed' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500') + '">' + testInfo.status.toUpperCase() + '</span></div>' +
+              '<div><label class="font-semibold block mb-1">Duration:</label><p class="text-sm font-mono" style="color: var(--text-secondary)">' + testInfo.duration + 'ms</p></div>' +
+            '</div>' +
+            failureHtml +
+            '<div class="flex gap-2 pt-4 border-t" style="border-color: var(--border-color)">' +
+              '<button onclick="navigator.clipboard.writeText(\\'' + (testInfo.fullName || testInfo.name).replace(/'/g, "\\\\'") + '\\'); alert(\\'Copied!\\');" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Copy Test Name</button>' +
+              '<button onclick="this.closest(\\'.fixed\\').remove()" class="px-4 py-2 card rounded hover:opacity-80">Close</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      
+      document.body.appendChild(modal);
+    }
+
+    // Export report with multiple options
     function exportReport() {
-      const data = { totalTests: ${totalTests}, passed: ${passedTests}, failed: ${failedTests}, passRate: ${passRate}, regressions: regressions.length, timestamp: new Date().toISOString() };
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+      
+      modal.innerHTML = 
+        '<div class="card rounded-xl p-6 max-w-md" onclick="event.stopPropagation()">' +
+          '<h3 class="text-xl font-bold mb-4">Export Report</h3>' +
+          '<div class="space-y-2">' +
+            '<button onclick="window.print(); this.closest(\\'.fixed\\').remove();" class="w-full px-4 py-3 text-left rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><span>&#128424;</span> <span>Print Report</span></button>' +
+            '<button onclick="copyReportLink(); this.closest(\\'.fixed\\').remove();" class="w-full px-4 py-3 text-left rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><span>&#128279;</span> <span>Copy Report Link</span></button>' +
+            '<button onclick="downloadHTML(); this.closest(\\'.fixed\\').remove();" class="w-full px-4 py-3 text-left rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><span>&#128190;</span> <span>Download HTML</span></button>' +
+            '<button onclick="downloadJSON(); this.closest(\\'.fixed\\').remove();" class="w-full px-4 py-3 text-left rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><span>&#128196;</span> <span>Download JSON</span></button>' +
+            '<button onclick="copyResults(); this.closest(\\'.fixed\\').remove();" class="w-full px-4 py-3 text-left rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"><span>&#128203;</span> <span>Copy Summary</span></button>' +
+          '</div>' +
+          '<button onclick="this.closest(\\'.fixed\\').remove()" class="w-full mt-4 px-4 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</button>' +
+        '</div>';
+      
+      document.body.appendChild(modal);
+    }
+
+    function copyReportLink() {
+      navigator.clipboard.writeText(window.location.href).then(() => alert('Report link copied!'));
+    }
+
+    function downloadHTML() {
+      const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'test-report-' + new Date().toISOString().split('T')[0] + '.html';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadJSON() {
+      const data = { totalTests: ${totalTests}, passed: ${passedTests}, failed: ${failedTests}, passRate: ${passRate}, regressions: regressions.length, treeData: treeData, timestamp: new Date().toISOString() };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -516,6 +665,11 @@ function generateEnhancedHTML(testResults, regressionData, baseline, previousRun
       a.download = 'test-report-' + new Date().toISOString().split('T')[0] + '.json';
       a.click();
       URL.revokeObjectURL(url);
+    }
+
+    function copyResults() {
+      const summary = 'Test Results Summary\\nTotal: ${totalTests}\\nPassed: ${passedTests}\\nFailed: ${failedTests}\\nPass Rate: ${passRate}%\\nRegressions: ' + regressions.length;
+      navigator.clipboard.writeText(summary).then(() => alert('Summary copied!'));
     }
 
     // Initialize charts
