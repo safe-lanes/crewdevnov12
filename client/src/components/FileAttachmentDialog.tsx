@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Trash2, FileText, Image as ImageIcon, X, Eye } from 'lucide-react';
+import { Upload, Trash2, FileText, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface FileAttachment {
@@ -43,8 +43,6 @@ export function FileAttachmentDialog({
 }: FileAttachmentDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewType, setPreviewType] = useState<string | null>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -110,14 +108,74 @@ export function FileAttachmentDialog({
     }
   };
 
-  const handlePreview = (attachment: FileAttachment) => {
-    setPreviewUrl(attachment.data);
-    setPreviewType(attachment.type);
+  // Sanitize text for safe HTML insertion (prevent XSS)
+  const escapeHtml = (text: string): string => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   };
 
-  const closePreview = () => {
-    setPreviewUrl(null);
-    setPreviewType(null);
+  const handlePreview = (attachment: FileAttachment) => {
+    // Open file in new browser tab for universal compatibility
+    const newWindow = window.open();
+    if (newWindow) {
+      // Sanitize filename to prevent XSS
+      const safeName = escapeHtml(attachment.name);
+      
+      if (attachment.type === 'application/pdf') {
+        // For PDFs, embed in an HTML page for better display
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${safeName}</title>
+              <style>
+                body { margin: 0; padding: 0; }
+                iframe { width: 100%; height: 100vh; border: none; }
+              </style>
+            </head>
+            <body>
+              <iframe src="${attachment.data}"></iframe>
+            </body>
+          </html>
+        `);
+      } else if (attachment.type.startsWith('image/')) {
+        // For images, display centered
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${safeName}</title>
+              <style>
+                body { 
+                  margin: 0; 
+                  padding: 20px; 
+                  display: flex; 
+                  justify-content: center; 
+                  align-items: center; 
+                  min-height: calc(100vh - 40px);
+                  background: #f5f5f5;
+                }
+                img { max-width: 100%; max-height: 100%; object-fit: contain; }
+              </style>
+            </head>
+            <body>
+              <img src="${attachment.data}" alt="${safeName}" />
+            </body>
+          </html>
+        `);
+      } else {
+        // Fallback for other types
+        newWindow.location.href = attachment.data;
+      }
+      newWindow.document.close();
+    } else {
+      toast({
+        title: 'Unable to open file',
+        description: 'Please check if pop-ups are blocked and try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -208,7 +266,7 @@ export function FileAttachmentDialog({
                           onClick={() => handlePreview(attachment)}
                           data-testid={`button-preview-${attachment.id}`}
                         >
-                          <Eye className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" />
                         </Button>
                         <Button
                           type="button"
@@ -252,40 +310,6 @@ export function FileAttachmentDialog({
         </DialogContent>
       </Dialog>
 
-      {previewUrl && (
-        <Dialog open={!!previewUrl} onOpenChange={() => closePreview()}>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
-            <DialogHeader>
-              <DialogTitle>File Preview</DialogTitle>
-              <DialogDescription>
-                Viewing attached file
-              </DialogDescription>
-            </DialogHeader>
-            <div className="relative flex items-center justify-center min-h-[400px]">
-              {previewType?.startsWith('image/') ? (
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="max-w-full max-h-[60vh] object-contain"
-                />
-              ) : previewType === 'application/pdf' ? (
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-[60vh] border rounded"
-                  title="PDF Preview"
-                />
-              ) : (
-                <p className="text-gray-500">Preview not available for this file type</p>
-              )}
-            </div>
-            <DialogFooter>
-              <Button onClick={() => closePreview()} data-testid="button-close-preview">
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </>
   );
 }

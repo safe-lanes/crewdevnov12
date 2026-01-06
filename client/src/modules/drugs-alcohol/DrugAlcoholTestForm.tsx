@@ -1475,26 +1475,18 @@ export function DrugAlcoholTestForm({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="flex items-center gap-2"
+                        className="flex items-center"
                         onClick={() => setAttachmentDialogOpen(true)}
                         data-testid="button-upload-attachment"
                       >
-                        <Upload className="h-4 w-4" />
-                        Upload Attachment
-                      </Button>
-
-                      {/* Show attachment count if exists */}
-                      {(form.watch('attachments')?.length || 0) > 0 && (
-                        <div 
-                          className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md cursor-pointer hover-elevate"
-                          onClick={() => setAttachmentDialogOpen(true)}
-                        >
-                          <Paperclip className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm text-gray-700">
-                            {form.watch('attachments')?.length} file(s) attached
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Attachment(s)
+                        {(form.watch('attachments')?.length || 0) > 0 && (
+                          <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {form.watch('attachments')?.length}
                           </span>
-                        </div>
-                      )}
+                        )}
+                      </Button>
                     </div>
                   </div>
                 </div>
