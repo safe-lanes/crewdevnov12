@@ -902,18 +902,9 @@ export function DrugAlcoholTestForm({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Equipment ID</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="bg-[#ffffff]" data-testid={`select-equipmentId-${index}`}>
-                                  <SelectValue placeholder="Select Equipment" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="AL-001">AL-001 - Breathalyzer Pro</SelectItem>
-                                <SelectItem value="AL-002">AL-002 - AlcoTest 6820</SelectItem>
-                                <SelectItem value="AL-003">AL-003 - DrugCheck 5000</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <Input {...field} placeholder="Equipment ID" className="bg-[#ffffff]" data-testid={`input-equipmentId-${index}`} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -926,7 +917,7 @@ export function DrugAlcoholTestForm({
                           <FormItem>
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Make / Model</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Make / Model" className="bg-[#f0f0f0]" disabled data-testid={`input-makeModel-${index}`} />
+                              <Input {...field} placeholder="Make / Model" className="bg-[#ffffff]" data-testid={`input-makeModel-${index}`} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -940,7 +931,7 @@ export function DrugAlcoholTestForm({
                           <FormItem>
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Serial No.</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Serial No." className="bg-[#f0f0f0]" disabled data-testid={`input-serialNo-${index}`} />
+                              <Input {...field} placeholder="Serial No." className="bg-[#ffffff]" data-testid={`input-serialNo-${index}`} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
