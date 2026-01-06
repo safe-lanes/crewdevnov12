@@ -50,6 +50,7 @@ interface SummaryRowData {
 interface SummaryTableProps {
   selectedVessel: string;
   onAdd?: (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others') => void;
+  onEdit?: (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', recordId: number) => void;
 }
 
 // Calculate "Due In" status and color
@@ -85,6 +86,7 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
   if (!params.colDef || !params.data) return null;
   
   const testData = params.value as TestRecord | undefined;
+  const { onEdit } = params.context || {};
 
   if (!testData || !testData.date) {
     return <div className="flex items-center h-full text-gray-400 text-xs">No data</div>;
@@ -94,8 +96,18 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
   const violationText = violations === 1 ? '1 Violation' : `${violations} Violation`;
   const violationColor = violations > 0 ? '#E54E60' : '#22C55E';
 
+  const handleClick = () => {
+    if (onEdit && testData.recordId && params.data?.testType) {
+      onEdit(params.data.testType as 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', testData.recordId);
+    }
+  };
+
   return (
-    <div className="flex flex-col justify-center h-full py-1 px-2">
+    <div 
+      className="flex flex-col justify-center h-full py-1 px-2 cursor-pointer hover:bg-blue-50 rounded transition-colors"
+      onClick={handleClick}
+      data-testid={`history-cell-${testData.recordId}`}
+    >
       <div className="text-xs text-gray-700 font-medium">{testData.date}</div>
       <div className="text-xs text-gray-600 mt-0.5">{testData.port}</div>
       <div
@@ -177,7 +189,7 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
   );
 };
 
-export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
+export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [showAllHistory, setShowAllHistory] = useState(false);
 
@@ -459,6 +471,7 @@ export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
               showAllHistory,
               setShowAllHistory,
               onAdd,
+              onEdit,
             }}
             onCellValueChanged={async (event: CellValueChangedEvent) => {
               // Only handle changes to plannedComments, plannedPort, or plannedDate

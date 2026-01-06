@@ -775,6 +775,7 @@ export function DrugsAlcoholModule() {
                             <SummaryTable 
                                 selectedVessel={summarySelectedVessel}
                                 onAdd={(testType) => handleOpenForm(testType, summarySelectedVessel)}
+                                onEdit={(testType, recordId) => handleOpenForm(testType, summarySelectedVessel, recordId)}
                             />
                         )}
                     </div>
