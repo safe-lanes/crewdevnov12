@@ -1281,7 +1281,10 @@ export function DrugAlcoholTestForm({
                                   );
                                   const getCrewDisplayName = (crewId: string) => {
                                     const crew = vesselCrew.find(c => c.id === crewId);
-                                    return crew ? `${crew.firstName || ''} ${crew.familyName || ''}`.trim() : crewId;
+                                    if (!crew) return crewId;
+                                    const name = `${crew.firstName || ''} ${crew.familyName || ''}`.trim();
+                                    const rank = crew.presentRank || '';
+                                    return rank ? `${name}, ${rank}` : name;
                                   };
                                   return (
                                     <FormItem>
@@ -1297,12 +1300,15 @@ export function DrugAlcoholTestForm({
                                           {vesselCrew.map((crew, crewIndex) => {
                                             const uniqueKey = crew.id || `crew-${crewIndex}-${crew.firstName}-${crew.familyName}`;
                                             const uniqueValue = crew.id || `crew-${crewIndex}`;
+                                            const name = `${crew.firstName || ''} ${crew.familyName || ''}`.trim();
+                                            const rank = crew.presentRank || '';
+                                            const displayText = rank ? `${name}, ${rank}` : name;
                                             return (
                                               <SelectItem 
                                                 key={uniqueKey} 
                                                 value={uniqueValue}
                                               >
-                                                {`${crew.firstName || ''} ${crew.familyName || ''}`.trim()}
+                                                {displayText}
                                               </SelectItem>
                                             );
                                           })}
