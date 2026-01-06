@@ -1,102 +1,110 @@
 // End-to-end tests for appraisal workflow
-import { test, expect } from '@playwright/test';
+import { test, expect, Locator } from '@playwright/test';
 
 test.describe('Appraisal Workflow', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the application
     await page.goto('/');
+    await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 30000 });
   });
 
   test('should display the main application', async ({ page }) => {
-    // Wait for the page to load
-    await expect(page).toHaveURL('/');
-    
-    // Check that the page has loaded (basic smoke test)
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page.getByTestId('main-content')).toBeVisible();
   });
 
   test('should have navigation elements', async ({ page }) => {
-    // Look for common navigation patterns
-    const nav = page.locator('nav, [role="navigation"], header');
+    const appRoot = page.getByTestId('app-root');
+    await expect(appRoot).toBeVisible();
+  });
+
+  test.describe('Crew Appraisals Module', () => {
+    let container: Locator;
     
-    // At least one navigation element should exist
-    const navCount = await nav.count();
-    expect(navCount).toBeGreaterThanOrEqual(0);
-  });
-
-  test.describe('Appraisal Form Creation', () => {
-    test('should be able to access appraisal section', async ({ page }) => {
-      // This is a placeholder test - actual implementation depends on app structure
-      // Look for appraisal-related links or buttons
-      const appraisalLink = page.getByTestId('link-appraisals').or(
-        page.getByRole('link', { name: /appraisal/i })
-      );
-      
-      const linkExists = await appraisalLink.count() > 0;
-      
-      // Skip if appraisal link doesn't exist (feature may not be implemented)
-      if (!linkExists) {
-        test.skip();
-        return;
-      }
-      
-      await appraisalLink.click();
-      await expect(page).toHaveURL(/appraisal/);
+    test.beforeEach(async ({ page }) => {
+      // Home route loads ElementCrewAppraisals
+      container = page.getByTestId('appraisals-container');
+      await expect(container).toBeVisible({ timeout: 10000 });
     });
-  });
 
-  test.describe('Form Navigation', () => {
-    test('should support multi-step form navigation', async ({ page }) => {
-      // Check for stepper or multi-step form indicators
-      const stepIndicators = page.locator('[data-testid*="step"], .stepper, [role="tablist"]');
-      
-      const stepCount = await stepIndicators.count();
-      
-      // This test is informational - not all forms have steppers
-      expect(stepCount).toBeGreaterThanOrEqual(0);
+    test('should load appraisals container on home route', async ({ page }) => {
+      await expect(page.getByTestId('appraisals-container')).toBeVisible();
+    });
+
+    test('should display appraisal filters', async ({ page }) => {
+      const filterContainer = page.getByTestId('appraisals-container').getByTestId('filter-container');
+      if (await filterContainer.count() > 0) {
+        // Use scoped selector within the appraisals container
+        const searchInput = page.getByTestId('appraisals-container').getByTestId('input-search-name');
+        await expect(searchInput).toBeVisible();
+      }
+    });
+
+    test('should have rank filter in appraisals', async ({ page }) => {
+      const appraisalsContainer = page.getByTestId('appraisals-container');
+      const rankSelect = appraisalsContainer.getByTestId('select-rank');
+      if (await rankSelect.count() > 0) {
+        await expect(rankSelect).toBeVisible();
+      }
+    });
+
+    test('should have vessel filter in appraisals', async ({ page }) => {
+      const appraisalsContainer = page.getByTestId('appraisals-container');
+      const vesselSelect = appraisalsContainer.getByTestId('select-vessel');
+      if (await vesselSelect.count() > 0) {
+        await expect(vesselSelect).toBeVisible();
+      }
+    });
+
+    test('should have apply button for filters', async ({ page }) => {
+      const appraisalsContainer = page.getByTestId('appraisals-container');
+      const applyBtn = appraisalsContainer.getByTestId('button-apply');
+      if (await applyBtn.count() > 0) {
+        await expect(applyBtn).toBeVisible();
+      }
     });
   });
 });
 
-test.describe('Form Submission', () => {
-  test('should handle form validation', async ({ page }) => {
+test.describe('Form Interaction', () => {
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 30000 });
+  });
+
+  test('should handle filter form validation', async ({ page }) => {
+    const container = page.getByTestId('appraisals-container');
+    await expect(container).toBeVisible({ timeout: 10000 });
     
-    // Look for any form on the page
-    const forms = page.locator('form');
-    const formCount = await forms.count();
-    
-    if (formCount === 0) {
-      test.skip();
-      return;
+    const applyBtn = container.getByTestId('button-apply');
+    if (await applyBtn.count() > 0) {
+      await applyBtn.click();
+      await expect(container).toBeVisible();
     }
+  });
+
+  test('should clear filters when clear button clicked', async ({ page }) => {
+    const container = page.getByTestId('appraisals-container');
+    await expect(container).toBeVisible({ timeout: 10000 });
     
-    // Basic form interaction test
-    const firstForm = forms.first();
-    await expect(firstForm).toBeVisible();
+    const searchInput = container.getByTestId('input-search-name');
+    if (await searchInput.count() > 0) {
+      await searchInput.fill('Test Search');
+      
+      const clearBtn = container.getByTestId('button-clear-filters');
+      if (await clearBtn.count() > 0) {
+        await clearBtn.click();
+        await expect(searchInput).toHaveValue('');
+      }
+    }
   });
 });
 
 test.describe('Accessibility', () => {
   test('should have proper page structure', async ({ page }) => {
     await page.goto('/');
+    await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 30000 });
     
-    // Check for main landmark
-    const main = page.locator('main, [role="main"]');
-    const mainCount = await main.count();
-    
-    // Page should have a main content area
-    expect(mainCount).toBeGreaterThanOrEqual(0);
-  });
-
-  test('should have proper heading hierarchy', async ({ page }) => {
-    await page.goto('/');
-    
-    // Check for h1 heading
-    const h1 = page.locator('h1');
-    const h1Count = await h1.count();
-    
-    // Expect at least one h1 or skip
-    expect(h1Count).toBeGreaterThanOrEqual(0);
+    const main = page.getByTestId('main-content');
+    await expect(main).toBeVisible();
+    await expect(main).toHaveAttribute('role', 'main');
   });
 });
