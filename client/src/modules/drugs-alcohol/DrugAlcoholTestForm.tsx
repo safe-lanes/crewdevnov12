@@ -3,7 +3,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Save, Send, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, Send, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
+import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 
 // Equipment entry schema
 const equipmentEntrySchema = z.object({
@@ -75,7 +76,14 @@ const drugAlcoholTestFormSchema = z.object({
     name: z.string().optional(),
     date: z.string().optional(),
   }).optional(),
-  attachmentFile: z.string().optional(),
+  attachments: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    type: z.string(),
+    size: z.number(),
+    data: z.string(),
+    uploadedAt: z.string(),
+  })).optional(),
 });
 
 type DrugAlcoholTestFormData = z.infer<typeof drugAlcoholTestFormSchema>;
@@ -106,6 +114,9 @@ export function DrugAlcoholTestForm({
   
   // State for signatory manual entry when multiple matches or no match found
   const [showSignatoryManualEntry, setShowSignatoryManualEntry] = useState(false);
+  
+  // State for attachment dialog
+  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
 
   // Section refs for continuous scroll
   const partARef = useRef<HTMLDivElement>(null);
@@ -170,7 +181,7 @@ export function DrugAlcoholTestForm({
         name: '',
         date: '',
       },
-      attachmentFile: '',
+      attachments: [],
     },
   });
 
@@ -222,7 +233,7 @@ export function DrugAlcoholTestForm({
           name: '',
           date: '',
         },
-        attachmentFile: existingRecord.attachmentFile || '',
+        attachments: parseJsonField(existingRecord.attachments) || [],
       };
 
       form.reset(formData as DrugAlcoholTestFormData);
@@ -1465,17 +1476,23 @@ export function DrugAlcoholTestForm({
                         variant="outline"
                         size="sm"
                         className="flex items-center gap-2"
+                        onClick={() => setAttachmentDialogOpen(true)}
                         data-testid="button-upload-attachment"
                       >
                         <Upload className="h-4 w-4" />
                         Upload Attachment
                       </Button>
 
-                      {/* Show filename if exists */}
-                      {form.watch('attachmentFile') && (
-                        <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm text-gray-700">{form.watch('attachmentFile')}</span>
+                      {/* Show attachment count if exists */}
+                      {(form.watch('attachments')?.length || 0) > 0 && (
+                        <div 
+                          className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md cursor-pointer hover-elevate"
+                          onClick={() => setAttachmentDialogOpen(true)}
+                        >
+                          <Paperclip className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm text-gray-700">
+                            {form.watch('attachments')?.length} file(s) attached
+                          </span>
                         </div>
                       )}
                     </div>
@@ -1695,6 +1712,16 @@ export function DrugAlcoholTestForm({
           </main>
         </div>
       </div>
+      
+      {/* File Attachment Dialog */}
+      <FileAttachmentDialog
+        open={attachmentDialogOpen}
+        onOpenChange={setAttachmentDialogOpen}
+        attachments={form.watch('attachments') || []}
+        onAttachmentsChange={(attachments) => form.setValue('attachments', attachments)}
+        title="D&A Test Attachments"
+        itemName={form.watch('vesselId') ? getVesselName(form.watch('vesselId') || '') : 'Drug & Alcohol Test'}
+      />
     </div>
   );
 }
