@@ -103,6 +103,9 @@ export function DrugAlcoholTestForm({
 }: DrugAlcoholTestFormProps) {
   const [activeSection, setActiveSection] = useState<'A' | 'B'>('A');
   const [activeContinuousSection, setActiveContinuousSection] = useState<'A' | 'B'>('A');
+  
+  // State for signatory manual entry when multiple matches or no match found
+  const [showSignatoryManualEntry, setShowSignatoryManualEntry] = useState(false);
 
   // Section refs for continuous scroll
   const partARef = useRef<HTMLDivElement>(null);
@@ -269,6 +272,50 @@ export function DrugAlcoholTestForm({
       }));
   }, [allCrewMembers, activeVesselId, getSortOrder]);
 
+  // Get logged-in user's designation from sessionStorage for digital confirmation
+  const loggedInUserDesignation = useMemo(() => {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      return sessionStorage.getItem('crewDesignation') || '';
+    }
+    return '';
+  }, []);
+  
+  // Get logged-in user's name from sessionStorage as fallback
+  const loggedInUserName = useMemo(() => {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      return sessionStorage.getItem('crewUserName') || '';
+    }
+    return '';
+  }, []);
+  
+  // Find crew member(s) matching the logged-in user's rank for digital confirmation
+  // Uses exact rank match as per requirements
+  const signatoryLookupResult = useMemo(() => {
+    if (!activeVesselId || !loggedInUserDesignation) {
+      return { type: 'no_match' as const, matches: [] };
+    }
+    
+    // Filter crew on current vessel matching exact rank
+    const matchingCrew = allCrewMembers
+      .filter((crew: any) => 
+        crew.presentVessel === activeVesselId && 
+        crew.presentRank === loggedInUserDesignation
+      )
+      .map((crew: any) => ({
+        id: crew.id,
+        name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim(),
+        rank: crew.presentRank || '',
+      }));
+    
+    if (matchingCrew.length === 0) {
+      return { type: 'no_match' as const, matches: [] };
+    } else if (matchingCrew.length === 1) {
+      return { type: 'single_match' as const, matches: matchingCrew };
+    } else {
+      return { type: 'multiple_matches' as const, matches: matchingCrew };
+    }
+  }, [allCrewMembers, activeVesselId, loggedInUserDesignation]);
+
   // Sections definition
   const sections = useMemo(() => [
     { id: 'A' as const, title: 'Part A: Basic Information', number: 'A', ref: partARef },
@@ -356,6 +403,36 @@ export function DrugAlcoholTestForm({
       }
     });
   }, [dateTimeTestCompleted, personnelFields.length, form]);
+
+  // Watch digital confirmation state
+  const isConfirmed = form.watch('masterDeputySignature.confirmed');
+  const currentSignatoryName = form.watch('masterDeputySignature.name');
+  
+  // Re-evaluate signatory when crew data loads after checkbox is already checked
+  // This handles the race condition where user clicks checkbox before crew data finishes loading
+  useEffect(() => {
+    // Only run if checkbox is checked and we're in manual entry mode waiting for data
+    if (!isConfirmed) return;
+    
+    // If we have a single match and name is empty or we're in manual mode
+    if (signatoryLookupResult.type === 'single_match') {
+      // Auto-populate if name is empty or doesn't match the lookup result
+      const matchedName = signatoryLookupResult.matches[0].name;
+      if (!currentSignatoryName || showSignatoryManualEntry) {
+        form.setValue('masterDeputySignature.name', matchedName);
+        setShowSignatoryManualEntry(false);
+        
+        // Also set date if empty
+        if (!form.getValues('masterDeputySignature.date')) {
+          const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+          form.setValue('masterDeputySignature.date', today);
+        }
+      }
+    } else if (signatoryLookupResult.type === 'multiple_matches' && !showSignatoryManualEntry && !currentSignatoryName) {
+      // Multiple matches and user hasn't selected yet - show dropdown
+      setShowSignatoryManualEntry(true);
+    }
+  }, [isConfirmed, signatoryLookupResult, currentSignatoryName, showSignatoryManualEntry, form]);
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
@@ -1281,7 +1358,40 @@ export function DrugAlcoholTestForm({
                           <FormControl>
                             <Checkbox
                               checked={field.value}
-                              onCheckedChange={field.onChange}
+                              onCheckedChange={(checked) => {
+                                field.onChange(checked);
+                                
+                                if (checked) {
+                                  // Auto-populate date
+                                  const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                                  form.setValue('masterDeputySignature.date', today);
+                                  
+                                  // Auto-populate name based on lookup result
+                                  if (signatoryLookupResult.type === 'single_match') {
+                                    // Single match - auto-populate name
+                                    form.setValue('masterDeputySignature.name', signatoryLookupResult.matches[0].name);
+                                    setShowSignatoryManualEntry(false);
+                                  } else if (signatoryLookupResult.type === 'multiple_matches') {
+                                    // Multiple matches - show dropdown for selection
+                                    setShowSignatoryManualEntry(true);
+                                    form.setValue('masterDeputySignature.name', '');
+                                  } else {
+                                    // No match - use sessionStorage name as fallback or show manual entry
+                                    if (loggedInUserName) {
+                                      form.setValue('masterDeputySignature.name', loggedInUserName);
+                                      setShowSignatoryManualEntry(false);
+                                    } else {
+                                      setShowSignatoryManualEntry(true);
+                                      form.setValue('masterDeputySignature.name', '');
+                                    }
+                                  }
+                                } else {
+                                  // Unchecked - clear fields
+                                  form.setValue('masterDeputySignature.name', '');
+                                  form.setValue('masterDeputySignature.date', '');
+                                  setShowSignatoryManualEntry(false);
+                                }
+                              }}
                               data-testid="checkbox-digital-confirmation"
                             />
                           </FormControl>
@@ -1292,13 +1402,54 @@ export function DrugAlcoholTestForm({
                       )}
                     />
 
-                    {/* Signatory Display */}
+                    {/* Signatory Display / Selection */}
                     {form.watch('masterDeputySignature.confirmed') && (
-                      <div className="p-3 bg-gray-50 border rounded-md">
-                        <p className="text-sm text-gray-700">
-                          {form.watch('masterDeputySignature.name') || 'John Adams'}, Master, {form.watch('masterDeputySignature.date') || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </p>
-                      </div>
+                      <>
+                        {/* Multiple matches - show dropdown */}
+                        {showSignatoryManualEntry && signatoryLookupResult.type === 'multiple_matches' && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-amber-600">Multiple crew members found with rank "{loggedInUserDesignation}". Please select:</p>
+                            <Select
+                              value={form.watch('masterDeputySignature.name') || ''}
+                              onValueChange={(value) => form.setValue('masterDeputySignature.name', value)}
+                            >
+                              <SelectTrigger className="bg-white" data-testid="select-signatory-name">
+                                <SelectValue placeholder="Select name" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {signatoryLookupResult.matches.map((match) => (
+                                  <SelectItem key={match.id} value={match.name}>
+                                    {match.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                        
+                        {/* No match - show manual entry */}
+                        {showSignatoryManualEntry && signatoryLookupResult.type === 'no_match' && !loggedInUserName && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-amber-600">Could not find crew member for rank "{loggedInUserDesignation || 'Unknown'}". Please enter name:</p>
+                            <Input
+                              value={form.watch('masterDeputySignature.name') || ''}
+                              onChange={(e) => form.setValue('masterDeputySignature.name', e.target.value)}
+                              placeholder="Enter signatory name"
+                              className="bg-white"
+                              data-testid="input-signatory-name"
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Display the confirmation (when name is available) */}
+                        {form.watch('masterDeputySignature.name') && (
+                          <div className="p-3 bg-gray-50 border rounded-md dark:bg-gray-800">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              {form.watch('masterDeputySignature.name')}, {loggedInUserDesignation || 'Master'}, {form.watch('masterDeputySignature.date') || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {/* Upload Section */}
