@@ -29,6 +29,7 @@ interface TestRecord {
   date: string;
   port: string;
   violations: number;
+  recordId?: number;
 }
 
 interface SummaryRowData {
@@ -185,16 +186,47 @@ export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
     id: number;
     vesselId: string;
     testType: string;
-    testHistory?: string;
+    dateTimeTestCompleted?: string;
+    placeLocation?: string;
+    personnelTested?: string;
     frequencyMonths?: number;
     plannedPort?: string;
     plannedDate?: string;
     plannedComments?: string;
-    testDateTime?: string;
-    incidentDateTime?: string;
   }>>({
     queryKey: ['/api/drug-alcohol-tests'],
   });
+
+  // Helper function to calculate violations from personnelTested
+  const calculateViolations = (personnelTestedStr?: string): number => {
+    if (!personnelTestedStr) return 0;
+    try {
+      const personnel = JSON.parse(personnelTestedStr);
+      if (!Array.isArray(personnel)) return 0;
+      return personnel.filter((p: any) => p.alcoholViolation || p.drugViolation).length;
+    } catch {
+      return 0;
+    }
+  };
+
+  // Helper function to parse date from various formats
+  const parseTestDate = (dateStr?: string): Date | null => {
+    if (!dateStr) return null;
+    try {
+      // Handle ISO format (2025-12-20T18:30)
+      if (dateStr.includes('T')) {
+        return new Date(dateStr);
+      }
+      // Handle "31 May 2023 - 1010 Hours" format
+      const match = dateStr.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})/);
+      if (match) {
+        return new Date(`${match[1]} ${match[2]} ${match[3]}`);
+      }
+      return new Date(dateStr);
+    } catch {
+      return null;
+    }
+  };
 
   // Aggregate data by test type for the selected vessel
   const summaryData = useMemo<SummaryRowData[]>(() => {
@@ -207,6 +239,7 @@ export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
     ];
 
     return testTypes.map(({ type, label, hasPlanning }) => {
+      // Get all records for this vessel and test type
       const records = testRecords.filter(
         r => r.testType === type && r.vesselId === selectedVessel
       );
@@ -219,29 +252,40 @@ export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
         };
       }
 
-      // Get the first record (assuming one record per vessel per test type for scheduled tests)
-      const record = records[0];
-      
-      // Parse test history
-      let history: TestRecord[] = [];
-      if (record.testHistory) {
-        try {
-          history = JSON.parse(record.testHistory);
-        } catch {
-          history = [];
-        }
-      }
+      // Sort records by date (most recent first) to build history
+      const sortedRecords = [...records].sort((a, b) => {
+        const dateA = parseTestDate(a.dateTimeTestCompleted);
+        const dateB = parseTestDate(b.dateTimeTestCompleted);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      // Build test history from actual records
+      const history: TestRecord[] = sortedRecords.map(record => {
+        const testDate = parseTestDate(record.dateTimeTestCompleted);
+        return {
+          date: testDate ? format(testDate, 'dd-MMM-yyyy') : '',
+          port: record.placeLocation || '',
+          violations: calculateViolations(record.personnelTested),
+          recordId: record.id,
+        };
+      });
 
       const lastTest = history[0];
       const secondLastTest = history[1];
       const thirdLastTest = history[2];
 
-      // Calculate next due date
+      // Get the most recent record for frequency and planning info
+      const mostRecentRecord = sortedRecords[0];
+
+      // Calculate next due date from the last test date
       let nextDueDate: string | undefined;
-      if (hasPlanning && lastTest?.date && record.frequencyMonths) {
+      if (hasPlanning && lastTest?.date && mostRecentRecord.frequencyMonths) {
         try {
-          const lastDate = new Date(lastTest.date);
-          const nextDue = addMonths(lastDate, record.frequencyMonths);
+          const lastDate = parse(lastTest.date, 'dd-MMM-yyyy', new Date());
+          const nextDue = addMonths(lastDate, mostRecentRecord.frequencyMonths);
           nextDueDate = format(nextDue, 'dd-MMM-yyyy');
         } catch {
           nextDueDate = undefined;
@@ -249,17 +293,17 @@ export function SummaryTable({ selectedVessel, onAdd }: SummaryTableProps) {
       }
 
       return {
-        id: record.id,
+        id: mostRecentRecord.id,
         testType: type,
         testTypeLabel: label,
         lastTest,
         secondLastTest,
         thirdLastTest,
-        frequencyMonths: record.frequencyMonths,
+        frequencyMonths: mostRecentRecord.frequencyMonths,
         nextDueDate,
-        plannedPort: record.plannedPort,
-        plannedDate: record.plannedDate,
-        plannedComments: record.plannedComments,
+        plannedPort: mostRecentRecord.plannedPort,
+        plannedDate: mostRecentRecord.plannedDate,
+        plannedComments: mostRecentRecord.plannedComments,
         hasPlanning,
       };
     });
