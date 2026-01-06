@@ -1085,13 +1085,55 @@ export function DrugAlcoholTestForm({
                         </tr>
                       </thead>
                       <tbody>
-                        {personnelFields.map((person, index) => (
+                        {personnelFields.map((person, index) => {
+                          const isOtherRow = person.id.startsWith('other-');
+                          return (
                           <tr key={person.id} className="border-b hover:bg-gray-50">
                             <td className="px-3 py-2 text-sm border-r" style={{ position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 20 }}>
-                              <div className="min-w-[60px]">{(person as any).rank || 'N/A'}</div>
+                              {isOtherRow ? (
+                                <FormField
+                                  control={form.control}
+                                  name={`personnelTested.${index}.rank`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Input
+                                          {...field}
+                                          type="text"
+                                          placeholder="Rank"
+                                          className="bg-white text-xs h-8 min-w-[60px]"
+                                          data-testid={`input-other-rank-${index}`}
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              ) : (
+                                <div className="min-w-[60px]">{(person as any).rank || 'N/A'}</div>
+                              )}
                             </td>
                             <td className="px-3 py-2 text-sm border-r" style={{ position: 'sticky', left: '80px', backgroundColor: 'white', zIndex: 20 }}>
-                              <div className="min-w-[150px]">{(person as any).name || 'N/A'}</div>
+                              {isOtherRow ? (
+                                <FormField
+                                  control={form.control}
+                                  name={`personnelTested.${index}.name`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Input
+                                          {...field}
+                                          type="text"
+                                          placeholder="Name"
+                                          className="bg-white text-xs h-8 min-w-[150px]"
+                                          data-testid={`input-other-name-${index}`}
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              ) : (
+                                <div className="min-w-[150px]">{(person as any).name || 'N/A'}</div>
+                              )}
                             </td>
                             
                             {showAlcoholFields && (
@@ -1364,7 +1406,7 @@ export function DrugAlcoholTestForm({
                               />
                             </td>
                           </tr>
-                        ))}
+                        )})}
                       </tbody>
                     </table>
                   </div>
