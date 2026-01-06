@@ -1,0 +1,1767 @@
+Automation Testing prompt
+
+IMPORTANT: Show me your plan before making changes.
+Confirm you will NOT modify /client, /server, or /shared folders.
+Wait for my approval.
+
+## ⚠️ CRITICAL: READ THIS FIRST ⚠️
+
+**This prompt will add testing to the application WITHOUT breaking existing functionality.**
+
+### What Will Happen:
+✅ New `/tests` folder created (isolated from app code)
+✅ New test scripts added to `package.json` (existing scripts untouched)
+✅ New test config files created (won't interfere with app)
+✅ Test packages installed (as devDependencies only)
+
+### What Will NOT Happen:
+❌ No changes to `/client`, `/server`, `/shared`, `/migrations`
+❌ No modifications to existing scripts (`dev`, `build`, `start`)
+❌ No updates to existing dependencies
+❌ No changes to `vite.config.ts`, `tsconfig.json`, `.env`
+
+### If Anything Goes Wrong:
+```bash
+# Rollback command
+git checkout package.json
+npm install
+npm run dev
+```
+
+**Before proceeding, please confirm:**
+1. You will create ONLY new files in `/tests` folder
+2. You will NOT modify any existing application code
+3. You will verify the app still runs after changes
+
+---
+
+## Objective
+
+Set up a comprehensive automated testing framework for the Seafarer Performance Management System with detailed test reporting, coverage analysis, and zero impact on existing code.
+
+---
+
+## Critical Requirements - READ CAREFULLY
+
+### 1. **ABSOLUTE RULE: DO NOT MODIFY EXISTING CODE**
+
+**❌ DO NOT touch these folders/files under ANY circumstances:**
+- `/client` - Frontend code (COMPLETELY OFF-LIMITS)
+- `/server` - Backend code (COMPLETELY OFF-LIMITS)
+- `/shared` - Shared code (COMPLETELY OFF-LIMITS)
+- `/migrations` - Database migrations (COMPLETELY OFF-LIMITS)
+- `/docs` - Documentation (COMPLETELY OFF-LIMITS)
+- `vite.config.ts` - Build configuration (KEEP AS-IS)
+- `tsconfig.json` - TypeScript configuration (KEEP AS-IS)
+- `.env` - Environment variables (DO NOT MODIFY)
+- `drizzle.config.ts` - Database ORM config (KEEP AS-IS)
+
+**✅ ONLY these actions are allowed:**
+1. CREATE new `/tests` folder and all contents
+2. ADD test scripts to `package.json` (append only, don't modify existing scripts)
+3. CREATE new config files: `vitest.config.ts`, `playwright.config.ts`
+4. INSTALL test dependencies (add to devDependencies only)
+
+### 2. **Package.json Protection**
+
+When updating `package.json`:
+
+**❌ DO NOT:**
+- Change existing `scripts` (like `dev`, `build`, `start`)
+- Update existing `dependencies` versions
+- Remove any existing packages
+- Modify existing `devDependencies` versions
+
+**✅ ONLY:**
+- ADD new test scripts under a `"test"` namespace
+- ADD new test packages to `devDependencies`
+
+**Example of SAFE package.json update:**
+
+```json
+{
+  "scripts": {
+    "dev": "existing command - DO NOT CHANGE",
+    "build": "existing command - DO NOT CHANGE",
+    "start": "existing command - DO NOT CHANGE",
+    // ADD these new ones ONLY:
+    "test": "vitest run && npm run test:report",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    // EXISTING - DO NOT TOUCH
+  },
+  "devDependencies": {
+    // EXISTING - DO NOT TOUCH
+    // ADD new test packages here ONLY:
+    "vitest": "^1.0.0",
+    "@vitest/ui": "^1.0.0",
+    // ... other test packages
+  }
+}
+```
+
+### 3. **Import Path Safety**
+
+When creating test files:
+
+**❌ DO NOT:**
+- Modify any files in `/client`, `/server`, or `/shared` to add exports
+- Change existing import/export statements
+- Restructure any existing code
+
+**✅ ONLY:**
+- Import from existing files AS-IS using current paths
+- If something is not exported, create a note in test file comments
+- Use TypeScript `any` type temporarily if needed rather than modifying source files
+
+**Example of SAFE imports in tests:**
+
+```typescript
+// ✅ CORRECT - Import from existing files without modifying them
+import { detectViolations } from '../client/src/modules/rest-hours/timelineCalculations';
+import app from '../server/index';
+
+// ❌ WRONG - Don't modify source files to make exports available
+// If function is not exported, add this comment instead:
+// TODO: This function needs to be exported from source file
+// For now, test will be skipped or use alternative approach
+```
+
+### 4. **Dependency Version Safety**
+
+**❌ DO NOT:**
+- Update React, Vite, Express, or any existing package versions
+- Install packages that conflict with existing ones
+- Change Node.js version requirements
+
+**✅ ONLY:**
+- Install test packages that are compatible with current versions
+- Check compatibility before installing
+- Use `npm install --save-dev` (not `npm install`)
+
+### 5. **Configuration File Safety**
+
+**NEW test config files must be ISOLATED:**
+
+```typescript
+// vitest.config.ts - MUST NOT interfere with vite.config.ts
+import { defineConfig } from 'vitest/config';
+
+// ✅ CORRECT - Separate config that doesn't override app config
+export default defineConfig({
+  test: {
+    // Test-specific config only
+  },
+  // DO NOT add build, server, or other app configs here
+});
+```
+
+### 6. **Running Application Protection**
+
+**Before making ANY changes:**
+1. Verify the app is currently running: `npm run dev`
+2. Make changes in test folder ONLY
+3. After changes, verify app still runs: `npm run dev`
+4. If app breaks, UNDO changes immediately
+
+### 7. **Rollback Plan**
+
+**If anything breaks, Replit MUST:**
+1. Immediately show what was changed
+2. Provide rollback commands
+3. Restore to working state
+4. Report what went wrong
+
+**Create a backup marker file:**
+```bash
+# Before making changes, create:
+touch .backup-before-tests
+git add .
+git commit -m "Backup before adding tests"
+```
+
+### 2. **Create Comprehensive Test Reports**
+After each test run, automatically generate:
+- HTML visual report (for browser viewing)
+- JSON results file (machine-readable)
+- JUnit XML report (CI/CD compatible)
+- Detailed text logs with timestamps
+- Failure-only report with action items
+- Screenshots for failed E2E tests
+- Code coverage report
+
+---
+
+## Pre-Implementation Checklist
+
+**Before starting, Replit AI MUST:**
+
+- [ ] Confirm current app is running successfully
+- [ ] List all files that will be modified (should be ONLY package.json)
+- [ ] List all files that will be created (should be ONLY in /tests folder)
+- [ ] Show proposed package.json changes for review
+- [ ] Confirm no existing code will be modified
+- [ ] Create git commit or backup before proceeding
+
+**If ANY of these conditions are not met, STOP and ask for clarification.**
+
+---
+
+## Post-Implementation Validation
+
+**After implementation, Replit AI MUST verify:**
+
+1. **App Still Runs:**
+   ```bash
+   npm run dev
+   # Verify app starts without errors
+   # Verify frontend loads at localhost:5000
+   ```
+
+2. **Existing Scripts Work:**
+   ```bash
+   npm run build
+   # Should work exactly as before
+   ```
+
+3. **No Import Errors:**
+   ```bash
+   npx tsc --noEmit
+   # Should have same errors/warnings as before, no new ones
+   ```
+
+4. **Test Scripts Work:**
+   ```bash
+   npm test
+   # Should run without breaking existing functionality
+   ```
+
+**If any validation fails, provide rollback instructions.**
+
+---
+
+## Testing Framework Setup
+
+### Phase 1: Install Dependencies
+
+Install the following testing packages:
+
+```bash
+npm install -D vitest@latest
+npm install -D @vitest/ui@latest
+npm install -D @vitest/coverage-v8@latest
+npm install -D @testing-library/react@latest
+npm install -D @testing-library/jest-dom@latest
+npm install -D @testing-library/user-event@latest
+npm install -D supertest@latest
+npm install -D @types/supertest@latest
+npm install -D playwright@latest
+npm install -D @playwright/test@latest
+npm install -D happy-dom@latest
+```
+
+### Phase 2: Create Configuration Files
+
+#### 1. Create `vitest.config.ts` in project root:
+
+```typescript
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: 'happy-dom',
+    setupFiles: ['./tests/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+      exclude: [
+        'node_modules/',
+        'tests/',
+        '*.config.ts',
+        'dist/',
+      ],
+      all: true,
+      lines: 80,
+      functions: 80,
+      branches: 80,
+      statements: 80,
+    },
+    reporters: ['verbose', 'json', 'junit', 'html'],
+    outputFile: {
+      json: './test-results/results.json',
+      junit: './test-results/junit.xml',
+      html: './test-results/index.html',
+    },
+    testTimeout: 30000,
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './client/src'),
+      '@shared': path.resolve(__dirname, './shared'),
+      '@server': path.resolve(__dirname, './server'),
+    },
+  },
+});
+```
+
+#### 2. Create `playwright.config.ts` in project root:
+
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  outputDir: './test-results/playwright',
+  fullyParallel: false,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: [
+    ['html', { outputFolder: './test-results/playwright-report', open: 'never' }],
+    ['json', { outputFile: './test-results/playwright-results.json' }],
+    ['junit', { outputFile: './test-results/playwright-junit.xml' }],
+    ['list'],
+  ],
+  use: {
+    baseURL: 'http://localhost:5000',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:5000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
+});
+```
+
+### Phase 3: Create Test Directory Structure
+
+Create the following folder structure:
+
+```
+tests/
+├── setup.ts                    # Test setup and global configuration
+├── fixtures/                   # Test data fixtures
+│   ├── crew-members.ts
+│   ├── rest-hours.ts
+│   ├── vessels.ts
+│   └── forms.ts
+├── helpers/                    # Test utility functions
+│   ├── api-helpers.ts
+│   ├── database-helpers.ts
+│   └── assertion-helpers.ts
+├── unit/                       # Unit tests
+│   ├── business-logic/
+│   │   ├── violations.test.ts
+│   │   ├── experience-calculations.test.ts
+│   │   └── compliance-engine.test.ts
+│   ├── utils/
+│   │   ├── date-utils.test.ts
+│   │   └── crew-mapping.test.ts
+│   └── components/
+│       └── (component tests if needed)
+├── integration/                # API integration tests
+│   ├── api/
+│   │   ├── crew-members.test.ts
+│   │   ├── rest-hours.test.ts
+│   │   ├── forms.test.ts
+│   │   ├── appraisals.test.ts
+│   │   └── vessels.test.ts
+│   └── database/
+│       ├── constraints.test.ts
+│       └── migrations.test.ts
+└── e2e/                        # End-to-end tests
+    ├── appraisal-workflow.spec.ts
+    ├── rest-hours-recording.spec.ts
+    └── crew-management.spec.ts
+```
+
+### Phase 4: Update package.json Scripts
+
+Add these scripts to `package.json`:
+
+```json
+{
+  "scripts": {
+    "test": "vitest run && npm run test:report",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:report": "node tests/helpers/generate-report.js",
+    "test:failed": "vitest run --changed",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e"
+  }
+}
+```
+
+---
+
+## Test Implementation
+
+### 1. Test Setup File
+
+Create `tests/setup.ts`:
+
+```typescript
+import { beforeAll, afterAll, afterEach } from 'vitest';
+import '@testing-library/jest-dom';
+import fs from 'fs';
+import path from 'path';
+
+// Create test results directories
+beforeAll(() => {
+  const dirs = ['test-results', 'test-results/screenshots', 'test-logs', 'coverage'];
+  dirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+  
+  // Create test run log
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const logFile = path.join('test-logs', `test-run-${timestamp}.log`);
+  global.testLogFile = logFile;
+  fs.writeFileSync(logFile, `Test Run Started: ${new Date().toISOString()}\n`);
+  fs.appendFileSync(logFile, '='.repeat(80) + '\n\n');
+});
+
+afterEach((context) => {
+  // Log each test result
+  if (global.testLogFile && context) {
+    const status = context.task.result?.state || 'unknown';
+    const duration = context.task.result?.duration || 0;
+    const log = `[${status.toUpperCase()}] ${context.task.name} (${duration}ms)\n`;
+    fs.appendFileSync(global.testLogFile, log);
+    
+    if (status === 'fail' && context.task.result?.errors) {
+      context.task.result.errors.forEach(error => {
+        fs.appendFileSync(global.testLogFile, `  Error: ${error.message}\n`);
+        fs.appendFileSync(global.testLogFile, `  Stack: ${error.stack}\n\n`);
+      });
+    }
+  }
+});
+
+afterAll(() => {
+  if (global.testLogFile) {
+    fs.appendFileSync(global.testLogFile, '\n' + '='.repeat(80) + '\n');
+    fs.appendFileSync(global.testLogFile, `Test Run Completed: ${new Date().toISOString()}\n`);
+  }
+});
+```
+
+---
+
+### 2. Test Fixtures
+
+Create `tests/fixtures/crew-members.ts`:
+
+```typescript
+export const mockCrewMember = {
+  id: 'TEST001',
+  firstName: 'Test',
+  familyName: 'Seafarer',
+  nationality: 'Philippine',
+  presentRank: 'Master',
+  presentVessel: '7440571a-841a-11ed-aa7c-7003bca91a86',
+  vesselType: 'Oil Tanker',
+  status: 'On Board',
+  signOnDate: '2024-06-01',
+  dateOfBirth: '01-Jan-1980',
+  gender: 'Male',
+};
+
+export const mockCrewMembers = [
+  mockCrewMember,
+  {
+    ...mockCrewMember,
+    id: 'TEST002',
+    firstName: 'Another',
+    presentRank: 'Chief Officer',
+  },
+];
+```
+
+Create `tests/fixtures/rest-hours.ts`:
+
+```typescript
+export const createHoursWithRestPattern = (restPeriods: [number, number][]): string[] => {
+  const hours = Array(48).fill('');
+  restPeriods.forEach(([start, duration]) => {
+    for (let i = start; i < start + (duration * 2); i++) {
+      if (i < 48) hours[i] = '';
+    }
+  });
+  // Fill remaining with work
+  return hours.map(h => h === '' ? 'w' : h);
+};
+
+export const createHoursWithWorkPattern = (workPeriods: [number, number][]): string[] => {
+  const hours = Array(48).fill('');
+  workPeriods.forEach(([start, duration]) => {
+    for (let i = start; i < start + (duration * 2); i++) {
+      if (i < 48) hours[i] = 'w';
+    }
+  });
+  return hours;
+};
+
+export const mockDailyRecord = {
+  day: 1,
+  dayOfWeek: 'Mon',
+  hours: Array(48).fill('').map((_, i) => i < 20 || i >= 40 ? '' : 'w'),
+  isPlan: false,
+  comments: '',
+  violations: [],
+};
+
+export const mockRestHoursRecord = {
+  crewMemberId: 'TEST001',
+  vesselId: '7440571a-841a-11ed-aa7c-7003bca91a86',
+  rank: 'Master',
+  name: 'Test Seafarer',
+  monthYear: '2025-01',
+  dailyRecords: JSON.stringify([mockDailyRecord]),
+  showPlanning: false,
+  opaMode: false,
+};
+
+// Violation test cases
+export const violationTestCases = [
+  {
+    name: 'No violations - adequate rest',
+    hours: createHoursWithRestPattern([[0, 6], [20, 6]]), // 12 hours rest
+    expectedViolations: [],
+  },
+  {
+    name: 'Code 1 violation - insufficient rest (9 hours)',
+    hours: createHoursWithWorkPattern([[0, 15]]), // 15 hours work = 9 hours rest
+    expectedViolations: [1],
+  },
+  {
+    name: 'Code 3 violation - excessive work (15 hours)',
+    hours: createHoursWithWorkPattern([[0, 15]]), // 15 hours work
+    expectedViolations: [1, 3], // Also triggers Code 1
+  },
+  {
+    name: 'Code 4 violation - no 6-hour continuous rest',
+    hours: Array(48).fill('').map((_, i) => (i % 10 < 5) ? 'w' : ''), // 5 rest, 5 work pattern
+    expectedViolations: [4],
+  },
+];
+```
+
+Create `tests/fixtures/vessels.ts`:
+
+```typescript
+export const mockVessel = {
+  id: '7440571a-841a-11ed-aa7c-7003bca91a86',
+  name: 'TEST VESSEL',
+  vesselType: 'Oil Tanker',
+  imo: '1234567',
+  flag: 'Panama',
+};
+```
+
+---
+
+### 3. Unit Tests - Priority 1: Violation Calculations
+
+Create `tests/unit/business-logic/violations.test.ts`:
+
+```typescript
+import { describe, test, expect } from 'vitest';
+import { violationTestCases } from '../../fixtures/rest-hours';
+
+// Import the actual violation detection function from your codebase
+// Adjust the import path based on your actual file structure
+// import { detectViolations } from '@/modules/rest-hours/timelineCalculations';
+
+describe('Rest Hours Violation Detection', () => {
+  describe('Code 1: Minimum 10 hours rest in 24-hour period', () => {
+    test('should detect violation when rest is less than 10 hours', () => {
+      const testCase = violationTestCases.find(tc => tc.name.includes('Code 1'));
+      // const result = detectViolations(testCase.hours);
+      // expect(result).toContain(1);
+      
+      // Placeholder until actual function is imported
+      expect(testCase.expectedViolations).toContain(1);
+    });
+
+    test('should NOT detect violation when rest is 10 hours or more', () => {
+      const testCase = violationTestCases.find(tc => tc.name.includes('No violations'));
+      // const result = detectViolations(testCase.hours);
+      // expect(result).not.toContain(1);
+      
+      expect(testCase.expectedViolations).not.toContain(1);
+    });
+  });
+
+  describe('Code 3: Maximum 14 hours work in 24-hour period', () => {
+    test('should detect violation when work exceeds 14 hours', () => {
+      const testCase = violationTestCases.find(tc => tc.name.includes('Code 3'));
+      expect(testCase.expectedViolations).toContain(3);
+    });
+
+    test('should NOT detect violation when work is 14 hours or less', () => {
+      const testCase = violationTestCases.find(tc => tc.name.includes('No violations'));
+      expect(testCase.expectedViolations).not.toContain(3);
+    });
+  });
+
+  describe('Code 4: Minimum 6 hours continuous rest required', () => {
+    test('should detect violation when no rest period is 6+ hours', () => {
+      const testCase = violationTestCases.find(tc => tc.name.includes('Code 4'));
+      expect(testCase.expectedViolations).toContain(4);
+    });
+  });
+
+  describe('Cross-month boundary handling', () => {
+    test('should correctly calculate violations spanning month boundaries', () => {
+      // Test case: December 31 to January 1
+      const dec31Hours = Array(48).fill('w').slice(0, 30).concat(Array(18).fill(''));
+      const jan1Hours = Array(48).fill('').slice(0, 10).concat(Array(38).fill('w'));
+      
+      // Should detect violation on Jan 1 for the 24-hour window
+      // This tests the cross-month calculation logic
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+
+  describe('7-day rolling window calculations', () => {
+    test('Code 2: should detect violation for less than 77 hours rest in 7 days', () => {
+      // 7 days with only 75 hours total rest
+      const sevenDaysLowRest = Array(7).fill(null).map(() => 
+        Array(48).fill('').map((_, i) => i < 21 ? 'w' : '') // ~10.5 hours rest per day
+      );
+      
+      // Expected: Code 2 violation detected
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('Code 6: should detect violation for more than 91 hours work in 7 days', () => {
+      // 7 days with 14 hours work per day = 98 hours total
+      const sevenDaysHighWork = Array(7).fill(null).map(() =>
+        Array(48).fill('').map((_, i) => i < 28 ? 'w' : '') // 14 hours work per day
+      );
+      
+      // Expected: Code 6 violation detected
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+});
+```
+
+---
+
+### 4. Integration Tests - API Testing
+
+Create `tests/integration/api/rest-hours.test.ts`:
+
+```typescript
+import { describe, test, expect, beforeAll, afterAll } from 'vitest';
+import request from 'supertest';
+import { mockRestHoursRecord } from '../../fixtures/rest-hours';
+
+// Import your Express app
+// Adjust path based on your structure
+// import app from '@server/index';
+
+describe('REST Hours API', () => {
+  let testRecordId: number;
+
+  describe('POST /api/rest-hours-daily-records', () => {
+    test('should create a new rest hours record', async () => {
+      // const response = await request(app)
+      //   .post('/api/rest-hours-daily-records')
+      //   .send(mockRestHoursRecord)
+      //   .expect(201);
+
+      // expect(response.body).toHaveProperty('id');
+      // expect(response.body.crewMemberId).toBe(mockRestHoursRecord.crewMemberId);
+      // testRecordId = response.body.id;
+      
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('should prevent duplicate records (unique constraint)', async () => {
+      // First insert
+      // await request(app)
+      //   .post('/api/rest-hours-daily-records')
+      //   .send(mockRestHoursRecord)
+      //   .expect(201);
+
+      // Second insert with same crew + month should fail or upsert
+      // const response = await request(app)
+      //   .post('/api/rest-hours-daily-records')
+      //   .send(mockRestHoursRecord);
+
+      // Should either return 409 Conflict or 200 OK with updated record (upsert)
+      // expect([200, 409]).toContain(response.status);
+      
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('should reject invalid month_year format', async () => {
+      const invalidRecord = {
+        ...mockRestHoursRecord,
+        monthYear: 'invalid-format',
+      };
+
+      // const response = await request(app)
+      //   .post('/api/rest-hours-daily-records')
+      //   .send(invalidRecord)
+      //   .expect(400);
+
+      // expect(response.body).toHaveProperty('error');
+      
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('should reject missing required fields', async () => {
+      const incompleteRecord = {
+        crewMemberId: 'TEST001',
+        // Missing vesselId, rank, etc.
+      };
+
+      // const response = await request(app)
+      //   .post('/api/rest-hours-daily-records')
+      //   .send(incompleteRecord)
+      //   .expect(400);
+      
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+
+  describe('GET /api/rest-hours-daily-records', () => {
+    test('should retrieve all rest hours records', async () => {
+      // const response = await request(app)
+      //   .get('/api/rest-hours-daily-records')
+      //   .expect(200);
+
+      // expect(Array.isArray(response.body)).toBe(true);
+      
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('should filter by crew member', async () => {
+      // const response = await request(app)
+      //   .get(`/api/rest-hours-daily-records?crewMemberId=${mockRestHoursRecord.crewMemberId}`)
+      //   .expect(200);
+
+      // expect(response.body.every(r => r.crewMemberId === mockRestHoursRecord.crewMemberId)).toBe(true);
+      
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('should filter by month', async () => {
+      // const response = await request(app)
+      //   .get(`/api/rest-hours-daily-records?monthYear=${mockRestHoursRecord.monthYear}`)
+      //   .expect(200);
+
+      // expect(response.body.every(r => r.monthYear === mockRestHoursRecord.monthYear)).toBe(true);
+      
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+
+  describe('PUT /api/rest-hours-daily-records/:id', () => {
+    test('should update existing record', async () => {
+      const updates = {
+        showPlanning: true,
+        opaMode: true,
+      };
+
+      // const response = await request(app)
+      //   .put(`/api/rest-hours-daily-records/${testRecordId}`)
+      //   .send(updates)
+      //   .expect(200);
+
+      // expect(response.body.showPlanning).toBe(true);
+      // expect(response.body.opaMode).toBe(true);
+      
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('should return 404 for non-existent record', async () => {
+      // const response = await request(app)
+      //   .put('/api/rest-hours-daily-records/999999')
+      //   .send({ showPlanning: true })
+      //   .expect(404);
+      
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+
+  describe('DELETE /api/rest-hours-daily-records/:id', () => {
+    test('should delete record', async () => {
+      // const response = await request(app)
+      //   .delete(`/api/rest-hours-daily-records/${testRecordId}`)
+      //   .expect(200);
+
+      // Verify deletion
+      // await request(app)
+      //   .get(`/api/rest-hours-daily-records/${testRecordId}`)
+      //   .expect(404);
+      
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+});
+```
+
+Create `tests/integration/api/crew-members.test.ts`:
+
+```typescript
+import { describe, test, expect } from 'vitest';
+import request from 'supertest';
+import { mockCrewMember } from '../../fixtures/crew-members';
+
+describe('Crew Members API', () => {
+  describe('GET /api/crew-members', () => {
+    test('should return all crew members', async () => {
+      expect(true).toBe(true); // Placeholder - implement actual API test
+    });
+
+    test('should return crew members with correct structure', async () => {
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+
+  describe('POST /api/crew-members', () => {
+    test('should create new crew member', async () => {
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('should validate required fields', async () => {
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+
+  describe('PUT /api/crew-members/:id', () => {
+    test('should update crew member', async () => {
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+
+  describe('DELETE /api/crew-members/:id', () => {
+    test('should delete crew member', async () => {
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+});
+```
+
+---
+
+### 5. Database Integrity Tests
+
+Create `tests/integration/database/constraints.test.ts`:
+
+```typescript
+import { describe, test, expect } from 'vitest';
+
+describe('Database Constraints', () => {
+  describe('rest_hours_daily_records unique constraint', () => {
+    test('should enforce unique constraint on (crew_member_id, month_year)', async () => {
+      // Test that duplicate records cannot be inserted
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('should allow same crew member with different months', async () => {
+      expect(true).toBe(true); // Placeholder
+    });
+
+    test('should allow different crew members with same month', async () => {
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+
+  describe('Foreign key constraints', () => {
+    test('should prevent deletion of crew member with associated records', async () => {
+      expect(true).toBe(true); // Placeholder
+    });
+  });
+});
+```
+
+---
+
+### 6. E2E Tests with Playwright
+
+Create `tests/e2e/rest-hours-recording.spec.ts`:
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('Rest Hours Recording Workflow', () => {
+  test.beforeEach(async ({ page }) => {
+    // Navigate to rest hours module
+    await page.goto('/');
+    // Add login steps if authentication is implemented
+  });
+
+  test('should display rest hours recording form', async ({ page }) => {
+    await page.goto('/rest-hours');
+    
+    // Verify form elements are present
+    await expect(page.locator('h1')).toContainText('Rest Hours');
+    
+    // Check for calendar/grid
+    await expect(page.locator('[data-testid="rest-hours-grid"]')).toBeVisible();
+  });
+
+  test('should record work hours for a day', async ({ page }) => {
+    await page.goto('/rest-hours');
+    
+    // Select a crew member (adjust selectors based on actual UI)
+    await page.click('[data-testid="crew-select"]');
+    await page.click('text=Test Seafarer');
+    
+    // Click on time slots to mark as work
+    await page.click('[data-testid="slot-0-0"]'); // First slot of first day
+    
+    // Verify slot is marked as work
+    await expect(page.locator('[data-testid="slot-0-0"]')).toHaveClass(/work/);
+    
+    // Save should be enabled
+    await expect(page.locator('button:has-text("Save")')).toBeEnabled();
+  });
+
+  test('should display violations when rules are broken', async ({ page }) => {
+    await page.goto('/rest-hours');
+    
+    // Create a violation scenario (15 hours of work)
+    for (let i = 0; i < 30; i++) {
+      await page.click(`[data-testid="slot-0-${i}"]`);
+    }
+    
+    // Check for violation indicator
+    await expect(page.locator('[data-testid="violation-code-3"]')).toBeVisible();
+    await expect(page.locator('text=Code 3')).toBeVisible();
+  });
+
+  test('should auto-save changes', async ({ page }) => {
+    await page.goto('/rest-hours');
+    
+    // Make a change
+    await page.click('[data-testid="slot-0-0"]');
+    
+    // Wait for auto-save indicator
+    await expect(page.locator('text=Saving...')).toBeVisible();
+    await expect(page.locator('text=Saved')).toBeVisible({ timeout: 5000 });
+  });
+});
+```
+
+Create `tests/e2e/appraisal-workflow.spec.ts`:
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('Appraisal Workflow', () => {
+  test('should complete 3-stage appraisal process', async ({ page }) => {
+    await page.goto('/appraisals');
+    
+    // Stage 1: Create appraisal
+    await page.click('button:has-text("New Appraisal")');
+    await page.fill('[name="crewMemberId"]', 'TEST001');
+    await page.click('button:has-text("Next")');
+    
+    // Stage 2: Fill ratings
+    // (Adjust selectors based on actual form)
+    const ratings = page.locator('[data-testid^="rating-"]');
+    const count = await ratings.count();
+    for (let i = 0; i < count; i++) {
+      await ratings.nth(i).click();
+    }
+    
+    await page.click('button:has-text("Submit for Review")');
+    
+    // Stage 3: Verify submission
+    await expect(page.locator('text=Submitted successfully')).toBeVisible();
+  });
+
+  test('should prevent submission without required signatures', async ({ page }) => {
+    await page.goto('/appraisals/new');
+    
+    // Fill form without signatures
+    await page.fill('[name="crewName"]', 'Test Seafarer');
+    
+    // Submit button should be disabled
+    await expect(page.locator('button:has-text("Submit")')).toBeDisabled();
+  });
+});
+```
+
+---
+
+### 7. Test Report Generator
+
+Create `tests/helpers/generate-report.js`:
+
+```javascript
+const fs = require('fs');
+const path = require('path');
+
+function generateReport() {
+  const resultsPath = './test-results/results.json';
+  
+  if (!fs.existsSync(resultsPath)) {
+    console.log('No test results found. Run tests first.');
+    return;
+  }
+
+  const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+  
+  // Generate FAILURES.md for failed tests only
+  const failures = [];
+  
+  results.testResults?.forEach(testFile => {
+    testFile.assertionResults?.forEach(test => {
+      if (test.status === 'failed') {
+        failures.push({
+          file: testFile.name,
+          test: test.title,
+          error: test.failureMessages?.join('\n'),
+          duration: test.duration,
+        });
+      }
+    });
+  });
+
+  if (failures.length > 0) {
+    let failureReport = '# Test Failures Report\n\n';
+    failureReport += `Generated: ${new Date().toISOString()}\n\n`;
+    failureReport += '## Summary\n\n';
+    failureReport += `- Total Tests: ${results.numTotalTests || 0}\n`;
+    failureReport += `- Failed: ${failures.length}\n`;
+    failureReport += `- Failure Rate: ${((failures.length / results.numTotalTests) * 100).toFixed(1)}%\n\n`;
+    failureReport += '---\n\n';
+    failureReport += '## Failed Tests\n\n';
+
+    failures.forEach((failure, index) => {
+      failureReport += `### ${index + 1}. ${failure.test}\n\n`;
+      failureReport += `**File:** ${failure.file}\n\n`;
+      failureReport += `**Duration:** ${failure.duration}ms\n\n`;
+      failureReport += `**Error:**\n\`\`\`\n${failure.error}\n\`\`\`\n\n`;
+      failureReport += '---\n\n';
+    });
+
+    failureReport += '## Quick Fixes\n\n';
+    failureReport += 'Run these commands to retest after fixing:\n';
+    failureReport += '```bash\n';
+    failureReport += '# Rerun only failed tests\n';
+    failureReport += 'npm run test:failed\n\n';
+    failureReport += '# Rerun all tests\n';
+    failureReport += 'npm test\n';
+    failureReport += '```\n';
+
+    fs.writeFileSync('./test-results/FAILURES.md', failureReport);
+    console.log('\n✅ Failure report generated: test-results/FAILURES.md');
+  } else {
+    console.log('\n✅ All tests passed! No failure report needed.');
+  }
+
+  // Generate summary
+  console.log('\n' + '='.repeat(80));
+  console.log('TEST SUMMARY');
+  console.log('='.repeat(80));
+  console.log(`Total Tests: ${results.numTotalTests || 0}`);
+  console.log(`Passed: ${results.numPassedTests || 0} (${((results.numPassedTests / results.numTotalTests) * 100).toFixed(1)}%)`);
+  console.log(`Failed: ${results.numFailedTests || 0} (${((results.numFailedTests / results.numTotalTests) * 100).toFixed(1)}%)`);
+  console.log(`Duration: ${(results.testResults?.reduce((sum, t) => sum + (t.perfStats?.runtime || 0), 0) / 1000).toFixed(2)}s`);
+  console.log('='.repeat(80));
+  console.log('\nReports generated:');
+  console.log('  - HTML Report: test-results/index.html');
+  console.log('  - JSON Results: test-results/results.json');
+  console.log('  - JUnit XML: test-results/junit.xml');
+  console.log('  - Coverage: coverage/index.html');
+  if (failures.length > 0) {
+    console.log('  - Failures: test-results/FAILURES.md');
+  }
+  console.log('\n');
+}
+
+generateReport();
+```
+
+---
+
+### 8. **Regression Detection Features**
+
+The test suite must include regression detection:
+
+**1. Baseline Test Results:**
+Create `test-results/baseline.json` on first successful run:
+```json
+{
+  "timestamp": "2025-01-05T10:00:00Z",
+  "totalTests": 150,
+  "passed": 150,
+  "failed": 0,
+  "testSignatures": {
+    "violation-code-1": "passed",
+    "violation-code-2": "passed",
+    "api-rest-hours-create": "passed"
+  }
+}
+```
+
+**2. Regression Comparison:**
+On each test run, compare against baseline with smart detection:
+
+```javascript
+// tests/helpers/regression-detector.js
+function analyzeTestResults(currentResults, baseline) {
+  const analysis = {
+    regressions: [],        // Previously passing, now failing
+    newTests: [],           // Tests that didn't exist in baseline
+    stillPassing: [],       // Tests still passing
+    stillFailing: []        // Tests that were already failing
+  };
+  
+  // Analyze current test results
+  for (const test in currentResults) {
+    const currentStatus = currentResults[test];
+    const baselineStatus = baseline[test];
+    
+    if (!baselineStatus) {
+      // Test didn't exist in baseline - NEW FEATURE
+      analysis.newTests.push({
+        test: test,
+        status: currentStatus,
+        note: 'New test - likely for new feature'
+      });
+    } else if (baselineStatus === 'passed' && currentStatus === 'failed') {
+      // Was passing, now failing - TRUE REGRESSION
+      analysis.regressions.push({
+        test: test,
+        status: 'REGRESSION',
+        severity: 'HIGH',
+        lastPassed: baseline.timestamp
+      });
+    } else if (baselineStatus === 'passed' && currentStatus === 'passed') {
+      // Still passing - good
+      analysis.stillPassing.push(test);
+    } else if (baselineStatus === 'failed' && currentStatus === 'failed') {
+      // Was already failing - not a new regression
+      analysis.stillFailing.push({
+        test: test,
+        note: 'Known failure - was failing in baseline'
+      });
+    }
+  }
+  
+  return analysis;
+}
+
+function generateRegressionReport(analysis) {
+  let report = '# Test Analysis Report\n\n';
+  
+  // Only flag TRUE regressions
+  if (analysis.regressions.length > 0) {
+    report += '## ⚠️ REGRESSIONS DETECTED\n\n';
+    report += 'These tests were PASSING but now FAIL:\n\n';
+    analysis.regressions.forEach(r => {
+      report += `### ${r.test}\n`;
+      report += `- **Status:** REGRESSION\n`;
+      report += `- **Last Passed:** ${r.lastPassed}\n`;
+      report += `- **Action Required:** Review recent code changes\n\n`;
+    });
+    report += '❌ **DO NOT DEPLOY until regressions are fixed!**\n\n';
+  }
+  
+  // Report new tests separately (NOT as regressions)
+  if (analysis.newTests.length > 0) {
+    report += '## ℹ️ New Tests Detected\n\n';
+    report += 'These tests are new (likely for new features):\n\n';
+    analysis.newTests.forEach(t => {
+      const icon = t.status === 'passed' ? '✅' : '❌';
+      report += `- ${icon} ${t.test} (${t.status})\n`;
+    });
+    report += '\n';
+    report += '**Note:** New tests are NOT regressions. ';
+    report += 'Review to ensure new features work correctly.\n\n';
+  }
+  
+  // Summary
+  report += '## Summary\n\n';
+  report += `- Regressions: ${analysis.regressions.length}\n`;
+  report += `- New Tests: ${analysis.newTests.length}\n`;
+  report += `- Still Passing: ${analysis.stillPassing.length}\n`;
+  report += `- Known Failures: ${analysis.stillFailing.length}\n\n`;
+  
+  return report;
+}
+```
+
+**3. Separate Reports for Different Scenarios:**
+
+Create TWO different report files:
+
+**File 1: `test-results/REGRESSIONS.md`** (CRITICAL - blocks deployment)
+```markdown
+# Regression Report
+
+## ⚠️ REGRESSIONS DETECTED (2)
+
+### 1. Code 1 violation detection
+- **Status:** REGRESSION (was passing, now fails)
+- **Last Passed:** 2025-01-04 16:30
+- **Failed Since:** 2025-01-05 10:15
+- **Action:** Review code changes to violation logic
+
+### 2. Unique constraint enforcement  
+- **Status:** REGRESSION (was passing, now fails)
+- **Last Passed:** 2025-01-04 16:30
+- **Failed Since:** 2025-01-05 10:15
+- **Action:** Review database migration changes
+
+---
+
+❌ DEPLOYMENT BLOCKED - Fix regressions before deploying!
+```
+
+**File 2: `test-results/NEW-FEATURES.md`** (Informational - doesn't block)
+```markdown
+# New Features Detected
+
+## ℹ️ New Tests Found (3)
+
+These tests didn't exist in baseline - likely for new features:
+
+### 1. Code 9 violation detection
+- **Status:** ✅ PASSED
+- **Note:** New test for new feature - this is good!
+
+### 2. Multi-vessel crew assignment
+- **Status:** ✅ PASSED  
+- **Note:** New test for new feature - working correctly
+
+### 3. Advanced appraisal scoring
+- **Status:** ❌ FAILED
+- **Note:** New test for new feature - needs fixing before feature is complete
+
+---
+
+✅ New features don't block deployment (unless they break existing tests)
+⚠️  Failed new tests indicate incomplete new features - fix before using feature
+```
+
+**4. Smart Deployment Decision:**
+
+```javascript
+// tests/helpers/deployment-check.js
+function canDeploy(analysis) {
+  const decision = {
+    allowed: true,
+    reason: '',
+    warnings: []
+  };
+  
+  // Block deployment only for TRUE regressions
+  if (analysis.regressions.length > 0) {
+    decision.allowed = false;
+    decision.reason = `${analysis.regressions.length} regression(s) detected - existing functionality broken`;
+    return decision;
+  }
+  
+  // Warn about new failing tests, but don't block
+  const newFailures = analysis.newTests.filter(t => t.status === 'failed');
+  if (newFailures.length > 0) {
+    decision.warnings.push(
+      `${newFailures.length} new test(s) failing - new features may be incomplete`
+    );
+  }
+  
+  // Warn about known failures  
+  if (analysis.stillFailing.length > 0) {
+    decision.warnings.push(
+      `${analysis.stillFailing.length} known failing test(s) - pre-existing issues`
+    );
+  }
+  
+  return decision;
+}
+```
+
+**5. Clear Console Output:**
+
+When running tests, show clear distinction:
+
+```bash
+npm test
+
+Running tests...
+
+✅ 148 tests passed
+❌ 2 tests failed
+
+Analyzing results...
+
+🔍 Regression Analysis:
+  ⚠️  REGRESSIONS: 2 (BLOCKS DEPLOYMENT)
+    - Code 1 violation detection (was passing)
+    - Unique constraint enforcement (was passing)
+  
+  ℹ️  NEW TESTS: 3 (informational)
+    - Code 9 violation detection (passing) ✅
+    - Multi-vessel assignment (passing) ✅
+    - Advanced scoring (failing) ❌
+  
+  ✅ STILL PASSING: 145
+  ⚠️  KNOWN FAILURES: 0
+
+===========================================
+❌ DEPLOYMENT BLOCKED
+===========================================
+
+Reason: 2 regressions detected
+Existing functionality is broken!
+
+Action Required:
+1. Review REGRESSIONS.md for details
+2. Fix the regressions
+3. Rerun tests
+4. Deploy when all regressions are fixed
+
+Note: New failing tests don't block deployment,
+but may indicate incomplete new features.
+===========================================
+```
+
+**3. Regression Report:**
+Generate `test-results/REGRESSIONS.md`:
+```markdown
+# Regression Report
+
+## ⚠️ Tests That Were Passing But Now Fail
+
+### 1. Code 1 violation detection
+- **Status:** REGRESSION DETECTED
+- **Last Passed:** 2025-01-04 14:30
+- **Failed Since:** 2025-01-05 10:15
+- **Likely Cause:** Recent code changes to violation calculation
+- **Action:** Review commits between these timestamps
+
+### 2. REST Hours API - Update endpoint
+- **Status:** REGRESSION DETECTED  
+- **Last Passed:** 2025-01-04 16:45
+- **Failed Since:** 2025-01-05 10:15
+- **Likely Cause:** API endpoint modification
+- **Action:** Check API route changes
+```
+
+**4. Test History Tracking:**
+Keep last 30 days of test results:
+```
+test-results/
+├── history/
+│   ├── 2025-01-05.json
+│   ├── 2025-01-04.json
+│   ├── 2025-01-03.json
+│   └── ...
+```
+
+**5. Pre-Deployment Check:**
+Create `scripts/pre-deploy-check.sh`:
+```bash
+#!/bin/bash
+
+echo "🔍 Running pre-deployment regression check..."
+
+# Run all tests
+npm test
+
+EXIT_CODE=$?
+
+# Check for TRUE regressions only (not new features)
+if [ -f "test-results/REGRESSIONS.md" ]; then
+    echo ""
+    echo "⚠️  REGRESSIONS DETECTED!"
+    echo "=================================="
+    cat test-results/REGRESSIONS.md
+    echo "=================================="
+    echo ""
+    echo "❌ DEPLOYMENT BLOCKED"
+    echo "Reason: Existing functionality is broken"
+    echo "Action: Fix regressions before deploying"
+    exit 1
+fi
+
+# Inform about new features (but don't block)
+if [ -f "test-results/NEW-FEATURES.md" ]; then
+    echo ""
+    echo "ℹ️  New Features Detected"
+    echo "=================================="
+    cat test-results/NEW-FEATURES.md
+    echo "=================================="
+    echo ""
+    echo "✅ New features don't block deployment"
+    
+    # Check if any new tests are failing
+    if grep -q "Status: ❌ FAILED" test-results/NEW-FEATURES.md; then
+        echo "⚠️  Warning: Some new feature tests are failing"
+        echo "These new features may not work correctly yet"
+        echo "Consider fixing before deploying"
+    fi
+fi
+
+# All good - no TRUE regressions
+if [ $EXIT_CODE -eq 0 ]; then
+    echo ""
+    echo "=================================="
+    echo "✅ ALL CHECKS PASSED"
+    echo "✅ NO REGRESSIONS DETECTED"  
+    echo "✅ SAFE TO DEPLOY"
+    echo "=================================="
+    exit 0
+else
+    echo ""
+    echo "⚠️  Some tests failed, but checking if they're regressions..."
+    
+    # Tests failed but no REGRESSIONS.md means only new tests or known failures
+    if [ ! -f "test-results/REGRESSIONS.md" ]; then
+        echo ""
+        echo "✅ No regressions detected"
+        echo "Failed tests are either:"
+        echo "  - New feature tests (incomplete features)"
+        echo "  - Pre-existing known failures"
+        echo ""
+        echo "✅ SAFE TO DEPLOY (no regressions)"
+        echo "⚠️  But review failed tests for completeness"
+        exit 0
+    fi
+fi
+```
+
+---
+
+### 9. **Continuous Monitoring**
+
+**Daily Automated Test Runs:**
+Even without CI/CD, schedule daily test runs:
+
+```javascript
+// scripts/daily-test-runner.js
+const cron = require('node-cron');
+const { execSync } = require('child_process');
+
+// Run tests every day at 9 AM
+cron.schedule('0 9 * * *', () => {
+  console.log('Running daily regression check...');
+  
+  try {
+    execSync('npm test', { stdio: 'inherit' });
+    console.log('✅ Daily tests passed');
+  } catch (error) {
+    console.log('❌ Daily tests failed - regression detected!');
+    // Optionally send notification
+  }
+});
+```
+
+**Test on Every Code Change:**
+Add to `package.json`:
+```json
+{
+  "scripts": {
+    "dev": "npm run test:quick && vite",
+    "test:quick": "vitest run --bail --reporter=dot"
+  }
+}
+```
+
+This runs quick smoke tests before starting dev server.
+
+---
+
+## Test Coverage Requirements
+
+### Priority 1 (Critical) - Target 90% Coverage
+- [ ] Rest hours violation calculations (all 8 violation types)
+- [ ] Unique constraint enforcement on rest_hours_daily_records
+- [ ] UPSERT logic for rest hours API
+- [ ] Cross-month boundary calculations
+
+### Priority 2 (High) - Target 85% Coverage
+- [ ] All CRUD API endpoints for crew members
+- [ ] All CRUD API endpoints for rest hours
+- [ ] Experience calculation functions
+- [ ] Compliance engine rules
+- [ ] Form validation logic
+
+### Priority 3 (Medium) - Target 75% Coverage
+- [ ] Appraisal workflow (3 stages)
+- [ ] Vessel management APIs
+- [ ] Training management
+- [ ] Database constraint validation
+
+---
+
+## Implementation Notes
+
+### Critical Instructions for Replit AI:
+
+1. **DO NOT modify any existing code** - Only create new files in `/tests` folder
+
+2. **Import actual functions** - Replace placeholder tests with imports from actual codebase:
+   ```typescript
+   // Example:
+   import { detectViolations } from '@/modules/rest-hours/timelineCalculations';
+   import app from '@server/index';
+   ```
+
+3. **Adjust selectors** - Update E2E test selectors based on actual UI elements
+
+4. **Database setup** - For integration tests, create a test database or use mocking:
+   ```typescript
+   // Option 1: Test database
+   process.env.DATABASE_URL = 'postgresql://test_db_url';
+   
+   // Option 2: Mock database calls
+   vi.mock('@server/database');
+   ```
+
+5. **Test data cleanup** - Add cleanup after integration tests:
+   ```typescript
+   afterEach(async () => {
+     // Clean up test data
+     await db.delete(restHoursDailyRecords).where(eq(restHoursDailyRecords.crewMemberId, 'TEST001'));
+   });
+   ```
+
+---
+
+## Running Tests
+
+### First-time Setup
+```bash
+# Install all dependencies
+npm install
+
+# Install Playwright browsers
+npx playwright install
+```
+
+### Running Tests
+```bash
+# Run all tests with reports
+npm test
+
+# Run tests in watch mode (during development)
+npm run test:watch
+
+# Run only unit tests
+npm run test:unit
+
+# Run only integration tests
+npm run test:integration
+
+# Run E2E tests (headless)
+npm run test:e2e
+
+# Run E2E tests (watch in browser)
+npm run test:e2e:headed
+
+# Run tests with coverage
+npm run test:coverage
+
+# Open test UI (interactive)
+npm run test:ui
+```
+
+### Viewing Reports
+```bash
+# HTML reports are automatically opened after test runs
+# Or manually open:
+open test-results/index.html        # Test results
+open coverage/index.html            # Coverage report
+open test-results/FAILURES.md       # Failed tests only
+```
+
+---
+
+## Success Criteria
+
+After implementation, you should have:
+
+✅ Complete test suite with 150+ tests covering:
+   - Unit tests for business logic
+   - Integration tests for all APIs
+   - E2E tests for critical workflows
+
+✅ Automated test reporting:
+   - HTML visual reports
+   - JSON machine-readable results
+   - Detailed text logs with timestamps
+   - Failure-only reports with action items
+   - Screenshots for failed E2E tests
+
+✅ Code coverage reports showing 80%+ coverage
+
+✅ Zero modifications to existing codebase
+
+✅ Ability to run tests with simple commands
+
+✅ Clear documentation of test results
+
+---
+
+---
+
+## Safety Guidelines - What To Do If Things Break
+
+### If App Won't Start After Changes:
+
+1. **Immediate Actions:**
+   ```bash
+   # Check what changed
+   git status
+   
+   # See the diff
+   git diff package.json
+   
+   # Rollback if needed
+   git checkout package.json
+   npm install
+   npm run dev
+   ```
+
+2. **Common Issues and Fixes:**
+
+   **Issue 1: Dependency Conflicts**
+   ```bash
+   # Remove node_modules and reinstall
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+   **Issue 2: TypeScript Errors**
+   ```bash
+   # Check what was modified
+   npx tsc --noEmit
+   
+   # If new errors appear, revert the changes
+   ```
+
+   **Issue 3: Port Conflicts**
+   ```bash
+   # Kill process on port 5000
+   lsof -ti:5000 | xargs kill -9
+   npm run dev
+   ```
+
+### Protection Script
+
+**Create this safety check script** in `scripts/safety-check.sh`:
+
+```bash
+#!/bin/bash
+
+echo "🔍 Running safety checks..."
+
+# Check if app starts
+echo "1. Checking if app starts..."
+timeout 10 npm run dev &
+PID=$!
+sleep 8
+if kill -0 $PID 2>/dev/null; then
+    echo "✅ App starts successfully"
+    kill $PID
+else
+    echo "❌ App failed to start"
+    exit 1
+fi
+
+# Check TypeScript
+echo "2. Checking TypeScript..."
+if npx tsc --noEmit; then
+    echo "✅ TypeScript check passed"
+else
+    echo "⚠️  TypeScript warnings (check if new)"
+fi
+
+# Check for test files isolation
+echo "3. Checking test isolation..."
+if [ -d "tests" ] && [ ! -f "client/tests" ] && [ ! -f "server/tests" ]; then
+    echo "✅ Tests are isolated in /tests folder"
+else
+    echo "❌ Tests are not properly isolated"
+    exit 1
+fi
+
+echo "✅ All safety checks passed"
+```
+
+**Run this after Replit makes changes:**
+```bash
+chmod +x scripts/safety-check.sh
+./scripts/safety-check.sh
+```
+
+---
+
+## Next Steps After Implementation
+
+1. Review generated tests and verify coverage
+2. Run tests: `npm test`
+3. Review reports in `test-results/` and `coverage/`
+4. Fix any failing tests
+5. Integrate into development workflow
+6. (Optional) Set up CI/CD pipeline later
+
+---
+
+## Questions or Issues?
+
+If tests fail to run:
+1. Check that all dependencies are installed
+2. Verify DATABASE_URL is set
+3. Ensure server is running for E2E tests
+4. Check test logs in `test-logs/` folder
+
+For missing test coverage:
+1. Review `coverage/index.html`
+2. Add tests for uncovered code
+3. Rerun `npm run test:coverage`
+
+---
+
+## Deliverables
+
+Please provide:
+
+1. ✅ Complete `/tests` folder structure with all test files
+2. ✅ Updated `package.json` with test scripts
+3. ✅ `vitest.config.ts` and `playwright.config.ts` configuration files
+4. ✅ Test fixtures and helpers
+5. ✅ Report generation script
+6. ✅ README in `/tests` folder explaining how to run tests
+7. ✅ Initial test run results showing all tests passing (or documented failures)
+
+Thank you!
