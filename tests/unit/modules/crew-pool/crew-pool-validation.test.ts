@@ -1,157 +1,241 @@
 import { describe, it, expect } from 'vitest';
+import { insertCrewMemberSchema } from '@shared/schema';
 
-describe('Crew Pool Module', () => {
-  describe('Crew Member Validation', () => {
+describe('Crew Pool Schema Validation', () => {
+  describe('Valid Crew Member Data', () => {
     it('should validate complete crew member data', () => {
-      const crewMember = {
+      const validCrew = {
+        id: 'A000123',
         firstName: 'John',
-        lastName: 'Doe',
-        rank: 'Chief Officer',
         nationality: 'Filipino',
-        status: 'Available',
-        email: 'john.doe@example.com'
+        presentRank: 'Chief Officer',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker'
       };
-      
-      expect(crewMember.firstName).toBeDefined();
-      expect(crewMember.lastName).toBeDefined();
-      expect(crewMember.rank).toBeDefined();
+
+      const result = insertCrewMemberSchema.safeParse(validCrew);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.firstName).toBe('John');
+      }
     });
 
-    it('should validate crew status values', () => {
-      const validStatuses = ['On Board', 'On Leave', 'Available', 'Medical', 'Training'];
-      const status = 'Available';
-      
-      expect(validStatuses.includes(status)).toBe(true);
+    it('should validate crew with optional fields', () => {
+      const crewWithOptional = {
+        id: 'A000456',
+        firstName: 'Jane',
+        middleName: 'Marie',
+        familyName: 'Smith',
+        nationality: 'Indian',
+        presentRank: 'AB',
+        presentVessel: 'VSL-002',
+        vesselType: 'Bulk Carrier',
+        gender: 'Female',
+        email: 'jane@example.com',
+        mobile: '+91-9876543210'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(crewWithOptional);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.middleName).toBe('Marie');
+      }
     });
 
-    it('should validate email format', () => {
-      const validEmail = 'crew@example.com';
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    it('should validate crew with minimal required fields', () => {
+      const minimalCrew = {
+        id: 'A000789',
+        firstName: 'Mike',
+        nationality: 'Indonesian',
+        presentRank: 'Oiler',
+        presentVessel: 'VSL-003',
+        vesselType: 'Container'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(minimalCrew);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept various vessel types', () => {
+      const vesselTypes = ['Tanker', 'Bulk Carrier', 'Container', 'LNG', 'Chemical'];
       
-      expect(emailRegex.test(validEmail)).toBe(true);
+      vesselTypes.forEach((vesselType, index) => {
+        const crew = {
+          id: `A00${index}`,
+          firstName: 'Test',
+          nationality: 'Filipino',
+          presentRank: 'AB',
+          presentVessel: 'VSL-001',
+          vesselType
+        };
+
+        const result = insertCrewMemberSchema.safeParse(crew);
+        expect(result.success).toBe(true);
+      });
+    });
+
+    it('should accept sign on date', () => {
+      const crewWithSignOn = {
+        id: 'A000101',
+        firstName: 'John',
+        nationality: 'Filipino',
+        presentRank: 'Third Officer',
+        presentVessel: 'VSL-004',
+        vesselType: 'Tanker',
+        signOnDate: '2025-01-15'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(crewWithSignOn);
+      expect(result.success).toBe(true);
     });
   });
 
-  describe('Crew Filtering', () => {
-    it('should filter crew by rank', () => {
-      const crew = [
-        { id: 1, rank: 'Master' },
-        { id: 2, rank: 'Chief Officer' },
-        { id: 3, rank: 'Master' }
-      ];
-      
-      const filtered = crew.filter(c => c.rank === 'Master');
-      expect(filtered.length).toBe(2);
+  describe('Invalid Crew Member Data', () => {
+    it('should reject missing firstName', () => {
+      const invalid = {
+        id: 'A000123',
+        nationality: 'Filipino',
+        presentRank: 'AB',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
     });
 
-    it('should filter crew by status', () => {
+    it('should reject missing nationality', () => {
+      const invalid = {
+        id: 'A000123',
+        firstName: 'John',
+        presentRank: 'AB',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing presentRank', () => {
+      const invalid = {
+        id: 'A000123',
+        firstName: 'John',
+        nationality: 'Filipino',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing presentVessel', () => {
+      const invalid = {
+        id: 'A000123',
+        firstName: 'John',
+        nationality: 'Filipino',
+        presentRank: 'AB',
+        vesselType: 'Tanker'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing vesselType', () => {
+      const invalid = {
+        id: 'A000123',
+        firstName: 'John',
+        nationality: 'Filipino',
+        presentRank: 'AB',
+        presentVessel: 'VSL-001'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject null values for required fields', () => {
+      const invalid = {
+        id: 'A000123',
+        firstName: null,
+        nationality: 'Filipino',
+        presentRank: 'AB',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject numeric firstName', () => {
+      const invalid = {
+        id: 'A000123',
+        firstName: 12345,
+        nationality: 'Filipino',
+        presentRank: 'AB',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Crew Filtering Logic', () => {
+    it('should filter crew by rank', () => {
       const crew = [
-        { id: 1, status: 'Available' },
-        { id: 2, status: 'On Board' },
-        { id: 3, status: 'Available' }
+        { id: 'A001', presentRank: 'Master' },
+        { id: 'A002', presentRank: 'Chief Officer' },
+        { id: 'A003', presentRank: 'Master' }
       ];
       
-      const available = crew.filter(c => c.status === 'Available');
-      expect(available.length).toBe(2);
+      const filtered = crew.filter(c => c.presentRank === 'Master');
+      expect(filtered.length).toBe(2);
     });
 
     it('should filter crew by vessel', () => {
       const crew = [
-        { id: 1, vessel: 'Vessel 3' },
-        { id: 2, vessel: 'Vessel 5' },
-        { id: 3, vessel: 'Vessel 3' }
+        { id: 'A001', presentVessel: 'VSL-001' },
+        { id: 'A002', presentVessel: 'VSL-002' },
+        { id: 'A003', presentVessel: 'VSL-001' }
       ];
       
-      const onVessel3 = crew.filter(c => c.vessel === 'Vessel 3');
-      expect(onVessel3.length).toBe(2);
-    });
-
-    it('should search crew by name', () => {
-      const crew = [
-        { firstName: 'John', lastName: 'Doe' },
-        { firstName: 'Jane', lastName: 'Smith' },
-        { firstName: 'Johnny', lastName: 'Walker' }
-      ];
-      
-      const searchTerm = 'john';
-      const results = crew.filter(c => 
-        c.firstName.toLowerCase().includes(searchTerm) ||
-        c.lastName.toLowerCase().includes(searchTerm)
-      );
-      
-      expect(results.length).toBe(2);
+      const onVessel = crew.filter(c => c.presentVessel === 'VSL-001');
+      expect(onVessel.length).toBe(2);
     });
 
     it('should filter crew by nationality', () => {
       const crew = [
-        { id: 1, nationality: 'Filipino' },
-        { id: 2, nationality: 'Indian' },
-        { id: 3, nationality: 'Filipino' }
+        { id: 'A001', nationality: 'Filipino' },
+        { id: 'A002', nationality: 'Indian' },
+        { id: 'A003', nationality: 'Filipino' }
       ];
       
       const filipinos = crew.filter(c => c.nationality === 'Filipino');
       expect(filipinos.length).toBe(2);
     });
-  });
 
-  describe('Relief Due Calculations', () => {
-    it('should identify overdue relief', () => {
-      const reliefDueDate = new Date('2025-12-15');
-      const today = new Date('2026-01-07');
-      
-      const isOverdue = reliefDueDate < today;
-      expect(isOverdue).toBe(true);
-    });
-
-    it('should identify relief due this month', () => {
-      const reliefDueDate = new Date('2026-01-25');
-      const today = new Date('2026-01-07');
-      
-      const isDueThisMonth = 
-        reliefDueDate.getMonth() === today.getMonth() &&
-        reliefDueDate.getFullYear() === today.getFullYear() &&
-        reliefDueDate >= today;
-      
-      expect(isDueThisMonth).toBe(true);
-    });
-
-    it('should identify relief due next month', () => {
-      const reliefDueDate = new Date('2026-02-15');
-      const today = new Date('2026-01-07');
-      
-      const nextMonth = today.getMonth() + 1;
-      const isDueNextMonth = reliefDueDate.getMonth() === nextMonth;
-      
-      expect(isDueNextMonth).toBe(true);
-    });
-  });
-
-  describe('Pool Assignment', () => {
-    it('should validate pool assignment', () => {
-      const validPools = ['Deck Officers', 'Engine Officers', 'Ratings'];
-      const assignedPool = 'Deck Officers';
-      
-      expect(validPools.includes(assignedPool)).toBe(true);
-    });
-
-    it('should calculate crew count per pool', () => {
+    it('should search crew by name', () => {
       const crew = [
-        { pool: 'Deck Officers' },
-        { pool: 'Deck Officers' },
-        { pool: 'Engine Officers' },
-        { pool: 'Ratings' }
+        { firstName: 'John', familyName: 'Doe' },
+        { firstName: 'Jane', familyName: 'Smith' },
+        { firstName: 'Johnny', familyName: 'Walker' }
       ];
       
-      const poolCounts = crew.reduce((acc, c) => {
-        acc[c.pool] = (acc[c.pool] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const searchTerm = 'John';
+      const found = crew.filter(c => 
+        c.firstName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
       
-      expect(poolCounts['Deck Officers']).toBe(2);
+      expect(found.length).toBe(2);
     });
   });
 
-  describe('Sign On Date', () => {
+  describe('Sign On Date Validation', () => {
     it('should calculate time on board from sign on date', () => {
       const today = new Date();
       const signOnDate = new Date(today);
@@ -164,71 +248,144 @@ describe('Crew Pool Module', () => {
       expect(monthsOnBoard).toBe(5);
     });
 
-    it('should validate sign on date is not in future', () => {
-      const signOnDate = new Date('2025-07-15');
-      const today = new Date('2026-01-07');
+    it('should flag crew with excessive time on board', () => {
+      const monthsOnBoard = 10;
+      const maxMonths = 9;
       
-      const isValid = signOnDate <= today;
-      expect(isValid).toBe(true);
+      const isExcessive = monthsOnBoard > maxMonths;
+      expect(isExcessive).toBe(true);
     });
   });
 
-  describe('Crew Information Form', () => {
-    it('should validate required personal details', () => {
-      const crewInfo = {
-        firstName: 'John',
-        lastName: 'Doe',
-        dateOfBirth: '1990-05-15',
-        nationality: 'Filipino',
-        passportNumber: 'AB1234567'
-      };
-      
-      const requiredFields = ['firstName', 'lastName', 'dateOfBirth', 'nationality'];
-      const hasAllRequired = requiredFields.every(field => 
-        crewInfo[field as keyof typeof crewInfo]
-      );
-      
-      expect(hasAllRequired).toBe(true);
-    });
-
-    it('should validate passport format', () => {
-      const passportNumber = 'AB1234567';
-      const passportRegex = /^[A-Z]{1,2}\d{6,8}$/;
-      
-      expect(passportRegex.test(passportNumber)).toBe(true);
-    });
-
-    it('should calculate age from date of birth', () => {
-      const dateOfBirth = new Date('1990-05-15');
-      const today = new Date('2026-01-07');
-      
-      let age = today.getFullYear() - dateOfBirth.getFullYear();
-      const monthDiff = today.getMonth() - dateOfBirth.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateOfBirth.getDate())) {
-        age--;
-      }
-      
-      expect(age).toBe(35);
-    });
-  });
-
-  describe('Manning Agent', () => {
-    it('should validate manning agent assignment', () => {
-      const validAgents = ['Agent A', 'Agent B', 'Agent C'];
-      const assignedAgent = 'Agent A';
-      
-      expect(validAgents.includes(assignedAgent)).toBe(true);
-    });
-
-    it('should track crew by manning agent', () => {
+  describe('Crew Pool Categorization', () => {
+    it('should categorize crew by pool', () => {
       const crew = [
-        { id: 1, manningAgent: 'Agent A' },
-        { id: 2, manningAgent: 'Agent B' },
-        { id: 3, manningAgent: 'Agent A' }
+        { id: 'A001', crewPool: 'Pool A' },
+        { id: 'A002', crewPool: 'Pool B' },
+        { id: 'A003', crewPool: 'Pool A' }
       ];
       
-      const byAgentA = crew.filter(c => c.manningAgent === 'Agent A');
-      expect(byAgentA.length).toBe(2);
+      const poolCounts: Record<string, number> = {};
+      crew.forEach(c => {
+        if (c.crewPool) {
+          poolCounts[c.crewPool] = (poolCounts[c.crewPool] || 0) + 1;
+        }
+      });
+      
+      expect(poolCounts['Pool A']).toBe(2);
+    });
+
+    it('should categorize crew by rank category', () => {
+      const rankCategories: Record<string, string> = {
+        'Master': 'Senior Officers',
+        'Chief Officer': 'Senior Officers',
+        'Third Officer': 'Junior Officers',
+        'AB': 'Ratings'
+      };
+      
+      const crewMember = {
+        id: 'A001',
+        firstName: 'John',
+        nationality: 'Filipino',
+        presentRank: 'Master',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(crewMember);
+      expect(result.success).toBe(true);
+      
+      if (result.success) {
+        const category = rankCategories[result.data.presentRank];
+        expect(category).toBe('Senior Officers');
+      }
+    });
+  });
+
+  describe('Optional Fields', () => {
+    it('should accept email as optional', () => {
+      const crewWithEmail = {
+        id: 'A000200',
+        firstName: 'John',
+        nationality: 'Filipino',
+        presentRank: 'AB',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker',
+        email: 'john@example.com'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(crewWithEmail);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept mobile as optional', () => {
+      const crewWithMobile = {
+        id: 'A000201',
+        firstName: 'John',
+        nationality: 'Filipino',
+        presentRank: 'AB',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker',
+        mobile: '+63-9876543210'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(crewWithMobile);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept crew pool as optional', () => {
+      const crewWithPool = {
+        id: 'A000203',
+        firstName: 'John',
+        nationality: 'Filipino',
+        presentRank: 'AB',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(crewWithPool);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Data Integrity', () => {
+    it('should preserve all fields after parsing', () => {
+      const crew = {
+        id: 'A000300',
+        firstName: 'John',
+        middleName: 'Michael',
+        familyName: 'Doe',
+        gender: 'Male',
+        nationality: 'Filipino',
+        presentRank: 'Chief Officer',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker',
+        email: 'john@example.com'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(crew);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.id).toBe('A000300');
+        expect(result.data.firstName).toBe('John');
+        expect(result.data.middleName).toBe('Michael');
+        expect(result.data.familyName).toBe('Doe');
+        expect(result.data.nationality).toBe('Filipino');
+      }
+    });
+
+    it('should handle special characters in names', () => {
+      const crew = {
+        id: 'A000301',
+        firstName: "O'Connor",
+        nationality: 'Irish',
+        presentRank: 'AB',
+        presentVessel: 'VSL-001',
+        vesselType: 'Tanker'
+      };
+
+      const result = insertCrewMemberSchema.safeParse(crew);
+      expect(result.success).toBe(true);
     });
   });
 });

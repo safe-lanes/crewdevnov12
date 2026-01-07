@@ -1,0 +1,222 @@
+# STEP 1: Fix Unit Tests - Use Real Schemas
+
+## PROBLEM IDENTIFIED:
+Current unit tests don't use actual Zod schemas from the codebase. They just validate mock objects, which means they won't catch real validation bugs.
+
+## CURRENT STATE (WRONG):
+```typescript
+// tests/unit/modules/recruitment/recruitment-validation.test.ts
+it('should validate complete recruitment candidate data', () => {
+  const validCandidate = { firstName: 'John', ... };
+  expect(validCandidate.firstName).toBeDefined(); // ❌ Just checks object exists
+});
+```
+
+## REQUIRED STATE (CORRECT):
+```typescript
+import { insertRecruitmentCandidateSchema } from '@shared/schema';
+
+it('should validate with actual schema', () => {
+  const validCandidate = { firstName: 'John', ... };
+  const result = insertRecruitmentCandidateSchema.safeParse(validCandidate);
+  expect(result.success).toBe(true); // ✅ Tests real validation
+});
+```
+
+---
+
+## YOUR TASK:
+
+Rewrite ALL 6 unit test files to use actual Zod schemas from `@shared/schema`.
+
+### Files to Fix:
+
+1. **tests/unit/modules/recruitment/recruitment-validation.test.ts**
+   - Import: `insertRecruitmentCandidateSchema`
+   - Fix all tests to use `.safeParse()`
+   - Test both valid and invalid data
+   - Keep test count: 25 tests minimum
+
+2. **tests/unit/modules/rotation/rotation-planning.test.ts**
+   - Import: `insertRotationPlanSchema`
+   - Fix all tests to use `.safeParse()`
+   - Test validation rules
+   - Keep test count: 19 tests minimum
+
+3. **tests/unit/modules/promotions/promotion-workflow.test.ts**
+   - Import: `insertPromotionFormSchema`, `insertPromotionHierarchySchema`
+   - Fix all tests to use `.safeParse()`
+   - Test promotion eligibility logic
+   - Keep test count: 20 tests minimum
+
+4. **tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts**
+   - Import: `insertDrugAlcoholTestRecordSchema`
+   - Fix all tests to use `.safeParse()`
+   - Test compliance calculations
+   - Keep test count: 20 tests minimum
+
+5. **tests/unit/modules/crew-pool/crew-pool-validation.test.ts**
+   - Import: `insertCrewMemberSchema`
+   - Fix all tests to use `.safeParse()`
+   - Test crew validation rules
+   - Keep test count: 20 tests minimum
+
+6. **tests/unit/modules/vessel/vessel-management.test.ts**
+   - Import: `insertVesselDraftSchema`, `insertVesselPlanningSchema`
+   - Fix all tests to use `.safeParse()`
+   - Test vessel validation
+   - Keep test count: 20 tests minimum
+
+---
+
+## EXAMPLE PATTERN TO FOLLOW:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { insertRecruitmentCandidateSchema } from '@shared/schema';
+
+describe('Recruitment Candidate Schema Validation', () => {
+  describe('Valid Data', () => {
+    it('should validate complete candidate data', () => {
+      const validCandidate = {
+        firstName: 'John',
+        lastName: 'Doe',
+        rankApplied: 'Chief Engineer',
+        nationality: 'Indian',
+        vesselType: 'Tanker',
+        status: 'Screening',
+        email: 'john@example.com',
+        phone: '+91-9876543210'
+      };
+
+      const result = insertRecruitmentCandidateSchema.safeParse(validCandidate);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.firstName).toBe('John');
+      }
+    });
+
+    it('should accept optional fields as undefined', () => {
+      const minimalCandidate = {
+        firstName: 'Jane',
+        lastName: 'Smith',
+        rankApplied: 'AB',
+        nationality: 'Filipino',
+        status: 'Screening'
+      };
+
+      const result = insertRecruitmentCandidateSchema.safeParse(minimalCandidate);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Invalid Data', () => {
+    it('should reject missing firstName', () => {
+      const invalid = {
+        lastName: 'Doe',
+        rankApplied: 'AB',
+        nationality: 'Indian',
+        status: 'Screening'
+      };
+
+      const result = insertRecruitmentCandidateSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].path).toContain('firstName');
+      }
+    });
+
+    it('should reject invalid email format', () => {
+      const invalid = {
+        firstName: 'John',
+        lastName: 'Doe',
+        rankApplied: 'AB',
+        nationality: 'Indian',
+        status: 'Screening',
+        email: 'not-an-email'
+      };
+
+      const result = insertRecruitmentCandidateSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject invalid status', () => {
+      const invalid = {
+        firstName: 'John',
+        lastName: 'Doe',
+        rankApplied: 'AB',
+        nationality: 'Indian',
+        status: 'InvalidStatus'
+      };
+
+      const result = insertRecruitmentCandidateSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Business Logic', () => {
+    it('should validate experience requirements for rank', () => {
+      // Test business logic using validated data
+      const candidate = {
+        firstName: 'John',
+        lastName: 'Doe',
+        rankApplied: 'Chief Engineer',
+        nationality: 'Indian',
+        status: 'Screening',
+        experience: 12
+      };
+
+      const result = insertRecruitmentCandidateSchema.safeParse(candidate);
+      expect(result.success).toBe(true);
+
+      // Then test business rule
+      if (result.success) {
+        const rankMinExperience: Record<string, number> = {
+          'Chief Engineer': 10,
+          'Third Officer': 3
+        };
+        expect(result.data.experience || 0).toBeGreaterThanOrEqual(
+          rankMinExperience[result.data.rankApplied] || 0
+        );
+      }
+    });
+  });
+});
+```
+
+---
+
+## REQUIREMENTS:
+
+1. **Import actual schemas** from `@shared/schema`
+2. **Use `.safeParse()`** for all validation tests
+3. **Test both valid and invalid data**
+4. **Check error messages** when validation fails
+5. **Preserve test count** - don't reduce number of tests
+6. **Add more tests** if needed to reach minimum counts
+
+---
+
+## SUCCESS CRITERIA:
+
+✅ All 6 files import real schemas
+✅ All tests use `.safeParse()` 
+✅ Tests verify both success and failure cases
+✅ Test count: Minimum 124 tests across 6 files
+✅ All tests passing: `npm run test:unit`
+
+---
+
+## AFTER COMPLETION:
+
+Run tests and show me:
+```bash
+npm run test:unit
+```
+
+Report:
+1. Total tests passing
+2. Any schema import errors
+3. Any validation failures
+4. Confirmation that real schemas are being used
+

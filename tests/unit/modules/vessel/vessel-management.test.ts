@@ -1,6 +1,227 @@
 import { describe, it, expect } from 'vitest';
+import { insertVesselDraftSchema, insertVesselPlanningSchema } from '@shared/schema';
 
-describe('Vessel Management Module', () => {
+describe('Vessel Management Schema Validation', () => {
+  describe('Vessel Draft - Valid Data', () => {
+    it('should validate complete vessel draft', () => {
+      const validDraft = {
+        vesselId: 'VSL-001',
+        revision: 'R1',
+        draftData: JSON.stringify({ ranks: [{ id: 1, name: 'Master' }] })
+      };
+
+      const result = insertVesselDraftSchema.safeParse(validDraft);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.vesselId).toBe('VSL-001');
+      }
+    });
+
+    it('should validate draft with revision R2', () => {
+      const draftRevision2 = {
+        vesselId: 'VSL-002',
+        revision: 'R2',
+        draftData: JSON.stringify({ ranks: [] })
+      };
+
+      const result = insertVesselDraftSchema.safeParse(draftRevision2);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept complex draft data', () => {
+      const complexDraft = {
+        vesselId: 'VSL-003',
+        revision: 'R3',
+        draftData: JSON.stringify({
+          ranks: [
+            { id: 1, name: 'Master', category: 'Senior Officers' },
+            { id: 2, name: 'Chief Officer', category: 'Senior Officers' },
+            { id: 3, name: 'AB', category: 'Ratings' }
+          ]
+        })
+      };
+
+      const result = insertVesselDraftSchema.safeParse(complexDraft);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Vessel Draft - Invalid Data', () => {
+    it('should reject missing vesselId', () => {
+      const invalid = {
+        revision: 'R1',
+        draftData: JSON.stringify({})
+      };
+
+      const result = insertVesselDraftSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing draftData', () => {
+      const invalid = {
+        vesselId: 'VSL-001',
+        revision: 'R1'
+      };
+
+      const result = insertVesselDraftSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject null vesselId', () => {
+      const invalid = {
+        vesselId: null,
+        revision: 'R1',
+        draftData: JSON.stringify({})
+      };
+
+      const result = insertVesselDraftSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject null draftData', () => {
+      const invalid = {
+        vesselId: 'VSL-001',
+        revision: 'R1',
+        draftData: null
+      };
+
+      const result = insertVesselDraftSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Vessel Planning - Valid Data', () => {
+    it('should validate complete planning record', () => {
+      const validPlanning = {
+        vesselId: 'VSL-001',
+        rankId: '1',
+        rank: 'Master',
+        crewMemberId: 'A000123',
+        signOnDate: '2025-01-15'
+      };
+
+      const result = insertVesselPlanningSchema.safeParse(validPlanning);
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate planning with reliever', () => {
+      const planningWithReliever = {
+        vesselId: 'VSL-002',
+        rankId: '2',
+        rank: 'Chief Officer',
+        crewMemberId: 'A000456',
+        signOnDate: '2025-01-15',
+        relieverCrewId: 'A000999',
+        relieverCrewName: 'John Doe',
+        relieverSignOnDate: '2025-07-15'
+      };
+
+      const result = insertVesselPlanningSchema.safeParse(planningWithReliever);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept on board crew info', () => {
+      const planningWithOnBoard = {
+        vesselId: 'VSL-003',
+        rankId: '3',
+        rank: 'Second Officer',
+        crewMemberId: 'A000789',
+        signOnDate: '2025-02-01',
+        onBoardCrewId: 'A000789',
+        onBoardCrewName: 'Jane Smith',
+        onBoardCrewNationality: 'Filipino'
+      };
+
+      const result = insertVesselPlanningSchema.safeParse(planningWithOnBoard);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Vessel Planning - Invalid Data', () => {
+    it('should reject missing vesselId', () => {
+      const invalid = {
+        rankId: '1',
+        rank: 'Master',
+        crewMemberId: 'A000123',
+        signOnDate: '2025-01-15'
+      };
+
+      const result = insertVesselPlanningSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing rankId', () => {
+      const invalid = {
+        vesselId: 'VSL-001',
+        rank: 'Master',
+        crewMemberId: 'A000123',
+        signOnDate: '2025-01-15'
+      };
+
+      const result = insertVesselPlanningSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing rank', () => {
+      const invalid = {
+        vesselId: 'VSL-001',
+        rankId: '1',
+        crewMemberId: 'A000123',
+        signOnDate: '2025-01-15'
+      };
+
+      const result = insertVesselPlanningSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Officer Matrix Business Logic', () => {
+    it('should calculate officer experience on vessel type', () => {
+      const seaServiceHistory = [
+        { vesselType: 'Tanker', months: 24 },
+        { vesselType: 'Bulk Carrier', months: 12 },
+        { vesselType: 'Tanker', months: 18 }
+      ];
+      
+      const tankerExperience = seaServiceHistory
+        .filter(s => s.vesselType === 'Tanker')
+        .reduce((sum, s) => sum + s.months, 0);
+      
+      expect(tankerExperience).toBe(42);
+    });
+
+    it('should calculate time on board for officer matrix', () => {
+      const today = new Date();
+      const signOnDate = new Date(today);
+      signOnDate.setMonth(signOnDate.getMonth() - 5);
+      
+      const monthsOnBoard = 
+        (today.getFullYear() - signOnDate.getFullYear()) * 12 +
+        (today.getMonth() - signOnDate.getMonth());
+      
+      expect(monthsOnBoard).toBe(5);
+    });
+
+    it('should identify officers with oil major experience', () => {
+      const officers = [
+        { id: 1, oilMajorExperience: ['Shell', 'BP'] },
+        { id: 2, oilMajorExperience: [] },
+        { id: 3, oilMajorExperience: ['Chevron'] }
+      ];
+      
+      const withExperience = officers.filter(o => o.oilMajorExperience.length > 0);
+      expect(withExperience.length).toBe(2);
+    });
+
+    it('should track certificate validity', () => {
+      const certificateExpiry = new Date('2027-06-15');
+      const today = new Date();
+      
+      const isValid = certificateExpiry > today;
+      expect(isValid).toBe(true);
+    });
+  });
+
   describe('Vessel Filtering', () => {
     it('should filter vessels by name', () => {
       const vessels = [
@@ -36,208 +257,122 @@ describe('Vessel Management Module', () => {
     });
   });
 
-  describe('Officer Matrix', () => {
-    it('should calculate officer experience on vessel type', () => {
-      const seaServiceHistory = [
-        { vesselType: 'Tanker', months: 24 },
-        { vesselType: 'Bulk Carrier', months: 12 },
-        { vesselType: 'Tanker', months: 18 }
-      ];
-      
-      const tankerExperience = seaServiceHistory
-        .filter(s => s.vesselType === 'Tanker')
-        .reduce((sum, s) => sum + s.months, 0);
-      
-      expect(tankerExperience).toBe(42);
+  describe('Crew Handover Workflow', () => {
+    it('should validate handover planning', () => {
+      const handoverPlanning = {
+        vesselId: 'VSL-100',
+        rankId: '1',
+        rank: 'Master',
+        crewMemberId: 'A000100',
+        signOnDate: '2025-01-15',
+        signOffDate: '2025-07-15',
+        relieverCrewId: 'A000200',
+        takeOverDate: '2025-07-10'
+      };
+
+      const result = insertVesselPlanningSchema.safeParse(handoverPlanning);
+      expect(result.success).toBe(true);
     });
 
-    it('should calculate time on board for officer matrix', () => {
-      const signOnDate = new Date('2025-08-01');
-      const today = new Date('2026-01-07');
+    it('should track handover period', () => {
+      const signOffDate = new Date('2025-07-15');
+      const relieverSignOn = new Date('2025-07-10');
       
-      const monthsOnBoard = 
-        (today.getFullYear() - signOnDate.getFullYear()) * 12 +
-        (today.getMonth() - signOnDate.getMonth());
-      
-      expect(monthsOnBoard).toBe(5);
-    });
-
-    it('should identify officers with oil major experience', () => {
-      const officers = [
-        { id: 1, oilMajorExperience: ['Shell', 'BP'] },
-        { id: 2, oilMajorExperience: [] },
-        { id: 3, oilMajorExperience: ['Chevron'] }
-      ];
-      
-      const withExperience = officers.filter(o => o.oilMajorExperience.length > 0);
-      expect(withExperience.length).toBe(2);
-    });
-  });
-
-  describe('Vessel Planning', () => {
-    it('should identify positions needing relief', () => {
-      const positions = [
-        { rank: 'Master', reliefDue: '2026-01-15', status: 'Assigned' },
-        { rank: 'Chief Officer', reliefDue: '2026-03-01', status: 'Assigned' },
-        { rank: 'Second Officer', reliefDue: '2025-12-15', status: 'Overdue' }
-      ];
-      
-      const needingRelief = positions.filter(p => 
-        p.status === 'Overdue' || new Date(p.reliefDue) < new Date('2026-02-01')
+      const handoverDays = Math.abs(
+        Math.ceil((signOffDate.getTime() - relieverSignOn.getTime()) / (1000 * 60 * 60 * 24))
       );
       
-      expect(needingRelief.length).toBe(2);
-    });
-
-    it('should validate reliever assignment', () => {
-      const position = { rank: 'Chief Officer' };
-      const reliever = { rank: 'Chief Officer', status: 'Available' };
-      
-      const canAssign = position.rank === reliever.rank && reliever.status === 'Available';
-      expect(canAssign).toBe(true);
-    });
-
-    it('should calculate handover overlap days', () => {
-      const currentSignOff = new Date('2026-02-15');
-      const relieverJoining = new Date('2026-02-10');
-      
-      const overlapDays = Math.ceil(
-        (currentSignOff.getTime() - relieverJoining.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      
-      expect(overlapDays).toBe(5);
-    });
-  });
-
-  describe('Vessel Revision System', () => {
-    it('should track draft vs submitted revisions', () => {
-      const revisions = [
-        { id: 1, status: 'draft' },
-        { id: 2, status: 'submitted' },
-        { id: 3, status: 'draft' }
-      ];
-      
-      const drafts = revisions.filter(r => r.status === 'draft');
-      expect(drafts.length).toBe(2);
-    });
-
-    it('should validate rank designation synchronization', () => {
-      const vesselRanks = ['Master', 'Chief Officer', 'Second Officer'];
-      const companyRanks = ['Master', 'Chief Officer', 'Second Officer', 'Third Officer'];
-      
-      const allVesselRanksInCompany = vesselRanks.every(r => companyRanks.includes(r));
-      expect(allVesselRanksInCompany).toBe(true);
-    });
-  });
-
-  describe('Training Matrix', () => {
-    it('should identify missing mandatory training', () => {
-      const mandatoryTrainings = ['STCW Basic Safety', 'Advanced Firefighting'];
-      const crewTrainings = ['STCW Basic Safety'];
-      
-      const missing = mandatoryTrainings.filter(t => !crewTrainings.includes(t));
-      expect(missing).toContain('Advanced Firefighting');
-    });
-
-    it('should calculate training compliance percentage', () => {
-      const totalRequired = 10;
-      const completed = 8;
-      
-      const complianceRate = (completed / totalRequired) * 100;
-      expect(complianceRate).toBe(80);
-    });
-
-    it('should identify expired certifications', () => {
-      const certifications = [
-        { name: 'STCW', expiryDate: '2025-12-01' },
-        { name: 'Medical', expiryDate: '2026-06-01' }
-      ];
-      const today = new Date('2026-01-07');
-      
-      const expired = certifications.filter(c => new Date(c.expiryDate) < today);
-      expect(expired.length).toBe(1);
+      expect(handoverDays).toBe(5);
     });
   });
 
   describe('Document Expiry', () => {
-    it('should identify documents expiring within 30 days', () => {
+    it('should identify expired documents', () => {
       const documents = [
-        { name: 'Passport', expiryDate: '2026-01-20' },
-        { name: 'COC', expiryDate: '2026-06-01' }
+        { name: 'COC', expiryDate: '2024-12-31' },
+        { name: 'GMDSS', expiryDate: '2025-06-15' },
+        { name: 'Medical', expiryDate: '2026-01-01' }
       ];
-      const today = new Date('2026-01-07');
-      const thirtyDaysLater = new Date(today);
-      thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+      
+      const today = new Date('2025-01-15');
+      const expired = documents.filter(d => new Date(d.expiryDate) < today);
+      
+      expect(expired.length).toBe(1);
+      expect(expired[0].name).toBe('COC');
+    });
+
+    it('should identify documents expiring soon', () => {
+      const documents = [
+        { name: 'COC', expiryDate: '2025-02-15' },
+        { name: 'GMDSS', expiryDate: '2025-12-15' }
+      ];
+      
+      const today = new Date('2025-01-15');
+      const warningDays = 90;
       
       const expiringSoon = documents.filter(d => {
-        const expiry = new Date(d.expiryDate);
-        return expiry >= today && expiry <= thirtyDaysLater;
+        const expiryDate = new Date(d.expiryDate);
+        const daysUntilExpiry = Math.ceil(
+          (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return daysUntilExpiry > 0 && daysUntilExpiry <= warningDays;
       });
       
       expect(expiringSoon.length).toBe(1);
     });
+  });
 
-    it('should calculate days until expiry', () => {
-      const expiryDate = new Date('2026-02-15');
-      const today = new Date('2026-01-07');
+  describe('Training Matrix', () => {
+    it('should calculate training completion rate', () => {
+      const requiredTrainings = 10;
+      const completedTrainings = 8;
       
-      const daysUntilExpiry = Math.ceil(
-        (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const completionRate = (completedTrainings / requiredTrainings) * 100;
+      expect(completionRate).toBe(80);
+    });
+
+    it('should identify missing mandatory trainings', () => {
+      const mandatoryTrainings = ['STCW', 'GMDSS', 'Advanced Firefighting'];
+      const completedTrainings = ['STCW', 'GMDSS'];
       
-      expect(daysUntilExpiry).toBe(39);
+      const missing = mandatoryTrainings.filter(t => !completedTrainings.includes(t));
+      expect(missing).toContain('Advanced Firefighting');
     });
   });
 
-  describe('Crew Handover', () => {
-    it('should track primary and secondary crew status', () => {
-      const crewAssignments = [
-        { crewId: 1, status: 'Primary' },
-        { crewId: 2, status: 'Secondary' }
-      ];
-      
-      const primary = crewAssignments.find(c => c.status === 'Primary');
-      const secondary = crewAssignments.find(c => c.status === 'Secondary');
-      
-      expect(primary).toBeDefined();
-      expect(secondary).toBeDefined();
-    });
-
-    it('should validate handover completion', () => {
-      const handover = {
-        primaryCrewId: 1,
-        secondaryCrewId: 2,
-        handoverDate: '2026-02-15',
-        completed: true
+  describe('Data Integrity', () => {
+    it('should preserve draft data after parsing', () => {
+      const draft = {
+        vesselId: 'VSL-INT',
+        revision: 'R3',
+        draftData: JSON.stringify({ test: 'data' })
       };
-      
-      expect(handover.completed).toBe(true);
-    });
-  });
 
-  describe('Archive System', () => {
-    it('should archive completed crew assignments', () => {
-      const assignment = {
-        crewId: 1,
-        vesselId: 'V003',
-        signOnDate: '2025-07-15',
-        signOffDate: '2026-02-01',
-        status: 'Completed'
+      const result = insertVesselDraftSchema.safeParse(draft);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.vesselId).toBe('VSL-INT');
+        expect(result.data.revision).toBe('R3');
+        const data = JSON.parse(result.data.draftData);
+        expect(data.test).toBe('data');
+      }
+    });
+
+    it('should preserve planning data after parsing', () => {
+      const planning = {
+        vesselId: 'VSL-INT-2',
+        rankId: '5',
+        rank: 'Third Officer',
+        crewMemberId: 'A000500',
+        signOnDate: '2025-03-01'
       };
-      
-      expect(assignment.signOffDate).toBeDefined();
-      expect(assignment.status).toBe('Completed');
-    });
 
-    it('should calculate total assignment duration', () => {
-      const signOnDate = new Date('2025-07-15');
-      const signOffDate = new Date('2026-02-01');
-      
-      const durationDays = Math.ceil(
-        (signOffDate.getTime() - signOnDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      
-      expect(durationDays).toBeGreaterThan(180);
+      const result = insertVesselPlanningSchema.safeParse(planning);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.vesselId).toBe('VSL-INT-2');
+        expect(result.data.rankId).toBe('5');
+      }
     });
   });
 });

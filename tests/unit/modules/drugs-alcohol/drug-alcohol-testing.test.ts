@@ -1,230 +1,347 @@
 import { describe, it, expect } from 'vitest';
+import { insertDrugAlcoholTestRecordSchema } from '@shared/schema';
 
-describe('Drug & Alcohol Testing', () => {
-  describe('Test Types', () => {
-    it('should define all test types', () => {
-      const testTypes = [
-        'Pre-Employment',
-        'Random',
-        'Post-Incident',
-        'Reasonable Cause',
-        'Return to Duty',
-        'Follow-up'
-      ];
-      
-      expect(testTypes.length).toBe(6);
-    });
-
-    it('should validate test type selection', () => {
-      const validTypes = ['Pre-Employment', 'Random', 'Post-Incident', 'Reasonable Cause', 'Return to Duty', 'Follow-up'];
-      const selectedType = 'Random';
-      
-      expect(validTypes.includes(selectedType)).toBe(true);
-    });
-
-    it('should reject invalid test type', () => {
-      const validTypes = ['Pre-Employment', 'Random', 'Post-Incident'];
-      const invalidType = 'Invalid Type';
-      
-      expect(validTypes.includes(invalidType)).toBe(false);
-    });
-  });
-
-  describe('Test Results', () => {
-    it('should define valid result values', () => {
-      const validResults = ['Negative', 'Positive', 'Pending', 'Inconclusive'];
-      const result = 'Negative';
-      
-      expect(validResults.includes(result)).toBe(true);
-    });
-
-    it('should track positive result follow-up requirements', () => {
-      const testRecord = {
-        result: 'Positive',
-        requiresFollowUp: true,
-        followUpDue: '2026-02-15'
+describe('Drug & Alcohol Testing Schema Validation', () => {
+  describe('Valid Test Records', () => {
+    it('should validate complete test record', () => {
+      const validRecord = {
+        vesselId: 'VSL-001',
+        testType: 'annual',
+        frequencyMonths: 12
       };
-      
-      if (testRecord.result === 'Positive') {
-        expect(testRecord.requiresFollowUp).toBe(true);
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(validRecord);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.testType).toBe('annual');
       }
     });
 
-    it('should calculate days since last test', () => {
-      const lastTestDate = new Date('2025-10-15');
-      const today = new Date('2026-01-07');
+    it('should validate periodic test', () => {
+      const periodicTest = {
+        vesselId: 'VSL-002',
+        testType: 'periodic',
+        frequencyMonths: 3
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(periodicTest);
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate monthly test', () => {
+      const monthlyTest = {
+        vesselId: 'VSL-003',
+        testType: 'monthly',
+        frequencyMonths: 1
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(monthlyTest);
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate post-incident test', () => {
+      const postIncidentTest = {
+        vesselId: 'VSL-004',
+        testType: 'post-incident',
+        frequencyMonths: 12,
+        incidentTitle: 'Minor collision investigation'
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(postIncidentTest);
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate others test type', () => {
+      const othersTest = {
+        vesselId: 'VSL-005',
+        testType: 'others',
+        frequencyMonths: 6
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(othersTest);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept optional alcoholDrugType', () => {
+      const testWithType = {
+        vesselId: 'VSL-006',
+        testType: 'annual',
+        frequencyMonths: 12,
+        alcoholDrugType: JSON.stringify(['Alcohol', 'Drug'])
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(testWithType);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept placeLocation', () => {
+      const testWithLocation = {
+        vesselId: 'VSL-007',
+        testType: 'annual',
+        frequencyMonths: 12,
+        placeLocation: 'Singapore Port'
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(testWithLocation);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept dateTimeTestCompleted', () => {
+      const testWithDateTime = {
+        vesselId: 'VSL-008',
+        testType: 'annual',
+        frequencyMonths: 12,
+        dateTimeTestCompleted: '31 May 2023 - 1010 Hours'
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(testWithDateTime);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept planned test information', () => {
+      const testWithPlanned = {
+        vesselId: 'VSL-009',
+        testType: 'annual',
+        frequencyMonths: 12,
+        plannedPort: 'Rotterdam',
+        plannedDate: '2025-06-15',
+        plannedComments: 'Scheduled during dry dock'
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(testWithPlanned);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Invalid Test Records', () => {
+    it('should reject missing vesselId', () => {
+      const invalid = {
+        testType: 'annual',
+        frequencyMonths: 12
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing testType', () => {
+      const invalid = {
+        vesselId: 'VSL-010',
+        frequencyMonths: 12
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject null vesselId', () => {
+      const invalid = {
+        vesselId: null,
+        testType: 'annual',
+        frequencyMonths: 12
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject null testType', () => {
+      const invalid = {
+        vesselId: 'VSL-011',
+        testType: null,
+        frequencyMonths: 12
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject numeric vesselId', () => {
+      const invalid = {
+        vesselId: 12345,
+        testType: 'annual',
+        frequencyMonths: 12
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Test Types Business Logic', () => {
+    it('should define all valid test types', () => {
+      const testTypes = ['annual', 'periodic', 'monthly', 'post-incident', 'others'];
+      expect(testTypes.length).toBe(5);
+    });
+
+    it('should map test types to frequency', () => {
+      const typeToFrequency: Record<string, number> = {
+        'annual': 12,
+        'periodic': 3,
+        'monthly': 1
+      };
+
+      expect(typeToFrequency['annual']).toBe(12);
+      expect(typeToFrequency['periodic']).toBe(3);
+      expect(typeToFrequency['monthly']).toBe(1);
+    });
+
+    it('should identify crew due for annual testing', () => {
+      const today = new Date();
+      const lastTestDate = new Date(today);
+      lastTestDate.setMonth(lastTestDate.getMonth() - 13);
       
+      const annualIntervalDays = 365;
       const daysSinceTest = Math.floor(
         (today.getTime() - lastTestDate.getTime()) / (1000 * 60 * 60 * 24)
       );
       
-      expect(daysSinceTest).toBeGreaterThan(80);
+      const isDueForAnnual = daysSinceTest >= annualIntervalDays;
+      expect(isDueForAnnual).toBe(true);
     });
-  });
 
-  describe('Test Scheduling', () => {
-    it('should identify crew due for random testing', () => {
+    it('should calculate next test due date', () => {
       const lastTestDate = new Date('2025-01-15');
-      const today = new Date('2026-01-07');
-      const randomTestIntervalDays = 365;
+      const frequencyMonths = 12;
       
-      const daysSinceTest = Math.floor(
-        (today.getTime() - lastTestDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const nextDue = new Date(lastTestDate);
+      nextDue.setMonth(nextDue.getMonth() + frequencyMonths);
       
-      const isDueForRandom = daysSinceTest >= randomTestIntervalDays;
-      expect(isDueForRandom).toBe(false);
-    });
-
-    it('should schedule pre-employment test before joining', () => {
-      const joiningDate = new Date('2026-02-01');
-      const testDate = new Date('2026-01-20');
-      
-      const isBeforeJoining = testDate < joiningDate;
-      expect(isBeforeJoining).toBe(true);
-    });
-
-    it('should require immediate testing for post-incident', () => {
-      const incidentDate = new Date('2026-01-07');
-      const testDate = new Date('2026-01-07');
-      
-      const sameDayTest = incidentDate.toDateString() === testDate.toDateString();
-      expect(sameDayTest).toBe(true);
+      expect(nextDue.getFullYear()).toBe(2026);
+      expect(nextDue.getMonth()).toBe(0);
     });
   });
 
-  describe('Compliance Requirements', () => {
-    it('should track testing compliance percentage', () => {
-      const totalCrew = 25;
-      const testedCrew = 23;
-      
-      const compliancePercentage = (testedCrew / totalCrew) * 100;
-      expect(compliancePercentage).toBe(92);
+  describe('Test History', () => {
+    it('should validate test history format', () => {
+      const testWithHistory = {
+        vesselId: 'VSL-012',
+        testType: 'annual',
+        frequencyMonths: 12,
+        testHistory: JSON.stringify([
+          { date: '31 May 2023', port: 'Singapore', violations: 0 },
+          { date: '15 Mar 2022', port: 'Rotterdam', violations: 0 }
+        ])
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(testWithHistory);
+      expect(result.success).toBe(true);
     });
 
-    it('should identify non-compliant crew members', () => {
-      const crew = [
-        { id: 1, lastTest: '2025-11-01', compliant: true },
-        { id: 2, lastTest: '2024-06-01', compliant: false },
-        { id: 3, lastTest: '2025-12-01', compliant: true }
+    it('should track violation count in history', () => {
+      const history = [
+        { date: '31 May 2023', port: 'Singapore', violations: 0 },
+        { date: '15 Mar 2022', port: 'Rotterdam', violations: 1 },
+        { date: '10 Jan 2021', port: 'Dubai', violations: 0 }
       ];
       
-      const nonCompliant = crew.filter(c => !c.compliant);
-      expect(nonCompliant.length).toBe(1);
-    });
-
-    it('should validate oil major compliance requirements', () => {
-      const oilMajorRequirements = {
-        companyName: 'Shell',
-        randomTestPercentage: 10,
-        preEmploymentRequired: true,
-        postIncidentRequired: true
-      };
-      
-      expect(oilMajorRequirements.preEmploymentRequired).toBe(true);
+      const totalViolations = history.reduce((sum, h) => sum + h.violations, 0);
+      expect(totalViolations).toBe(1);
     });
   });
 
-  describe('Vessel Statistics', () => {
-    it('should calculate vessel testing statistics', () => {
-      const vesselTests = {
-        vesselId: 'V003',
-        totalTests: 50,
-        positiveResults: 0,
-        negativeResults: 48,
-        pendingResults: 2
-      };
+  describe('Compliance Calculations', () => {
+    it('should calculate testing compliance rate', () => {
+      const totalVessels = 25;
+      const testedVessels = 22;
       
-      expect(vesselTests.positiveResults).toBe(0);
-      expect(vesselTests.totalTests).toBe(50);
+      const complianceRate = (testedVessels / totalVessels) * 100;
+      expect(complianceRate).toBe(88);
     });
 
-    it('should calculate positive result rate', () => {
-      const totalTests = 100;
-      const positiveTests = 2;
-      
-      const positiveRate = (positiveTests / totalTests) * 100;
-      expect(positiveRate).toBe(2);
-    });
-
-    it('should aggregate tests by type', () => {
-      const tests = [
-        { type: 'Random', result: 'Negative' },
-        { type: 'Random', result: 'Negative' },
-        { type: 'Pre-Employment', result: 'Negative' },
-        { type: 'Post-Incident', result: 'Negative' }
+    it('should identify vessels with overdue testing', () => {
+      const vesselTestingRecords = [
+        { vesselId: 'VSL-001', lastTestDate: '2024-06-01' },
+        { vesselId: 'VSL-002', lastTestDate: '2025-01-01' }
       ];
       
-      const byType = tests.reduce((acc, t) => {
-        acc[t.type] = (acc[t.type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const today = new Date('2025-01-15');
+      const overdueVessels = vesselTestingRecords.filter(v => {
+        const lastTest = new Date(v.lastTestDate);
+        const daysSinceTest = Math.floor(
+          (today.getTime() - lastTest.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return daysSinceTest > 365;
+      });
       
-      expect(byType['Random']).toBe(2);
-      expect(byType['Pre-Employment']).toBe(1);
+      expect(overdueVessels.length).toBe(0);
+    });
+
+    it('should calculate average tests per vessel', () => {
+      const totalTests = 150;
+      const totalVessels = 30;
+      
+      const averagePerVessel = totalTests / totalVessels;
+      expect(averagePerVessel).toBe(5);
+    });
+
+    it('should track testing frequency compliance', () => {
+      const requiredTestsPerYear = 4;
+      const actualTestsThisYear = 5;
+      
+      const isCompliant = actualTestsThisYear >= requiredTestsPerYear;
+      expect(isCompliant).toBe(true);
     });
   });
 
-  describe('Record Management', () => {
-    it('should create complete test record', () => {
-      const testRecord = {
-        crewMemberId: 'C001',
-        vesselId: 'V003',
-        testType: 'Random',
-        testDate: '2026-01-07',
-        result: 'Negative',
-        testedBy: 'Dr. Smith',
-        location: 'Singapore',
-        notes: ''
+  describe('Testing Equipment', () => {
+    it('should accept testing equipment JSON', () => {
+      const testWithEquipment = {
+        vesselId: 'VSL-013',
+        testType: 'annual',
+        frequencyMonths: 12,
+        testingEquipment: JSON.stringify([
+          { name: 'Breathalyzer', serialNo: 'BR-001', calibrationDate: '2025-01-01' }
+        ])
       };
-      
-      expect(testRecord.crewMemberId).toBeDefined();
-      expect(testRecord.testDate).toBeDefined();
-      expect(testRecord.result).toBeDefined();
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(testWithEquipment);
+      expect(result.success).toBe(true);
     });
 
-    it('should validate test date is not in future', () => {
-      const testDate = new Date('2026-01-07');
-      const today = new Date('2026-01-07');
-      
-      const isValidDate = testDate <= today;
-      expect(isValidDate).toBe(true);
-    });
-
-    it('should require notes for positive results', () => {
-      const testRecord = {
-        result: 'Positive',
-        notes: 'Follow-up scheduled, crew member notified'
+    it('should accept equipment not applicable flag', () => {
+      const testWithNA = {
+        vesselId: 'VSL-014',
+        testType: 'annual',
+        frequencyMonths: 12,
+        equipmentNotApplicable: true
       };
-      
-      if (testRecord.result === 'Positive') {
-        expect(testRecord.notes.length).toBeGreaterThan(0);
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(testWithNA);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Data Integrity', () => {
+    it('should preserve all fields after parsing', () => {
+      const record = {
+        vesselId: 'VSL-015',
+        testType: 'annual',
+        frequencyMonths: 12,
+        placeLocation: 'Singapore',
+        plannedPort: 'Rotterdam',
+        plannedDate: '2025-06-15'
+      };
+
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(record);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.vesselId).toBe('VSL-015');
+        expect(result.data.testType).toBe('annual');
+        expect(result.data.frequencyMonths).toBe(12);
+        expect(result.data.placeLocation).toBe('Singapore');
       }
     });
-  });
 
-  describe('Summary View', () => {
-    it('should calculate fleet-wide statistics', () => {
-      const fleetStats = {
-        totalVessels: 10,
-        totalCrew: 250,
-        testsThisMonth: 45,
-        positiveThisMonth: 0,
-        complianceRate: 98
+    it('should handle VSL-XXX format vessel IDs', () => {
+      const record = {
+        vesselId: 'VSL-123',
+        testType: 'periodic',
+        frequencyMonths: 3
       };
-      
-      expect(fleetStats.complianceRate).toBeGreaterThan(95);
-    });
 
-    it('should identify vessels with pending tests', () => {
-      const vessels = [
-        { id: 'V001', pendingTests: 0 },
-        { id: 'V002', pendingTests: 3 },
-        { id: 'V003', pendingTests: 0 }
-      ];
-      
-      const withPending = vessels.filter(v => v.pendingTests > 0);
-      expect(withPending.length).toBe(1);
+      const result = insertDrugAlcoholTestRecordSchema.safeParse(record);
+      expect(result.success).toBe(true);
     });
   });
 });

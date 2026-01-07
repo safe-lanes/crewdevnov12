@@ -1,44 +1,216 @@
 import { describe, it, expect } from 'vitest';
+import { insertPromotionHierarchySchema, insertPromotionFormSchema } from '@shared/schema';
 
-describe('Promotion Workflow', () => {
-  describe('Promotion Hierarchy', () => {
-    it('should define valid promotion paths', () => {
-      const promotionPaths: Record<string, string[]> = {
-        'OS': ['AB'],
-        'AB': ['Bosun', 'Third Officer'],
-        'Third Officer': ['Second Officer'],
-        'Second Officer': ['Chief Officer'],
-        'Chief Officer': ['Master'],
-        'Oiler': ['Motorman'],
-        'Motorman': ['Fourth Engineer'],
-        'Fourth Engineer': ['Third Engineer'],
-        'Third Engineer': ['Second Engineer'],
-        'Second Engineer': ['Chief Engineer']
+describe('Promotion Workflow Schema Validation', () => {
+  describe('Promotion Hierarchy - Valid Data', () => {
+    it('should validate complete promotion hierarchy', () => {
+      const validHierarchy = {
+        groupName: 'Deck Officers',
+        rankPath: JSON.stringify(['Third Officer', 'Second Officer', 'Chief Officer', 'Master'])
       };
-      
-      expect(promotionPaths['AB']).toContain('Third Officer');
-      expect(promotionPaths['Chief Officer']).toContain('Master');
+
+      const result = insertPromotionHierarchySchema.safeParse(validHierarchy);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.groupName).toBe('Deck Officers');
+      }
     });
 
-    it('should prevent invalid promotion jumps', () => {
-      const currentRank = 'OS';
-      const targetRank = 'Chief Officer';
-      const validNextRanks = ['AB'];
-      
-      const isValidPromotion = validNextRanks.includes(targetRank);
-      expect(isValidPromotion).toBe(false);
+    it('should validate engine department hierarchy', () => {
+      const engineHierarchy = {
+        groupName: 'Engine Officers',
+        rankPath: JSON.stringify(['Fourth Engineer', 'Third Engineer', 'Second Engineer', 'Chief Engineer'])
+      };
+
+      const result = insertPromotionHierarchySchema.safeParse(engineHierarchy);
+      expect(result.success).toBe(true);
     });
 
-    it('should allow promotion to multiple valid ranks', () => {
-      const currentRank = 'AB';
-      const validNextRanks = ['Bosun', 'Third Officer'];
-      
-      expect(validNextRanks.length).toBeGreaterThan(1);
+    it('should validate ratings hierarchy', () => {
+      const ratingsHierarchy = {
+        groupName: 'Deck Ratings',
+        rankPath: JSON.stringify(['OS', 'AB', 'Bosun'])
+      };
+
+      const result = insertPromotionHierarchySchema.safeParse(ratingsHierarchy);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept array format for rankPath', () => {
+      const hierarchyWithArray = {
+        groupName: 'Deck Officers',
+        rankPath: ['Third Officer', 'Second Officer', 'Chief Officer']
+      };
+
+      const result = insertPromotionHierarchySchema.safeParse(hierarchyWithArray);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept isActive flag', () => {
+      const hierarchyWithActive = {
+        groupName: 'Deck Officers',
+        rankPath: JSON.stringify(['Third Officer', 'Second Officer']),
+        isActive: true
+      };
+
+      const result = insertPromotionHierarchySchema.safeParse(hierarchyWithActive);
+      expect(result.success).toBe(true);
     });
   });
 
-  describe('Eligibility Criteria', () => {
-    it('should check minimum sea service requirement', () => {
+  describe('Promotion Hierarchy - Invalid Data', () => {
+    it('should reject missing groupName', () => {
+      const invalid = {
+        rankPath: JSON.stringify(['Third Officer', 'Second Officer'])
+      };
+
+      const result = insertPromotionHierarchySchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing rankPath', () => {
+      const invalid = {
+        groupName: 'Deck Officers'
+      };
+
+      const result = insertPromotionHierarchySchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject null groupName', () => {
+      const invalid = {
+        groupName: null,
+        rankPath: JSON.stringify(['Third Officer'])
+      };
+
+      const result = insertPromotionHierarchySchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject numeric groupName', () => {
+      const invalid = {
+        groupName: 12345,
+        rankPath: JSON.stringify(['Third Officer'])
+      };
+
+      const result = insertPromotionHierarchySchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Promotion Form - Valid Data', () => {
+    it('should validate complete promotion form', () => {
+      const validForm = {
+        crewMemberId: 'A000123',
+        currentRank: 'Second Officer',
+        proposedRank: 'Chief Officer'
+      };
+
+      const result = insertPromotionFormSchema.safeParse(validForm);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.crewMemberId).toBe('A000123');
+      }
+    });
+
+    it('should validate form with optional justification', () => {
+      const formWithJustification = {
+        crewMemberId: 'A000456',
+        currentRank: 'Third Officer',
+        proposedRank: 'Second Officer',
+        justification: 'Excellent performance and completed all required trainings'
+      };
+
+      const result = insertPromotionFormSchema.safeParse(formWithJustification);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept various statuses', () => {
+      const statuses = ['draft', 'submitted', 'under_review', 'approved', 'rejected'];
+      
+      statuses.forEach(status => {
+        const form = {
+          crewMemberId: 'A000789',
+          currentRank: 'AB',
+          proposedRank: 'Bosun',
+          status
+        };
+
+        const result = insertPromotionFormSchema.safeParse(form);
+        expect(result.success).toBe(true);
+      });
+    });
+
+    it('should accept effectiveDate', () => {
+      const formWithDate = {
+        crewMemberId: 'A000101',
+        currentRank: 'Second Officer',
+        proposedRank: 'Chief Officer',
+        effectiveDate: '2025-03-15'
+      };
+
+      const result = insertPromotionFormSchema.safeParse(formWithDate);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept reviewerComments', () => {
+      const formWithComments = {
+        crewMemberId: 'A000102',
+        currentRank: 'AB',
+        proposedRank: 'Bosun',
+        reviewerComments: 'Approved based on excellent appraisal scores'
+      };
+
+      const result = insertPromotionFormSchema.safeParse(formWithComments);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Promotion Form - Invalid Data', () => {
+    it('should reject missing crewMemberId', () => {
+      const invalid = {
+        currentRank: 'Second Officer',
+        proposedRank: 'Chief Officer'
+      };
+
+      const result = insertPromotionFormSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing currentRank', () => {
+      const invalid = {
+        crewMemberId: 'A000123',
+        proposedRank: 'Chief Officer'
+      };
+
+      const result = insertPromotionFormSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing proposedRank', () => {
+      const invalid = {
+        crewMemberId: 'A000123',
+        currentRank: 'Second Officer'
+      };
+
+      const result = insertPromotionFormSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject null crewMemberId', () => {
+      const invalid = {
+        crewMemberId: null,
+        currentRank: 'Second Officer',
+        proposedRank: 'Chief Officer'
+      };
+
+      const result = insertPromotionFormSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Eligibility Criteria Business Logic', () => {
+    it('should validate minimum sea service requirement', () => {
       const minimumMonths = 24;
       const candidateMonths = 30;
       
@@ -46,7 +218,7 @@ describe('Promotion Workflow', () => {
       expect(meetsRequirement).toBe(true);
     });
 
-    it('should check minimum time in current rank', () => {
+    it('should validate minimum time in current rank', () => {
       const minimumMonthsInRank = 12;
       const actualMonthsInRank = 18;
       
@@ -74,132 +246,140 @@ describe('Promotion Workflow', () => {
       const cesResults = {
         testName: 'Navigation',
         score: 85,
-        passingScore: 70,
-        date: '2025-11-15'
+        passingScore: 70
       };
       
       const passed = cesResults.score >= cesResults.passingScore;
       expect(passed).toBe(true);
     });
+
+    it('should check certificate validity', () => {
+      const certificateExpiry = new Date('2027-06-15');
+      const today = new Date();
+      
+      const isValid = certificateExpiry > today;
+      expect(isValid).toBe(true);
+    });
   });
 
-  describe('Promotion Review Stages', () => {
-    it('should track promotion form stages', () => {
-      const validStages = ['Draft', 'Submitted', 'Under Review', 'Approved', 'Rejected', 'On Waitlist'];
-      const currentStage = 'Submitted';
-      
-      expect(validStages.includes(currentStage)).toBe(true);
-    });
-
-    it('should validate stage progression', () => {
-      const stageOrder = ['Draft', 'Submitted', 'Under Review', 'Approved'];
-      const currentStage = 'Submitted';
-      const nextStage = 'Under Review';
-      
-      const currentIndex = stageOrder.indexOf(currentStage);
-      const nextIndex = stageOrder.indexOf(nextStage);
-      
-      expect(nextIndex).toBe(currentIndex + 1);
-    });
-
-    it('should allow rejection from any review stage', () => {
-      const reviewStages = ['Submitted', 'Under Review'];
-      const canReject = reviewStages.every(() => true);
-      
-      expect(canReject).toBe(true);
-    });
-
-    it('should track waitlist status', () => {
-      const promotion = {
-        status: 'On Waitlist',
-        waitlistReason: 'No vacancy available',
-        waitlistDate: '2026-01-01'
+  describe('Promotion Hierarchy Logic', () => {
+    it('should define valid promotion paths', () => {
+      const promotionPaths: Record<string, string[]> = {
+        'OS': ['AB'],
+        'AB': ['Bosun', 'Third Officer'],
+        'Third Officer': ['Second Officer'],
+        'Second Officer': ['Chief Officer'],
+        'Chief Officer': ['Master']
       };
       
-      expect(promotion.status).toBe('On Waitlist');
-      expect(promotion.waitlistReason).toBeDefined();
+      expect(promotionPaths['AB']).toContain('Third Officer');
+      expect(promotionPaths['Chief Officer']).toContain('Master');
+    });
+
+    it('should prevent invalid promotion jumps', () => {
+      const currentRank = 'OS';
+      const targetRank = 'Chief Officer';
+      const validNextRanks = ['AB'];
+      
+      const isValidPromotion = validNextRanks.includes(targetRank);
+      expect(isValidPromotion).toBe(false);
+    });
+
+    it('should allow promotion to multiple valid ranks', () => {
+      const currentRank = 'AB';
+      const validNextRanks = ['Bosun', 'Third Officer'];
+      
+      expect(validNextRanks.length).toBeGreaterThan(1);
+    });
+
+    it('should track promotion history', () => {
+      const promotionHistory = [
+        { from: 'OS', to: 'AB', date: '2020-01-15' },
+        { from: 'AB', to: 'Third Officer', date: '2022-03-20' }
+      ];
+      
+      expect(promotionHistory.length).toBe(2);
+      expect(promotionHistory[1].to).toBe('Third Officer');
     });
   });
 
   describe('A2 Criteria Configuration', () => {
-    it('should define minimum sea service for rank', () => {
-      const a2Config = {
-        rankGroup: 'Deck Officers',
-        minSeaServiceMonths: 36,
-        minTimeInRankMonths: 18,
-        minAppraisalScore: 3.5
+    it('should validate CES test requirements', () => {
+      const cesRequirements = {
+        navigation: { required: true, passingScore: 70 },
+        cargo: { required: true, passingScore: 70 },
+        safety: { required: true, passingScore: 70 }
       };
-      
-      expect(a2Config.minSeaServiceMonths).toBe(36);
+
+      expect(cesRequirements.navigation.required).toBe(true);
+      expect(cesRequirements.navigation.passingScore).toBe(70);
     });
 
-    it('should define CES test requirements', () => {
-      const cesRequirements = [
-        { testName: 'Navigation', passingScore: 70 },
-        { testName: 'Cargo Operations', passingScore: 75 }
-      ];
-      
-      expect(cesRequirements.length).toBe(2);
+    it('should validate minimum sea service by rank', () => {
+      const seaServiceRequirements: Record<string, number> = {
+        'Chief Officer': 36,
+        'Second Officer': 24,
+        'Third Officer': 12,
+        'Master': 48
+      };
+
+      expect(seaServiceRequirements['Chief Officer']).toBe(36);
     });
 
-    it('should define checklist sections', () => {
-      const checklistSections = [
-        { name: 'Technical Skills', assessmentPoints: 5 },
-        { name: 'Leadership', assessmentPoints: 4 },
-        { name: 'Safety Awareness', assessmentPoints: 6 }
+    it('should validate assessment checklist items', () => {
+      const checklistItems = [
+        { id: 1, name: 'Technical Knowledge', weight: 20 },
+        { id: 2, name: 'Leadership', weight: 20 },
+        { id: 3, name: 'Safety Awareness', weight: 20 }
       ];
-      
-      const totalPoints = checklistSections.reduce((sum, s) => sum + s.assessmentPoints, 0);
-      expect(totalPoints).toBe(15);
+
+      const totalWeight = checklistItems.reduce((sum, item) => sum + item.weight, 0);
+      expect(totalWeight).toBe(60);
     });
   });
 
-  describe('Promotion Confirmation', () => {
-    it('should set effective date for confirmed promotion', () => {
-      const promotion = {
-        status: 'Approved',
-        promotionConfirmed: 'yes',
-        effectiveDate: '2026-02-01',
-        promotionTiming: 'on-board'
+  describe('Data Integrity', () => {
+    it('should preserve hierarchy data after parsing', () => {
+      const hierarchy = {
+        groupName: 'Test Group',
+        rankPath: JSON.stringify(['Rank1', 'Rank2', 'Rank3'])
       };
-      
-      expect(promotion.effectiveDate).toBeDefined();
-      expect(promotion.promotionConfirmed).toBe('yes');
+
+      const result = insertPromotionHierarchySchema.safeParse(hierarchy);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.groupName).toBe('Test Group');
+      }
     });
 
-    it('should handle promotion timing options', () => {
-      const timingOptions = ['on-board', 'prior-joining'];
-      const selectedTiming = 'on-board';
-      
-      expect(timingOptions.includes(selectedTiming)).toBe(true);
-    });
-
-    it('should update crew rank after promotion confirmation', () => {
-      const crewBefore = { rank: 'Second Officer' };
-      const promotionToRank = 'Chief Officer';
-      
-      const crewAfter = { ...crewBefore, rank: promotionToRank };
-      expect(crewAfter.rank).toBe('Chief Officer');
-    });
-  });
-
-  describe('Recommendations', () => {
-    it('should capture recommender details', () => {
-      const recommendation = {
-        recommendedBy: 'Captain John Smith',
-        recommendedDate: '2025-12-15',
-        justification: 'Excellent performance and leadership skills'
+    it('should preserve form data after parsing', () => {
+      const form = {
+        crewMemberId: 'A000999',
+        currentRank: 'AB',
+        proposedRank: 'Bosun',
+        status: 'approved',
+        justification: 'Test justification'
       };
-      
-      expect(recommendation.recommendedBy).toBeDefined();
-      expect(recommendation.justification.length).toBeGreaterThan(0);
+
+      const result = insertPromotionFormSchema.safeParse(form);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.crewMemberId).toBe('A000999');
+        expect(result.data.status).toBe('approved');
+      }
     });
 
-    it('should validate justification length', () => {
-      const minLength = 50;
-      const justification = 'The crew member has shown exceptional leadership and technical competence throughout their tenure.';
-      
-      expect(justification.length).toBeGreaterThanOrEqual(minLength);
+    it('should transform array rankPath to string', () => {
+      const hierarchy = {
+        groupName: 'Test Group',
+        rankPath: ['Rank1', 'Rank2', 'Rank3']
+      };
+
+      const result = insertPromotionHierarchySchema.safeParse(hierarchy);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(typeof result.data.rankPath).toBe('string');
+      }
     });
   });
 });
