@@ -1,0 +1,366 @@
+# STEP 4: Add E2E Tests for Missing Modules
+
+## PROBLEM IDENTIFIED:
+4 modules have NO E2E tests at all: Reports, Training, Admin, and Accounts.
+
+---
+
+## YOUR TASK:
+
+Create E2E tests for the 4 missing modules.
+
+**IMPORTANT:** These modules may have simpler functionality than others. Create tests based on what ACTUALLY EXISTS in each module. Use defensive testing patterns.
+
+---
+
+## FILE 1: tests/e2e/reports-module.spec.ts
+
+**Minimum 5 tests:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Reports Module', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    
+    // Navigate to Reports - check if nav exists
+    const reportsNav = page.getByTestId('nav-reports');
+    if (await reportsNav.count() === 0) {
+      // Try alternative navigation
+      await page.locator('a:has-text("Reports"), button:has-text("Reports")').first().click();
+    } else {
+      await reportsNav.click();
+    }
+  });
+
+  test('should navigate to reports module', async ({ page }) => {
+    // Verify we're on reports page
+    const url = page.url();
+    expect(url).toContain('report');
+  });
+
+  test('should display reports container or content', async ({ page }) => {
+    // Look for main content area
+    const content = page.locator('main, [role="main"], .reports-container, #reports').first();
+    await expect(content).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should display report types or categories', async ({ page }) => {
+    // Look for report types (crew reports, vessel reports, etc.)
+    const reportOptions = page.locator(
+      'select, [role="listbox"], button:has-text("Report"), [role="tab"]'
+    );
+    
+    if (await reportOptions.count() > 0) {
+      await expect(reportOptions.first()).toBeVisible();
+    }
+  });
+
+  test('should have date range filter or controls', async ({ page }) => {
+    // Look for date inputs or filters
+    const dateInputs = page.locator(
+      'input[type="date"], input[placeholder*="date" i], .date-picker'
+    );
+    
+    if (await dateInputs.count() > 0) {
+      await expect(dateInputs.first()).toBeVisible();
+    }
+  });
+
+  test('should display report data or table', async ({ page }) => {
+    // Look for data display
+    const dataDisplay = page.locator('table, [role="grid"], .report-data, canvas').first();
+    
+    if (await dataDisplay.count() > 0) {
+      await expect(dataDisplay).toBeVisible({ timeout: 10000 });
+    } else {
+      // At minimum should have some content
+      const body = page.locator('body');
+      await expect(body).not.toBeEmpty();
+    }
+  });
+});
+```
+
+---
+
+## FILE 2: tests/e2e/training-module.spec.ts
+
+**Minimum 5 tests:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Training Module', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    
+    // Navigate to Training
+    const trainingNav = page.getByTestId('nav-training');
+    if (await trainingNav.count() === 0) {
+      await page.locator('a:has-text("Training"), button:has-text("Training")').first().click();
+    } else {
+      await trainingNav.click();
+    }
+  });
+
+  test('should navigate to training module', async ({ page }) => {
+    const url = page.url();
+    expect(url).toContain('training');
+  });
+
+  test('should display training container or content', async ({ page }) => {
+    const content = page.locator('main, [role="main"], .training-container, #training').first();
+    await expect(content).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should display training courses or matrix', async ({ page }) => {
+    // Look for training data
+    const trainingData = page.locator(
+      'table, [role="grid"], .course-list, .training-matrix'
+    ).first();
+    
+    if (await trainingData.count() > 0) {
+      await expect(trainingData).toBeVisible({ timeout: 10000 });
+    }
+  });
+
+  test('should have crew or vessel selection', async ({ page }) => {
+    // Look for filters or selection
+    const filters = page.locator('select, [role="combobox"], button:has-text("Filter")').first();
+    
+    if (await filters.count() > 0) {
+      await expect(filters).toBeVisible();
+    }
+  });
+
+  test('should display training completion status', async ({ page }) => {
+    // Look for completion indicators
+    const statusIndicators = page.locator(
+      '[class*="complete"], [class*="pending"], [class*="status"], td, [role="cell"]'
+    );
+    
+    if (await statusIndicators.count() > 0) {
+      // Has some status information
+      expect(await statusIndicators.count()).toBeGreaterThan(0);
+    }
+  });
+});
+```
+
+---
+
+## FILE 3: tests/e2e/admin-module.spec.ts
+
+**Minimum 5 tests:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Admin Module', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    
+    // Navigate to Admin
+    const adminNav = page.getByTestId('nav-admin');
+    if (await adminNav.count() === 0) {
+      await page.locator('a:has-text("Admin"), button:has-text("Admin")').first().click();
+    } else {
+      await adminNav.click();
+    }
+  });
+
+  test('should navigate to admin module', async ({ page }) => {
+    const url = page.url();
+    expect(url).toContain('admin');
+  });
+
+  test('should display admin container or content', async ({ page }) => {
+    const content = page.locator('main, [role="main"], .admin-container, #admin').first();
+    await expect(content).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should display admin sections or tabs', async ({ page }) => {
+    // Look for admin sections (settings, users, etc.)
+    const sections = page.locator(
+      '[role="tab"], .admin-section, button:has-text("Settings"), button:has-text("Users")'
+    );
+    
+    if (await sections.count() > 0) {
+      await expect(sections.first()).toBeVisible();
+    }
+  });
+
+  test('should display configuration options', async ({ page }) => {
+    // Look for settings or config
+    const configOptions = page.locator(
+      'input[type="checkbox"], input[type="text"], select, [role="switch"]'
+    );
+    
+    if (await configOptions.count() > 0) {
+      await expect(configOptions.first()).toBeVisible();
+    }
+  });
+
+  test('should have admin controls or actions', async ({ page }) => {
+    // Look for action buttons
+    const actions = page.locator('button:has-text("Save"), button:has-text("Update"), button:has-text("Add")');
+    
+    if (await actions.count() > 0) {
+      await expect(actions.first()).toBeVisible();
+    } else {
+      // At minimum should show some admin content
+      const body = page.locator('body');
+      await expect(body).not.toBeEmpty();
+    }
+  });
+});
+```
+
+---
+
+## FILE 4: tests/e2e/accounts-module.spec.ts (OPTIONAL)
+
+**Only create if Accounts module exists. Minimum 5 tests:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Accounts/Payroll Module', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    
+    // Try to navigate to Accounts
+    const accountsNav = page.locator(
+      'a:has-text("Accounts"), a:has-text("Payroll"), button:has-text("Accounts")'
+    ).first();
+    
+    if (await accountsNav.count() > 0) {
+      await accountsNav.click();
+    } else {
+      test.skip(); // Skip if module doesn't exist
+    }
+  });
+
+  test('should navigate to accounts module', async ({ page }) => {
+    const url = page.url();
+    expect(url).toMatch(/account|payroll|wage/i);
+  });
+
+  test('should display accounts container or content', async ({ page }) => {
+    const content = page.locator('main, [role="main"], .accounts-container').first();
+    await expect(content).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should display payroll or financial data', async ({ page }) => {
+    const data = page.locator('table, [role="grid"], .payroll-data').first();
+    
+    if (await data.count() > 0) {
+      await expect(data).toBeVisible({ timeout: 10000 });
+    }
+  });
+
+  test('should have period or date selection', async ({ page }) => {
+    const dateSelection = page.locator(
+      'select, [role="combobox"], input[type="date"]'
+    ).first();
+    
+    if (await dateSelection.count() > 0) {
+      await expect(dateSelection).toBeVisible();
+    }
+  });
+
+  test('should display crew payroll information', async ({ page }) => {
+    const payrollInfo = page.locator('td, [role="cell"], .amount, .salary');
+    
+    if (await payrollInfo.count() > 0) {
+      expect(await payrollInfo.count()).toBeGreaterThan(0);
+    }
+  });
+});
+```
+
+---
+
+## SPECIAL INSTRUCTIONS:
+
+### Module Detection:
+1. **Check if navigation exists** before clicking
+2. **Use test.skip()** if module doesn't exist
+3. **Verify URL** after navigation
+4. **Use defensive selectors** - multiple fallbacks
+
+### Defensive Testing Pattern:
+```typescript
+// Always check count before expecting
+const element = page.locator('selector');
+if (await element.count() > 0) {
+  await expect(element).toBeVisible();
+} else {
+  // Fallback or skip
+  test.skip();
+}
+```
+
+### Empty State Handling:
+```typescript
+// Don't assume data exists
+const rows = page.locator('table tbody tr');
+const rowCount = await rows.count();
+
+if (rowCount > 0) {
+  // Test with data
+} else {
+  // Test empty state
+  const emptyMessage = page.locator('.empty-state, text=/no data/i');
+  // Should show something
+}
+```
+
+---
+
+## REQUIREMENTS:
+
+1. **Create 3-4 new files** (Reports, Training, Admin are required; Accounts is optional)
+2. **Minimum 5 tests per file** = 15-20 total tests
+3. **Use defensive patterns** - check existence before interaction
+4. **Skip gracefully** if module doesn't exist
+5. **Handle empty states** - tests pass with or without data
+6. **Verify navigation** - check URL after navigating
+
+---
+
+## SUCCESS CRITERIA:
+
+✅ 3 new E2E files created (Reports, Training, Admin)
+✅ 4th file (Accounts) created if module exists
+✅ Minimum 15 new E2E tests
+✅ Tests use defensive patterns
+✅ Tests skip if module missing
+✅ All tests passing: `npm run test:e2e`
+
+---
+
+## AFTER COMPLETION:
+
+Run tests and show me:
+```bash
+npx playwright test
+```
+
+Report:
+1. Which modules were found and tested
+2. Which modules were skipped (if any)
+3. Total E2E tests now passing
+4. Any navigation issues
+
+Create files for Reports, Training, and Admin first. Check if Accounts exists before creating that file.
