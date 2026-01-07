@@ -128,32 +128,28 @@ test.describe('Drugs & Alcohol Module', () => {
 
 test.describe('Cross-Module Navigation', () => {
   test('should navigate through all modules', async ({ page }) => {
+    test.setTimeout(120000);
+    
     await page.goto('/');
     await expect(page.getByTestId('app-root')).toBeVisible({ timeout: 30000 });
     
-    // Navigate to Recruitment
     await page.getByTestId('nav-recruitment').click();
-    await expect(page.getByTestId('recruitment-container')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('recruitment-container')).toBeVisible({ timeout: 10000 });
     
-    // Navigate to Rotation
     await page.getByTestId('nav-rotation').click();
-    await expect(page.getByTestId('rotation-container')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('rotation-container')).toBeVisible({ timeout: 10000 });
     
-    // Navigate to Promotions
     await page.getByTestId('nav-promotions').click();
-    await expect(page.getByTestId('promotions-container')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('promotions-container')).toBeVisible({ timeout: 10000 });
     
-    // Navigate to D&A
     await page.getByTestId('nav-drugs-alcohol').click();
-    await expect(page.getByTestId('drugs-alcohol-container')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('drugs-alcohol-container')).toBeVisible({ timeout: 10000 });
     
-    // Navigate to Crew Pool
     await page.getByTestId('nav-crew-pool').click();
-    await expect(page.getByTestId('crew-pool-container')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('crew-pool-container')).toBeVisible({ timeout: 10000 });
     
-    // Navigate to Vessel
     await page.getByTestId('nav-vessel').click();
-    await expect(page.getByTestId('vessel-container')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('vessel-container')).toBeVisible({ timeout: 10000 });
   });
 });
 
