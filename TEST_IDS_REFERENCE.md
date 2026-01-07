@@ -50,7 +50,8 @@ All navigation links use the pattern: `nav-{label.toLowerCase().replace(' ', '-'
 | `nav-crew-pool` | HeaderComponent.tsx | Navigate to Crew Pool module |
 | `nav-rotation` | HeaderComponent.tsx | Navigate to Rotation module |
 | `nav-vessel` | HeaderComponent.tsx | Navigate to Vessel module |
-| `nav-d&a-test` | HeaderComponent.tsx | Navigate to Drugs & Alcohol Testing |
+| `nav-drugs-alcohol` | HeaderComponent.tsx | Navigate to Drugs & Alcohol Testing |
+| `nav-promotions` | HeaderComponent.tsx | Navigate to Promotions module |
 | `nav-rest-hours` | HeaderComponent.tsx | Navigate to Rest Hours module |
 | `nav-training` | HeaderComponent.tsx | Navigate to Training module |
 | `nav-admin` | HeaderComponent.tsx | Navigate to Admin module |
@@ -65,6 +66,10 @@ All navigation links use the pattern: `nav-{label.toLowerCase().replace(' ', '-'
 | `crew-pool-container` | CrewPoolModule.tsx | Crew Pool module wrapper |
 | `rest-hours-container` | RestHoursModule.tsx | Rest Hours module wrapper |
 | `vessel-container` | VesselModule.tsx | Vessel module wrapper |
+| `recruitment-container` | RecruitmentModule.tsx | Recruitment module wrapper |
+| `rotation-container` | RotationModule.tsx | Rotation module wrapper |
+| `promotions-container` | PromotionsModule.tsx | Promotions module wrapper |
+| `drugs-alcohol-container` | DrugsAlcoholModule.tsx | Drugs & Alcohol module wrapper |
 
 ---
 
@@ -199,6 +204,86 @@ const container = page.getByTestId('rest-hours-container');
 
 ---
 
+## Recruitment Module (Scope: `recruitment-container`)
+
+```typescript
+const container = page.getByTestId('recruitment-container');
+```
+
+### Navigation
+```typescript
+await page.getByTestId('nav-recruitment').click();
+await expect(page.getByTestId('recruitment-container')).toBeVisible();
+```
+
+### Test IDs Used in E2E Tests
+| Test ID | Description |
+|---------|-------------|
+| `button-new-crew` | Open new recruitment form |
+| `button-toggle-filters` | Toggle filter visibility |
+| `filter-container` | Filter section wrapper |
+
+---
+
+## Rotation Module (Scope: `rotation-container`)
+
+```typescript
+const container = page.getByTestId('rotation-container');
+```
+
+### Navigation
+```typescript
+await page.getByTestId('nav-rotation').click();
+await expect(page.getByTestId('rotation-container')).toBeVisible();
+```
+
+### Test IDs Used in E2E Tests
+| Test ID | Description |
+|---------|-------------|
+| `filter-container` | Filter section wrapper (Due/Plan views) |
+
+---
+
+## Promotions Module (Scope: `promotions-container`)
+
+```typescript
+const container = page.getByTestId('promotions-container');
+```
+
+### Navigation
+```typescript
+await page.getByTestId('nav-promotions').click();
+await expect(page.getByTestId('promotions-container')).toBeVisible();
+```
+
+### Test IDs Used in E2E Tests
+| Test ID | Description |
+|---------|-------------|
+| `button-toggle-filters` | Toggle filter visibility |
+| `filter-container` | Filter section wrapper |
+
+---
+
+## Drugs & Alcohol Module (Scope: `drugs-alcohol-container`)
+
+```typescript
+const container = page.getByTestId('drugs-alcohol-container');
+```
+
+### Navigation
+```typescript
+await page.getByTestId('nav-drugs-alcohol').click();
+await expect(page.getByTestId('drugs-alcohol-container')).toBeVisible();
+```
+
+### Test IDs Used in E2E Tests
+| Test ID | Description |
+|---------|-------------|
+| `button-toggle-filters` | Toggle filter visibility |
+| `filter-container` | Filter section wrapper |
+
+---
+
 ## Implementation Notes for Other Forks
 
 ### 1. Container Level
@@ -265,3 +350,91 @@ January 2026 - Testing Fork Implementation
 - Added container-level data-testids to all major modules
 - Documented scoped selector pattern to avoid collisions
 - Updated E2E tests to use container scoping
+
+---
+
+## Test Expansion Summary (January 2026)
+
+### Modules Added/Expanded
+| Module | Unit Tests | Integration Tests | E2E Tests | Status |
+|--------|-----------|-------------------|-----------|--------|
+| Recruitment | 35 | 22 | 3 | Complete |
+| Rotation | 22 | 11 | 2 | Complete |
+| Promotions | 34 | 14 | 3 | Complete |
+| Drugs & Alcohol | 35 | 17 | 3 | Complete |
+| Crew Pool (expansion) | 31 | - | - | Complete |
+| Vessel (expansion) | 32 | - | - | Complete |
+
+### New Test Files Created
+
+**Unit Tests (6 modules):**
+- `tests/unit/modules/recruitment/recruitment-validation.test.ts` (35 tests)
+- `tests/unit/modules/rotation/rotation-planning.test.ts` (22 tests)
+- `tests/unit/modules/promotions/promotion-workflow.test.ts` (34 tests)
+- `tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts` (35 tests)
+- `tests/unit/modules/crew-pool/crew-pool-validation.test.ts` (31 tests)
+- `tests/unit/modules/vessel/vessel-management.test.ts` (32 tests)
+
+**Integration Tests (4 APIs):**
+- `tests/integration/api/recruitment.test.ts` (22 tests)
+- `tests/integration/api/rotation.test.ts` (11 tests)
+- `tests/integration/api/promotions.test.ts` (14 tests)
+- `tests/integration/api/drug-alcohol.test.ts` (17 tests)
+
+**E2E Tests:**
+- `tests/e2e/module-coverage.spec.ts` (13 tests)
+  - Recruitment Module (3 tests)
+  - Rotation Module (2 tests)
+  - Promotions Module (3 tests)
+  - Drugs & Alcohol Module (3 tests)
+  - Cross-Module Navigation (1 test)
+  - Module Container Stability (1 test)
+
+### Total Test Count
+
+| Category | Before | Added | After |
+|----------|--------|-------|-------|
+| Unit Tests | 85 | 189 | 274 |
+| Integration Tests | 0 | 64 | 64 |
+| E2E Tests | 28 | 13 | 41 |
+| **GRAND TOTAL** | **113** | **266** | **379** |
+
+### New data-testid Attributes Added
+
+| Test ID | File | Purpose |
+|---------|------|---------|
+| `recruitment-container` | RecruitmentModule.tsx | Module wrapper for scoped E2E tests |
+| `rotation-container` | RotationModule.tsx | Module wrapper for scoped E2E tests |
+| `promotions-container` | PromotionsModule.tsx | Module wrapper for scoped E2E tests |
+| `drugs-alcohol-container` | DrugsAlcoholModule.tsx | Module wrapper for scoped E2E tests |
+
+### For Other Forks
+
+To replicate this test coverage to other forks:
+
+1. **Copy all test files** listed above to the corresponding directories
+2. **Add the 4 new data-testid attributes** to module containers:
+   ```tsx
+   // RecruitmentModule.tsx
+   return <div data-testid="recruitment-container">...</div>
+   
+   // RotationModule.tsx
+   return <div data-testid="rotation-container">...</div>
+   
+   // PromotionsModule.tsx
+   return <div data-testid="promotions-container">...</div>
+   
+   // DrugsAlcoholModule.tsx
+   return <div data-testid="drugs-alcohol-container">...</div>
+   ```
+3. **Verify navigation test IDs** match the HeaderComponent labels:
+   - `nav-recruitment` for "Recruitment"
+   - `nav-rotation` for "Rotation"
+   - `nav-promotions` for "Promotions"
+   - `nav-drugs-alcohol` for "Drugs Alcohol"
+4. **Run test suite**:
+   ```bash
+   npm run test        # Unit + Integration tests (274 passing)
+   npx playwright test # E2E tests (41 passing)
+   ```
+5. **Expected results**: ~379 tests passing

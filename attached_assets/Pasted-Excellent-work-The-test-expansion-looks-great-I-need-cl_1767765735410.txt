@@ -1,0 +1,192 @@
+Excellent work! The test expansion looks great. I need clarification on a few things and one critical deliverable:
+
+## 1. TEST COUNT VERIFICATION
+
+Please provide the COMPLETE breakdown:
+
+**Unit Tests:**
+- Total unit tests passing: 274 ✅
+- Files: 18 ✅
+
+**Integration Tests:**
+- How many integration tests are in each of the 4 API files?
+  - tests/integration/api/recruitment.test.ts: ? tests
+  - tests/integration/api/rotation.test.ts: ? tests
+  - tests/integration/api/promotions.test.ts: ? tests
+  - tests/integration/api/drugs-alcohol.test.ts: ? tests
+- Total integration tests passing: ?
+
+**E2E Tests:**
+- Total E2E tests passing: 13 ✅
+
+**GRAND TOTAL:**
+- Previous: 132 tests
+- New tests added: ?
+- Current total: ?
+
+Please run: `npm run test:all` and show me the complete summary.
+
+---
+
+## 2. CRITICAL: TEST_IDS_REFERENCE.md UPDATE
+
+This is ESSENTIAL for migrating tests to other forks. Please update TEST_IDS_REFERENCE.md with ALL new test IDs added:
+
+### New Test IDs Added:
+
+**Drugs & Alcohol Module:**
+- `data-testid="drugs-alcohol-container"` ✅ (you added this)
+
+**But what about these modules - did you add containers?**
+- Recruitment Module: `data-testid="recruitment-container"` - Added? Y/N
+- Rotation Module: `data-testid="rotation-container"` - Added? Y/N
+- Promotions Module: `data-testid="promotions-container"` - Added? Y/N
+
+### TASK:
+
+Please update `TEST_IDS_REFERENCE.md` to include:
+
+1. **New Module Containers section** (add after existing containers):
+````markdown
+## New Module Containers (Added in Test Expansion)
+
+| Test ID | Location | Description |
+|---------|----------|-------------|
+| `recruitment-container` | RecruitmentModule.tsx | Recruitment module wrapper |
+| `rotation-container` | RotationModule.tsx | Rotation module wrapper |
+| `promotions-container` | PromotionsModule.tsx | Promotions module wrapper |
+| `drugs-alcohol-container` | DrugsAlcoholModule.tsx | Drugs & Alcohol module wrapper |
+
+---
+
+## Recruitment Module (Scope: `recruitment-container`)
+```typescript
+const container = page.getByTestId('recruitment-container');
+```
+
+### Test IDs Used in E2E Tests:
+(List any specific test IDs used in recruitment E2E tests)
+
+---
+
+## Rotation Module (Scope: `rotation-container`)
+```typescript
+const container = page.getByTestId('rotation-container');
+```
+
+### Test IDs Used in E2E Tests:
+(List any specific test IDs used in rotation E2E tests)
+
+---
+
+## Promotions Module (Scope: `promotions-container`)
+```typescript
+const container = page.getByTestId('promotions-container');
+```
+
+### Test IDs Used in E2E Tests:
+(List any specific test IDs used in promotions E2E tests)
+
+---
+
+## Drugs & Alcohol Module (Scope: `drugs-alcohol-container`)
+```typescript
+const container = page.getByTestId('drugs-alcohol-container');
+```
+
+### Test IDs Used in E2E Tests:
+(List any specific test IDs used in drugs-alcohol E2E tests)
+````
+
+2. **Update the "Implementation Notes for Other Forks" section** to include the 4 new modules.
+
+3. **Add a "Test Expansion Summary" section** at the end:
+````markdown
+## Test Expansion Summary (January 2026)
+
+### Modules Added:
+- ✅ Recruitment (35+ tests)
+- ✅ Rotation (35+ tests)
+- ✅ Promotions (35+ tests)
+- ✅ Drugs & Alcohol (31+ tests)
+- ✅ Crew Pool expansion (22+ tests)
+- ✅ Vessel expansion (18+ tests)
+
+### New Test Files Created:
+**Unit Tests (6 modules):**
+- tests/unit/modules/recruitment/recruitment-validation.test.ts
+- tests/unit/modules/rotation/rotation-planning.test.ts
+- tests/unit/modules/promotions/promotion-workflow.test.ts
+- tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts
+- tests/unit/modules/crew-pool/crew-pool-validation.test.ts
+- tests/unit/modules/vessel/vessel-management.test.ts
+
+**Integration Tests (4 APIs):**
+- tests/integration/api/recruitment.test.ts
+- tests/integration/api/rotation.test.ts
+- tests/integration/api/promotions.test.ts
+- tests/integration/api/drugs-alcohol.test.ts
+
+**E2E Tests (4 modules):**
+- tests/e2e/recruitment-workflow.spec.ts
+- tests/e2e/rotation-workflow.spec.ts
+- tests/e2e/promotions-workflow.spec.ts
+- tests/e2e/drugs-alcohol-workflow.spec.ts
+
+### Total Tests:
+- Before: 132 tests
+- Added: ~176 tests
+- After: ~308 tests
+
+### For Other Forks:
+To replicate this test coverage to other forks:
+1. Copy all test files listed above
+2. Add the 4 new data-testid attributes to module containers
+3. Run `npm run test:all`
+4. Expected: ~308 tests passing
+````
+
+---
+
+## 3. CREW POOL & VESSEL EXPANSION
+
+You mentioned 6 modules in unit tests including crew-pool and vessel. Did you:
+
+- Add unit tests to Crew Pool? (Expected: ~12 tests)
+- Add integration tests to Crew Pool? (Expected: ~10 tests)
+- Add unit tests to Vessel? (Expected: ~10 tests)
+- Add integration tests to Vessel? (Expected: ~8 tests)
+
+Please confirm these were created and are passing.
+
+---
+
+## 4. FINAL VERIFICATION
+
+Please run these commands and show me the output:
+````bash
+# Complete test suite
+npm run test:all
+
+# Individual test types
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+
+# Check for TEST_IDS_REFERENCE.md updates
+cat TEST_IDS_REFERENCE.md | grep -A 5 "recruitment-container"
+cat TEST_IDS_REFERENCE.md | grep -A 5 "rotation-container"
+cat TEST_IDS_REFERENCE.md | grep -A 5 "promotions-container"
+````
+
+---
+
+## DELIVERABLES NEEDED:
+
+1. ✅ Complete test count breakdown (unit + integration + E2E)
+2. ❓ Updated TEST_IDS_REFERENCE.md (critical for fork migration!)
+3. ✅ Confirmation all 4 new module containers added
+4. ✅ List of ALL data-testid attributes added
+5. ✅ Final test results showing ~308 tests passing
+
+The TEST_IDS_REFERENCE.md update is CRITICAL - without it, we can't replicate this work to other forks easily. Please prioritize this!
