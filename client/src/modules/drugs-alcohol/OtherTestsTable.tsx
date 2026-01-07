@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AgGridReact } from "ag-grid-react";
 import { ColDef, ICellRendererParams } from "ag-grid-community";
 import { useMemo, useRef } from "react";
-import { Plus } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface OtherTestData {
@@ -22,7 +22,7 @@ interface OtherTestsTableProps {
   selectedVessels: string[];
   fleetValue: string;
   addGroupValue: string;
-  onAdd?: (vesselId?: string) => void;
+  onEdit?: (recordId: number) => void;
 }
 
 // Violations cell renderer with color coding
@@ -45,11 +45,11 @@ const ViolationsCellRenderer = (props: ICellRendererParams) => {
 
 // Actions cell renderer
 const ActionsCellRenderer = (props: ICellRendererParams) => {
-  const { onAdd } = props.context || {};
+  const { onEdit } = props.context || {};
   
-  const handleAdd = () => {
-    if (onAdd) {
-      onAdd(props.data?.vesselId);
+  const handleEdit = () => {
+    if (onEdit && props.data?.id) {
+      onEdit(props.data.id);
     }
   };
   
@@ -58,11 +58,11 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 w-7 p-0 hover:bg-green-100"
-        onClick={handleAdd}
-        data-testid={`button-add-${props.data.id}`}
+        className="h-7 w-7 p-0 hover:bg-blue-100"
+        onClick={handleEdit}
+        data-testid={`button-edit-${props.data.id}`}
       >
-        <Plus className="h-4 w-4 text-green-600" />
+        <Pencil className="h-4 w-4 text-blue-600" />
       </Button>
     </div>
   );
@@ -73,7 +73,7 @@ export function OtherTestsTable({
   selectedVessels,
   fleetValue,
   addGroupValue,
-  onAdd,
+  onEdit,
 }: OtherTestsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   
@@ -217,7 +217,7 @@ export function OtherTestsTable({
           suppressCellFocus={true}
           suppressRowHoverHighlight={false}
           enableCellTextSelection={true}
-          context={{ onAdd }}
+          context={{ onEdit }}
           data-testid="grid-other-tests"
         />
       </div>
