@@ -4,13 +4,18 @@ import { ColDef, ICellRendererParams } from "ag-grid-community";
 import { useMemo, useRef } from "react";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface OtherTestData {
   id: number;
   vesselId: string;
   vesselName: string;
   testDateTime: string;
-  otherTestType: string;
+  testType: string;
   reasonForTesting: string;
   description: string;
   initiatedBy: string;
@@ -23,6 +28,58 @@ interface OtherTestsTableProps {
   fleetValue: string;
   addGroupValue: string;
   onEdit?: (recordId: number) => void;
+}
+
+// Format datetime for display
+function formatDateTime(dateTimeStr: string): string {
+  if (!dateTimeStr) return '';
+  try {
+    const date = new Date(dateTimeStr);
+    if (isNaN(date.getTime())) return dateTimeStr;
+    
+    const day = date.getDate().toString().padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    return `${day}-${month}-${year}, ${hours}:${minutes}`;
+  } catch {
+    return dateTimeStr;
+  }
+}
+
+// Parse alcoholDrugType JSON array to display string
+function parseAlcoholDrugType(value: any): string {
+  if (!value) return '';
+  
+  // If already an array, join it
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  
+  // If it's a string, try to parse as JSON
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.join(', ');
+      }
+      return String(parsed);
+    } catch {
+      // Not valid JSON - clean up any brackets/quotes and return
+      return value
+        .replace(/^\[|\]$/g, '')  // Remove surrounding brackets
+        .replace(/"/g, '')         // Remove quotes
+        .split(',')
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0)
+        .join(', ');
+    }
+  }
+  
+  return String(value);
 }
 
 // Violations cell renderer with color coding
@@ -40,6 +97,28 @@ const ViolationsCellRenderer = (props: ICellRendererParams) => {
     <div className={`font-semibold ${colorClass}`}>
       {value}
     </div>
+  );
+};
+
+// Description cell renderer with truncation and tooltip
+const DescriptionCellRenderer = (props: ICellRendererParams) => {
+  const value = props.value || '';
+  
+  if (!value) {
+    return <div className="text-[13px]"></div>;
+  }
+  
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="text-[13px] truncate cursor-default max-w-full">
+          {value}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[400px] whitespace-normal">
+        <p>{value}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -87,8 +166,8 @@ export function OtherTestsTable({
     id: number;
     vesselId: string;
     testType: string;
-    testDateTime?: string;
-    otherTestType?: string;
+    dateTimeTestCompleted?: string;
+    alcoholDrugType?: string;
     reasonForTesting?: string;
     description?: string;
     initiatedBy?: string;
@@ -115,8 +194,8 @@ export function OtherTestsTable({
       id: record.id,
       vesselId: record.vesselId,
       vesselName: vesselMap.get(record.vesselId) || record.vesselId,
-      testDateTime: record.testDateTime || '',
-      otherTestType: record.otherTestType || '',
+      testDateTime: formatDateTime(record.dateTimeTestCompleted || ''),
+      testType: parseAlcoholDrugType(record.alcoholDrugType),
       reasonForTesting: record.reasonForTesting || '',
       description: record.description || '',
       initiatedBy: record.initiatedBy || '',
@@ -158,7 +237,7 @@ export function OtherTestsTable({
     },
     {
       headerName: "Test Type",
-      field: "otherTestType",
+      field: "testType",
       flex: 0.8,
       minWidth: 100,
       cellClass: 'flex items-center text-[13px]',
@@ -175,7 +254,8 @@ export function OtherTestsTable({
       field: "description",
       flex: 1.5,
       minWidth: 200,
-      cellClass: 'flex items-center text-[13px]',
+      cellRenderer: DescriptionCellRenderer,
+      cellClass: 'flex items-center overflow-hidden',
     },
     {
       headerName: "Initiated By",
@@ -194,8 +274,8 @@ export function OtherTestsTable({
     },
     {
       headerName: "",
-      flex: 0.8,
-      minWidth: 120,
+      flex: 0.4,
+      minWidth: 60,
       cellRenderer: ActionsCellRenderer,
       cellClass: 'flex items-center justify-center',
       sortable: false,
