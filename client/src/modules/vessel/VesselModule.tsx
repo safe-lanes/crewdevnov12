@@ -46,6 +46,7 @@ import { HandoverAttachmentsDialog, getHandoverAttachmentCount } from '@/compone
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
+import { useRankOrdering } from '@/hooks/useRankOrdering';
 import { API_BASE_URL } from '@/config/api';
 import { generateFALForm5Document } from '@/lib/generateFALForm5';
 
@@ -2115,6 +2116,9 @@ export const VesselModule = (): JSX.Element => {
     // Get rank normalization utilities for filtering variants
     const { filterCrewWithVariants, isVariantRank, getCanonicalRankName } = useRankNormalization();
     
+    // Get rank ordering utilities for consistent crew sorting (used by IMO Crew List export)
+    const { sortCrewByRank } = useRankOrdering(selectedVessel?.vesselId || null);
+    
     // Fetch available ranks to get sortOrder
     const { data: availableRanks = [] } = useQuery<any[]>({
         queryKey: ['/api/available-ranks'],
@@ -2560,7 +2564,8 @@ export const VesselModule = (): JSX.Element => {
                 return !isArchived;
             });
         
-        const crewMembersData = vesselCrew.map((planning: any) => {
+        // Map crew data and include rank for sorting
+        const crewMembersDataUnsorted = vesselCrew.map((planning: any) => {
             const crewData = planning.crewMemberData || {};
             const fullCrewData = crewMemberLookup.get(planning.crewMemberId) || {};
             
@@ -2576,6 +2581,7 @@ export const VesselModule = (): JSX.Element => {
                 middleName: crewData.middleName || '',
                 familyName: crewData.familyName || crewData.lastName || '',
                 presentRank: planning.rank || crewData.presentRank || '',
+                rank: planning.rank || crewData.presentRank || '', // Used by sortCrewByRank
                 nationality: crewData.nationality || '',
                 dateOfBirth: fullCrewData.dateOfBirth || '',
                 placeOfBirth: placeOfBirth,
@@ -2583,6 +2589,9 @@ export const VesselModule = (): JSX.Element => {
                 documents: crewData.documents || '',
             };
         });
+        
+        // Sort crew by rank using the same ordering as Crew List screen
+        const crewMembersData = sortCrewByRank(crewMembersDataUnsorted);
         
         try {
             await generateFALForm5Document({
