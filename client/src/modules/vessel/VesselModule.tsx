@@ -2114,7 +2114,7 @@ export const VesselModule = (): JSX.Element => {
     }, [ports]);
     
     // Get rank normalization utilities for filtering variants
-    const { filterCrewWithVariants, isVariantRank, getCanonicalRankName } = useRankNormalization();
+    const { filterCrewWithVariants, isVariantRank, getCanonicalRankName, normalizeRank } = useRankNormalization();
     
     // Get rank ordering utilities for consistent crew sorting (used by Crew List table and IMO export)
     const { getSortOrder, sortCrewByRank } = useRankOrdering(selectedVessel?.vesselId || null);
@@ -2544,13 +2544,24 @@ export const VesselModule = (): JSX.Element => {
             ].filter(Boolean);
             const placeOfBirth = placeOfBirthParts.join(', ');
             
+            // Get raw rank for sorting (preserves variant for correct ordering)
+            const rawRank = planning.rank || crewData.presentRank || '';
+            
+            // Normalize rank for display in export (converts "3rd Officer_1" → "3rd Officer")
+            // First try normalizeRank which uses company-defined parent ranks from Admin > Rank Admin
+            // Fall back to stripping "_N" suffix if normalization doesn't find a match
+            let displayRank = normalizeRank(rawRank);
+            if (displayRank === rawRank && rawRank.includes('_')) {
+                displayRank = rawRank.split('_')[0];
+            }
+            
             return {
                 id: planning.crewMemberId,
                 firstName: crewData.firstName || '',
                 middleName: crewData.middleName || '',
                 familyName: crewData.familyName || crewData.lastName || '',
-                presentRank: planning.rank || crewData.presentRank || '',
-                rank: planning.rank || crewData.presentRank || '', // Used by sortCrewByRank
+                presentRank: displayRank, // Normalized for export display
+                rank: rawRank, // Raw rank used by sortCrewByRank
                 nationality: crewData.nationality || '',
                 dateOfBirth: fullCrewData.dateOfBirth || '',
                 placeOfBirth: placeOfBirth,
