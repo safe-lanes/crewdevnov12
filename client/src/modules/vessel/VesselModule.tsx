@@ -49,6 +49,7 @@ import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
 import { API_BASE_URL } from '@/config/api';
 import { generateFALForm5Document } from '@/lib/generateFALForm5';
+import { generateUSCrewListDocument } from '@/lib/generateUSCrewList';
 
 // Helper function to check if crew member has valid GMDSS certificate
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
@@ -2596,6 +2597,70 @@ export const VesselModule = (): JSX.Element => {
         }
     };
 
+    const handleDownloadUSCrewList = async () => {
+        if (!selectedVessel) return;
+        
+        const vesselCrew = filteredVesselPlanning
+            .filter((planning: any) => {
+                if (!planning.crewMemberId) return false;
+                const isArchived = planning.isArchived === true;
+                return !isArchived;
+            });
+        
+        // Map crew data and include rank for sorting (same pattern as IMO export)
+        const crewMembersDataUnsorted = vesselCrew.map((planning: any) => {
+            const crewData = planning.crewMemberData || {};
+            const fullCrewData = crewMemberLookup.get(planning.crewMemberId) || {};
+            
+            // Get raw rank for sorting (preserves variant for correct ordering)
+            const rawRank = planning.rank || crewData.presentRank || '';
+            
+            // Normalize rank for display in export (converts "3rd Officer_1" → "3rd Officer")
+            let displayRank = normalizeRank(rawRank);
+            if (displayRank === rawRank && rawRank.includes('_')) {
+                displayRank = rawRank.split('_')[0];
+            }
+            
+            return {
+                id: planning.crewMemberId,
+                firstName: crewData.firstName || '',
+                middleName: crewData.middleName || '',
+                familyName: crewData.familyName || crewData.lastName || '',
+                presentRank: displayRank, // Normalized for export display
+                rank: rawRank, // Raw rank used by sortCrewByRank
+                nationality: crewData.nationality || '',
+                dateOfBirth: fullCrewData.dateOfBirth || '',
+                documents: crewData.documents || '',
+                signOnDate: planning.signOnDate || '',
+            };
+        });
+        
+        // Sort crew by rank using the same ordering as Crew List screen
+        const crewMembersData = sortCrewByRank(crewMembersDataUnsorted);
+        
+        try {
+            await generateUSCrewListDocument({
+                vessel: {
+                    id: selectedVessel.id,
+                    name: selectedVessel.name,
+                    vesselType: selectedVessel.vesselType,
+                },
+                crewMembers: crewMembersData,
+            });
+            toast({
+                title: "Download Complete",
+                description: "CBP Form I-418 (US Crew List) has been downloaded successfully.",
+            });
+        } catch (error) {
+            console.error("Error generating US Crew List:", error);
+            toast({
+                title: "Download Failed",
+                description: "Failed to generate US Crew List document. Please try again.",
+                variant: "destructive",
+            });
+        }
+    };
+
     const handleVesselChange = (vesselName: string) => {
         const vessel = vessels.find((v: any) => v.name === vesselName);
         if (vessel) {
@@ -2844,6 +2909,7 @@ export const VesselModule = (): JSX.Element => {
                                             variant="outline"
                                             size="sm"
                                             className="h-8 gap-2"
+                                            onClick={handleDownloadUSCrewList}
                                             data-testid="button-download-us"
                                         >
                                             <Download className="h-4 w-4" />
