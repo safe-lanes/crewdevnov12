@@ -45,7 +45,7 @@ import { CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm';
 import { HandoverAttachmentsDialog, getHandoverAttachmentCount } from '@/components/HandoverAttachmentsDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
-import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
 import { API_BASE_URL } from '@/config/api';
 import { generateFALForm5Document } from '@/lib/generateFALForm5';
@@ -2116,8 +2116,8 @@ export const VesselModule = (): JSX.Element => {
     // Get rank normalization utilities for filtering variants
     const { filterCrewWithVariants, isVariantRank, getCanonicalRankName } = useRankNormalization();
     
-    // Get rank ordering utilities for consistent crew sorting (used by IMO Crew List export)
-    const { sortCrewByRank } = useRankOrdering(selectedVessel?.vesselId || null);
+    // Get rank ordering utilities for consistent crew sorting (used by Crew List table and IMO export)
+    const { getSortOrder, sortCrewByRank } = useRankOrdering(selectedVessel?.vesselId || null);
     
     // Fetch available ranks to get sortOrder
     const { data: availableRanks = [] } = useQuery<any[]>({
@@ -2161,37 +2161,6 @@ export const VesselModule = (): JSX.Element => {
             return aSuffix - bSuffix;
         });
     }, [vesselRanksRaw, baseRankOrderMap]);
-    
-    // Create a comprehensive rank order map from vesselRanks (includes variants with correct sortOrder and aliases)
-    const rankOrderMap = useMemo(() => {
-        const map = new Map<string, number>();
-        // First add base ranks from available ranks (with aliases like "2nd Officer" -> "Second Officer")
-        availableRanks.forEach((rank: any) => {
-            addRankAliasesToMap(map, rank.name, rank.sortOrder || 0);
-        });
-        // Then add all vessel ranks (including variants) - these have accurate sortOrder from backend
-        vesselRanks.forEach((rank: any) => {
-            const sortOrder = rank.sortOrder;
-            if (sortOrder === undefined) return;
-            
-            // Add mapping for 'rank' field (e.g., "Second Officer")
-            if (rank.rank) {
-                addRankAliasesToMap(map, rank.rank, sortOrder);
-            }
-            // Add mapping for 'role' field (e.g., "2nd Officer" or "Oiler_1")
-            if (rank.role && rank.role !== rank.rank) {
-                map.set(rank.role, sortOrder);
-            }
-            // Add mapping for base rank extracted from role (e.g., "Oiler" from "Oiler_1")
-            if (rank.role && rank.role.includes('_')) {
-                const baseRank = rank.role.split('_')[0];
-                if (!map.has(baseRank)) {
-                    map.set(baseRank, sortOrder);
-                }
-            }
-        });
-        return map;
-    }, [availableRanks, vesselRanks]);
     
     // Fetch vessel planning for selected vessel (use vessel ID, e.g., VSL-003)
     const { data: vesselPlanning = [], isLoading: planningLoading } = useVesselPlanning(selectedVessel?.vesselId || null);
@@ -2926,26 +2895,9 @@ export const VesselModule = (): JSX.Element => {
                                                         </TableCell>
                                                     </TableRow>
                                                 ) : (() => {
-                                                    // Helper to get sortOrder with fallback for unknown ranks
-                                                    const getRankSortOrder = (rankName: string | null | undefined): number => {
-                                                        if (!rankName) return 999999;
-                                                        // First try exact match
-                                                        const exact = rankOrderMap.get(rankName);
-                                                        if (exact !== undefined) return exact;
-                                                        // Try base rank (strip suffix like _1, _2)
-                                                        const baseRank = rankName.split('_')[0];
-                                                        const base = rankOrderMap.get(baseRank);
-                                                        if (base !== undefined) return base;
-                                                        // Try canonical name (e.g., "2nd Officer" -> "Second Officer")
-                                                        const canonical = getCanonicalRankName(rankName);
-                                                        const canonicalOrder = rankOrderMap.get(canonical);
-                                                        if (canonicalOrder !== undefined) return canonicalOrder;
-                                                        // Fallback: unknown rank goes to end
-                                                        return 999999;
-                                                    };
-                                                    
                                                     // Use filtered vessel planning data (excludes base ranks when variants exist) and sort by rank order
                                                     // Filter based on showArchived: when false, exclude archived; when true, show only archived
+                                                    // Sorting uses getSortOrder from useRankOrdering hook for consistent ordering with IMO export
                                                     const vesselCrew = filteredVesselPlanning
                                                         .filter((planning: any) => {
                                                             if (!planning.crewMemberId) return false;
@@ -2953,8 +2905,9 @@ export const VesselModule = (): JSX.Element => {
                                                             return showArchived ? isArchived : !isArchived;
                                                         })
                                                         .sort((a: any, b: any) => {
-                                                            const aOrder = getRankSortOrder(a.rank);
-                                                            const bOrder = getRankSortOrder(b.rank);
+                                                            // Primary sort: by rank order (from useRankOrdering hook)
+                                                            const aOrder = getSortOrder(a.rank);
+                                                            const bOrder = getSortOrder(b.rank);
                                                             if (aOrder !== bOrder) return aOrder - bOrder;
                                                             // Secondary sort: if same sortOrder, sort by suffix number (e.g., _1 before _2)
                                                             const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
