@@ -1,0 +1,417 @@
+# STEP 2: Fix Integration Tests - Make Real API Calls
+
+## PROBLEM IDENTIFIED:
+Current "integration" tests are not integration tests. They don't make HTTP requests to actual API endpoints. They're just unit tests disguised as integration tests.
+
+## CURRENT STATE (WRONG):
+```typescript
+// tests/integration/api/recruitment.test.ts
+describe('POST /api/recruitment-candidates', () => {
+  it('should validate candidate creation payload structure', () => {
+    const validPayload = { firstName: 'John', ... };
+    expect(validPayload.firstName).toBeDefined(); // ❌ Not testing API
+  });
+});
+```
+
+## REQUIRED STATE (CORRECT):
+```typescript
+describe('POST /api/recruitment-candidates', () => {
+  it('should create candidate via API', async () => {
+    const response = await fetch('/api/recruitment-candidates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(validPayload)
+    });
+    
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data.id).toBeDefined(); // ✅ Tests real API
+  });
+});
+```
+
+---
+
+## YOUR TASK:
+
+Rewrite ALL 4 integration test files to make actual HTTP requests to API endpoints.
+
+### Files to Fix:
+
+1. **tests/integration/api/recruitment.test.ts**
+   - Test actual API endpoints
+   - Minimum 15 tests (not 13)
+   
+2. **tests/integration/api/rotation.test.ts**
+   - Test actual API endpoints
+   - Minimum 12 tests (not 9)
+   
+3. **tests/integration/api/promotions.test.ts**
+   - Test actual API endpoints
+   - Minimum 12 tests (not 10)
+   
+4. **tests/integration/api/drug-alcohol.test.ts**
+   - Test actual API endpoints
+   - Minimum 15 tests (not 12)
+
+---
+
+## IMPLEMENTATION PATTERN:
+
+```typescript
+import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+
+describe('Recruitment API Integration Tests', () => {
+  const API_BASE = 'http://localhost:5000';
+  let testCandidateId: number;
+
+  beforeAll(async () => {
+    // Ensure server is running
+    // You might need to check connection or setup test database
+  });
+
+  afterEach(async () => {
+    // Cleanup test data if needed
+  });
+
+  describe('POST /api/recruitment-candidates', () => {
+    it('should create new recruitment candidate', async () => {
+      const candidate = {
+        firstName: 'John',
+        lastName: 'Doe',
+        rankApplied: 'Chief Engineer',
+        nationality: 'Indian',
+        vesselType: 'Tanker',
+        status: 'Screening',
+        email: 'test@example.com',
+        phone: '+91-9876543210'
+      };
+
+      const response = await fetch(`${API_BASE}/api/recruitment-candidates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(candidate)
+      });
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.id).toBeDefined();
+      testCandidateId = data.id;
+    });
+
+    it('should return 400 for missing required fields', async () => {
+      const incomplete = {
+        firstName: 'John'
+        // missing required fields
+      };
+
+      const response = await fetch(`${API_BASE}/api/recruitment-candidates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(incomplete)
+      });
+
+      expect(response.status).toBe(400);
+      const error = await response.json();
+      expect(error.message).toBeDefined();
+    });
+
+    it('should return 400 for invalid email', async () => {
+      const invalid = {
+        firstName: 'John',
+        lastName: 'Doe',
+        rankApplied: 'AB',
+        nationality: 'Indian',
+        status: 'Screening',
+        email: 'not-an-email'
+      };
+
+      const response = await fetch(`${API_BASE}/api/recruitment-candidates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invalid)
+      });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('GET /api/recruitment-candidates', () => {
+    it('should list all recruitment candidates', async () => {
+      const response = await fetch(`${API_BASE}/api/recruitment-candidates`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should filter by status', async () => {
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates?status=Screening`
+      );
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      
+      // All returned candidates should have Screening status
+      data.forEach((candidate: any) => {
+        expect(candidate.status).toBe('Screening');
+      });
+    });
+
+    it('should filter by rank', async () => {
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates?rank=Chief%20Engineer`
+      );
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      
+      data.forEach((candidate: any) => {
+        expect(candidate.rankApplied).toBe('Chief Engineer');
+      });
+    });
+
+    it('should search by name', async () => {
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates?search=John`
+      );
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      
+      data.forEach((candidate: any) => {
+        const fullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
+        expect(fullName).toContain('john');
+      });
+    });
+  });
+
+  describe('PUT /api/recruitment-candidates/:id', () => {
+    it('should update candidate status', async () => {
+      // First create a candidate
+      const createRes = await fetch(`${API_BASE}/api/recruitment-candidates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: 'Test',
+          lastName: 'Update',
+          rankApplied: 'AB',
+          nationality: 'Indian',
+          status: 'Screening'
+        })
+      });
+      const created = await createRes.json();
+
+      // Update status
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates/${created.id}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'Interview' })
+        }
+      );
+
+      expect(response.status).toBe(200);
+      const updated = await response.json();
+      expect(updated.status).toBe('Interview');
+    });
+
+    it('should return 404 for non-existent candidate', async () => {
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates/99999`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'Interview' })
+        }
+      );
+
+      expect(response.status).toBe(404);
+    });
+
+    it('should return 400 for invalid status', async () => {
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates/${testCandidateId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'InvalidStatus' })
+        }
+      );
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/recruitment-candidates/:id/transfer-to-crew', () => {
+    it('should transfer candidate to crew pool', async () => {
+      // First create and update candidate to "Offered" status
+      const createRes = await fetch(`${API_BASE}/api/recruitment-candidates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: 'Transfer',
+          lastName: 'Test',
+          rankApplied: 'AB',
+          nationality: 'Filipino',
+          status: 'Offered'
+        })
+      });
+      const candidate = await createRes.json();
+
+      // Transfer to crew
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates/${candidate.id}/transfer-to-crew`,
+        { method: 'POST' }
+      );
+
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result.crewMemberId).toBeDefined();
+    });
+
+    it('should reject transfer if status is not Offered', async () => {
+      // Create candidate with Screening status
+      const createRes = await fetch(`${API_BASE}/api/recruitment-candidates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: 'No',
+          lastName: 'Transfer',
+          rankApplied: 'AB',
+          nationality: 'Indian',
+          status: 'Screening'
+        })
+      });
+      const candidate = await createRes.json();
+
+      // Try to transfer
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates/${candidate.id}/transfer-to-crew`,
+        { method: 'POST' }
+      );
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('DELETE /api/recruitment-candidates/:id', () => {
+    it('should delete candidate', async () => {
+      // Create candidate
+      const createRes = await fetch(`${API_BASE}/api/recruitment-candidates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: 'Delete',
+          lastName: 'Me',
+          rankApplied: 'AB',
+          nationality: 'Indian',
+          status: 'Rejected'
+        })
+      });
+      const candidate = await createRes.json();
+
+      // Delete it
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates/${candidate.id}`,
+        { method: 'DELETE' }
+      );
+
+      expect(response.status).toBe(200);
+
+      // Verify it's deleted
+      const getRes = await fetch(
+        `${API_BASE}/api/recruitment-candidates/${candidate.id}`
+      );
+      expect(getRes.status).toBe(404);
+    });
+
+    it('should return 404 for non-existent candidate', async () => {
+      const response = await fetch(
+        `${API_BASE}/api/recruitment-candidates/99999`,
+        { method: 'DELETE' }
+      );
+
+      expect(response.status).toBe(404);
+    });
+  });
+});
+```
+
+---
+
+## REQUIREMENTS FOR EACH MODULE:
+
+### Recruitment API (15 tests):
+- POST create: 3 tests (success, validation errors)
+- GET list: 4 tests (all, filter by status, by rank, search)
+- PUT update: 3 tests (success, 404, validation)
+- POST transfer: 2 tests (success, status validation)
+- DELETE: 2 tests (success, 404)
+- Additional: 1 test (pagination or sorting)
+
+### Rotation API (12 tests):
+- POST create plan: 3 tests
+- GET list: 3 tests
+- POST propose: 2 tests
+- POST deploy: 2 tests
+- POST reject: 2 tests
+
+### Promotions API (12 tests):
+- POST create: 3 tests
+- GET list: 3 tests
+- POST approve: 2 tests
+- POST reject: 2 tests
+- POST review: 2 tests
+
+### Drug-Alcohol API (15 tests):
+- POST create test: 4 tests
+- GET list: 4 tests
+- PUT update: 3 tests
+- GET statistics: 2 tests
+- Filters: 2 tests
+
+---
+
+## IMPORTANT NOTES:
+
+1. **Use actual API base URL** - `http://localhost:5000` or appropriate
+2. **Handle async/await** properly
+3. **Test error cases** - 400, 404, validation errors
+4. **Create test data** before testing updates/deletes
+5. **Clean up** test data if needed (optional)
+6. **Check response structure** not just status codes
+
+---
+
+## SUCCESS CRITERIA:
+
+✅ All 4 files make real HTTP requests
+✅ Tests use fetch() or similar HTTP client
+✅ Both success and error cases tested
+✅ Minimum test counts met:
+   - Recruitment: 15 tests
+   - Rotation: 12 tests
+   - Promotions: 12 tests
+   - Drug-Alcohol: 15 tests
+✅ Total: 54 integration tests (not 44)
+✅ All tests passing: `npm run test:integration`
+
+---
+
+## AFTER COMPLETION:
+
+Run tests and show me:
+```bash
+npm run test:integration
+```
+
+Report:
+1. Total integration tests passing
+2. Any connection errors
+3. Any API errors
+4. Confirmation that real HTTP requests are being made
+
