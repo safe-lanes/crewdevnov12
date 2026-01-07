@@ -2,7 +2,90 @@
 
 ## Overview
 
-This guide covers migrating existing tests to follow the project's testing standards:
+This guide covers:
+1. **Fork Migration** - Moving the entire test suite to another fork
+2. **Test Pattern Migration** - Converting existing tests to real code patterns
+
+---
+
+## Fork Migration (Moving to Another Fork)
+
+### Step 1: Copy These Files/Folders
+
+```bash
+# Essential test suite files
+tests/                       # All test files (unit, integration, e2e)
+scripts/                     # Migration and helper scripts
+docs/                        # All documentation including TEST_IDS_REFERENCE.md
+vitest.config.ts             # Vitest configuration
+playwright.config.ts         # Playwright E2E configuration
+```
+
+### Step 2: Install Dependencies
+
+```bash
+npm install -D vitest @vitest/ui @vitest/coverage-v8 happy-dom \
+  @playwright/test @testing-library/react @testing-library/jest-dom \
+  @testing-library/user-event supertest @types/supertest
+```
+
+### Step 3: Add Scripts to package.json
+
+```json
+{
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  }
+}
+```
+
+### Step 4: Verify Test IDs for E2E Tests
+
+E2E tests rely on `data-testid` attributes. See `docs/TEST_IDS_REFERENCE.md` for all required IDs.
+
+```bash
+# Check for missing test IDs in your fork
+grep -roh "getByTestId('[^']*')" tests/e2e --include="*.spec.ts" | \
+  sed "s/getByTestId('//;s/')//" | sort | uniq > expected.txt
+
+grep -roh 'data-testid="[^"]*"' client/src --include="*.tsx" | \
+  sed 's/data-testid="//;s/"$//' | sort | uniq > actual.txt
+
+comm -23 expected.txt actual.txt  # Shows missing test IDs
+```
+
+### Step 5: Update API Base URL
+
+In each integration test file, verify the port matches your server:
+
+```typescript
+const API_BASE = 'http://localhost:5000';  // Adjust if different
+```
+
+### Step 6: Run Migration Analysis
+
+```bash
+chmod +x scripts/migrate-tests.sh
+./scripts/migrate-tests.sh
+```
+
+### Step 7: Run Tests
+
+```bash
+npm run test          # Unit + Integration
+npm run test:e2e      # E2E tests
+```
+
+---
+
+## Test Pattern Migration
+
+This section covers converting existing tests to follow real code patterns:
 - Real Zod schema validation (not mock validation)
 - Real HTTP API calls (not mocked responses)
 - Defensive E2E patterns (existence checks before interaction)
@@ -26,8 +109,10 @@ This guide covers migrating existing tests to follow the project's testing stand
 ### E2E Tests
 - [ ] Check element existence before interaction
 - [ ] Use scoped selectors (container.getByTestId)
+- [ ] Use test IDs from `docs/TEST_IDS_REFERENCE.md`
 - [ ] Handle empty states gracefully
 - [ ] Use appropriate timeouts
+- [ ] Verify all required test IDs exist in components
 
 ---
 
@@ -212,6 +297,28 @@ it('should return record by ID', async () => {
 ---
 
 ## E2E Test Migration
+
+### Required: Test ID Reference
+
+Before writing or migrating E2E tests, review `docs/TEST_IDS_REFERENCE.md` which contains:
+- All static test IDs organized by category
+- Dynamic test ID patterns (e.g., `row-crew-${id}`)
+- Naming conventions for new test IDs
+- Verification script to check coverage
+
+**Verify test IDs exist in the new fork:**
+
+```bash
+# Check which test IDs E2E tests expect but are missing
+grep -roh "getByTestId('[^']*')" tests/e2e --include="*.spec.ts" | \
+  sed "s/getByTestId('//;s/')//" | sort | uniq > expected.txt
+
+grep -roh 'data-testid="[^"]*"' client/src --include="*.tsx" | \
+  sed 's/data-testid="//;s/"$//' | sort | uniq > actual.txt
+
+comm -23 expected.txt actual.txt  # Shows missing test IDs
+rm expected.txt actual.txt
+```
 
 ### Before (Brittle Selectors)
 
