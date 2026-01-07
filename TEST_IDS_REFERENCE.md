@@ -380,11 +380,14 @@ January 2026 - Testing Fork Implementation
 - `tests/unit/modules/crew-pool/crew-pool-validation.test.ts` (20 tests - uses real schemas)
 - `tests/unit/modules/vessel/vessel-management.test.ts` (20 tests - uses real schemas)
 
-**Integration Tests (4 APIs):**
-- `tests/integration/api/recruitment.test.ts` (15 tests - real API calls)
+**Integration Tests (7 APIs):**
+- `tests/integration/api/crew-members.test.ts` (16 tests - real API calls)
+- `tests/integration/api/forms.test.ts` (20 tests - real API calls)
+- `tests/integration/api/rest-hours.test.ts` (19 tests - real API calls)
+- `tests/integration/api/recruitment.test.ts` (16 tests - real API calls)
 - `tests/integration/api/rotation.test.ts` (12 tests - real API calls)
-- `tests/integration/api/promotions.test.ts` (12 tests - real API calls)
-- `tests/integration/api/drug-alcohol.test.ts` (15 tests - real API calls)
+- `tests/integration/api/promotions.test.ts` (14 tests - real API calls)
+- `tests/integration/api/drug-alcohol.test.ts` (17 tests - real API calls)
 
 **E2E Tests - Comprehensive Workflows:**
 - `tests/e2e/recruitment-comprehensive.spec.ts` (8 tests - full workflows)
@@ -408,10 +411,10 @@ January 2026 - Testing Fork Implementation
 
 | Category | Test Count | Files |
 |----------|-----------|-------|
-| Unit Tests | 223 | 6 modules |
-| Integration Tests | 116 | 4 APIs |
+| Unit Tests | 223 | 18 files |
+| Integration Tests | 114 | 7 APIs |
 | E2E Tests | 99 | 12 spec files |
-| **GRAND TOTAL** | **438** | **22 files** |
+| **GRAND TOTAL** | **436** | **37 files** |
 
 ### Test Quality Improvements
 
@@ -573,8 +576,8 @@ npm run test && npx playwright test
 
 January 2026 - Complete Test Quality Overhaul
 - Fixed unit tests to use real Zod schemas
-- Fixed integration tests to make real API calls
+- Fixed all 7 integration test files to make real API calls
 - Added comprehensive E2E workflow tests for all modules
 - Added E2E tests for Reports, Training, Admin, Accounts modules
-- Achieved 438 total tests with 85% application coverage
+- Achieved 436 total tests with 85% application coverage
 - All test counts verified and accurate

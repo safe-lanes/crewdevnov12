@@ -1,0 +1,765 @@
+# STEP 8: Fix Remaining Integration Tests (CRITICAL)
+
+## PROBLEM IDENTIFIED:
+
+Code review revealed that 3 integration test files were NOT fixed in Step 2. They still use mock data instead of making real API calls.
+
+**Files Still Using Mocks:**
+1. `tests/integration/api/crew-members.test.ts` (14 tests)
+2. `tests/integration/api/forms.test.ts` (21 tests)
+3. `tests/integration/api/rest-hours.test.ts` (22 tests)
+
+**Total:** 57 tests (49% of integration tests) are NOT testing real APIs
+
+---
+
+## YOUR TASK:
+
+Rewrite these 3 files to make REAL HTTP requests like the other 4 integration test files.
+
+---
+
+## FILE 1: tests/integration/api/crew-members.test.ts
+
+**Current (WRONG):**
+```typescript
+import { mockCrewMember, mockCrewMemberInsert } from '../../fixtures/crew-members';
+
+it('should return a list of crew members', async () => {
+  const expectedStructure = {
+    id: expect.any(Number),
+    firstName: expect.any(String),
+  };
+  
+  expect(mockCrewMember).toMatchObject(expectedStructure); // ❌ No API call
+});
+```
+
+**Required (CORRECT):**
+```typescript
+const API_BASE = 'http://localhost:5000';
+
+it('should return a list of crew members', async () => {
+  const response = await fetch(`${API_BASE}/api/crew-members`);
+  
+  expect(response.status).toBe(200);
+  const data = await response.json();
+  expect(Array.isArray(data)).toBe(true);
+  
+  if (data.length > 0) {
+    expect(data[0]).toHaveProperty('id');
+    expect(data[0]).toHaveProperty('firstName');
+  }
+});
+```
+
+---
+
+### Complete Rewrite for crew-members.test.ts:
+
+```typescript
+import { describe, it, expect, beforeAll } from 'vitest';
+
+const API_BASE = 'http://localhost:5000';
+
+describe('Crew Members API Integration', () => {
+  let testCrewMemberId: number;
+
+  beforeAll(async () => {
+    const healthCheck = await fetch(`${API_BASE}/api/health`);
+    if (!healthCheck.ok) {
+      throw new Error('Server not running');
+    }
+  });
+
+  describe('GET /api/crew-members', () => {
+    it('should return a list of crew members', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support pagination', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members?page=1&limit=10`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+      expect(data.length).toBeLessThanOrEqual(10);
+    });
+
+    it('should support filtering by vessel', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members?vesselId=1`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      
+      // All crew members should belong to vessel 1
+      data.forEach((member: any) => {
+        if (member.vesselId) {
+          expect(member.vesselId).toBe(1);
+        }
+      });
+    });
+
+    it('should support filtering by status', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members?status=active`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      
+      data.forEach((member: any) => {
+        if (member.status) {
+          expect(member.status).toBe('active');
+        }
+      });
+    });
+
+    it('should support filtering by rank', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members?rank=Chief%20Engineer`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support search by name', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members?search=John`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+  });
+
+  describe('POST /api/crew-members', () => {
+    it('should create new crew member', async () => {
+      const crewMember = {
+        firstName: 'Test',
+        lastName: 'Crew',
+        rank: 'AB',
+        nationality: 'Indian',
+        dateOfBirth: '1990-01-15'
+      };
+
+      const response = await fetch(`${API_BASE}/api/crew-members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(crewMember)
+      });
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.id).toBeDefined();
+      testCrewMemberId = data.id;
+    });
+
+    it('should return 400 for missing required fields', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName: 'Incomplete' })
+      });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('GET /api/crew-members/:id', () => {
+    it('should return crew member by ID', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members/${testCrewMemberId}`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.id).toBe(testCrewMemberId);
+    });
+
+    it('should return 404 for non-existent crew member', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members/99999`);
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('PATCH /api/crew-members/:id', () => {
+    it('should update crew member', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members/${testCrewMemberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'onshore' })
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.status).toBe('onshore');
+    });
+
+    it('should return 404 for non-existent crew member', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members/99999`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active' })
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('DELETE /api/crew-members/:id', () => {
+    it('should delete crew member', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members/${testCrewMemberId}`, {
+        method: 'DELETE'
+      });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should return 404 for non-existent crew member', async () => {
+      const response = await fetch(`${API_BASE}/api/crew-members/99999`, {
+        method: 'DELETE'
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+});
+```
+
+---
+
+## FILE 2: tests/integration/api/forms.test.ts
+
+**Replace entire file with:**
+
+```typescript
+import { describe, it, expect, beforeAll } from 'vitest';
+
+const API_BASE = 'http://localhost:5000';
+
+describe('Appraisal Forms API Integration', () => {
+  let testFormId: number;
+  let testCrewMemberId: number;
+
+  beforeAll(async () => {
+    const healthCheck = await fetch(`${API_BASE}/api/health`);
+    if (!healthCheck.ok) {
+      throw new Error('Server not running');
+    }
+  });
+
+  describe('GET /api/appraisals', () => {
+    it('should return a list of appraisal forms', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support filtering by status', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals?status=draft`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      
+      data.forEach((form: any) => {
+        if (form.status) {
+          expect(form.status).toBe('draft');
+        }
+      });
+    });
+
+    it('should support filtering by crew member', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals?crewMemberId=1`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support filtering by vessel', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals?vesselId=1`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support filtering by appraisal type', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals?appraisalType=mid-contract`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support date range filtering', async () => {
+      const startDate = '2025-01-01';
+      const endDate = '2025-12-31';
+      const response = await fetch(
+        `${API_BASE}/api/appraisals?startDate=${startDate}&endDate=${endDate}`
+      );
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+  });
+
+  describe('POST /api/appraisals', () => {
+    it('should create new appraisal form', async () => {
+      const form = {
+        crewMemberId: 1,
+        vesselId: 1,
+        appraisalType: 'mid-contract',
+        status: 'draft',
+        appraisalDate: '2025-06-15'
+      };
+
+      const response = await fetch(`${API_BASE}/api/appraisals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.id).toBeDefined();
+      testFormId = data.id;
+    });
+
+    it('should return 400 for missing required fields', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crewMemberId: 1 })
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should validate appraisal type', async () => {
+      const form = {
+        crewMemberId: 1,
+        vesselId: 1,
+        appraisalType: 'invalid-type',
+        status: 'draft'
+      };
+
+      const response = await fetch(`${API_BASE}/api/appraisals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('GET /api/appraisals/:id', () => {
+    it('should return appraisal form by ID', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/${testFormId}`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.id).toBe(testFormId);
+    });
+
+    it('should return 404 for non-existent form', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/99999`);
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('PATCH /api/appraisals/:id', () => {
+    it('should update appraisal form', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/${testFormId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'submitted' })
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.status).toBe('submitted');
+    });
+
+    it('should validate status transitions', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/${testFormId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'invalid-status' })
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 404 for non-existent form', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/99999`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'draft' })
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('POST /api/appraisals/:id/submit', () => {
+    it('should submit appraisal form', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/${testFormId}/submit`, {
+        method: 'POST'
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.status).toBe('submitted');
+    });
+
+    it('should return 404 for non-existent form', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/99999/submit`, {
+        method: 'POST'
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('POST /api/appraisals/:id/approve', () => {
+    it('should approve appraisal form', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/${testFormId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approverComments: 'Approved' })
+      });
+
+      if (response.status === 200) {
+        const data = await response.json();
+        expect(data.status).toBe('approved');
+      }
+    });
+  });
+
+  describe('DELETE /api/appraisals/:id', () => {
+    it('should delete appraisal form', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/${testFormId}`, {
+        method: 'DELETE'
+      });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should return 404 for non-existent form', async () => {
+      const response = await fetch(`${API_BASE}/api/appraisals/99999`, {
+        method: 'DELETE'
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+});
+```
+
+---
+
+## FILE 3: tests/integration/api/rest-hours.test.ts
+
+**Replace entire file with:**
+
+```typescript
+import { describe, it, expect, beforeAll } from 'vitest';
+
+const API_BASE = 'http://localhost:5000';
+
+describe('Rest Hours API Integration', () => {
+  let testRecordId: number;
+
+  beforeAll(async () => {
+    const healthCheck = await fetch(`${API_BASE}/api/health`);
+    if (!healthCheck.ok) {
+      throw new Error('Server not running');
+    }
+  });
+
+  describe('GET /api/rest-hours', () => {
+    it('should return a list of rest hours records', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support filtering by crew member', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours?crewMemberId=1`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support filtering by vessel', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours?vesselId=1`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support date range filtering', async () => {
+      const startDate = '2025-01-01';
+      const endDate = '2025-01-31';
+      const response = await fetch(
+        `${API_BASE}/api/rest-hours?startDate=${startDate}&endDate=${endDate}`
+      );
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support filtering by compliance status', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours?compliant=false`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+  });
+
+  describe('POST /api/rest-hours', () => {
+    it('should create new rest hours record', async () => {
+      const record = {
+        crewMemberId: 1,
+        vesselId: 1,
+        date: '2025-01-15',
+        restHours: 8.5,
+        workHours: 10
+      };
+
+      const response = await fetch(`${API_BASE}/api/rest-hours`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      });
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.id).toBeDefined();
+      testRecordId = data.id;
+    });
+
+    it('should return 400 for missing required fields', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crewMemberId: 1 })
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should validate rest hours range', async () => {
+      const record = {
+        crewMemberId: 1,
+        vesselId: 1,
+        date: '2025-01-16',
+        restHours: 30, // Invalid: > 24
+        workHours: 10
+      };
+
+      const response = await fetch(`${API_BASE}/api/rest-hours`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should calculate compliance automatically', async () => {
+      const record = {
+        crewMemberId: 1,
+        vesselId: 1,
+        date: '2025-01-17',
+        restHours: 9,
+        workHours: 12
+      };
+
+      const response = await fetch(`${API_BASE}/api/rest-hours`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      });
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data).toHaveProperty('compliant');
+    });
+  });
+
+  describe('GET /api/rest-hours/:id', () => {
+    it('should return rest hours record by ID', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/${testRecordId}`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.id).toBe(testRecordId);
+    });
+
+    it('should return 404 for non-existent record', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/99999`);
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('PATCH /api/rest-hours/:id', () => {
+    it('should update rest hours record', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/${testRecordId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restHours: 10 })
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.restHours).toBe(10);
+    });
+
+    it('should recalculate compliance on update', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/${testRecordId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restHours: 5 })
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data).toHaveProperty('compliant');
+    });
+
+    it('should return 404 for non-existent record', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/99999`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restHours: 10 })
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('GET /api/rest-hours/compliance-summary', () => {
+    it('should return compliance summary statistics', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/compliance-summary`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data).toHaveProperty('totalRecords');
+      expect(data).toHaveProperty('compliantCount');
+      expect(data).toHaveProperty('nonCompliantCount');
+    });
+
+    it('should support filtering summary by vessel', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/compliance-summary?vesselId=1`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data).toHaveProperty('totalRecords');
+    });
+
+    it('should support date range for summary', async () => {
+      const response = await fetch(
+        `${API_BASE}/api/rest-hours/compliance-summary?startDate=2025-01-01&endDate=2025-01-31`
+      );
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data).toHaveProperty('totalRecords');
+    });
+  });
+
+  describe('GET /api/rest-hours/violations', () => {
+    it('should return only non-compliant records', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/violations`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should support filtering violations by crew', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/violations?crewMemberId=1`);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+  });
+
+  describe('DELETE /api/rest-hours/:id', () => {
+    it('should delete rest hours record', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/${testRecordId}`, {
+        method: 'DELETE'
+      });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should return 404 for non-existent record', async () => {
+      const response = await fetch(`${API_BASE}/api/rest-hours/99999`, {
+        method: 'DELETE'
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+});
+```
+
+---
+
+## SUCCESS CRITERIA:
+
+✅ All 3 files rewritten to use `fetch()`
+✅ All tests make real HTTP requests
+✅ Tests verify response status codes
+✅ Tests verify response data structure
+✅ Tests check error cases (400, 404)
+✅ Total: 57 tests now with real API calls
+✅ Integration tests: 116/116 using real APIs (100%)
+
+---
+
+## AFTER COMPLETION:
+
+Run and verify:
+
+```bash
+npm run test:integration
+```
+
+**Expected Output:**
+```
+Integration Tests: 116/116 passing (100%)
+- crew-members.test.ts: 14/14 passing ✅
+- forms.test.ts: 21/21 passing ✅
+- rest-hours.test.ts: 22/22 passing ✅
+- recruitment.test.ts: 16/16 passing ✅
+- rotation.test.ts: 12/12 passing ✅
+- promotions.test.ts: 14/14 passing ✅
+- drug-alcohol.test.ts: 17/17 passing ✅
+
+All tests now make real API calls! ✅
+```
+
+Report final status and show fetch() count in each file.
+
+---
+
+## IMPORTANCE:
+
+This is CRITICAL to achieve true production readiness. Without real API calls, these 57 tests won't catch actual API bugs.
+
+**Begin with crew-members.test.ts, then forms.test.ts, then rest-hours.test.ts.**
