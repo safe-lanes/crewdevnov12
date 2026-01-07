@@ -2635,8 +2635,10 @@ export const VesselModule = (): JSX.Element => {
             };
         });
         
-        // Sort crew by rank using the same ordering as Crew List screen
-        const crewMembersData = sortCrewByRank(crewMembersDataUnsorted);
+        // Sort crew alphabetically by Family Name (A-Z) for US Crew List
+        const crewMembersData = [...crewMembersDataUnsorted].sort((a, b) => 
+            (a.familyName || '').localeCompare(b.familyName || '', undefined, { sensitivity: 'base' })
+        );
         
         try {
             await generateUSCrewListDocument({
