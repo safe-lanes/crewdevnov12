@@ -47,6 +47,7 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
 import { API_BASE_URL } from '@/config/api';
+import { generateFALForm5Document } from '@/lib/generateFALForm5';
 
 // Helper function to check if crew member has valid GMDSS certificate
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
@@ -2549,6 +2550,63 @@ export const VesselModule = (): JSX.Element => {
         setActiveTab("crew-list");
     };
 
+    const handleDownloadIMOCrewList = async () => {
+        if (!selectedVessel) return;
+        
+        const vesselCrew = filteredVesselPlanning
+            .filter((planning: any) => {
+                if (!planning.crewMemberId) return false;
+                const isArchived = planning.isArchived === true;
+                return !isArchived;
+            });
+        
+        const crewMembersData = vesselCrew.map((planning: any) => {
+            const crewData = planning.crewMemberData || {};
+            const fullCrewData = crewMemberLookup.get(planning.crewMemberId) || {};
+            
+            const placeOfBirthParts = [
+                fullCrewData.placeOfBirthCity,
+                fullCrewData.placeOfBirthCountry
+            ].filter(Boolean);
+            const placeOfBirth = placeOfBirthParts.join(', ');
+            
+            return {
+                id: planning.crewMemberId,
+                firstName: crewData.firstName || '',
+                middleName: crewData.middleName || '',
+                familyName: crewData.familyName || crewData.lastName || '',
+                presentRank: planning.rank || crewData.presentRank || '',
+                nationality: crewData.nationality || '',
+                dateOfBirth: fullCrewData.dateOfBirth || '',
+                placeOfBirth: placeOfBirth,
+                gender: fullCrewData.gender || '',
+                documents: crewData.documents || '',
+            };
+        });
+        
+        try {
+            await generateFALForm5Document({
+                vessel: {
+                    id: selectedVessel.id,
+                    name: selectedVessel.name,
+                    vesselType: selectedVessel.vesselType,
+                },
+                crewMembers: crewMembersData,
+            });
+            toast({
+                title: "Download Complete",
+                description: "FAL Form 5 (IMO Crew List) has been downloaded successfully.",
+            });
+        } catch (error) {
+            console.error("Error generating FAL Form 5:", error);
+            toast({
+                title: "Download Failed",
+                description: "Failed to generate IMO Crew List document. Please try again.",
+                variant: "destructive",
+            });
+        }
+    };
+
     const handleVesselChange = (vesselName: string) => {
         const vessel = vessels.find((v: any) => v.name === vesselName);
         if (vessel) {
@@ -2787,6 +2845,7 @@ export const VesselModule = (): JSX.Element => {
                                             variant="outline"
                                             size="sm"
                                             className="h-8 gap-2"
+                                            onClick={handleDownloadIMOCrewList}
                                             data-testid="button-download-imo"
                                         >
                                             <Download className="h-4 w-4" />
