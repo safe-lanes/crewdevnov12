@@ -57,7 +57,7 @@ export function PromotionsModule() {
     };
 
     return (
-        <>
+        <div data-testid="promotions-container">
             <PromotionsSideBar
                 selectedPromotionsPage={selectedPromotionsPage}
                 setSelectedPromotionsPage={setSelectedPromotionsPage}
@@ -207,6 +207,6 @@ export function PromotionsModule() {
                 </div>
             </div>
             </MainLayout>
-        </>
+        </div>
     );
 }

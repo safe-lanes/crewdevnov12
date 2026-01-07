@@ -1,0 +1,716 @@
+# COMPREHENSIVE TEST EXPANSION - COVER THE GAPS
+
+## CURRENT STATE (What You've Already Done):
+
+Based on our previous work, you have COMPLETE test coverage for:
+
+✅ **Appraisals Module**
+   - Container: `appraisals-container` ✅
+   - Unit tests: Compliance engine, violations ✅
+   - Integration tests: Forms API ✅
+   - E2E tests: Appraisal workflow ✅
+   - Status: COMPLETE - Skip this module
+
+✅ **Rest Hours Module**
+   - Container: `rest-hours-container` ✅
+   - Unit tests: Rest hours calculations, violations ✅
+   - Integration tests: Rest hours API ✅
+   - E2E tests: Rest hours recording ✅
+   - Status: COMPLETE - Skip this module
+
+✅ **Crew Pool Module**
+   - Container: `crew-pool-container` ✅
+   - E2E tests: Crew management workflow ✅
+   - Status: PARTIAL - Has E2E, needs unit & integration
+
+✅ **Vessel Module**
+   - Container: `vessel-container` ✅
+   - E2E tests: Vessel workflow ✅
+   - Status: PARTIAL - Has E2E, needs unit & integration
+
+---
+
+## GAPS TO FILL (What's Missing):
+
+### TIER 1: ZERO COVERAGE (High Priority)
+
+These modules have NO tests at all:
+
+❌ **Recruitment Module** - 0% coverage
+❌ **Rotation Module** - 0% coverage
+❌ **Promotions Module** - 0% coverage
+❌ **Drugs & Alcohol Module** - 0% coverage
+
+### TIER 2: PARTIAL COVERAGE (Medium Priority)
+
+These have E2E but missing unit/integration:
+
+⚠️ **Crew Pool Module** - 30% coverage (needs unit + integration)
+⚠️ **Vessel Module** - 30% coverage (needs unit + integration)
+
+### TIER 3: NOT CRITICAL (Can Skip for Now)
+
+These are optional/admin modules:
+
+⏸️ **Reports Module** - Can skip (mostly read-only)
+⏸️ **Admin Module** - Can skip (internal use)
+⏸️ **Accounts/Payroll Module** - Can skip (complex, separate phase)
+
+---
+
+## YOUR TASK: FOCUS ON THE GAPS
+
+Implement comprehensive testing for the 6 modules that need coverage:
+
+**Priority Order:**
+1. Recruitment (most visible, 0% coverage)
+2. Rotation (critical workflow, 0% coverage)
+3. Promotions (important for crew, 0% coverage)
+4. Drugs & Alcohol (compliance requirement, 0% coverage)
+5. Crew Pool (expand existing - add unit + integration)
+6. Vessel (expand existing - add unit + integration)
+
+---
+
+## MODULE 1: RECRUITMENT MODULE (/recruitment)
+
+### Status: 0% Coverage - Need Everything
+
+### Files to Test:
+- `RecruitmentModule.tsx` (32KB - main module)
+- `RecruitmentApplicationForm.tsx` (319KB - massive complex form)
+- `RecruitmentSideBar.tsx` (4KB - navigation)
+
+### API Endpoints (from routes.ts):
+- `POST /api/recruitment-candidates`
+- `POST /api/recruitment-candidates/:id/transfer-to-crew`
+- `GET /api/recruitment-candidates`
+- `PUT /api/recruitment-candidates/:id`
+- `DELETE /api/recruitment-candidates/:id`
+
+### UNIT TESTS NEEDED (~15 tests):
+
+**File: `tests/unit/modules/recruitment/recruitment-validation.test.ts`**
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { insertRecruitmentCandidateSchema } from '@shared/schema';
+
+describe('Recruitment Candidate Validation', () => {
+  it('should validate complete recruitment candidate data', () => {
+    const validCandidate = {
+      firstName: 'John',
+      lastName: 'Doe',
+      rankApplied: 'Chief Engineer',
+      nationality: 'Indian',
+      vesselType: 'Tanker',
+      status: 'Screening',
+      email: 'john.doe@example.com',
+      phone: '+91-9876543210',
+      dateOfBirth: '1990-05-15',
+      experience: 8
+    };
+    
+    const result = insertRecruitmentCandidateSchema.safeParse(validCandidate);
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject candidate without required fields', () => {
+    const invalidData = { firstName: 'John' };
+    const result = insertRecruitmentCandidateSchema.safeParse(invalidData);
+    expect(result.success).toBe(false);
+  });
+
+  it('should validate email format', () => {
+    const validEmail = 'john@example.com';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    expect(emailRegex.test(validEmail)).toBe(true);
+  });
+
+  it('should validate status transitions', () => {
+    const validStatuses = ['Screening', 'Interview', 'Offered', 'Joined', 'Rejected'];
+    const currentStatus = 'Screening';
+    const nextStatus = 'Interview';
+    
+    const currentIndex = validStatuses.indexOf(currentStatus);
+    const nextIndex = validStatuses.indexOf(nextStatus);
+    
+    // Can only move forward in workflow (except Rejected)
+    expect(nextIndex >= currentIndex || nextStatus === 'Rejected').toBe(true);
+  });
+
+  it('should calculate experience in years', () => {
+    const seaServiceMonths = 48;
+    const experienceYears = seaServiceMonths / 12;
+    expect(experienceYears).toBe(4);
+  });
+
+  it('should validate age eligibility (18-65)', () => {
+    const dateOfBirth = new Date('1995-01-01');
+    const today = new Date();
+    const age = today.getFullYear() - dateOfBirth.getFullYear();
+    
+    expect(age).toBeGreaterThanOrEqual(18);
+    expect(age).toBeLessThanOrEqual(65);
+  });
+
+  it('should validate rank matching with experience', () => {
+    const rankMinExperience = {
+      'AB': 0,
+      'OS': 2,
+      'Third Officer': 3,
+      'Chief Engineer': 10
+    };
+    
+    const candidateRank = 'Chief Engineer';
+    const candidateExperience = 12;
+    
+    expect(candidateExperience).toBeGreaterThanOrEqual(rankMinExperience[candidateRank]);
+  });
+
+  it('should prevent duplicate candidates (same email)', () => {
+    const email1 = 'john@example.com';
+    const email2 = 'john@example.com';
+    
+    expect(email1 === email2).toBe(true); // Would check database in real test
+  });
+
+  it('should validate transfer to crew pool eligibility', () => {
+    const candidate = {
+      status: 'Offered',
+      documentsComplete: true,
+      medicalValid: true,
+      licensesValid: true
+    };
+    
+    const canTransfer = candidate.status === 'Offered' && 
+                       candidate.documentsComplete && 
+                       candidate.medicalValid && 
+                       candidate.licensesValid;
+    
+    expect(canTransfer).toBe(true);
+  });
+
+  it('should format phone number correctly', () => {
+    const rawPhone = '9876543210';
+    const formattedPhone = `+91-${rawPhone}`;
+    expect(formattedPhone).toMatch(/^\+\d{2}-\d{10}$/);
+  });
+
+  it('should validate nationality from allowed list', () => {
+    const validNationalities = ['Indian', 'Filipino', 'Indonesian', 'Ukrainian'];
+    const candidateNationality = 'Indian';
+    
+    expect(validNationalities.includes(candidateNationality)).toBe(true);
+  });
+
+  it('should calculate joining date based on offer acceptance', () => {
+    const offerDate = new Date('2026-01-15');
+    const expectedJoiningDate = new Date(offerDate);
+    expectedJoiningDate.setDate(expectedJoiningDate.getDate() + 30); // 30 days notice
+    
+    expect(expectedJoiningDate.getMonth()).toBe(1); // February
+  });
+
+  it('should validate vessel type experience match', () => {
+    const candidateVesselTypes = ['Tanker', 'Bulk Carrier'];
+    const requiredVesselType = 'Tanker';
+    
+    expect(candidateVesselTypes.includes(requiredVesselType)).toBe(true);
+  });
+
+  it('should validate certificate requirements for rank', () => {
+    const rank = 'Chief Engineer';
+    const requiredCertificates = ['COC Class 1', 'STCW Basic Safety'];
+    const candidateCertificates = ['COC Class 1', 'STCW Basic Safety', 'MEFA'];
+    
+    const hasAllRequired = requiredCertificates.every(cert => 
+      candidateCertificates.includes(cert)
+    );
+    
+    expect(hasAllRequired).toBe(true);
+  });
+
+  it('should validate interview scheduling (business days only)', () => {
+    const interviewDate = new Date('2026-01-20'); // Tuesday
+    const dayOfWeek = interviewDate.getDay();
+    
+    // 0 = Sunday, 6 = Saturday
+    const isBusinessDay = dayOfWeek >= 1 && dayOfWeek <= 5;
+    expect(isBusinessDay).toBe(true);
+  });
+});
+```
+
+### INTEGRATION TESTS NEEDED (~12 tests):
+
+**File: `tests/integration/api/recruitment.test.ts`**
+
+```typescript
+import { describe, it, expect, beforeEach } from 'vitest';
+
+describe('Recruitment API', () => {
+  let testCandidateId: number;
+
+  describe('POST /api/recruitment-candidates', () => {
+    it('should create new recruitment candidate', async () => {
+      const candidate = {
+        firstName: 'John',
+        lastName: 'Doe',
+        rankApplied: 'Chief Engineer',
+        nationality: 'Indian',
+        vesselType: 'Tanker',
+        status: 'Screening',
+        email: 'test@example.com',
+        phone: '+91-9876543210'
+      };
+
+      const response = await fetch('/api/recruitment-candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(candidate)
+      });
+
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.id).toBeDefined();
+      testCandidateId = data.id;
+    });
+
+    it('should validate required fields', async () => {
+      const response = await fetch('/api/recruitment-candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName: 'Incomplete' })
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should prevent duplicate email addresses', async () => {
+      const candidate = {
+        firstName: 'Jane',
+        lastName: 'Smith',
+        email: 'duplicate@example.com',
+        rankApplied: 'AB',
+        nationality: 'Filipino',
+        status: 'Screening'
+      };
+
+      // Create first
+      await fetch('/api/recruitment-candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(candidate)
+      });
+
+      // Try to create duplicate
+      const response = await fetch('/api/recruitment-candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(candidate)
+      });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('GET /api/recruitment-candidates', () => {
+    it('should list all recruitment candidates', async () => {
+      const response = await fetch('/api/recruitment-candidates');
+      expect(response.status).toBe(200);
+      
+      const data = await response.json();
+      expect(Array.isArray(data)).toBe(true);
+    });
+
+    it('should filter candidates by status', async () => {
+      const response = await fetch('/api/recruitment-candidates?status=Screening');
+      const data = await response.json();
+      
+      data.forEach((candidate: any) => {
+        expect(candidate.status).toBe('Screening');
+      });
+    });
+
+    it('should search candidates by name', async () => {
+      const response = await fetch('/api/recruitment-candidates?search=John');
+      const data = await response.json();
+      
+      data.forEach((candidate: any) => {
+        const fullName = `${candidate.firstName} ${candidate.lastName}`.toLowerCase();
+        expect(fullName).toContain('john');
+      });
+    });
+
+    it('should filter by rank applied', async () => {
+      const response = await fetch('/api/recruitment-candidates?rank=Chief%20Engineer');
+      const data = await response.json();
+      
+      data.forEach((candidate: any) => {
+        expect(candidate.rankApplied).toBe('Chief Engineer');
+      });
+    });
+  });
+
+  describe('PUT /api/recruitment-candidates/:id', () => {
+    it('should update candidate status', async () => {
+      const response = await fetch(`/api/recruitment-candidates/${testCandidateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Interview' })
+      });
+
+      expect(response.status).toBe(200);
+      const updated = await response.json();
+      expect(updated.status).toBe('Interview');
+    });
+
+    it('should update candidate details', async () => {
+      const updates = {
+        phone: '+91-9999999999',
+        email: 'updated@example.com'
+      };
+
+      const response = await fetch(`/api/recruitment-candidates/${testCandidateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should reject invalid status update', async () => {
+      const response = await fetch(`/api/recruitment-candidates/${testCandidateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'InvalidStatus' })
+      });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/recruitment-candidates/:id/transfer-to-crew', () => {
+    it('should transfer candidate to crew pool', async () => {
+      // First update status to 'Offered'
+      await fetch(`/api/recruitment-candidates/${testCandidateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Offered' })
+      });
+
+      // Then transfer
+      const response = await fetch(
+        `/api/recruitment-candidates/${testCandidateId}/transfer-to-crew`,
+        { method: 'POST' }
+      );
+
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result.crewMemberId).toBeDefined();
+    });
+
+    it('should reject transfer if status is not Offered', async () => {
+      const response = await fetch(
+        `/api/recruitment-candidates/999/transfer-to-crew`,
+        { method: 'POST' }
+      );
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('DELETE /api/recruitment-candidates/:id', () => {
+    it('should delete candidate', async () => {
+      const response = await fetch(`/api/recruitment-candidates/${testCandidateId}`, {
+        method: 'DELETE'
+      });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should return 404 for non-existent candidate', async () => {
+      const response = await fetch('/api/recruitment-candidates/99999', {
+        method: 'DELETE'
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+});
+```
+
+### E2E TESTS NEEDED (~8 tests):
+
+**File: `tests/e2e/recruitment-workflow.spec.ts`**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('Recruitment Workflow', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.setViewportSize({ width: 1280, height: 720 });
+  });
+
+  test('should navigate to recruitment module', async ({ page }) => {
+    await page.getByTestId('nav-recruitment').click();
+    await expect(page).toHaveURL('/recruitment');
+    
+    const container = page.getByTestId('recruitment-container');
+    await expect(container).toBeVisible();
+  });
+
+  test('should display recruitment candidates list', async ({ page }) => {
+    await page.getByTestId('nav-recruitment').click();
+    const container = page.getByTestId('recruitment-container');
+    
+    // Should have a table or list of candidates
+    const candidatesList = container.locator('table, [role="grid"], .candidate-list').first();
+    await expect(candidatesList).toBeVisible();
+  });
+
+  test('should open new candidate form', async ({ page }) => {
+    await page.getByTestId('nav-recruitment').click();
+    const container = page.getByTestId('recruitment-container');
+    
+    // Look for "New Crew" or similar button
+    const newButton = container.getByRole('button', { name: /new|add|create/i }).first();
+    
+    if (await newButton.count() > 0) {
+      await newButton.click();
+      
+      // Form or dialog should appear
+      const form = page.locator('form, [role="dialog"]').first();
+      await expect(form).toBeVisible();
+    }
+  });
+
+  test('should filter candidates by status', async ({ page }) => {
+    await page.getByTestId('nav-recruitment').click();
+    const container = page.getByTestId('recruitment-container');
+    
+    // Look for filters section
+    const filterButton = container.getByRole('button', { name: /filter/i }).first();
+    if (await filterButton.count() > 0) {
+      await filterButton.click();
+    }
+    
+    // Look for status dropdown
+    const statusFilter = container.locator('select, [role="combobox"]').first();
+    if (await statusFilter.count() > 0) {
+      await statusFilter.click();
+    }
+  });
+
+  test('should search candidates by name', async ({ page }) => {
+    await page.getByTestId('nav-recruitment').click();
+    const container = page.getByTestId('recruitment-container');
+    
+    // Look for search input
+    const searchInput = container.locator('input[type="text"], input[placeholder*="search" i]').first();
+    
+    if (await searchInput.count() > 0) {
+      await searchInput.fill('Test Candidate');
+      await page.waitForTimeout(500); // Allow search to execute
+    }
+  });
+
+  test('should display candidate details', async ({ page }) => {
+    await page.getByTestId('nav-recruitment').click();
+    const container = page.getByTestId('recruitment-container');
+    
+    // Look for first candidate row
+    const firstRow = container.locator('table tbody tr, [role="row"]').first();
+    
+    if (await firstRow.count() > 0) {
+      // Click on row or view button
+      const viewButton = firstRow.locator('button, [role="button"]').first();
+      if (await viewButton.count() > 0) {
+        await viewButton.click();
+      }
+    }
+  });
+
+  test('should handle filters toggle', async ({ page }) => {
+    await page.getByTestId('nav-recruitment').click();
+    const container = page.getByTestId('recruitment-container');
+    
+    const filterToggle = container.getByRole('button', { name: /filter/i }).first();
+    
+    if (await filterToggle.count() > 0) {
+      // Toggle filters
+      await filterToggle.click();
+      await page.waitForTimeout(300);
+      
+      // Filters should be visible
+      const filterSection = container.locator('[class*="filter"]').first();
+      if (await filterSection.count() > 0) {
+        await expect(filterSection).toBeVisible();
+      }
+    }
+  });
+
+  test('should maintain state after navigation', async ({ page }) => {
+    await page.getByTestId('nav-recruitment').click();
+    await expect(page).toHaveURL('/recruitment');
+    
+    // Navigate away
+    await page.getByTestId('nav-crew-pool').click();
+    await expect(page).toHaveURL('/crew-pool');
+    
+    // Navigate back
+    await page.getByTestId('nav-recruitment').click();
+    await expect(page).toHaveURL('/recruitment');
+    
+    // Container should still be visible
+    const container = page.getByTestId('recruitment-container');
+    await expect(container).toBeVisible();
+  });
+});
+```
+
+### REQUIRED CODE CHANGES:
+
+**Add to `client/src/modules/recruitment/RecruitmentModule.tsx`:**
+
+```tsx
+// Find the main return statement and wrap with:
+return (
+  <div data-testid="recruitment-container">
+    {/* ALL existing content stays exactly the same */}
+  </div>
+);
+```
+
+---
+
+## MODULE 2: ROTATION MODULE (/rotation)
+
+### Status: 0% Coverage - Need Everything
+
+[Continue with Rotation, Promotions, Drugs & Alcohol following same pattern...]
+
+---
+
+## MODULE 5: CREW POOL (Expand Existing)
+
+### Status: 30% Coverage - Need Unit + Integration Only
+
+**SKIP E2E** - Already exists and passing ✅
+
+### UNIT TESTS NEEDED (~12 tests):
+
+**File: `tests/unit/modules/crew-pool/crew-pool-logic.test.ts`**
+
+[Similar detailed unit tests...]
+
+### INTEGRATION TESTS NEEDED (~10 tests):
+
+**File: `tests/integration/api/crew-pool-extended.test.ts`**
+
+[Similar detailed integration tests...]
+
+**NO E2E TESTS** - Already covered ✅
+
+---
+
+## MODULE 6: VESSEL (Expand Existing)
+
+### Status: 30% Coverage - Need Unit + Integration Only
+
+**SKIP E2E** - Already exists and passing ✅
+
+[Similar pattern...]
+
+---
+
+## IMPLEMENTATION PRIORITY:
+
+### Phase 1: Zero Coverage Modules (Top Priority)
+1. **Recruitment** - 15 unit + 12 integration + 8 E2E = 35 tests
+2. **Rotation** - 15 unit + 12 integration + 8 E2E = 35 tests
+3. **Promotions** - 15 unit + 12 integration + 8 E2E = 35 tests
+4. **Drugs & Alcohol** - 15 unit + 10 integration + 6 E2E = 31 tests
+
+**Subtotal: 136 new tests**
+
+### Phase 2: Expand Partial Coverage (Medium Priority)
+5. **Crew Pool** - 12 unit + 10 integration = 22 tests (skip E2E)
+6. **Vessel** - 10 unit + 8 integration = 18 tests (skip E2E)
+
+**Subtotal: 40 new tests**
+
+### GRAND TOTAL:
+- **Current: 132 tests**
+- **Adding: 176 new tests**
+- **Final: 308 tests total** 🎉
+
+---
+
+## DELIVERABLES:
+
+For each module, provide:
+
+✅ Unit test file created
+✅ Integration test file created
+✅ E2E test file created (if not already exists)
+✅ `data-testid="module-container"` added to main module file
+✅ All tests passing
+✅ TEST_IDS_REFERENCE.md updated
+
+After completing each module, show:
+- Test results (X tests passing)
+- Files created/modified
+- Any issues encountered
+
+---
+
+## SUCCESS CRITERIA:
+
+✅ Recruitment: 35/35 tests passing
+✅ Rotation: 35/35 tests passing
+✅ Promotions: 35/35 tests passing
+✅ Drugs & Alcohol: 31/31 tests passing
+✅ Crew Pool expansion: 22/22 tests passing
+✅ Vessel expansion: 18/18 tests passing
+✅ **Final: 308/308 tests passing (100%)**
+✅ Application coverage: 70%+
+✅ All 6 modules have comprehensive test coverage
+
+---
+
+## IMPORTANT NOTES:
+
+1. **SKIP these modules** - Already have complete coverage:
+   - ❌ Appraisals (don't touch)
+   - ❌ Rest Hours (don't touch)
+
+2. **SKIP E2E for these** - Already have E2E tests:
+   - ⚠️ Crew Pool (add unit + integration only)
+   - ⚠️ Vessel (add unit + integration only)
+
+3. **Focus on these 4** - Zero coverage, need everything:
+   - ✅ Recruitment
+   - ✅ Rotation
+   - ✅ Promotions
+   - ✅ Drugs & Alcohol
+
+4. **DON'T create duplicate tests** - Check existing test files first
+
+5. **Reuse existing patterns** - Follow the same structure as existing tests
+
+---
+
+## START HERE:
+
+Begin with **Recruitment module**. Implement all three test types:
+1. Unit tests (15 tests)
+2. Integration tests (12 tests)
+3. E2E tests (8 tests)
+
+After Recruitment is complete and all 35 tests are passing, show me the results before moving to Rotation.
+
+Let's achieve 308 tests total! 🚀
