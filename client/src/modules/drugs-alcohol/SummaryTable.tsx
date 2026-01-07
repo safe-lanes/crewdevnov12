@@ -199,6 +199,8 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
     vesselId: string;
     testType: string;
     dateTimeTestCompleted?: string;
+    alcoholTestDateTime?: string;
+    drugTestDateTime?: string;
     placeLocation?: string;
     personnelTested?: string;
     frequencyMonths?: number;
@@ -250,6 +252,16 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
       { type: 'others', label: 'Other', hasPlanning: false },
     ];
 
+    // Helper to get the appropriate date field based on test type
+    const getTestDateField = (record: typeof testRecords[0], testType: string): string | undefined => {
+      if (testType === 'post-incident') {
+        // For post-incident, use alcoholTestDateTime as the primary date
+        return record.alcoholTestDateTime;
+      }
+      // For all other types, use dateTimeTestCompleted
+      return record.dateTimeTestCompleted;
+    };
+
     return testTypes.map(({ type, label, hasPlanning }) => {
       // Get all records for this vessel and test type
       const records = testRecords.filter(
@@ -266,8 +278,8 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
 
       // Sort records by date (most recent first) to build history
       const sortedRecords = [...records].sort((a, b) => {
-        const dateA = parseTestDate(a.dateTimeTestCompleted);
-        const dateB = parseTestDate(b.dateTimeTestCompleted);
+        const dateA = parseTestDate(getTestDateField(a, type));
+        const dateB = parseTestDate(getTestDateField(b, type));
         if (!dateA && !dateB) return 0;
         if (!dateA) return 1;
         if (!dateB) return -1;
@@ -276,7 +288,7 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
 
       // Build test history from actual records
       const history: TestRecord[] = sortedRecords.map(record => {
-        const testDate = parseTestDate(record.dateTimeTestCompleted);
+        const testDate = parseTestDate(getTestDateField(record, type));
         return {
           date: testDate ? format(testDate, 'dd-MMM-yyyy') : '',
           port: record.placeLocation || '',
