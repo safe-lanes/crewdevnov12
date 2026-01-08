@@ -14,7 +14,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, Info, MessageSquare, ChevronDown, FileText } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
@@ -7435,6 +7435,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
             </h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 h-8 rounded-md px-3 text-xs hidden sm:flex"
+              data-testid="button-export"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Export
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
