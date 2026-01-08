@@ -4064,7 +4064,7 @@ export const VesselModule = (): JSX.Element => {
     };
 
     return (
-        <>
+        <div data-testid="vessel-container">
             <VesselSideBar 
                 selectedVesselPage={selectedVesselPage} 
                 setSelectedVesselPage={setSelectedVesselPage} 
@@ -4159,6 +4159,6 @@ export const VesselModule = (): JSX.Element => {
                     queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', handoverDialogData.vesselId] });
                 }}
             />
-        </>
+        </div>
     );
 };

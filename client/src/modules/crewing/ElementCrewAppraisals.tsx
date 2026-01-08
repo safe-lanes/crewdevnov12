@@ -565,7 +565,7 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   }
 
   return (
-    <>
+    <div data-testid="appraisals-container">
       <SideBarComponent 
         selectedAdminPage={selectedAdminPage} 
         setSelectedAdminPage={setSelectedAdminPage} 
@@ -936,6 +936,6 @@ export const ElementCrewAppraisals = (): JSX.Element => {
           />
         )}
       </MainLayout>
-    </>
+    </div>
   );
 };

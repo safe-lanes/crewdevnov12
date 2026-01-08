@@ -34,8 +34,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="bg-transparent flex flex-row justify-center w-full h-screen">
-          <div className="bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-screen w-full pt-[67px] overflow-y-auto">
+        <div className="bg-transparent flex flex-row justify-center w-full h-screen" data-testid="app-root">
+          <div className="bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-screen w-full pt-[67px] overflow-y-auto" data-testid="main-content" role="main">
             <HeaderComponent />
             <Suspense fallback={<PageLoader />}>
               <Switch>

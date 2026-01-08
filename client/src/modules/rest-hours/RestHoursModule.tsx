@@ -55,7 +55,7 @@ export const RestHoursModule = (): JSX.Element => {
   };
 
   return (
-    <>
+    <div data-testid="rest-hours-container">
       <RestHoursSideBar 
         selectedRestHoursPage={selectedRestHoursPage}
         setSelectedRestHoursPage={setSelectedRestHoursPage}
@@ -64,6 +64,6 @@ export const RestHoursModule = (): JSX.Element => {
       <MainLayout hasSidebar={true}>
         {renderContent()}
       </MainLayout>
-    </>
+    </div>
   );
 };

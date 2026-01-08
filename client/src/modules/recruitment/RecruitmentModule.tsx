@@ -737,7 +737,7 @@ export const RecruitmentModule = (): JSX.Element => {
   };
 
   return (
-    <>
+    <div data-testid="recruitment-container">
       <RecruitmentSideBar 
         selectedRecruitmentPage={selectedRecruitmentPage}
         setSelectedRecruitmentPage={setSelectedRecruitmentPage}
@@ -781,6 +781,6 @@ export const RecruitmentModule = (): JSX.Element => {
           }}
         />
       )}
-    </>
+    </div>
   );
 };

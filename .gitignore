@@ -4,3 +4,9 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Test output directories
+test-results/
+test-logs/
+coverage/
+playwright-report/

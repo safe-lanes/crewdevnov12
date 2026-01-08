@@ -1003,7 +1003,7 @@ export function RotationModule() {
     };
 
     return (
-        <>
+        <div data-testid="rotation-container">
             <RotationSideBar 
                 selectedRotationPage={selectedRotationPage}
                 setSelectedRotationPage={setSelectedRotationPage}
@@ -1012,6 +1012,6 @@ export function RotationModule() {
             <MainLayout hasSidebar={true}>
                 {renderContent()}
             </MainLayout>
-        </>
+        </div>
     );
 }

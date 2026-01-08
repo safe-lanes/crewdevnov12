@@ -951,7 +951,7 @@ export const CrewPoolModule = (): JSX.Element => {
     };
 
     return (
-        <>
+        <div data-testid="crew-pool-container">
             <CrewPoolSideBar 
                 selectedCrewPoolPage={selectedCrewPoolPage}
                 setSelectedCrewPoolPage={setSelectedCrewPoolPage}
@@ -993,6 +993,6 @@ export const CrewPoolModule = (): JSX.Element => {
                 crewMember={selectedCrewMember}
                 onCrewMemberChange={(newCrewMember) => setSelectedCrewMember(newCrewMember)}
             />
-        </>
+        </div>
     );
 };

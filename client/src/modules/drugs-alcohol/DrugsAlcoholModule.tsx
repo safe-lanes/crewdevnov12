@@ -795,7 +795,7 @@ export function DrugsAlcoholModule() {
     };
 
     return (
-        <>
+        <div data-testid="drugs-alcohol-container">
             <DrugsAlcoholSideBar
                 selectedDrugsAlcoholPage={selectedDrugsAlcoholPage}
                 setSelectedDrugsAlcoholPage={setSelectedDrugsAlcoholPage}
@@ -817,6 +817,6 @@ export function DrugsAlcoholModule() {
                     onDelete={handleDeleteForm}
                 />
             )}
-        </>
+        </div>
     );
 }

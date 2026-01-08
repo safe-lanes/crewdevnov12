@@ -1,0 +1,952 @@
+# STEP 3: Add Comprehensive E2E Tests for New Modules
+
+## PROBLEM IDENTIFIED:
+New modules (Recruitment, Rotation, Promotions, Drugs & Alcohol) only have basic smoke tests (navigation + button visibility). They need real workflow testing.
+
+## CURRENT STATE:
+- Recruitment: 3 smoke tests (just navigation)
+- Rotation: 2 smoke tests (just navigation)
+- Promotions: 3 smoke tests (just navigation)
+- Drugs & Alcohol: 3 smoke tests (just navigation)
+
+## REQUIRED STATE:
+Each module needs comprehensive E2E tests covering complete user workflows.
+
+---
+
+## YOUR TASK:
+
+Create 4 NEW E2E test files with comprehensive workflow tests. Keep existing module-coverage.spec.ts for smoke tests.
+
+---
+
+## FILE 1: tests/e2e/recruitment-comprehensive.spec.ts
+
+**Minimum 8 tests covering:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Recruitment - Comprehensive Workflow', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('nav-recruitment').click();
+    await expect(page.getByTestId('recruitment-container')).toBeVisible();
+  });
+
+  test('should display recruitment candidates list/table', async ({ page }) => {
+    const container = page.getByTestId('recruitment-container');
+    
+    // Look for table or list structure
+    const candidatesList = container.locator('table, [role="grid"], [role="list"]').first();
+    await expect(candidatesList).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should open and display new candidate form', async ({ page }) => {
+    const container = page.getByTestId('recruitment-container');
+    
+    // Click new crew button
+    const newButton = container.getByTestId('button-new-crew');
+    await newButton.click();
+    
+    // Form should appear (dialog or inline)
+    const form = page.locator('form, [role="dialog"]').first();
+    await expect(form).toBeVisible({ timeout: 5000 });
+    
+    // Check for basic form fields
+    const nameInput = form.locator('input[name*="name" i], input[placeholder*="name" i]').first();
+    await expect(nameInput).toBeVisible();
+  });
+
+  test('should toggle filters section', async ({ page }) => {
+    const container = page.getByTestId('recruitment-container');
+    
+    const filterButton = container.getByTestId('button-toggle-filters');
+    await filterButton.click();
+    
+    // Filter section should appear
+    await page.waitForTimeout(500); // Allow animation
+    
+    // Look for filter inputs
+    const filterSection = container.locator('[class*="filter"]').first();
+    if (await filterSection.count() > 0) {
+      await expect(filterSection).toBeVisible();
+    }
+  });
+
+  test('should filter candidates by status', async ({ page }) => {
+    const container = page.getByTestId('recruitment-container');
+    
+    // Open filters if needed
+    const filterButton = container.getByTestId('button-toggle-filters');
+    if (await filterButton.count() > 0) {
+      await filterButton.click();
+      await page.waitForTimeout(300);
+    }
+    
+    // Look for status filter dropdown
+    const statusFilter = container.locator('select, [role="combobox"]').first();
+    if (await statusFilter.count() > 0) {
+      await statusFilter.click();
+      await page.waitForTimeout(200);
+      
+      // Select first option if available
+      const firstOption = page.locator('[role="option"]').first();
+      if (await firstOption.count() > 0) {
+        await firstOption.click();
+      }
+    }
+  });
+
+  test('should search candidates by name', async ({ page }) => {
+    const container = page.getByTestId('recruitment-container');
+    
+    // Look for search input
+    const searchInput = container.locator(
+      'input[type="text"], input[type="search"], input[placeholder*="search" i]'
+    ).first();
+    
+    if (await searchInput.count() > 0) {
+      await searchInput.fill('test candidate');
+      await page.waitForTimeout(500); // Allow search to execute
+      
+      // Search should have been performed (no error)
+      await expect(searchInput).toHaveValue('test candidate');
+    }
+  });
+
+  test('should display candidate details on row click', async ({ page }) => {
+    const container = page.getByTestId('recruitment-container');
+    
+    // Look for first row in table
+    const firstRow = container.locator('table tbody tr, [role="row"]').first();
+    
+    if (await firstRow.count() > 0) {
+      // Click row or view button
+      const viewButton = firstRow.locator('button, [role="button"]').first();
+      if (await viewButton.count() > 0) {
+        await viewButton.click();
+        await page.waitForTimeout(500);
+        
+        // Some detail view should appear
+        const detailView = page.locator('[role="dialog"], .detail-panel, aside').first();
+        if (await detailView.count() > 0) {
+          await expect(detailView).toBeVisible();
+        }
+      }
+    }
+  });
+
+  test('should clear filters', async ({ page }) => {
+    const container = page.getByTestId('recruitment-container');
+    
+    // Open filters
+    const filterButton = container.getByTestId('button-toggle-filters');
+    if (await filterButton.count() > 0) {
+      await filterButton.click();
+      await page.waitForTimeout(300);
+    }
+    
+    // Look for clear button
+    const clearButton = container.locator('button:has-text("Clear"), button:has-text("Reset")').first();
+    if (await clearButton.count() > 0) {
+      await clearButton.click();
+      await page.waitForTimeout(300);
+    }
+  });
+
+  test('should handle empty state or no candidates', async ({ page }) => {
+    const container = page.getByTestId('recruitment-container');
+    
+    // Container should handle empty state gracefully
+    await expect(container).not.toBeEmpty();
+    
+    // Either shows candidates or an empty state message
+    const hasContent = await container.locator('table, [role="grid"], [role="list"], .empty-state').count() > 0;
+    expect(hasContent).toBe(true);
+  });
+});
+```
+
+---
+
+## FILE 2: tests/e2e/rotation-comprehensive.spec.ts
+
+**Minimum 8 tests covering:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Rotation - Comprehensive Workflow', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('nav-rotation').click();
+    await expect(page.getByTestId('rotation-container')).toBeVisible();
+  });
+
+  test('should display rotation module content', async ({ page }) => {
+    const container = page.getByTestId('rotation-container');
+    
+    // Should have some content (tables, lists, or tabs)
+    const content = container.locator('table, [role="grid"], [role="tablist"]').first();
+    await expect(content).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should display due crew section', async ({ page }) => {
+    const container = page.getByTestId('rotation-container');
+    
+    // Look for "Due" or "Due Crew" text/tab
+    const dueSection = container.locator('text=/due/i, [role="tab"]:has-text("Due")').first();
+    if (await dueSection.count() > 0) {
+      await expect(dueSection).toBeVisible();
+    }
+  });
+
+  test('should display rotation plans section', async ({ page }) => {
+    const container = page.getByTestId('rotation-container');
+    
+    // Look for "Plans" or "Rotation Plans" text/tab
+    const plansSection = container.locator('text=/plan/i, [role="tab"]:has-text("Plan")').first();
+    if (await plansSection.count() > 0) {
+      await expect(plansSection).toBeVisible();
+    }
+  });
+
+  test('should open new rotation plan dialog', async ({ page }) => {
+    const container = page.getByTestId('rotation-container');
+    
+    // Look for "New Plan" or similar button
+    const newPlanButton = container.locator('button:has-text("New"), button:has-text("Create")').first();
+    if (await newPlanButton.count() > 0) {
+      await newPlanButton.click();
+      
+      // Dialog should appear
+      const dialog = page.locator('[role="dialog"]').first();
+      await expect(dialog).toBeVisible({ timeout: 5000 });
+    }
+  });
+
+  test('should filter rotation data', async ({ page }) => {
+    const container = page.getByTestId('rotation-container');
+    
+    // Look for filter controls
+    const filterControl = container.locator('select, [role="combobox"], input[type="text"]').first();
+    if (await filterControl.count() > 0) {
+      await expect(filterControl).toBeVisible();
+    }
+  });
+
+  test('should switch between Due and Plan views', async ({ page }) => {
+    const container = page.getByTestId('rotation-container');
+    
+    // Look for tabs or view switcher
+    const tabs = container.locator('[role="tab"]');
+    const tabCount = await tabs.count();
+    
+    if (tabCount >= 2) {
+      // Click second tab
+      await tabs.nth(1).click();
+      await page.waitForTimeout(300);
+      
+      // Should still be in rotation container
+      await expect(container).toBeVisible();
+    }
+  });
+
+  test('should display crew details in rotation table', async ({ page }) => {
+    const container = page.getByTestId('rotation-container');
+    
+    // Look for table rows with crew data
+    const rows = container.locator('table tbody tr, [role="row"]');
+    const rowCount = await rows.count();
+    
+    if (rowCount > 0) {
+      // First row should have some data
+      const firstRow = rows.first();
+      await expect(firstRow).not.toBeEmpty();
+    }
+  });
+
+  test('should handle rotation plan actions', async ({ page }) => {
+    const container = page.getByTestId('rotation-container');
+    
+    // Look for action buttons (Approve, Reject, etc.)
+    const actionButtons = container.locator('button:has-text("Approve"), button:has-text("Deploy"), button:has-text("Reject")');
+    
+    if (await actionButtons.count() > 0) {
+      // At least one action button should be visible
+      await expect(actionButtons.first()).toBeVisible();
+    }
+  });
+});
+```
+
+---
+
+## FILE 3: tests/e2e/promotions-comprehensive.spec.ts
+
+**Minimum 8 tests covering:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Promotions - Comprehensive Workflow', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('nav-promotions').click();
+    await expect(page.getByTestId('promotions-container')).toBeVisible();
+  });
+
+  test('should display promotions list', async ({ page }) => {
+    const container = page.getByTestId('promotions-container');
+    
+    // Should have table or list of promotions
+    const promotionsList = container.locator('table, [role="grid"]').first();
+    await expect(promotionsList).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should toggle promotion filters', async ({ page }) => {
+    const container = page.getByTestId('promotions-container');
+    
+    const filterButton = container.getByTestId('button-toggle-filters');
+    await filterButton.click();
+    await page.waitForTimeout(300);
+    
+    // Filter section should appear
+    const filterContainer = container.getByTestId('filter-container');
+    if (await filterContainer.count() > 0) {
+      await expect(filterContainer).toBeVisible();
+    }
+  });
+
+  test('should display promotion checklist', async ({ page }) => {
+    const container = page.getByTestId('promotions-container');
+    
+    // Look for checklist button or link
+    const checklistButton = container.locator('button:has-text("Checklist"), a:has-text("Checklist")').first();
+    if (await checklistButton.count() > 0) {
+      await checklistButton.click();
+      await page.waitForTimeout(500);
+      
+      // Checklist view or dialog should appear
+      const checklist = page.locator('[role="dialog"], .checklist-view').first();
+      if (await checklist.count() > 0) {
+        await expect(checklist).toBeVisible();
+      }
+    }
+  });
+
+  test('should display CES test tracking', async ({ page }) => {
+    const container = page.getByTestId('promotions-container');
+    
+    // Look for CES or test-related content
+    const cesContent = container.locator('text=/ces/i, text=/test/i').first();
+    if (await cesContent.count() > 0) {
+      // CES tracking exists in some form
+      await expect(cesContent).toBeVisible();
+    }
+  });
+
+  test('should filter promotions by status', async ({ page }) => {
+    const container = page.getByTestId('promotions-container');
+    
+    // Open filters
+    const filterButton = container.getByTestId('button-toggle-filters');
+    await filterButton.click();
+    await page.waitForTimeout(300);
+    
+    // Look for status filter
+    const statusFilter = container.locator('select, [role="combobox"]').first();
+    if (await statusFilter.count() > 0) {
+      await statusFilter.click();
+    }
+  });
+
+  test('should display promotion review form', async ({ page }) => {
+    const container = page.getByTestId('promotions-container');
+    
+    // Look for review button
+    const reviewButton = container.locator('button:has-text("Review"), button:has-text("Assess")').first();
+    if (await reviewButton.count() > 0) {
+      await reviewButton.click();
+      await page.waitForTimeout(500);
+      
+      // Review form/dialog should appear
+      const reviewForm = page.locator('form, [role="dialog"]').first();
+      if (await reviewForm.count() > 0) {
+        await expect(reviewForm).toBeVisible();
+      }
+    }
+  });
+
+  test('should show promotion approval actions', async ({ page }) => {
+    const container = page.getByTestId('promotions-container');
+    
+    // Look for approve/reject buttons
+    const approveButton = container.locator('button:has-text("Approve")').first();
+    const rejectButton = container.locator('button:has-text("Reject")').first();
+    
+    // At least one action should exist
+    const hasActions = await approveButton.count() > 0 || await rejectButton.count() > 0;
+    expect(hasActions).toBe(true);
+  });
+
+  test('should display promotion history or progress', async ({ page }) => {
+    const container = page.getByTestId('promotions-container');
+    
+    // Look for rows in table
+    const rows = container.locator('table tbody tr, [role="row"]');
+    const rowCount = await rows.count();
+    
+    // Should have some data or empty state
+    if (rowCount > 0) {
+      await expect(rows.first()).toBeVisible();
+    } else {
+      // Empty state should be handled
+      await expect(container).not.toBeEmpty();
+    }
+  });
+});
+```
+
+---
+
+## FILE 4: tests/e2e/drugs-alcohol-comprehensive.spec.ts
+
+**Minimum 8 tests covering:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Drugs & Alcohol - Comprehensive Workflow', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('nav-drugs-alcohol').click();
+    await expect(page.getByTestId('drugs-alcohol-container')).toBeVisible();
+  });
+
+  test('should display drug & alcohol test summary', async ({ page }) => {
+    const container = page.getByTestId('drugs-alcohol-container');
+    
+    // Should have summary table or dashboard
+    const summary = container.locator('table, [role="grid"], .summary-view').first();
+    await expect(summary).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should toggle filters', async ({ page }) => {
+    const container = page.getByTestId('drugs-alcohol-container');
+    
+    const filterButton = container.getByTestId('button-toggle-filters');
+    await filterButton.click();
+    await page.waitForTimeout(300);
+    
+    // Filter section should toggle
+    const filterContainer = container.getByTestId('filter-container');
+    if (await filterContainer.count() > 0) {
+      await expect(filterContainer).toBeVisible();
+    }
+  });
+
+  test('should display test type tabs or sections', async ({ page }) => {
+    const container = page.getByTestId('drugs-alcohol-container');
+    
+    // Look for test type navigation (Monthly, Annual, etc.)
+    const tabs = container.locator('[role="tab"], button:has-text("Monthly"), button:has-text("Annual")');
+    const tabCount = await tabs.count();
+    
+    if (tabCount > 0) {
+      await expect(tabs.first()).toBeVisible();
+    }
+  });
+
+  test('should open new test recording form', async ({ page }) => {
+    const container = page.getByTestId('drugs-alcohol-container');
+    
+    // Look for add/new test button
+    const newTestButton = container.locator('button:has-text("New"), button:has-text("Record"), button:has-text("Add")').first();
+    if (await newTestButton.count() > 0) {
+      await newTestButton.click();
+      
+      // Form should appear
+      const form = page.locator('form, [role="dialog"]').first();
+      await expect(form).toBeVisible({ timeout: 5000 });
+    }
+  });
+
+  test('should filter by test type', async ({ page }) => {
+    const container = page.getByTestId('drugs-alcohol-container');
+    
+    // Open filters
+    const filterButton = container.getByTestId('button-toggle-filters');
+    if (await filterButton.count() > 0) {
+      await filterButton.click();
+      await page.waitForTimeout(300);
+    }
+    
+    // Look for test type filter
+    const testTypeFilter = container.locator('select, [role="combobox"]').first();
+    if (await testTypeFilter.count() > 0) {
+      await testTypeFilter.click();
+    }
+  });
+
+  test('should display monthly test table', async ({ page }) => {
+    const container = page.getByTestId('drugs-alcohol-container');
+    
+    // Look for monthly tab
+    const monthlyTab = container.locator('button:has-text("Monthly"), [role="tab"]:has-text("Monthly")').first();
+    if (await monthlyTab.count() > 0) {
+      await monthlyTab.click();
+      await page.waitForTimeout(300);
+      
+      // Monthly table should be visible
+      const monthlyTable = container.locator('table').first();
+      await expect(monthlyTable).toBeVisible();
+    }
+  });
+
+  test('should display annual test table', async ({ page }) => {
+    const container = page.getByTestId('drugs-alcohol-container');
+    
+    // Look for annual tab
+    const annualTab = container.locator('button:has-text("Annual"), [role="tab"]:has-text("Annual")').first();
+    if (await annualTab.count() > 0) {
+      await annualTab.click();
+      await page.waitForTimeout(300);
+      
+      // Annual table should be visible
+      const annualTable = container.locator('table').first();
+      await expect(annualTable).toBeVisible();
+    }
+  });
+
+  test('should display test statistics or compliance metrics', async ({ page }) => {
+    const container = page.getByTestId('drugs-alcohol-container');
+    
+    // Look for statistics or metrics
+    const stats = container.locator('.statistics, .metrics, [class*="stat"]').first();
+    if (await stats.count() > 0) {
+      await expect(stats).toBeVisible();
+    } else {
+      // At minimum should have data rows
+      const rows = container.locator('table tbody tr, [role="row"]');
+      const hasRows = await rows.count() > 0;
+      expect(hasRows).toBe(true);
+    }
+  });
+});
+```
+
+---
+
+## REQUIREMENTS:
+
+1. **Create 4 NEW files** - don't modify existing module-coverage.spec.ts
+2. **Minimum 8 tests per file** = 32 total new E2E tests
+3. **Use defensive selectors** - check if elements exist before interacting
+4. **Handle empty states** - tests should pass even with no data
+5. **Desktop viewport** - 1280x720 for consistency
+6. **Reasonable timeouts** - 5-10 seconds for UI elements
+7. **Test real interactions** - clicks, fills, navigation
+
+---
+
+## SUCCESS CRITERIA:
+
+✅ 4 new E2E test files created
+✅ Minimum 32 new comprehensive E2E tests
+✅ Tests cover workflows, not just navigation
+✅ Tests handle empty states gracefully
+✅ All tests passing: `npm run test:e2e`
+✅ Total E2E tests: 39 existing + 32 new = 71 tests
+
+---
+
+## AFTER COMPLETION:
+
+Run tests and show me:
+```bash
+npx playwright test
+```
+
+Report:
+1. Total E2E tests passing
+2. Any test failures
+3. Screenshots of any failures
+4. Confirmation that comprehensive workflows are tested
+
+Create all 4 files, then run the full E2E suite.
+# STEP 4: Add E2E Tests for Missing Modules
+
+## PROBLEM IDENTIFIED:
+4 modules have NO E2E tests at all: Reports, Training, Admin, and Accounts.
+
+---
+
+## YOUR TASK:
+
+Create E2E tests for the 4 missing modules.
+
+**IMPORTANT:** These modules may have simpler functionality than others. Create tests based on what ACTUALLY EXISTS in each module. Use defensive testing patterns.
+
+---
+
+## FILE 1: tests/e2e/reports-module.spec.ts
+
+**Minimum 5 tests:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Reports Module', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    
+    // Navigate to Reports - check if nav exists
+    const reportsNav = page.getByTestId('nav-reports');
+    if (await reportsNav.count() === 0) {
+      // Try alternative navigation
+      await page.locator('a:has-text("Reports"), button:has-text("Reports")').first().click();
+    } else {
+      await reportsNav.click();
+    }
+  });
+
+  test('should navigate to reports module', async ({ page }) => {
+    // Verify we're on reports page
+    const url = page.url();
+    expect(url).toContain('report');
+  });
+
+  test('should display reports container or content', async ({ page }) => {
+    // Look for main content area
+    const content = page.locator('main, [role="main"], .reports-container, #reports').first();
+    await expect(content).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should display report types or categories', async ({ page }) => {
+    // Look for report types (crew reports, vessel reports, etc.)
+    const reportOptions = page.locator(
+      'select, [role="listbox"], button:has-text("Report"), [role="tab"]'
+    );
+    
+    if (await reportOptions.count() > 0) {
+      await expect(reportOptions.first()).toBeVisible();
+    }
+  });
+
+  test('should have date range filter or controls', async ({ page }) => {
+    // Look for date inputs or filters
+    const dateInputs = page.locator(
+      'input[type="date"], input[placeholder*="date" i], .date-picker'
+    );
+    
+    if (await dateInputs.count() > 0) {
+      await expect(dateInputs.first()).toBeVisible();
+    }
+  });
+
+  test('should display report data or table', async ({ page }) => {
+    // Look for data display
+    const dataDisplay = page.locator('table, [role="grid"], .report-data, canvas').first();
+    
+    if (await dataDisplay.count() > 0) {
+      await expect(dataDisplay).toBeVisible({ timeout: 10000 });
+    } else {
+      // At minimum should have some content
+      const body = page.locator('body');
+      await expect(body).not.toBeEmpty();
+    }
+  });
+});
+```
+
+---
+
+## FILE 2: tests/e2e/training-module.spec.ts
+
+**Minimum 5 tests:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Training Module', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    
+    // Navigate to Training
+    const trainingNav = page.getByTestId('nav-training');
+    if (await trainingNav.count() === 0) {
+      await page.locator('a:has-text("Training"), button:has-text("Training")').first().click();
+    } else {
+      await trainingNav.click();
+    }
+  });
+
+  test('should navigate to training module', async ({ page }) => {
+    const url = page.url();
+    expect(url).toContain('training');
+  });
+
+  test('should display training container or content', async ({ page }) => {
+    const content = page.locator('main, [role="main"], .training-container, #training').first();
+    await expect(content).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should display training courses or matrix', async ({ page }) => {
+    // Look for training data
+    const trainingData = page.locator(
+      'table, [role="grid"], .course-list, .training-matrix'
+    ).first();
+    
+    if (await trainingData.count() > 0) {
+      await expect(trainingData).toBeVisible({ timeout: 10000 });
+    }
+  });
+
+  test('should have crew or vessel selection', async ({ page }) => {
+    // Look for filters or selection
+    const filters = page.locator('select, [role="combobox"], button:has-text("Filter")').first();
+    
+    if (await filters.count() > 0) {
+      await expect(filters).toBeVisible();
+    }
+  });
+
+  test('should display training completion status', async ({ page }) => {
+    // Look for completion indicators
+    const statusIndicators = page.locator(
+      '[class*="complete"], [class*="pending"], [class*="status"], td, [role="cell"]'
+    );
+    
+    if (await statusIndicators.count() > 0) {
+      // Has some status information
+      expect(await statusIndicators.count()).toBeGreaterThan(0);
+    }
+  });
+});
+```
+
+---
+
+## FILE 3: tests/e2e/admin-module.spec.ts
+
+**Minimum 5 tests:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Admin Module', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    
+    // Navigate to Admin
+    const adminNav = page.getByTestId('nav-admin');
+    if (await adminNav.count() === 0) {
+      await page.locator('a:has-text("Admin"), button:has-text("Admin")').first().click();
+    } else {
+      await adminNav.click();
+    }
+  });
+
+  test('should navigate to admin module', async ({ page }) => {
+    const url = page.url();
+    expect(url).toContain('admin');
+  });
+
+  test('should display admin container or content', async ({ page }) => {
+    const content = page.locator('main, [role="main"], .admin-container, #admin').first();
+    await expect(content).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should display admin sections or tabs', async ({ page }) => {
+    // Look for admin sections (settings, users, etc.)
+    const sections = page.locator(
+      '[role="tab"], .admin-section, button:has-text("Settings"), button:has-text("Users")'
+    );
+    
+    if (await sections.count() > 0) {
+      await expect(sections.first()).toBeVisible();
+    }
+  });
+
+  test('should display configuration options', async ({ page }) => {
+    // Look for settings or config
+    const configOptions = page.locator(
+      'input[type="checkbox"], input[type="text"], select, [role="switch"]'
+    );
+    
+    if (await configOptions.count() > 0) {
+      await expect(configOptions.first()).toBeVisible();
+    }
+  });
+
+  test('should have admin controls or actions', async ({ page }) => {
+    // Look for action buttons
+    const actions = page.locator('button:has-text("Save"), button:has-text("Update"), button:has-text("Add")');
+    
+    if (await actions.count() > 0) {
+      await expect(actions.first()).toBeVisible();
+    } else {
+      // At minimum should show some admin content
+      const body = page.locator('body');
+      await expect(body).not.toBeEmpty();
+    }
+  });
+});
+```
+
+---
+
+## FILE 4: tests/e2e/accounts-module.spec.ts (OPTIONAL)
+
+**Only create if Accounts module exists. Minimum 5 tests:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.use({ viewport: { width: 1280, height: 720 } });
+
+test.describe('Accounts/Payroll Module', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    
+    // Try to navigate to Accounts
+    const accountsNav = page.locator(
+      'a:has-text("Accounts"), a:has-text("Payroll"), button:has-text("Accounts")'
+    ).first();
+    
+    if (await accountsNav.count() > 0) {
+      await accountsNav.click();
+    } else {
+      test.skip(); // Skip if module doesn't exist
+    }
+  });
+
+  test('should navigate to accounts module', async ({ page }) => {
+    const url = page.url();
+    expect(url).toMatch(/account|payroll|wage/i);
+  });
+
+  test('should display accounts container or content', async ({ page }) => {
+    const content = page.locator('main, [role="main"], .accounts-container').first();
+    await expect(content).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should display payroll or financial data', async ({ page }) => {
+    const data = page.locator('table, [role="grid"], .payroll-data').first();
+    
+    if (await data.count() > 0) {
+      await expect(data).toBeVisible({ timeout: 10000 });
+    }
+  });
+
+  test('should have period or date selection', async ({ page }) => {
+    const dateSelection = page.locator(
+      'select, [role="combobox"], input[type="date"]'
+    ).first();
+    
+    if (await dateSelection.count() > 0) {
+      await expect(dateSelection).toBeVisible();
+    }
+  });
+
+  test('should display crew payroll information', async ({ page }) => {
+    const payrollInfo = page.locator('td, [role="cell"], .amount, .salary');
+    
+    if (await payrollInfo.count() > 0) {
+      expect(await payrollInfo.count()).toBeGreaterThan(0);
+    }
+  });
+});
+```
+
+---
+
+## SPECIAL INSTRUCTIONS:
+
+### Module Detection:
+1. **Check if navigation exists** before clicking
+2. **Use test.skip()** if module doesn't exist
+3. **Verify URL** after navigation
+4. **Use defensive selectors** - multiple fallbacks
+
+### Defensive Testing Pattern:
+```typescript
+// Always check count before expecting
+const element = page.locator('selector');
+if (await element.count() > 0) {
+  await expect(element).toBeVisible();
+} else {
+  // Fallback or skip
+  test.skip();
+}
+```
+
+### Empty State Handling:
+```typescript
+// Don't assume data exists
+const rows = page.locator('table tbody tr');
+const rowCount = await rows.count();
+
+if (rowCount > 0) {
+  // Test with data
+} else {
+  // Test empty state
+  const emptyMessage = page.locator('.empty-state, text=/no data/i');
+  // Should show something
+}
+```
+
+---
+
+## REQUIREMENTS:
+
+1. **Create 3-4 new files** (Reports, Training, Admin are required; Accounts is optional)
+2. **Minimum 5 tests per file** = 15-20 total tests
+3. **Use defensive patterns** - check existence before interaction
+4. **Skip gracefully** if module doesn't exist
+5. **Handle empty states** - tests pass with or without data
+6. **Verify navigation** - check URL after navigating
+
+---
+
+## SUCCESS CRITERIA:
+
+✅ 3 new E2E files created (Reports, Training, Admin)
+✅ 4th file (Accounts) created if module exists
+✅ Minimum 15 new E2E tests
+✅ Tests use defensive patterns
+✅ Tests skip if module missing
+✅ All tests passing: `npm run test:e2e`
+
+---
+
+## AFTER COMPLETION:
+
+Run tests and show me:
+```bash
+npx playwright test
+```
+
+Report:
+1. Which modules were found and tested
+2. Which modules were skipped (if any)
+3. Total E2E tests now passing
+4. Any navigation issues
+
+Create files for Reports, Training, and Admin first. Check if Accounts exists before creating that file.
