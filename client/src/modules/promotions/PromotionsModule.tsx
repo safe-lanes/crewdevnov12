@@ -66,26 +66,16 @@ export function PromotionsModule() {
             <MainLayout hasSidebar={true}>
             <div className="flex flex-col h-full">
                 <SectionTitleComponents title="Crew Promotion">
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowFilters(!showFilters)}
-                            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
-                            data-testid="button-toggle-filters"
-                        >
-                            <Filter className="h-4 w-4" />
-                            Filters
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
-                            data-testid="button-back"
-                        >
-                            Back
-                        </Button>
-                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+                        data-testid="button-toggle-filters"
+                    >
+                        <Filter className="h-4 w-4" />
+                        Filters
+                    </Button>
                 </SectionTitleComponents>
 
                 {showFilters && (
