@@ -127,15 +127,44 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
     }
   };
   
-  const drawWatermark = (page: PDFPage) => {
-    drawText(page, 'Replica', pageWidth - margin - 35, pageHeight - margin, fontBold, 10);
+  const drawStampWatermark = (page: PDFPage) => {
+    const stampText = 'Replica';
+    const stampFontSize = 12;
+    const textWidth = fontBold.widthOfTextAtSize(stampText, stampFontSize);
+    const textHeight = stampFontSize;
+    const paddingX = 8;
+    const paddingY = 4;
+    const stampWidth = textWidth + paddingX * 2;
+    const stampHeight = textHeight + paddingY * 2;
+    const stampX = pageWidth - margin - stampWidth - 5;
+    const stampY = pageHeight - margin - stampHeight - 5;
+    const redColor = rgb(0.8, 0, 0);
+    
+    page.drawRectangle({
+      x: stampX,
+      y: stampY,
+      width: stampWidth,
+      height: stampHeight,
+      borderColor: redColor,
+      borderWidth: 2,
+      color: undefined,
+      borderOpacity: 1,
+    });
+    
+    page.drawText(stampText, {
+      x: stampX + paddingX,
+      y: stampY + paddingY + 2,
+      size: stampFontSize,
+      font: fontBold,
+      color: redColor,
+    });
   };
 
   // ========== PAGE 1 ==========
   const page1 = pdfDoc.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin;
   
-  drawWatermark(page1);
+  drawStampWatermark(page1);
   
   // Header
   drawText(page1, 'DEPARTMENT OF HOMELAND SECURITY', pageWidth / 2 - 75, y, fontBold, 9);
@@ -466,7 +495,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
   y = pageHeight - margin;
   
-  drawWatermark(page2);
+  drawStampWatermark(page2);
   
   // MASTER'S CERTIFICATION
   drawText(page2, "MASTER'S CERTIFICATION", pageWidth / 2 - 50, y, fontBold, 9);
@@ -614,7 +643,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   const page3 = pdfDoc.addPage([pageWidth, pageHeight]);
   y = pageHeight - margin;
   
-  drawWatermark(page3);
+  drawStampWatermark(page3);
   
   // Continuation Sheet Header
   drawText(page3, 'PASSENGER LIST - CREW LIST - Continuation Sheet', pageWidth / 2 - 100, y, fontBold, 9);
@@ -711,7 +740,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   const page4 = pdfDoc.addPage([pageWidth, pageHeight]);
   y = pageHeight - margin - 30;
   
-  drawWatermark(page4);
+  drawStampWatermark(page4);
   
   drawText(page4, 'PASSENGER LIST - CREW LIST', pageWidth / 2 - 60, y, fontBold, 10);
   y -= 15;
