@@ -337,12 +337,6 @@ export function DrugsAlcoholModule() {
                                     className="h-4 w-4"
                                     data-testid="radio-vessel"
                                 />
-                                <Label 
-                                    htmlFor="filter-vessel" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                >
-                                    Vessel
-                                </Label>
                             </div>
                             {filterType === 'vessel' && renderVesselSelect()}
                         </div>
@@ -356,12 +350,6 @@ export function DrugsAlcoholModule() {
                                     className="h-4 w-4"
                                     data-testid="radio-fleet"
                                 />
-                                <Label 
-                                    htmlFor="filter-fleet" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                >
-                                    Fleet
-                                </Label>
                             </div>
                             {filterType === 'fleet' && renderFleetSelect()}
                         </div>
@@ -375,12 +363,6 @@ export function DrugsAlcoholModule() {
                                     className="h-4 w-4"
                                     data-testid="radio-addGroup"
                                 />
-                                <Label 
-                                    htmlFor="filter-addGroup" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                >
-                                    Additional Group
-                                </Label>
                             </div>
                             {filterType === 'addGroup' && renderAddGroupSelect()}
                         </div>
@@ -417,12 +399,6 @@ export function DrugsAlcoholModule() {
                                     className="h-4 w-4"
                                     data-testid="radio-vessel"
                                 />
-                                <Label 
-                                    htmlFor="filter-vessel" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                >
-                                    Vessel
-                                </Label>
                             </div>
                             {renderVesselSelect()}
                         </div>
@@ -436,12 +412,6 @@ export function DrugsAlcoholModule() {
                                     className="h-4 w-4"
                                     data-testid="radio-fleet"
                                 />
-                                <Label 
-                                    htmlFor="filter-fleet" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                >
-                                    Fleet
-                                </Label>
                             </div>
                             {renderFleetSelect()}
                         </div>
@@ -455,12 +425,6 @@ export function DrugsAlcoholModule() {
                                     className="h-4 w-4"
                                     data-testid="radio-addGroup"
                                 />
-                                <Label 
-                                    htmlFor="filter-addGroup" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                >
-                                    Additional Group
-                                </Label>
                             </div>
                             {renderAddGroupSelect()}
                         </div>
@@ -495,12 +459,6 @@ export function DrugsAlcoholModule() {
                             className="h-4 w-4"
                             data-testid="radio-vessel"
                         />
-                        <Label 
-                            htmlFor="filter-vessel" 
-                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                        >
-                            Vessel
-                        </Label>
                         {renderVesselSelect()}
                     </div>
 
@@ -512,12 +470,6 @@ export function DrugsAlcoholModule() {
                             className="h-4 w-4"
                             data-testid="radio-fleet"
                         />
-                        <Label 
-                            htmlFor="filter-fleet" 
-                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                        >
-                            Fleet
-                        </Label>
                         {renderFleetSelect()}
                     </div>
 
@@ -529,12 +481,6 @@ export function DrugsAlcoholModule() {
                             className="h-4 w-4"
                             data-testid="radio-addGroup"
                         />
-                        <Label 
-                            htmlFor="filter-addGroup" 
-                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                        >
-                            Additional Group
-                        </Label>
                         {renderAddGroupSelect()}
                     </div>
                 </RadioGroup>

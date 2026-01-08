@@ -4045,12 +4045,6 @@ export const VesselModule = (): JSX.Element => {
                                     className="h-4 w-4"
                                     data-testid="radio-vessel"
                                 />
-                                <Label 
-                                    htmlFor="filter-vessel" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                >
-                                    Vessel
-                                </Label>
                                 <Select value={vesselValue} onValueChange={setVesselValue}>
                                     <SelectTrigger 
                                         className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
@@ -4076,12 +4070,6 @@ export const VesselModule = (): JSX.Element => {
                                     className="h-4 w-4"
                                     data-testid="radio-fleet"
                                 />
-                                <Label 
-                                    htmlFor="filter-fleet" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                >
-                                    Fleet
-                                </Label>
                                 <Select value={fleetValue} onValueChange={setFleetValue}>
                                     <SelectTrigger 
                                         className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
@@ -4104,12 +4092,6 @@ export const VesselModule = (): JSX.Element => {
                                     className="h-4 w-4"
                                     data-testid="radio-addgroup"
                                 />
-                                <Label 
-                                    htmlFor="filter-addgroup" 
-                                    className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                >
-                                    Add Group
-                                </Label>
                                 <Select value={addGroupValue} onValueChange={setAddGroupValue}>
                                     <SelectTrigger 
                                         className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"

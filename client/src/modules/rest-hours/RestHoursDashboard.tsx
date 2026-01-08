@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Filter, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -202,12 +201,6 @@ export const RestHoursDashboard = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-vessel"
                 />
-                <Label 
-                  htmlFor="filter-vessel" 
-                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                >
-                  Vessel
-                </Label>
               </div>
               {filterType === 'vessel' && renderVesselSelect()}
             </div>
@@ -221,12 +214,6 @@ export const RestHoursDashboard = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-fleet"
                 />
-                <Label 
-                  htmlFor="filter-fleet" 
-                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                >
-                  Fleet Group
-                </Label>
               </div>
               {filterType === 'fleet' && renderFleetSelect()}
             </div>
@@ -240,12 +227,6 @@ export const RestHoursDashboard = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-addgroup"
                 />
-                <Label 
-                  htmlFor="filter-addgroup" 
-                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                >
-                  Additional Group
-                </Label>
               </div>
               {filterType === 'addGroup' && renderAddGroupSelect()}
             </div>
@@ -286,12 +267,6 @@ export const RestHoursDashboard = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-vessel"
                 />
-                <Label 
-                  htmlFor="filter-vessel" 
-                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                >
-                  Vessel
-                </Label>
               </div>
               {filterType === 'vessel' && renderVesselSelect()}
             </div>
@@ -305,12 +280,6 @@ export const RestHoursDashboard = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-fleet"
                 />
-                <Label 
-                  htmlFor="filter-fleet" 
-                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                >
-                  Fleet Group
-                </Label>
               </div>
               {filterType === 'fleet' && renderFleetSelect()}
             </div>
@@ -324,12 +293,6 @@ export const RestHoursDashboard = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-addgroup"
                 />
-                <Label 
-                  htmlFor="filter-addgroup" 
-                  className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                >
-                  Additional Group
-                </Label>
               </div>
               {filterType === 'addGroup' && renderAddGroupSelect()}
             </div>
@@ -368,12 +331,6 @@ export const RestHoursDashboard = (): JSX.Element => {
               className="h-4 w-4"
               data-testid="radio-vessel"
             />
-            <Label 
-              htmlFor="filter-vessel" 
-              className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-            >
-              Vessel
-            </Label>
             {filterType === 'vessel' && renderVesselSelect()}
           </div>
 
@@ -385,12 +342,6 @@ export const RestHoursDashboard = (): JSX.Element => {
               className="h-4 w-4"
               data-testid="radio-fleet"
             />
-            <Label 
-              htmlFor="filter-fleet" 
-              className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-            >
-              Fleet Group
-            </Label>
             {filterType === 'fleet' && renderFleetSelect()}
           </div>
 
@@ -402,12 +353,6 @@ export const RestHoursDashboard = (): JSX.Element => {
               className="h-4 w-4"
               data-testid="radio-addgroup"
             />
-            <Label 
-              htmlFor="filter-addgroup" 
-              className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-            >
-              Additional Group
-            </Label>
             {filterType === 'addGroup' && renderAddGroupSelect()}
           </div>
         </RadioGroup>

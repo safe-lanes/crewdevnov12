@@ -8,7 +8,6 @@ import SectionTitleComponents from '@/components/Section/SectionTitleComponents'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
@@ -469,12 +468,6 @@ export function RotationModule() {
                                             className="h-4 w-4"
                                             data-testid="radio-vessel"
                                         />
-                                        <Label 
-                                            htmlFor="filter-vessel" 
-                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                        >
-                                            Vessel
-                                        </Label>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button
@@ -525,12 +518,6 @@ export function RotationModule() {
                                             className="h-4 w-4"
                                             data-testid="radio-fleet"
                                         />
-                                        <Label 
-                                            htmlFor="filter-fleet" 
-                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                        >
-                                            Fleet
-                                        </Label>
                                         <Select value={fleetValue} onValueChange={setFleetValue}>
                                             <SelectTrigger 
                                                 className="h-8 w-32 ml-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
@@ -554,12 +541,6 @@ export function RotationModule() {
                                             className="h-4 w-4"
                                             data-testid="radio-addgroup"
                                         />
-                                        <Label 
-                                            htmlFor="filter-addgroup" 
-                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer"
-                                        >
-                                            Add Group
-                                        </Label>
                                         <Select value={addGroupValue} onValueChange={setAddGroupValue}>
                                             <SelectTrigger 
                                                 className="h-8 w-36 ml-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
@@ -644,12 +625,6 @@ export function RotationModule() {
                                             className="h-4 w-4"
                                             data-testid="radio-vessel"
                                         />
-                                        <Label 
-                                            htmlFor="filter-vessel-tablet" 
-                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-20"
-                                        >
-                                            Vessel
-                                        </Label>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button
@@ -700,12 +675,6 @@ export function RotationModule() {
                                             className="h-4 w-4"
                                             data-testid="radio-fleet"
                                         />
-                                        <Label 
-                                            htmlFor="filter-fleet-tablet" 
-                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-20"
-                                        >
-                                            Fleet
-                                        </Label>
                                         <Select value={fleetValue} onValueChange={setFleetValue}>
                                             <SelectTrigger 
                                                 className="h-8 w-44 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
@@ -729,12 +698,6 @@ export function RotationModule() {
                                             className="h-4 w-4"
                                             data-testid="radio-addgroup"
                                         />
-                                        <Label 
-                                            htmlFor="filter-addgroup-tablet" 
-                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-20"
-                                        >
-                                            Add Group
-                                        </Label>
                                         <Select value={addGroupValue} onValueChange={setAddGroupValue}>
                                             <SelectTrigger 
                                                 className="h-8 w-44 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
@@ -819,12 +782,6 @@ export function RotationModule() {
                                             className="h-4 w-4"
                                             data-testid="radio-vessel"
                                         />
-                                        <Label 
-                                            htmlFor="filter-vessel-phone" 
-                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-16"
-                                        >
-                                            Vessel
-                                        </Label>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button
@@ -875,12 +832,6 @@ export function RotationModule() {
                                             className="h-4 w-4"
                                             data-testid="radio-fleet"
                                         />
-                                        <Label 
-                                            htmlFor="filter-fleet-phone" 
-                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-16"
-                                        >
-                                            Fleet
-                                        </Label>
                                         <Select value={fleetValue} onValueChange={setFleetValue}>
                                             <SelectTrigger 
                                                 className="h-8 flex-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
@@ -904,12 +855,6 @@ export function RotationModule() {
                                             className="h-4 w-4"
                                             data-testid="radio-addgroup"
                                         />
-                                        <Label 
-                                            htmlFor="filter-addgroup-phone" 
-                                            className="text-xs font-normal text-[#4f5863] dark:text-neutral-300 cursor-pointer w-16"
-                                        >
-                                            Add Group
-                                        </Label>
                                         <Select value={addGroupValue} onValueChange={setAddGroupValue}>
                                             <SelectTrigger 
                                                 className="h-8 flex-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
