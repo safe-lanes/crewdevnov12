@@ -13,10 +13,11 @@ This document lists all files created for the automated test suite.
 | E2E Tests | 12 | 99 |
 | Fixtures | 4 | - |
 | Helpers | 6 | - |
-| Documentation | 6 | - |
+| Documentation | 7 | - |
 | Scripts | 2 | - |
 | Config | 2 | - |
-| **Total** | **50** | **436** |
+| **Components with Test IDs** | **91** | - |
+| **Total** | **142** | **436** |
 
 ---
 
@@ -234,6 +235,160 @@ playwright.config.ts
 
 ---
 
+## Component Files with Test IDs (91 files)
+
+These component files contain `data-testid` attributes required for E2E tests.
+
+### Core Components
+
+| File | Module |
+|------|--------|
+| `client/src/App.tsx` | Root |
+| `client/src/components/main/MainLayout.tsx` | Layout |
+| `client/src/components/Navbar/HeaderComponent.tsx` | Navigation |
+| `client/src/components/Navbar/SideBarComponent.tsx` | Navigation |
+| `client/src/components/ui/status-badge.tsx` | UI |
+| `client/src/components/BaseSubmoduleForm.tsx` | Forms |
+| `client/src/components/FileAttachmentDialog.tsx` | Dialogs |
+| `client/src/components/HandoverAttachmentsDialog.tsx` | Dialogs |
+| `client/src/components/charts/ChartToolbar.tsx` | Charts |
+| `client/src/components/filters/PeriodFilter.tsx` | Filters |
+| `client/src/components/dialogs/PromotionHierarchyDialog.tsx` | Dialogs |
+| `client/src/components/dialogs/UnsavedChangesDialog.tsx` | Dialogs |
+
+### Form Editor Components
+
+| File | Purpose |
+|------|---------|
+| `client/src/components/FormEditor.tsx` | Main form editor |
+| `client/src/components/form-editor-parts/PartA.tsx` | Part A section |
+| `client/src/components/form-editor-parts/PartB.tsx` | Part B section |
+| `client/src/components/form-editor-parts/PartC.tsx` | Part C section |
+| `client/src/components/form-editor-parts/PartD.tsx` | Part D section |
+| `client/src/components/form-editor-parts/PartE.tsx` | Part E section |
+| `client/src/components/form-editor-parts/PartF.tsx` | Part F section |
+| `client/src/components/form-editor-parts/PartG.tsx` | Part G section |
+
+### Appraisal Form Components
+
+| File | Purpose |
+|------|---------|
+| `client/src/modules/crewing/AppraisalForm.tsx` | Main appraisal form |
+| `client/src/modules/crewing/ElementCrewAppraisals.tsx` | Appraisals list |
+| `client/src/components/appraisal-form-parts/PartA.tsx` | Part A section |
+| `client/src/components/appraisal-form-parts/PartE.tsx` | Part E section |
+| `client/src/components/appraisal-form-parts/PartF.tsx` | Part F section |
+| `client/src/components/appraisal-form-parts/PartG.tsx` | Part G section |
+
+### Promotion Components
+
+| File | Purpose |
+|------|---------|
+| `client/src/modules/promotions/PromotionsModule.tsx` | Main module |
+| `client/src/modules/promotions/PromotionsSideBar.tsx` | Sidebar |
+| `client/src/modules/promotions/PromotionsTable.tsx` | Promotions list |
+| `client/src/modules/promotions/PromotionChecklistForm.tsx` | Checklist form |
+| `client/src/modules/promotions/PromotionReviewForm.tsx` | Review form |
+| `client/src/components/PromotionFormEditor.tsx` | Form editor |
+| `client/src/components/promotion-review-parts/PartA-CesTests.tsx` | CES tests |
+| `client/src/components/promotion-review-parts/PartA-CriteriaTable.tsx` | Criteria table |
+| `client/src/components/promotion-review-parts/PartA-TrainingNeeds.tsx` | Training needs |
+| `client/src/components/promotion-review-parts/PartB-Approval.tsx` | Approval section |
+| `client/src/components/promotion-review-parts/PartC-Execution.tsx` | Execution section |
+
+### Crew Pool Components
+
+| File | Purpose |
+|------|---------|
+| `client/src/modules/crew-pool/CrewPoolModule.tsx` | Main module |
+| `client/src/modules/crew-pool/CrewPoolSideBar.tsx` | Sidebar |
+| `client/src/modules/crew-pool/CrewInfoForm.tsx` | Crew information form |
+| `client/src/modules/crew-pool/components/TimelineCard.tsx` | Timeline display |
+| `client/src/modules/crew-pool/LicenseSelectionDialog.tsx` | License selection |
+| `client/src/modules/crew-pool/TrainingCourseSelectionDialog.tsx` | Training selection |
+| `client/src/modules/crew-pool/TravelDocumentSelectionDialog.tsx` | Travel doc selection |
+| `client/src/modules/crew-pool/VisaSelectionDialog.tsx` | Visa selection |
+
+### Drugs & Alcohol Components
+
+| File | Purpose |
+|------|---------|
+| `client/src/modules/drugs-alcohol/DrugsAlcoholModule.tsx` | Main module |
+| `client/src/modules/drugs-alcohol/DrugsAlcoholSideBar.tsx` | Sidebar |
+| `client/src/modules/drugs-alcohol/DrugAlcoholTestForm.tsx` | Test form |
+| `client/src/modules/drugs-alcohol/AnnualTestTable.tsx` | Annual tests |
+| `client/src/modules/drugs-alcohol/MonthlyTestTable.tsx` | Monthly tests |
+| `client/src/modules/drugs-alcohol/PeriodicTestTable.tsx` | Periodic tests |
+| `client/src/modules/drugs-alcohol/PostIncidentTestTable.tsx` | Post-incident tests |
+| `client/src/modules/drugs-alcohol/OtherTestsTable.tsx` | Other tests |
+| `client/src/modules/drugs-alcohol/SummaryTable.tsx` | Summary view |
+
+### Rest Hours Components
+
+| File | Purpose |
+|------|---------|
+| `client/src/modules/rest-hours/RestHoursModule.tsx` | Main module |
+| `client/src/modules/rest-hours/RestHoursSideBar.tsx` | Sidebar |
+| `client/src/modules/rest-hours/RestHoursDashboard.tsx` | Dashboard |
+| `client/src/modules/rest-hours/RestHoursRecord.tsx` | Recording view |
+| `client/src/modules/rest-hours/RestHoursPlan.tsx` | Planning view |
+| `client/src/modules/rest-hours/RHRecordingForm.tsx` | Recording form |
+| `client/src/modules/rest-hours/RHRecordsTable.tsx` | Records table |
+| `client/src/modules/rest-hours/RHCrewRecordsTable.tsx` | Crew records |
+| `client/src/modules/rest-hours/FixedTasksTable.tsx` | Fixed tasks |
+| `client/src/modules/rest-hours/VariableTasksTable.tsx` | Variable tasks |
+| `client/src/modules/rest-hours/VariableTaskForm.tsx` | Variable task form |
+| `client/src/modules/rest-hours/RestHoursVesselOverview.tsx` | Vessel overview |
+| `client/src/modules/rest-hours/PerformanceOverviewCard.tsx` | Performance cards |
+| `client/src/modules/rest-hours/DateLineAdjustmentsDialog.tsx` | Date adjustments |
+| `client/src/modules/rest-hours/NCOverviewDialog.tsx` | NC overview |
+| `client/src/modules/rest-hours/NCReportDialog.tsx` | NC report |
+| `client/src/modules/rest-hours/VesselListDialog.tsx` | Vessel list |
+| `client/src/modules/rest-hours/VesselNCsDialog.tsx` | Vessel NCs |
+| `client/src/modules/rest-hours/VesselReviewDialog.tsx` | Vessel review |
+| `client/src/modules/rest-hours/ViolationsOverviewDialog.tsx` | Violations overview |
+| `client/src/modules/rest-hours/PlaceholderChart.tsx` | Placeholder chart |
+| `client/src/modules/rest-hours/RankWiseNCsChart.tsx` | Rank NCs chart |
+| `client/src/modules/rest-hours/RankWiseViolationsChart.tsx` | Violations chart |
+| `client/src/modules/rest-hours/VesselAnalysisChart.tsx` | Vessel analysis |
+| `client/src/modules/rest-hours/VesselStatusChart.tsx` | Vessel status |
+
+### Rotation Components
+
+| File | Purpose |
+|------|---------|
+| `client/src/modules/rotation/RotationModule.tsx` | Main module |
+| `client/src/modules/rotation/RotationSideBar.tsx` | Sidebar |
+| `client/src/modules/rotation/RotationPlanTable.tsx` | Plan table |
+| `client/src/modules/rotation/ApprovalTable.tsx` | Approval table |
+| `client/src/modules/rotation/NewPlanDialog.tsx` | New plan dialog |
+
+### Recruitment Components
+
+| File | Purpose |
+|------|---------|
+| `client/src/modules/recruitment/RecruitmentModule.tsx` | Main module |
+| `client/src/modules/recruitment/RecruitmentSideBar.tsx` | Sidebar |
+| `client/src/modules/recruitment/RecruitmentApplicationForm.tsx` | Application form |
+
+### Vessel Components
+
+| File | Purpose |
+|------|---------|
+| `client/src/modules/vessel/VesselModule.tsx` | Main module |
+| `client/src/modules/vessel/VesselSideBar.tsx` | Sidebar |
+| `client/src/modules/vessel/ComplianceMatrixDialog.tsx` | Compliance matrix |
+
+### Admin & Pages
+
+| File | Purpose |
+|------|---------|
+| `client/src/modules/admin/AdminModule.tsx` | Admin module |
+| `client/src/pages/DashboardPage.tsx` | Dashboard |
+| `client/src/pages/ReportsComingSoon.tsx` | Reports page |
+
+---
+
 ## Quick Copy Command
 
 To copy all test suite files to another fork:
@@ -242,3 +397,5 @@ To copy all test suite files to another fork:
 cp -r tests scripts docs/TEST*.md docs/MIGRATION*.md docs/DEVELOPER*.md \
   docs/TROUBLESHOOTING.md vitest.config.ts playwright.config.ts /path/to/new-fork/
 ```
+
+**Note:** The 91 component files with `data-testid` attributes are part of the main codebase and should already exist in any fork. Use `docs/TEST_IDS_REFERENCE.md` to verify all required test IDs are present.
