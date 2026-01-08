@@ -99,10 +99,10 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
   
-  const pageWidth = 612;
-  const pageHeight = 792;
+  const pageWidth = 792;
+  const pageHeight = 612;
   const margin = 25;
-  const contentWidth = pageWidth - (margin * 2);
+  const contentWidth = 742;
   
   const form = pdfDoc.getForm();
   const crewMembers = data.crewMembers;
@@ -126,10 +126,16 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
       drawText(page, 'X', x + 2, y + 1, fontBold, 7);
     }
   };
+  
+  const drawWatermark = (page: PDFPage) => {
+    drawText(page, 'Replica', pageWidth - margin - 35, pageHeight - margin, fontBold, 10);
+  };
 
   // ========== PAGE 1 ==========
   const page1 = pdfDoc.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin;
+  
+  drawWatermark(page1);
   
   // Header
   drawText(page1, 'DEPARTMENT OF HOMELAND SECURITY', pageWidth / 2 - 75, y, fontBold, 9);
@@ -460,6 +466,8 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
   y = pageHeight - margin;
   
+  drawWatermark(page2);
+  
   // MASTER'S CERTIFICATION
   drawText(page2, "MASTER'S CERTIFICATION", pageWidth / 2 - 50, y, fontBold, 9);
   y -= 15;
@@ -606,6 +614,8 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   const page3 = pdfDoc.addPage([pageWidth, pageHeight]);
   y = pageHeight - margin;
   
+  drawWatermark(page3);
+  
   // Continuation Sheet Header
   drawText(page3, 'PASSENGER LIST - CREW LIST - Continuation Sheet', pageWidth / 2 - 100, y, fontBold, 9);
   y -= 18;
@@ -700,6 +710,8 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   // ========== PAGE 4 - INSTRUCTIONS ==========
   const page4 = pdfDoc.addPage([pageWidth, pageHeight]);
   y = pageHeight - margin - 30;
+  
+  drawWatermark(page4);
   
   drawText(page4, 'PASSENGER LIST - CREW LIST', pageWidth / 2 - 60, y, fontBold, 10);
   y -= 15;
