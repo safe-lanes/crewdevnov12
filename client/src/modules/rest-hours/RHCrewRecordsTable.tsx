@@ -10,6 +10,7 @@ import type { RestHoursCrewRecord } from '@shared/schema';
 import { RHRecordingForm } from './RHRecordingForm';
 import { ViolationsDetailDialog } from './ViolationsDetailDialog';
 import { NCReportDialog } from './NCReportDialog';
+import { NCOverviewDialog } from './NCOverviewDialog';
 import { type ComplianceMode } from './violationFilters';
 import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
 
@@ -105,11 +106,17 @@ const BadgeRenderer = (params: ICellRendererParams) => {
 
 const PredictedBadgeRenderer = (params: ICellRendererParams) => {
   // Defensive guard for AG Grid initialization
-  if (!params.colDef) return null;
+  if (!params.colDef || !params.data) return null;
   
   const value = params.value ?? 0;
   // Normalize to number to handle both numeric and string zeroes
   const isZero = Number(value) === 0;
+
+  const handleClick = () => {
+    if (params.context && params.context.onViewPredictedNC) {
+      params.context.onViewPredictedNC(params.data);
+    }
+  };
 
   // Return empty div with preserved alignment for zero values
   if (isZero) {
@@ -119,8 +126,10 @@ const PredictedBadgeRenderer = (params: ICellRendererParams) => {
   return (
     <div className="flex items-center justify-center h-full py-0">
       <span 
-        className="px-3 py-0 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700" 
+        className="px-3 py-0 rounded font-semibold min-w-[32px] text-center bg-gray-200 text-gray-700 cursor-pointer hover:bg-gray-300 transition-colors" 
         style={{ fontSize: '13px' }}
+        onClick={handleClick}
+        data-testid={`button-pred-nc-${params.data?.crewMemberId}`}
       >
         {value}
       </span>
@@ -322,6 +331,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   const [selectedPredictedViolationsRecord, setSelectedPredictedViolationsRecord] = useState<RestHoursCrewRecord | null>(null);
   const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
   const [selectedNCReportRecord, setSelectedNCReportRecord] = useState<RestHoursCrewRecord | null>(null);
+  const [predictedNCDialogOpen, setPredictedNCDialogOpen] = useState(false);
+  const [selectedPredictedNCRecord, setSelectedPredictedNCRecord] = useState<RestHoursCrewRecord | null>(null);
   
   const { filterCrewWithVariants, getCanonicalRankName } = useRankNormalization();
 
@@ -347,6 +358,12 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
   const handleViewNCReport = (record: RestHoursCrewRecord) => {
     setSelectedNCReportRecord(record);
     setNCReportDialogOpen(true);
+  };
+
+  // Handler for opening the predicted NC dialog
+  const handleViewPredictedNC = (record: RestHoursCrewRecord) => {
+    setSelectedPredictedNCRecord(record);
+    setPredictedNCDialogOpen(true);
   };
 
   // Fetch available ranks to get sortOrder
@@ -575,7 +592,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           gridOptions={{ theme: 'legacy' }}
-          context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations, onViewNCReport: handleViewNCReport }}
+          context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations, onViewNCReport: handleViewNCReport, onViewPredictedNC: handleViewPredictedNC }}
           animateRows={true}
           pagination={true}
           paginationPageSize={20}
@@ -634,6 +651,21 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           onOpenChange={setNCReportDialogOpen}
           crewRecord={selectedNCReportRecord}
           vesselName={selectedNCReportRecord.vesselId}
+        />
+      )}
+
+      {selectedPredictedNCRecord && vesselId && monthValue && (
+        <NCOverviewDialog
+          key={`predicted-nc-${selectedPredictedNCRecord.crewMemberId}-${selectedPredictedNCRecord.vesselId}-${selectedPredictedNCRecord.monthValue}`}
+          open={predictedNCDialogOpen}
+          onOpenChange={setPredictedNCDialogOpen}
+          vesselId={vesselId}
+          vesselName={selectedPredictedNCRecord.vesselId}
+          monthValue={monthValue}
+          complianceMode={complianceMode}
+          opaMode={opaMode}
+          isPredicted={true}
+          rankFilter={selectedPredictedNCRecord.rank || undefined}
         />
       )}
     </>
