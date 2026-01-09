@@ -10,6 +10,7 @@ export interface ViolationDiagnostic {
   windowStart?: string | number;  // Can be "Multiple windows" or a formatted date string or timestamp
   windowEnd?: number;
   violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>;
+  majorityDay?: number;  // The majority-adjusted day for 24-hour violations (used by NC calculations)
 }
 
 /**

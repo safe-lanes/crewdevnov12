@@ -20,8 +20,12 @@ import {
   calculateMaxWorkInAny24HourPeriod,
   detectViolations as detectTimelineViolations,
   groupViolationsByDay,
+  groupViolationObjectsByDay,
   prependPreviousMonthTimeline,
   analyzeRestPeriodsWithRanges,
+  calculateMajorityDayFor24HourWindow,
+  MAJORITY_DAY_ASSIGNMENT,
+  TWENTY_FOUR_HOUR_VIOLATION_CODES,
   type DateLineAdjustment,
   type TimelineSlot,
   type Violation as TimelineViolation,
@@ -858,8 +862,11 @@ export const RHRecordingForm = ({
       opaMode
     );
     
-    // Group violations by source day
+    // Group violations by source day (for violation codes)
     const violationsByDay = groupViolationsByDay(allViolations);
+    
+    // Group violations with objects (for diagnostics with proper majorityDay)
+    const violationObjectsByDay = groupViolationObjectsByDay(allViolations);
     
     // Build result map with violations and metrics for each day
     const resultMap = new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
@@ -874,19 +881,22 @@ export const RHRecordingForm = ({
         return match ? parseInt(match[1]) : 0;
       }).filter(n => n > 0);
       
-      // Find timeline violations for this day to generate diagnostics
-      const dayTimelineViolations = allViolations.filter(v => v.sourceDay === record.day);
-      const diagnostics: ViolationDiagnostic[] = dayTimelineViolations.map(v => {
-        const codeNum = parseInt(v.code.match(/\[(\d+)\]/)![1]);
+      // Generate diagnostics using the violation objects that were assigned to this day
+      // This ensures diagnostics are aligned with the majority-day assignment
+      const violationObjectsForDay = violationObjectsByDay.get(record.day) || [];
+      const diagnostics: ViolationDiagnostic[] = violationObjectsForDay.map(({ violation, assignedDay }) => {
+        const codeNum = parseInt(violation.code.match(/\[(\d+)\]/)![1]);
         
         // Compute violatingRanges for hover highlighting
-        const violatingRanges = computeViolatingRanges(v, fullTimeline, codeNum);
+        const violatingRanges = computeViolatingRanges(violation, fullTimeline, codeNum);
         
         return {
           code: codeNum,
           windowStart: 'Timeline window',
-          reason: v.reason,
+          reason: violation.reason,
           violatingRanges,
+          // majorityDay is the day this violation is ASSIGNED TO (used by NC/Predicted NC counting)
+          majorityDay: assignedDay,
         };
       });
       

@@ -718,7 +718,7 @@ export const WORK_ANCHORED_24H_WINDOW: {
  * When MAJORITY_DAY_ASSIGNMENT.enabled is true, uses majority-day logic.
  * Otherwise, uses END-day assignment.
  */
-const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
+export const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
   '[1]', // MIN_REST_10H_IN_24H
   '[3]', // REST_PERIOD_STRUCTURE
   '[4]', // MAX_WORK_INTERVAL
@@ -761,7 +761,7 @@ const START_DAY_VIOLATION_CODES = [
  * @param slotIndex - The ending slot index of the violation window
  * @returns The day number that has the majority of slots, or null if majority is in previous month
  */
-function calculateMajorityDayFor24HourWindow(
+export function calculateMajorityDayFor24HourWindow(
   windowStartDay: number | undefined,
   endDay: number,
   slotIndex: number
@@ -944,6 +944,93 @@ export function groupViolationsByDay(violations: Violation[]): Map<number, strin
       const existing = dayViolations.get(violation.sourceDay) || [];
       if (!existing.includes(violation.code)) {
         existing.push(violation.code);
+      }
+      dayViolations.set(violation.sourceDay, existing);
+    }
+  }
+  
+  return dayViolations;
+}
+
+/**
+ * Groups violations by assigned day, returning the actual Violation objects (not just codes).
+ * This is needed for creating diagnostics with proper majorityDay metadata.
+ * 
+ * Uses the same assignment logic as groupViolationsByDay but returns violation objects
+ * along with the day they're assigned to.
+ * 
+ * @param violations - Array of all violations from timeline
+ * @returns Map of day number to array of violation objects with their assigned day info
+ */
+export function groupViolationObjectsByDay(violations: Violation[]): Map<number, Array<{ violation: Violation; assignedDay: number }>> {
+  const dayViolations = new Map<number, Array<{ violation: Violation; assignedDay: number }>>();
+  
+  if (VIOLATION_ASSIGNMENT_STRATEGY.mode === 'hybrid') {
+    const processedCodes = new Set<string>();
+    
+    for (const violation of violations) {
+      if (processedCodes.has(violation.code)) continue;
+      
+      const is24HourViolation = TWENTY_FOUR_HOUR_VIOLATION_CODES.includes(violation.code);
+      const is72HourViolation = SEVENTY_TWO_HOUR_VIOLATION_CODES.includes(violation.code);
+      const isStartDayViolation = START_DAY_VIOLATION_CODES.includes(violation.code);
+      
+      if (is24HourViolation || is72HourViolation || isStartDayViolation) {
+        processedCodes.add(violation.code);
+        const events = groupConsecutiveViolations(violations, violation.code);
+        
+        for (const event of events) {
+          let assignedDay: number | null;
+          
+          if (isStartDayViolation) {
+            // 7-day violations: use START day, clamped to day 1
+            assignedDay = Math.max(1, event.startDay);
+          } else if (is24HourViolation && MAJORITY_DAY_ASSIGNMENT.enabled) {
+            // 24-hour violations with majority-day logic enabled
+            assignedDay = calculateMajorityDayFor24HourWindow(
+              event.windowStartDay,
+              event.startDay,
+              event.startSlotIndex
+            );
+          } else {
+            // 72-hour violations or 24-hour with majority-day disabled: use END day
+            assignedDay = event.endDay;
+          }
+          
+          // Skip if no valid day (majority in previous month)
+          if (assignedDay === null || assignedDay < 1) continue;
+          
+          // Find the representative violation for this event (use the first one in the event)
+          const representativeViolation = violations.find(v => 
+            v.code === event.code && 
+            v.sourceDay >= event.startDay && 
+            v.sourceDay <= event.endDay
+          );
+          
+          if (representativeViolation) {
+            const existing = dayViolations.get(assignedDay) || [];
+            // Only add if not already present for this code
+            if (!existing.some(e => e.violation.code === representativeViolation.code)) {
+              existing.push({ violation: representativeViolation, assignedDay });
+            }
+            dayViolations.set(assignedDay, existing);
+          }
+        }
+      } else {
+        // Non-special violations: use sourceDay
+        const existing = dayViolations.get(violation.sourceDay) || [];
+        if (!existing.some(e => e.violation.code === violation.code)) {
+          existing.push({ violation, assignedDay: violation.sourceDay });
+        }
+        dayViolations.set(violation.sourceDay, existing);
+      }
+    }
+  } else {
+    // Legacy mode: use sourceDay
+    for (const violation of violations) {
+      const existing = dayViolations.get(violation.sourceDay) || [];
+      if (!existing.some(e => e.violation.code === violation.code)) {
+        existing.push({ violation, assignedDay: violation.sourceDay });
       }
       dayViolations.set(violation.sourceDay, existing);
     }

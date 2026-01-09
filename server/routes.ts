@@ -998,38 +998,11 @@ function filterViolationsByMode(violations: number[], complianceMode: 'Rest' | '
 }
 
 // Helper function to count violation days based on compliance mode
+// Uses getViolationDates to ensure consistent majority-day assignment
 function countViolationDays(dailyRecordsJson: string, complianceMode: 'Rest' | 'Work', opaMode: boolean, isPlanMode: boolean): number {
-  try {
-    const dailyRecords = JSON.parse(dailyRecordsJson);
-    if (!Array.isArray(dailyRecords) || dailyRecords.length === 0) {
-      return 0;
-    }
-
-    // Count days with violations
-    const violationDays = dailyRecords.filter((day: any) => {
-      // Filter by isPlan status
-      const dayIsPlan = day.isPlan === true;
-      if (isPlanMode !== dayIsPlan) {
-        return false;
-      }
-      
-      // Check if day has violations
-      if (!Array.isArray(day.violations) || day.violations.length === 0) {
-        return false;
-      }
-      
-      // Filter violations based on compliance mode
-      const relevantViolations = filterViolationsByMode(day.violations, complianceMode, opaMode);
-      
-      // Count as 1 if there are any relevant violations (regardless of how many)
-      return relevantViolations.length > 0;
-    }).length;
-
-    return violationDays;
-  } catch (error) {
-    console.error('Failed to count violation days:', error);
-    return 0;
-  }
+  // Use getViolationDates which handles majority-day assignment consistently
+  const violationDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, isPlanMode);
+  return violationDates.length;
 }
 
 // Helper function to check if a crew member has any violation days
@@ -1066,6 +1039,7 @@ function hasViolationDays(dailyRecordsJson: string, complianceMode: 'Rest' | 'Wo
 }
 
 // Helper function to get array of dates (day numbers) where violations occurred
+// Uses majority-day assignment for 24-hour violations when majorityDay is available in diagnostics
 function getViolationDates(dailyRecordsJson: string, complianceMode: 'Rest' | 'Work', opaMode: boolean, isPlanMode: boolean): number[] {
   try {
     const dailyRecords = JSON.parse(dailyRecordsJson);
@@ -1073,8 +1047,9 @@ function getViolationDates(dailyRecordsJson: string, complianceMode: 'Rest' | 'W
       return [];
     }
 
-    // Collect day numbers where violations occurred
-    const violationDates: number[] = [];
+    // Collect day numbers where violations occurred, using majority-day when available
+    const violationDatesSet = new Set<number>();
+    
     dailyRecords.forEach((day: any) => {
       // Filter by isPlan status
       const dayIsPlan = day.isPlan === true;
@@ -1090,13 +1065,28 @@ function getViolationDates(dailyRecordsJson: string, complianceMode: 'Rest' | 'W
       // Filter violations based on compliance mode
       const relevantViolations = filterViolationsByMode(day.violations, complianceMode, opaMode);
       
-      // Add day number if there are relevant violations
-      if (relevantViolations.length > 0 && day.day) {
-        violationDates.push(day.day);
+      if (relevantViolations.length === 0) return;
+      
+      // Get diagnostics for this day (if available)
+      const diagnostics: Array<{ code: number; majorityDay?: number }> = day.violationDiagnostics || [];
+      
+      // For each relevant violation, determine the correct day to assign it to
+      for (const violationCode of relevantViolations) {
+        // Find diagnostic for this violation code
+        const diagnostic = diagnostics.find((d: { code: number }) => d.code === violationCode);
+        
+        // Use majorityDay if available (for 24-hour violations with majority-day assignment)
+        // Otherwise fall back to the record's day
+        const assignedDay = diagnostic?.majorityDay ?? day.day;
+        
+        // Only add if valid day number (>= 1)
+        if (assignedDay && assignedDay >= 1) {
+          violationDatesSet.add(assignedDay);
+        }
       }
     });
 
-    return violationDates.sort((a, b) => a - b); // Sort dates in ascending order
+    return Array.from(violationDatesSet).sort((a, b) => a - b); // Sort dates in ascending order
   } catch (error) {
     console.error('Failed to get violation dates:', error);
     return [];
