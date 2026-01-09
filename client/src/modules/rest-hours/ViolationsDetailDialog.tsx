@@ -60,7 +60,7 @@ export function ViolationsDetailDialog({
     enabled: open,
   });
 
-  // Parse and filter daily records
+  // Parse and filter daily records, grouping violations by majorityDay for consistency with grid display
   const violationRecords = useMemo(() => {
     if (!recordContainer || !recordContainer.dailyRecords) {
       return [];
@@ -74,32 +74,71 @@ export function ViolationsDetailDialog({
       return [];
     }
 
-    // Filter records to show only days with violations
+    // Filter records by isPlan status first
     // isPredicted=true shows planned violations (isPlan=true)
     // isPredicted=false shows actual violations (isPlan=false)
-    return dailyRecords
-      .filter(record => isPredicted ? record.isPlan : !record.isPlan)
-      .filter(record => {
-        // Get violations array and filter using the standard filtering logic
-        const violations = Array.isArray(record.violations) ? record.violations : [];
-        const filteredViolations = filterViolations(violations, complianceMode, opaMode);
-        return filteredViolations.length > 0;
-      })
-      .map(record => {
-        // Get and filter violations for display using the standard filtering logic
-        const violations = Array.isArray(record.violations) ? record.violations : [];
-        const filteredViolations = filterViolations(violations, complianceMode, opaMode);
-        
-        // Filter diagnostics to match filtered violations
-        const diagnostics = record.violationDiagnostics || [];
-        const filteredDiagnostics = diagnostics.filter(d => filteredViolations.includes(d.code));
+    const recordsForMode = dailyRecords.filter(record => 
+      isPredicted ? record.isPlan : !record.isPlan
+    );
 
-        return {
-          ...record,
-          filteredViolations: filteredViolations.sort((a, b) => a - b),
-          filteredDiagnostics,
+    // Group violations by their assigned day (majorityDay from diagnostics)
+    // This ensures the popup shows violations on the same day as the grid
+    const violationsByDay = new Map<number, { 
+      violations: number[]; 
+      diagnostics: ViolationDiagnostic[];
+      comments: string;
+    }>();
+
+    for (const record of recordsForMode) {
+      const violations = Array.isArray(record.violations) ? record.violations : [];
+      const diagnostics = record.violationDiagnostics || [];
+      
+      // For each violation, determine its display day using majorityDay from diagnostic
+      for (const violationCode of violations) {
+        // Filter by compliance mode
+        const filteredViolations = filterViolations([violationCode], complianceMode, opaMode);
+        if (filteredViolations.length === 0) continue;
+        
+        // Find the diagnostic for this violation
+        const diagnostic = diagnostics.find(d => d.code === violationCode);
+        
+        // Use majorityDay if available, otherwise fall back to record.day
+        const displayDay = diagnostic?.majorityDay ?? record.day;
+        
+        // Get or create the entry for this day
+        const existing = violationsByDay.get(displayDay) || { 
+          violations: [], 
+          diagnostics: [],
+          comments: ''
         };
-      })
+        
+        // Add violation if not already present
+        if (!existing.violations.includes(violationCode)) {
+          existing.violations.push(violationCode);
+        }
+        
+        // Add diagnostic if not already present
+        if (diagnostic && !existing.diagnostics.some(d => d.code === violationCode)) {
+          existing.diagnostics.push(diagnostic);
+        }
+        
+        // Use comments from the first record that contributes to this day
+        if (!existing.comments && record.comments) {
+          existing.comments = record.comments;
+        }
+        
+        violationsByDay.set(displayDay, existing);
+      }
+    }
+
+    // Convert map to sorted array of records
+    return Array.from(violationsByDay.entries())
+      .map(([day, data]) => ({
+        day,
+        filteredViolations: data.violations.sort((a, b) => a - b),
+        filteredDiagnostics: data.diagnostics,
+        comments: data.comments,
+      }))
       .sort((a, b) => a.day - b.day);
   }, [recordContainer, complianceMode, opaMode, isPredicted]);
 
