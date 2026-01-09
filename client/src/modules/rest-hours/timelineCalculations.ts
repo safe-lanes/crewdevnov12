@@ -313,6 +313,12 @@ export interface Violation {
   sourceDay: number;
   occurrence: 'primary' | 'duplicate';
   metrics?: Partial<RollingWindowMetrics>;
+  /** 
+   * The day at the start of the 24-hour (or 72-hour for [8]) violation window.
+   * Used for majority-day assignment to handle retarded days correctly.
+   * For a 24-hour window ending at slotIndex, this is timeline[slotIndex-47].sourceDay.
+   */
+  windowStartDay?: number;
 }
 
 /**
@@ -495,6 +501,10 @@ export function detectViolations(
     
     const metrics = calculateRollingMetrics(slotIdx, cumulativeRest, cumulativeWork);
     
+    // Calculate window start day for 24-hour violations (used for majority-day assignment)
+    const windowStartIdx24h = slotIdx - 47;
+    const windowStartDay24h = windowStartIdx24h >= 0 ? timeline[windowStartIdx24h].sourceDay : undefined;
+    
     if (complianceMode === 'Rest') {
       if (metrics.rest24h < REGULATORY_THRESHOLDS.MIN_REST_10H_IN_24H) {
         violations.push({
@@ -504,6 +514,7 @@ export function detectViolations(
           sourceDay: slot.sourceDay,
           occurrence: slot.occurrence,
           metrics,
+          windowStartDay: windowStartDay24h,
         });
       }
       
@@ -523,9 +534,8 @@ export function detectViolations(
       let shouldCheckCode3 = true;
       if (WORK_ANCHORED_24H_WINDOW.enabled) {
         // The 24-hour window starts 47 slots before the current slot (48 slots total, 0-indexed)
-        const windowStartIdx = slotIdx - 47;
-        if (windowStartIdx >= 0) {
-          const windowStartStatus = timeline[windowStartIdx].status.toLowerCase();
+        if (windowStartIdx24h >= 0) {
+          const windowStartStatus = timeline[windowStartIdx24h].status.toLowerCase();
           // Only check if window starts with work 'w' or duty 'd' (not blank/rest)
           shouldCheckCode3 = windowStartStatus === 'w' || windowStartStatus === 'd';
         }
@@ -563,6 +573,7 @@ export function detectViolations(
           sourceDay: slot.sourceDay,
           occurrence: slot.occurrence,
           metrics,
+          windowStartDay: windowStartDay24h,
         });
       }
       
@@ -574,6 +585,7 @@ export function detectViolations(
           sourceDay: slot.sourceDay,
           occurrence: slot.occurrence,
           metrics,
+          windowStartDay: windowStartDay24h,
         });
       }
     }
@@ -587,6 +599,7 @@ export function detectViolations(
           sourceDay: slot.sourceDay,
           occurrence: slot.occurrence,
           metrics,
+          windowStartDay: windowStartDay24h,
         });
       }
       
@@ -609,6 +622,7 @@ export function detectViolations(
           sourceDay: slot.sourceDay,
           occurrence: slot.occurrence,
           metrics,
+          windowStartDay: windowStartDay24h,
         });
       }
       
@@ -633,8 +647,9 @@ export function detectViolations(
  * 
  * - 'legacy': Violations appear on every day where the violation window is detected (original behavior)
  * - 'hybrid': Uses code-specific strategies:
- *     - 24-hour violations (codes 1, 3, 4, 5, 7, 8): Show on END day of violation window
+ *     - 24-hour violations (codes 1, 3, 4, 5, 7): Show on END day of violation window
  *     - 7-day violations (codes 2, 6): Show on FIRST day of violation window
+ *     - Code [8] (72h OPA): Show on END day
  * 
  * To revert to original behavior, change mode to 'legacy'
  */
@@ -642,6 +657,32 @@ export const VIOLATION_ASSIGNMENT_STRATEGY: {
   mode: 'legacy' | 'hybrid';
 } = {
   mode: 'hybrid',
+};
+
+/**
+ * Majority-day assignment for 24-hour violations.
+ * 
+ * When enabled, 24-hour violations ([1], [3], [4], [5], [7]) are assigned to the day
+ * that contains the MAJORITY of the 24-hour violation window, rather than always
+ * using the END day.
+ * 
+ * This addresses the issue where a violation window might have 23 hours on Day 8
+ * but only 1 hour on Day 9, yet would incorrectly show on Day 9 with END-day logic.
+ * 
+ * Behavior:
+ * - Calculates which day has more slots in the 24-hour window
+ * - On 50-50 tie (12 hours each), uses the EARLIER day
+ * - If majority falls in previous month (day < 1), violation is NOT shown in current month
+ * 
+ * TO REVERT: Set enabled to false (single-line change)
+ * 
+ * SCOPE: Only affects 24-hour violation codes ([1], [3], [4], [5], [7]).
+ * Does NOT affect Code [8] (72h window) or 7-day violations ([2], [6]).
+ */
+export const MAJORITY_DAY_ASSIGNMENT: {
+  enabled: boolean;
+} = {
+  enabled: true, // Set to false to revert to END-day assignment
 };
 
 /**
@@ -672,15 +713,25 @@ export const WORK_ANCHORED_24H_WINDOW: {
 };
 
 /**
- * 24-hour violation codes that should use END-day assignment.
- * These violations are assigned to the day where the 24-hour window ends.
+ * 24-hour violation codes that use majority-day or END-day assignment.
+ * These violations span a 24-hour (48 half-hour slots) window.
+ * When MAJORITY_DAY_ASSIGNMENT.enabled is true, uses majority-day logic.
+ * Otherwise, uses END-day assignment.
  */
-const END_DAY_VIOLATION_CODES = [
+const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
   '[1]', // MIN_REST_10H_IN_24H
   '[3]', // REST_PERIOD_STRUCTURE
   '[4]', // MAX_WORK_INTERVAL
   '[5]', // MAX_WORK_14H_IN_24H
   '[7]', // OPA 90: MAX_WORK_15H_IN_24H
+];
+
+/**
+ * 72-hour violation code that always uses END-day assignment.
+ * Code [8] spans 72 hours (144 slots) across potentially 3+ days,
+ * so majority-day logic is not applied.
+ */
+const SEVENTY_TWO_HOUR_VIOLATION_CODES = [
   '[8]', // OPA 90: MAX_WORK_36H_IN_72H
 ];
 
@@ -695,6 +746,68 @@ const START_DAY_VIOLATION_CODES = [
 ];
 
 /**
+ * Calculates the majority day for a 24-hour violation window using actual slot metadata.
+ * 
+ * This function uses the windowStartDay and sourceDay (endDay) from the violation
+ * to determine which day contains the majority of the 48 half-hour slots.
+ * 
+ * Unlike simple modulo arithmetic, this approach correctly handles:
+ * - Retarded days (duplicate occurrences with same day number)
+ * - Cross-month boundaries
+ * - Timeline with previous month data prepended
+ * 
+ * @param windowStartDay - The day at the start of the 24-hour window (from violation.windowStartDay)
+ * @param endDay - The day at the end of the 24-hour window (from violation.sourceDay)
+ * @param slotIndex - The ending slot index of the violation window
+ * @returns The day number that has the majority of slots, or null if majority is in previous month
+ */
+function calculateMajorityDayFor24HourWindow(
+  windowStartDay: number | undefined,
+  endDay: number,
+  slotIndex: number
+): number | null {
+  // If windowStartDay is not available, fall back to end day (legacy behavior)
+  if (windowStartDay === undefined) {
+    return endDay;
+  }
+  
+  // If both days are the same, the entire window is on that day
+  if (windowStartDay === endDay) {
+    if (endDay < 1) {
+      return null; // Entire window in previous month
+    }
+    return endDay;
+  }
+  
+  // Window spans two days: windowStartDay to endDay
+  // Calculate slots on each day using the position within the end day
+  // Position 0-47 in the day: slot 0 = first half-hour, slot 47 = last half-hour
+  // For a window ending at position P in endDay:
+  // - Slots on endDay = P + 1 (positions 0 through P)
+  // - Slots on startDay = 48 - (P + 1) = 47 - P
+  
+  const positionInEndDay = ((slotIndex % 48) + 48) % 48; // Handle negative indices
+  const slotsOnEndDay = positionInEndDay + 1;
+  const slotsOnStartDay = 48 - slotsOnEndDay;
+  
+  // Determine majority day
+  // On a 50-50 tie (24 slots each, when positionInEndDay == 23), use the EARLIER day
+  if (slotsOnEndDay > slotsOnStartDay) {
+    // End day has majority
+    if (endDay < 1) {
+      return null; // Majority in previous month
+    }
+    return endDay;
+  } else {
+    // Start day has majority (or tied - prefer earlier day per user requirement)
+    if (windowStartDay < 1) {
+      return null; // Majority in previous month
+    }
+    return windowStartDay;
+  }
+}
+
+/**
  * Represents a continuous violation event (consecutive slots with same violation code)
  */
 interface ViolationEvent {
@@ -703,6 +816,8 @@ interface ViolationEvent {
   endSlotIndex: number;
   startDay: number;
   endDay: number;
+  /** The windowStartDay from the first violation in the event (for majority-day calculation) */
+  windowStartDay?: number;
 }
 
 /**
@@ -711,7 +826,7 @@ interface ViolationEvent {
  * 
  * @param violations - Array of violations sorted by slotIndex
  * @param code - The violation code to group
- * @returns Array of violation events with startDay and endDay
+ * @returns Array of violation events with startDay, endDay, and windowStartDay
  */
 function groupConsecutiveViolations(violations: Violation[], code: string): ViolationEvent[] {
   const codeViolations = violations
@@ -727,6 +842,7 @@ function groupConsecutiveViolations(violations: Violation[], code: string): Viol
     endSlotIndex: codeViolations[0].slotIndex,
     startDay: codeViolations[0].sourceDay,
     endDay: codeViolations[0].sourceDay,
+    windowStartDay: codeViolations[0].windowStartDay,
   };
   
   for (let i = 1; i < codeViolations.length; i++) {
@@ -742,6 +858,7 @@ function groupConsecutiveViolations(violations: Violation[], code: string): Viol
         endSlotIndex: v.slotIndex,
         startDay: v.sourceDay,
         endDay: v.sourceDay,
+        windowStartDay: v.windowStartDay,
       };
     }
   }
@@ -754,7 +871,11 @@ function groupConsecutiveViolations(violations: Violation[], code: string): Viol
  * Groups violations by source day for display in the daily records table.
  * 
  * When VIOLATION_ASSIGNMENT_STRATEGY.mode is 'hybrid':
- * - 24-hour violations (codes 1, 3, 4, 5, 7, 8): Show on END day of violation window
+ * - 24-hour violations (codes 1, 3, 4, 5, 7):
+ *     - If MAJORITY_DAY_ASSIGNMENT.enabled: Show on day with majority of the 24-hour window
+ *     - Otherwise: Show on END day of violation window
+ *     - If majority is in previous month, violation is NOT shown in current month
+ * - 72-hour violations (code 8): Show on END day of violation window
  * - 7-day violations (codes 2, 6): Show on FIRST day of violation window (clamped to >=1 for visibility)
  * - This prevents the same violation from appearing on multiple days
  * 
@@ -773,23 +894,36 @@ export function groupViolationsByDay(violations: Violation[]): Map<number, strin
     for (const violation of violations) {
       if (processedCodes.has(violation.code)) continue;
       
-      const isEndDayViolation = END_DAY_VIOLATION_CODES.includes(violation.code);
+      const is24HourViolation = TWENTY_FOUR_HOUR_VIOLATION_CODES.includes(violation.code);
+      const is72HourViolation = SEVENTY_TWO_HOUR_VIOLATION_CODES.includes(violation.code);
       const isStartDayViolation = START_DAY_VIOLATION_CODES.includes(violation.code);
       
-      if (isEndDayViolation || isStartDayViolation) {
+      if (is24HourViolation || is72HourViolation || isStartDayViolation) {
         processedCodes.add(violation.code);
         const events = groupConsecutiveViolations(violations, violation.code);
         
         for (const event of events) {
-          let assignedDay: number;
+          let assignedDay: number | null;
           
           if (isStartDayViolation) {
+            // 7-day violations: use START day, clamped to day 1
             assignedDay = Math.max(1, event.startDay);
+          } else if (is24HourViolation && MAJORITY_DAY_ASSIGNMENT.enabled) {
+            // 24-hour violations with majority-day logic enabled
+            // Use the first violation's windowStartDay and slot to determine majority day
+            assignedDay = calculateMajorityDayFor24HourWindow(
+              event.windowStartDay,
+              event.startDay,
+              event.startSlotIndex
+            );
+            // If majority is in previous month, assignedDay will be null - skip this violation
           } else {
+            // 72-hour violations or 24-hour with majority-day disabled: use END day
             assignedDay = event.endDay;
           }
           
-          if (assignedDay < 1) continue;
+          // Skip if no valid day (majority in previous month)
+          if (assignedDay === null || assignedDay < 1) continue;
           
           const existing = dayViolations.get(assignedDay) || [];
           if (!existing.includes(event.code)) {
