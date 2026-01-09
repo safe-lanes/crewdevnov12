@@ -16,6 +16,7 @@ import { format, addMonths } from 'date-fns';
 import { DueCrewTable } from './DueCrewTable';
 import { RotationPlanTable } from './RotationPlanTable';
 import { ApprovalTable } from './ApprovalTable';
+import { VesselFleetGroupFilter, FilterMode } from '@/components/filters/vessel-fleet-group-filter';
 
 // Hook to fetch vessels from external SAIL ERP API (same source as Vessel Database)
 const useVessels = () => {
@@ -414,6 +415,19 @@ export function RotationModule() {
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: companyRanks = [], isLoading: ranksLoading } = useCompanyRanks();
 
+    // Mock fleet and group data for VesselFleetGroupFilter
+    const fleetOptions = [
+        { id: 1, value: 'fleet1', label: 'Fleet Group 1' },
+        { id: 2, value: 'fleet2', label: 'Fleet Group 2' },
+        { id: 3, value: 'fleet3', label: 'Fleet Group 3' },
+    ];
+
+    const groupOptions = [
+        { id: 1, value: 'group1', label: 'Additional Group 1' },
+        { id: 2, value: 'group2', label: 'Additional Group 2' },
+        { id: 3, value: 'group3', label: 'Additional Group 3' },
+    ];
+
     const handleClearFilters = () => {
         setFilterType("vessel");
         setSelectedVessels([]);
@@ -449,477 +463,60 @@ export function RotationModule() {
                     </div>
                 </SectionTitleComponents>
 
-                {showFilters && (
-                    <div className="mb-4 p-3 md:p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-                        {/* Desktop/Laptop: Horizontal flex layout */}
-                        {!isSmallScreen && (
-                            <div className="flex flex-nowrap items-center gap-3">
-                                {/* Radio Group for Vessel/Fleet/Add Group */}
-                                <RadioGroup 
-                                    value={filterType} 
-                                    onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
-                                    className="flex items-center gap-4 shrink-0"
+                <VesselFleetGroupFilter
+                    mode={filterType}
+                    onModeChange={(mode: FilterMode) => setFilterType(mode)}
+                    vessels={vessels}
+                    selectedVessels={selectedVessels}
+                    onToggleVessel={toggleVessel}
+                    vesselsLoading={vesselsLoading}
+                    fleets={fleetOptions}
+                    selectedFleet={fleetValue}
+                    onFleetChange={setFleetValue}
+                    groups={groupOptions}
+                    selectedGroup={addGroupValue}
+                    onGroupChange={setAddGroupValue}
+                    showFilters={showFilters}
+                    onToggleFilters={() => setShowFilters(!showFilters)}
+                    onClear={handleClearFilters}
+                    showFilterToggle={false}
+                    testIdPrefix="rotation"
+                    additionalFilters={
+                        <>
+                            <Select value={dueInValue} onValueChange={setDueInValue}>
+                                <SelectTrigger 
+                                    className="h-8 w-[120px] text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                    data-testid="select-due-in"
                                 >
-                                    {/* Vessel Radio + Multi-Select */}
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem 
-                                            value="vessel" 
-                                            id="filter-vessel"
-                                            className="h-4 w-4"
-                                            data-testid="radio-vessel"
-                                        />
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className="h-8 w-36 ml-1 text-xs text-[#0f172a] justify-between bg-transparent dark:bg-neutral-900 border-input"
-                                                    disabled={vesselsLoading}
-                                                    data-testid="select-vessel-multi"
-                                                >
-                                                    <span className="truncate">
-                                                        {selectedVessels.length > 0 
-                                                            ? `${selectedVessels.length} selected` 
-                                                            : vesselsLoading ? "Loading..." : "Vessel"
-                                                        }
-                                                    </span>
-                                                    <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-60 p-2" align="start">
-                                                <div className="max-h-60 overflow-y-auto">
-                                                    {vessels.map((vessel: any) => (
-                                                        <div 
-                                                            key={vessel.id} 
-                                                            className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                                                        >
-                                                            <Checkbox 
-                                                                checked={selectedVessels.includes(vessel.vesselId)}
-                                                                onCheckedChange={() => toggleVessel(vessel.vesselId)}
-                                                                data-testid={`checkbox-vessel-${vessel.id}`}
-                                                            />
-                                                            <label 
-                                                                className="text-sm cursor-pointer flex-1"
-                                                                onClick={() => toggleVessel(vessel.vesselId)}
-                                                            >
-                                                                {vessel.name}
-                                                            </label>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-
-                                    {/* Fleet Radio + Select */}
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem 
-                                            value="fleet" 
-                                            id="filter-fleet"
-                                            className="h-4 w-4"
-                                            data-testid="radio-fleet"
-                                        />
-                                        <Select value={fleetValue} onValueChange={setFleetValue}>
-                                            <SelectTrigger 
-                                                className="h-8 w-32 ml-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                                data-testid="select-fleet-value"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="fleet1">Fleet Group 1</SelectItem>
-                                                <SelectItem value="fleet2">Fleet Group 2</SelectItem>
-                                                <SelectItem value="fleet3">Fleet Group 3</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {/* Add Group Radio + Select */}
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem 
-                                            value="addGroup" 
-                                            id="filter-addgroup"
-                                            className="h-4 w-4"
-                                            data-testid="radio-addgroup"
-                                        />
-                                        <Select value={addGroupValue} onValueChange={setAddGroupValue}>
-                                            <SelectTrigger 
-                                                className="h-8 w-36 ml-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                                data-testid="select-addgroup-value"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="group1">Additional Group 1</SelectItem>
-                                                <SelectItem value="group2">Additional Group 2</SelectItem>
-                                                <SelectItem value="group3">Additional Group 3</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </RadioGroup>
-
-                                {/* Independent Due In Filter */}
-                                <div className="shrink-0 w-[120px]">
-                                    <Select value={dueInValue} onValueChange={setDueInValue}>
-                                        <SelectTrigger 
-                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                            data-testid="select-due-in"
-                                        >
-                                            <SelectValue placeholder="Due in" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="3m">Due in 3M</SelectItem>
-                                            <SelectItem value="2m">Due in 2M</SelectItem>
-                                            <SelectItem value="1m">Due in 1M</SelectItem>
-                                            <SelectItem value="overdue1m">Overdue in 1M</SelectItem>
-                                            <SelectItem value="overdue">Overdue</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Independent Rank Filter */}
-                                <div className="shrink-0 w-[120px]">
-                                    <Select value={rankValue} onValueChange={setRankValue}>
-                                        <SelectTrigger 
-                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                            data-testid="select-rank"
-                                            disabled={ranksLoading}
-                                        >
-                                            <SelectValue placeholder={ranksLoading ? "Loading..." : "Rank"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {companyRanks.map((rank: any) => (
-                                                <SelectItem key={rank.id} value={rank.rank}>
-                                                    {rank.rank}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Clear Button */}
-                                <Button
-                                    variant="outline"
-                                    onClick={handleClearFilters}
-                                    className="h-8 px-3 text-[#8798ad] text-[11px] border-[#e1e8ed] shrink-0"
-                                    data-testid="button-clear-filters"
+                                    <SelectValue placeholder="Due in" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="3m">Due in 3M</SelectItem>
+                                    <SelectItem value="2m">Due in 2M</SelectItem>
+                                    <SelectItem value="1m">Due in 1M</SelectItem>
+                                    <SelectItem value="overdue1m">Overdue in 1M</SelectItem>
+                                    <SelectItem value="overdue">Overdue</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={rankValue} onValueChange={setRankValue}>
+                                <SelectTrigger 
+                                    className="h-8 w-[120px] text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                    data-testid="select-rank"
+                                    disabled={ranksLoading}
                                 >
-                                    Clear
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* Tablet: Horizontal layout similar to desktop */}
-                        {isTablet && (
-                            <div className="flex flex-wrap items-center gap-3">
-                                {/* Radio Group - horizontal layout */}
-                                <RadioGroup 
-                                    value={filterType} 
-                                    onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
-                                    className="flex flex-wrap items-center gap-4"
-                                >
-                                    {/* Vessel Radio + Multi-Select */}
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem 
-                                            value="vessel" 
-                                            id="filter-vessel-tablet"
-                                            className="h-4 w-4"
-                                            data-testid="radio-vessel"
-                                        />
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className="h-8 w-44 text-xs text-[#0f172a] justify-between bg-transparent dark:bg-neutral-900 border-input"
-                                                    disabled={vesselsLoading}
-                                                    data-testid="select-vessel-multi"
-                                                >
-                                                    <span className="truncate">
-                                                        {selectedVessels.length > 0 
-                                                            ? `${selectedVessels.length} selected` 
-                                                            : vesselsLoading ? "Loading..." : "Vessel"
-                                                        }
-                                                    </span>
-                                                    <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-60 p-2" align="start">
-                                                <div className="max-h-60 overflow-y-auto">
-                                                    {vessels.map((vessel: any) => (
-                                                        <div 
-                                                            key={vessel.id} 
-                                                            className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                                                        >
-                                                            <Checkbox 
-                                                                checked={selectedVessels.includes(vessel.vesselId)}
-                                                                onCheckedChange={() => toggleVessel(vessel.vesselId)}
-                                                                data-testid={`checkbox-vessel-${vessel.id}`}
-                                                            />
-                                                            <label 
-                                                                className="text-sm cursor-pointer flex-1"
-                                                                onClick={() => toggleVessel(vessel.vesselId)}
-                                                            >
-                                                                {vessel.name}
-                                                            </label>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-
-                                    {/* Fleet Radio + Select */}
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem 
-                                            value="fleet" 
-                                            id="filter-fleet-tablet"
-                                            className="h-4 w-4"
-                                            data-testid="radio-fleet"
-                                        />
-                                        <Select value={fleetValue} onValueChange={setFleetValue}>
-                                            <SelectTrigger 
-                                                className="h-8 w-44 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                                data-testid="select-fleet-value"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="fleet1">Fleet Group 1</SelectItem>
-                                                <SelectItem value="fleet2">Fleet Group 2</SelectItem>
-                                                <SelectItem value="fleet3">Fleet Group 3</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {/* Add Group Radio + Select */}
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem 
-                                            value="addGroup" 
-                                            id="filter-addgroup-tablet"
-                                            className="h-4 w-4"
-                                            data-testid="radio-addgroup"
-                                        />
-                                        <Select value={addGroupValue} onValueChange={setAddGroupValue}>
-                                            <SelectTrigger 
-                                                className="h-8 w-44 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                                data-testid="select-addgroup-value"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="group1">Additional Group 1</SelectItem>
-                                                <SelectItem value="group2">Additional Group 2</SelectItem>
-                                                <SelectItem value="group3">Additional Group 3</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </RadioGroup>
-
-                                {/* Due In Filter */}
-                                <div className="shrink-0 w-[120px]">
-                                    <Select value={dueInValue} onValueChange={setDueInValue}>
-                                        <SelectTrigger 
-                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                            data-testid="select-due-in"
-                                        >
-                                            <SelectValue placeholder="Due in" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="3m">Due in 3M</SelectItem>
-                                            <SelectItem value="2m">Due in 2M</SelectItem>
-                                            <SelectItem value="1m">Due in 1M</SelectItem>
-                                            <SelectItem value="overdue1m">Overdue in 1M</SelectItem>
-                                            <SelectItem value="overdue">Overdue</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Rank Filter */}
-                                <div className="shrink-0 w-[160px]">
-                                    <Select value={rankValue} onValueChange={setRankValue}>
-                                        <SelectTrigger 
-                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                            data-testid="select-rank"
-                                            disabled={ranksLoading}
-                                        >
-                                            <SelectValue placeholder={ranksLoading ? "Loading..." : "Rank"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {companyRanks.map((rank: any) => (
-                                                <SelectItem key={rank.id} value={rank.rank}>
-                                                    {rank.rank}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Clear Button */}
-                                <Button
-                                    variant="outline"
-                                    onClick={handleClearFilters}
-                                    className="h-8 px-3 text-[#8798ad] text-[11px] border-[#e1e8ed] shrink-0"
-                                    data-testid="button-clear-filters"
-                                >
-                                    Clear
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* Phone: Fully vertical layout */}
-                        {isPhone && (
-                            <div className="space-y-3">
-                                {/* Radio Group - fully stacked */}
-                                <RadioGroup 
-                                    value={filterType} 
-                                    onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
-                                    className="space-y-2"
-                                >
-                                    {/* Vessel Radio + Multi-Select */}
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem 
-                                            value="vessel" 
-                                            id="filter-vessel-phone"
-                                            className="h-4 w-4"
-                                            data-testid="radio-vessel"
-                                        />
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className="h-8 flex-1 text-xs text-[#0f172a] justify-between bg-transparent dark:bg-neutral-900 border-input"
-                                                    disabled={vesselsLoading}
-                                                    data-testid="select-vessel-multi"
-                                                >
-                                                    <span className="truncate">
-                                                        {selectedVessels.length > 0 
-                                                            ? `${selectedVessels.length} selected` 
-                                                            : vesselsLoading ? "Loading..." : "Vessel"
-                                                        }
-                                                    </span>
-                                                    <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-60 p-2" align="start">
-                                                <div className="max-h-60 overflow-y-auto">
-                                                    {vessels.map((vessel: any) => (
-                                                        <div 
-                                                            key={vessel.id} 
-                                                            className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                                                        >
-                                                            <Checkbox 
-                                                                checked={selectedVessels.includes(vessel.vesselId)}
-                                                                onCheckedChange={() => toggleVessel(vessel.vesselId)}
-                                                                data-testid={`checkbox-vessel-${vessel.id}`}
-                                                            />
-                                                            <label 
-                                                                className="text-sm cursor-pointer flex-1"
-                                                                onClick={() => toggleVessel(vessel.vesselId)}
-                                                            >
-                                                                {vessel.name}
-                                                            </label>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-
-                                    {/* Fleet Radio + Select */}
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem 
-                                            value="fleet" 
-                                            id="filter-fleet-phone"
-                                            className="h-4 w-4"
-                                            data-testid="radio-fleet"
-                                        />
-                                        <Select value={fleetValue} onValueChange={setFleetValue}>
-                                            <SelectTrigger 
-                                                className="h-8 flex-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                                data-testid="select-fleet-value"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="fleet1">Fleet Group 1</SelectItem>
-                                                <SelectItem value="fleet2">Fleet Group 2</SelectItem>
-                                                <SelectItem value="fleet3">Fleet Group 3</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {/* Add Group Radio + Select */}
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem 
-                                            value="addGroup" 
-                                            id="filter-addgroup-phone"
-                                            className="h-4 w-4"
-                                            data-testid="radio-addgroup"
-                                        />
-                                        <Select value={addGroupValue} onValueChange={setAddGroupValue}>
-                                            <SelectTrigger 
-                                                className="h-8 flex-1 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                                data-testid="select-addgroup-value"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="group1">Additional Group 1</SelectItem>
-                                                <SelectItem value="group2">Additional Group 2</SelectItem>
-                                                <SelectItem value="group3">Additional Group 3</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </RadioGroup>
-
-                                {/* Additional filters - 2 column grid */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Select value={dueInValue} onValueChange={setDueInValue}>
-                                        <SelectTrigger 
-                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                            data-testid="select-due-in"
-                                        >
-                                            <SelectValue placeholder="Due in" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="3m">Due in 3M</SelectItem>
-                                            <SelectItem value="2m">Due in 2M</SelectItem>
-                                            <SelectItem value="1m">Due in 1M</SelectItem>
-                                            <SelectItem value="overdue1m">Overdue in 1M</SelectItem>
-                                            <SelectItem value="overdue">Overdue</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-
-                                    <Select value={rankValue} onValueChange={setRankValue}>
-                                        <SelectTrigger 
-                                            className="h-8 w-full text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                                            data-testid="select-rank"
-                                            disabled={ranksLoading}
-                                        >
-                                            <SelectValue placeholder={ranksLoading ? "Loading..." : "Rank"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {companyRanks.map((rank: any) => (
-                                                <SelectItem key={rank.id} value={rank.rank}>
-                                                    {rank.rank}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Clear button full width */}
-                                <Button
-                                    variant="outline"
-                                    onClick={handleClearFilters}
-                                    className="h-8 w-full text-[#8798ad] text-[11px] border-[#e1e8ed]"
-                                    data-testid="button-clear-filters"
-                                >
-                                    Clear
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                )}
+                                    <SelectValue placeholder={ranksLoading ? "Loading..." : "Rank"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {companyRanks.map((rank: any) => (
+                                        <SelectItem key={rank.id} value={rank.rank}>
+                                            {rank.rank}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </>
+                    }
+                />
 
                 {/* Due Crew Table */}
                 <DueCrewTable
