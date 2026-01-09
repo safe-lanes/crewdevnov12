@@ -463,25 +463,26 @@ export function RotationModule() {
                     </div>
                 </SectionTitleComponents>
 
-                <VesselFleetGroupFilter
-                    mode={filterType}
-                    onModeChange={(mode: FilterMode) => setFilterType(mode)}
-                    vessels={vessels}
-                    selectedVessels={selectedVessels}
-                    onToggleVessel={toggleVessel}
-                    vesselsLoading={vesselsLoading}
-                    fleets={fleetOptions}
-                    selectedFleet={fleetValue}
-                    onFleetChange={setFleetValue}
-                    groups={groupOptions}
-                    selectedGroup={addGroupValue}
-                    onGroupChange={setAddGroupValue}
-                    showFilters={showFilters}
-                    onToggleFilters={() => setShowFilters(!showFilters)}
-                    onClear={handleClearFilters}
-                    showFilterToggle={false}
-                    testIdPrefix="rotation"
-                    additionalFilters={
+                <div className="mb-4">
+                    <VesselFleetGroupFilter
+                        mode={filterType}
+                        onModeChange={(mode: FilterMode) => setFilterType(mode)}
+                        vessels={vessels}
+                        selectedVessels={selectedVessels}
+                        onToggleVessel={toggleVessel}
+                        vesselsLoading={vesselsLoading}
+                        fleets={fleetOptions}
+                        selectedFleet={fleetValue}
+                        onFleetChange={setFleetValue}
+                        groups={groupOptions}
+                        selectedGroup={addGroupValue}
+                        onGroupChange={setAddGroupValue}
+                        showFilters={showFilters}
+                        onToggleFilters={() => setShowFilters(!showFilters)}
+                        onClear={handleClearFilters}
+                        showFilterToggle={false}
+                        testIdPrefix="rotation"
+                        additionalFilters={
                         <>
                             <Select value={dueInValue} onValueChange={setDueInValue}>
                                 <SelectTrigger 
@@ -516,7 +517,8 @@ export function RotationModule() {
                             </Select>
                         </>
                     }
-                />
+                    />
+                </div>
 
                 {/* Due Crew Table */}
                 <DueCrewTable
