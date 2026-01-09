@@ -37,6 +37,7 @@ import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
+import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 
 interface RecruitmentApplicationFormProps {
   candidate: RecruitmentCandidate | null;
@@ -596,6 +597,25 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
 
     // Use the save-only mutation (doesn't advance to next section)
     saveOnlyMutation.mutate(candidateData);
+  };
+
+  // Handle export to PDF
+  const handleExport = async () => {
+    try {
+      const candidateName = `${formData.firstName || 'Unknown'} ${formData.familyName || 'Candidate'}`;
+      await generateRecruitmentPDF(formData, candidateName);
+      toast({
+        title: "Export Successful",
+        description: `Recruitment form exported as PDF for ${candidateName}`,
+      });
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle save and continue
@@ -7440,6 +7460,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               size="sm"
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 h-8 rounded-md px-3 text-xs hidden sm:flex"
               data-testid="button-export"
+              onClick={handleExport}
             >
               <FileText className="h-4 w-4 mr-2" />
               Export
