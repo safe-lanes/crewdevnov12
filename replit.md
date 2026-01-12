@@ -51,7 +51,7 @@ The application employs a modern web stack with a module-first architecture, pri
 - **Crew Appraisals Module**: Manages appraisals through a 3-stage workflow (Draft → Preliminary → Submitted → Reviewed).
 - **Drugs & Alcohol Testing Module**: Tracks six test types with filtering, AG Grid tables, and Summary View.
 - **Recruitment Module**: Manages candidate applications with AG Grid display and soft delete.
-- **Crew Pool Module**: Manages active crew database with comprehensive crew information forms.
+- **Crew Pool Module**: Manages active crew database with comprehensive crew information forms. Includes PDF export functionality for Crew Info Form (Parts A-F) using pdf-lib with A4 format.
 - **Rest Hours Module**: Manages seafarer work and rest hours compliance with Dashboard, Record, and Plan sections. Includes a "Majority-Day Violation Assignment" logic for violation display.
 - **Oil Major Compliance Engine**: Validates crew officer experience against various oil major requirements across 7 categories, supporting rank pair logic and CSV import of rules.
 - **Rank Ordering System**: All crew-displaying modules use a centralized `useRankOrdering` hook to sort crew by rank based on vessel revision ranks from the backend, ensuring consistent ordering across the system.
