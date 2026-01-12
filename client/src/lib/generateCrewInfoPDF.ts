@@ -402,6 +402,9 @@ class PDFBuilder {
   }
 }
 
+const PHOTO_WIDTH = 80;
+const PHOTO_HEIGHT = 100;
+
 export async function generateCrewInfoPDF(
   formData: CrewInfoFormData, 
   crewName: string, 
@@ -416,11 +419,31 @@ export async function generateCrewInfoPDF(
   const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic);
 
   builder.drawText('CREW INFORMATION FORM', MARGIN, 14, 'bold', PRIMARY_COLOR);
+  builder.moveDown(LINE_HEIGHT + 6);
+  
+  builder.drawText(crewName, MARGIN, 11, 'normal');
   builder.moveDown(LINE_HEIGHT);
-  builder.drawText(`Crew Member: ${crewName}`, MARGIN, 10, 'normal');
-  builder.moveDown(LINE_HEIGHT * 2);
+  
+  const rank = formData.presentRank || '-';
+  builder.drawText(rank, MARGIN, 10, 'normal', LABEL_COLOR);
+  
+  if (uploadedPhoto) {
+    const photoX = A4_WIDTH - MARGIN - PHOTO_WIDTH;
+    const photoY = A4_HEIGHT - MARGIN;
+    await builder.drawImage(uploadedPhoto, photoX, photoY, PHOTO_WIDTH, PHOTO_HEIGHT);
+    
+    const headerContentHeight = LINE_HEIGHT * 3 + 6;
+    const photoBottomClearance = PHOTO_HEIGHT - headerContentHeight;
+    if (photoBottomClearance > 0) {
+      builder.moveDown(photoBottomClearance + LINE_HEIGHT);
+    } else {
+      builder.moveDown(LINE_HEIGHT * 2);
+    }
+  } else {
+    builder.moveDown(LINE_HEIGHT * 2);
+  }
 
-  await drawPartA(builder, formData, dashboardData, uploadedPhoto);
+  await drawPartA(builder, formData, dashboardData);
   drawPartB(builder, formData);
   drawPartC(builder, formData);
   drawPartD(builder, formData);
@@ -442,8 +465,7 @@ export async function generateCrewInfoPDF(
 async function drawPartA(
   builder: PDFBuilder, 
   formData: CrewInfoFormData, 
-  dashboardData?: DashboardData,
-  uploadedPhoto?: string | null
+  dashboardData?: DashboardData
 ): Promise<void> {
   builder.drawSectionHeader('PART A - DASHBOARD');
 
