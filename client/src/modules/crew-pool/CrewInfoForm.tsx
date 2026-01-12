@@ -36,6 +36,7 @@ import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplate
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { TimelineCard } from './components/TimelineCard';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
+import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewInfoPDF';
 
 interface CrewMember {
   id: string;
@@ -4739,6 +4740,195 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     }
   };
 
+  // Export to PDF functionality
+  const handleExport = async () => {
+    try {
+      const crewName = `${formData.firstName || 'Unknown'} ${formData.familyName || 'Crew'}`;
+      
+      const pdfFormData: CrewInfoFormData = {
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        familyName: formData.familyName,
+        gender: formData.gender,
+        nationality: formData.nationality,
+        presentRank: formData.presentRank,
+        dateOfBirth: formData.dateOfBirth,
+        ageInYears: formData.ageInYears,
+        placeOfBirthCity: formData.placeOfBirthCity,
+        placeOfBirthCountry: formData.placeOfBirthCountry,
+        heightCm: formData.heightCm,
+        weightKg: formData.weightKg,
+        bmi: formData.bmi,
+        nativeLanguage: formData.nativeLanguage,
+        foreignLanguages: formData.foreignLanguages,
+        englishProficiency: formData.englishProficiency,
+        rankAppliedFor: formData.rankAppliedFor,
+        vesselType: formData.vesselType,
+        manningAgent: formData.manningAgent,
+        crewPool: formData.crewPool,
+        employeeId: formData.employeeId,
+        nextAvailability: formData.nextAvailability,
+        countryOfResidence: formData.countryOfResidence,
+        nearestAirport: formData.nearestAirport,
+        residentialAddressLine1: formData.residentialAddressLine1,
+        residentialAddressLine2: formData.residentialAddressLine2,
+        contactLandline: formData.contactLandline,
+        mobile: formData.mobile,
+        email: formData.email,
+        maritalStatus: formData.maritalStatus,
+        numberOfDependentChildren: formData.numberOfDependentChildren,
+        fatherName: formData.fatherName,
+        motherName: formData.motherName,
+        spouseFirstName: formData.spouseFirstName,
+        spouseMiddleName: formData.spouseMiddleName,
+        spouseFamilyName: formData.spouseFamilyName,
+        spouseDateOfBirth: formData.spouseDateOfBirth,
+        children: formData.children,
+        nokFirstName: formData.nokFirstName,
+        nokMiddleName: formData.nokMiddleName,
+        nokFamilyName: formData.nokFamilyName,
+        nokTelephone: formData.nokTelephone,
+        nokEmail: formData.nokEmail,
+        nokAddress: formData.nokAddress,
+        nokRelationship: formData.nokRelationship,
+        documents: formData.documents.map(d => ({
+          id: d.id,
+          documentId: d.documentId,
+          document: d.document,
+          number: d.number,
+          issued: d.issued,
+          expiry: d.expiry,
+          issuingAuthority: d.issuingAuthority,
+        })),
+        visas: formData.visas.map(v => ({
+          id: v.id,
+          countryId: v.countryId,
+          issuingCountry: v.issuingCountry,
+          serialNo: v.serialNo,
+          issued: v.issued,
+          expiry: v.expiry,
+          visaType: v.visaType,
+        })),
+        education: formData.education.map(e => ({
+          id: e.id,
+          dateOfCompletion: e.dateOfCompletion,
+          schoolCollegeUniversity: e.schoolCollegeUniversity,
+          subjectsField: e.subjectsField,
+          qualifications: e.qualifications,
+        })),
+        licenses: formData.licenses.map(l => ({
+          id: l.id,
+          licenseId: l.licenseId,
+          certificateDocument: l.certificateDocument,
+          abbr: l.abbr,
+          requirement: l.requirement,
+          certificateNo: l.certificateNo,
+          issuingAuthority: l.issuingAuthority,
+          issued: l.issued,
+          expiry: l.expiry,
+          archivedAt: l.archivedAt,
+          archivedReason: l.archivedReason,
+        })),
+        trainingCourses: formData.trainingCourses.map(t => ({
+          id: t.id,
+          courseId: t.courseId,
+          companyId: t.companyId,
+          trainingCourse: t.trainingCourse,
+          abbr: t.abbr,
+          requirement: t.requirement,
+          certificateNo: t.certificateNo,
+          issuingAuthority: t.issuingAuthority,
+          issued: t.issued,
+          expiry: t.expiry,
+        })),
+        currentCompanySeaService: formData.currentCompanySeaService.map(s => ({
+          id: s.id,
+          vesselName: s.vesselName,
+          vesselCode: s.vesselCode,
+          vesselType: s.vesselType,
+          deadweight: s.deadweight,
+          engineTypePower: s.engineTypePower,
+          ownerOperator: s.ownerOperator,
+          rank: s.rank,
+          from: s.from,
+          to: s.to,
+          periodMonths: s.periodMonths,
+          experienceCategories: s.experienceCategories,
+        })),
+        externalSeaService: formData.externalSeaService.map(s => ({
+          id: s.id,
+          vesselName: s.vesselName,
+          vesselCode: s.vesselCode,
+          vesselType: s.vesselType,
+          deadweight: s.deadweight,
+          engineTypePower: s.engineTypePower,
+          ownerOperator: s.ownerOperator,
+          rank: s.rank,
+          from: s.from,
+          to: s.to,
+          periodMonths: s.periodMonths,
+          experienceCategories: s.experienceCategories,
+        })),
+        preJoiningMedicals: formData.preJoiningMedicals.map(m => ({
+          id: m.id,
+          vesselCode: m.vesselCode,
+          vessel: m.vessel,
+          dateOfMedical: m.dateOfMedical,
+          bp: m.bp,
+          weight: m.weight,
+          anyMedicationPrescribed: m.anyMedicationPrescribed,
+          fitnessForDuty: m.fitnessForDuty,
+          expiry: m.expiry,
+        })),
+        doctorVisits: formData.doctorVisits.map(v => ({
+          id: v.id,
+          vessel: v.vessel,
+          port: v.port,
+          date: v.date,
+          complaint: v.complaint,
+          doctorComments: v.doctorComments,
+        })),
+      };
+
+      const nokInfoStr = formData.nokFirstName 
+        ? `${formData.nokFirstName} ${formData.nokFamilyName || ''}, ${formData.nokRelationship || ''}, ${formData.nokTelephone || ''}`.trim()
+        : null;
+      
+      const dashboardInfo = dashboardData ? {
+        status: statusData ? {
+          status: statusData.status || '',
+          vessel: statusData.vessel || null,
+          joinedDate: statusData.joinedDate || null,
+          sailingDue: statusData.sailingDue || null,
+          nextAvailability: statusData.nextAvailability || null,
+          nearestAirport: formData.nearestAirport || null,
+          nokInfo: nokInfoStr,
+        } : undefined,
+        experience: experienceData ? {
+          company: experienceData.company || 0,
+          rank: experienceData.rank || 0,
+          tankers: experienceData.tankers || 0,
+          ocw: experienceData.ocw || 0,
+          endorsements: experienceData.endorsements || 0,
+        } : undefined,
+      } : undefined;
+
+      await generateCrewInfoPDF(pdfFormData, crewName, dashboardInfo, uploadedPhoto);
+      
+      toast({
+        title: "Export Successful",
+        description: `Crew information exported as PDF for ${crewName}`,
+      });
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Auto-save functionality
   const handleAutoSave = () => {
     console.log('Auto-saving current section:', activeSection);
@@ -5141,6 +5331,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
               variant="outline" 
               size="sm"
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 h-8 rounded-md px-3 text-xs hidden sm:flex"
+              onClick={handleExport}
               data-testid="button-export"
             >
               <FileText className="h-4 w-4 mr-2" />
