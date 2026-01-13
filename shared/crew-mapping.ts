@@ -135,6 +135,9 @@ export interface CrewMemberDTO {
   doctorVisits?: DoctorVisit[] | null;
   children?: ChildInfo[] | null;
   
+  // Photo field
+  uploadedPhoto?: string | null;
+  
   createdAt?: Date | null;
   updatedAt?: Date | null;
 }
@@ -520,6 +523,9 @@ export function mapFormDataToStorage(formData: any): Partial<InsertCrewMember> {
     nokRelationship: formData.nokRelationship || null,
     manningAgent: formData.manningAgent || null,
     crewPool: formData.crewPool || null,
+    
+    // Photo field - store as base64 string
+    uploadedPhoto: formData.uploadedPhoto || null,
     
     // JSON fields - stringify arrays and objects (but avoid double-stringifying if already a string)
     vesselTypes: formData.vesselType ? (typeof formData.vesselType === 'string' ? formData.vesselType : JSON.stringify(formData.vesselType)) : null,
