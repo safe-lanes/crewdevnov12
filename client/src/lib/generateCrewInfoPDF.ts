@@ -402,8 +402,11 @@ class PDFBuilder {
   }
 }
 
-const PHOTO_WIDTH = 80;
-const PHOTO_HEIGHT = 100;
+// Passport photo dimensions: 35mm x 45mm converted to PDF points
+// 1 inch = 25.4mm, 1 inch = 72 points
+// 35mm = 35/25.4 * 72 ≈ 99 points, 45mm = 45/25.4 * 72 ≈ 128 points
+const PHOTO_WIDTH = 99;
+const PHOTO_HEIGHT = 128;
 
 export async function generateCrewInfoPDF(
   formData: CrewInfoFormData, 
