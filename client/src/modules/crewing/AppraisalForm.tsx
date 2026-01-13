@@ -898,7 +898,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const data = form.getValues();
     console.log('💾 Form values:', data);
     console.log('💾 Form errors (ignored for draft):', form.formState.errors);
-    saveAppraisalMutation.mutate({ data, status: 'draft' });
+    // Preserve current workflow status after Stage 1 or Stage 2 submission
+    // Only use 'draft' status before Stage 1 has been submitted
+    const statusToSave = appraisalStatus === 'draft' ? 'draft' : appraisalStatus;
+    console.log('💾 Preserving status:', statusToSave);
+    saveAppraisalMutation.mutate({ data, status: statusToSave });
   };
 
   const onSubmitAppraisal = () => {
@@ -3267,15 +3271,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           </div>
                         </div>
 
-                        {/* Action buttons */}
+                        {/* Action buttons - Always visible like Section B */}
                         <div className="flex justify-end gap-4 mt-6">
-                          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
-                            Save Draft
+                          <Button 
+                            className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8" 
+                            onClick={handleSaveDraft}
+                            disabled={saveAppraisalMutation.isPending}
+                          >
+                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
                           </Button>
                           <Button 
                             className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
                             onClick={() => handleStageSubmission('stage2')}
-                            disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending}
+                            disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'submitted' || appraisalStatus === 'reviewed'}
                           >
                             {stage2Mutation.isPending ? 'Submitting...' : 'Submit Stage 2'}
                           </Button>
@@ -3529,13 +3537,21 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           </div>
                         </div>
 
-                        {/* Action buttons */}
+                        {/* Action buttons - Always visible like Section B */}
                         <div className="flex justify-end gap-4 mt-6">
-                          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
-                            Save
+                          <Button 
+                            className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8" 
+                            onClick={handleSaveDraft}
+                            disabled={saveAppraisalMutation.isPending}
+                          >
+                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
                           </Button>
-                          <Button className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" onClick={onSubmitAppraisal}>
-                            Submit
+                          <Button 
+                            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                            onClick={() => handleStageSubmission('stage3')}
+                            disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'reviewed'}
+                          >
+                            {stage3Mutation.isPending ? 'Submitting...' : 'Submit Stage 3'}
                           </Button>
                         </div>
                       </CardContent>

@@ -227,29 +227,27 @@ const PartGComponent: React.FC<PartGProps> = ({
               </div>
             </div>
 
-            {/* Action Buttons - Save Draft and Submit Stage 3 */}
-            {(appraisalStatus === 'submitted' || appraisalStatus === 'draft' || appraisalStatus === 'preliminary') && (
-              <div className="flex justify-end gap-4 mt-6">
-                <Button 
-                  type="button"
-                  className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8"
-                  onClick={handleSaveDraft}
-                  disabled={saveAppraisalMutation.isPending}
-                  data-testid="button-save-draft-part-g"
-                >
-                  {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
-                </Button>
-                <Button 
-                  type="button"
-                  className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
-                  onClick={() => handleStageSubmission('stage3')} 
-                  disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending}
-                  data-testid="button-submit-stage-3"
-                >
-                  {stage3Mutation.isPending ? 'Submitting...' : 'Submit Stage 3'}
-                </Button>
-              </div>
-            )}
+            {/* Action Buttons - Save Draft and Submit Stage 3 - Always visible like Section B */}
+            <div className="flex justify-end gap-4 mt-6">
+              <Button 
+                type="button"
+                className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8"
+                onClick={handleSaveDraft}
+                disabled={saveAppraisalMutation.isPending}
+                data-testid="button-save-draft-part-g"
+              >
+                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+              </Button>
+              <Button 
+                type="button"
+                className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                onClick={() => handleStageSubmission('stage3')} 
+                disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'reviewed'}
+                data-testid="button-submit-stage-3"
+              >
+                {stage3Mutation.isPending ? 'Submitting...' : 'Submit Stage 3'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
