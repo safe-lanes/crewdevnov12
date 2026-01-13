@@ -1673,10 +1673,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         {/* Stage 1 Action Buttons - kept in parent for form-level control */}
         {isSectionVisible('partB') && (
           <div className="flex justify-end gap-4">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+            <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
               Save Draft
             </Button>
             <Button 
+              type="button"
               className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
               onClick={() => handleStageSubmission('stage1')}
               disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
@@ -2240,7 +2241,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       )}
 
                       <div className="flex justify-end mt-6">
-                        <Button className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8">
+                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft}>
                           Save
                         </Button>
                       </div>
@@ -2546,10 +2547,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end gap-4 mt-6">
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
                           Save Draft
                         </Button>
                         <Button 
+                          type="button"
                           className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
                           onClick={() => handleStageSubmission('stage1')}
                           disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
@@ -2690,7 +2692,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8">
+                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft}>
                           Save
                         </Button>
                       </div>
@@ -2825,7 +2827,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
                           Save
                         </Button>
                       </div>
@@ -2971,7 +2973,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
                           Save
                         </Button>
                       </div>
@@ -3274,6 +3276,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                         {/* Action buttons - Always visible like Section B */}
                         <div className="flex justify-end gap-4 mt-6">
                           <Button 
+                            type="button"
                             className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8" 
                             onClick={handleSaveDraft}
                             disabled={saveAppraisalMutation.isPending}
@@ -3281,6 +3284,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
                           </Button>
                           <Button 
+                            type="button"
                             className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
                             onClick={() => handleStageSubmission('stage2')}
                             disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'submitted' || appraisalStatus === 'reviewed'}
@@ -3540,6 +3544,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                         {/* Action buttons - Always visible like Section B */}
                         <div className="flex justify-end gap-4 mt-6">
                           <Button 
+                            type="button"
                             className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8" 
                             onClick={handleSaveDraft}
                             disabled={saveAppraisalMutation.isPending}
@@ -3547,6 +3552,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
                           </Button>
                           <Button 
+                            type="button"
                             className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
                             onClick={() => handleStageSubmission('stage3')}
                             disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'reviewed'}
