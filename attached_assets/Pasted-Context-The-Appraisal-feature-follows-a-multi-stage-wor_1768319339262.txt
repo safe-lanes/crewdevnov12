@@ -1,0 +1,55 @@
+Context:
+The Appraisal feature follows a multi-stage workflow across Vessel and Appraisal sub-modules.
+Current issues are caused by frontend UI state and workflow handling breaking across stage transitions.
+Backend logic, APIs, database, and workflow rules must not be changed.
+
+Correct Workflow (Must Be Preserved):
+1. Appraisal form is created from Vessel sub-module (Crew List).
+2. User fills Section A and B.
+3. User clicks Submit Stage 1.
+   - Data must remain visible in Vessel sub-module.
+   - Section F bottom must immediately show:
+     - Save Draft
+     - Submit Stage 2
+   - Buttons must appear without page refresh.
+In Sections F and G, the Save Draft and Submit Stage buttons must be persistently visible by default, exactly the same way they are visible in Section B, without requiring any submit action, refresh, or UI toggle.
+4. User fills Section C to F.
+5. User clicks Submit Stage 2.
+   - Same appraisal becomes visible in Appraisal sub-module main grid.
+   - Appraisal must still remain visible in Vessel sub-module.
+6. User edits the appraisal from Appraisal sub-module.
+   - Clicking Save or Save Draft must only persist data.
+   - Status must not rollback.
+   - Record must not disappear from the grid.
+   - Record must not move to Archived.
+7. In Section G, bottom actions must show:
+   - Save Draft
+   - Submit Stage 3
+   Buttons must match Section B in size, contrast, and placement.
+
+Current Issues to Fix:
+- After Submit Stage 1, Stage 2 and Stage 3 action buttons disappear.
+- Buttons reappear only after Save Draft followed by page refresh.
+- Save Draft during edit downgrades status and shifts record to Archived.
+- Appraisal disappears from main grid even though data exists.
+- Vessel and Appraisal views become inconsistent.
+
+Required Frontend Fix (Strict Scope):
+- Fix frontend state handling, UI visibility logic, and save behavior.
+- Treat Draft as a valid visible state only before Stage 1 submission.
+- After Stage 1 submission, Save Draft must not change workflow status.
+- Ensure stage transitions do not impact record visibility unintentionally.
+- Maintain consistent visibility across Vessel and Appraisal sub-modules.
+
+Constraints (Must Not Be Violated):
+- Do not change backend APIs, database schema, or workflow rules.
+- Do not change status enums.
+- Do not affect unrelated modules or features.
+- Frontend and UI logic only.
+- No regression in existing correct behavior.
+
+Acceptance Criteria:
+- No data loss at any stage.
+- No disappearing appraisal forms.
+- No forced page refresh to reveal actions.
+- Vessel and Appraisal views remain in sync throughout all stages.
