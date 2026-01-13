@@ -4729,13 +4729,16 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const handleSaveDraft = () => {
     console.log('Saving crew info:', formData);
     
+    // Include the uploaded photo in the data to be saved
+    const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
+    
     if (crewMember && crewMember.id) {
       // Update existing crew member
-      updateCrewMutation.mutate({ id: crewMember.id, data: formData });
+      updateCrewMutation.mutate({ id: crewMember.id, data: dataWithPhoto });
     } else {
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
-      const formDataWithId = { ...formData, id: newId };
+      const formDataWithId = { ...dataWithPhoto, id: newId };
       createCrewMutation.mutate(formDataWithId);
     }
   };
@@ -5142,16 +5145,19 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
   const handleSave = () => {
     console.log('Saving crew info:', formData);
     
+    // Include the uploaded photo in the data to be saved
+    const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
+    
     // Check for existing ID from prop or from local state (after creation)
     const existingId = crewMember?.id || createdCrewId;
     
     if (existingId) {
       // Update existing crew member
-      updateCrewMutation.mutate({ id: existingId, data: formData });
+      updateCrewMutation.mutate({ id: existingId, data: dataWithPhoto });
     } else {
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
-      const formDataWithId = { ...formData, id: newId };
+      const formDataWithId = { ...dataWithPhoto, id: newId };
       createCrewMutation.mutate(formDataWithId);
     }
   };
