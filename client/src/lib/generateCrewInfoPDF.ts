@@ -300,35 +300,78 @@ class PDFBuilder {
     this.yPosition = y;
   }
 
-  async drawImage(base64Data: string, x: number, y: number, maxWidth: number, maxHeight: number): Promise<boolean> {
+  // Crop image to target aspect ratio using Canvas (center crop)
+  private async cropImageToAspectRatio(base64Data: string, targetWidth: number, targetHeight: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const targetAspect = targetWidth / targetHeight;
+        const imgAspect = img.width / img.height;
+        
+        let cropX = 0;
+        let cropY = 0;
+        let cropWidth = img.width;
+        let cropHeight = img.height;
+        
+        if (imgAspect > targetAspect) {
+          // Image is wider - crop sides (center crop)
+          cropWidth = img.height * targetAspect;
+          cropX = (img.width - cropWidth) / 2;
+        } else {
+          // Image is taller - crop top/bottom (center crop)
+          cropHeight = img.width / targetAspect;
+          cropY = (img.height - cropHeight) / 2;
+        }
+        
+        // Create canvas with the cropped dimensions at higher resolution for quality
+        const canvas = document.createElement('canvas');
+        const scale = 2; // Higher resolution for better print quality
+        canvas.width = targetWidth * scale;
+        canvas.height = targetHeight * scale;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+        
+        // Draw the cropped portion scaled to target dimensions
+        ctx.drawImage(
+          img,
+          cropX, cropY, cropWidth, cropHeight, // source rectangle (cropped area)
+          0, 0, canvas.width, canvas.height     // destination rectangle (full canvas)
+        );
+        
+        // Convert to PNG base64
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = base64Data;
+    });
+  }
+
+  async drawImage(base64Data: string, x: number, y: number, targetWidth: number, targetHeight: number): Promise<boolean> {
     try {
       if (!base64Data) return false;
       
-      const base64Clean = base64Data.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
+      // Pre-crop the image using Canvas to achieve passport-size center crop
+      // This avoids distortion by cropping before embedding
+      const croppedImageData = await this.cropImageToAspectRatio(base64Data, targetWidth, targetHeight);
+      
+      const base64Clean = croppedImageData.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
       const imageBytes = Uint8Array.from(atob(base64Clean), c => c.charCodeAt(0));
       
-      let image;
-      if (base64Data.includes('data:image/png')) {
-        image = await this.pdfDoc.embedPng(imageBytes);
-      } else {
-        image = await this.pdfDoc.embedJpg(imageBytes);
-      }
+      // After cropping, embed as PNG (canvas outputs PNG)
+      const image = await this.pdfDoc.embedPng(imageBytes);
       
-      const aspectRatio = image.width / image.height;
-      let drawWidth = maxWidth;
-      let drawHeight = maxWidth / aspectRatio;
-      
-      if (drawHeight > maxHeight) {
-        drawHeight = maxHeight;
-        drawWidth = maxHeight * aspectRatio;
-      }
-      
+      // Draw at exact target dimensions - image is already cropped to correct aspect ratio
       this.currentPage.drawImage(image, {
         x,
-        y: y - drawHeight,
-        width: drawWidth,
-        height: drawHeight,
+        y: y - targetHeight,
+        width: targetWidth,
+        height: targetHeight,
       });
+      
       return true;
     } catch (error) {
       console.error('Failed to embed image:', error);
@@ -430,21 +473,20 @@ export async function generateCrewInfoPDF(
   const rank = formData.presentRank || '-';
   builder.drawText(rank, MARGIN, 10, 'normal', LABEL_COLOR);
   
+  // Calculate photo position and Part A start position
+  const photoY = A4_HEIGHT - MARGIN;
+  const photoBottomY = photoY - PHOTO_HEIGHT;
+  const minimalGap = 8;
+  const partAStartY = photoBottomY - minimalGap;
+  
   if (uploadedPhoto) {
     const photoX = A4_WIDTH - MARGIN - PHOTO_WIDTH;
-    const photoY = A4_HEIGHT - MARGIN;
     await builder.drawImage(uploadedPhoto, photoX, photoY, PHOTO_WIDTH, PHOTO_HEIGHT);
-    
-    const headerContentHeight = LINE_HEIGHT * 3 + 6;
-    const photoBottomClearance = PHOTO_HEIGHT - headerContentHeight;
-    if (photoBottomClearance > 0) {
-      builder.moveDown(photoBottomClearance + LINE_HEIGHT);
-    } else {
-      builder.moveDown(LINE_HEIGHT * 2);
-    }
-  } else {
-    builder.moveDown(LINE_HEIGHT * 2);
   }
+  
+  // Set Y position for Part A - same position whether photo exists or not
+  // This preserves layout structure when photo is absent
+  builder.setY(partAStartY);
 
   await drawPartA(builder, formData, dashboardData);
   drawPartB(builder, formData);
