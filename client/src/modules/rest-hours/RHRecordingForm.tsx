@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { FileText } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -1364,6 +1365,15 @@ export const RHRecordingForm = ({
             </DialogDescription>
             <div className="flex-1 flex items-center justify-end gap-4">
               <span className="text-base font-medium text-[#4a90e2]">{monthDisplay}</span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 h-8 rounded-md px-3 text-xs hidden sm:flex"
+                data-testid="button-export-rh"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Export
+              </Button>
               <Button
                 variant="outline"
                 onClick={handleClear}
