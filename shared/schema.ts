@@ -1,5 +1,5 @@
 
-import { pgTable, text, integer, boolean, timestamp, varchar, serial, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, varchar, serial, uniqueIndex, index, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -2200,6 +2200,257 @@ export const insertPromotionReviewSchema = createInsertSchema(promotionReviews).
 export type PromotionReview = typeof promotionReviews.$inferSelect;
 export type InsertPromotionReview = z.infer<typeof insertPromotionReviewSchema>;
 
+// =============================================================================
+// EXTERNAL API MASTER DATA TABLES (PostgreSQL)
+// Used for syncing master data from external SAIL ERP API
+// =============================================================================
+
+// Nationalities Master
+export const masterNationalities = pgTable(
+  "master_nationalities",
+  {
+    id: serial("id").primaryKey(),
+    cid: text("cid"),
+    countryCode: text("country_code"),
+    countryName: text("country_name"),
+    nationality: text("nationality"),
+    countryRefId: text("country_ref_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    createdBy: integer("created_by"),
+    isDeleted: boolean("is_deleted").default(false),
+    synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    cidIdx: index("idx_nationality_cid").on(t.cid),
+    countryCodeIdx: index("idx_nationality_country_code").on(t.countryCode),
+  })
+);
+
+export const insertMasterNationalitySchema = createInsertSchema(masterNationalities).omit({
+  id: true,
+  synchedAt: true,
+});
+export type InsertMasterNationality = z.infer<typeof insertMasterNationalitySchema>;
+export type MasterNationality = typeof masterNationalities.$inferSelect;
+
+// Vessels Master
+export const masterVessels = pgTable(
+  "master_vessels",
+  {
+    id: serial("id").primaryKey(),
+    vuid: text("vuid"),
+    vessel: text("vessel"),
+    imoNumber: text("imo_number"),
+    vesselType: text("vessel_type"),
+    synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    vuidIdx: index("idx_vessel_vuid").on(t.vuid),
+    imoIdx: index("idx_vessel_imo").on(t.imoNumber),
+  })
+);
+
+export const insertMasterVesselSchema = createInsertSchema(masterVessels).omit({
+  id: true,
+  synchedAt: true,
+});
+export type InsertMasterVessel = z.infer<typeof insertMasterVesselSchema>;
+export type MasterVessel = typeof masterVessels.$inferSelect;
+
+// Vessel Types Master
+export const masterVesselTypes = pgTable(
+  "master_vessel_types",
+  {
+    id: serial("id").primaryKey(),
+    vtuid: text("vtuid"),
+    vesselType: text("vessel_type"),
+    tanker: boolean("tanker").default(false),
+    oilTanker: boolean("oil_tanker").default(false),
+    gasTanker: boolean("gas_tanker").default(false),
+    chemicalTanker: boolean("chemical_tanker").default(false),
+    container: boolean("container").default(false),
+    dry: boolean("dry").default(false),
+    other: boolean("other").default(false),
+    isActive: boolean("is_active").default(true),
+    isDeleted: boolean("is_deleted").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    createdBy: integer("created_by"),
+    updatedBy: integer("updated_by"),
+    synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    vtuidIdx: index("idx_master_vessel_types_vtuid").on(t.vtuid),
+  })
+);
+
+export const insertMasterVesselTypeSchema = createInsertSchema(masterVesselTypes).omit({
+  id: true,
+  synchedAt: true,
+});
+export type InsertMasterVesselType = z.infer<typeof insertMasterVesselTypeSchema>;
+export type MasterVesselType = typeof masterVesselTypes.$inferSelect;
+
+// Additional Groups Master
+export const masterAdditionalGroups = pgTable(
+  "master_additional_groups",
+  {
+    id: serial("id").primaryKey(),
+    externalId: text("external_id"),
+    name: text("name"),
+    vessels: text("vessels"),
+    synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
+  }
+);
+
+export const insertMasterAdditionalGroupSchema = createInsertSchema(masterAdditionalGroups).omit({
+  id: true,
+  synchedAt: true,
+});
+export type InsertMasterAdditionalGroup = z.infer<typeof insertMasterAdditionalGroupSchema>;
+export type MasterAdditionalGroup = typeof masterAdditionalGroups.$inferSelect;
+
+// Ports Master
+export const masterPorts = pgTable(
+  "master_ports",
+  {
+    id: serial("id").primaryKey(),
+    puid: text("puid"),
+    name: text("name"),
+    latitude: numeric("latitude", { precision: 10, scale: 7 }),
+    longitude: numeric("longitude", { precision: 10, scale: 7 }),
+    country: text("country"),
+    isActive: boolean("is_active").default(true),
+    isDeleted: boolean("is_deleted").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    createdBy: integer("created_by"),
+    portcode: text("port_code"),
+    synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    puidIdx: index("idx_port_puid").on(t.puid),
+    portCodeIdx: index("idx_port_code").on(t.portcode),
+  })
+);
+
+export const insertMasterPortSchema = createInsertSchema(masterPorts).omit({
+  id: true,
+  synchedAt: true,
+});
+export type InsertMasterPort = z.infer<typeof insertMasterPortSchema>;
+export type MasterPort = typeof masterPorts.$inferSelect;
+
+// Fleet Groups Master
+export const masterFleetGroups = pgTable(
+  "master_fleet_groups",
+  {
+    id: serial("id").primaryKey(),
+    externalId: text("external_id"),
+    name: text("name"),
+    vessels: text("vessels"),
+    synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    externalIdIdx: index("idx_fleet_group_ext_id").on(t.externalId),
+  })
+);
+
+export const insertMasterFleetGroupSchema = createInsertSchema(masterFleetGroups).omit({
+  id: true,
+  synchedAt: true,
+});
+export type InsertMasterFleetGroup = z.infer<typeof insertMasterFleetGroupSchema>;
+export type MasterFleetGroup = typeof masterFleetGroups.$inferSelect;
+
+// Languages Master
+export const masterLanguages = pgTable(
+  "master_languages",
+  {
+    id: serial("id").primaryKey(),
+    luid: text("luid"),
+    isoCode: text("iso_code"),
+    languageName: text("language_name"),
+    nativeName: text("native_name"),
+    isForeignLanguage: boolean("is_foreign_language").default(false),
+    displayOrder: integer("display_order"),
+    isActive: boolean("is_active").default(true),
+    isDeleted: boolean("is_deleted").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    luidIdx: index("idx_language_luid").on(t.luid),
+    isoCodeIdx: index("idx_language_iso").on(t.isoCode),
+  })
+);
+
+export const insertMasterLanguageSchema = createInsertSchema(masterLanguages).omit({
+  id: true,
+  synchedAt: true,
+});
+export type InsertMasterLanguage = z.infer<typeof insertMasterLanguageSchema>;
+export type MasterLanguage = typeof masterLanguages.$inferSelect;
+
+// Countries Master
+export const masterCountries = pgTable(
+  "master_countries",
+  {
+    id: serial("id").primaryKey(),
+    nuid: text("nuid"),
+    countryName: text("country_name"),
+    isActive: boolean("is_active").default(true),
+    isDeleted: boolean("is_deleted").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    createdBy: integer("created_by"),
+    domain: text("domain"),
+    orderBy: integer("order_by"),
+    synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    nuidIdx: index("idx_country_nuid").on(t.nuid)
+  })
+);
+
+export const insertMasterCountrySchema = createInsertSchema(masterCountries).omit({
+  id: true,
+  synchedAt: true,
+});
+export type InsertMasterCountry = z.infer<typeof insertMasterCountrySchema>;
+export type MasterCountry = typeof masterCountries.$inferSelect;
+
+// Users Master (External API)
+export const masterUsers = pgTable(
+  "master_users",
+  {
+    id: serial("id").primaryKey(),
+    uuid: text("uuid"),
+    firstname: text("firstname"),
+    lastname: text("lastname"),
+    email: text("email"),
+    fullname: text("fullname"),
+    userType: text("user_type"),
+    designation: text("designation"),
+    department: text("department"),
+    role: text("role"),
+    displayName: text("display_name"),
+    synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    uuidIdx: index("idx_master_user_uuid").on(t.uuid),
+    emailIdx: index("idx_master_user_email").on(t.email),
+  })
+);
+
+export const insertMasterUserSchema = createInsertSchema(masterUsers).omit({
+  id: true,
+  synchedAt: true,
+});
+export type InsertMasterUser = z.infer<typeof insertMasterUserSchema>;
+export type MasterUser = typeof masterUsers.$inferSelect;
 // Type exports
 export type CbaTable = typeof cbaTables.$inferSelect;
 export type InsertCbaTable = z.infer<typeof insertCbaTableSchema>;

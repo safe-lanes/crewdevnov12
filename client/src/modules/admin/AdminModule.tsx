@@ -128,6 +128,7 @@ import { useExternalPorts } from "@/hooks/useExternalPorts";
 import { useExternalLanguages } from "@/hooks/useExternalLanguages";
 import { useExternalCountries } from "@/hooks/useExternalCountries";
 import { useExternalUsers } from "@/hooks/useExternalUsers";
+import { useSyncAllMasterData, useLocalMasterData } from "@/hooks/useLocalMasterApi";
 
 // StableInput component - uses local state to prevent value loss during re-renders
 // This solves the issue where external API hook re-renders cause controlled inputs to lose their value
@@ -1032,6 +1033,10 @@ const AdminModuleInner = (): JSX.Element => {
   // Data Masters state
   const [searchDataMaster, setSearchDataMaster] = useState("");
   const [selectedMaster, setSelectedMaster] = useState<string>("001");
+  const [masterDataSource, setMasterDataSource] = useState<'external' | 'local'>('local');
+  
+  // Sync All Master Data mutation
+  const syncAllMasterDataMutation = useSyncAllMasterData();
   
   // Vessel Group Modal state
   const [isVesselGroupModalOpen, setIsVesselGroupModalOpen] = useState(false);
@@ -6667,6 +6672,31 @@ const AdminModuleInner = (): JSX.Element => {
           <div className="flex justify-end">
             <div className="flex gap-2">
               <Button
+                variant="outline"
+                onClick={() => {
+                  syncAllMasterDataMutation.mutate(undefined, {
+                    onSuccess: (data) => {
+                      toast({
+                        title: "Sync Complete",
+                        description: `Successfully synced ${data.totalSynced} records from external API`,
+                      });
+                    },
+                    onError: (error) => {
+                      toast({
+                        title: "Sync Failed",
+                        description: error.message || "Failed to sync master data",
+                        variant: "destructive",
+                      });
+                    },
+                  });
+                }}
+                disabled={syncAllMasterDataMutation.isPending}
+                className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-blue-50"
+                data-testid="button-sync-all-masters"
+              >
+                {syncAllMasterDataMutation.isPending ? "Syncing..." : "Sync All"}
+              </Button>
+              {/* <Button
                 variant={isMasterInEditMode ? "default" : "outline"}
                 onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}
                 className={`h-8 text-xs ${
@@ -6689,7 +6719,7 @@ const AdminModuleInner = (): JSX.Element => {
                 data-testid="button-new-entry"
               >
                 + New Entry
-              </Button>
+              </Button> */}
             </div>
           </div>
         )}
@@ -6698,6 +6728,31 @@ const AdminModuleInner = (): JSX.Element => {
         {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
           <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-center'}`}>
             <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  syncAllMasterDataMutation.mutate(undefined, {
+                    onSuccess: (data) => {
+                      toast({
+                        title: "Sync Complete",
+                        description: `Successfully synced ${data.totalSynced} records from external API`,
+                      });
+                    },
+                    onError: (error) => {
+                      toast({
+                        title: "Sync Failed",
+                        description: error.message || "Failed to sync master data",
+                        variant: "destructive",
+                      });
+                    },
+                  });
+                }}
+                disabled={syncAllMasterDataMutation.isPending}
+                className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-blue-50"
+                data-testid="button-sync-all-masters-mobile"
+              >
+                {syncAllMasterDataMutation.isPending ? "Syncing..." : "Sync All"}
+              </Button>
               <Button
                 variant={isMasterInEditMode ? "default" : "outline"}
                 onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}

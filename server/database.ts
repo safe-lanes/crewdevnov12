@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { addMonths } from "date-fns";
+// import 'dotenv/config';
 import { 
   getReportingDate, 
   safeParseDate, 
@@ -125,9 +126,18 @@ import {
   type TrainingMatrixVesselRevision,
   type InsertTrainingMatrixVesselRevision,
   type PromotionReview,
-  type InsertPromotionReview
+  type InsertPromotionReview,
+  masterNationalities,
+  masterVessels,
+  masterVesselTypes,
+  masterAdditionalGroups,
+  masterPorts,
+  masterLanguages,
+  masterFleetGroups,
+  masterCountries,
+  masterUsers
 } from "@shared/schema";
-import { eq, desc, asc, sql, and, inArray, or, like, ilike, isNull } from "drizzle-orm";
+import { eq, desc, asc, sql, and, inArray, or, like, ilike, isNull, getTableName } from "drizzle-orm";
 import { type IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
@@ -5120,5 +5130,234 @@ export class DatabaseStorage implements IStorage {
   async deletePromotionReview(id: number): Promise<boolean> {
     await this.db.delete(promotionReviews).where(eq(promotionReviews.id, id));
     return true;
+  }
+
+  // =============================================================================
+  // External Master Data Methods (Sync from SAIL ERP API)
+  // =============================================================================
+
+  private buildVesselClassification(item: any): string | null {
+    const classifications: string[] = [];
+    if (item.tanker === true || item.tanker === 1) classifications.push('Tanker');
+    if (item.oilTanker === true || item.oilTanker === 1) classifications.push('Oil');
+    if (item.gasTanker === true || item.gasTanker === 1) classifications.push('Gas');
+    if (item.chemicalTanker === true || item.chemicalTanker === 1) classifications.push('Chemical');
+    if (item.dry === true || item.dry === 1) classifications.push('Dry');
+    if (item.container === true || item.container === 1) classifications.push('Container');
+    return classifications.length > 0 ? classifications.join(', ') : null;
+  }
+
+  async getMasterData(masterType: string): Promise<any[]> {
+    const tableMap: Record<string, any> = {
+      nationalities: masterNationalities,
+      vessels: masterVessels,
+      vesselTypes: masterVesselTypes,
+      additionalGroups: masterAdditionalGroups,
+      ports: masterPorts,
+      fleetGroups: masterFleetGroups,
+      languages: masterLanguages,
+      countries: masterCountries,
+      users: masterUsers,
+    };
+
+    const table = tableMap[masterType];
+    if (!table) {
+      console.warn(`[DatabaseStorage] Unknown master type: ${masterType}`);
+      return [];
+    }
+
+    try {
+      const rows = await this.db.select().from(table).orderBy(table.id);
+      console.log(`[DatabaseStorage] getMasterData(${masterType}): returned ${rows.length} records`);
+
+      if (masterType === 'vesselTypes') {
+        return rows.map((row: any) => ({
+          ...row,
+          classification: this.buildVesselClassification(row),
+        }));
+      }
+      return rows;
+    } catch (error: any) {
+      console.error(`[DatabaseStorage] getMasterData error`, error);
+      return [];
+    }
+  }
+
+  async syncMasterData(masterType: string, data: any[]): Promise<{ count: number }> {
+    if (!data || data.length === 0) {
+      console.log(`[DatabaseStorage] syncMasterData(${masterType}): No data`);
+      return { count: 0 };
+    }
+
+    const tableMap: Record<string, any> = {
+      nationalities: masterNationalities,
+      vessels: masterVessels,
+      vesselTypes: masterVesselTypes,
+      additionalGroups: masterAdditionalGroups,
+      ports: masterPorts,
+      fleetGroups: masterFleetGroups,
+      languages: masterLanguages,
+      countries: masterCountries,
+      users: masterUsers,
+    };
+
+    const fieldMappings: Record<string, Record<string, string>> = {
+      nationalities: {
+        cid: 'cid',
+        countryCode: 'countryCode',
+        countryName: 'countryName',
+        nationality: 'nationality',
+        countryRefId: 'countryRefId',
+        createdAt: 'createdAt',
+        updatedAt: 'updatedAt',
+        createdBy: 'createdBy',
+        isDeleted: 'isDeleted',
+      },
+      vessels: {
+        vuid: 'vuid',
+        vessel: 'vessel',
+        imoNumber: 'imoNumber',
+        vesselType: 'vesselType',
+      },
+      vesselTypes: {
+        vtuid: 'vtuid',
+        vesselType: 'vesselType',
+        tanker: 'tanker',
+        oilTanker: 'oilTanker',
+        gasTanker: 'gasTanker',
+        container: 'container',
+        chemicalTanker: 'chemicalTanker',
+        other: 'other',
+        dry: 'dry',
+        isActive: 'isActive',
+        isDeleted: 'isDeleted',
+        createdAt: 'createdAt',
+        updatedAt: 'updatedAt',
+        createdBy: 'createdBy',
+        updatedBy: 'updatedBy',
+      },
+      additionalGroups: {
+        id: 'externalId',
+        name: 'name',
+        vessels: 'vessels',
+      },
+      ports: {
+        puid: 'puid',
+        name: 'name',
+        latitude: 'latitude',
+        longitude: 'longitude',
+        country: 'country',
+        portcode: 'portcode',
+        isActive: 'isActive',
+        isDeleted: 'isDeleted',
+        createdAt: 'createdAt',
+        updatedAt: 'updatedAt',
+        createdBy: 'createdBy',
+      },
+      fleetGroups: {
+        id: 'externalId',
+        name: 'name',
+        vessels: 'vessels',
+      },
+      languages: {
+        luid: 'luid',
+        isoCode: 'isoCode',
+        languageName: 'languageName',
+        nativeName: 'nativeName',
+        isForeignLanguage: 'isForeignLanguage',
+        displayOrder: 'displayOrder',
+        isActive: 'isActive',
+        isDeleted: 'isDeleted',
+        createdAt: 'createdAt',
+        updatedAt: 'updatedAt',
+      },
+      countries: {
+        nuid: 'nuid',
+        countryName: 'countryName',
+        isActive: 'isActive',
+        isDeleted: 'isDeleted',
+        createdAt: 'createdAt',
+        updatedAt: 'updatedAt',
+        createdBy: 'createdBy',
+        domain: 'domain',
+        orderBy: 'orderBy',
+      },
+      users: {
+        uuid: 'uuid',
+        firstname: 'firstname',
+        lastname: 'lastname',
+        email: 'email',
+        fullname: 'fullname',
+        userType: 'userType',
+        designation: 'designation',
+        department: 'department',
+        role: 'role',
+        displayName: 'displayName',
+      },
+    };
+
+    const table = tableMap[masterType];
+    const mapping = fieldMappings[masterType];
+
+    if (!table || !mapping) {
+      console.warn(`[DatabaseStorage] Unknown master type: ${masterType}`);
+      return { count: 0 };
+    }
+
+    const booleanFields = new Set([
+      'tanker', 'oilTanker', 'gasTanker', 'chemicalTanker', 'dry', 'container', 'other',
+      'isActive', 'isDeleted', 'isForeignLanguage',
+    ]);
+
+    const timestampFields = new Set(['createdAt', 'updatedAt', 'synchedAt']);
+
+    try {
+      // Clear existing data
+      const tableName = getTableName(table);
+
+      console.log('tableName:', tableName);
+
+      await this.db.execute(
+        sql.raw(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`)
+      );
+      // await this.db.delete(table);
+
+      // Build insert objects with proper type conversion
+      const insertData = data.map((item) => {
+        const row: any = {};
+        for (const [apiField, schemaField] of Object.entries(mapping)) {
+          if (item[apiField] !== undefined && item[apiField] !== null) {
+            let value = item[apiField];
+            if (booleanFields.has(apiField)) {
+              value = Boolean(value);
+            } else if (timestampFields.has(apiField)) {
+              value = typeof value === 'string' ? new Date(value) : value;
+            }
+            row[schemaField] = value;
+          }
+        }
+        return row;
+      });
+
+      console.log(`[DatabaseStorage] syncMasterData(${masterType}): inserting ${insertData.length} rows`);
+
+      if (insertData.length > 0) {
+        const BATCH_SIZE = 1000;
+        let totalInserted = 0;
+
+        for (let i = 0; i < insertData.length; i += BATCH_SIZE) {
+          const batch = insertData.slice(i, i + BATCH_SIZE);
+          await this.db.insert(table).values(batch);
+          totalInserted += batch.length;
+          console.log(`[DatabaseStorage] Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}: ${totalInserted}/${insertData.length} rows`);
+        }
+        console.log(`[DatabaseStorage] Successfully inserted ${totalInserted} rows into ${masterType}`);
+      }
+
+      return { count: insertData.length };
+    } catch (error) {
+      console.error(`[DatabaseStorage] Error syncing ${masterType}:`, error);
+      throw error;
+    }
   }
 }

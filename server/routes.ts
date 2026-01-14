@@ -9695,6 +9695,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+ // =============================================================================
+  // External API Master Data Routes
+  // These routes handle fetching cached data and syncing from external API
+  // =============================================================================
+
+  // Valid master data types
+  const validMasterTypes = [
+    'nationalities', 'vessels', 'vesselTypes', 'additionalGroups',
+    'ports', 'fleetGroups', 'languages', 'countries', 'users'
+  ];
+
+  // GET /api/master-data/external/:type - Fetch cached master data from local database
+  app.get("/api/master-data/external/:type", async (req, res) => {
+    try {
+      const { type } = req.params;
+      
+      if (!validMasterTypes.includes(type)) {
+        return res.status(400).json({ 
+          error: `Invalid master type: ${type}. Valid types: ${validMasterTypes.join(', ')}` 
+        });
+      }
+
+      const data = await storage.getMasterData(type);
+      res.json({
+        type,
+        count: data.length,
+        data,
+        cached: true,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error(`Error fetching master data:`, error);
+      res.status(500).json({ error: "Failed to fetch master data from cache" });
+    }
+  });
+
+  // Map internal type names to external API response keys
+  const apiKeyMap: Record<string, string> = {
+    'nationalities': 'nationalities',
+    'vessels': 'vessels',
+    'vesselTypes': 'vesseltypes',
+    'additionalGroups': 'additionalGroups',
+    'ports': 'ports',
+    'fleetGroups': 'fleetGroups',
+    'languages': 'languages',
+    'countries': 'countries',
+    'users': 'users',
+  };
+
+// POST /api/master-data/external/sync-all - Sync all master data types at once
+  app.post("/api/master-data/external/sync-all", async (req, res) => {
+    try {
+      const { apiBaseUrl, domain } = req.body;
+      
+      if (!apiBaseUrl || !domain) {
+        return res.status(400).json({ 
+          error: "Missing required parameters: apiBaseUrl and domain are required" 
+        });
+      }
+      
+      console.log(`[Sync All] Fetching all master data from external API: ${apiBaseUrl} (domain: ${domain})`);
+      
+      const results: Record<string, { synced: number; error?: string }> = {};
+      
+      // Fetch main data from base endpoint
+      console.log(`[Sync All] Fetching main data from: ${apiBaseUrl}`);
+      const mainResponse = await fetch(`${apiBaseUrl}?domain=${domain}`);
+      if (!mainResponse.ok) {
+        throw new Error(`External API responded with status ${mainResponse.status}`);
+      }
+      const externalData = await mainResponse.json();
+      // Sync types available in main response
+      for (const type of validMasterTypes) {
+        try {
+          // Use main response data
+            const apiKey = apiKeyMap[type];
+            const typeData = externalData[apiKey];
+            if (typeData && Array.isArray(typeData)) {
+              const result = await storage.syncMasterData(type, typeData);
+              results[type] = { synced: result.count };
+            } else {
+              results[type] = { synced: 0, error: `No data for key: ${apiKey}` };
+            }
+        } catch (typeError) {
+          results[type] = { 
+            synced: 0, 
+            error: typeError instanceof Error ? typeError.message : 'Unknown error' 
+          };
+        }
+      }
+      
+      const totalSynced = Object.values(results).reduce((sum, r) => sum + r.synced, 0);
+      console.log(`[Sync All] Completed. Total synced: ${totalSynced} records`);
+      
+      res.json({
+        results,
+        totalSynced,
+        source: 'external_api',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error(`Error syncing all master data:`, error);
+      res.status(500).json({ 
+        error: "Failed to sync master data from external API",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Accounts Payable / Payroll Integration API Routes
   // Pay Elements API routes (Rate Tables & Rules)
   app.get("/api/pay-elements", async (req, res) => {

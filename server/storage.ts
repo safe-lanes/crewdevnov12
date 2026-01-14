@@ -1048,6 +1048,8 @@ export interface IStorage {
   createPromotionReview(review: InsertPromotionReview): Promise<PromotionReview>;
   updatePromotionReview(id: number, review: Partial<InsertPromotionReview>): Promise<PromotionReview | undefined>;
   deletePromotionReview(id: number): Promise<boolean>;
+  getMasterData: (masterType: string) => any;
+  syncMasterData: (masterType: string, data: any) => any;
 }
 
 /* MemStorage commented out - contains test seed data with type mismatches and is never used in production.
@@ -8146,6 +8148,17 @@ export class PersistentFileStorage implements IStorage {
 
   async deleteCompanyTrainingRequirementsByTrainingId(companyTrainingId: number): Promise<boolean> {
     throw new Error("PersistentFileStorage doesn't support company training requirements. Use DatabaseStorage instead.");
+  }
+
+  // External Master Data Methods (stub - use DatabaseStorage)
+  async getMasterData(masterType: string): Promise<any[]> {
+    console.log(`[PersistentFileStorage] getMasterData called for ${masterType} - returning empty array`);
+    return [];
+  }
+
+  async syncMasterData(masterType: string, data: any[]): Promise<{ count: number }> {
+    console.log(`[PersistentFileStorage] syncMasterData called for ${masterType} with ${data.length} records - no-op in file storage`);
+    return { count: 0 };
   }
 }
 
