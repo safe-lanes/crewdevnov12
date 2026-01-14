@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileText } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { generateRestHoursPDF } from '@/lib/generateRestHoursPDF';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
@@ -1148,6 +1149,40 @@ export const RHRecordingForm = ({
     templateAppliedRef.current = false;
   };
 
+  // Handle Export button click - generate PDF
+  const handleExport = async () => {
+    try {
+      // Get vessel name from the vessels list
+      const selectedVessel = vessels.find((v: any) => v.entryId === selectedVesselId);
+      const vesselName = selectedVessel?.name || '';
+      
+      // Format month/year display (e.g., "Dec 2025")
+      const [year, month] = selectedPeriod.split('-');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthYearDisplay = `${monthNames[parseInt(month) - 1]} ${year}`;
+      
+      await generateRestHoursPDF({
+        vesselName,
+        crewMemberName,
+        rank,
+        monthYear: monthYearDisplay,
+        records: dailyRecords,
+      });
+      
+      toast({
+        title: "Export Successful",
+        description: "Rest Hour Record PDF has been downloaded.",
+      });
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Generate display rows - now 1:1 mapping since retarded days have separate records
   const displayRows = useMemo(() => {
     const rows: DisplayRow[] = [];
@@ -1370,6 +1405,7 @@ export const RHRecordingForm = ({
                 size="sm"
                 className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 h-8 rounded-md px-3 text-xs hidden sm:flex"
                 data-testid="button-export-rh"
+                onClick={handleExport}
               >
                 <FileText className="h-4 w-4 mr-2" />
                 Export
