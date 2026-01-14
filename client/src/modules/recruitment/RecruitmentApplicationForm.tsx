@@ -513,7 +513,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     if (!formData.firstName || !formData.familyName) {
       toast({
         title: "Validation Error",
-        description: "Please fill in at least First Name and Family Name before saving.",
+        description: "First Name and Family Name are required.",
         variant: "destructive",
       });
       return;
@@ -571,7 +571,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     if (!formData.firstName || !formData.familyName) {
       toast({
         title: "Validation Error",
-        description: "Please fill in at least First Name and Family Name before saving.",
+        description: "First Name and Family Name are required.",
         variant: "destructive",
       });
       return;
@@ -623,7 +623,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     if (!formData.firstName || !formData.familyName) {
       toast({
         title: "Validation Error",
-        description: "Please fill in at least First Name and Family Name before saving.",
+        description: "First Name and Family Name are required.",
         variant: "destructive",
       });
       return;
@@ -658,7 +658,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     if (!formData.firstName || !formData.familyName) {
       toast({
         title: "Validation Error", 
-        description: "Please fill in at least First Name and Family Name before saving.",
+        description: "First Name and Family Name are required.",
         variant: "destructive",
       });
       return;
