@@ -2056,11 +2056,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
   // Fetch languages from external API (Master 019)
   const { data: externalLanguagesData } = useExternalLanguages();
   
-  // Extract language names from external API response
+  // Extract language names from external API response (sorted alphabetically)
   const languageMasterData = useMemo(() => {
     const languages = (externalLanguagesData as any)?.languages || externalLanguagesData || [];
     if (languages.length > 0) {
-      return languages.map((l: any) => l.languageName || l.name).filter(Boolean);
+      return languages.map((l: any) => l.languageName || l.name).filter(Boolean).sort();
     }
     return [];
   }, [externalLanguagesData]);
