@@ -732,10 +732,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return response.json();
     },
     onSuccess: () => {
-      setAppraisalStatus('preliminary');
+      // Only advance to 'preliminary' if current status is 'draft'
+      // If status is already 'preliminary', 'submitted', or 'reviewed', preserve it (acts as save-only)
+      if (appraisalStatus === 'draft') {
+        setAppraisalStatus('preliminary');
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
       queryClient.invalidateQueries({ queryKey: [`/api/appraisals/${appraisalId}`] });
-      toast({ title: 'Stage 1 submitted' });
+      toast({ title: appraisalStatus === 'draft' ? 'Stage 1 submitted' : 'Stage 1 saved' });
       onClose();
     },
     onError: (error: any) => {
@@ -762,10 +766,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return response.json();
     },
     onSuccess: () => {
-      setAppraisalStatus('submitted');
+      // Only advance to 'submitted' if current status is 'draft' or 'preliminary'
+      // If status is already 'submitted' or 'reviewed', preserve it (acts as save-only)
+      if (appraisalStatus === 'draft' || appraisalStatus === 'preliminary') {
+        setAppraisalStatus('submitted');
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/appraisals'] });
       queryClient.invalidateQueries({ queryKey: [`/api/appraisals/${appraisalId}`] });
-      toast({ title: 'Stage 2 Submitted', description: 'Performance assessment (Parts C-F) submitted successfully.' });
+      toast({ title: (appraisalStatus === 'draft' || appraisalStatus === 'preliminary') ? 'Stage 2 Submitted' : 'Stage 2 saved', description: 'Performance assessment (Parts C-F) saved successfully.' });
       onClose();
     },
     onError: (error: any) => {
