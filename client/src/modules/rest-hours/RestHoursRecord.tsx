@@ -227,8 +227,8 @@ export const RestHoursRecord = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-vessel"
                 />
+                {renderVesselSelect()}
               </div>
-              {filterType === 'vessel' && renderVesselSelect()}
             </div>
 
             {/* Fleet option */}
@@ -240,8 +240,8 @@ export const RestHoursRecord = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-fleet"
                 />
+                {renderFleetSelect()}
               </div>
-              {filterType === 'fleet' && renderFleetSelect()}
             </div>
 
             {/* Additional Group option */}
@@ -253,8 +253,8 @@ export const RestHoursRecord = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-addgroup"
                 />
+                {renderAddGroupSelect()}
               </div>
-              {filterType === 'addGroup' && renderAddGroupSelect()}
             </div>
           </RadioGroup>
 
@@ -290,8 +290,8 @@ export const RestHoursRecord = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-vessel"
                 />
+                {renderVesselSelect()}
               </div>
-              {filterType === 'vessel' && renderVesselSelect()}
             </div>
 
             {/* Fleet option */}
@@ -303,8 +303,8 @@ export const RestHoursRecord = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-fleet"
                 />
+                {renderFleetSelect()}
               </div>
-              {filterType === 'fleet' && renderFleetSelect()}
             </div>
 
             {/* Additional Group option */}
@@ -316,8 +316,8 @@ export const RestHoursRecord = (): JSX.Element => {
                   className="h-4 w-4"
                   data-testid="radio-addgroup"
                 />
+                {renderAddGroupSelect()}
               </div>
-              {filterType === 'addGroup' && renderAddGroupSelect()}
             </div>
           </RadioGroup>
 
@@ -351,7 +351,7 @@ export const RestHoursRecord = (): JSX.Element => {
               className="h-4 w-4"
               data-testid="radio-vessel"
             />
-            {filterType === 'vessel' && renderVesselSelect()}
+            {renderVesselSelect()}
           </div>
 
           {/* Fleet Radio + Select */}
@@ -362,7 +362,7 @@ export const RestHoursRecord = (): JSX.Element => {
               className="h-4 w-4"
               data-testid="radio-fleet"
             />
-            {filterType === 'fleet' && renderFleetSelect()}
+            {renderFleetSelect()}
           </div>
 
           {/* Additional Group Radio + Select */}
@@ -373,7 +373,7 @@ export const RestHoursRecord = (): JSX.Element => {
               className="h-4 w-4"
               data-testid="radio-addgroup"
             />
-            {filterType === 'addGroup' && renderAddGroupSelect()}
+            {renderAddGroupSelect()}
           </div>
         </RadioGroup>
 
