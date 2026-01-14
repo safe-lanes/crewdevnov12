@@ -299,7 +299,18 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const a2_1_licenseResult = useMemo(() => {
     if (!crewMemberData) return '';
-    const licenses = (crewMemberData as any).licensesAndCertificates || [];
+    // Parse licenses - handle both array and JSON string formats
+    let licenses: LicenseRecord[] = [];
+    const rawLicenses = (crewMemberData as any).licenses;
+    if (Array.isArray(rawLicenses)) {
+      licenses = rawLicenses;
+    } else if (typeof rawLicenses === 'string' && rawLicenses.trim()) {
+      try {
+        licenses = JSON.parse(rawLicenses);
+      } catch {
+        licenses = [];
+      }
+    }
     if (!a2Config?.higherLicenseIds?.length) {
       const cocLicense = licenses.find((lic: LicenseRecord) => 
         lic.certificateDocument?.toLowerCase().includes('coc') || 
