@@ -671,6 +671,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const computeMeetsStatus = (required: string, result: string): string => {
       if (!required || !result) return 'pending';
       
+      // Handle cases where result is already 'Yes' or 'No' (e.g., license criteria)
+      const resultLower = result.trim().toLowerCase();
+      if (resultLower === 'yes') return 'yes';
+      if (resultLower === 'no') return 'no';
+      
       const rangeMatch = required.match(/(\d+)\s*-\s*(\d+)/);
       if (rangeMatch) {
         const min = parseFloat(rangeMatch[1]);
@@ -763,6 +768,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const getMeetsCriterion = useCallback((required: string, result: string) => {
     if (!required || !result) return 'pending';
+    
+    // Handle cases where result is already 'Yes' or 'No' (e.g., license criteria)
+    const resultLower = result.trim().toLowerCase();
+    if (resultLower === 'yes') return 'met';
+    if (resultLower === 'no') return 'not-met';
     
     const rangeMatch = required.match(/(\d+)\s*-\s*(\d+)/);
     if (rangeMatch) {
