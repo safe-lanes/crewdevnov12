@@ -174,7 +174,7 @@ export const PerformanceOverviewCard = ({
     realRecords.forEach(record => {
       totalViolations += (record.totalViolations || 0);
       significantNCs += (record.totalNCs || 0);
-      predictedNCs += (record.predictedViolations || 0);
+      predictedNCs += (record.predictedNCs || 0);
       
       if (record.vesselId) {
         if ((record.totalViolations || 0) > 0) {
