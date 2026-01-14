@@ -316,7 +316,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     
     // Use pre-parsed data (no JSON.parse per call)
     const meetsStatus = review._parsedMeetsStatus || {};
-    const meets = meetsStatus[criteriaId];
+    const meetsRaw = meetsStatus[criteriaId];
+    // Normalize to lowercase to handle both 'yes'/'Yes' and 'no'/'No' from saved reviews
+    const meets = typeof meetsRaw === 'string' ? meetsRaw.toLowerCase() : meetsRaw;
     
     // Map stored values to return status per user spec:
     // 'yes' → met (Green), 'no' or 'pending' → pending (Yellow)
@@ -340,9 +342,12 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     // Use pre-parsed data (no JSON.parse per call)
     const meetsStatus = review._parsedMeetsStatus || {};
     
+    // Helper to normalize value to lowercase
+    const normalize = (val: any) => typeof val === 'string' ? val.toLowerCase() : val;
+    
     // For CES tests (a2.7), check the computed status first
     if (parentId === 'a2.7') {
-      const cesStatus = meetsStatus['a2.7'];
+      const cesStatus = normalize(meetsStatus['a2.7']);
       if (cesStatus === 'yes') return 'met';
       // Per user spec: 'No' or 'Pending' → Yellow dot, so both map to 'pending'
       if (cesStatus === 'no' || cesStatus === 'pending') return 'pending';
@@ -365,7 +370,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     
     // If no children in meetsStatus, check if parent itself has a value
     if (childIds.length === 0) {
-      const parentValue = meetsStatus[parentId];
+      const parentValue = normalize(meetsStatus[parentId]);
       if (parentValue === 'yes') return 'met';
       // Per user spec: 'No' or 'Pending' → Yellow dot
       if (parentValue === 'no' || parentValue === 'pending') return 'pending';
@@ -375,7 +380,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       return 'no-info';
     }
     
-    const childValues = childIds.map(id => meetsStatus[id] || '');
+    const childValues = childIds.map(id => normalize(meetsStatus[id]) || '');
     // If all children are 'yes', parent is met (Green)
     if (childValues.every(v => v === 'yes')) return 'met';
     // Otherwise → pending (Yellow) per user spec
