@@ -490,15 +490,14 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return maxDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
   };
 
-  // Helper function to format date as DD-MMM-YYYY for consistent display
+  // Helper function to format date as DD-MM-YYYY for consistent display
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return '';
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
       const day = date.getDate().toString().padStart(2, '0');
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const month = months[date.getMonth()];
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
       const year = date.getFullYear();
       return `${day}-${month}-${year}`;
     } catch {
