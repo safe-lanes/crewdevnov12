@@ -1165,7 +1165,7 @@ export const RHRecordingForm = ({
       const middleName = selectedCrewMember?.middleName || '';
       const familyName = selectedCrewMember?.familyName || '';
       const fullName = `${firstName}${middleName ? ' ' + middleName : ''} ${familyName}`.toUpperCase();
-      const seafarerFullName = `${rank}-${fileNo}-${fullName}`;
+      const seafarerFullName = `${rank}-${fullName}`;
       
       // Determine if watchkeeper based on rank (officers typically are)
       const watchkeeperRanks = ['Master', 'Chief Officer', 'Second Officer', 'Third Officer', 'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer', 'Electrical Officer'];
