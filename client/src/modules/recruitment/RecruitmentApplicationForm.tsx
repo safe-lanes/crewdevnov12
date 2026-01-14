@@ -483,6 +483,46 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     }
   });
 
+  // Helper function to calculate maximum DOB date (today - 18 years) for age restriction
+  const getMaxDOBDate = () => {
+    const today = new Date();
+    const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+    return maxDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  };
+
+  // Helper function to format date as DD-MMM-YYYY for consistent display
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      const day = date.getDate().toString().padStart(2, '0');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Helper function to validate age is at least 18 years
+  const isAgeValid = (dateOfBirth: string) => {
+    if (!dateOfBirth) return true; // Empty is valid (other validations handle required)
+    try {
+      const dob = new Date(dateOfBirth);
+      const today = new Date();
+      const age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      const dayDiff = today.getDate() - dob.getDate();
+      // Adjust age if birthday hasn't occurred yet this year
+      const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+      return actualAge >= 18;
+    } catch {
+      return false;
+    }
+  };
+
   // Helper function to determine status based on section
   const getStatusForSection = (section: string, isMainSubmit: boolean = false) => {
     // If already at final status, don't change
@@ -514,6 +554,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       toast({
         title: "Validation Error",
         description: "First Name and Family Name are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.dateOfBirth && !isAgeValid(formData.dateOfBirth)) {
+      toast({
+        title: "Validation Error",
+        description: "Candidate must be at least 18 years old.",
         variant: "destructive",
       });
       return;
@@ -577,6 +626,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
+    if (formData.dateOfBirth && !isAgeValid(formData.dateOfBirth)) {
+      toast({
+        title: "Validation Error",
+        description: "Candidate must be at least 18 years old.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Use existing file number (generated during A5 Submit for Screening)
     const fileNo = candidate?.fileNo || formData.fileNo || '';
     
@@ -629,6 +687,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
+    if (formData.dateOfBirth && !isAgeValid(formData.dateOfBirth)) {
+      toast({
+        title: "Validation Error",
+        description: "Candidate must be at least 18 years old.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Use existing file number (generated during A5 Submit for Screening)
     const fileNo = candidate?.fileNo || formData.fileNo || '';
     
@@ -659,6 +726,15 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       toast({
         title: "Validation Error", 
         description: "First Name and Family Name are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.dateOfBirth && !isAgeValid(formData.dateOfBirth)) {
+      toast({
+        title: "Validation Error",
+        description: "Candidate must be at least 18 years old.",
         variant: "destructive",
       });
       return;
@@ -2427,10 +2503,11 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
+                  max={getMaxDOBDate()}
                   className="mt-1"
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.dateOfBirth}</div>
+                <div className="mt-1 text-sm text-gray-900">{formatDateForDisplay(formData.dateOfBirth)}</div>
               )}
             </div>
             
