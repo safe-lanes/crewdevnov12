@@ -878,13 +878,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return;
     }
     
-    // Trigger the appropriate stage mutation with guaranteed non-null ID
+    // Trigger the appropriate stage mutation with guaranteed non-null ID and synced form data
     if (stage === 'stage1') {
-      stage1Mutation.mutate(idToUse);
+      stage1Mutation.mutate({ id: idToUse, formData });
     } else if (stage === 'stage2') {
-      stage2Mutation.mutate(idToUse);
+      stage2Mutation.mutate({ id: idToUse, formData });
     } else if (stage === 'stage3') {
-      stage3Mutation.mutate(idToUse);
+      stage3Mutation.mutate({ id: idToUse, formData });
     }
   };
 
