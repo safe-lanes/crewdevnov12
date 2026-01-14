@@ -522,6 +522,26 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     }
   };
 
+  // Helper function to validate email format (no spaces, valid pattern)
+  const isValidEmail = (email: string) => {
+    if (!email) return true; // Empty is valid (field is not required)
+    // Standard email regex pattern - no spaces allowed
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailPattern.test(email);
+  };
+
+  // Helper function to get email validation error message
+  const getEmailValidationError = (email: string, fieldName: string) => {
+    if (!email) return null;
+    if (email.includes(' ')) {
+      return `${fieldName} must not contain spaces. Please remove all spaces.`;
+    }
+    if (!isValidEmail(email)) {
+      return `${fieldName} is not valid. Please enter a valid email format (e.g., username@domain.com).`;
+    }
+    return null;
+  };
+
   // Helper function to determine status based on section
   const getStatusForSection = (section: string, isMainSubmit: boolean = false) => {
     // If already at final status, don't change
@@ -562,6 +582,27 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       toast({
         title: "Validation Error",
         description: "Candidate must be at least 18 years old.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Email validation
+    const emailError = getEmailValidationError(formData.email, 'Email');
+    if (emailError) {
+      toast({
+        title: "Validation Error",
+        description: emailError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const nokEmailError = getEmailValidationError(formData.nokEmail, 'NOK Email');
+    if (nokEmailError) {
+      toast({
+        title: "Validation Error",
+        description: nokEmailError,
         variant: "destructive",
       });
       return;
@@ -634,6 +675,27 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
+    // Email validation
+    const emailError = getEmailValidationError(formData.email, 'Email');
+    if (emailError) {
+      toast({
+        title: "Validation Error",
+        description: emailError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const nokEmailError = getEmailValidationError(formData.nokEmail, 'NOK Email');
+    if (nokEmailError) {
+      toast({
+        title: "Validation Error",
+        description: nokEmailError,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Use existing file number (generated during A5 Submit for Screening)
     const fileNo = candidate?.fileNo || formData.fileNo || '';
     
@@ -695,6 +757,27 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
+    // Email validation
+    const emailError = getEmailValidationError(formData.email, 'Email');
+    if (emailError) {
+      toast({
+        title: "Validation Error",
+        description: emailError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const nokEmailError = getEmailValidationError(formData.nokEmail, 'NOK Email');
+    if (nokEmailError) {
+      toast({
+        title: "Validation Error",
+        description: nokEmailError,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Use existing file number (generated during A5 Submit for Screening)
     const fileNo = candidate?.fileNo || formData.fileNo || '';
     
@@ -734,6 +817,27 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       toast({
         title: "Validation Error",
         description: "Candidate must be at least 18 years old.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Email validation
+    const emailError = getEmailValidationError(formData.email, 'Email');
+    if (emailError) {
+      toast({
+        title: "Validation Error",
+        description: emailError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const nokEmailError = getEmailValidationError(formData.nokEmail, 'NOK Email');
+    if (nokEmailError) {
+      toast({
+        title: "Validation Error",
+        description: nokEmailError,
         variant: "destructive",
       });
       return;
@@ -2791,7 +2895,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               <Input
                 type="email"
                 value={formData.email}
-                onChange={(e) => updateFormData('email', e.target.value)}
+                onChange={(e) => updateFormData('email', e.target.value.replace(/\s/g, ''))}
                 className="mt-1"
               />
             ) : (
@@ -3972,7 +4076,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
                 <Input
                   type="email"
                   value={formData.nokEmail}
-                  onChange={(e) => updateFormData('nokEmail', e.target.value)}
+                  onChange={(e) => updateFormData('nokEmail', e.target.value.replace(/\s/g, ''))}
                   className="mt-1"
                 />
               ) : (
