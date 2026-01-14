@@ -552,6 +552,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return null;
   };
 
+  // Helper function to validate No. of Dependent Children is numeric only
+  const getDependentChildrenValidationError = (value: string) => {
+    if (!value) return null; // Empty is valid (field is optional)
+    // Check if value contains only digits
+    if (!/^\d+$/.test(value)) {
+      return 'No. of Dependent Children must contain only numeric values (0-9).';
+    }
+    return null;
+  };
+
   // Helper function to determine status based on section
   const getStatusForSection = (section: string, isMainSubmit: boolean = false) => {
     // If already at final status, don't change
@@ -624,6 +634,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       toast({
         title: "Validation Error",
         description: spouseError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // No. of Dependent Children validation (numeric only)
+    const dependentChildrenError = getDependentChildrenValidationError(formData.numberOfDependentChildren);
+    if (dependentChildrenError) {
+      toast({
+        title: "Validation Error",
+        description: dependentChildrenError,
         variant: "destructive",
       });
       return;
@@ -728,6 +749,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
+    // No. of Dependent Children validation (numeric only)
+    const dependentChildrenError = getDependentChildrenValidationError(formData.numberOfDependentChildren);
+    if (dependentChildrenError) {
+      toast({
+        title: "Validation Error",
+        description: dependentChildrenError,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Use existing file number (generated during A5 Submit for Screening)
     const fileNo = candidate?.fileNo || formData.fileNo || '';
     
@@ -821,6 +853,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
+    // No. of Dependent Children validation (numeric only)
+    const dependentChildrenError = getDependentChildrenValidationError(formData.numberOfDependentChildren);
+    if (dependentChildrenError) {
+      toast({
+        title: "Validation Error",
+        description: dependentChildrenError,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Use existing file number (generated during A5 Submit for Screening)
     const fileNo = candidate?.fileNo || formData.fileNo || '';
     
@@ -892,6 +935,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       toast({
         title: "Validation Error",
         description: spouseError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // No. of Dependent Children validation (numeric only)
+    const dependentChildrenError = getDependentChildrenValidationError(formData.numberOfDependentChildren);
+    if (dependentChildrenError) {
+      toast({
+        title: "Validation Error",
+        description: dependentChildrenError,
         variant: "destructive",
       });
       return;
@@ -3873,7 +3927,7 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
               {isEditing ? (
                 <Input
                   value={formData.numberOfDependentChildren}
-                  onChange={(e) => updateFormData('numberOfDependentChildren', e.target.value)}
+                  onChange={(e) => updateFormData('numberOfDependentChildren', e.target.value.replace(/[^0-9]/g, ''))}
                   className="mt-1"
                 />
               ) : (
