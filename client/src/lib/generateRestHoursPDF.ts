@@ -7,15 +7,9 @@ const A4_HEIGHT = 595;
 const MARGIN = 15;
 const CONTENT_WIDTH = A4_WIDTH - 2 * MARGIN;
 
-// Colors
-const HEADER_BG = rgb(0.9, 0.95, 1);
+// Colors (black-and-white styling)
 const BORDER_COLOR = rgb(0.6, 0.6, 0.6);
-const BLUE_COLOR = rgb(0.29, 0.56, 0.89);
 const RED_COLOR = rgb(0.8, 0, 0);
-const LIGHT_BLUE_BG = rgb(0.9, 0.95, 1);
-const WORK_COLOR = rgb(0.85, 0.95, 0.85);
-const DUTY_COLOR = rgb(1, 0.95, 0.85);
-const ANCHOR_COLOR = rgb(0.85, 0.85, 1);
 
 export interface RestHoursPDFData {
   vesselName: string;
@@ -144,11 +138,7 @@ class RestHoursPDFGenerator {
     const titleWidth = this.fontBold.widthOfTextAtSize(title, 14);
     const titleX = (pageWidth - titleWidth) / 2;
     this.drawText(title, titleX, currentY, 14, 'bold');
-    currentY -= 20;
-    
-    // Draw horizontal line below title
-    this.drawLine(leftMargin, currentY, pageWidth - MARGIN, currentY, 0.5, rgb(0.5, 0.5, 0.5));
-    currentY -= 14;
+    currentY -= 16;
     
     // Three-column layout for metadata
     const col1X = leftMargin;
@@ -182,9 +172,9 @@ class RestHoursPDFGenerator {
     
     this.drawText('Watchkeeper :', col3X, currentY, labelFontSize, 'bold');
     const watchkeeperX = col3X + 75;
-    this.drawCheckbox(watchkeeperX, currentY - 2, data.watchkeeper === true, 8);
+    this.drawCheckbox(watchkeeperX, currentY - 2, false, 8);
     this.drawText('Yes', watchkeeperX + 12, currentY, 7);
-    this.drawCheckbox(watchkeeperX + 35, currentY - 2, data.watchkeeper === false, 8);
+    this.drawCheckbox(watchkeeperX + 35, currentY - 2, false, 8);
     this.drawText('No', watchkeeperX + 47, currentY, 7);
     currentY -= 12;
     
@@ -200,7 +190,7 @@ class RestHoursPDFGenerator {
     const tableWidth = this.getTableWidth();
     const headerHeight = 28;
     
-    this.drawRect(tableStartX, startY - headerHeight, tableWidth, headerHeight, BORDER_COLOR, HEADER_BG);
+    this.drawRect(tableStartX, startY - headerHeight, tableWidth, headerHeight, BORDER_COLOR);
     
     let headerX = tableStartX;
     const headerTextY = startY - 10;
@@ -228,9 +218,11 @@ class RestHoursPDFGenerator {
       headerX += hourWidth;
     }
     
-    // RH in 24 Hr column
-    this.drawText('RH in', headerX + 2, headerTextY, 5, 'bold');
-    this.drawText('24 Hr', headerX + 2, headerTextY2, 5, 'bold');
+    // Hours of Rest in 24-Hours period column
+    this.drawText('Hours of', headerX + 1, headerTextY + 2, 3.5, 'bold');
+    this.drawText('Rest in', headerX + 1, headerTextY2 + 9, 3.5, 'bold');
+    this.drawText('24-Hours', headerX + 1, headerTextY2 + 2, 3.5, 'bold');
+    this.drawText('period', headerX + 1, headerTextY2 - 5, 3.5, 'bold');
     this.drawLine(headerX + this.rhColWidth, startY, headerX + this.rhColWidth, startY - headerHeight);
     headerX += this.rhColWidth;
     
@@ -246,7 +238,7 @@ class RestHoursPDFGenerator {
     
     // Hours of Rest in any section
     const restSectionWidth = this.restPeriodColWidth * 2;
-    this.drawRect(headerX, startY - headerHeight, restSectionWidth, headerHeight, BORDER_COLOR, LIGHT_BLUE_BG);
+    this.drawRect(headerX, startY - headerHeight, restSectionWidth, headerHeight, BORDER_COLOR);
     this.drawText('Rest in any', headerX + 3, headerTextY, 5, 'bold');
     
     this.drawText('24hr', headerX + 3, headerTextY2, 5, 'normal');
@@ -310,11 +302,9 @@ class RestHoursPDFGenerator {
     this.drawLine(leftMargin + 230, currentY - 2, leftMargin + 230 + signatureLineWidth + 100, currentY - 2, 0.5);
     currentY -= 35;
     
-    // Seafarer signature (right-aligned on its own line)
-    const seafarerLabelWidth = this.font.widthOfTextAtSize('Signature of seafarer', 8);
-    const seafarerLineStart = rightMargin - signatureLineWidth;
-    this.drawText('Signature of seafarer', seafarerLineStart - seafarerLabelWidth - 10, currentY, 8);
-    this.drawLine(seafarerLineStart, currentY - 2, rightMargin, currentY - 2, 0.5);
+    // Seafarer signature (left-aligned on its own line)
+    this.drawText('Signature of seafarer', leftMargin, currentY, 8);
+    this.drawLine(leftMargin + 120, currentY - 2, leftMargin + 120 + signatureLineWidth, currentY - 2, 0.5);
   }
   
   // Helper to draw wrapped text
@@ -392,19 +382,11 @@ class RestHoursPDFGenerator {
       // Normalize hours array
       const normalizedHours = this.normalizeHours(record.hours);
       
-      // 48 Half-hour cells
+      // 48 Half-hour cells (black-and-white, no background colors)
       for (let halfHourIdx = 0; halfHourIdx < 48; halfHourIdx++) {
         const cellValue = normalizedHours[halfHourIdx];
         
-        const getCellBg = (val: string) => {
-          if (val === 'w' || val === 'W') return WORK_COLOR;
-          if (val === 'd' || val === 'D') return DUTY_COLOR;
-          if (val === 'a' || val === 'A') return ANCHOR_COLOR;
-          return undefined;
-        };
-        
-        const cellBg = getCellBg(cellValue);
-        this.drawRect(cellX, rowY, this.halfHourCellWidth, rowHeight, BORDER_COLOR, cellBg);
+        this.drawRect(cellX, rowY, this.halfHourCellWidth, rowHeight, BORDER_COLOR);
         
         if (cellValue) {
           this.drawText(cellValue.toLowerCase(), cellX + 3, rowY + 3, 5);
@@ -432,15 +414,15 @@ class RestHoursPDFGenerator {
       this.drawText(truncatedComment, cellX + 2, rowY + 3, 5);
       cellX += this.commentsColWidth;
       
-      // 24 Hr Period cell (blue background)
-      this.drawRect(cellX, rowY, this.restPeriodColWidth, rowHeight, BORDER_COLOR, LIGHT_BLUE_BG);
+      // 24 Hr Period cell
+      this.drawRect(cellX, rowY, this.restPeriodColWidth, rowHeight, BORDER_COLOR);
       const rest24hr = record.anyPeriodRest24hr?.toFixed(1) || '';
       const is24hrViolation = (record.anyPeriodRest24hr || 0) < 10;
       this.drawText(rest24hr, cellX + 3, rowY + 3, 5, 'normal', is24hrViolation ? RED_COLOR : rgb(0, 0, 0));
       cellX += this.restPeriodColWidth;
       
-      // 7 days cell (blue background)
-      this.drawRect(cellX, rowY, this.restPeriodColWidth, rowHeight, BORDER_COLOR, LIGHT_BLUE_BG);
+      // 7 days cell
+      this.drawRect(cellX, rowY, this.restPeriodColWidth, rowHeight, BORDER_COLOR);
       const rest7day = record.anyPeriodRest7day?.toFixed(1) || '';
       const is7dayViolation = (record.anyPeriodRest7day || 0) < 77;
       this.drawText(rest7day, cellX + 2, rowY + 3, 5, 'normal', is7dayViolation ? RED_COLOR : rgb(0, 0, 0));
@@ -456,28 +438,7 @@ class RestHoursPDFGenerator {
     }
     
     const legendY = currentY - 15;
-    this.drawText('Legend:', tableStartX, legendY, 6, 'bold');
-    
-    let legendX = tableStartX + 35;
-    
-    this.drawRect(legendX, legendY - 2, 8, 8, BORDER_COLOR, WORK_COLOR);
-    legendX += 10;
-    this.drawText('w = Work', legendX, legendY, 6);
-    
-    legendX += 45;
-    this.drawRect(legendX, legendY - 2, 8, 8, BORDER_COLOR, DUTY_COLOR);
-    legendX += 10;
-    this.drawText('d = Duty', legendX, legendY, 6);
-    
-    legendX += 45;
-    this.drawRect(legendX, legendY - 2, 8, 8, BORDER_COLOR, ANCHOR_COLOR);
-    legendX += 10;
-    this.drawText('a = Anchor Watch', legendX, legendY, 6);
-    
-    legendX += 75;
-    this.drawRect(legendX, legendY - 2, 8, 8, BORDER_COLOR);
-    legendX += 10;
-    this.drawText('blank = Rest', legendX, legendY, 6);
+    this.drawText('Legend: w: Watch, a: Additional Work, d: Day Work, blank: Rest', tableStartX, legendY, 6);
     
     // Draw second page with footnotes and signature lines
     this.drawSecondPage();
