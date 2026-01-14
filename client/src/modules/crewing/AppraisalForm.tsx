@@ -707,10 +707,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     },
   });
 
-  // Stage 1 mutation (Parts A & B)
+  // Stage 1 mutation (Parts A & B) - accepts synced form data to ensure comment persistence
   const stage1Mutation = useMutation({
-    mutationFn: async (appraisalId: number) => {
-      const formData = form.getValues();
+    mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
       const stageData = {
         seafarersName: formData.seafarersName,
         seafarersRank: formData.seafarersRank,
@@ -726,7 +725,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         targets: formData.targets,
       };
       
-      const response = await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage1`, {
+      const response = await apiRequest('POST', `/api/appraisals/${id}/submit-stage1`, {
         data: stageData,
         submittedBy: 'Current User',
       });
@@ -744,10 +743,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     },
   });
 
-  // Stage 2 mutation (Parts C, D, E, F)
+  // Stage 2 mutation (Parts C, D, E, F) - accepts synced form data to ensure comment persistence
   const stage2Mutation = useMutation({
-    mutationFn: async (appraisalId: number) => {
-      const formData = form.getValues();
+    mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
       const stageData = {
         competenceAssessments: formData.competenceAssessments,
         behaviouralAssessments: formData.behaviouralAssessments,
@@ -757,7 +755,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         seafarerComments: formData.seafarerComments,
       };
       
-      const response = await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage2`, {
+      const response = await apiRequest('POST', `/api/appraisals/${id}/submit-stage2`, {
         data: stageData,
         submittedBy: 'Current User',
       });
@@ -775,16 +773,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     },
   });
 
-  // Stage 3 mutation (Part G)
+  // Stage 3 mutation (Part G) - accepts synced form data to ensure comment persistence
   const stage3Mutation = useMutation({
-    mutationFn: async (appraisalId: number) => {
-      const formData = form.getValues();
+    mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
       const stageData = {
         officeReviews: formData.officeReviews,
         trainingFollowups: formData.trainingFollowups,
       };
       
-      const response = await apiRequest('POST', `/api/appraisals/${appraisalId}/submit-stage3`, {
+      const response = await apiRequest('POST', `/api/appraisals/${id}/submit-stage3`, {
         data: stageData,
         submittedBy: 'Current User',
       });
@@ -813,6 +810,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         // Reset form with existing data
         form.reset(parsedData);
         
+        // Load comments from form data into useState hooks for persistence
+        loadCommentsFromFormData(parsedData);
+        
         // Update status from fetched data
         if (existingAppraisal.status && ['draft', 'preliminary', 'submitted', 'reviewed'].includes(existingAppraisal.status)) {
           setAppraisalStatus(existingAppraisal.status as 'draft' | 'preliminary' | 'submitted' | 'reviewed');
@@ -832,7 +832,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Shared handler for stage submissions (auto-saves draft if needed)
   const handleStageSubmission = async (stage: 'stage1' | 'stage2' | 'stage3') => {
-    const formData = form.getValues();
+    // Get form data with synced comments from useState hooks
+    const formData = getFormDataWithSyncedComments();
     
     // Validate stage-specific data
     try {
@@ -890,12 +891,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const onSubmit = (data: AppraisalFormData) => {
     console.log('🔵 onSubmit called with data:', data);
     console.log('🔵 Mutation isPending:', saveAppraisalMutation.isPending);
-    saveAppraisalMutation.mutate({ data, status: 'draft' });
+    // Get form data with synced comments from useState hooks
+    const syncedData = getFormDataWithSyncedComments();
+    saveAppraisalMutation.mutate({ data: syncedData, status: 'draft' });
   };
 
   const handleSaveDraft = () => {
     console.log('💾 handleSaveDraft called - bypassing validation');
-    const data = form.getValues();
+    // Get form data with synced comments from useState hooks
+    const data = getFormDataWithSyncedComments();
     console.log('💾 Form values:', data);
     console.log('💾 Form errors (ignored for draft):', form.formState.errors);
     // Preserve current workflow status after Stage 1 or Stage 2 submission
@@ -908,9 +912,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const onSubmitAppraisal = () => {
     console.log('🟢 onSubmitAppraisal called');
     console.log('🟢 Form errors:', form.formState.errors);
-    form.handleSubmit((data) => {
-      console.log('🟢 Submit handler called with data:', data);
-      saveAppraisalMutation.mutate({ data, status: 'submitted' });
+    form.handleSubmit(() => {
+      // Get form data with synced comments from useState hooks
+      const syncedData = getFormDataWithSyncedComments();
+      console.log('🟢 Submit handler called with synced data:', syncedData);
+      saveAppraisalMutation.mutate({ data: syncedData, status: 'submitted' });
     })();
   };
 
@@ -1197,6 +1203,118 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         closeConfirmDialog();
       }
     );
+  };
+
+  // Merge comments from useState hooks into a copy of form data
+  // Returns merged data object ready for saving - avoids setValue/getValues timing issues
+  // Uses nullish coalescing to handle sections that may be hidden/undefined via rank config
+  const getFormDataWithSyncedComments = (): AppraisalFormData => {
+    const data = form.getValues();
+    
+    // Merge training comments (with null guard for hidden sections)
+    const updatedTrainings = (data.trainings ?? []).map(t => ({
+      ...t,
+      comment: trainingComments[t.id] !== undefined ? trainingComments[t.id] : (t.comment || "")
+    }));
+
+    // Merge target comments (with null guard for hidden sections)
+    const updatedTargets = (data.targets ?? []).map(t => ({
+      ...t,
+      comment: targetComments[t.id] !== undefined ? targetComments[t.id] : (t.comment || "")
+    }));
+
+    // Merge competence assessment comments (with null guard for hidden sections)
+    const updatedCompetenceAssessments = (data.competenceAssessments ?? []).map(c => ({
+      ...c,
+      comment: competenceComments[c.id] !== undefined ? competenceComments[c.id] : (c.comment || "")
+    }));
+
+    // Merge behavioural assessment comments (with null guard for hidden sections)
+    const updatedBehaviouralAssessments = (data.behaviouralAssessments ?? []).map(b => ({
+      ...b,
+      comment: behaviouralComments[b.id] !== undefined ? behaviouralComments[b.id] : (b.comment || "")
+    }));
+
+    // Merge training needs comments (with null guard for hidden sections)
+    const updatedTrainingNeeds = (data.trainingNeeds ?? []).map(t => ({
+      ...t,
+      comment: trainingNeedsComments[t.id] !== undefined ? trainingNeedsComments[t.id] : (t.comment || "")
+    }));
+
+    // Merge recommendation comments (with null guard for hidden sections)
+    const updatedRecommendations = (data.recommendations ?? []).map(r => ({
+      ...r,
+      comment: recommendationComments[r.id] !== undefined ? recommendationComments[r.id] : (r.comment || "")
+    }));
+
+    // Merge training followup comments (with null guard for hidden sections)
+    const updatedTrainingFollowups = (data.trainingFollowups ?? []).map(f => ({
+      ...f,
+      comment: trainingFollowupComments[f.id] !== undefined ? trainingFollowupComments[f.id] : (f.comment || "")
+    }));
+
+    return {
+      ...data,
+      trainings: updatedTrainings,
+      targets: updatedTargets,
+      competenceAssessments: updatedCompetenceAssessments,
+      behaviouralAssessments: updatedBehaviouralAssessments,
+      trainingNeeds: updatedTrainingNeeds,
+      recommendations: updatedRecommendations,
+      trainingFollowups: updatedTrainingFollowups,
+    };
+  };
+
+  // Load comments from form data into useState hooks when form is populated
+  const loadCommentsFromFormData = (formData: AppraisalFormData) => {
+    // Load training comments
+    const trainingsComments: {[key: string]: string} = {};
+    formData.trainings?.forEach(t => {
+      if (t.comment) trainingsComments[t.id] = t.comment;
+    });
+    setTrainingComments(trainingsComments);
+
+    // Load target comments
+    const targetsComments: {[key: string]: string} = {};
+    formData.targets?.forEach(t => {
+      if (t.comment) targetsComments[t.id] = t.comment;
+    });
+    setTargetComments(targetsComments);
+
+    // Load competence assessment comments
+    const compComments: {[key: string]: string} = {};
+    formData.competenceAssessments?.forEach(c => {
+      if (c.comment) compComments[c.id] = c.comment;
+    });
+    setCompetenceComments(compComments);
+
+    // Load behavioural assessment comments
+    const behComments: {[key: string]: string} = {};
+    formData.behaviouralAssessments?.forEach(b => {
+      if (b.comment) behComments[b.id] = b.comment;
+    });
+    setBehaviouralComments(behComments);
+
+    // Load training needs comments
+    const tnComments: {[key: string]: string} = {};
+    formData.trainingNeeds?.forEach(t => {
+      if (t.comment) tnComments[t.id] = t.comment;
+    });
+    setTrainingNeedsComments(tnComments);
+
+    // Load recommendation comments
+    const recComments: {[key: string]: string} = {};
+    formData.recommendations?.forEach(r => {
+      if (r.comment) recComments[r.id] = r.comment;
+    });
+    setRecommendationComments(recComments);
+
+    // Load training followup comments
+    const tfComments: {[key: string]: string} = {};
+    formData.trainingFollowups?.forEach(f => {
+      if (f.comment) tfComments[f.id] = f.comment;
+    });
+    setTrainingFollowupComments(tfComments);
   };
 
   // Training Needs management functions
