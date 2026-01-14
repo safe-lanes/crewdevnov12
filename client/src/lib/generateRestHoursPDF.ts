@@ -23,6 +23,10 @@ export interface RestHoursPDFData {
   rank: string;
   monthYear: string;
   records: ExtendedDailyRecord[];
+  imoNumber?: string;
+  flagOfShip?: string;
+  watchkeeper?: boolean;
+  seafarerFullName?: string;
 }
 
 class RestHoursPDFGenerator {
@@ -30,12 +34,14 @@ class RestHoursPDFGenerator {
   private currentPage!: PDFPage;
   private font!: PDFFont;
   private fontBold!: PDFFont;
+  private fontOblique!: PDFFont;
+  private fontBoldOblique!: PDFFont;
   private yPosition: number = A4_HEIGHT - MARGIN;
   
   // Column widths (all 48 half-hour cells)
   private readonly dateColWidth = 28;
   private readonly dayColWidth = 24;
-  private readonly halfHourCellWidth = 12; // Each half-hour cell
+  private readonly halfHourCellWidth = 12;
   private readonly rhColWidth = 26;
   private readonly violationsColWidth = 38;
   private readonly commentsColWidth = 65;
@@ -45,17 +51,22 @@ class RestHoursPDFGenerator {
     this.pdfDoc = await PDFDocument.create();
     this.font = await this.pdfDoc.embedFont(StandardFonts.Helvetica);
     this.fontBold = await this.pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    this.fontOblique = await this.pdfDoc.embedFont(StandardFonts.HelveticaOblique);
+    this.fontBoldOblique = await this.pdfDoc.embedFont(StandardFonts.HelveticaBoldOblique);
     this.addNewPage();
   }
   
   private addNewPage(): void {
-    // Landscape orientation
     this.currentPage = this.pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
     this.yPosition = A4_HEIGHT - MARGIN;
   }
   
-  drawText(text: string, x: number, y: number, fontSize: number = 8, fontType: 'normal' | 'bold' = 'normal', color = rgb(0, 0, 0)): void {
-    const font = fontType === 'bold' ? this.fontBold : this.font;
+  drawText(text: string, x: number, y: number, fontSize: number = 8, fontType: 'normal' | 'bold' | 'italic' | 'boldItalic' = 'normal', color = rgb(0, 0, 0)): void {
+    let font = this.font;
+    if (fontType === 'bold') font = this.fontBold;
+    else if (fontType === 'italic') font = this.fontOblique;
+    else if (fontType === 'boldItalic') font = this.fontBoldOblique;
+    
     this.currentPage.drawText(text || '', {
       x,
       y,
@@ -94,7 +105,23 @@ class RestHoursPDFGenerator {
     });
   }
   
-  // Calculate total table width
+  // Draw checkbox (small square with optional checkmark using stroke paths)
+  private drawCheckbox(x: number, y: number, checked: boolean, size: number = 8): void {
+    this.drawRect(x, y, size, size, BORDER_COLOR);
+    if (checked) {
+      // Draw a checkmark using lines
+      const startX = x + 1.5;
+      const startY = y + size / 2;
+      const midX = x + size / 3;
+      const midY = y + 1.5;
+      const endX = x + size - 1.5;
+      const endY = y + size - 2;
+      
+      this.drawLine(startX, startY, midX, midY, 1, rgb(0, 0, 0));
+      this.drawLine(midX, midY, endX, endY, 1, rgb(0, 0, 0));
+    }
+  }
+  
   private getTableWidth(): number {
     const hoursColumnsWidth = 48 * this.halfHourCellWidth;
     return this.dateColWidth + this.dayColWidth + hoursColumnsWidth + 
@@ -102,12 +129,77 @@ class RestHoursPDFGenerator {
            this.restPeriodColWidth * 2;
   }
   
+  // Draw document header matching reference design
+  private drawDocumentHeader(data: RestHoursPDFData): number {
+    let currentY = this.yPosition;
+    const pageWidth = A4_WIDTH;
+    const leftMargin = MARGIN;
+    
+    // Draw horizontal line at top
+    this.drawLine(leftMargin, currentY, pageWidth - MARGIN, currentY, 1, rgb(0.3, 0.3, 0.3));
+    currentY -= 18;
+    
+    // Centered title: "RECORD OF HOURS OF WORK"
+    const title = 'RECORD OF HOURS OF WORK';
+    const titleWidth = this.fontBold.widthOfTextAtSize(title, 14);
+    const titleX = (pageWidth - titleWidth) / 2;
+    this.drawText(title, titleX, currentY, 14, 'bold');
+    currentY -= 20;
+    
+    // Draw horizontal line below title
+    this.drawLine(leftMargin, currentY, pageWidth - MARGIN, currentY, 0.5, rgb(0.5, 0.5, 0.5));
+    currentY -= 14;
+    
+    // Three-column layout for metadata
+    const col1X = leftMargin;
+    const col2X = 320;
+    const col3X = 560;
+    const labelFontSize = 8;
+    const valueFontSize = 8;
+    
+    // Row 1: Name Of Ship, IMO Number, Flag of ship
+    this.drawText('Name Of Ship :', col1X, currentY, labelFontSize, 'bold');
+    this.drawText(data.vesselName || '', col1X + 80, currentY, valueFontSize);
+    
+    this.drawText('IMO Number :', col2X, currentY, labelFontSize, 'bold');
+    this.drawText(data.imoNumber || '', col2X + 75, currentY, valueFontSize);
+    
+    this.drawText('Flag of ship:', col3X, currentY, labelFontSize, 'bold');
+    this.drawText(data.flagOfShip || '', col3X + 70, currentY, valueFontSize);
+    currentY -= 12;
+    
+    // Row 2: Seafarer FullName, (blank), Position/Rank
+    this.drawText('Seafarer FullName :', col1X, currentY, labelFontSize, 'bold');
+    this.drawText(data.seafarerFullName || data.crewMemberName || '', col1X + 100, currentY, valueFontSize);
+    
+    this.drawText('Position/Rank :', col3X, currentY, labelFontSize, 'bold');
+    this.drawText(data.rank || '', col3X + 80, currentY, valueFontSize);
+    currentY -= 12;
+    
+    // Row 3: Month and Year, (blank), Watchkeeper with checkboxes
+    this.drawText('Month and Year :', col1X, currentY, labelFontSize, 'bold');
+    this.drawText(data.monthYear || '', col1X + 90, currentY, valueFontSize);
+    
+    this.drawText('Watchkeeper :', col3X, currentY, labelFontSize, 'bold');
+    const watchkeeperX = col3X + 75;
+    this.drawCheckbox(watchkeeperX, currentY - 2, data.watchkeeper === true, 8);
+    this.drawText('Yes', watchkeeperX + 12, currentY, 7);
+    this.drawCheckbox(watchkeeperX + 35, currentY - 2, data.watchkeeper === false, 8);
+    this.drawText('No', watchkeeperX + 47, currentY, 7);
+    currentY -= 12;
+    
+    // Instruction text
+    this.drawText('Please mark periods of work with a "d", "a", and "w"', col1X, currentY, 7);
+    currentY -= 10;
+    
+    return currentY;
+  }
+  
   // Draw table header (reusable for each page)
   private drawTableHeader(tableStartX: number, startY: number): number {
     const tableWidth = this.getTableWidth();
     const headerHeight = 28;
     
-    // Table header background
     this.drawRect(tableStartX, startY - headerHeight, tableWidth, headerHeight, BORDER_COLOR, HEADER_BG);
     
     let headerX = tableStartX;
@@ -124,17 +216,13 @@ class RestHoursPDFGenerator {
     this.drawLine(headerX + this.dayColWidth, startY, headerX + this.dayColWidth, startY - headerHeight);
     headerX += this.dayColWidth;
     
-    // Hours columns header (00-23, each with 2 half-hour cells)
+    // Hours columns header (00-23)
     for (let h = 0; h < 24; h++) {
       const hourStr = h.toString().padStart(2, '0');
-      // Draw hour label spanning 2 cells
       this.drawText(hourStr, headerX + 3, headerTextY, 5, 'normal');
       
-      // Draw vertical line after each hour (every 2 cells)
       const hourWidth = this.halfHourCellWidth * 2;
       this.drawLine(headerX + hourWidth, startY, headerX + hourWidth, startY - headerHeight, 0.5);
-      
-      // Draw lighter divider between half-hours
       this.drawLine(headerX + this.halfHourCellWidth, startY - headerHeight + 8, headerX + this.halfHourCellWidth, startY - headerHeight, 0.25, rgb(0.75, 0.75, 0.75));
       
       headerX += hourWidth;
@@ -161,7 +249,6 @@ class RestHoursPDFGenerator {
     this.drawRect(headerX, startY - headerHeight, restSectionWidth, headerHeight, BORDER_COLOR, LIGHT_BLUE_BG);
     this.drawText('Rest in any', headerX + 3, headerTextY, 5, 'bold');
     
-    // Sub-headers for 24 Hr Period and 7 days
     this.drawText('24hr', headerX + 3, headerTextY2, 5, 'normal');
     this.drawLine(headerX + this.restPeriodColWidth, startY - 12, headerX + this.restPeriodColWidth, startY - headerHeight);
     this.drawText('7day', headerX + this.restPeriodColWidth + 3, headerTextY2, 5, 'normal');
@@ -169,7 +256,6 @@ class RestHoursPDFGenerator {
     return startY - headerHeight;
   }
   
-  // Normalize hours array to ensure exactly 48 entries
   private normalizeHours(hours: string[] | undefined): string[] {
     const normalized = new Array(48).fill('');
     if (hours && Array.isArray(hours)) {
@@ -180,6 +266,81 @@ class RestHoursPDFGenerator {
     return normalized;
   }
   
+  // Draw the second page with footnotes and signature lines
+  private drawSecondPage(): void {
+    this.addNewPage();
+    let currentY = this.yPosition - 30;
+    const leftMargin = MARGIN + 15;
+    const rightMargin = A4_WIDTH - MARGIN - 15;
+    const lineWidth = rightMargin - leftMargin;
+    const signatureLineWidth = 380;
+    
+    // Footnote 1
+    this.drawText('1', leftMargin, currentY, 7);
+    const footnote1 = 'For completion and use in accordance with the procedures established by the competent authority in compliance with the relevant requirements of the Seafarers\' Hours of Work and the Manning of Ships Convention, 1996 (Convention No. 180).';
+    this.drawWrappedText(footnote1, leftMargin + 12, currentY, 7, lineWidth - 12);
+    currentY -= 30;
+    
+    // Footnote 2
+    this.drawText('2', leftMargin, currentY, 7);
+    const footnote2 = 'Additional calculations or verifications may be necessary to ensure compliance with the relevant requirements of the seafarers\' Hours of Work and the Manning of Ships Convention, 1996 (Convention No. 180) and the International Convention on Standards of Training, Certification and Watchkeeping, 1978, as amended (STCW Convention).';
+    this.drawWrappedText(footnote2, leftMargin + 12, currentY, 7, lineWidth - 12);
+    currentY -= 50;
+    
+    // National laws section
+    this.drawText('The following national laws, regulations and/or collective limitations on working hours:', leftMargin, currentY, 8);
+    currentY -= 25;
+    
+    // Empty line for national laws input
+    this.drawLine(leftMargin, currentY, rightMargin, currentY, 0.5);
+    currentY -= 50;
+    
+    // Agreement statement (bold italic)
+    const agreementText = 'I agree that this record is an accurate reflection of the hours of rest of the seafarer concerned.';
+    this.drawText(agreementText, leftMargin, currentY, 9, 'boldItalic');
+    currentY -= 30;
+    
+    // Master name line with underline
+    this.drawText('Name of master or person authorized by master to sign this record', leftMargin, currentY, 8);
+    this.drawLine(leftMargin + 330, currentY - 2, leftMargin + 330 + signatureLineWidth, currentY - 2, 0.5);
+    currentY -= 22;
+    
+    // Signature of master or authorized person
+    this.drawText('Signature of master or authorized person', leftMargin, currentY, 8);
+    this.drawLine(leftMargin + 230, currentY - 2, leftMargin + 230 + signatureLineWidth + 100, currentY - 2, 0.5);
+    currentY -= 35;
+    
+    // Seafarer signature (right-aligned on its own line)
+    const seafarerLabelWidth = this.font.widthOfTextAtSize('Signature of seafarer', 8);
+    const seafarerLineStart = rightMargin - signatureLineWidth;
+    this.drawText('Signature of seafarer', seafarerLineStart - seafarerLabelWidth - 10, currentY, 8);
+    this.drawLine(seafarerLineStart, currentY - 2, rightMargin, currentY - 2, 0.5);
+  }
+  
+  // Helper to draw wrapped text
+  private drawWrappedText(text: string, x: number, startY: number, fontSize: number, maxWidth: number): void {
+    const words = text.split(' ');
+    let line = '';
+    let y = startY;
+    
+    for (const word of words) {
+      const testLine = line + (line ? ' ' : '') + word;
+      const testWidth = this.font.widthOfTextAtSize(testLine, fontSize);
+      
+      if (testWidth > maxWidth && line) {
+        this.drawText(line, x, y, fontSize);
+        line = word;
+        y -= fontSize + 2;
+      } else {
+        line = testLine;
+      }
+    }
+    
+    if (line) {
+      this.drawText(line, x, y, fontSize);
+    }
+  }
+  
   async generate(data: RestHoursPDFData): Promise<Uint8Array> {
     await this.initialize();
     
@@ -187,24 +348,8 @@ class RestHoursPDFGenerator {
     const tableWidth = this.getTableWidth();
     const rowHeight = 12;
     
-    // Draw title header
-    let currentY = this.yPosition;
-    
-    // Title section
-    this.drawText('Record of Hours of Work or Rest', tableStartX, currentY, 11, 'bold', BLUE_COLOR);
-    currentY -= 12;
-    
-    // Crew info section
-    const infoY = currentY;
-    this.drawText(`Vessel: ${data.vesselName || ''}`, tableStartX, infoY, 8);
-    this.drawText(`Rank: ${data.rank || ''}`, tableStartX + 140, infoY, 8);
-    this.drawText(`Name: ${data.crewMemberName || ''}`, tableStartX + 260, infoY, 8);
-    this.drawText(`Month/Year: ${data.monthYear || ''}`, tableStartX + 480, infoY, 8);
-    currentY -= 14;
-    
-    // Instruction text
-    this.drawText('Please mark periods of work with a "d", "a", and "w"', tableStartX, currentY, 6);
-    currentY -= 10;
+    // Draw document header
+    let currentY = this.drawDocumentHeader(data);
     
     // Draw table header
     currentY = this.drawTableHeader(tableStartX, currentY);
@@ -218,11 +363,10 @@ class RestHoursPDFGenerator {
         this.addNewPage();
         currentY = this.yPosition - 10;
         
-        // Redraw header on new page with title
-        this.drawText('Record of Hours of Work or Rest (continued)', tableStartX, currentY, 9, 'bold', BLUE_COLOR);
-        currentY -= 12;
+        // Redraw header on new page
+        this.drawText('RECORD OF HOURS OF WORK (continued)', MARGIN, currentY, 10, 'bold');
+        currentY -= 15;
         
-        // Redraw full table header
         currentY = this.drawTableHeader(tableStartX, currentY);
       }
       
@@ -245,14 +389,13 @@ class RestHoursPDFGenerator {
       this.drawText(record.dayOfWeek || '', cellX + 3, rowY + 3, 6);
       cellX += this.dayColWidth;
       
-      // Normalize hours array to ensure exactly 48 entries
+      // Normalize hours array
       const normalizedHours = this.normalizeHours(record.hours);
       
-      // 48 Half-hour cells (all individual cells rendered)
+      // 48 Half-hour cells
       for (let halfHourIdx = 0; halfHourIdx < 48; halfHourIdx++) {
         const cellValue = normalizedHours[halfHourIdx];
         
-        // Get cell background color based on value
         const getCellBg = (val: string) => {
           if (val === 'w' || val === 'W') return WORK_COLOR;
           if (val === 'd' || val === 'D') return DUTY_COLOR;
@@ -263,7 +406,6 @@ class RestHoursPDFGenerator {
         const cellBg = getCellBg(cellValue);
         this.drawRect(cellX, rowY, this.halfHourCellWidth, rowHeight, BORDER_COLOR, cellBg);
         
-        // Display value
         if (cellValue) {
           this.drawText(cellValue.toLowerCase(), cellX + 3, rowY + 3, 5);
         }
@@ -306,10 +448,9 @@ class RestHoursPDFGenerator {
       currentY = rowY;
     }
     
-    // Legend at bottom of last page - check if there's enough space
+    // Legend
     const legendHeight = 25;
     if (currentY - legendHeight < MARGIN + 10) {
-      // Not enough space, add a new page for the legend
       this.addNewPage();
       currentY = this.yPosition - 20;
     }
@@ -319,28 +460,27 @@ class RestHoursPDFGenerator {
     
     let legendX = tableStartX + 35;
     
-    // Work (w) legend
     this.drawRect(legendX, legendY - 2, 8, 8, BORDER_COLOR, WORK_COLOR);
     legendX += 10;
     this.drawText('w = Work', legendX, legendY, 6);
     
-    // Duty (d) legend
     legendX += 45;
     this.drawRect(legendX, legendY - 2, 8, 8, BORDER_COLOR, DUTY_COLOR);
     legendX += 10;
     this.drawText('d = Duty', legendX, legendY, 6);
     
-    // Anchor (a) legend
     legendX += 45;
     this.drawRect(legendX, legendY - 2, 8, 8, BORDER_COLOR, ANCHOR_COLOR);
     legendX += 10;
     this.drawText('a = Anchor Watch', legendX, legendY, 6);
     
-    // Blank = Rest legend
     legendX += 75;
     this.drawRect(legendX, legendY - 2, 8, 8, BORDER_COLOR);
     legendX += 10;
     this.drawText('blank = Rest', legendX, legendY, 6);
+    
+    // Draw second page with footnotes and signature lines
+    this.drawSecondPage();
     
     return this.pdfDoc.save();
   }
@@ -351,7 +491,6 @@ export async function generateRestHoursPDF(data: RestHoursPDFData): Promise<void
     const generator = new RestHoursPDFGenerator();
     const pdfBytes = await generator.generate(data);
     
-    // Create blob and download
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     
@@ -362,7 +501,6 @@ export async function generateRestHoursPDF(data: RestHoursPDFData): Promise<void
     link.click();
     document.body.removeChild(link);
     
-    // Clean up
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error('Failed to generate Rest Hours PDF:', error);

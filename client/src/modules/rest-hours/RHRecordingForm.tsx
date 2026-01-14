@@ -1152,14 +1152,29 @@ export const RHRecordingForm = ({
   // Handle Export button click - generate PDF
   const handleExport = async () => {
     try {
-      // Get vessel name from the vessels list
-      const selectedVessel = vessels.find((v: any) => v.entryId === selectedVesselId);
+      // Get vessel data from the vessels list (cast to any to access additional API fields)
+      const selectedVessel = vessels.find((v: any) => v.entryId === selectedVesselId) as any;
       const vesselName = selectedVessel?.name || '';
+      const imoNumber = selectedVessel?.description || selectedVessel?.imoNumber || '';
+      const flagOfShip = selectedVessel?.countryName || selectedVessel?.country || selectedVessel?.flagState || '';
       
-      // Format month/year display (e.g., "Dec 2025")
+      // Get crew member data
+      const selectedCrewMember = filteredCrewMembers.find((cm: any) => cm.id === selectedCrewMemberId);
+      const fileNo = selectedCrewMember?.id || '';
+      const firstName = selectedCrewMember?.firstName || '';
+      const middleName = selectedCrewMember?.middleName || '';
+      const familyName = selectedCrewMember?.familyName || '';
+      const fullName = `${firstName}${middleName ? ' ' + middleName : ''} ${familyName}`.toUpperCase();
+      const seafarerFullName = `${rank}-${fileNo}-${fullName}`;
+      
+      // Determine if watchkeeper based on rank (officers typically are)
+      const watchkeeperRanks = ['Master', 'Chief Officer', 'Second Officer', 'Third Officer', 'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer', 'Electrical Officer'];
+      const watchkeeper = watchkeeperRanks.some(r => rank.toLowerCase().includes(r.toLowerCase()));
+      
+      // Format month/year display (e.g., "Dec-2025")
       const [year, month] = selectedPeriod.split('-');
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const monthYearDisplay = `${monthNames[parseInt(month) - 1]} ${year}`;
+      const monthYearDisplay = `${monthNames[parseInt(month) - 1]}-${year}`;
       
       await generateRestHoursPDF({
         vesselName,
@@ -1167,6 +1182,10 @@ export const RHRecordingForm = ({
         rank,
         monthYear: monthYearDisplay,
         records: dailyRecords,
+        imoNumber,
+        flagOfShip,
+        watchkeeper,
+        seafarerFullName,
       });
       
       toast({
