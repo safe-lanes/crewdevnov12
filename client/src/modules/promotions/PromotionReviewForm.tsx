@@ -265,12 +265,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }
   }, [promotionData?.promotionToRank, formsData, rankGroupsData, normalizeRank, parseRanksArray]);
 
-  const licenseNamesById = useMemo(() => {
+  const licenseDataByEntryId = useMemo(() => {
     if (!licenseEntriesData) return {};
-    const map: Record<number, string> = {};
+    const map: Record<string, { name: string; entryId: string }> = {};
     licenseEntriesData.forEach((entry: any) => {
-      if (entry.id && entry.name) {
-        map[entry.id] = entry.name;
+      const entryId = entry.entryId || entry.entry_id || entry.nuid;
+      if (entryId && entry.name) {
+        map[entryId] = { name: entry.name, entryId };
       }
     });
     return map;
@@ -279,10 +280,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const requiredLicenseDisplay = useMemo(() => {
     if (!a2Config?.higherLicenseIds?.length) return '';
     const names = a2Config.higherLicenseIds
-      .map(id => licenseNamesById[Number(id)] || `License ID ${id}`)
+      .map(id => licenseDataByEntryId[id]?.name || `License ID ${id}`)
       .filter(Boolean);
     return names.join(', ') || '';
-  }, [a2Config?.higherLicenseIds, licenseNamesById]);
+  }, [a2Config?.higherLicenseIds, licenseDataByEntryId]);
 
   const requiredAgeDisplay = useMemo(() => {
     if (!a2Config?.ageMin && !a2Config?.ageMax) return '';
@@ -306,22 +307,21 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       );
       return cocLicense ? 'Yes' : 'No';
     }
-    const requiredLicenseNames = a2Config.higherLicenseIds
-      .map(id => licenseNamesById[Number(id)])
-      .filter(Boolean);
-    if (!requiredLicenseNames.length) return 'No';
-    const hasAnyLicense = requiredLicenseNames.some(requiredName => {
-      const requiredLower = requiredName.toLowerCase();
+    const requiredEntryIds = a2Config.higherLicenseIds;
+    const hasAnyLicense = requiredEntryIds.some(requiredEntryId => {
+      const requiredLower = requiredEntryId.toLowerCase();
+      const licenseData = licenseDataByEntryId[requiredEntryId];
+      const requiredNameLower = licenseData?.name?.toLowerCase() || '';
       return licenses.some((lic: LicenseRecord) => {
+        const crewLicenseId = lic.licenseId?.toLowerCase() || '';
         const certDoc = lic.certificateDocument?.toLowerCase() || '';
-        const licId = lic.licenseId?.toLowerCase() || '';
-        return certDoc.includes(requiredLower) || 
-               requiredLower.includes(certDoc) ||
-               licId.includes(requiredLower);
+        return crewLicenseId === requiredLower ||
+               (requiredNameLower && certDoc.includes(requiredNameLower)) ||
+               (requiredNameLower && requiredNameLower.includes(certDoc));
       });
     });
     return hasAnyLicense ? 'Yes' : 'No';
-  }, [crewMemberData, a2Config?.higherLicenseIds, licenseNamesById]);
+  }, [crewMemberData, a2Config?.higherLicenseIds, licenseDataByEntryId]);
 
   const a2_2_ageResult = useMemo(() => {
     if (!crewMemberData?.dateOfBirth) return '';
