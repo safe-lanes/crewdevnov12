@@ -542,6 +542,16 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
     return null;
   };
 
+  // Helper function to validate spouse details when Marital Status is Married
+  const getSpouseValidationError = (maritalStatus: string, spouseFirstName: string, spouseFamilyName: string) => {
+    if (maritalStatus === 'Married') {
+      if (!spouseFirstName || !spouseFamilyName) {
+        return 'Spouse First Name and Family Name are required when Marital Status is Married.';
+      }
+    }
+    return null;
+  };
+
   // Helper function to determine status based on section
   const getStatusForSection = (section: string, isMainSubmit: boolean = false) => {
     // If already at final status, don't change
@@ -603,6 +613,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       toast({
         title: "Validation Error",
         description: nokEmailError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Spouse validation when Marital Status is Married
+    const spouseError = getSpouseValidationError(formData.maritalStatus, formData.spouseFirstName, formData.spouseFamilyName);
+    if (spouseError) {
+      toast({
+        title: "Validation Error",
+        description: spouseError,
         variant: "destructive",
       });
       return;
@@ -696,6 +717,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
+    // Spouse validation when Marital Status is Married
+    const spouseError = getSpouseValidationError(formData.maritalStatus, formData.spouseFirstName, formData.spouseFamilyName);
+    if (spouseError) {
+      toast({
+        title: "Validation Error",
+        description: spouseError,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Use existing file number (generated during A5 Submit for Screening)
     const fileNo = candidate?.fileNo || formData.fileNo || '';
     
@@ -778,6 +810,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       return;
     }
 
+    // Spouse validation when Marital Status is Married
+    const spouseError = getSpouseValidationError(formData.maritalStatus, formData.spouseFirstName, formData.spouseFamilyName);
+    if (spouseError) {
+      toast({
+        title: "Validation Error",
+        description: spouseError,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Use existing file number (generated during A5 Submit for Screening)
     const fileNo = candidate?.fileNo || formData.fileNo || '';
     
@@ -838,6 +881,17 @@ export const RecruitmentApplicationForm: React.FC<RecruitmentApplicationFormProp
       toast({
         title: "Validation Error",
         description: nokEmailError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Spouse validation when Marital Status is Married
+    const spouseError = getSpouseValidationError(formData.maritalStatus, formData.spouseFirstName, formData.spouseFamilyName);
+    if (spouseError) {
+      toast({
+        title: "Validation Error",
+        description: spouseError,
         variant: "destructive",
       });
       return;
