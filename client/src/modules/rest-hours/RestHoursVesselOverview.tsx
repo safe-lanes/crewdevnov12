@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Globe } from 'lucide-react';
+import { ArrowLeft, Globe, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -202,6 +202,15 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         <div className="flex flex-col h-full">
           <SectionTitleComponents title={`RH Records - ${vesselName} - ${monthDisplay}`}>
         <div className="flex gap-4 items-center">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+            data-testid="button-export-rh-vessel"
+          >
+            <FileText className="h-4 w-4" />
+            Export
+          </Button>
           <div className="flex items-center gap-1">
             <span className="text-xs text-[#4f5863]">Rest</span>
             <button
