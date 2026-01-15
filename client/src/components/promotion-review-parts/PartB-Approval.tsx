@@ -17,6 +17,8 @@ interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
   vesselClasses: string[];
   onRemoveVesselType: (type: string) => void;
   onRemoveVesselClass: (cls: string) => void;
+  onSave?: () => void;
+  onSubmit?: () => void;
 }
 
 export const PartBApproval = memo(function PartBApproval({
@@ -28,6 +30,8 @@ export const PartBApproval = memo(function PartBApproval({
   vesselClasses,
   onRemoveVesselType,
   onRemoveVesselClass,
+  onSave,
+  onSubmit,
   ...restProps
 }: PartBApprovalProps) {
   const { data: externalUsers = [] } = useExternalUsers();
@@ -212,6 +216,7 @@ export const PartBApproval = memo(function PartBApproval({
             type="button"
             variant="outline" 
             className="px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
+            onClick={onSave}
             data-testid="button-save-part-b"
           >
             Save
@@ -219,6 +224,7 @@ export const PartBApproval = memo(function PartBApproval({
           <Button 
             type="button"
             className="px-8 bg-green-600 hover:bg-green-700"
+            onClick={onSubmit}
             data-testid="button-submit-part-b"
           >
             Submit

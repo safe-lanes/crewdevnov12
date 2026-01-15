@@ -22,6 +22,8 @@ interface PartCExecutionProps extends React.HTMLAttributes<HTMLDivElement> {
   onSetPromotionTiming: (value: string) => void;
   vessels?: VesselOption[];
   currentUserDisplay?: string;
+  onSave?: () => void;
+  onSubmit?: () => void;
 }
 
 export const PartCExecution = memo(function PartCExecution({
@@ -35,6 +37,8 @@ export const PartCExecution = memo(function PartCExecution({
   onSetPromotionTiming,
   vessels = [],
   currentUserDisplay = 'Current User, Staff',
+  onSave,
+  onSubmit,
   ...restProps
 }: PartCExecutionProps) {
   return (
@@ -157,6 +161,7 @@ export const PartCExecution = memo(function PartCExecution({
               type="button"
               variant="outline" 
               className="px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
+              onClick={onSave}
               data-testid="button-save-part-c"
             >
               Save
@@ -164,6 +169,7 @@ export const PartCExecution = memo(function PartCExecution({
             <Button 
               type="button"
               className="px-8 bg-green-600 hover:bg-green-700"
+              onClick={onSubmit}
               data-testid="button-submit-part-c"
             >
               Submit
