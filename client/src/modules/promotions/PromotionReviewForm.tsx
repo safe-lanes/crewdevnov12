@@ -761,6 +761,34 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     saveMutation.mutate(reviewData);
   }, [collectFormData, saveMutation]);
 
+  const handleSubmitPartB = useCallback(() => {
+    const reviewData = collectFormData({
+      partANotes: '',
+      partBNotes: '',
+      partCNotes: '',
+    });
+    reviewData.status = 'approved';
+    saveMutation.mutate(reviewData);
+    toast({
+      title: "Part B Submitted",
+      description: "Approval section has been submitted successfully.",
+    });
+  }, [collectFormData, saveMutation, toast]);
+
+  const handleSubmitPartC = useCallback(() => {
+    const reviewData = collectFormData({
+      partANotes: '',
+      partBNotes: '',
+      partCNotes: '',
+    });
+    reviewData.status = 'completed';
+    saveMutation.mutate(reviewData);
+    toast({
+      title: "Part C Submitted",
+      description: "Execution section has been submitted successfully.",
+    });
+  }, [collectFormData, saveMutation, toast]);
+
   const handleSubmit = (data: PromotionReviewFormData) => {
     const reviewData = collectFormData(data);
     saveMutation.mutate(reviewData);
@@ -1336,7 +1364,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               onRemoveVesselType={removeVesselType}
               onRemoveVesselClass={removeVesselClass}
               onSave={handleSaveDraft}
-              onSubmit={handleSaveDraft}
+              onSubmit={handleSubmitPartB}
             />
           )}
 
@@ -1353,7 +1381,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               vessels={vesselOptions}
               currentUserDisplay={currentUserDisplay}
               onSave={handleSaveDraft}
-              onSubmit={handleSaveDraft}
+              onSubmit={handleSubmitPartC}
             />
           )}
         </>
