@@ -221,7 +221,11 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         throw new Error('Failed to fetch daily records');
       }
       const container = await response.json();
-      const dailyRecords = container?.dailyRecords || [];
+      // Parse dailyRecords - API returns it as a JSON string, not an array
+      const dailyRecordsData = container?.dailyRecords;
+      const dailyRecords = typeof dailyRecordsData === 'string' 
+        ? JSON.parse(dailyRecordsData) 
+        : dailyRecordsData || [];
       return dailyRecords.map(ensureDailyRecordDefaults);
     } catch (error) {
       console.error('Failed to fetch daily records:', error);
