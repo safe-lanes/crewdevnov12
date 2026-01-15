@@ -607,7 +607,18 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           const commentData = typeof existingReviewData.criteriaComments === 'string'
             ? JSON.parse(existingReviewData.criteriaComments)
             : existingReviewData.criteriaComments;
-          setCriteriaComments(commentData);
+          
+          // Extract A4 reviewer comments if they exist
+          if (commentData.a4 && Array.isArray(commentData.a4) && commentData.a4.length > 0) {
+            setComments(commentData.a4);
+            // Update nextCommentIdRef to avoid ID collisions
+            const maxId = Math.max(...commentData.a4.map((c: Comment) => parseInt(c.id) || 0));
+            nextCommentIdRef.current = maxId + 1;
+          }
+          
+          // Set criteria comments (excluding a4 to avoid duplication in state)
+          const { a4, ...restComments } = commentData;
+          setCriteriaComments(restComments);
         } catch {}
       }
       
@@ -737,7 +748,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       criteriaVerifiedStatus: JSON.stringify(criteriaVerifiedStatus),
       criteriaMeetsStatus: JSON.stringify(criteriaMeetsStatus),
       cesTestsData: JSON.stringify(cesTests),
-      criteriaComments: JSON.stringify(criteriaComments),
+      criteriaComments: JSON.stringify({ ...criteriaComments, a4: comments }),
       trainingNeeds: JSON.stringify(trainingNeeds),
       approvalData: JSON.stringify(approvers),
       promotionConfirmed,
@@ -750,7 +761,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       selectedApproversForSubmission: JSON.stringify(selectedApproversForSubmission),
       status: 'draft',
     };
-  }, [criteriaData, cesTests, criteriaComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission]);
+  }, [criteriaData, cesTests, criteriaComments, comments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission]);
 
   const handleSaveDraft = useCallback(() => {
     const reviewData = collectFormData({
