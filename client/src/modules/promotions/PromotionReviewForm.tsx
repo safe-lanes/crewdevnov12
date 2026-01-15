@@ -1168,7 +1168,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   ), [cesTests, updateCesTest, deleteCesTest]);
 
   return (
-    <>
+    <div className="promotion-review-form">
       <BaseSubmoduleForm
         title="Promotion Review Form"
         sections={sections}
@@ -1462,6 +1462,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         onConfirm={addTrainingsFromDatabase}
         existingCourseIds={trainingNeeds.map(t => t.correspondingInDB).filter(Boolean)}
       />
-    </>
+    </div>
   );
 };

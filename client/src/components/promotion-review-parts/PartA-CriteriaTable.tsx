@@ -175,7 +175,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               className="h-7 w-7 p-0"
               data-testid={`button-criteria-view-${row.id}`}
             >
-              <Eye className="h-4 w-4 text-gray-600" />
+              <Eye className="h-4 w-4 text-gray-600 promotion-eye-icon" />
             </Button>
             {!isParentCriteria(row.id) && (
               <Button 

@@ -459,3 +459,8 @@
   }
 }
 
+/* Temporary: Hide eye icons in Promotion Review Form only */
+.promotion-review-form .promotion-eye-icon {
+  display: none;
+}
+
