@@ -766,8 +766,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       criteriaMeetsStatus[row.id] = computeMeetsStatus(row.required, row.resultFromDb);
     });
     
-    // Compute parent criteria aggregation (a2.3, a2.6)
-    // Parent is 'yes' if all children are 'yes', 'pending' if any child is 'pending' or 'no'
+    // Compute parent criteria aggregation for A2.3 and A2.6
+    // Rule: If ANY child is 'yes' → parent is 'yes'
+    //       If ALL children are 'n/a', empty, or pending → parent stays 'pending'
     const parentIds = ['a2.3', 'a2.6'];
     parentIds.forEach(parentId => {
       const childIds = Object.keys(criteriaMeetsStatus).filter(
@@ -775,17 +776,27 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       );
       if (childIds.length > 0) {
         const childValues = childIds.map(id => criteriaMeetsStatus[id]);
-        if (childValues.every(v => v === 'yes')) {
+        // If ANY child is 'yes', parent becomes 'yes' (even if others are N/A)
+        if (childValues.some(v => v === 'yes')) {
           criteriaMeetsStatus[parentId] = 'yes';
         } else {
-          // Per user spec: 'No' or 'Pending' → Yellow dot, so map both to 'pending'
+          // All children are N/A, empty, or pending → parent stays 'pending'
           criteriaMeetsStatus[parentId] = 'pending';
         }
       }
     });
     
+    // Compute A2.5 parent status from a2.5a checklist completion percentage
+    // Rule: If checklist percentage >= 85% (minChecklistCompletionPercent threshold) → 'yes'
+    const a2_5a_status = criteriaMeetsStatus['a2.5a'];
+    if (a2_5a_status === 'yes') {
+      criteriaMeetsStatus['a2.5'] = 'yes';
+    } else {
+      criteriaMeetsStatus['a2.5'] = 'pending';
+    }
+    
     // Compute CES tests meets status (a2.7)
-    // If all tests pass/NA → yes, if any fail/empty → pending (Yellow per user spec)
+    // Rule: If all tests pass/NA → 'yes', otherwise → 'pending'
     if (cesTests.length > 0) {
       const results = cesTests.map(t => t.result || '');
       if (results.every(r => r === 'Pass' || r === 'NA')) {
@@ -794,6 +805,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         // Any empty, Fail, or other result → pending (Yellow per user spec)
         criteriaMeetsStatus['a2.7'] = 'pending';
       }
+    } else {
+      // No CES tests defined yet → pending
+      criteriaMeetsStatus['a2.7'] = 'pending';
     }
 
     return {
@@ -906,7 +920,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     ));
   }, []);
 
-  const parentCriteriaIds = ['a2.3', 'a2.6', 'a2.7'];
+  const parentCriteriaIds = ['a2.3', 'a2.5', 'a2.6', 'a2.7'];
 
   const getChildrenIds = useCallback((parentId: string): string[] => {
     if (parentId === 'a2.7') {
@@ -918,6 +932,31 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [cesTests, criteriaData]);
 
   const computeParentStatus = useCallback((parentId: string): 'yes' | 'na' | 'pending' => {
+    // Special handling for A2.5 - based on checklist completion percentage
+    if (parentId === 'a2.5') {
+      // Check if checklist progress data exists and meets threshold
+      if (existingReviewData?.checklistProgressData) {
+        try {
+          const progressData = typeof existingReviewData.checklistProgressData === 'string'
+            ? JSON.parse(existingReviewData.checklistProgressData)
+            : existingReviewData.checklistProgressData;
+          
+          // Calculate completion percentage from progress data
+          const completedCount = Object.values(progressData).filter((v: any) => v === true).length;
+          const totalCount = Object.keys(progressData).length;
+          const minPercent = a2Config?.minChecklistCompletionPercent ?? 85;
+          
+          if (totalCount > 0) {
+            const percent = (completedCount / totalCount) * 100;
+            return percent >= minPercent ? 'yes' : 'pending';
+          }
+        } catch {
+          // Parse error - stay pending
+        }
+      }
+      return 'pending';
+    }
+    
     const childrenIds = getChildrenIds(parentId);
     if (childrenIds.length === 0) return 'pending';
 
@@ -951,7 +990,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     if (hasYes && allYesOrNa) return 'yes';
 
     return 'pending';
-  }, [getChildrenIds, cesTests, criteriaData]);
+  }, [getChildrenIds, cesTests, criteriaData, existingReviewData?.checklistProgressData, a2Config?.minChecklistCompletionPercent]);
 
   const isParentCriteria = useCallback((id: string): boolean => parentCriteriaIds.includes(id), []);
 

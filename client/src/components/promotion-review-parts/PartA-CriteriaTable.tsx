@@ -118,6 +118,17 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                 <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded" data-testid="badge-a26-pending">Pending</span>
               );
             })()
+          ) : row.id === 'a2.3' || row.id === 'a2.5' || row.id === 'a2.7' ? (
+            (() => {
+              const status = computeParentStatus(row.id);
+              return status === 'yes' ? (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded" data-testid={`badge-${row.id}-met`}>Yes</span>
+              ) : status === 'na' ? (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded" data-testid={`badge-${row.id}-na`}>NA</span>
+              ) : (
+                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded" data-testid={`badge-${row.id}-pending`}>Pending</span>
+              );
+            })()
           ) : isOtherCriteriaSubItem(row.id) || row.id === 'a2.8' ? (
             row.verified === 'yes' ? (
               <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded" data-testid={`badge-meets-yes-${row.id}`}>Yes</span>
