@@ -1335,6 +1335,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               vesselClasses={vesselClasses}
               onRemoveVesselType={removeVesselType}
               onRemoveVesselClass={removeVesselClass}
+              onSave={handleSaveDraft}
+              onSubmit={handleSaveDraft}
             />
           )}
 
@@ -1350,6 +1352,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               onSetPromotionTiming={setPromotionTiming}
               vessels={vesselOptions}
               currentUserDisplay={currentUserDisplay}
+              onSave={handleSaveDraft}
+              onSubmit={handleSaveDraft}
             />
           )}
         </>
