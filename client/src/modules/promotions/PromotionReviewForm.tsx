@@ -1151,7 +1151,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           title: "Submitted for Approval",
           description: `Promotion review has been submitted to ${approverCount} approver(s).`,
         });
+        // Invalidate both list and detail queries to ensure UI reflects saved state
         queryClient.invalidateQueries({ queryKey: ['/api/promotion-reviews'] });
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/promotion-reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`] 
+        });
       })
       .catch((error: any) => {
         toast({
