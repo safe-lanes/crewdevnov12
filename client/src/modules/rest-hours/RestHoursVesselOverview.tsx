@@ -209,7 +209,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
             data-testid="button-export-rh-vessel"
           >
             <FileText className="h-4 w-4" />
-            Export
+            Export All
           </Button>
           <div className="flex items-center gap-1">
             <span className="text-xs text-[#4f5863]">Rest</span>
