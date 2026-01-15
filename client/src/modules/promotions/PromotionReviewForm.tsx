@@ -178,7 +178,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         title: "Draft Saved",
         description: "Your promotion review progress has been saved.",
       });
+      // Invalidate both list and detail queries to ensure UI reflects saved state
       queryClient.invalidateQueries({ queryKey: ['/api/promotion-reviews'] });
+      queryClient.invalidateQueries({ 
+        queryKey: [`/api/promotion-reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`] 
+      });
     },
     onError: (error: any) => {
       toast({
