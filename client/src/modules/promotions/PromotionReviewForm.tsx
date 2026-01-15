@@ -539,14 +539,20 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [newTrainingComment, setNewTrainingComment] = useState<Record<string, string>>({});
   const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
 
-  const [comments, setComments] = useState<Comment[]>(() => {
-    const user = getCurrentUserDisplay();
-    return [
-      { id: '1', user, text: 'Shows good aptitude for senior roles. Candidate has the right credentials and experience.' },
-      { id: '2', user, text: 'Pending completion of minimum rank experience and COC Master license.' },
-    ];
-  });
+  // A4 comments state - initialized empty, defaults applied only when no existing data
+  const [comments, setComments] = useState<Comment[]>([]);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  
+  // Ref to always have fresh comments state for saves (avoids stale closure issues)
+  const commentsRef = useRef<Comment[]>([]);
+  
+  // Track whether A4 comments have been loaded/initialized to prevent default overwriting
+  const hasLoadedA4Ref = useRef<boolean>(false);
+  
+  // Keep commentsRef in sync with comments state
+  useEffect(() => {
+    commentsRef.current = comments;
+  }, [comments]);
 
   const [approvers, setApprovers] = useState<Approver[]>([]);
 
@@ -611,17 +617,37 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           // Extract A4 reviewer comments if they exist (even if empty array - respects user deletion)
           if (commentData.hasOwnProperty('a4') && Array.isArray(commentData.a4)) {
             setComments(commentData.a4);
+            hasLoadedA4Ref.current = true;
             // Update nextCommentIdRef to avoid ID collisions
             if (commentData.a4.length > 0) {
               const maxId = Math.max(...commentData.a4.map((c: Comment) => parseInt(c.id) || 0));
               nextCommentIdRef.current = maxId + 1;
+            } else {
+              nextCommentIdRef.current = 1;
             }
+          } else {
+            // Existing review data exists but a4 key is missing (older entry saved before fix)
+            // Set to empty array to prevent defaults from appearing
+            setComments([]);
+            hasLoadedA4Ref.current = true;
+            nextCommentIdRef.current = 1;
           }
           
           // Set criteria comments (excluding a4 to avoid duplication in state)
           const { a4, ...restComments } = commentData;
           setCriteriaComments(restComments);
-        } catch {}
+        } catch {
+          // Parse error - treat as existing entry with no A4 data
+          setComments([]);
+          hasLoadedA4Ref.current = true;
+          nextCommentIdRef.current = 1;
+        }
+      } else {
+        // existingReviewData exists but criteriaComments is null/undefined
+        // This is an existing entry with no saved comments - don't show defaults
+        setComments([]);
+        hasLoadedA4Ref.current = true;
+        nextCommentIdRef.current = 1;
       }
       
       if (existingReviewData.trainingNeeds) {
@@ -675,6 +701,24 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       }
     }
   }, [existingReviewData]);
+
+  // Apply default A4 comments ONLY for new entries (no existing review data after query completes)
+  useEffect(() => {
+    // Only run once, and only if:
+    // 1. Query has finished loading (isLoadingReview is false)
+    // 2. No existing review data was found (truly a new entry)
+    // 3. We haven't already loaded/initialized A4 comments
+    if (!isLoadingReview && !existingReviewData && !hasLoadedA4Ref.current) {
+      hasLoadedA4Ref.current = true;
+      const user = getCurrentUserDisplay();
+      const defaultComments: Comment[] = [
+        { id: '1', user, text: 'Shows good aptitude for senior roles. Candidate has the right credentials and experience.' },
+        { id: '2', user, text: 'Pending completion of minimum rank experience and COC Master license.' },
+      ];
+      setComments(defaultComments);
+      nextCommentIdRef.current = 3;
+    }
+  }, [isLoadingReview, existingReviewData]);
 
   const collectFormData = useCallback((formData: PromotionReviewFormData) => {
     const criteriaVerifiedStatus: Record<string, string> = {};
@@ -750,7 +794,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       criteriaVerifiedStatus: JSON.stringify(criteriaVerifiedStatus),
       criteriaMeetsStatus: JSON.stringify(criteriaMeetsStatus),
       cesTestsData: JSON.stringify(cesTests),
-      criteriaComments: JSON.stringify({ ...criteriaComments, a4: comments }),
+      // Use commentsRef.current for guaranteed fresh state (avoids stale closure issues)
+      criteriaComments: JSON.stringify({ ...criteriaComments, a4: commentsRef.current }),
       trainingNeeds: JSON.stringify(trainingNeeds),
       approvalData: JSON.stringify(approvers),
       promotionConfirmed,
@@ -763,7 +808,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       selectedApproversForSubmission: JSON.stringify(selectedApproversForSubmission),
       status: 'draft',
     };
-  }, [criteriaData, cesTests, criteriaComments, comments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission]);
+  }, [criteriaData, cesTests, criteriaComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission]);
 
   const handleSaveDraft = useCallback(() => {
     const reviewData = collectFormData({
