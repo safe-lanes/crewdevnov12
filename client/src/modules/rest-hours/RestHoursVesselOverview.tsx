@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Globe, FileText } from 'lucide-react';
+import { ArrowLeft, Globe, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -13,8 +13,11 @@ import { RHCrewRecordsTable } from './RHCrewRecordsTable';
 import RestHoursSideBar from './RestHoursSideBar';
 import MainLayout from '@/components/main/MainLayout';
 import { DateLineAdjustmentsDialog } from './DateLineAdjustmentsDialog';
-import type { VesselDateLineAdjustment } from '@shared/schema';
+import type { VesselDateLineAdjustment, RestHoursCrewRecord } from '@shared/schema';
 import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
+import { exportAllRestHoursPDFs } from '@/lib/generateRestHoursPDF';
+import { ensureDailyRecordDefaults, type ExtendedDailyRecord } from './types';
+import { useToast } from '@/hooks/use-toast';
 
 export const RestHoursVesselOverview = (): JSX.Element => {
   const params = useParams();
@@ -44,6 +47,9 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   const [selectedRank, setSelectedRank] = useState("");
   const [searchText, setSearchText] = useState("");
   const [dateLineDialogOpen, setDateLineDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
+  const { toast } = useToast();
   
   const { 
     periodValue: storePeriodValue,
@@ -191,6 +197,87 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     }
   };
 
+  // Fetch crew records for export
+  const { data: crewRecordsForExport = [] } = useQuery<RestHoursCrewRecord[]>({
+    queryKey: ['/api/rest-hours-crew-records', selectedVessel, periodValue],
+    queryFn: async () => {
+      if (!selectedVessel || !periodValue) return [];
+      const queryParams = new URLSearchParams();
+      queryParams.append('vesselIds', selectedVessel);
+      queryParams.append('monthValue', periodValue);
+      const response = await fetch(`/api/rest-hours-crew-records?${queryParams.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch crew records');
+      return response.json();
+    },
+    enabled: !!selectedVessel && !!periodValue,
+  });
+
+  // Fetch daily records for a specific crew member
+  const fetchDailyRecords = async (crewMemberId: string, vesselId: string, monthYear: string): Promise<ExtendedDailyRecord[]> => {
+    try {
+      const response = await fetch(`/api/rest-hours-daily-records/by-key/${crewMemberId}/${vesselId}/${monthYear}`);
+      if (!response.ok) {
+        if (response.status === 404) return [];
+        throw new Error('Failed to fetch daily records');
+      }
+      const container = await response.json();
+      const dailyRecords = container?.dailyRecords || [];
+      return dailyRecords.map(ensureDailyRecordDefaults);
+    } catch (error) {
+      console.error('Failed to fetch daily records:', error);
+      return [];
+    }
+  };
+
+  // Handle Export All button click
+  const handleExportAll = async () => {
+    if (!selectedVessel || !periodValue || crewRecordsForExport.length === 0) {
+      toast({
+        title: 'No records to export',
+        description: 'Please select a vessel and period with crew records.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    setExportProgress({ current: 0, total: crewRecordsForExport.length });
+
+    try {
+      const crewData = crewRecordsForExport.map(record => ({
+        crewMemberId: record.crewMemberId || '',
+        vesselId: record.vesselId || '',
+        name: record.name || '',
+        rank: record.rank || '',
+        monthValue: record.monthValue || periodValue,
+      }));
+
+      await exportAllRestHoursPDFs(
+        crewData,
+        {
+          vesselName: vesselName,
+        },
+        fetchDailyRecords,
+        (current, total) => setExportProgress({ current, total })
+      );
+
+      toast({
+        title: 'Export Complete',
+        description: `Successfully exported ${crewRecordsForExport.length} PDF files.`,
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast({
+        title: 'Export Failed',
+        description: 'An error occurred while exporting the PDF files.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+      setExportProgress({ current: 0, total: 0 });
+    }
+  };
+
   return (
     <>
       <RestHoursSideBar 
@@ -207,9 +294,20 @@ export const RestHoursVesselOverview = (): JSX.Element => {
             size="sm"
             className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
             data-testid="button-export-rh-vessel"
+            onClick={handleExportAll}
+            disabled={isExporting || crewRecordsForExport.length === 0}
           >
-            <FileText className="h-4 w-4" />
-            Export All
+            {isExporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {exportProgress.total > 0 ? `${exportProgress.current}/${exportProgress.total}` : 'Exporting...'}
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4" />
+                Export All
+              </>
+            )}
           </Button>
           <div className="flex items-center gap-1">
             <span className="text-xs text-[#4f5863]">Rest</span>

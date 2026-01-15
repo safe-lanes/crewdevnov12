@@ -1,4 +1,5 @@
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from 'pdf-lib';
+import JSZip from 'jszip';
 import type { ExtendedDailyRecord } from '@/modules/rest-hours/types';
 
 // A4 Landscape dimensions (842 x 595 pts)
@@ -465,6 +466,91 @@ export async function generateRestHoursPDF(data: RestHoursPDFData): Promise<void
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error('Failed to generate Rest Hours PDF:', error);
+    throw error;
+  }
+}
+
+export async function generateRestHoursPDFBytes(data: RestHoursPDFData): Promise<Uint8Array> {
+  const generator = new RestHoursPDFGenerator();
+  return generator.generate(data);
+}
+
+function sanitizeFilename(name: string): string {
+  return name.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+}
+
+function formatMonthYearDisplay(monthValue: string): string {
+  if (!monthValue) return '';
+  const [year, month] = monthValue.split('-').map(Number);
+  if (!year || !month) return monthValue;
+  const date = new Date(year, month - 1, 1);
+  const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+  return `${monthName}-${year}`;
+}
+
+export async function exportAllRestHoursPDFs(
+  crewRecords: Array<{
+    crewMemberId: string;
+    vesselId: string;
+    name: string;
+    rank: string;
+    monthValue: string;
+  }>,
+  vesselInfo: {
+    vesselName: string;
+    imoNumber?: string;
+    flagOfShip?: string;
+  },
+  fetchDailyRecords: (crewMemberId: string, vesselId: string, monthYear: string) => Promise<ExtendedDailyRecord[]>,
+  onProgress?: (current: number, total: number) => void
+): Promise<void> {
+  try {
+    const zip = new JSZip();
+    const total = crewRecords.length;
+    
+    for (let i = 0; i < crewRecords.length; i++) {
+      const crew = crewRecords[i];
+      
+      if (onProgress) {
+        onProgress(i + 1, total);
+      }
+      
+      const monthYear = crew.monthValue;
+      const monthYearDisplay = formatMonthYearDisplay(monthYear);
+      const records = await fetchDailyRecords(crew.crewMemberId, crew.vesselId, monthYear);
+      
+      const pdfData: RestHoursPDFData = {
+        vesselName: vesselInfo.vesselName,
+        crewMemberName: crew.name,
+        rank: crew.rank,
+        monthYear: monthYearDisplay,
+        records: records,
+        imoNumber: vesselInfo.imoNumber,
+        flagOfShip: vesselInfo.flagOfShip,
+        watchkeeper: false,
+        seafarerFullName: `${crew.rank}-${crew.name.toUpperCase()}`,
+      };
+      
+      const pdfBytes = await generateRestHoursPDFBytes(pdfData);
+      
+      const fileName = `Rest_Hour_Record_Extract_${sanitizeFilename(crew.rank)}_${sanitizeFilename(crew.name.toUpperCase())}_${monthYearDisplay}.pdf`;
+      zip.file(fileName, pdfBytes);
+    }
+    
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    
+    const firstMonthDisplay = formatMonthYearDisplay(crewRecords[0]?.monthValue || '');
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Rest_Hour_Records_Export_${sanitizeFilename(vesselInfo.vesselName)}_${firstMonthDisplay || 'Export'}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Failed to export all Rest Hours PDFs:', error);
     throw error;
   }
 }
