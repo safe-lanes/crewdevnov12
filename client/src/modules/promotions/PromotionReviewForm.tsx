@@ -608,12 +608,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             ? JSON.parse(existingReviewData.criteriaComments)
             : existingReviewData.criteriaComments;
           
-          // Extract A4 reviewer comments if they exist
-          if (commentData.a4 && Array.isArray(commentData.a4) && commentData.a4.length > 0) {
+          // Extract A4 reviewer comments if they exist (even if empty array - respects user deletion)
+          if (commentData.hasOwnProperty('a4') && Array.isArray(commentData.a4)) {
             setComments(commentData.a4);
             // Update nextCommentIdRef to avoid ID collisions
-            const maxId = Math.max(...commentData.a4.map((c: Comment) => parseInt(c.id) || 0));
-            nextCommentIdRef.current = maxId + 1;
+            if (commentData.a4.length > 0) {
+              const maxId = Math.max(...commentData.a4.map((c: Comment) => parseInt(c.id) || 0));
+              nextCommentIdRef.current = maxId + 1;
+            }
           }
           
           // Set criteria comments (excluding a4 to avoid duplication in state)
