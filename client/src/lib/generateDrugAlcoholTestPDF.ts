@@ -590,7 +590,7 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
     
     const personnelHeaders: string[] = ['S/n', 'Rank', 'Name'];
     const personnelWidths: number[] = [30, 60, 80];
-    const wrapColumnIndices: number[] = [];
+    const wrapColumnIndices: number[] = [1, 2];
     
     if (showAlcohol) {
       personnelHeaders.push('Alcohol Test', 'Results', 'Violation');
