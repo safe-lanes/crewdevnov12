@@ -234,7 +234,19 @@ class PDFBuilder {
       borderWidth: 0.5,
     });
     if (checked) {
-      this.drawTextAt('✓', x - 3, y - 3, 8, 'bold');
+      // Draw X using lines instead of unsupported checkmark character
+      this.currentPage.drawLine({
+        start: { x: x - 2, y: y - 2 },
+        end: { x: x + 2, y: y + 2 },
+        thickness: 1,
+        color: rgb(0, 0, 0),
+      });
+      this.currentPage.drawLine({
+        start: { x: x + 2, y: y - 2 },
+        end: { x: x - 2, y: y + 2 },
+        thickness: 1,
+        color: rgb(0, 0, 0),
+      });
     }
     return x + 12;
   }
@@ -480,7 +492,7 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
       ];
       
       if (showAlcohol) {
-        const alcoholChecked = person.alcoholTest?.checked ? '✓' : '';
+        const alcoholChecked = person.alcoholTest?.checked ? 'X' : '';
         const alcoholDateTime = person.alcoholTest?.date ? 
           `${formatDate(person.alcoholTest.date)}${person.alcoholTest.time ? ' ' + person.alcoholTest.time : ''}` : '';
         rowValues.push(alcoholChecked + (alcoholDateTime ? ' ' + alcoholDateTime : ''));
@@ -489,7 +501,7 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
       }
       
       if (showDrug) {
-        const drugChecked = person.drugTest?.checked ? '✓' : '';
+        const drugChecked = person.drugTest?.checked ? 'X' : '';
         const drugDateTime = person.drugTest?.date ?
           `${formatDate(person.drugTest.date)}${person.drugTest.time ? ' ' + person.drugTest.time : ''}` : '';
         rowValues.push(drugChecked + (drugDateTime ? ' ' + drugDateTime : ''));
