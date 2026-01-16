@@ -298,6 +298,60 @@ class PDFBuilder {
     this.moveDown(LINE_HEIGHT * 2);
   }
 
+  drawFieldRowWithWrapping(fields: Array<{label: string, value: string, wrap?: boolean}>, colWidth: number = CONTENT_WIDTH / 3): void {
+    this.checkPageBreak();
+    const fontSize = 9;
+    const lineHeight = 12;
+    let maxLines = 1;
+    const wrappedFields: { label: string; lines: string[] }[] = [];
+    
+    for (const field of fields) {
+      if (field.label) {
+        const maxWidth = colWidth - 10;
+        const value = displayValue(field.value);
+        
+        if (field.wrap && this.font.widthOfTextAtSize(value, fontSize) > maxWidth) {
+          const words = value.split(' ');
+          const lines: string[] = [];
+          let currentLine = '';
+          
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            if (this.font.widthOfTextAtSize(testLine, fontSize) <= maxWidth) {
+              currentLine = testLine;
+            } else {
+              if (currentLine) {
+                lines.push(currentLine);
+              }
+              currentLine = word;
+            }
+          }
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+          
+          wrappedFields.push({ label: field.label, lines: lines.length > 0 ? lines : [''] });
+          maxLines = Math.max(maxLines, lines.length);
+        } else {
+          wrappedFields.push({ label: field.label, lines: [value] });
+        }
+      }
+    }
+    
+    let x = MARGIN;
+    for (const field of wrappedFields) {
+      this.drawTextAt(field.label, x, this.yPosition, 8, 'normal', LABEL_COLOR);
+      let textY = this.yPosition - 12;
+      for (const line of field.lines) {
+        this.drawTextAt(line, x, textY, fontSize);
+        textY -= lineHeight;
+      }
+      x += colWidth;
+    }
+    
+    this.moveDown(LINE_HEIGHT + (maxLines * lineHeight));
+  }
+
   drawTableHeader(headers: string[], colWidths: number[]): void {
     this.checkPageBreak(LINE_HEIGHT * 3);
     const headerHeight = 20;
@@ -617,9 +671,9 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
   builder.drawTextAt('I confirm that the above information is accurate and complete.', MARGIN + 14, builder.getY(), 9);
   builder.moveDown(LINE_HEIGHT * 1.5);
   
-  builder.drawFieldRow([
-    { label: 'Name', value: signature?.name || '' },
-    { label: 'Date', value: formatDate(signature?.date) },
+  builder.drawFieldRowWithWrapping([
+    { label: 'Name', value: signature?.name || '', wrap: true },
+    { label: 'Date', value: formatDate(signature?.date), wrap: false },
   ], CONTENT_WIDTH / 2);
   
   const pdfBytes = await pdfDoc.save();
