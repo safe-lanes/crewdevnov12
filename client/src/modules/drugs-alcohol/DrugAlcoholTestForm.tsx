@@ -15,6 +15,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
+import { generateDrugAlcoholTestPDF } from '@/lib/generateDrugAlcoholTestPDF';
+import { useToast } from '@/hooks/use-toast';
 
 // Equipment entry schema
 const equipmentEntrySchema = z.object({
@@ -466,9 +468,33 @@ export function DrugAlcoholTestForm({
     }
   };
 
+  const { toast } = useToast();
+
   const handleSaveDraft = () => {
     const data = form.getValues();
     onSave(data);
+  };
+
+  const handleExport = async () => {
+    try {
+      const data = form.getValues();
+      const vesselName = getVesselName(data.vesselId || '');
+      await generateDrugAlcoholTestPDF({
+        ...data,
+        vesselName: vesselName || '',
+      });
+      toast({
+        title: "Export Successful",
+        description: "Drug & Alcohol Test form exported as PDF",
+      });
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleFormSubmit = (data: DrugAlcoholTestFormData) => {
@@ -1638,6 +1664,7 @@ export function DrugAlcoholTestForm({
             <Button 
               variant="outline" 
               size="sm"
+              onClick={handleExport}
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 h-8 rounded-md px-3 text-xs hidden sm:flex"
               data-testid="button-export"
             >
