@@ -341,6 +341,76 @@ class PDFBuilder {
     this.moveDown(rowHeight);
   }
 
+  drawTableRowWithWrapping(values: string[], colWidths: number[], wrapColumns: number[], baseRowHeight: number = 18): void {
+    const fontSize = 8;
+    const lineHeight = 10;
+    const padding = 3;
+    
+    let maxLines = 1;
+    const wrappedTexts: string[][] = [];
+    
+    for (let i = 0; i < values.length; i++) {
+      const maxWidth = colWidths[i] - 6;
+      const text = values[i] || '';
+      
+      if (wrapColumns.includes(i) && this.font.widthOfTextAtSize(text, fontSize) > maxWidth) {
+        const words = text.split(' ');
+        const lines: string[] = [];
+        let currentLine = '';
+        
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          if (this.font.widthOfTextAtSize(testLine, fontSize) <= maxWidth) {
+            currentLine = testLine;
+          } else {
+            if (currentLine) {
+              lines.push(currentLine);
+            }
+            currentLine = word;
+          }
+        }
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        
+        wrappedTexts.push(lines.length > 0 ? lines : ['']);
+        maxLines = Math.max(maxLines, lines.length);
+      } else {
+        let displayText = text;
+        if (this.font.widthOfTextAtSize(text, fontSize) > maxWidth) {
+          while (displayText.length > 0 && this.font.widthOfTextAtSize(displayText + '...', fontSize) > maxWidth) {
+            displayText = displayText.slice(0, -1);
+          }
+          displayText += '...';
+        }
+        wrappedTexts.push([displayText]);
+      }
+    }
+    
+    const rowHeight = Math.max(baseRowHeight, padding * 2 + maxLines * lineHeight);
+    this.checkPageBreak(rowHeight);
+    
+    this.drawRect(MARGIN, this.yPosition - rowHeight, CONTENT_WIDTH, rowHeight);
+    
+    let x = MARGIN;
+    for (let i = 0; i < values.length; i++) {
+      const lines = wrappedTexts[i];
+      let textY = this.yPosition - padding - lineHeight + 2;
+      
+      for (const line of lines) {
+        this.drawTextAt(line, x + padding, textY, fontSize);
+        textY -= lineHeight;
+      }
+      
+      x += colWidths[i];
+      if (i < values.length - 1) {
+        this.drawLine(x, this.yPosition, x, this.yPosition - rowHeight);
+      }
+    }
+    
+    this.moveDown(rowHeight);
+  }
+
   getPageNumber(): number {
     return this.pageNumber;
   }
@@ -466,14 +536,18 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
     
     const personnelHeaders: string[] = ['S/n', 'Rank', 'Name'];
     const personnelWidths: number[] = [30, 60, 80];
+    const wrapColumnIndices: number[] = [];
     
     if (showAlcohol) {
       personnelHeaders.push('Alcohol Test', 'Results', 'Violation');
       personnelWidths.push(65, 50, 50);
+      wrapColumnIndices.push(3);
     }
     if (showDrug) {
       personnelHeaders.push('Drug Test', 'Results', 'Violation');
       personnelWidths.push(65, 50, 50);
+      const drugTestColIndex = showAlcohol ? 6 : 3;
+      wrapColumnIndices.push(drugTestColIndex);
     }
     personnelHeaders.push('Witness');
     personnelWidths.push(70);
@@ -511,7 +585,7 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
       
       rowValues.push(person.witness || '');
       
-      builder.drawTableRow(rowValues, scaledWidths, 20);
+      builder.drawTableRowWithWrapping(rowValues, scaledWidths, wrapColumnIndices, 20);
     });
   } else {
     builder.drawText('No personnel records', MARGIN, 9, 'italic', LABEL_COLOR);
