@@ -393,6 +393,9 @@ function CrewColumn({
     availabilityDate: null,
   });
 
+  // Get vessel lookup for translating vessel IDs to names
+  const { getVesselName } = useVesselLookup();
+
   const { data: crewMembers = [], isLoading } = useQuery<CrewMember[]>({
     queryKey: [`/api/crew-members/by-rank/${rank}`],
   });
@@ -610,6 +613,64 @@ function CrewColumn({
     
     return ''; // Default color for no assignments
   };
+
+  // Get vessel name(s) for crew that are red (deployed) or blue (already planned)
+  // Returns the vessel names to display in tooltip on hover
+  const getCrewVesselInfo = (crewId: string): string | null => {
+    const vesselNames: string[] = [];
+
+    // Check for overlapping deployments on other vessels (red color reason)
+    allDeployedAssignments.forEach(assignment => {
+      const isThisCrew = assignment.crewMemberId === crewId || assignment.relieverCrewId === crewId;
+      if (!isThisCrew) return;
+      
+      // Skip assignments on currently selected vessels
+      if (selectedVessels.includes(assignment.vesselId)) return;
+      
+      // Check date overlap
+      let assignmentStart: Date | null = null;
+      let assignmentEnd: Date | null = null;
+      
+      if (assignment.crewMemberId === crewId) {
+        assignmentStart = assignment.signOnDate ? new Date(assignment.signOnDate) : null;
+        assignmentEnd = assignment.reliefDue ? new Date(assignment.reliefDue) : null;
+      } else if (assignment.relieverCrewId === crewId) {
+        assignmentStart = assignment.relieverSignOnDate ? new Date(assignment.relieverSignOnDate) : null;
+        if (assignmentStart) {
+          const contractMonths = assignment.contractPeriodMonths || 6;
+          assignmentEnd = new Date(assignmentStart);
+          assignmentEnd.setMonth(assignmentEnd.getMonth() + contractMonths);
+        }
+      }
+      
+      if (!assignmentStart) return;
+      
+      if (dateRangesOverlap(planDateRange.start, planDateRange.end, assignmentStart, assignmentEnd)) {
+        const vesselName = getVesselName(assignment.vesselId);
+        if (vesselName && !vesselNames.includes(vesselName)) {
+          vesselNames.push(vesselName);
+        }
+      }
+    });
+
+    // If we found overlapping deployments, return those vessels (red - currently deployed)
+    if (vesselNames.length > 0) {
+      return vesselNames.join(', ');
+    }
+
+    // Check draft assignments (blue color reason)
+    const draftVessels = new Set(
+      assignments
+        .filter(a => a.crewId === crewId)
+        .map(a => a.vessel)
+    );
+    
+    if (draftVessels.size > 0) {
+      return Array.from(draftVessels).join(', ');
+    }
+
+    return null;
+  };
   
   // Check if any filters are active
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
@@ -665,9 +726,38 @@ function CrewColumn({
                   }}
                 />
                 <div className="flex-1">
-                  <div className={`font-medium text-sm ${getCrewNameColor(crew.id)}`}>
-                    {crew.name}
-                  </div>
+                  {(() => {
+                    const nameColor = getCrewNameColor(crew.id);
+                    const vesselInfo = getCrewVesselInfo(crew.id);
+                    // Show tooltip for red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
+                    const hasColoredStatus = nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
+                    const showVesselTooltip = vesselInfo && hasColoredStatus;
+                    
+                    if (showVesselTooltip) {
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={`font-medium text-sm cursor-help ${nameColor}`}>
+                                {crew.name}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs">
+                              <div className="text-xs">
+                                <span className="font-medium">Vessel: </span>{vesselInfo}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    }
+                    
+                    return (
+                      <div className={`font-medium text-sm ${nameColor}`}>
+                        {crew.name}
+                      </div>
+                    );
+                  })()}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
