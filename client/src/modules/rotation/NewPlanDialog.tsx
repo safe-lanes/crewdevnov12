@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useRankNormalization } from '@/hooks/useRankNormalization';
 
 // Format date as DD-MMM-YY (e.g., "15 Dec 25")
 function formatAvailabilityDate(dateString: string | null | undefined): string {
@@ -396,8 +397,13 @@ function CrewColumn({
   // Get vessel lookup for translating vessel IDs to names
   const { getVesselName } = useVesselLookup();
 
+  // Normalize rank to strip position suffix (e.g., "3rd Officer_2" -> "3rd Officer")
+  // This ensures we fetch all crew with that rank label, not just those assigned to a specific position
+  const { normalizeRank } = useRankNormalization();
+  const normalizedRank = normalizeRank(rank);
+
   const { data: crewMembers = [], isLoading } = useQuery<CrewMember[]>({
-    queryKey: [`/api/crew-members/by-rank/${rank}`],
+    queryKey: [`/api/crew-members/by-rank/${normalizedRank}`],
   });
 
   // Fetch Manning Agents from Master 021
