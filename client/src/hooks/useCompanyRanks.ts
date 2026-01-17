@@ -114,10 +114,11 @@ export const useCompanyRanks = () => {
     error: query.error,
     // Convenience method to get just the rank names for dropdowns (full names like "Master", "Chief Officer")
     rankNames: mappedData.map(rank => rank.rank),
-    // Convenience method to get rank labels for display (short labels like "Mstr", "Ch Off")
+    // Convenience method to get rank labels for display (company-specific labels like "3rd Officer", "2nd Engineer")
     rankLabels: mappedData.map(rank => rank.label),
-    // Get a mapping of rank name to label for dropdown display (value=name, display=label)
-    rankOptions: mappedData.map(rank => ({ value: rank.rank, label: rank.label })),
+    // Get a mapping for dropdown display - USES RANK LABELS as values (what users see and filter by)
+    // value=label (e.g., "3rd Officer"), display=label (e.g., "3rd Officer")
+    rankOptions: mappedData.map(rank => ({ value: rank.label, label: rank.label })),
   };
 };
 

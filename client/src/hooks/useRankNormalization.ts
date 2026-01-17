@@ -98,7 +98,7 @@ export function useRankNormalization() {
   const normalizeRank = (rankOrRole: string): string => {
     if (!rankOrRole) return rankOrRole;
 
-    // First check if exact match exists in roleToParentMap
+    // First check if exact match exists in roleToParentMap (for role variants)
     if (roleToParentMap.has(rankOrRole)) {
       return roleToParentMap.get(rankOrRole)!;
     }
@@ -108,6 +108,7 @@ export function useRankNormalization() {
     }
 
     // Strip position suffix (e.g., "3rd Officer_1" -> "3rd Officer")
+    // This returns the Rank Label, NOT the Master Rank name
     let baseRank = rankOrRole;
     const suffixMatch = rankOrRole.match(/^(.+?)_\d+$/);
     if (suffixMatch) {
@@ -121,13 +122,8 @@ export function useRankNormalization() {
       }
     }
 
-    // Apply RANK_ALIASES to convert abbreviated forms to canonical names
-    // e.g., "3rd Officer" -> "Third Officer"
-    const alias = RANK_ALIASES[baseRank.toLowerCase()];
-    if (alias) {
-      return alias;
-    }
-
+    // DO NOT apply RANK_ALIASES here - we want to keep Rank Labels (e.g., "3rd Officer")
+    // as-is for filtering. RANK_ALIASES is only for internal sort order lookups.
     return baseRank;
   };
 
