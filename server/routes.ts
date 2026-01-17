@@ -7221,12 +7221,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const vesselTypeMasterData = await storage.getMasterDataEntries('004');
       const vesselTypeMap = new Map(vesselTypeMasterData.map((vt: any) => [vt.code, vt.name]));
       
-      // Build a map of crewMemberId -> vessel assignment (vesselId, crewStatus, joiningDate, reliefDue)
+      // Build a map of crewMemberId -> vessel assignment (vesselId, crewStatus, joiningDate, reliefDue, contractPeriodMonths)
       // A crew can have multiple assignments (primary on one vessel, secondary on another)
       // For "Present Vessel" in Crew Database, show the PRIMARY assignment
       // IMPORTANT: Filter out archived records - archived crew have been signed off and are not currently on board
       // Note: Convert crewMemberId to string for consistent key matching
-      const crewVesselMap = new Map<string, { vesselId: string; crewStatus: string; joiningDate: string | null; reliefDue: string | null }[]>();
+      const crewVesselMap = new Map<string, { vesselId: string; crewStatus: string; joiningDate: string | null; reliefDue: string | null; contractPeriodMonths: number | null }[]>();
       
       for (const planning of allVesselPlanning) {
         // Skip archived records - these crew members have been signed off
@@ -7245,7 +7245,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             vesselId: planning.vesselId,
             crewStatus: isPrimary ? 'primary' : 'secondary',
             joiningDate: planning.signOnDate || null,
-            reliefDue: planning.reliefDue || null
+            reliefDue: planning.reliefDue || null,
+            contractPeriodMonths: planning.contractPeriodMonths !== undefined && planning.contractPeriodMonths !== null 
+              ? planning.contractPeriodMonths 
+              : null
           });
           crewVesselMap.set(crewIdKey, existing);
         }
@@ -7273,12 +7276,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Include all assignments for display (both P and S)
           normalized.vesselAssignments = vesselAssignments;
           
-          // Override joiningDate and reliefDue from vessel_planning if available
+          // Override joiningDate, reliefDue, and contractPeriodMonths from vessel_planning if available
           if (primaryAssignment.joiningDate) {
             normalized.joiningDate = primaryAssignment.joiningDate;
           }
           if (primaryAssignment.reliefDue) {
             normalized.reliefDue = primaryAssignment.reliefDue;
+          }
+          if (primaryAssignment.contractPeriodMonths !== undefined && primaryAssignment.contractPeriodMonths !== null) {
+            normalized.contractPeriodMonths = primaryAssignment.contractPeriodMonths;
           }
         } else {
           // No vessel_planning assignment - clear presentVessel
