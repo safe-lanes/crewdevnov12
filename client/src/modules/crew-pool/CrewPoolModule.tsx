@@ -38,8 +38,16 @@ const formatCompactDate = (value: any): string => {
 };
 
 const formatContractPeriod = (value: any): string => {
-    if (!value) return '';
+    if (!value && value !== 0) return '';
+    // Handle pure numeric values (contractPeriodMonths is stored as a number)
+    if (typeof value === 'number') {
+        return `${value}M`;
+    }
     const str = String(value).toLowerCase().trim();
+    // Check if it's a numeric string
+    if (/^\d+$/.test(str)) {
+        return `${str}M`;
+    }
     const monthMatch = str.match(/^(\d+)\s*(?:months?|mo?\.?)$/i);
     if (monthMatch) {
         return `${monthMatch[1]}M`;
@@ -410,7 +418,7 @@ export const CrewPoolModule = (): JSX.Element => {
                 },
                 {
                     headerName: 'Cont.',
-                    field: 'contractPeriod',
+                    field: 'contractPeriodMonths',
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 55,
                     minWidth: 55,
                     cellStyle: { fontSize: '13px', color: '#4f5863', textAlign: 'center', lineHeight: '1.2' },
