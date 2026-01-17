@@ -6824,8 +6824,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get rank flags for endorsement derivation (same logic as dashboard)
       const rankFlags = await storage.getCompanyRankByName(rank);
       
-      // Filter by rank and add experience data
-      const crewMatchingRank = crewMembers.filter(crew => crew.presentRank === rank);
+      // Helper to strip position suffix (e.g., "3rd Officer_1" -> "3rd Officer")
+      const normalizeRankForComparison = (r: string | null | undefined): string => {
+        if (!r) return '';
+        const match = r.match(/^(.+?)_\d+$/);
+        return match ? match[1] : r;
+      };
+      
+      // Normalize the search rank (strip suffix if present)
+      const normalizedSearchRank = normalizeRankForComparison(rank);
+      
+      // Filter by normalized rank - this matches crew regardless of position suffix
+      // e.g., searching for "3rd Officer" will match "3rd Officer", "3rd Officer_1", "3rd Officer_2"
+      const crewMatchingRank = crewMembers.filter(crew => {
+        const normalizedCrewRank = normalizeRankForComparison(crew.presentRank);
+        return normalizedCrewRank === normalizedSearchRank;
+      });
       
       // Process each crew member (async for endorsement derivation)
       const filteredCrew = await Promise.all(crewMatchingRank.map(async (crew) => {
