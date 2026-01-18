@@ -1446,6 +1446,67 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     queryKey: ['/api/company-ranks'],
   });
 
+  // Fetch vessel-specific ranks for selected vessels
+  // This is used to filter role variants to only show positions that exist on the selected vessel(s)
+  const selectedVesselIdsForRanks = useMemo(() => {
+    return getVesselIds(selectedVessels);
+  }, [selectedVessels, getVesselIds]);
+
+  // Fetch vessel ranks for ALL selected vessels and combine them
+  const { data: vesselSpecificRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/vessel-revisions/ranks', selectedVesselIdsForRanks],
+    queryFn: async () => {
+      if (selectedVesselIdsForRanks.length === 0) return [];
+      
+      // Fetch ranks for each selected vessel and combine
+      const allRanks: any[] = [];
+      for (const vesselId of selectedVesselIdsForRanks) {
+        try {
+          const response = await fetch(`/api/vessel-revisions/ranks/${vesselId}`);
+          if (response.ok) {
+            const ranks = await response.json();
+            allRanks.push(...ranks);
+          }
+        } catch (error) {
+          console.error(`Failed to fetch ranks for vessel ${vesselId}:`, error);
+        }
+      }
+      return allRanks;
+    },
+    enabled: selectedVesselIdsForRanks.length > 0,
+  });
+
+  // Build a set of valid role/position names from vessel-specific ranks
+  // Also track base ranks that have non-variant entries (where role is null/same as rank)
+  const { vesselValidPositions, vesselBaseRanksWithDirectSlots } = useMemo(() => {
+    const validPositions = new Set<string>();
+    const baseRanksWithDirectSlots = new Set<string>();
+    
+    vesselSpecificRanks.forEach((rank: any) => {
+      // Add the role if it exists (e.g., "Fitter_1")
+      if (rank.role) {
+        validPositions.add(rank.role);
+        // If role equals base rank (not a variant), mark as having direct slot
+        if (rank.role === rank.rank) {
+          baseRanksWithDirectSlots.add(rank.rank);
+        }
+      }
+      // Also add the base rank name for matching
+      if (rank.rank) {
+        validPositions.add(rank.rank);
+        // Check if this is a non-variant entry (role is null or equals rank)
+        if (!rank.role || rank.role === rank.rank) {
+          baseRanksWithDirectSlots.add(rank.rank);
+        }
+      }
+    });
+    
+    return { 
+      vesselValidPositions: validPositions, 
+      vesselBaseRanksWithDirectSlots: baseRanksWithDirectSlots 
+    };
+  }, [vesselSpecificRanks]);
+
   // Get deduplicated base ranks for dropdown display
   const baseRanks = useMemo(() => {
     const uniqueRanks = new Map<string, any>();
@@ -1457,12 +1518,16 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     return Array.from(uniqueRanks.values());
   }, [companyRanks]);
 
-  // Get all role variants for selected base ranks
+  // Get all role variants for selected base ranks, filtered by vessel-specific positions
   const autoSelectedRoleVariants = useMemo(() => {
     const variants: string[] = [];
+    const addedPositions = new Set<string>(); // Track what we've added to avoid duplicates
     const selectedBaseRanks = new Set(selectedRanks);
     
-    // First pass: check if any selected rank has role variants
+    // If we have vessel-specific ranks loaded, use them to filter positions
+    const hasVesselFilter = selectedVessels.length > 0 && vesselSpecificRanks.length > 0;
+    
+    // First pass: check if any selected rank has role variants in company ranks
     const ranksWithVariants = new Set<string>();
     companyRanks.forEach((rank: any) => {
       if (selectedBaseRanks.has(rank.rank) && rank.role && rank.role !== rank.rank) {
@@ -1470,22 +1535,46 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
       }
     });
     
-    // Second pass: add role variants or base rank (only if no variants exist)
+    // Second pass: add role variants that exist on the selected vessel(s)
     companyRanks.forEach((rank: any) => {
       if (selectedBaseRanks.has(rank.rank)) {
         if (rank.role && rank.role !== rank.rank) {
-          // This is a role variant - add it
-          variants.push(rank.role);
+          // This is a role variant - only add if it exists on the selected vessel(s)
+          if (!hasVesselFilter || vesselValidPositions.has(rank.role)) {
+            if (!addedPositions.has(rank.role)) {
+              variants.push(rank.role);
+              addedPositions.add(rank.role);
+            }
+          }
         } else if (!ranksWithVariants.has(rank.rank)) {
-          // This is a base rank with no variants - add the base rank
-          variants.push(rank.rank);
+          // This is a base rank with no company-wide variants - add if it exists on the selected vessel(s)
+          if (!hasVesselFilter || vesselValidPositions.has(rank.rank)) {
+            if (!addedPositions.has(rank.rank)) {
+              variants.push(rank.rank);
+              addedPositions.add(rank.rank);
+            }
+          }
         }
-        // Skip base ranks that have variants
+      }
+    });
+    
+    // Third pass: for base ranks that have company-wide variants,
+    // also add the base rank if at least one vessel has a direct slot for it
+    // (This handles multi-vessel selection where one vessel has variants and another has only the base)
+    selectedRanks.forEach((baseRank: string) => {
+      if (ranksWithVariants.has(baseRank)) {
+        // Check if any selected vessel has a direct (non-variant) slot for this base rank
+        if (!hasVesselFilter || vesselBaseRanksWithDirectSlots.has(baseRank)) {
+          if (!addedPositions.has(baseRank)) {
+            variants.push(baseRank);
+            addedPositions.add(baseRank);
+          }
+        }
       }
     });
     
     return variants;
-  }, [companyRanks, selectedRanks]);
+  }, [companyRanks, selectedRanks, selectedVessels.length, vesselSpecificRanks.length, vesselValidPositions, vesselBaseRanksWithDirectSlots]);
 
   // Use manually managed state if user has modified it, otherwise use auto-computed variants
   const selectedRoleVariants = hasManualVariants 
