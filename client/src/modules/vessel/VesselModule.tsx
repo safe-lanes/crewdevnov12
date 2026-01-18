@@ -2753,9 +2753,22 @@ export const VesselModule = (): JSX.Element => {
         setSelectedCrewForAppraisal(null);
     };
 
-    // Calculate crew on board for each vessel
+    // Calculate crew on board for each vessel with filtering
     const vesselData = useMemo(() => {
-        return vessels.map((vessel: any) => {
+        // First filter vessels based on selected filter type and value
+        let filteredVessels = vessels;
+        
+        if (filterType === "vessel" && vesselValue) {
+            filteredVessels = vessels.filter((vessel: any) => vessel.name === vesselValue);
+        } else if (filterType === "fleet" && fleetValue) {
+            // Filter by fleet group if fleet data is available on vessels
+            filteredVessels = vessels.filter((vessel: any) => vessel.fleet === fleetValue || vessel.fleetGroup === fleetValue);
+        } else if (filterType === "addGroup" && addGroupValue) {
+            // Filter by additional group if available
+            filteredVessels = vessels.filter((vessel: any) => vessel.addGroup === addGroupValue || vessel.additionalGroup === addGroupValue);
+        }
+        
+        return filteredVessels.map((vessel: any) => {
             const crewCount = crewMembers.filter((crew: any) => 
                 crew.presentVessel === vessel.name || 
                 crew.presentVessel === vessel.vesselId
@@ -2768,7 +2781,7 @@ export const VesselModule = (): JSX.Element => {
                 crewOnBoard: crewCount
             };
         });
-    }, [vessels, crewMembers]);
+    }, [vessels, crewMembers, filterType, vesselValue, fleetValue, addGroupValue]);
 
     const ActionsCellRenderer = (props: any) => {
         const handleClick = (e: React.MouseEvent) => {
