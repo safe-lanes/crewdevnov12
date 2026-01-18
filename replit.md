@@ -60,6 +60,7 @@ The application employs a modern web stack with a module-first architecture, pri
 - **Crew Member Update Protection**: Protects vessel assignment fields from accidental clearing.
 - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments.
 - **Sign On Date Consolidation**: Unified `sign_on_date` terminology and implementation across the codebase.
+- **Position Display Normalization**: API-level `displayRole` field provides correct display names for vessel positions. Single-slot ranks show base label (e.g., "Fitter"), multi-slot ranks show suffixed positions (e.g., "Fitter_1", "Fitter_2"). Applied consistently across Vessel Crew List, Planning, Officer Matrix, Training Matrix, and Rotation modules.
 
 ## External Dependencies
 - React 18
