@@ -378,8 +378,14 @@ export function fromStorageCrew(dbCrew: CrewMember): CrewMemberDTO {
       try {
         dto[field] = JSON.parse(dto[field]);
       } catch (e) {
-        console.warn(`Failed to parse JSON field ${field}:`, e);
-        dto[field] = null;
+        // Handle legacy plain string values (not valid JSON)
+        // For vesselTypes, convert plain string to array
+        if (field === 'vesselTypes') {
+          dto[field] = [dto[field]]; // Wrap single value in array
+        } else {
+          console.warn(`Failed to parse JSON field ${field}:`, e);
+          dto[field] = null;
+        }
       }
     }
   });
