@@ -2171,14 +2171,14 @@ export const VesselModule = (): JSX.Element => {
         const officerRanks = vesselRanks.filter((rank: any) => rank.officer === true);
         const variantBaseRanks = new Set<string>();
         officerRanks.forEach((rank: any) => {
-            const rankName = rank.role || rank.rank;
+            const rankName = rank.displayRole || rank.role || rank.rank;
             if (isVariantRank(rankName)) {
                 const baseRank = rankName.split('_')[0];
                 variantBaseRanks.add(baseRank);
             }
         });
         return officerRanks.filter((rank: any) => {
-            const rankName = rank.role || rank.rank;
+            const rankName = rank.displayRole || rank.role || rank.rank;
             if (isVariantRank(rankName)) return true;
             return !variantBaseRanks.has(rankName);
         });
@@ -3299,11 +3299,11 @@ export const VesselModule = (): JSX.Element => {
                                 {(() => {
                                     // Filter out base ranks when variant positions exist for the same rankId
                                     const filteredRanks = vesselRanks.filter((rank: any) => {
-                                        const fullRankName = rank.role || rank.rank;
+                                        const fullRankName = rank.displayRole || rank.role || rank.rank;
                                         const hasVariantSuffix = fullRankName?.includes('_');
                                         if (hasVariantSuffix) return true;
                                         const hasVariants = vesselRanks.some((other: any) => {
-                                            const otherName = other.role || other.rank;
+                                            const otherName = other.displayRole || other.role || other.rank;
                                             return other.rankId === rank.rankId && otherName?.includes('_');
                                         });
                                         return !hasVariants;
@@ -3332,7 +3332,7 @@ export const VesselModule = (): JSX.Element => {
                                                                 className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]"
                                                                 data-testid={`header-rank-${index}`}
                                                             >
-                                                                {rank.role || rank.rank}
+                                                                {rank.displayRole || rank.role || rank.rank}
                                                             </TableHead>
                                                         ))
                                                     ) : (
@@ -3540,7 +3540,7 @@ export const VesselModule = (): JSX.Element => {
                                                     officerMatrixRanks
                                                         .map((rank: any, index: number) => {
                                                             // Get full rank name (with suffix like _1, _2 for variant positions)
-                                                            const fullRankName = rank.role || rank.rank;
+                                                            const fullRankName = rank.displayRole || rank.role || rank.rank;
                                                             // Strip suffix for fallback matching (e.g., "3rd Officer_1" -> "3rd Officer")
                                                             const baseRankName = fullRankName?.split('_')[0];
                                                             // Check if this is a variant position (has suffix like _1, _2)
@@ -3632,7 +3632,7 @@ export const VesselModule = (): JSX.Element => {
                                                             return (
                                                             <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
                                                                 <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
-                                                                    {rank.role || rank.rank}
+                                                                    {rank.displayRole || rank.role || rank.rank}
                                                                 </TableCell>
                                                                 
                                                                 {/* Rank, Name & Nationality */}
@@ -3780,7 +3780,7 @@ export const VesselModule = (): JSX.Element => {
                                                     // Filter out base ranks when variant positions exist for the same rankId
                                                     // This prevents showing duplicate rows (e.g., "3rd Officer" + "3rd Officer_1" + "3rd Officer_2")
                                                     const filteredVesselRanks = vesselRanks.filter((rank: any) => {
-                                                        const fullRankName = rank.role || rank.rank;
+                                                        const fullRankName = rank.displayRole || rank.role || rank.rank;
                                                         const hasVariantSuffix = fullRankName?.includes('_');
                                                         
                                                         // Keep variant positions (they have suffix like _1, _2)
@@ -3788,7 +3788,7 @@ export const VesselModule = (): JSX.Element => {
                                                         
                                                         // For base ranks, check if any variant positions exist with the same rankId
                                                         const hasVariants = vesselRanks.some((other: any) => {
-                                                            const otherName = other.role || other.rank;
+                                                            const otherName = other.displayRole || other.role || other.rank;
                                                             return other.rankId === rank.rankId && otherName?.includes('_');
                                                         });
                                                         
@@ -3798,7 +3798,7 @@ export const VesselModule = (): JSX.Element => {
                                                     
                                                     filteredVesselRanks.forEach((rank: any, rankIndex: number) => {
                                                         // Get full rank name (with suffix like _1, _2 for variant positions)
-                                                        const fullRankName = rank.role || rank.rank;
+                                                        const fullRankName = rank.displayRole || rank.role || rank.rank;
                                                         // Strip suffix for fallback matching (e.g., "3rd Officer_1" -> "3rd Officer")
                                                         const baseRankName = fullRankName?.split('_')[0];
                                                         
@@ -3893,7 +3893,7 @@ export const VesselModule = (): JSX.Element => {
                                                         const { serialNumber, rank, rankName, crewStatus, planningData, hasBothCrewTypes } = row;
                                                         // Only show (P)/(S) badges when BOTH primary and secondary exist for the same rank
                                                         const statusBadge = hasBothCrewTypes ? (crewStatus === 'primary' ? ' (P)' : ' (S)') : '';
-                                                        const displayRank = (rank.role || rank.rank) + statusBadge;
+                                                        const displayRank = (rank.displayRole || rank.role || rank.rank) + statusBadge;
                                                         
                                                         // Show blank instead of "undefined" for vacant positions
                                                         const crewName = planningData?.crewMemberId ? (planningData.crewName || '') : '';
@@ -3931,7 +3931,7 @@ export const VesselModule = (): JSX.Element => {
                                                                         data-testid={`button-edit-onboard-${rowIndex + 1}`}
                                                                         onClick={() => {
                                                                             setSelectedRankForOnBoard({
-                                                                                rank: rank.rank || rank.role,
+                                                                                rank: rank.displayRole || rank.role || rank.rank,
                                                                                 rankId: rank.rankId || rank.id,
                                                                                 planningData: planningData
                                                                             });
@@ -3963,7 +3963,7 @@ export const VesselModule = (): JSX.Element => {
                                                                         data-testid={`button-edit-reliever-${rowIndex + 1}`}
                                                                         onClick={() => {
                                                                             setSelectedRankForRelief({
-                                                                                rank: rank.role || rank.rank,
+                                                                                rank: rank.displayRole || rank.role || rank.rank,
                                                                                 rankId: rank.rankId || rank.id,
                                                                                 planningData: planningData
                                                                             });

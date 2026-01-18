@@ -3198,8 +3198,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sort manually by sortOrder to ensure correct display order
       const sortedRanks = activeRanks.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
       
-      console.log(`📜 [VESSEL RANKS API] After sort - first 3 ranks:`, sortedRanks.slice(0, 3).map((r: any) => `${r.id}:${r.rank}(sortOrder:${r.sortOrder})`));
-      res.json(sortedRanks);
+      // ======== POSITION DISPLAY NORMALIZATION ========
+      // Count how many positions of each base rank exist on this vessel
+      // If only 1 position → displayRole = base rank (e.g., "Fitter")
+      // If multiple positions → displayRole = suffixed role (e.g., "Fitter_1", "Fitter_2")
+      const rankSlotCounts = new Map<string, number>();
+      sortedRanks.forEach((rank: any) => {
+        const baseRank = rank.rank; // The Rank Label (e.g., "Fitter", "3rd Officer")
+        rankSlotCounts.set(baseRank, (rankSlotCounts.get(baseRank) || 0) + 1);
+      });
+      
+      // Add displayRole field to each rank
+      const ranksWithDisplayRole = sortedRanks.map((rank: any) => {
+        const baseRank = rank.rank;
+        const slotCount = rankSlotCounts.get(baseRank) || 1;
+        
+        // Determine displayRole based on slot count
+        let displayRole: string;
+        if (slotCount === 1) {
+          // Single position: use base Rank Label (no suffix)
+          displayRole = baseRank;
+        } else {
+          // Multiple positions: use the stored role with suffix, or fall back to base rank
+          displayRole = rank.role || baseRank;
+        }
+        
+        return {
+          ...rank,
+          displayRole, // New field for UI display
+        };
+      });
+      
+      console.log(`📜 [VESSEL RANKS API] After sort - first 3 ranks:`, ranksWithDisplayRole.slice(0, 3).map((r: any) => `${r.id}:${r.rank}(sortOrder:${r.sortOrder},displayRole:${r.displayRole})`));
+      res.json(ranksWithDisplayRole);
     } catch (error) {
       console.error("Failed to fetch vessel ranks:", error);
       res.status(500).json({ error: "Failed to fetch vessel ranks" });

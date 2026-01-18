@@ -1480,15 +1480,14 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   });
 
   // Build position information from vessel-specific ranks
-  // KEY INSIGHT: Rank Label (rank field) is the source of truth for position matching
-  // - If a vessel has ONE slot for a rank: use base Rank Label (e.g., "Fitter")
-  // - If a vessel has MULTIPLE slots for a rank: use suffixed positions (e.g., "Fitter_1", "Fitter_2")
-  // IMPORTANT: Slot counts must be computed PER VESSEL, not globally across all selected vessels
+  // API now provides displayRole which handles the per-vessel slot counting logic:
+  // - If a vessel has ONE slot for a rank: displayRole = base Rank Label (e.g., "Fitter")
+  // - If a vessel has MULTIPLE slots for a rank: displayRole = suffixed position (e.g., "Fitter_1", "Fitter_2")
   const { vesselValidPositions, vesselBaseRanksWithDirectSlots } = useMemo(() => {
     const validPositions = new Set<string>();
     const baseRanksWithDirectSlots = new Set<string>();
     
-    // Group ranks by vessel first, then count slots per rank within each vessel
+    // Group ranks by vessel for processing
     const ranksByVessel = new Map<string, any[]>();
     vesselSpecificRanks.forEach((rank: any) => {
       const vesselId = rank._vesselId || 'unknown';
@@ -1498,35 +1497,16 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
       ranksByVessel.get(vesselId)!.push(rank);
     });
     
-    // Process each vessel independently
+    // Process each vessel independently, using the API-provided displayRole
     ranksByVessel.forEach((vesselRanks, vesselId) => {
-      // Count slots per base rank for THIS vessel only
-      const slotCounts = new Map<string, number>();
       vesselRanks.forEach((rank: any) => {
-        if (rank.rank) {
-          slotCounts.set(rank.rank, (slotCounts.get(rank.rank) || 0) + 1);
-        }
-      });
-      
-      // Determine valid positions for this vessel based on its slot count
-      vesselRanks.forEach((rank: any) => {
-        if (rank.rank) {
-          const count = slotCounts.get(rank.rank) || 1;
-          
-          if (count === 1) {
-            // Single slot on this vessel: use base Rank Label only (NOT the suffixed role)
-            // This ensures "Fitter" is used instead of "Fitter_1"
-            validPositions.add(rank.rank);
-            baseRanksWithDirectSlots.add(rank.rank);
-          } else {
-            // Multiple slots on this vessel: use the suffixed role if available
-            if (rank.role && rank.role !== rank.rank) {
-              validPositions.add(rank.role);
-            } else {
-              // Fallback to base rank if role not available
-              validPositions.add(rank.rank);
-              baseRanksWithDirectSlots.add(rank.rank);
-            }
+        // Use displayRole from API (already has per-vessel slot count logic applied)
+        const displayPosition = rank.displayRole || rank.role || rank.rank;
+        if (displayPosition) {
+          validPositions.add(displayPosition);
+          // Track base ranks that have direct slots (no suffix)
+          if (!displayPosition.includes('_')) {
+            baseRanksWithDirectSlots.add(displayPosition);
           }
         }
       });
