@@ -4864,11 +4864,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/rotation/proposals/reject", async (req, res) => {
     try {
-      const { planId, assignmentIndex } = req.body;
+      const { planId, assignmentIndex, rejectedBy } = req.body;
       if (typeof planId !== 'number' || typeof assignmentIndex !== 'number') {
         return res.status(400).json({ error: "planId and assignmentIndex are required" });
       }
-      const plan = await storage.rejectAssignment(planId, assignmentIndex);
+      // Pass rejectedBy to storage, default to "Current User" if not provided
+      const plan = await storage.rejectAssignment(planId, assignmentIndex, rejectedBy || "Current User");
       if (!plan) {
         return res.status(404).json({ error: "Assignment not found" });
       }
