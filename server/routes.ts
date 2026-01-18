@@ -4665,8 +4665,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Build vesselId:rank -> current crew data lookup map (same as getProposedAssignments)
+        // IMPORTANT: Only use non-archived planning records - archived records are for signed-off crew
         const currentCrewMap = new Map<string, any>();
         for (const vp of vesselPlanningData) {
+          // Skip archived records - crew has signed off
+          if (vp.isArchived) continue;
+          
           if (vp.vesselId && vp.rank && vp.crewMemberId) {
             const key = `${vp.vesselId}:${vp.rank}`;
             if (vp.signOnDate) {

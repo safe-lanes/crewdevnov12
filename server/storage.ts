@@ -2570,8 +2570,9 @@ export class MemStorage implements IStorage {
               if (crewOnBoard) {
                 // Get vessel planning data for this crew member to get contract dates
                 // vesselPlanning.vesselId stores vessel ID
+                // IMPORTANT: Only use non-archived planning records - archived records are for signed-off crew
                 const planning = Array.from(this.vesselPlanning.values()).find(p => 
-                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === vesselIdToMatch && p.rank === assignment.rank
+                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === vesselIdToMatch && p.rank === assignment.rank && !p.isArchived
                 );
                 
                 if (planning && planning.reliefDue) {
@@ -7051,8 +7052,9 @@ export class PersistentFileStorage implements IStorage {
               if (crewOnBoard) {
                 // Get vessel planning data for this crew member to get contract dates
                 // vesselPlanning.vesselId stores vessel ID
+                // IMPORTANT: Only use non-archived planning records - archived records are for signed-off crew
                 const planning = Array.from(this.vesselPlanning.values()).find(p => 
-                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === vesselIdToMatch && p.rank === assignment.rank
+                  p.onBoardCrewId === crewOnBoard.id && p.vesselId === vesselIdToMatch && p.rank === assignment.rank && !p.isArchived
                 );
                 
                 if (planning && planning.reliefDue) {
