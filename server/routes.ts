@@ -4287,19 +4287,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Helper to check if any RELIEVER-SPECIFIC field is populated
       // NOTE: joiningDate/joiningPort are dual-purpose (used for both primary on-board status AND reliever planning)
       //       so they are NOT included in this detection check
+      // NOTE: Uses reliever-specific contract fields (relieverContractPeriodMonths, etc.) not primary contract fields
       const hasAnyRelieverData = (planning: any) => !!(
         planning.relieverCrewId || 
         planning.relieverCrewName || 
         planning.relieverNationality ||
         planning.joiningStatus ||  // "Proposed", "Planned", "Confirmed", etc. - only applies to relievers
-        planning.contractEndRangeStartMonths ||
-        planning.contractEndRangeEndMonths ||
+        planning.relieverContractPeriodMonths ||
+        planning.relieverContractEndRangeStartMonths ||
+        planning.relieverContractEndRangeEndMonths ||
         planning.deploymentChecklistCompleted ||
         planning.applicableDocsChecked
       );
       
       // Helper to clear ALL reliever-related fields
       // joiningDate and joiningPort are cleared here but may be restored for promotion case
+      // NOTE: Does NOT clear primary contract fields (contractPeriodMonths, etc.) as those
+      // belong to the on-board crew member. Only clears reliever-specific contract fields.
       const clearAllRelieverFields = (body: any) => {
         body.relieverCrewId = null;
         body.relieverCrewName = null;
@@ -4307,9 +4311,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body.joiningDate = null;
         body.joiningPort = null;
         body.joiningStatus = null;
-        body.contractPeriodMonths = null;
-        body.contractEndRangeStartMonths = null;
-        body.contractEndRangeEndMonths = null;
+        // Clear RELIEVER-SPECIFIC contract fields (not the on-board crew's contract)
+        body.relieverContractPeriodMonths = null;
+        body.relieverContractEndRangeStartMonths = null;
+        body.relieverContractEndRangeEndMonths = null;
         body.deploymentChecklistCompleted = null;
         body.applicableDocsChecked = null;
       };
@@ -4338,24 +4343,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🔄 [VESSEL-PLANNING] Secondary promotion detected - clearing reliever fields for new primary ${id}`);
         // Clear reliever planning fields since this crew is now primary
         // They don't have a reliever yet (a new reliever needs to be planned)
-        // BUT preserve dual-purpose fields that are needed for the new primary:
-        // - relieverSignOnDate/joiningPort: shows when/where the new primary joined
-        // - contractPeriodMonths: needed for Relief Due calculation
-        // - contractEndRangeStartMonths/contractEndRangeEndMonths: contract range for on-board status
+        // NOTE: Primary contract fields (contractPeriodMonths, etc.) are NOT cleared
+        // because the frontend already transfers reliever contract to primary contract when signing on.
+        // We only preserve relieverSignOnDate and joiningPort for display purposes.
         const preservedRelieverSignOnDate = req.body.relieverSignOnDate ?? existingPlanning.relieverSignOnDate;
         const preservedJoiningPort = req.body.joiningPort ?? existingPlanning.joiningPort;
-        const preservedContractPeriodMonths = req.body.contractPeriodMonths ?? existingPlanning.contractPeriodMonths;
-        const preservedContractEndRangeStartMonths = req.body.contractEndRangeStartMonths ?? existingPlanning.contractEndRangeStartMonths;
-        const preservedContractEndRangeEndMonths = req.body.contractEndRangeEndMonths ?? existingPlanning.contractEndRangeEndMonths;
         
         clearAllRelieverFields(req.body);
         
-        // Restore dual-purpose fields for On Board Status display and Relief Due calculation
+        // Restore dual-purpose fields for On Board Status display
         req.body.relieverSignOnDate = preservedRelieverSignOnDate;
         req.body.joiningPort = preservedJoiningPort;
-        req.body.contractPeriodMonths = preservedContractPeriodMonths;
-        req.body.contractEndRangeStartMonths = preservedContractEndRangeStartMonths;
-        req.body.contractEndRangeEndMonths = preservedContractEndRangeEndMonths;
         
         // Set crewStatus to primary if it was secondary
         if (existingPlanning.crewStatus === "secondary") {

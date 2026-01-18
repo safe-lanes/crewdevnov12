@@ -527,9 +527,18 @@ export const vesselPlanning = pgTable("vessel_planning", {
   relieverSignOnDate: text("reliever_sign_on_date"), // Planned or actual sign-on date based on joiningStatus
   joiningPort: text("joining_port"),
   joiningStatus: text("joining_status"), // Proposed, Planned, Confirmed, In Transit, Signed On
+  
+  // On-Board Crew Contract Terms (person-specific, applies to primary crew member)
   contractPeriodMonths: integer("contract_period_months"),
   contractEndRangeStartMonths: integer("contract_end_range_start_months"),
   contractEndRangeEndMonths: integer("contract_end_range_end_months"),
+  
+  // Reliever Contract Terms (person-specific, separate from on-board crew)
+  // When reliever signs on as primary, these values should be copied to the primary contract fields
+  relieverContractPeriodMonths: integer("reliever_contract_period_months"),
+  relieverContractEndRangeStartMonths: integer("reliever_contract_end_range_start_months"),
+  relieverContractEndRangeEndMonths: integer("reliever_contract_end_range_end_months"),
+  
   deploymentChecklistCompleted: boolean("deployment_checklist_completed"),
   applicableDocsChecked: boolean("applicable_docs_checked"),
   
@@ -1379,6 +1388,9 @@ export const insertVesselPlanningSchema = createInsertSchema(vesselPlanning).pic
   contractPeriodMonths: true,
   contractEndRangeStartMonths: true,
   contractEndRangeEndMonths: true,
+  relieverContractPeriodMonths: true,
+  relieverContractEndRangeStartMonths: true,
+  relieverContractEndRangeEndMonths: true,
   deploymentChecklistCompleted: true,
   applicableDocsChecked: true,
   isArchived: true,

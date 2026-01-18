@@ -489,13 +489,14 @@ const parseDateString = (dateStr: string): Date | undefined => {
 const NO_RANKS_CONFIGURED_MESSAGE = "No positions configured for this vessel. Please configure positions in Admin > Rank Admin > Vessel.";
 
 // Form schema for Relief Status - using sign-on terminology
+// Uses reliever-specific contract fields to prevent interference with on-board crew contract
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
     relieverNationality: z.string().optional(),
     signOnStatus: z.string().optional(),
-    contractPeriodMonths: z.coerce.number().optional(),
-    contractEndRangeStartMonths: z.coerce.number().optional(),
-    contractEndRangeEndMonths: z.coerce.number().optional(),
+    relieverContractPeriodMonths: z.coerce.number().optional(),
+    relieverContractEndRangeStartMonths: z.coerce.number().optional(),
+    relieverContractEndRangeEndMonths: z.coerce.number().optional(),
     relieverSignOnDate: z.string().optional(),
     relieverSignOnPort: z.string().optional(),
     deploymentChecklistCompleted: z.boolean().optional(),
@@ -533,9 +534,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             relieverCrewName: '',
             relieverNationality: '',
             signOnStatus: '',
-            contractPeriodMonths: undefined,
-            contractEndRangeStartMonths: undefined,
-            contractEndRangeEndMonths: undefined,
+            relieverContractPeriodMonths: undefined,
+            relieverContractEndRangeStartMonths: undefined,
+            relieverContractEndRangeEndMonths: undefined,
             relieverSignOnDate: '',
             relieverSignOnPort: '',
             deploymentChecklistCompleted: false,
@@ -550,9 +551,10 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 relieverCrewName: planningData.relieverCrewName || '',
                 relieverNationality: planningData.relieverNationality || '',
                 signOnStatus: planningData.joiningStatus || '', // Map legacy joiningStatus to signOnStatus
-                contractPeriodMonths: planningData.contractPeriodMonths,
-                contractEndRangeStartMonths: planningData.contractEndRangeStartMonths,
-                contractEndRangeEndMonths: planningData.contractEndRangeEndMonths,
+                // Use reliever-specific contract fields (fall back to shared fields for backward compatibility)
+                relieverContractPeriodMonths: planningData.relieverContractPeriodMonths ?? planningData.contractPeriodMonths,
+                relieverContractEndRangeStartMonths: planningData.relieverContractEndRangeStartMonths ?? planningData.contractEndRangeStartMonths,
+                relieverContractEndRangeEndMonths: planningData.relieverContractEndRangeEndMonths ?? planningData.contractEndRangeEndMonths,
                 relieverSignOnDate: planningData.relieverSignOnDate || planningData.joiningDate || '', // Prefer new field, fallback to legacy
                 relieverSignOnPort: planningData.relieverSignOnPort || planningData.joiningPort || '', // Prefer new field, fallback to legacy
                 deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
@@ -565,9 +567,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 relieverCrewName: '',
                 relieverNationality: '',
                 signOnStatus: '',
-                contractPeriodMonths: undefined,
-                contractEndRangeStartMonths: undefined,
-                contractEndRangeEndMonths: undefined,
+                relieverContractPeriodMonths: undefined,
+                relieverContractEndRangeStartMonths: undefined,
+                relieverContractEndRangeEndMonths: undefined,
                 relieverSignOnDate: '',
                 relieverSignOnPort: '',
                 deploymentChecklistCompleted: false,
@@ -609,6 +611,13 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     // Calculate the sign-on date for the new primary
                     const newPrimarySignOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
                     const newPrimarySignOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
+                    
+                    // CRITICAL: When reliever becomes primary, their contract terms become the primary contract
+                    // Transfer reliever's contract data to primary contract fields (person-specific data transfer)
+                    const relieverContractPeriod = data.relieverContractPeriodMonths ?? planningData.relieverContractPeriodMonths;
+                    const relieverContractRangeStart = data.relieverContractEndRangeStartMonths ?? planningData.relieverContractEndRangeStartMonths;
+                    const relieverContractRangeEnd = data.relieverContractEndRangeEndMonths ?? planningData.relieverContractEndRangeEndMonths;
+                    
                     const promoteToPrimaryPayload = {
                         ...cleanDataForPromote,
                         crewMemberId: planningData.relieverCrewId,
@@ -617,13 +626,17 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                         // CRITICAL: Keep joiningDate in sync with signOnDate for timeline calculations
                         joiningDate: newPrimarySignOnDate,
                         joiningPort: newPrimarySignOnPort,
-                        contractPeriodMonths: data.contractPeriodMonths || planningData.contractPeriodMonths,
-                        contractEndRangeStartMonths: data.contractEndRangeStartMonths || planningData.contractEndRangeStartMonths,
-                        contractEndRangeEndMonths: data.contractEndRangeEndMonths || planningData.contractEndRangeEndMonths,
-                        // Clear reliever fields
+                        // Transfer reliever's contract terms to become the new primary contract
+                        contractPeriodMonths: relieverContractPeriod,
+                        contractEndRangeStartMonths: relieverContractRangeStart,
+                        contractEndRangeEndMonths: relieverContractRangeEnd,
+                        // Clear reliever fields (including reliever contract)
                         relieverCrewId: null,
                         relieverCrewName: null,
                         relieverNationality: null,
+                        relieverContractPeriodMonths: null,
+                        relieverContractEndRangeStartMonths: null,
+                        relieverContractEndRangeEndMonths: null,
                         joiningStatus: null,
                         deploymentChecklistCompleted: false,
                         applicableDocsChecked: false,
@@ -648,6 +661,12 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 // uses a vessel planning rank ID (e.g., "4"). Mismatched rankIds break Take Over.
                 const canonicalRankId = existingPrimary.rankId || rankId;
                 
+                // When creating secondary record, the reliever's contract becomes the secondary's primary contract
+                // (since the reliever IS becoming the secondary crew member)
+                const secondaryContractPeriod = data.relieverContractPeriodMonths ?? planningData.relieverContractPeriodMonths;
+                const secondaryContractRangeStart = data.relieverContractEndRangeStartMonths ?? planningData.relieverContractEndRangeStartMonths;
+                const secondaryContractRangeEnd = data.relieverContractEndRangeEndMonths ?? planningData.relieverContractEndRangeEndMonths;
+                
                 const secondaryCrewPayload = {
                     vesselId,
                     rankId: canonicalRankId,
@@ -658,9 +677,10 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     // CRITICAL: Keep joiningDate in sync with signOnDate for timeline calculations
                     joiningDate: secondarySignOnDate,
                     joiningPort: secondarySignOnPort,
-                    contractPeriodMonths: data.contractPeriodMonths || planningData.contractPeriodMonths,
-                    contractEndRangeStartMonths: data.contractEndRangeStartMonths || planningData.contractEndRangeStartMonths,
-                    contractEndRangeEndMonths: data.contractEndRangeEndMonths || planningData.contractEndRangeEndMonths,
+                    // Transfer reliever's contract to become secondary's primary contract
+                    contractPeriodMonths: secondaryContractPeriod,
+                    contractEndRangeStartMonths: secondaryContractRangeStart,
+                    contractEndRangeEndMonths: secondaryContractRangeEnd,
                 };
                 
                 await apiRequest('POST', '/api/vessel-planning', secondaryCrewPayload);
@@ -678,6 +698,10 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     joiningDate: planningData.signOnDate || null,
                     joiningPort: null,
                     joiningStatus: null,
+                    // Clear reliever contract fields
+                    relieverContractPeriodMonths: null,
+                    relieverContractEndRangeStartMonths: null,
+                    relieverContractEndRangeEndMonths: null,
                     deploymentChecklistCompleted: false,
                     applicableDocsChecked: false,
                 };
@@ -686,6 +710,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             } else {
                 // Normal update flow - saving RELIEVER PLANNING data onto the PRIMARY crew record
                 // Dual-write strategy: Send BOTH new and legacy field names for complete transition coverage
+                // IMPORTANT: Use reliever-specific contract fields to avoid interfering with on-board crew contract
                 
                 const payload = {
                     vesselId,
@@ -695,10 +720,10 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     crewId: planningData?.crewId,
                     relieverCrewName: data.relieverCrewName,
                     relieverNationality: data.relieverNationality,
-                    // Contract fields
-                    contractPeriodMonths: data.contractPeriodMonths,
-                    contractEndRangeStartMonths: data.contractEndRangeStartMonths,
-                    contractEndRangeEndMonths: data.contractEndRangeEndMonths,
+                    // RELIEVER-SPECIFIC contract fields (independent from on-board crew contract)
+                    relieverContractPeriodMonths: data.relieverContractPeriodMonths,
+                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths,
+                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths,
                     deploymentChecklistCompleted: data.deploymentChecklistCompleted,
                     applicableDocsChecked: data.applicableDocsChecked,
                     // DUAL-WRITE: New field names (for schema migration)
@@ -747,6 +772,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 throw new Error('No planning record ID');
             }
             // Clear all reliever fields from the planning record
+            // NOTE: Only clear reliever-specific contract fields, preserve on-board crew contract
             // apiRequest throws on error, so we don't need to check response.ok
             const response = await apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, {
                 relieverCrewId: null,
@@ -757,9 +783,10 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 joiningDate: null,
                 relieverSignOnPort: null,
                 joiningPort: null,
-                contractPeriodMonths: null,
-                contractEndRangeStartMonths: null,
-                contractEndRangeEndMonths: null,
+                // Clear RELIEVER-SPECIFIC contract fields (not the on-board crew's contract)
+                relieverContractPeriodMonths: null,
+                relieverContractEndRangeStartMonths: null,
+                relieverContractEndRangeEndMonths: null,
                 deploymentChecklistCompleted: null,
                 applicableDocsChecked: null,
             });
@@ -809,8 +836,8 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
             // If user tried to save other fields without a crew member, show warning
             const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate || 
-                               data.contractPeriodMonths || data.contractEndRangeStartMonths || 
-                               data.contractEndRangeEndMonths;
+                               data.relieverContractPeriodMonths || data.relieverContractEndRangeStartMonths || 
+                               data.relieverContractEndRangeEndMonths;
             if (hasOtherData) {
                 toast({
                     title: "Name Required",
@@ -825,9 +852,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 relieverCrewName: '',
                 relieverNationality: '',
                 signOnStatus: undefined,
-                contractPeriodMonths: undefined,
-                contractEndRangeStartMonths: undefined,
-                contractEndRangeEndMonths: undefined,
+                relieverContractPeriodMonths: undefined,
+                relieverContractEndRangeStartMonths: undefined,
+                relieverContractEndRangeEndMonths: undefined,
                 relieverSignOnDate: undefined,
                 relieverSignOnPort: undefined,
                 deploymentChecklistCompleted: undefined,
@@ -855,8 +882,8 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
         // Same validation as handleSave - prevent saving reliever fields without crew member
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
             const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate || 
-                               data.contractPeriodMonths || data.contractEndRangeStartMonths || 
-                               data.contractEndRangeEndMonths;
+                               data.relieverContractPeriodMonths || data.relieverContractEndRangeStartMonths || 
+                               data.relieverContractEndRangeEndMonths;
             if (hasOtherData) {
                 toast({
                     title: "Name Required",
@@ -871,9 +898,9 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 relieverCrewName: '',
                 relieverNationality: '',
                 signOnStatus: undefined,
-                contractPeriodMonths: undefined,
-                contractEndRangeStartMonths: undefined,
-                contractEndRangeEndMonths: undefined,
+                relieverContractPeriodMonths: undefined,
+                relieverContractEndRangeStartMonths: undefined,
+                relieverContractEndRangeEndMonths: undefined,
                 relieverSignOnDate: undefined,
                 relieverSignOnPort: undefined,
                 deploymentChecklistCompleted: undefined,
@@ -977,7 +1004,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                         {/* Contract Period */}
                         <FormField
                             control={form.control}
-                            name="contractPeriodMonths"
+                            name="relieverContractPeriodMonths"
                             render={({ field }) => (
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
@@ -987,7 +1014,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                 {...field}
                                                 type="number" 
                                                 className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                data-testid="input-contract-period"
+                                                data-testid="input-reliever-contract-period"
                                                 value={field.value ?? ''}
                                                 onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                                                 disabled={!isRelieverAssigned}
@@ -1001,7 +1028,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                         {/* Contract End - Range Start */}
                         <FormField
                             control={form.control}
-                            name="contractEndRangeStartMonths"
+                            name="relieverContractEndRangeStartMonths"
                             render={({ field }) => (
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
@@ -1011,7 +1038,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                 {...field}
                                                 type="number" 
                                                 className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                data-testid="input-contract-range-start"
+                                                data-testid="input-reliever-contract-range-start"
                                                 value={field.value ?? ''}
                                                 onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                                                 disabled={!isRelieverAssigned}
@@ -1025,7 +1052,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                         {/* Contract End - Range End */}
                         <FormField
                             control={form.control}
-                            name="contractEndRangeEndMonths"
+                            name="relieverContractEndRangeEndMonths"
                             render={({ field }) => (
                                 <FormItem>
                                     <div className="grid grid-cols-3 items-center gap-4">
@@ -1035,7 +1062,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                                                 {...field}
                                                 type="number" 
                                                 className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                data-testid="input-contract-range-end"
+                                                data-testid="input-reliever-contract-range-end"
                                                 value={field.value ?? ''}
                                                 onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                                                 disabled={!isRelieverAssigned}
@@ -1422,12 +1449,15 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
     // when saving On Board Status (prevents stale reliever data from being saved)
     // NOTE: joiningDate/joiningPort are dual-purpose fields used for reliever planning,
     // so they must be excluded to prevent On Board Status from overwriting reliever's planned dates
+    // CONTRACT FIELDS: The primary contract fields (contractPeriodMonths, etc.) are for ON-BOARD crew
+    // and should NOT be excluded - they need to be saved. The reliever-specific contract fields
+    // (relieverContractPeriodMonths, etc.) are automatically excluded by the 'reliever' prefix check.
     const RELIEVER_FIELDS_TO_EXCLUDE = [
         'relieverCrewId', 'relieverCrewName', 'relieverJoiningDate', 
         'relieverJoiningPort', 'relieverStatus', 'relieverNationality',
+        'relieverContractPeriodMonths', 'relieverContractEndRangeStartMonths', 'relieverContractEndRangeEndMonths',
         'joiningStatus', 'deploymentChecklistCompleted', 'applicableDocsChecked',
         'joiningDate', 'joiningPort', // Dual-purpose fields - exclude to protect reliever planning data
-        'contractPeriodMonths', 'contractEndRangeStartMonths', 'contractEndRangeEndMonths', // Reliever contract fields
         'createdAt', 'updatedAt' // Also exclude timestamps to avoid Date object errors
     ];
     
