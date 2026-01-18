@@ -1453,19 +1453,22 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   }, [selectedVessels, getVesselIds]);
 
   // Fetch vessel ranks for ALL selected vessels and combine them
+  // Each rank entry includes vesselId for per-vessel slot counting
   const { data: vesselSpecificRanks = [] } = useQuery<any[]>({
     queryKey: ['/api/vessel-revisions/ranks', selectedVesselIdsForRanks],
     queryFn: async () => {
       if (selectedVesselIdsForRanks.length === 0) return [];
       
-      // Fetch ranks for each selected vessel and combine
+      // Fetch ranks for each selected vessel and combine, tagging each with vesselId
       const allRanks: any[] = [];
       for (const vesselId of selectedVesselIdsForRanks) {
         try {
           const response = await fetch(`/api/vessel-revisions/ranks/${vesselId}`);
           if (response.ok) {
             const ranks = await response.json();
-            allRanks.push(...ranks);
+            // Tag each rank with its source vesselId for per-vessel slot counting
+            const taggedRanks = ranks.map((rank: any) => ({ ...rank, _vesselId: vesselId }));
+            allRanks.push(...taggedRanks);
           }
         } catch (error) {
           console.error(`Failed to fetch ranks for vessel ${vesselId}:`, error);
@@ -1476,29 +1479,57 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     enabled: selectedVesselIdsForRanks.length > 0,
   });
 
-  // Build a set of valid role/position names from vessel-specific ranks
-  // Also track base ranks that have non-variant entries (where role is null/same as rank)
+  // Build position information from vessel-specific ranks
+  // KEY INSIGHT: Rank Label (rank field) is the source of truth for position matching
+  // - If a vessel has ONE slot for a rank: use base Rank Label (e.g., "Fitter")
+  // - If a vessel has MULTIPLE slots for a rank: use suffixed positions (e.g., "Fitter_1", "Fitter_2")
+  // IMPORTANT: Slot counts must be computed PER VESSEL, not globally across all selected vessels
   const { vesselValidPositions, vesselBaseRanksWithDirectSlots } = useMemo(() => {
     const validPositions = new Set<string>();
     const baseRanksWithDirectSlots = new Set<string>();
     
+    // Group ranks by vessel first, then count slots per rank within each vessel
+    const ranksByVessel = new Map<string, any[]>();
     vesselSpecificRanks.forEach((rank: any) => {
-      // Add the role if it exists (e.g., "Fitter_1")
-      if (rank.role) {
-        validPositions.add(rank.role);
-        // If role equals base rank (not a variant), mark as having direct slot
-        if (rank.role === rank.rank) {
-          baseRanksWithDirectSlots.add(rank.rank);
-        }
+      const vesselId = rank._vesselId || 'unknown';
+      if (!ranksByVessel.has(vesselId)) {
+        ranksByVessel.set(vesselId, []);
       }
-      // Also add the base rank name for matching
-      if (rank.rank) {
-        validPositions.add(rank.rank);
-        // Check if this is a non-variant entry (role is null or equals rank)
-        if (!rank.role || rank.role === rank.rank) {
-          baseRanksWithDirectSlots.add(rank.rank);
+      ranksByVessel.get(vesselId)!.push(rank);
+    });
+    
+    // Process each vessel independently
+    ranksByVessel.forEach((vesselRanks, vesselId) => {
+      // Count slots per base rank for THIS vessel only
+      const slotCounts = new Map<string, number>();
+      vesselRanks.forEach((rank: any) => {
+        if (rank.rank) {
+          slotCounts.set(rank.rank, (slotCounts.get(rank.rank) || 0) + 1);
         }
-      }
+      });
+      
+      // Determine valid positions for this vessel based on its slot count
+      vesselRanks.forEach((rank: any) => {
+        if (rank.rank) {
+          const count = slotCounts.get(rank.rank) || 1;
+          
+          if (count === 1) {
+            // Single slot on this vessel: use base Rank Label only (NOT the suffixed role)
+            // This ensures "Fitter" is used instead of "Fitter_1"
+            validPositions.add(rank.rank);
+            baseRanksWithDirectSlots.add(rank.rank);
+          } else {
+            // Multiple slots on this vessel: use the suffixed role if available
+            if (rank.role && rank.role !== rank.rank) {
+              validPositions.add(rank.role);
+            } else {
+              // Fallback to base rank if role not available
+              validPositions.add(rank.rank);
+              baseRanksWithDirectSlots.add(rank.rank);
+            }
+          }
+        }
+      });
     });
     
     return { 
@@ -1519,52 +1550,50 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
   }, [companyRanks]);
 
   // Get all role variants for selected base ranks, filtered by vessel-specific positions
+  // Uses Rank Labels (rank field) as source of truth, with suffixed positions only for multi-slot ranks
   const autoSelectedRoleVariants = useMemo(() => {
     const variants: string[] = [];
     const addedPositions = new Set<string>(); // Track what we've added to avoid duplicates
     const selectedBaseRanks = new Set(selectedRanks);
     
-    // If we have vessel-specific ranks loaded, use them to filter positions
-    const hasVesselFilter = selectedVessels.length > 0 && vesselSpecificRanks.length > 0;
+    // If we have vessel-specific ranks loaded, use vesselValidPositions which already
+    // has the correct logic: base Rank Labels for single slots, suffixed roles for multi-slots
+    const hasVesselFilter = selectedVessels.length > 0 && vesselValidPositions.size > 0;
     
-    // First pass: check if any selected rank has role variants in company ranks
-    const ranksWithVariants = new Set<string>();
-    companyRanks.forEach((rank: any) => {
-      if (selectedBaseRanks.has(rank.rank) && rank.role && rank.role !== rank.rank) {
-        ranksWithVariants.add(rank.rank);
-      }
-    });
-    
-    // Second pass: add role variants that exist on the selected vessel(s)
-    companyRanks.forEach((rank: any) => {
-      if (selectedBaseRanks.has(rank.rank)) {
-        if (rank.role && rank.role !== rank.rank) {
-          // This is a role variant - only add if it exists on the selected vessel(s)
-          if (!hasVesselFilter || vesselValidPositions.has(rank.role)) {
-            if (!addedPositions.has(rank.role)) {
-              variants.push(rank.role);
-              addedPositions.add(rank.role);
-            }
+    // Add positions from vesselValidPositions that match our selected base ranks
+    selectedBaseRanks.forEach((baseRank: string) => {
+      if (hasVesselFilter) {
+        // Vessel filter active: use positions from vesselValidPositions
+        vesselValidPositions.forEach((position: string) => {
+          // Check if this position matches the base rank
+          // Either exact match (base rank) or starts with base rank + underscore (variant)
+          const isMatch = position === baseRank || 
+                         (position.startsWith(baseRank) && position.includes('_'));
+          
+          if (isMatch && !addedPositions.has(position)) {
+            variants.push(position);
+            addedPositions.add(position);
           }
-        } else if (!ranksWithVariants.has(rank.rank)) {
-          // This is a base rank with no company-wide variants - add if it exists on the selected vessel(s)
-          if (!hasVesselFilter || vesselValidPositions.has(rank.rank)) {
-            if (!addedPositions.has(rank.rank)) {
-              variants.push(rank.rank);
-              addedPositions.add(rank.rank);
+        });
+      } else {
+        // No vessel filter: fall back to company ranks
+        // First check if this rank has role variants at company level
+        const hasCompanyVariants = companyRanks.some((rank: any) => 
+          rank.rank === baseRank && rank.role && rank.role !== rank.rank
+        );
+        
+        if (hasCompanyVariants) {
+          // Add all variants for this base rank
+          companyRanks.forEach((rank: any) => {
+            if (rank.rank === baseRank && rank.role && rank.role !== rank.rank) {
+              if (!addedPositions.has(rank.role)) {
+                variants.push(rank.role);
+                addedPositions.add(rank.role);
+              }
             }
-          }
-        }
-      }
-    });
-    
-    // Third pass: for base ranks that have company-wide variants,
-    // also add the base rank if at least one vessel has a direct slot for it
-    // (This handles multi-vessel selection where one vessel has variants and another has only the base)
-    selectedRanks.forEach((baseRank: string) => {
-      if (ranksWithVariants.has(baseRank)) {
-        // Check if any selected vessel has a direct (non-variant) slot for this base rank
-        if (!hasVesselFilter || vesselBaseRanksWithDirectSlots.has(baseRank)) {
+          });
+        } else {
+          // No variants - add base rank
           if (!addedPositions.has(baseRank)) {
             variants.push(baseRank);
             addedPositions.add(baseRank);
@@ -1574,7 +1603,7 @@ export function NewPlanDialog({ open, onOpenChange, editPlan }: NewPlanDialogPro
     });
     
     return variants;
-  }, [companyRanks, selectedRanks, selectedVessels.length, vesselSpecificRanks.length, vesselValidPositions, vesselBaseRanksWithDirectSlots]);
+  }, [companyRanks, selectedRanks, selectedVessels.length, vesselValidPositions]);
 
   // Use manually managed state if user has modified it, otherwise use auto-computed variants
   const selectedRoleVariants = hasManualVariants 
