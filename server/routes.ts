@@ -8433,8 +8433,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Recruitment candidate not found" });
       }
       res.json(candidate);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update recruitment candidate" });
+    } catch (error: any) {
+      console.error('Error updating recruitment candidate:', error);
+      console.error('Error details:', error.message || error);
+      res.status(500).json({ 
+        error: "Failed to update recruitment candidate",
+        message: error.message || 'Unknown error'
+      });
     }
   });
 
