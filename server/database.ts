@@ -1593,6 +1593,12 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  async getAllRecruitmentCandidatesForFileNo(): Promise<RecruitmentCandidate[]> {
+    // Return ALL candidates including soft-deleted ones for file number generation
+    // This ensures we never reuse a file number even after deletion
+    return await this.db.select().from(recruitmentCandidates);
+  }
+
   async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
     const results = await this.db.select().from(recruitmentCandidates).where(
       and(

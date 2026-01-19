@@ -870,6 +870,7 @@ export interface IStorage {
   submitAppraisalStage(id: number, stage: 'stage1' | 'stage2' | 'stage3', data: any, submittedBy: string): Promise<AppraisalResult | undefined>;
   // Recruitment Candidates
   getRecruitmentCandidates(): Promise<RecruitmentCandidate[]>;
+  getAllRecruitmentCandidatesForFileNo(): Promise<RecruitmentCandidate[]>;
   getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined>;
   getRecruitmentCandidatesByStatus(status: string): Promise<RecruitmentCandidate[]>;
   createRecruitmentCandidate(candidate: InsertRecruitmentCandidate): Promise<RecruitmentCandidate>;
@@ -3139,6 +3140,11 @@ export class MemStorage implements IStorage {
 
   // Recruitment Candidates Methods
   async getRecruitmentCandidates(): Promise<RecruitmentCandidate[]> {
+    return Array.from(this.recruitmentCandidates.values());
+  }
+
+  async getAllRecruitmentCandidatesForFileNo(): Promise<RecruitmentCandidate[]> {
+    // Return all candidates including soft-deleted for file number generation
     return Array.from(this.recruitmentCandidates.values());
   }
 
@@ -6657,6 +6663,11 @@ export class PersistentFileStorage implements IStorage {
     return Array.from(this.recruitmentCandidates.values());
   }
 
+  async getAllRecruitmentCandidatesForFileNo(): Promise<RecruitmentCandidate[]> {
+    // Return all candidates including soft-deleted for file number generation
+    return Array.from(this.recruitmentCandidates.values());
+  }
+
   async getRecruitmentCandidate(id: string): Promise<RecruitmentCandidate | undefined> {
     return this.recruitmentCandidates.get(id);
   }
@@ -8277,6 +8288,7 @@ if (databaseUrlForceDisabled) {
       async deleteAppraisalResult(): Promise<any> { this.throwConnectionError(); }
       async submitAppraisalStage(): Promise<any> { this.throwConnectionError(); }
       async getRecruitmentCandidates(): Promise<any> { this.throwConnectionError(); }
+      async getAllRecruitmentCandidatesForFileNo(): Promise<any> { this.throwConnectionError(); }
       async getRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
       async getRecruitmentCandidatesByStatus(): Promise<any> { this.throwConnectionError(); }
       async createRecruitmentCandidate(): Promise<any> { this.throwConnectionError(); }
