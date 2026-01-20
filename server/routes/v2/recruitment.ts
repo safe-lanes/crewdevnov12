@@ -147,86 +147,86 @@ router.delete("/candidates/:id/next-of-kin/:nokId", deleteNextOfKin);
 // Travel Documents
 router.get("/candidates/:recCanUuid/travel-documents", getTravelDocuments);
 router.post("/candidates/:recCanUuid/travel-documents", createTravelDocument);
-router.put("/travel-documents/:id", updateTravelDocument);
-router.delete("/travel-documents/:id", deleteTravelDocument);
+router.put("/candidates/:recCanUuid/travel-documents/:id", updateTravelDocument);
+router.delete("/candidates/:recCanUuid/travel-documents/:id", deleteTravelDocument);
 
 // Visas
 router.get("/candidates/:recCanUuid/visas", getVisas);
 router.post("/candidates/:recCanUuid/visas", createVisa);
-router.put("/visas/:id", updateVisa);
-router.delete("/visas/:id", deleteVisa);
+router.put("/candidates/:recCanUuid/visas/:id", updateVisa);
+router.delete("/candidates/:recCanUuid/visas/:id", deleteVisa);
 
 // COC (Certificates of Competency)
 router.get("/candidates/:recCanUuid/cocs", getCocs);
 router.post("/candidates/:recCanUuid/cocs", createCoc);
-router.put("/cocs/:id", updateCoc);
-router.delete("/cocs/:id", deleteCoc);
+router.put("/candidates/:recCanUuid/cocs/:id", updateCoc);
+router.delete("/candidates/:recCanUuid/cocs/:id", deleteCoc);
 
 // COP (Certificates of Proficiency)
 router.get("/candidates/:recCanUuid/cops", getCops);
 router.post("/candidates/:recCanUuid/cops", createCop);
-router.put("/cops/:id", updateCop);
-router.delete("/cops/:id", deleteCop);
+router.put("/candidates/:recCanUuid/cops/:id", updateCop);
+router.delete("/candidates/:recCanUuid/cops/:id", deleteCop);
 
 // STCW Certificates
 router.get("/candidates/:recCanUuid/stcw-certificates", getStcwCertificates);
 router.post("/candidates/:recCanUuid/stcw-certificates", createStcwCertificate);
-router.put("/stcw-certificates/:id", updateStcwCertificate);
-router.delete("/stcw-certificates/:id", deleteStcwCertificate);
+router.put("/candidates/:recCanUuid/stcw-certificates/:id", updateStcwCertificate);
+router.delete("/candidates/:recCanUuid/stcw-certificates/:id", deleteStcwCertificate);
 
 // Flag Endorsements
 router.get("/candidates/:recCanUuid/flag-endorsements", getFlagEndorsements);
 router.post("/candidates/:recCanUuid/flag-endorsements", createFlagEndorsement);
-router.put("/flag-endorsements/:id", updateFlagEndorsement);
-router.delete("/flag-endorsements/:id", deleteFlagEndorsement);
+router.put("/candidates/:recCanUuid/flag-endorsements/:id", updateFlagEndorsement);
+router.delete("/candidates/:recCanUuid/flag-endorsements/:id", deleteFlagEndorsement);
 
 // Medical Certificates
 router.get("/candidates/:recCanUuid/medical-certificates", getMedicalCertificates);
 router.post("/candidates/:recCanUuid/medical-certificates", createMedicalCertificate);
-router.put("/medical-certificates/:id", updateMedicalCertificate);
-router.delete("/medical-certificates/:id", deleteMedicalCertificate);
+router.put("/candidates/:recCanUuid/medical-certificates/:id", updateMedicalCertificate);
+router.delete("/candidates/:recCanUuid/medical-certificates/:id", deleteMedicalCertificate);
 
 // Vaccinations
 router.get("/candidates/:recCanUuid/vaccinations", getVaccinations);
 router.post("/candidates/:recCanUuid/vaccinations", createVaccination);
-router.put("/vaccinations/:id", updateVaccination);
-router.delete("/vaccinations/:id", deleteVaccination);
+router.put("/candidates/:recCanUuid/vaccinations/:id", updateVaccination);
+router.delete("/candidates/:recCanUuid/vaccinations/:id", deleteVaccination);
 
 // Training Certificates
 router.get("/candidates/:recCanUuid/training-certificates", getTrainingCertificates);
 router.post("/candidates/:recCanUuid/training-certificates", createTrainingCertificate);
-router.put("/training-certificates/:id", updateTrainingCertificate);
-router.delete("/training-certificates/:id", deleteTrainingCertificate);
+router.put("/candidates/:recCanUuid/training-certificates/:id", updateTrainingCertificate);
+router.delete("/candidates/:recCanUuid/training-certificates/:id", deleteTrainingCertificate);
 
 // Education
 router.get("/candidates/:recCanUuid/education", getEducation);
 router.post("/candidates/:recCanUuid/education", createEducation);
-router.put("/education/:id", updateEducation);
-router.delete("/education/:id", deleteEducation);
+router.put("/candidates/:recCanUuid/education/:id", updateEducation);
+router.delete("/candidates/:recCanUuid/education/:id", deleteEducation);
 
 // Sea Service Internal
 router.get("/candidates/:recCanUuid/sea-service-internal", getSeaServiceInternal);
 router.post("/candidates/:recCanUuid/sea-service-internal", createSeaServiceInternal);
-router.put("/sea-service-internal/:id", updateSeaServiceInternal);
-router.delete("/sea-service-internal/:id", deleteSeaServiceInternal);
+router.put("/candidates/:recCanUuid/sea-service-internal/:id", updateSeaServiceInternal);
+router.delete("/candidates/:recCanUuid/sea-service-internal/:id", deleteSeaServiceInternal);
 
 // Sea Service External
 router.get("/candidates/:recCanUuid/sea-service-external", getSeaServiceExternal);
 router.post("/candidates/:recCanUuid/sea-service-external", createSeaServiceExternal);
-router.put("/sea-service-external/:id", updateSeaServiceExternal);
-router.delete("/sea-service-external/:id", deleteSeaServiceExternal);
+router.put("/candidates/:recCanUuid/sea-service-external/:id", updateSeaServiceExternal);
+router.delete("/candidates/:recCanUuid/sea-service-external/:id", deleteSeaServiceExternal);
 
 // Licenses
 router.get("/candidates/:recCanUuid/licenses", getLicenses);
 router.post("/candidates/:recCanUuid/licenses", createLicense);
-router.put("/licenses/:id", updateLicense);
-router.delete("/licenses/:id", deleteLicense);
+router.put("/candidates/:recCanUuid/licenses/:id", updateLicense);
+router.delete("/candidates/:recCanUuid/licenses/:id", deleteLicense);
 
 // Document Attachments
 router.get("/candidates/:recCanUuid/document-attachments", getDocumentAttachments);
-router.get("/document-attachments/:parentTableName/:parentRecordUuid", getDocumentAttachmentsByParent);
+router.get("/candidates/:recCanUuid/document-attachments/:parentTableName/:parentRecordUuid", getDocumentAttachmentsByParent);
 router.post("/candidates/:recCanUuid/document-attachments", createDocumentAttachment);
-router.put("/document-attachments/:id", updateDocumentAttachment);
-router.delete("/document-attachments/:id", deleteDocumentAttachment);
+router.put("/candidates/:recCanUuid/document-attachments/:id", updateDocumentAttachment);
+router.delete("/candidates/:recCanUuid/document-attachments/:id", deleteDocumentAttachment);
 
 export default router;
