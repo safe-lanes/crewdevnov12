@@ -7,6 +7,14 @@ import {
   decisionAuditTrailService,
   approvalWorkflowsService,
 } from "../services/approvalsService";
+import {
+  createHiringDecisionRequestSchema,
+  createOfferLetterRequestSchema,
+  createEmploymentContractRequestSchema,
+  createOnboardingTaskRequestSchema,
+  createDecisionAuditTrailRequestSchema,
+  createApprovalWorkflowRequestSchema,
+} from "@shared/v2/recruitment/types";
 
 // ============================================================================
 // HIRING DECISIONS CONTROLLER
@@ -27,7 +35,11 @@ export const hiringDecisionsController = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await hiringDecisionsService.upsert(recCanUuid, req.body);
+      const parsed = createHiringDecisionRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await hiringDecisionsService.upsert(recCanUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error upserting hiring decision:", error);
@@ -66,7 +78,11 @@ export const offerLettersController = {
   async create(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await offerLettersService.create(recCanUuid, req.body);
+      const parsed = createOfferLetterRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await offerLettersService.create(recCanUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error creating offer letter:", error);
@@ -77,7 +93,11 @@ export const offerLettersController = {
   async update(req: Request, res: Response) {
     try {
       const { offerUuid } = req.params;
-      const result = await offerLettersService.update(offerUuid, req.body);
+      const parsed = createOfferLetterRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await offerLettersService.update(offerUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error updating offer letter:", error);
@@ -116,7 +136,11 @@ export const employmentContractsController = {
   async create(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await employmentContractsService.create(recCanUuid, req.body);
+      const parsed = createEmploymentContractRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await employmentContractsService.create(recCanUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error creating employment contract:", error);
@@ -127,7 +151,11 @@ export const employmentContractsController = {
   async update(req: Request, res: Response) {
     try {
       const { contractUuid } = req.params;
-      const result = await employmentContractsService.update(contractUuid, req.body);
+      const parsed = createEmploymentContractRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await employmentContractsService.update(contractUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error updating employment contract:", error);
@@ -166,7 +194,11 @@ export const onboardingTasksController = {
   async create(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await onboardingTasksService.create(recCanUuid, req.body);
+      const parsed = createOnboardingTaskRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await onboardingTasksService.create(recCanUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error creating onboarding task:", error);
@@ -177,7 +209,11 @@ export const onboardingTasksController = {
   async update(req: Request, res: Response) {
     try {
       const { taskUuid } = req.params;
-      const result = await onboardingTasksService.update(taskUuid, req.body);
+      const parsed = createOnboardingTaskRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await onboardingTasksService.update(taskUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error updating onboarding task:", error);
@@ -216,7 +252,11 @@ export const decisionAuditTrailController = {
   async create(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await decisionAuditTrailService.create(recCanUuid, req.body);
+      const parsed = createDecisionAuditTrailRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await decisionAuditTrailService.create(recCanUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error creating audit trail entry:", error);
@@ -255,7 +295,11 @@ export const approvalWorkflowsController = {
   async create(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await approvalWorkflowsService.create(recCanUuid, req.body);
+      const parsed = createApprovalWorkflowRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await approvalWorkflowsService.create(recCanUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error creating approval workflow:", error);
@@ -266,7 +310,11 @@ export const approvalWorkflowsController = {
   async update(req: Request, res: Response) {
     try {
       const { workflowUuid } = req.params;
-      const result = await approvalWorkflowsService.update(workflowUuid, req.body);
+      const parsed = createApprovalWorkflowRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Validation failed", details: parsed.error.issues });
+      }
+      const result = await approvalWorkflowsService.update(workflowUuid, parsed.data);
       res.json(result);
     } catch (error) {
       console.error("Error updating approval workflow:", error);
