@@ -469,3 +469,19 @@ export type UpdateChildRequest = z.infer<typeof updateChildRequestSchema>;
 export type CreateNextOfKinRequest = z.infer<typeof createNextOfKinRequestSchema>;
 export type UpdateNextOfKinRequest = z.infer<typeof updateNextOfKinRequestSchema>;
 export type AddVesselTypeAppliedRequest = z.infer<typeof addVesselTypeAppliedRequestSchema>;
+
+// Phase 2: Documents & Certificates Request Types
+export type CreateTravelDocumentRequest = z.infer<typeof createTravelDocumentRequestSchema>;
+export type CreateVisaRequest = z.infer<typeof createVisaRequestSchema>;
+export type CreateCocRequest = z.infer<typeof createCocRequestSchema>;
+export type CreateCopRequest = z.infer<typeof createCopRequestSchema>;
+export type CreateStcwCertificateRequest = z.infer<typeof createStcwCertificateRequestSchema>;
+export type CreateFlagEndorsementRequest = z.infer<typeof createFlagEndorsementRequestSchema>;
+export type CreateMedicalCertificateRequest = z.infer<typeof createMedicalCertificateRequestSchema>;
+export type CreateVaccinationRequest = z.infer<typeof createVaccinationRequestSchema>;
+export type CreateTrainingCertificateRequest = z.infer<typeof createTrainingCertificateRequestSchema>;
+export type CreateEducationRequest = z.infer<typeof createEducationRequestSchema>;
+export type CreateSeaServiceInternalRequest = z.infer<typeof createSeaServiceInternalRequestSchema>;
+export type CreateSeaServiceExternalRequest = z.infer<typeof createSeaServiceExternalRequestSchema>;
+export type CreateLicenseRequest = z.infer<typeof createLicenseRequestSchema>;
+export type CreateDocumentAttachmentRequest = z.infer<typeof createDocumentAttachmentRequestSchema>;
