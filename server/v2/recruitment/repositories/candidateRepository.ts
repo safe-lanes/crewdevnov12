@@ -1,7 +1,7 @@
 import { eq, and } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
-  recruitmentCandidates,
+  recruitmentCandidatesV2,
   candVesselTypesApplied,
 } from "../../../../shared/v2/recruitment/schema";
 import type {
@@ -16,19 +16,19 @@ export class CandidateRepository {
     const db = getDb();
     return db
       .select()
-      .from(recruitmentCandidates)
-      .where(eq(recruitmentCandidates.isDeleted, false));
+      .from(recruitmentCandidatesV2)
+      .where(eq(recruitmentCandidatesV2.isDeleted, false));
   }
 
-  async findById(id: string): Promise<RecruitmentCandidate | undefined> {
+  async findById(id: number): Promise<RecruitmentCandidate | undefined> {
     const db = getDb();
     const results = await db
       .select()
-      .from(recruitmentCandidates)
+      .from(recruitmentCandidatesV2)
       .where(
         and(
-          eq(recruitmentCandidates.id, id),
-          eq(recruitmentCandidates.isDeleted, false)
+          eq(recruitmentCandidatesV2.id, id),
+          eq(recruitmentCandidatesV2.isDeleted, false)
         )
       );
     return results[0];
@@ -38,11 +38,11 @@ export class CandidateRepository {
     const db = getDb();
     const results = await db
       .select()
-      .from(recruitmentCandidates)
+      .from(recruitmentCandidatesV2)
       .where(
         and(
-          eq(recruitmentCandidates.recCanUuid, recCanUuid),
-          eq(recruitmentCandidates.isDeleted, false)
+          eq(recruitmentCandidatesV2.recCanUuid, recCanUuid),
+          eq(recruitmentCandidatesV2.isDeleted, false)
         )
       );
     return results[0];
@@ -51,21 +51,21 @@ export class CandidateRepository {
   async create(data: InsertCandidate): Promise<RecruitmentCandidate> {
     const db = getDb();
     const results = await db
-      .insert(recruitmentCandidates)
+      .insert(recruitmentCandidatesV2)
       .values(data)
       .returning();
     return results[0];
   }
 
   async update(
-    id: string,
+    id: number,
     data: Partial<InsertCandidate>
   ): Promise<RecruitmentCandidate | undefined> {
     const db = getDb();
     const results = await db
-      .update(recruitmentCandidates)
+      .update(recruitmentCandidatesV2)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(recruitmentCandidates.id, id))
+      .where(eq(recruitmentCandidatesV2.id, id))
       .returning();
     return results[0];
   }
@@ -76,19 +76,19 @@ export class CandidateRepository {
   ): Promise<RecruitmentCandidate | undefined> {
     const db = getDb();
     const results = await db
-      .update(recruitmentCandidates)
+      .update(recruitmentCandidatesV2)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(recruitmentCandidates.recCanUuid, recCanUuid))
+      .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid))
       .returning();
     return results[0];
   }
 
-  async softDelete(id: string): Promise<boolean> {
+  async softDelete(id: number): Promise<boolean> {
     const db = getDb();
     const results = await db
-      .update(recruitmentCandidates)
+      .update(recruitmentCandidatesV2)
       .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(recruitmentCandidates.id, id))
+      .where(eq(recruitmentCandidatesV2.id, id))
       .returning();
     return results.length > 0;
   }
@@ -96,9 +96,9 @@ export class CandidateRepository {
   async softDeleteByUuid(recCanUuid: string): Promise<boolean> {
     const db = getDb();
     const results = await db
-      .update(recruitmentCandidates)
+      .update(recruitmentCandidatesV2)
       .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(recruitmentCandidates.recCanUuid, recCanUuid))
+      .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid))
       .returning();
     return results.length > 0;
   }

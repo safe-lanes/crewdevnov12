@@ -29,7 +29,7 @@ export class CandidateService {
     return candidateRepository.findAll();
   }
 
-  async getCandidateById(id: string): Promise<RecruitmentCandidate | undefined> {
+  async getCandidateById(id: number): Promise<RecruitmentCandidate | undefined> {
     return candidateRepository.findById(id);
   }
 
@@ -41,11 +41,8 @@ export class CandidateService {
     data: CreateCandidateRequest,
     createdByUuid?: string
   ): Promise<RecruitmentCandidate> {
-    const now = new Date();
-    const id = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${Date.now()}`;
     const recCanUuid = uuidv4();
     return candidateRepository.create({
-      id,
       recCanUuid,
       ...data,
       createdByUuid,
@@ -54,7 +51,7 @@ export class CandidateService {
   }
 
   async updateCandidate(
-    id: string,
+    id: number,
     data: Partial<CreateCandidateRequest>,
     updatedByUuid?: string
   ): Promise<RecruitmentCandidate | undefined> {
@@ -75,7 +72,7 @@ export class CandidateService {
     });
   }
 
-  async deleteCandidate(id: string): Promise<boolean> {
+  async deleteCandidate(id: number): Promise<boolean> {
     return candidateRepository.softDelete(id);
   }
 

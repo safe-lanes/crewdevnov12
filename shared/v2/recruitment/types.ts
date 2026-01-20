@@ -1,7 +1,7 @@
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import {
-  recruitmentCandidates,
+  recruitmentCandidatesV2,
   candVesselTypesApplied,
   candPersonalDetails,
   candAddresses,
@@ -63,7 +63,7 @@ import {
 // CANDIDATE CORE - INSERT SCHEMAS
 // ============================================================================
 
-export const insertCandidateSchema = createInsertSchema(recruitmentCandidates).omit({
+export const insertCandidateSchema = createInsertSchema(recruitmentCandidatesV2).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -443,7 +443,7 @@ export const insertAssignedGroupSchema = createInsertSchema(candAssignedGroups).
 // SELECT TYPES
 // ============================================================================
 
-export type RecruitmentCandidate = typeof recruitmentCandidates.$inferSelect;
+export type RecruitmentCandidate = typeof recruitmentCandidatesV2.$inferSelect;
 export type CandVesselTypeApplied = typeof candVesselTypesApplied.$inferSelect;
 export type CandPersonalDetails = typeof candPersonalDetails.$inferSelect;
 export type CandAddress = typeof candAddresses.$inferSelect;

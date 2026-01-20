@@ -14,7 +14,10 @@ export async function getAllCandidates(req: Request, res: Response) {
 
 export async function getCandidateById(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid candidate ID" });
+    }
     const candidate = await candidateService.getCandidateById(id);
     if (!candidate) {
       return res.status(404).json({ error: "Candidate not found" });
@@ -56,7 +59,10 @@ export async function createCandidate(req: Request, res: Response) {
 
 export async function updateCandidate(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid candidate ID" });
+    }
     const candidate = await candidateService.updateCandidate(id, req.body);
     if (!candidate) {
       return res.status(404).json({ error: "Candidate not found" });
@@ -84,7 +90,10 @@ export async function updateCandidateByUuid(req: Request, res: Response) {
 
 export async function deleteCandidate(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid candidate ID" });
+    }
     const deleted = await candidateService.deleteCandidate(id);
     res.json({ success: deleted });
   } catch (error) {

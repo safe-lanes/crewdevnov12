@@ -14,8 +14,8 @@ export const auditColumns = {
 // CANDIDATE CORE TABLES (7 tables)
 // ============================================================================
 
-export const recruitmentCandidates = pgTable("recruitment_candidates", {
-  id: text("id").primaryKey(),
+export const recruitmentCandidatesV2 = pgTable("recruitment_candidates_v2", {
+  id: serial("id").primaryKey(),
   recCanUuid: text("rec_can_uuid").unique().notNull(),
   fileNo: text("file_no"),
   firstName: text("first_name"),
@@ -23,13 +23,10 @@ export const recruitmentCandidates = pgTable("recruitment_candidates", {
   familyName: text("family_name"),
   gender: text("gender"),
   dob: text("dob"),
-  nationality: text("nationality"),
   nationalityUuid: text("nationality_uuid"),
   presentRank: text("present_rank"),
   rankAppliedFor: text("rank_applied_for"),
-  vesselType: text("vessel_type"),
   status: text("status").default("Draft"),
-  applicationData: text("application_data"),
   uploadedPhoto: text("uploaded_photo"),
   ...auditColumns,
 });
