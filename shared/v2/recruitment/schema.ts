@@ -576,3 +576,761 @@ export const candDocumentAttachments = pgTable(
     index("idx_attach_parent_record").on(t.parentRecordUuid),
   ]
 );
+
+// ============================================================================
+// PHASE 3: SCREENING B1-B8 (29 Tables)
+// ============================================================================
+
+// ============================================================================
+// B1: GENERAL SCREENING (4 tables)
+// ============================================================================
+
+// TABLE 22: SCREENING GENERAL INFO (One-to-One)
+export const screeningGeneralInfo = pgTable(
+  "screening_general_info",
+  {
+    id: serial("id").primaryKey(),
+    sgiUuid: text("sgi_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").unique().notNull(),
+    availabilityDate: text("availability_date"),
+    noticePeriodDays: integer("notice_period_days"),
+    expectedSalaryUsd: text("expected_salary_usd"),
+    contractDurationPreference: text("contract_duration_preference"),
+    willingToRelocate: boolean("willing_to_relocate"),
+    preferredVesselTypes: text("preferred_vessel_types"),
+    preferredTradingAreas: text("preferred_trading_areas"),
+    reasonForLeaving: text("reason_for_leaving"),
+    careerObjectives: text("career_objectives"),
+    ...auditColumns,
+  },
+  (t) => [index("idx_sgi_rec_can_uuid").on(t.recCanUuid)]
+);
+
+// TABLE 23: SCREENING AVAILABILITY (One-to-Many)
+export const screeningAvailability = pgTable(
+  "screening_availability",
+  {
+    id: serial("id").primaryKey(),
+    availUuid: text("avail_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    availableFromDate: text("available_from_date"),
+    availableToDate: text("available_to_date"),
+    availabilityType: text("availability_type"), // immediate, after_notice, specific_date
+    remarks: text("remarks"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_avail_rec_can_uuid").on(t.recCanUuid),
+    index("idx_avail_from_date").on(t.availableFromDate),
+  ]
+);
+
+// TABLE 24: SCREENING SALARY HISTORY (One-to-Many)
+export const screeningSalaryHistory = pgTable(
+  "screening_salary_history",
+  {
+    id: serial("id").primaryKey(),
+    salHistUuid: text("sal_hist_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    employerName: text("employer_name"),
+    position: text("position"),
+    salaryAmountUsd: text("salary_amount_usd"),
+    currency: text("currency"),
+    periodFrom: text("period_from"),
+    periodTo: text("period_to"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_sal_hist_rec_can_uuid").on(t.recCanUuid),
+    index("idx_sal_hist_employer").on(t.employerName),
+  ]
+);
+
+// TABLE 25: SCREENING DOCUMENTS CHECKLIST (One-to-One)
+export const screeningDocumentsChecklist = pgTable(
+  "screening_documents_checklist",
+  {
+    id: serial("id").primaryKey(),
+    docCheckUuid: text("doc_check_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").unique().notNull(),
+    passportVerified: boolean("passport_verified").default(false),
+    seamanBookVerified: boolean("seaman_book_verified").default(false),
+    cocVerified: boolean("coc_verified").default(false),
+    stcwVerified: boolean("stcw_verified").default(false),
+    medicalVerified: boolean("medical_verified").default(false),
+    flagEndorsementVerified: boolean("flag_endorsement_verified").default(false),
+    visaVerified: boolean("visa_verified").default(false),
+    checklistCompletedAt: timestamp("checklist_completed_at"),
+    checklistCompletedByUuid: text("checklist_completed_by_uuid"),
+    remarks: text("remarks"),
+    ...auditColumns,
+  },
+  (t) => [index("idx_doc_check_rec_can_uuid").on(t.recCanUuid)]
+);
+
+// ============================================================================
+// B2: SKILLS ASSESSMENT (5 tables)
+// ============================================================================
+
+// TABLE 26: SCREENING TECHNICAL SKILLS (One-to-Many)
+export const screeningTechnicalSkills = pgTable(
+  "screening_technical_skills",
+  {
+    id: serial("id").primaryKey(),
+    techSkillUuid: text("tech_skill_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    skillCategory: text("skill_category"), // navigation, engineering, safety, etc.
+    skillName: text("skill_name"),
+    proficiencyLevel: text("proficiency_level"), // beginner, intermediate, advanced, expert
+    yearsExperience: integer("years_experience"),
+    lastUsedDate: text("last_used_date"),
+    certificationUuid: text("certification_uuid"), // link to training cert if applicable
+    assessedByUuid: text("assessed_by_uuid"),
+    assessedAt: timestamp("assessed_at"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_tech_skill_rec_can_uuid").on(t.recCanUuid),
+    index("idx_tech_skill_category").on(t.skillCategory),
+  ]
+);
+
+// TABLE 27: SCREENING COMPETENCY RATINGS (One-to-Many)
+export const screeningCompetencyRatings = pgTable(
+  "screening_competency_ratings",
+  {
+    id: serial("id").primaryKey(),
+    compRatingUuid: text("comp_rating_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    competencyArea: text("competency_area"), // leadership, teamwork, communication, etc.
+    competencyName: text("competency_name"),
+    rating: integer("rating"), // 1-5 scale
+    ratingDescription: text("rating_description"),
+    evidenceNotes: text("evidence_notes"),
+    ratedByUuid: text("rated_by_uuid"),
+    ratedAt: timestamp("rated_at"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_comp_rating_rec_can_uuid").on(t.recCanUuid),
+    index("idx_comp_rating_area").on(t.competencyArea),
+  ]
+);
+
+// TABLE 28: SCREENING EQUIPMENT EXPERIENCE (One-to-Many)
+export const screeningEquipmentExperience = pgTable(
+  "screening_equipment_experience",
+  {
+    id: serial("id").primaryKey(),
+    equipExpUuid: text("equip_exp_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    equipmentCategory: text("equipment_category"), // navigation, cargo, safety, engine
+    equipmentType: text("equipment_type"),
+    manufacturer: text("manufacturer"),
+    model: text("model"),
+    experienceLevel: text("experience_level"), // familiar, proficient, expert
+    yearsExperience: integer("years_experience"),
+    lastUsedDate: text("last_used_date"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_equip_exp_rec_can_uuid").on(t.recCanUuid),
+    index("idx_equip_exp_category").on(t.equipmentCategory),
+  ]
+);
+
+// TABLE 29: SCREENING LANGUAGE PROFICIENCY (One-to-Many)
+export const screeningLanguageProficiency = pgTable(
+  "screening_language_proficiency",
+  {
+    id: serial("id").primaryKey(),
+    langProfUuid: text("lang_prof_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    languageUuid: text("language_uuid"),
+    languageName: text("language_name"),
+    speakingLevel: text("speaking_level"), // none, basic, conversational, fluent, native
+    readingLevel: text("reading_level"),
+    writingLevel: text("writing_level"),
+    listeningLevel: text("listening_level"),
+    testName: text("test_name"), // TOEFL, IELTS, etc.
+    testScore: text("test_score"),
+    testDate: text("test_date"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_lang_prof_rec_can_uuid").on(t.recCanUuid),
+    index("idx_lang_prof_language").on(t.languageUuid),
+  ]
+);
+
+// TABLE 30: SCREENING PRACTICAL TESTS (One-to-Many)
+export const screeningPracticalTests = pgTable(
+  "screening_practical_tests",
+  {
+    id: serial("id").primaryKey(),
+    practTestUuid: text("pract_test_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    testCategory: text("test_category"), // simulator, hands-on, written
+    testName: text("test_name"),
+    testDescription: text("test_description"),
+    testDate: text("test_date"),
+    testLocation: text("test_location"),
+    maxScore: integer("max_score"),
+    achievedScore: integer("achieved_score"),
+    passScore: integer("pass_score"),
+    result: text("result"), // pass, fail, pending
+    assessorUuid: text("assessor_uuid"),
+    assessorNotes: text("assessor_notes"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_pract_test_rec_can_uuid").on(t.recCanUuid),
+    index("idx_pract_test_category").on(t.testCategory),
+    index("idx_pract_test_result").on(t.result),
+  ]
+);
+
+// ============================================================================
+// B3: INTERVIEW ASSESSMENT (4 tables)
+// ============================================================================
+
+// TABLE 31: SCREENING INTERVIEWS (One-to-Many)
+export const screeningInterviews = pgTable(
+  "screening_interviews",
+  {
+    id: serial("id").primaryKey(),
+    interviewUuid: text("interview_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    interviewType: text("interview_type"), // phone, video, in-person, panel
+    interviewStage: text("interview_stage"), // initial, technical, final
+    scheduledDate: text("scheduled_date"),
+    scheduledTime: text("scheduled_time"),
+    duration: integer("duration"), // minutes
+    location: text("location"),
+    meetingLink: text("meeting_link"),
+    status: text("status"), // scheduled, completed, cancelled, no-show
+    overallRating: integer("overall_rating"), // 1-5
+    recommendation: text("recommendation"), // proceed, hold, reject
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_interview_rec_can_uuid").on(t.recCanUuid),
+    index("idx_interview_status").on(t.status),
+    index("idx_interview_date").on(t.scheduledDate),
+  ]
+);
+
+// TABLE 32: SCREENING INTERVIEW PANELISTS (One-to-Many, child of interviews)
+export const screeningInterviewPanelists = pgTable(
+  "screening_interview_panelists",
+  {
+    id: serial("id").primaryKey(),
+    panelistUuid: text("panelist_uuid").unique().notNull(),
+    interviewUuid: text("interview_uuid").notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    panelistUserUuid: text("panelist_user_uuid"),
+    panelistName: text("panelist_name"),
+    panelistRole: text("panelist_role"), // lead, technical, hr
+    individualRating: integer("individual_rating"),
+    feedback: text("feedback"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_panelist_interview_uuid").on(t.interviewUuid),
+    index("idx_panelist_rec_can_uuid").on(t.recCanUuid),
+    index("idx_panelist_user").on(t.panelistUserUuid),
+  ]
+);
+
+// TABLE 33: SCREENING INTERVIEW QUESTIONS (One-to-Many, child of interviews)
+export const screeningInterviewQuestions = pgTable(
+  "screening_interview_questions",
+  {
+    id: serial("id").primaryKey(),
+    intQuestUuid: text("int_quest_uuid").unique().notNull(),
+    interviewUuid: text("interview_uuid").notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    questionCategory: text("question_category"), // technical, behavioral, situational
+    questionText: text("question_text"),
+    expectedAnswer: text("expected_answer"),
+    candidateResponse: text("candidate_response"),
+    rating: integer("rating"),
+    notes: text("notes"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_int_quest_interview_uuid").on(t.interviewUuid),
+    index("idx_int_quest_rec_can_uuid").on(t.recCanUuid),
+    index("idx_int_quest_category").on(t.questionCategory),
+  ]
+);
+
+// TABLE 34: SCREENING INTERVIEW NOTES (One-to-Many)
+export const screeningInterviewNotes = pgTable(
+  "screening_interview_notes",
+  {
+    id: serial("id").primaryKey(),
+    intNoteUuid: text("int_note_uuid").unique().notNull(),
+    interviewUuid: text("interview_uuid").notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    noteType: text("note_type"), // observation, concern, strength, follow-up
+    noteContent: text("note_content"),
+    authorUuid: text("author_uuid"),
+    authorName: text("author_name"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_int_note_interview_uuid").on(t.interviewUuid),
+    index("idx_int_note_rec_can_uuid").on(t.recCanUuid),
+  ]
+);
+
+// ============================================================================
+// B4: REFERENCE CHECKS (4 tables)
+// ============================================================================
+
+// TABLE 35: SCREENING EMPLOYER REFERENCES (One-to-Many)
+export const screeningEmployerReferences = pgTable(
+  "screening_employer_references",
+  {
+    id: serial("id").primaryKey(),
+    empRefUuid: text("emp_ref_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    companyName: text("company_name"),
+    contactName: text("contact_name"),
+    contactPosition: text("contact_position"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    relationshipToCandidate: text("relationship_to_candidate"),
+    employmentPeriodFrom: text("employment_period_from"),
+    employmentPeriodTo: text("employment_period_to"),
+    positionHeld: text("position_held"),
+    referenceStatus: text("reference_status"), // pending, contacted, completed, unable
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_emp_ref_rec_can_uuid").on(t.recCanUuid),
+    index("idx_emp_ref_status").on(t.referenceStatus),
+  ]
+);
+
+// TABLE 36: SCREENING REFERENCE RESPONSES (One-to-Many, child of employer refs)
+export const screeningReferenceResponses = pgTable(
+  "screening_reference_responses",
+  {
+    id: serial("id").primaryKey(),
+    refRespUuid: text("ref_resp_uuid").unique().notNull(),
+    empRefUuid: text("emp_ref_uuid").notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    questionText: text("question_text"),
+    responseText: text("response_text"),
+    rating: integer("rating"),
+    contactedDate: text("contacted_date"),
+    contactedByUuid: text("contacted_by_uuid"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_ref_resp_emp_ref_uuid").on(t.empRefUuid),
+    index("idx_ref_resp_rec_can_uuid").on(t.recCanUuid),
+  ]
+);
+
+// TABLE 37: SCREENING PERSONAL REFERENCES (One-to-Many)
+export const screeningPersonalReferences = pgTable(
+  "screening_personal_references",
+  {
+    id: serial("id").primaryKey(),
+    persRefUuid: text("pers_ref_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    referenceName: text("reference_name"),
+    relationship: text("relationship"),
+    occupation: text("occupation"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    yearsKnown: integer("years_known"),
+    referenceStatus: text("reference_status"), // pending, contacted, completed, unable
+    referenceNotes: text("reference_notes"),
+    contactedDate: text("contacted_date"),
+    contactedByUuid: text("contacted_by_uuid"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_pers_ref_rec_can_uuid").on(t.recCanUuid),
+    index("idx_pers_ref_status").on(t.referenceStatus),
+  ]
+);
+
+// TABLE 38: SCREENING SEA SERVICE VERIFICATION (One-to-Many)
+export const screeningSeaServiceVerification = pgTable(
+  "screening_sea_service_verification",
+  {
+    id: serial("id").primaryKey(),
+    ssVerifUuid: text("ss_verif_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    seaServiceUuid: text("sea_service_uuid"), // link to cand_sea_service_internal or external
+    seaServiceType: text("sea_service_type"), // internal, external
+    verificationStatus: text("verification_status"), // pending, verified, discrepancy, unable
+    verifiedByUuid: text("verified_by_uuid"),
+    verifiedAt: timestamp("verified_at"),
+    companyContactName: text("company_contact_name"),
+    companyContactEmail: text("company_contact_email"),
+    discrepancyNotes: text("discrepancy_notes"),
+    verificationNotes: text("verification_notes"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_ss_verif_rec_can_uuid").on(t.recCanUuid),
+    index("idx_ss_verif_status").on(t.verificationStatus),
+  ]
+);
+
+// ============================================================================
+// B5: BACKGROUND VERIFICATION (4 tables)
+// ============================================================================
+
+// TABLE 39: SCREENING BACKGROUND CHECKS (One-to-One)
+export const screeningBackgroundChecks = pgTable(
+  "screening_background_checks",
+  {
+    id: serial("id").primaryKey(),
+    bgCheckUuid: text("bg_check_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").unique().notNull(),
+    overallStatus: text("overall_status"), // pending, in_progress, passed, failed, incomplete
+    initiatedDate: text("initiated_date"),
+    completedDate: text("completed_date"),
+    initiatedByUuid: text("initiated_by_uuid"),
+    vendorName: text("vendor_name"), // third-party verification agency
+    vendorReferenceNumber: text("vendor_reference_number"),
+    expiryDate: text("expiry_date"),
+    remarks: text("remarks"),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_bg_check_rec_can_uuid").on(t.recCanUuid),
+    index("idx_bg_check_status").on(t.overallStatus),
+  ]
+);
+
+// TABLE 40: SCREENING CRIMINAL RECORDS (One-to-Many)
+export const screeningCriminalRecords = pgTable(
+  "screening_criminal_records",
+  {
+    id: serial("id").primaryKey(),
+    crimRecUuid: text("crim_rec_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    countryUuid: text("country_uuid"),
+    countryName: text("country_name"),
+    checkType: text("check_type"), // national, local, international
+    checkDate: text("check_date"),
+    result: text("result"), // clear, record_found, pending, unable
+    recordDetails: text("record_details"),
+    certificateNumber: text("certificate_number"),
+    issuingAuthority: text("issuing_authority"),
+    expiryDate: text("expiry_date"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_crim_rec_rec_can_uuid").on(t.recCanUuid),
+    index("idx_crim_rec_country").on(t.countryUuid),
+    index("idx_crim_rec_result").on(t.result),
+  ]
+);
+
+// TABLE 41: SCREENING EMPLOYMENT VERIFICATION (One-to-Many)
+export const screeningEmploymentVerification = pgTable(
+  "screening_employment_verification",
+  {
+    id: serial("id").primaryKey(),
+    empVerifUuid: text("emp_verif_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    employerName: text("employer_name"),
+    positionClaimed: text("position_claimed"),
+    positionVerified: text("position_verified"),
+    periodClaimedFrom: text("period_claimed_from"),
+    periodClaimedTo: text("period_claimed_to"),
+    periodVerifiedFrom: text("period_verified_from"),
+    periodVerifiedTo: text("period_verified_to"),
+    salaryVerified: boolean("salary_verified"),
+    verificationStatus: text("verification_status"), // pending, verified, discrepancy, unable
+    verifiedByUuid: text("verified_by_uuid"),
+    verifiedAt: timestamp("verified_at"),
+    discrepancyNotes: text("discrepancy_notes"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_emp_verif_rec_can_uuid").on(t.recCanUuid),
+    index("idx_emp_verif_status").on(t.verificationStatus),
+  ]
+);
+
+// TABLE 42: SCREENING EDUCATION VERIFICATION (One-to-Many)
+export const screeningEducationVerification = pgTable(
+  "screening_education_verification",
+  {
+    id: serial("id").primaryKey(),
+    eduVerifUuid: text("edu_verif_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    educationUuid: text("education_uuid"), // link to cand_education
+    institutionName: text("institution_name"),
+    degreeClaimed: text("degree_claimed"),
+    degreeVerified: text("degree_verified"),
+    yearClaimedFrom: text("year_claimed_from"),
+    yearClaimedTo: text("year_claimed_to"),
+    yearVerifiedFrom: text("year_verified_from"),
+    yearVerifiedTo: text("year_verified_to"),
+    verificationStatus: text("verification_status"), // pending, verified, discrepancy, unable
+    verifiedByUuid: text("verified_by_uuid"),
+    verifiedAt: timestamp("verified_at"),
+    discrepancyNotes: text("discrepancy_notes"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_edu_verif_rec_can_uuid").on(t.recCanUuid),
+    index("idx_edu_verif_education").on(t.educationUuid),
+    index("idx_edu_verif_status").on(t.verificationStatus),
+  ]
+);
+
+// ============================================================================
+// B6: PSYCHOLOGICAL ASSESSMENT (3 tables)
+// ============================================================================
+
+// TABLE 43: SCREENING PSYCHOMETRIC TESTS (One-to-Many)
+export const screeningPsychometricTests = pgTable(
+  "screening_psychometric_tests",
+  {
+    id: serial("id").primaryKey(),
+    psychTestUuid: text("psych_test_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    testName: text("test_name"),
+    testType: text("test_type"), // personality, aptitude, cognitive, emotional_intelligence
+    testProvider: text("test_provider"),
+    testDate: text("test_date"),
+    expiryDate: text("expiry_date"),
+    overallScore: text("overall_score"),
+    percentile: integer("percentile"),
+    result: text("result"), // suitable, borderline, not_suitable
+    administeredByUuid: text("administered_by_uuid"),
+    remarks: text("remarks"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_psych_test_rec_can_uuid").on(t.recCanUuid),
+    index("idx_psych_test_type").on(t.testType),
+    index("idx_psych_test_result").on(t.result),
+  ]
+);
+
+// TABLE 44: SCREENING PSYCHOMETRIC DIMENSIONS (One-to-Many, child of psychometric tests)
+export const screeningPsychometricDimensions = pgTable(
+  "screening_psychometric_dimensions",
+  {
+    id: serial("id").primaryKey(),
+    psychDimUuid: text("psych_dim_uuid").unique().notNull(),
+    psychTestUuid: text("psych_test_uuid").notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    dimensionName: text("dimension_name"), // stress_tolerance, decision_making, teamwork
+    dimensionScore: text("dimension_score"),
+    percentile: integer("percentile"),
+    normalRange: text("normal_range"),
+    interpretation: text("interpretation"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_psych_dim_psych_test_uuid").on(t.psychTestUuid),
+    index("idx_psych_dim_rec_can_uuid").on(t.recCanUuid),
+  ]
+);
+
+// TABLE 45: SCREENING BEHAVIORAL ASSESSMENTS (One-to-Many)
+export const screeningBehavioralAssessments = pgTable(
+  "screening_behavioral_assessments",
+  {
+    id: serial("id").primaryKey(),
+    behAssessUuid: text("beh_assess_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    assessmentType: text("assessment_type"), // DISC, MBTI, Big5, custom
+    assessmentDate: text("assessment_date"),
+    assessorUuid: text("assessor_uuid"),
+    assessorName: text("assessor_name"),
+    primaryStyle: text("primary_style"),
+    secondaryStyle: text("secondary_style"),
+    strengthsIdentified: text("strengths_identified"),
+    areasOfDevelopment: text("areas_of_development"),
+    teamFitScore: integer("team_fit_score"),
+    leadershipPotential: text("leadership_potential"),
+    overallNotes: text("overall_notes"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_beh_assess_rec_can_uuid").on(t.recCanUuid),
+    index("idx_beh_assess_type").on(t.assessmentType),
+  ]
+);
+
+// ============================================================================
+// B7: MEDICAL SCREENING (3 tables)
+// ============================================================================
+
+// TABLE 46: SCREENING PEME (Pre-Employment Medical Examination) (One-to-Many)
+export const screeningPeme = pgTable(
+  "screening_peme",
+  {
+    id: serial("id").primaryKey(),
+    pemeUuid: text("peme_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    examDate: text("exam_date"),
+    clinicName: text("clinic_name"),
+    clinicLocation: text("clinic_location"),
+    examType: text("exam_type"), // initial, renewal, special
+    overallResult: text("overall_result"), // fit, unfit, fit_with_restrictions, pending
+    restrictions: text("restrictions"),
+    validUntil: text("valid_until"),
+    examinerName: text("examiner_name"),
+    examinerLicense: text("examiner_license"),
+    certificateNumber: text("certificate_number"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_peme_rec_can_uuid").on(t.recCanUuid),
+    index("idx_peme_result").on(t.overallResult),
+    index("idx_peme_valid_until").on(t.validUntil),
+  ]
+);
+
+// TABLE 47: SCREENING PEME RESULTS (One-to-Many, child of PEME)
+export const screeningPemeResults = pgTable(
+  "screening_peme_results",
+  {
+    id: serial("id").primaryKey(),
+    pemeResultUuid: text("peme_result_uuid").unique().notNull(),
+    pemeUuid: text("peme_uuid").notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    testCategory: text("test_category"), // vision, hearing, cardiovascular, respiratory, etc.
+    testName: text("test_name"),
+    testResult: text("test_result"),
+    normalRange: text("normal_range"),
+    status: text("status"), // normal, abnormal, borderline
+    remarks: text("remarks"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_peme_result_peme_uuid").on(t.pemeUuid),
+    index("idx_peme_result_rec_can_uuid").on(t.recCanUuid),
+    index("idx_peme_result_status").on(t.status),
+  ]
+);
+
+// TABLE 48: SCREENING DRUG ALCOHOL TESTS (One-to-Many)
+export const screeningDrugAlcoholTests = pgTable(
+  "screening_drug_alcohol_tests",
+  {
+    id: serial("id").primaryKey(),
+    daTestUuid: text("da_test_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    testType: text("test_type"), // pre_employment, random, post_incident
+    testDate: text("test_date"),
+    testLocation: text("test_location"),
+    collectorName: text("collector_name"),
+    specimenType: text("specimen_type"), // urine, blood, breath, hair
+    chainOfCustodyNumber: text("chain_of_custody_number"),
+    laboratoryName: text("laboratory_name"),
+    result: text("result"), // negative, positive, inconclusive
+    substancesTestedFor: text("substances_tested_for"),
+    substancesDetected: text("substances_detected"),
+    confirmedByMro: boolean("confirmed_by_mro"), // Medical Review Officer
+    mroName: text("mro_name"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_da_test_rec_can_uuid").on(t.recCanUuid),
+    index("idx_da_test_type").on(t.testType),
+    index("idx_da_test_result").on(t.result),
+  ]
+);
+
+// ============================================================================
+// B8: FINAL EVALUATION (2 tables)
+// ============================================================================
+
+// TABLE 49: SCREENING FINAL EVALUATION (One-to-One)
+export const screeningFinalEvaluation = pgTable(
+  "screening_final_evaluation",
+  {
+    id: serial("id").primaryKey(),
+    finalEvalUuid: text("final_eval_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").unique().notNull(),
+    evaluationDate: text("evaluation_date"),
+    evaluatorUuid: text("evaluator_uuid"),
+    evaluatorName: text("evaluator_name"),
+    technicalScore: integer("technical_score"),
+    interviewScore: integer("interview_score"),
+    referenceScore: integer("reference_score"),
+    backgroundScore: integer("background_score"),
+    medicalScore: integer("medical_score"),
+    overallScore: integer("overall_score"),
+    overallRating: text("overall_rating"), // excellent, good, acceptable, below_standard
+    hiringRecommendation: text("hiring_recommendation"), // hire, conditional_hire, hold, reject
+    recommendedRank: text("recommended_rank"),
+    recommendedVesselType: text("recommended_vessel_type"),
+    startDateRecommended: text("start_date_recommended"),
+    salaryRecommended: text("salary_recommended"),
+    conditionsForHire: text("conditions_for_hire"),
+    evaluationNotes: text("evaluation_notes"),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_final_eval_rec_can_uuid").on(t.recCanUuid),
+    index("idx_final_eval_recommendation").on(t.hiringRecommendation),
+    index("idx_final_eval_rating").on(t.overallRating),
+  ]
+);
+
+// TABLE 50: SCREENING EVALUATION APPROVALS (One-to-Many)
+export const screeningEvaluationApprovals = pgTable(
+  "screening_evaluation_approvals",
+  {
+    id: serial("id").primaryKey(),
+    evalApprovalUuid: text("eval_approval_uuid").unique().notNull(),
+    finalEvalUuid: text("final_eval_uuid").notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    approvalLevel: integer("approval_level"), // 1, 2, 3 for different authority levels
+    approverUuid: text("approver_uuid"),
+    approverName: text("approver_name"),
+    approverRole: text("approver_role"),
+    approvalStatus: text("approval_status"), // pending, approved, rejected, deferred
+    approvalDate: text("approval_date"),
+    comments: text("comments"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_eval_approval_final_eval_uuid").on(t.finalEvalUuid),
+    index("idx_eval_approval_rec_can_uuid").on(t.recCanUuid),
+    index("idx_eval_approval_status").on(t.approvalStatus),
+  ]
+);

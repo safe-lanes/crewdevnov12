@@ -456,6 +456,371 @@ export const createDocumentAttachmentRequestSchema = z.object({
 });
 
 // ============================================================================
+// PHASE 3: SCREENING B1-B8 SCHEMAS (29 tables)
+// ============================================================================
+
+// B1: GENERAL SCREENING
+export const createScreeningGeneralInfoRequestSchema = z.object({
+  availabilityDate: z.string().optional(),
+  noticePeriodDays: z.number().optional(),
+  expectedSalaryUsd: z.string().optional(),
+  contractDurationPreference: z.string().optional(),
+  willingToRelocate: z.boolean().optional(),
+  preferredVesselTypes: z.string().optional(),
+  preferredTradingAreas: z.string().optional(),
+  reasonForLeaving: z.string().optional(),
+  careerObjectives: z.string().optional(),
+});
+
+export const createScreeningAvailabilityRequestSchema = z.object({
+  availableFromDate: z.string().optional(),
+  availableToDate: z.string().optional(),
+  availabilityType: z.string().optional(),
+  remarks: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningSalaryHistoryRequestSchema = z.object({
+  employerName: z.string().optional(),
+  position: z.string().optional(),
+  salaryAmountUsd: z.string().optional(),
+  currency: z.string().optional(),
+  periodFrom: z.string().optional(),
+  periodTo: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningDocumentsChecklistRequestSchema = z.object({
+  passportVerified: z.boolean().optional(),
+  seamanBookVerified: z.boolean().optional(),
+  cocVerified: z.boolean().optional(),
+  stcwVerified: z.boolean().optional(),
+  medicalVerified: z.boolean().optional(),
+  flagEndorsementVerified: z.boolean().optional(),
+  visaVerified: z.boolean().optional(),
+  remarks: z.string().optional(),
+});
+
+// B2: SKILLS ASSESSMENT
+export const createScreeningTechnicalSkillsRequestSchema = z.object({
+  skillCategory: z.string().optional(),
+  skillName: z.string().optional(),
+  proficiencyLevel: z.string().optional(),
+  yearsExperience: z.number().optional(),
+  lastUsedDate: z.string().optional(),
+  certificationUuid: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningCompetencyRatingsRequestSchema = z.object({
+  competencyArea: z.string().optional(),
+  competencyName: z.string().optional(),
+  rating: z.number().optional(),
+  ratingDescription: z.string().optional(),
+  evidenceNotes: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningEquipmentExperienceRequestSchema = z.object({
+  equipmentCategory: z.string().optional(),
+  equipmentType: z.string().optional(),
+  manufacturer: z.string().optional(),
+  model: z.string().optional(),
+  experienceLevel: z.string().optional(),
+  yearsExperience: z.number().optional(),
+  lastUsedDate: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningLanguageProficiencyRequestSchema = z.object({
+  languageUuid: z.string().optional(),
+  languageName: z.string().optional(),
+  speakingLevel: z.string().optional(),
+  readingLevel: z.string().optional(),
+  writingLevel: z.string().optional(),
+  listeningLevel: z.string().optional(),
+  testName: z.string().optional(),
+  testScore: z.string().optional(),
+  testDate: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningPracticalTestsRequestSchema = z.object({
+  testCategory: z.string().optional(),
+  testName: z.string().optional(),
+  testDescription: z.string().optional(),
+  testDate: z.string().optional(),
+  testLocation: z.string().optional(),
+  maxScore: z.number().optional(),
+  achievedScore: z.number().optional(),
+  passScore: z.number().optional(),
+  result: z.string().optional(),
+  assessorUuid: z.string().optional(),
+  assessorNotes: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+// B3: INTERVIEW ASSESSMENT
+export const createScreeningInterviewsRequestSchema = z.object({
+  interviewType: z.string().optional(),
+  interviewStage: z.string().optional(),
+  scheduledDate: z.string().optional(),
+  scheduledTime: z.string().optional(),
+  duration: z.number().optional(),
+  location: z.string().optional(),
+  meetingLink: z.string().optional(),
+  status: z.string().optional(),
+  overallRating: z.number().optional(),
+  recommendation: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningInterviewPanelistsRequestSchema = z.object({
+  interviewUuid: z.string().optional(),
+  panelistUserUuid: z.string().optional(),
+  panelistName: z.string().optional(),
+  panelistRole: z.string().optional(),
+  individualRating: z.number().optional(),
+  feedback: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningInterviewQuestionsRequestSchema = z.object({
+  interviewUuid: z.string().optional(),
+  questionCategory: z.string().optional(),
+  questionText: z.string().optional(),
+  expectedAnswer: z.string().optional(),
+  candidateResponse: z.string().optional(),
+  rating: z.number().optional(),
+  notes: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningInterviewNotesRequestSchema = z.object({
+  interviewUuid: z.string().optional(),
+  noteType: z.string().optional(),
+  noteContent: z.string().optional(),
+  authorUuid: z.string().optional(),
+  authorName: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+// B4: REFERENCE CHECKS
+export const createScreeningEmployerReferencesRequestSchema = z.object({
+  companyName: z.string().optional(),
+  contactName: z.string().optional(),
+  contactPosition: z.string().optional(),
+  contactEmail: z.string().optional(),
+  contactPhone: z.string().optional(),
+  relationshipToCandidate: z.string().optional(),
+  employmentPeriodFrom: z.string().optional(),
+  employmentPeriodTo: z.string().optional(),
+  positionHeld: z.string().optional(),
+  referenceStatus: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningReferenceResponsesRequestSchema = z.object({
+  empRefUuid: z.string().optional(),
+  questionText: z.string().optional(),
+  responseText: z.string().optional(),
+  rating: z.number().optional(),
+  contactedDate: z.string().optional(),
+  contactedByUuid: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningPersonalReferencesRequestSchema = z.object({
+  referenceName: z.string().optional(),
+  relationship: z.string().optional(),
+  occupation: z.string().optional(),
+  contactEmail: z.string().optional(),
+  contactPhone: z.string().optional(),
+  yearsKnown: z.number().optional(),
+  referenceStatus: z.string().optional(),
+  referenceNotes: z.string().optional(),
+  contactedDate: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningSeaServiceVerificationRequestSchema = z.object({
+  seaServiceUuid: z.string().optional(),
+  seaServiceType: z.string().optional(),
+  verificationStatus: z.string().optional(),
+  companyContactName: z.string().optional(),
+  companyContactEmail: z.string().optional(),
+  discrepancyNotes: z.string().optional(),
+  verificationNotes: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+// B5: BACKGROUND VERIFICATION
+export const createScreeningBackgroundChecksRequestSchema = z.object({
+  overallStatus: z.string().optional(),
+  initiatedDate: z.string().optional(),
+  completedDate: z.string().optional(),
+  vendorName: z.string().optional(),
+  vendorReferenceNumber: z.string().optional(),
+  expiryDate: z.string().optional(),
+  remarks: z.string().optional(),
+});
+
+export const createScreeningCriminalRecordsRequestSchema = z.object({
+  countryUuid: z.string().optional(),
+  countryName: z.string().optional(),
+  checkType: z.string().optional(),
+  checkDate: z.string().optional(),
+  result: z.string().optional(),
+  recordDetails: z.string().optional(),
+  certificateNumber: z.string().optional(),
+  issuingAuthority: z.string().optional(),
+  expiryDate: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningEmploymentVerificationRequestSchema = z.object({
+  employerName: z.string().optional(),
+  positionClaimed: z.string().optional(),
+  positionVerified: z.string().optional(),
+  periodClaimedFrom: z.string().optional(),
+  periodClaimedTo: z.string().optional(),
+  periodVerifiedFrom: z.string().optional(),
+  periodVerifiedTo: z.string().optional(),
+  salaryVerified: z.boolean().optional(),
+  verificationStatus: z.string().optional(),
+  discrepancyNotes: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningEducationVerificationRequestSchema = z.object({
+  educationUuid: z.string().optional(),
+  institutionName: z.string().optional(),
+  degreeClaimed: z.string().optional(),
+  degreeVerified: z.string().optional(),
+  yearClaimedFrom: z.string().optional(),
+  yearClaimedTo: z.string().optional(),
+  yearVerifiedFrom: z.string().optional(),
+  yearVerifiedTo: z.string().optional(),
+  verificationStatus: z.string().optional(),
+  discrepancyNotes: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+// B6: PSYCHOLOGICAL ASSESSMENT
+export const createScreeningPsychometricTestsRequestSchema = z.object({
+  testName: z.string().optional(),
+  testType: z.string().optional(),
+  testProvider: z.string().optional(),
+  testDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  overallScore: z.string().optional(),
+  percentile: z.number().optional(),
+  result: z.string().optional(),
+  remarks: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningPsychometricDimensionsRequestSchema = z.object({
+  psychTestUuid: z.string().optional(),
+  dimensionName: z.string().optional(),
+  dimensionScore: z.string().optional(),
+  percentile: z.number().optional(),
+  normalRange: z.string().optional(),
+  interpretation: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningBehavioralAssessmentsRequestSchema = z.object({
+  assessmentType: z.string().optional(),
+  assessmentDate: z.string().optional(),
+  assessorUuid: z.string().optional(),
+  assessorName: z.string().optional(),
+  primaryStyle: z.string().optional(),
+  secondaryStyle: z.string().optional(),
+  strengthsIdentified: z.string().optional(),
+  areasOfDevelopment: z.string().optional(),
+  teamFitScore: z.number().optional(),
+  leadershipPotential: z.string().optional(),
+  overallNotes: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+// B7: MEDICAL SCREENING
+export const createScreeningPemeRequestSchema = z.object({
+  examDate: z.string().optional(),
+  clinicName: z.string().optional(),
+  clinicLocation: z.string().optional(),
+  examType: z.string().optional(),
+  overallResult: z.string().optional(),
+  restrictions: z.string().optional(),
+  validUntil: z.string().optional(),
+  examinerName: z.string().optional(),
+  examinerLicense: z.string().optional(),
+  certificateNumber: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningPemeResultsRequestSchema = z.object({
+  pemeUuid: z.string().optional(),
+  testCategory: z.string().optional(),
+  testName: z.string().optional(),
+  testResult: z.string().optional(),
+  normalRange: z.string().optional(),
+  status: z.string().optional(),
+  remarks: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createScreeningDrugAlcoholTestsRequestSchema = z.object({
+  testType: z.string().optional(),
+  testDate: z.string().optional(),
+  testLocation: z.string().optional(),
+  collectorName: z.string().optional(),
+  specimenType: z.string().optional(),
+  chainOfCustodyNumber: z.string().optional(),
+  laboratoryName: z.string().optional(),
+  result: z.string().optional(),
+  substancesTestedFor: z.string().optional(),
+  substancesDetected: z.string().optional(),
+  confirmedByMro: z.boolean().optional(),
+  mroName: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+// B8: FINAL EVALUATION
+export const createScreeningFinalEvaluationRequestSchema = z.object({
+  evaluationDate: z.string().optional(),
+  evaluatorUuid: z.string().optional(),
+  evaluatorName: z.string().optional(),
+  technicalScore: z.number().optional(),
+  interviewScore: z.number().optional(),
+  referenceScore: z.number().optional(),
+  backgroundScore: z.number().optional(),
+  medicalScore: z.number().optional(),
+  overallScore: z.number().optional(),
+  overallRating: z.string().optional(),
+  hiringRecommendation: z.string().optional(),
+  recommendedRank: z.string().optional(),
+  recommendedVesselType: z.string().optional(),
+  startDateRecommended: z.string().optional(),
+  salaryRecommended: z.string().optional(),
+  conditionsForHire: z.string().optional(),
+  evaluationNotes: z.string().optional(),
+});
+
+export const createScreeningEvaluationApprovalsRequestSchema = z.object({
+  finalEvalUuid: z.string().optional(),
+  approvalLevel: z.number().optional(),
+  approverUuid: z.string().optional(),
+  approverName: z.string().optional(),
+  approverRole: z.string().optional(),
+  approvalStatus: z.string().optional(),
+  approvalDate: z.string().optional(),
+  comments: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+// ============================================================================
 // REQUEST TYPES
 // ============================================================================
 
@@ -485,3 +850,34 @@ export type CreateSeaServiceInternalRequest = z.infer<typeof createSeaServiceInt
 export type CreateSeaServiceExternalRequest = z.infer<typeof createSeaServiceExternalRequestSchema>;
 export type CreateLicenseRequest = z.infer<typeof createLicenseRequestSchema>;
 export type CreateDocumentAttachmentRequest = z.infer<typeof createDocumentAttachmentRequestSchema>;
+
+// Phase 3: Screening B1-B8 Request Types
+export type CreateScreeningGeneralInfoRequest = z.infer<typeof createScreeningGeneralInfoRequestSchema>;
+export type CreateScreeningAvailabilityRequest = z.infer<typeof createScreeningAvailabilityRequestSchema>;
+export type CreateScreeningSalaryHistoryRequest = z.infer<typeof createScreeningSalaryHistoryRequestSchema>;
+export type CreateScreeningDocumentsChecklistRequest = z.infer<typeof createScreeningDocumentsChecklistRequestSchema>;
+export type CreateScreeningTechnicalSkillsRequest = z.infer<typeof createScreeningTechnicalSkillsRequestSchema>;
+export type CreateScreeningCompetencyRatingsRequest = z.infer<typeof createScreeningCompetencyRatingsRequestSchema>;
+export type CreateScreeningEquipmentExperienceRequest = z.infer<typeof createScreeningEquipmentExperienceRequestSchema>;
+export type CreateScreeningLanguageProficiencyRequest = z.infer<typeof createScreeningLanguageProficiencyRequestSchema>;
+export type CreateScreeningPracticalTestsRequest = z.infer<typeof createScreeningPracticalTestsRequestSchema>;
+export type CreateScreeningInterviewsRequest = z.infer<typeof createScreeningInterviewsRequestSchema>;
+export type CreateScreeningInterviewPanelistsRequest = z.infer<typeof createScreeningInterviewPanelistsRequestSchema>;
+export type CreateScreeningInterviewQuestionsRequest = z.infer<typeof createScreeningInterviewQuestionsRequestSchema>;
+export type CreateScreeningInterviewNotesRequest = z.infer<typeof createScreeningInterviewNotesRequestSchema>;
+export type CreateScreeningEmployerReferencesRequest = z.infer<typeof createScreeningEmployerReferencesRequestSchema>;
+export type CreateScreeningReferenceResponsesRequest = z.infer<typeof createScreeningReferenceResponsesRequestSchema>;
+export type CreateScreeningPersonalReferencesRequest = z.infer<typeof createScreeningPersonalReferencesRequestSchema>;
+export type CreateScreeningSeaServiceVerificationRequest = z.infer<typeof createScreeningSeaServiceVerificationRequestSchema>;
+export type CreateScreeningBackgroundChecksRequest = z.infer<typeof createScreeningBackgroundChecksRequestSchema>;
+export type CreateScreeningCriminalRecordsRequest = z.infer<typeof createScreeningCriminalRecordsRequestSchema>;
+export type CreateScreeningEmploymentVerificationRequest = z.infer<typeof createScreeningEmploymentVerificationRequestSchema>;
+export type CreateScreeningEducationVerificationRequest = z.infer<typeof createScreeningEducationVerificationRequestSchema>;
+export type CreateScreeningPsychometricTestsRequest = z.infer<typeof createScreeningPsychometricTestsRequestSchema>;
+export type CreateScreeningPsychometricDimensionsRequest = z.infer<typeof createScreeningPsychometricDimensionsRequestSchema>;
+export type CreateScreeningBehavioralAssessmentsRequest = z.infer<typeof createScreeningBehavioralAssessmentsRequestSchema>;
+export type CreateScreeningPemeRequest = z.infer<typeof createScreeningPemeRequestSchema>;
+export type CreateScreeningPemeResultsRequest = z.infer<typeof createScreeningPemeResultsRequestSchema>;
+export type CreateScreeningDrugAlcoholTestsRequest = z.infer<typeof createScreeningDrugAlcoholTestsRequestSchema>;
+export type CreateScreeningFinalEvaluationRequest = z.infer<typeof createScreeningFinalEvaluationRequestSchema>;
+export type CreateScreeningEvaluationApprovalsRequest = z.infer<typeof createScreeningEvaluationApprovalsRequestSchema>;
