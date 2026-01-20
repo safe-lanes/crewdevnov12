@@ -8,6 +8,20 @@ import {
   candFamilyInfo,
   candChildren,
   candNextOfKin,
+  candTravelDocuments,
+  candVisas,
+  candCoc,
+  candCop,
+  candStcwCertificates,
+  candFlagEndorsements,
+  candMedicalCertificates,
+  candVaccinations,
+  candTrainingCertificates,
+  candEducation,
+  candSeaServiceInternal,
+  candSeaServiceExternal,
+  candLicenses,
+  candDocumentAttachments,
 } from "./schema";
 
 // ============================================================================
@@ -56,6 +70,91 @@ export const insertNextOfKinSchema = createInsertSchema(candNextOfKin).omit({
   updatedAt: true,
 });
 
+// Phase 2: Documents & Certificates Insert Schemas
+export const insertTravelDocumentSchema = createInsertSchema(candTravelDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVisaSchema = createInsertSchema(candVisas).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCocSchema = createInsertSchema(candCoc).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCopSchema = createInsertSchema(candCop).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStcwCertificateSchema = createInsertSchema(candStcwCertificates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFlagEndorsementSchema = createInsertSchema(candFlagEndorsements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMedicalCertificateSchema = createInsertSchema(candMedicalCertificates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVaccinationSchema = createInsertSchema(candVaccinations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTrainingCertificateSchema = createInsertSchema(candTrainingCertificates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEducationSchema = createInsertSchema(candEducation).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSeaServiceInternalSchema = createInsertSchema(candSeaServiceInternal).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSeaServiceExternalSchema = createInsertSchema(candSeaServiceExternal).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLicenseSchema = createInsertSchema(candLicenses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDocumentAttachmentSchema = createInsertSchema(candDocumentAttachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // ============================================================================
 // INSERT TYPES
 // ============================================================================
@@ -68,6 +167,22 @@ export type InsertFamilyInfo = z.infer<typeof insertFamilyInfoSchema>;
 export type InsertChild = z.infer<typeof insertChildSchema>;
 export type InsertNextOfKin = z.infer<typeof insertNextOfKinSchema>;
 
+// Phase 2: Documents & Certificates Insert Types
+export type InsertTravelDocument = z.infer<typeof insertTravelDocumentSchema>;
+export type InsertVisa = z.infer<typeof insertVisaSchema>;
+export type InsertCoc = z.infer<typeof insertCocSchema>;
+export type InsertCop = z.infer<typeof insertCopSchema>;
+export type InsertStcwCertificate = z.infer<typeof insertStcwCertificateSchema>;
+export type InsertFlagEndorsement = z.infer<typeof insertFlagEndorsementSchema>;
+export type InsertMedicalCertificate = z.infer<typeof insertMedicalCertificateSchema>;
+export type InsertVaccination = z.infer<typeof insertVaccinationSchema>;
+export type InsertTrainingCertificate = z.infer<typeof insertTrainingCertificateSchema>;
+export type InsertEducation = z.infer<typeof insertEducationSchema>;
+export type InsertSeaServiceInternal = z.infer<typeof insertSeaServiceInternalSchema>;
+export type InsertSeaServiceExternal = z.infer<typeof insertSeaServiceExternalSchema>;
+export type InsertLicense = z.infer<typeof insertLicenseSchema>;
+export type InsertDocumentAttachment = z.infer<typeof insertDocumentAttachmentSchema>;
+
 // ============================================================================
 // SELECT TYPES
 // ============================================================================
@@ -79,6 +194,22 @@ export type Address = typeof candAddresses.$inferSelect;
 export type FamilyInfo = typeof candFamilyInfo.$inferSelect;
 export type Child = typeof candChildren.$inferSelect;
 export type NextOfKin = typeof candNextOfKin.$inferSelect;
+
+// Phase 2: Documents & Certificates Select Types
+export type TravelDocument = typeof candTravelDocuments.$inferSelect;
+export type Visa = typeof candVisas.$inferSelect;
+export type Coc = typeof candCoc.$inferSelect;
+export type Cop = typeof candCop.$inferSelect;
+export type StcwCertificate = typeof candStcwCertificates.$inferSelect;
+export type FlagEndorsement = typeof candFlagEndorsements.$inferSelect;
+export type MedicalCertificate = typeof candMedicalCertificates.$inferSelect;
+export type Vaccination = typeof candVaccinations.$inferSelect;
+export type TrainingCertificate = typeof candTrainingCertificates.$inferSelect;
+export type Education = typeof candEducation.$inferSelect;
+export type SeaServiceInternal = typeof candSeaServiceInternal.$inferSelect;
+export type SeaServiceExternal = typeof candSeaServiceExternal.$inferSelect;
+export type License = typeof candLicenses.$inferSelect;
+export type DocumentAttachment = typeof candDocumentAttachments.$inferSelect;
 
 // ============================================================================
 // API REQUEST/RESPONSE DTOs
@@ -156,6 +287,171 @@ export const updateNextOfKinRequestSchema = createNextOfKinRequestSchema.partial
 
 export const addVesselTypeAppliedRequestSchema = z.object({
   vesselTypeUuid: z.string(),
+  sortOrder: z.number().optional(),
+});
+
+// ============================================================================
+// PHASE 2: DOCUMENTS & CERTIFICATES REQUEST SCHEMAS
+// ============================================================================
+
+export const createTravelDocumentRequestSchema = z.object({
+  documentType: z.string().optional(),
+  documentNumber: z.string().optional(),
+  issuingCountryUuid: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  issuingAuthority: z.string().optional(),
+  placeOfIssue: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createVisaRequestSchema = z.object({
+  visaType: z.string().optional(),
+  issuingCountryUuid: z.string().optional(),
+  serialNumber: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  multipleEntry: z.boolean().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createCocRequestSchema = z.object({
+  certificateType: z.string().optional(),
+  grade: z.string().optional(),
+  limitation: z.string().optional(),
+  certificateNumber: z.string().optional(),
+  issuingCountryUuid: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  issuingAuthority: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createCopRequestSchema = z.object({
+  certificateName: z.string().optional(),
+  certificateNumber: z.string().optional(),
+  issuingCountryUuid: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  issuingAuthority: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createStcwCertificateRequestSchema = z.object({
+  stcwCode: z.string().optional(),
+  certificateName: z.string().optional(),
+  certificateNumber: z.string().optional(),
+  issuingCountryUuid: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  issuingAuthority: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createFlagEndorsementRequestSchema = z.object({
+  flagStateUuid: z.string().optional(),
+  endorsementType: z.string().optional(),
+  certificateNumber: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  issuingAuthority: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createMedicalCertificateRequestSchema = z.object({
+  certificateType: z.string().optional(),
+  certificateNumber: z.string().optional(),
+  clinicName: z.string().optional(),
+  clinicLocation: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  fitnessStatus: z.string().optional(),
+  restrictions: z.string().optional(),
+  bloodType: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createVaccinationRequestSchema = z.object({
+  vaccineName: z.string().optional(),
+  vaccineType: z.string().optional(),
+  dateAdministered: z.string().optional(),
+  expiryDate: z.string().optional(),
+  batchNumber: z.string().optional(),
+  administeredBy: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createTrainingCertificateRequestSchema = z.object({
+  courseName: z.string().optional(),
+  courseCode: z.string().optional(),
+  certificateNumber: z.string().optional(),
+  trainingCenter: z.string().optional(),
+  trainingLocation: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createEducationRequestSchema = z.object({
+  institutionName: z.string().optional(),
+  qualification: z.string().optional(),
+  fieldOfStudy: z.string().optional(),
+  startDate: z.string().optional(),
+  completionDate: z.string().optional(),
+  grade: z.string().optional(),
+  countryUuid: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createSeaServiceInternalRequestSchema = z.object({
+  vesselName: z.string().optional(),
+  vesselTypeUuid: z.string().optional(),
+  imoNumber: z.string().optional(),
+  grossTonnage: z.string().optional(),
+  enginePower: z.string().optional(),
+  rank: z.string().optional(),
+  signOnDate: z.string().optional(),
+  signOffDate: z.string().optional(),
+  durationMonths: z.string().optional(),
+  flagStateUuid: z.string().optional(),
+  tradingArea: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createSeaServiceExternalRequestSchema = z.object({
+  companyName: z.string().optional(),
+  vesselName: z.string().optional(),
+  vesselTypeUuid: z.string().optional(),
+  imoNumber: z.string().optional(),
+  grossTonnage: z.string().optional(),
+  enginePower: z.string().optional(),
+  rank: z.string().optional(),
+  signOnDate: z.string().optional(),
+  signOffDate: z.string().optional(),
+  durationMonths: z.string().optional(),
+  flagStateUuid: z.string().optional(),
+  tradingArea: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createLicenseRequestSchema = z.object({
+  licenseType: z.string().optional(),
+  licenseName: z.string().optional(),
+  licenseNumber: z.string().optional(),
+  issuingCountryUuid: z.string().optional(),
+  issueDate: z.string().optional(),
+  expiryDate: z.string().optional(),
+  issuingAuthority: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createDocumentAttachmentRequestSchema = z.object({
+  parentTableName: z.string().optional(),
+  parentRecordUuid: z.string().optional(),
+  fileName: z.string().optional(),
+  fileType: z.string().optional(),
+  fileSize: z.number().optional(),
+  filePath: z.string().optional(),
   sortOrder: z.number().optional(),
 });
 
