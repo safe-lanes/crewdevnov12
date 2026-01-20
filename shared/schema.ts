@@ -2222,7 +2222,7 @@ export const masterNationalities = pgTable(
   "master_nationalities",
   {
     id: serial("id").primaryKey(),
-    cid: text("cid"),
+    natUuid: text("nat_uuid"),
     countryCode: text("country_code"),
     countryName: text("country_name"),
     nationality: text("nationality"),
@@ -2234,7 +2234,7 @@ export const masterNationalities = pgTable(
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
-    cidIdx: index("idx_nationality_cid").on(t.cid),
+    natUuidIdx: index("idx_nationality_uuid").on(t.natUuid),
     countryCodeIdx: index("idx_nationality_country_code").on(t.countryCode),
   })
 );
@@ -2251,14 +2251,14 @@ export const masterVessels = pgTable(
   "master_vessels",
   {
     id: serial("id").primaryKey(),
-    vuid: text("vuid"),
+    vesselUuid: text("vessel_uuid"),
     vessel: text("vessel"),
     imoNumber: text("imo_number"),
     vesselType: text("vessel_type"),
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
-    vuidIdx: index("idx_vessel_vuid").on(t.vuid),
+    vesselUuidIdx: index("idx_vessel_uuid").on(t.vesselUuid),
     imoIdx: index("idx_vessel_imo").on(t.imoNumber),
   })
 );
@@ -2275,7 +2275,7 @@ export const masterVesselTypes = pgTable(
   "master_vessel_types",
   {
     id: serial("id").primaryKey(),
-    vtuid: text("vtuid"),
+    vtUuid: text("vt_uuid"),
     vesselType: text("vessel_type"),
     tanker: boolean("tanker").default(false),
     oilTanker: boolean("oil_tanker").default(false),
@@ -2293,7 +2293,7 @@ export const masterVesselTypes = pgTable(
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
-    vtuidIdx: index("idx_master_vessel_types_vtuid").on(t.vtuid),
+    vtUuidIdx: index("idx_vessel_type_uuid").on(t.vtUuid),
   })
 );
 
@@ -2309,7 +2309,7 @@ export const masterAdditionalGroups = pgTable(
   "master_additional_groups",
   {
     id: serial("id").primaryKey(),
-    externalId: text("external_id"),
+    agUuid: text("ag_uuid"),
     name: text("name"),
     vessels: text("vessels"),
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
@@ -2328,7 +2328,7 @@ export const masterPorts = pgTable(
   "master_ports",
   {
     id: serial("id").primaryKey(),
-    puid: text("puid"),
+    portUuid: text("port_uuid"),
     name: text("name"),
     latitude: numeric("latitude", { precision: 10, scale: 7 }),
     longitude: numeric("longitude", { precision: 10, scale: 7 }),
@@ -2342,7 +2342,7 @@ export const masterPorts = pgTable(
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
-    puidIdx: index("idx_port_puid").on(t.puid),
+    portUuidIdx: index("idx_port_uuid").on(t.portUuid),
     portCodeIdx: index("idx_port_code").on(t.portcode),
   })
 );
@@ -2359,13 +2359,13 @@ export const masterFleetGroups = pgTable(
   "master_fleet_groups",
   {
     id: serial("id").primaryKey(),
-    externalId: text("external_id"),
+    fgUuid: text("fg_uuid"),
     name: text("name"),
     vessels: text("vessels"),
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
-    externalIdIdx: index("idx_fleet_group_ext_id").on(t.externalId),
+    fgUuidIdx: index("idx_fleet_group_uuid").on(t.fgUuid),
   })
 );
 
@@ -2381,7 +2381,7 @@ export const masterLanguages = pgTable(
   "master_languages",
   {
     id: serial("id").primaryKey(),
-    luid: text("luid"),
+    langUuid: text("lang_uuid"),
     isoCode: text("iso_code"),
     languageName: text("language_name"),
     nativeName: text("native_name"),
@@ -2394,7 +2394,7 @@ export const masterLanguages = pgTable(
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
-    luidIdx: index("idx_language_luid").on(t.luid),
+    langUuidIdx: index("idx_language_uuid").on(t.langUuid),
     isoCodeIdx: index("idx_language_iso").on(t.isoCode),
   })
 );
@@ -2411,7 +2411,7 @@ export const masterCountries = pgTable(
   "master_countries",
   {
     id: serial("id").primaryKey(),
-    nuid: text("nuid"),
+    countryUuid: text("country_uuid"),
     countryName: text("country_name"),
     isActive: boolean("is_active").default(true),
     isDeleted: boolean("is_deleted").default(false),
@@ -2423,7 +2423,7 @@ export const masterCountries = pgTable(
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
-    nuidIdx: index("idx_country_nuid").on(t.nuid)
+    countryUuidIdx: index("idx_country_uuid").on(t.countryUuid)
   })
 );
 
@@ -2439,7 +2439,7 @@ export const masterUsers = pgTable(
   "master_users",
   {
     id: serial("id").primaryKey(),
-    uuid: text("uuid"),
+    userUuid: text("user_uuid"),
     firstname: text("firstname"),
     lastname: text("lastname"),
     email: text("email"),
@@ -2452,7 +2452,7 @@ export const masterUsers = pgTable(
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
-    uuidIdx: index("idx_master_user_uuid").on(t.uuid),
+    userUuidIdx: index("idx_master_user_uuid").on(t.userUuid),
     emailIdx: index("idx_master_user_email").on(t.email),
   })
 );

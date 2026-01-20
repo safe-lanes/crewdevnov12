@@ -5209,7 +5209,7 @@ export class DatabaseStorage implements IStorage {
 
     const fieldMappings: Record<string, Record<string, string>> = {
       nationalities: {
-        cid: 'cid',
+        cid: 'natUuid',
         countryCode: 'countryCode',
         countryName: 'countryName',
         nationality: 'nationality',
@@ -5220,13 +5220,13 @@ export class DatabaseStorage implements IStorage {
         isDeleted: 'isDeleted',
       },
       vessels: {
-        vuid: 'vuid',
+        vuid: 'vesselUuid',
         vessel: 'vessel',
         imoNumber: 'imoNumber',
         vesselType: 'vesselType',
       },
       vesselTypes: {
-        vtuid: 'vtuid',
+        vtuid: 'vtUuid',
         vesselType: 'vesselType',
         tanker: 'tanker',
         oilTanker: 'oilTanker',
@@ -5243,12 +5243,12 @@ export class DatabaseStorage implements IStorage {
         updatedBy: 'updatedBy',
       },
       additionalGroups: {
-        id: 'externalId',
+        id: 'agUuid',
         name: 'name',
         vessels: 'vessels',
       },
       ports: {
-        puid: 'puid',
+        puid: 'portUuid',
         name: 'name',
         latitude: 'latitude',
         longitude: 'longitude',
@@ -5261,12 +5261,12 @@ export class DatabaseStorage implements IStorage {
         createdBy: 'createdBy',
       },
       fleetGroups: {
-        id: 'externalId',
+        id: 'fgUuid',
         name: 'name',
         vessels: 'vessels',
       },
       languages: {
-        luid: 'luid',
+        luid: 'langUuid',
         isoCode: 'isoCode',
         languageName: 'languageName',
         nativeName: 'nativeName',
@@ -5278,7 +5278,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: 'updatedAt',
       },
       countries: {
-        nuid: 'nuid',
+        nuid: 'countryUuid',
         countryName: 'countryName',
         isActive: 'isActive',
         isDeleted: 'isDeleted',
@@ -5289,7 +5289,7 @@ export class DatabaseStorage implements IStorage {
         orderBy: 'orderBy',
       },
       users: {
-        uuid: 'uuid',
+        uuid: 'userUuid',
         firstname: 'firstname',
         lastname: 'lastname',
         email: 'email',
