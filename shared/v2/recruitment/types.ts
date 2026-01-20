@@ -881,3 +881,135 @@ export type CreateScreeningPemeResultsRequest = z.infer<typeof createScreeningPe
 export type CreateScreeningDrugAlcoholTestsRequest = z.infer<typeof createScreeningDrugAlcoholTestsRequestSchema>;
 export type CreateScreeningFinalEvaluationRequest = z.infer<typeof createScreeningFinalEvaluationRequestSchema>;
 export type CreateScreeningEvaluationApprovalsRequest = z.infer<typeof createScreeningEvaluationApprovalsRequestSchema>;
+
+// ============================================================================
+// PHASE 4: APPROVALS & DECISIONS SCHEMAS
+// ============================================================================
+
+export const createHiringDecisionRequestSchema = z.object({
+  finalEvalUuid: z.string().optional(),
+  decisionType: z.string().optional(),
+  decisionDate: z.string().optional(),
+  decidedByUuid: z.string().optional(),
+  decidedByName: z.string().optional(),
+  decisionReason: z.string().optional(),
+  approvedRank: z.string().optional(),
+  approvedVesselType: z.string().optional(),
+  approvedSalary: z.string().optional(),
+  proposedJoiningDate: z.string().optional(),
+  probationPeriodMonths: z.number().optional(),
+  specialConditions: z.string().optional(),
+  rejectionReason: z.string().optional(),
+  holdUntilDate: z.string().optional(),
+});
+
+export const createOfferLetterRequestSchema = z.object({
+  decisionUuid: z.string().optional(),
+  offerNumber: z.string().optional(),
+  offerDate: z.string().optional(),
+  offerExpiryDate: z.string().optional(),
+  offeredRank: z.string().optional(),
+  offeredVesselType: z.string().optional(),
+  offeredVesselName: z.string().optional(),
+  offeredSalaryUsd: z.string().optional(),
+  contractDurationMonths: z.number().optional(),
+  joiningDate: z.string().optional(),
+  joiningPort: z.string().optional(),
+  benefits: z.string().optional(),
+  termsAndConditions: z.string().optional(),
+  offerStatus: z.string().optional(),
+  sentDate: z.string().optional(),
+  responseDate: z.string().optional(),
+  declineReason: z.string().optional(),
+  offerLetterPath: z.string().optional(),
+  signedOfferPath: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createEmploymentContractRequestSchema = z.object({
+  offerUuid: z.string().optional(),
+  contractNumber: z.string().optional(),
+  contractType: z.string().optional(),
+  contractStartDate: z.string().optional(),
+  contractEndDate: z.string().optional(),
+  contractedRank: z.string().optional(),
+  contractedVesselType: z.string().optional(),
+  basicSalaryUsd: z.string().optional(),
+  allowances: z.string().optional(),
+  totalPackageUsd: z.string().optional(),
+  leaveEntitlementDays: z.number().optional(),
+  medicalCoverage: z.string().optional(),
+  insuranceCoverage: z.string().optional(),
+  noticePeriodDays: z.number().optional(),
+  contractStatus: z.string().optional(),
+  signedByCandidate: z.boolean().optional(),
+  candidateSignatureDate: z.string().optional(),
+  signedByCompany: z.boolean().optional(),
+  companySignerUuid: z.string().optional(),
+  companySignatureDate: z.string().optional(),
+  contractDocumentPath: z.string().optional(),
+  signedContractPath: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createOnboardingTaskRequestSchema = z.object({
+  contractUuid: z.string().optional(),
+  taskCategory: z.string().optional(),
+  taskName: z.string().optional(),
+  taskDescription: z.string().optional(),
+  assignedToUuid: z.string().optional(),
+  assignedToName: z.string().optional(),
+  dueDate: z.string().optional(),
+  priority: z.string().optional(),
+  taskStatus: z.string().optional(),
+  completedDate: z.string().optional(),
+  completedByUuid: z.string().optional(),
+  completedByName: z.string().optional(),
+  notes: z.string().optional(),
+  attachmentPath: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createDecisionAuditTrailRequestSchema = z.object({
+  entityType: z.string().optional(),
+  entityUuid: z.string().optional(),
+  actionType: z.string().optional(),
+  previousValue: z.string().optional(),
+  newValue: z.string().optional(),
+  fieldChanged: z.string().optional(),
+  actionByUuid: z.string().optional(),
+  actionByName: z.string().optional(),
+  actionDate: z.string().optional(),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  notes: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export const createApprovalWorkflowRequestSchema = z.object({
+  entityType: z.string().optional(),
+  entityUuid: z.string().optional(),
+  workflowName: z.string().optional(),
+  currentStep: z.number().optional(),
+  totalSteps: z.number().optional(),
+  stepName: z.string().optional(),
+  approverUuid: z.string().optional(),
+  approverName: z.string().optional(),
+  approverRole: z.string().optional(),
+  approvalRequired: z.boolean().optional(),
+  approvalStatus: z.string().optional(),
+  approvalDate: z.string().optional(),
+  delegatedToUuid: z.string().optional(),
+  delegatedToName: z.string().optional(),
+  escalationDate: z.string().optional(),
+  comments: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+// Phase 4: Request Types
+export type CreateHiringDecisionRequest = z.infer<typeof createHiringDecisionRequestSchema>;
+export type CreateOfferLetterRequest = z.infer<typeof createOfferLetterRequestSchema>;
+export type CreateEmploymentContractRequest = z.infer<typeof createEmploymentContractRequestSchema>;
+export type CreateOnboardingTaskRequest = z.infer<typeof createOnboardingTaskRequestSchema>;
+export type CreateDecisionAuditTrailRequest = z.infer<typeof createDecisionAuditTrailRequestSchema>;
+export type CreateApprovalWorkflowRequest = z.infer<typeof createApprovalWorkflowRequestSchema>;

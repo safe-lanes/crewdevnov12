@@ -189,6 +189,14 @@ import {
   updateScreeningEvaluationApprovals,
   deleteScreeningEvaluationApprovals,
 } from "../../v2/recruitment/controllers";
+import {
+  hiringDecisionsController,
+  offerLettersController,
+  employmentContractsController,
+  onboardingTasksController,
+  decisionAuditTrailController,
+  approvalWorkflowsController,
+} from "../../v2/recruitment/controllers/approvalsController";
 
 const router = Router();
 
@@ -523,5 +531,43 @@ router.get("/candidates/:recCanUuid/screening/evaluation-approvals", getScreenin
 router.post("/candidates/:recCanUuid/screening/evaluation-approvals", createScreeningEvaluationApprovals);
 router.put("/candidates/:recCanUuid/screening/evaluation-approvals/:id", updateScreeningEvaluationApprovals);
 router.delete("/candidates/:recCanUuid/screening/evaluation-approvals/:id", deleteScreeningEvaluationApprovals);
+
+// ============================================================================
+// PHASE 4: APPROVALS & DECISIONS
+// ============================================================================
+
+// Hiring Decisions (One-to-One)
+router.get("/candidates/:recCanUuid/approvals/hiring-decision", hiringDecisionsController.get);
+router.put("/candidates/:recCanUuid/approvals/hiring-decision", hiringDecisionsController.upsert);
+router.delete("/candidates/:recCanUuid/approvals/hiring-decision/:decisionUuid", hiringDecisionsController.delete);
+
+// Offer Letters (One-to-Many)
+router.get("/candidates/:recCanUuid/approvals/offer-letters", offerLettersController.getAll);
+router.post("/candidates/:recCanUuid/approvals/offer-letters", offerLettersController.create);
+router.put("/candidates/:recCanUuid/approvals/offer-letters/:offerUuid", offerLettersController.update);
+router.delete("/candidates/:recCanUuid/approvals/offer-letters/:offerUuid", offerLettersController.delete);
+
+// Employment Contracts (One-to-Many)
+router.get("/candidates/:recCanUuid/approvals/contracts", employmentContractsController.getAll);
+router.post("/candidates/:recCanUuid/approvals/contracts", employmentContractsController.create);
+router.put("/candidates/:recCanUuid/approvals/contracts/:contractUuid", employmentContractsController.update);
+router.delete("/candidates/:recCanUuid/approvals/contracts/:contractUuid", employmentContractsController.delete);
+
+// Onboarding Tasks (One-to-Many)
+router.get("/candidates/:recCanUuid/approvals/onboarding-tasks", onboardingTasksController.getAll);
+router.post("/candidates/:recCanUuid/approvals/onboarding-tasks", onboardingTasksController.create);
+router.put("/candidates/:recCanUuid/approvals/onboarding-tasks/:taskUuid", onboardingTasksController.update);
+router.delete("/candidates/:recCanUuid/approvals/onboarding-tasks/:taskUuid", onboardingTasksController.delete);
+
+// Decision Audit Trail (One-to-Many)
+router.get("/candidates/:recCanUuid/approvals/audit-trail", decisionAuditTrailController.getAll);
+router.post("/candidates/:recCanUuid/approvals/audit-trail", decisionAuditTrailController.create);
+router.delete("/candidates/:recCanUuid/approvals/audit-trail/:auditUuid", decisionAuditTrailController.delete);
+
+// Approval Workflows (One-to-Many)
+router.get("/candidates/:recCanUuid/approvals/workflows", approvalWorkflowsController.getAll);
+router.post("/candidates/:recCanUuid/approvals/workflows", approvalWorkflowsController.create);
+router.put("/candidates/:recCanUuid/approvals/workflows/:workflowUuid", approvalWorkflowsController.update);
+router.delete("/candidates/:recCanUuid/approvals/workflows/:workflowUuid", approvalWorkflowsController.delete);
 
 export default router;

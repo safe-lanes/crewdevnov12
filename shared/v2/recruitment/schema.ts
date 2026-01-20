@@ -1334,3 +1334,210 @@ export const screeningEvaluationApprovals = pgTable(
     index("idx_eval_approval_status").on(t.approvalStatus),
   ]
 );
+
+// ============================================================================
+// PHASE 4: APPROVALS & DECISIONS (6 tables)
+// ============================================================================
+
+// TABLE 51: HIRING DECISIONS (One-to-One)
+export const hiringDecisions = pgTable(
+  "hiring_decisions",
+  {
+    id: serial("id").primaryKey(),
+    decisionUuid: text("decision_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").unique().notNull(),
+    finalEvalUuid: text("final_eval_uuid"),
+    decisionType: text("decision_type"), // hire, reject, hold, conditional_hire
+    decisionDate: text("decision_date"),
+    decidedByUuid: text("decided_by_uuid"),
+    decidedByName: text("decided_by_name"),
+    decisionReason: text("decision_reason"),
+    approvedRank: text("approved_rank"),
+    approvedVesselType: text("approved_vessel_type"),
+    approvedSalary: text("approved_salary"),
+    proposedJoiningDate: text("proposed_joining_date"),
+    probationPeriodMonths: integer("probation_period_months"),
+    specialConditions: text("special_conditions"),
+    rejectionReason: text("rejection_reason"),
+    holdUntilDate: text("hold_until_date"),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_hiring_decision_rec_can_uuid").on(t.recCanUuid),
+    index("idx_hiring_decision_type").on(t.decisionType),
+    index("idx_hiring_decision_date").on(t.decisionDate),
+  ]
+);
+
+// TABLE 52: OFFER LETTERS (One-to-Many - candidate may receive multiple offers)
+export const offerLetters = pgTable(
+  "offer_letters",
+  {
+    id: serial("id").primaryKey(),
+    offerUuid: text("offer_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    decisionUuid: text("decision_uuid"),
+    offerNumber: text("offer_number"),
+    offerDate: text("offer_date"),
+    offerExpiryDate: text("offer_expiry_date"),
+    offeredRank: text("offered_rank"),
+    offeredVesselType: text("offered_vessel_type"),
+    offeredVesselName: text("offered_vessel_name"),
+    offeredSalaryUsd: text("offered_salary_usd"),
+    contractDurationMonths: integer("contract_duration_months"),
+    joiningDate: text("joining_date"),
+    joiningPort: text("joining_port"),
+    benefits: text("benefits"),
+    termsAndConditions: text("terms_and_conditions"),
+    offerStatus: text("offer_status"), // draft, sent, accepted, declined, expired, withdrawn
+    sentDate: text("sent_date"),
+    responseDate: text("response_date"),
+    declineReason: text("decline_reason"),
+    offerLetterPath: text("offer_letter_path"),
+    signedOfferPath: text("signed_offer_path"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_offer_rec_can_uuid").on(t.recCanUuid),
+    index("idx_offer_decision_uuid").on(t.decisionUuid),
+    index("idx_offer_status").on(t.offerStatus),
+    index("idx_offer_number").on(t.offerNumber),
+  ]
+);
+
+// TABLE 53: EMPLOYMENT CONTRACTS (One-to-Many)
+export const employmentContracts = pgTable(
+  "employment_contracts",
+  {
+    id: serial("id").primaryKey(),
+    contractUuid: text("contract_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    offerUuid: text("offer_uuid"),
+    contractNumber: text("contract_number"),
+    contractType: text("contract_type"), // fixed_term, permanent, temporary
+    contractStartDate: text("contract_start_date"),
+    contractEndDate: text("contract_end_date"),
+    contractedRank: text("contracted_rank"),
+    contractedVesselType: text("contracted_vessel_type"),
+    basicSalaryUsd: text("basic_salary_usd"),
+    allowances: text("allowances"),
+    totalPackageUsd: text("total_package_usd"),
+    leaveEntitlementDays: integer("leave_entitlement_days"),
+    medicalCoverage: text("medical_coverage"),
+    insuranceCoverage: text("insurance_coverage"),
+    noticePeriodDays: integer("notice_period_days"),
+    contractStatus: text("contract_status"), // draft, pending_signature, active, expired, terminated
+    signedByCandidate: boolean("signed_by_candidate").default(false),
+    candidateSignatureDate: text("candidate_signature_date"),
+    signedByCompany: boolean("signed_by_company").default(false),
+    companySignerUuid: text("company_signer_uuid"),
+    companySignatureDate: text("company_signature_date"),
+    contractDocumentPath: text("contract_document_path"),
+    signedContractPath: text("signed_contract_path"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_contract_rec_can_uuid").on(t.recCanUuid),
+    index("idx_contract_offer_uuid").on(t.offerUuid),
+    index("idx_contract_status").on(t.contractStatus),
+    index("idx_contract_number").on(t.contractNumber),
+  ]
+);
+
+// TABLE 54: ONBOARDING TASKS (One-to-Many)
+export const onboardingTasks = pgTable(
+  "onboarding_tasks",
+  {
+    id: serial("id").primaryKey(),
+    taskUuid: text("task_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    contractUuid: text("contract_uuid"),
+    taskCategory: text("task_category"), // documentation, training, medical, travel, equipment
+    taskName: text("task_name"),
+    taskDescription: text("task_description"),
+    assignedToUuid: text("assigned_to_uuid"),
+    assignedToName: text("assigned_to_name"),
+    dueDate: text("due_date"),
+    priority: text("priority"), // high, medium, low
+    taskStatus: text("task_status"), // pending, in_progress, completed, overdue, cancelled
+    completedDate: text("completed_date"),
+    completedByUuid: text("completed_by_uuid"),
+    completedByName: text("completed_by_name"),
+    notes: text("notes"),
+    attachmentPath: text("attachment_path"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_onboard_task_rec_can_uuid").on(t.recCanUuid),
+    index("idx_onboard_task_contract_uuid").on(t.contractUuid),
+    index("idx_onboard_task_status").on(t.taskStatus),
+    index("idx_onboard_task_category").on(t.taskCategory),
+  ]
+);
+
+// TABLE 55: DECISION AUDIT TRAIL (One-to-Many)
+export const decisionAuditTrail = pgTable(
+  "decision_audit_trail",
+  {
+    id: serial("id").primaryKey(),
+    auditUuid: text("audit_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    entityType: text("entity_type"), // decision, offer, contract, task
+    entityUuid: text("entity_uuid"),
+    actionType: text("action_type"), // created, updated, status_changed, approved, rejected
+    previousValue: text("previous_value"),
+    newValue: text("new_value"),
+    fieldChanged: text("field_changed"),
+    actionByUuid: text("action_by_uuid"),
+    actionByName: text("action_by_name"),
+    actionDate: text("action_date"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    notes: text("notes"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_audit_trail_rec_can_uuid").on(t.recCanUuid),
+    index("idx_audit_trail_entity").on(t.entityType, t.entityUuid),
+    index("idx_audit_trail_action_type").on(t.actionType),
+    index("idx_audit_trail_date").on(t.actionDate),
+  ]
+);
+
+// TABLE 56: APPROVAL WORKFLOWS (One-to-Many)
+export const approvalWorkflows = pgTable(
+  "approval_workflows",
+  {
+    id: serial("id").primaryKey(),
+    workflowUuid: text("workflow_uuid").unique().notNull(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    entityType: text("entity_type"), // offer, contract, decision
+    entityUuid: text("entity_uuid"),
+    workflowName: text("workflow_name"),
+    currentStep: integer("current_step").default(1),
+    totalSteps: integer("total_steps"),
+    stepName: text("step_name"),
+    approverUuid: text("approver_uuid"),
+    approverName: text("approver_name"),
+    approverRole: text("approver_role"),
+    approvalRequired: boolean("approval_required").default(true),
+    approvalStatus: text("approval_status"), // pending, approved, rejected, skipped
+    approvalDate: text("approval_date"),
+    delegatedToUuid: text("delegated_to_uuid"),
+    delegatedToName: text("delegated_to_name"),
+    escalationDate: text("escalation_date"),
+    comments: text("comments"),
+    sortOrder: integer("sort_order").default(0),
+    ...auditColumns,
+  },
+  (t) => [
+    index("idx_workflow_rec_can_uuid").on(t.recCanUuid),
+    index("idx_workflow_entity").on(t.entityType, t.entityUuid),
+    index("idx_workflow_status").on(t.approvalStatus),
+    index("idx_workflow_approver").on(t.approverUuid),
+  ]
+);
