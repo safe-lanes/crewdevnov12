@@ -9,48 +9,43 @@ import {
   nextOfKinRepository,
 } from "../repositories";
 import type {
-  CandidateV2,
-  VesselTypesApplied,
-  PersonalDetails,
-  Address,
-  FamilyInfo,
-  Child,
-  NextOfKin,
+  RecruitmentCandidate,
+  CandVesselTypeApplied,
+  CandPersonalDetails,
+  CandAddress,
+  CandFamilyInfo,
+  CandChild,
+  CandNextOfKin,
   CreateCandidateRequest,
-  UpdateCandidateRequest,
-  UpsertPersonalDetailsRequest,
-  UpsertAddressRequest,
-  UpsertFamilyInfoRequest,
-  CreateChildRequest,
-  UpdateChildRequest,
-  CreateNextOfKinRequest,
-  UpdateNextOfKinRequest,
-  AddVesselTypeAppliedRequest,
+  InsertPersonalDetails,
+  InsertAddress,
+  InsertFamilyInfo,
+  InsertChild,
+  InsertNextOfKin,
 } from "../../../../shared/v2/recruitment/types";
 
-// ============================================================================
-// CANDIDATE SERVICE
-// ============================================================================
-
 export class CandidateService {
-  async getAllCandidates(): Promise<CandidateV2[]> {
+  async getAllCandidates(): Promise<RecruitmentCandidate[]> {
     return candidateRepository.findAll();
   }
 
-  async getCandidateById(id: number): Promise<CandidateV2 | undefined> {
+  async getCandidateById(id: string): Promise<RecruitmentCandidate | undefined> {
     return candidateRepository.findById(id);
   }
 
-  async getCandidateByUuid(recCanUuid: string): Promise<CandidateV2 | undefined> {
+  async getCandidateByUuid(recCanUuid: string): Promise<RecruitmentCandidate | undefined> {
     return candidateRepository.findByUuid(recCanUuid);
   }
 
   async createCandidate(
     data: CreateCandidateRequest,
     createdByUuid?: string
-  ): Promise<CandidateV2> {
+  ): Promise<RecruitmentCandidate> {
+    const now = new Date();
+    const id = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${Date.now()}`;
     const recCanUuid = uuidv4();
     return candidateRepository.create({
+      id,
       recCanUuid,
       ...data,
       createdByUuid,
@@ -59,39 +54,48 @@ export class CandidateService {
   }
 
   async updateCandidate(
-    id: number,
-    data: UpdateCandidateRequest,
+    id: string,
+    data: Partial<CreateCandidateRequest>,
     updatedByUuid?: string
-  ): Promise<CandidateV2 | undefined> {
+  ): Promise<RecruitmentCandidate | undefined> {
     return candidateRepository.update(id, {
       ...data,
       updatedByUuid,
     });
   }
 
-  async deleteCandidate(id: number): Promise<boolean> {
+  async updateCandidateByUuid(
+    recCanUuid: string,
+    data: Partial<CreateCandidateRequest>,
+    updatedByUuid?: string
+  ): Promise<RecruitmentCandidate | undefined> {
+    return candidateRepository.updateByUuid(recCanUuid, {
+      ...data,
+      updatedByUuid,
+    });
+  }
+
+  async deleteCandidate(id: string): Promise<boolean> {
     return candidateRepository.softDelete(id);
   }
 
-  // ============================================================================
-  // VESSEL TYPES APPLIED
-  // ============================================================================
+  async deleteCandidateByUuid(recCanUuid: string): Promise<boolean> {
+    return candidateRepository.softDeleteByUuid(recCanUuid);
+  }
 
-  async getVesselTypesApplied(recCanUuid: string): Promise<VesselTypesApplied[]> {
+  async getVesselTypesApplied(recCanUuid: string): Promise<CandVesselTypeApplied[]> {
     return vesselTypesAppliedRepository.findByCandidateUuid(recCanUuid);
   }
 
   async addVesselTypeApplied(
     recCanUuid: string,
-    data: AddVesselTypeAppliedRequest,
+    vesselTypeUuid: string,
     createdByUuid?: string
-  ): Promise<VesselTypesApplied> {
-    const cvtaUuid = uuidv4();
+  ): Promise<CandVesselTypeApplied> {
     return vesselTypesAppliedRepository.create({
-      cvtaUuid,
+      cvtaUuid: uuidv4(),
       recCanUuid,
-      vesselTypeUuid: data.vesselTypeUuid,
-      sortOrder: data.sortOrder ?? 0,
+      vesselTypeUuid,
       createdByUuid,
       updatedByUuid: createdByUuid,
     });
@@ -101,97 +105,80 @@ export class CandidateService {
     return vesselTypesAppliedRepository.softDelete(id);
   }
 
-  // ============================================================================
-  // PERSONAL DETAILS
-  // ============================================================================
-
-  async getPersonalDetails(recCanUuid: string): Promise<PersonalDetails | undefined> {
+  async getPersonalDetails(recCanUuid: string): Promise<CandPersonalDetails | undefined> {
     return personalDetailsRepository.findByCandidateUuid(recCanUuid);
   }
 
   async upsertPersonalDetails(
     recCanUuid: string,
-    data: UpsertPersonalDetailsRequest,
-    updatedByUuid?: string
-  ): Promise<PersonalDetails> {
-    const cpdUuid = uuidv4();
+    data: Partial<InsertPersonalDetails>,
+    userUuid?: string
+  ): Promise<CandPersonalDetails> {
     return personalDetailsRepository.upsert(recCanUuid, {
-      cpdUuid,
+      cpdUuid: uuidv4(),
       ...data,
-      updatedByUuid,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
     });
   }
 
-  // ============================================================================
-  // ADDRESSES
-  // ============================================================================
-
-  async getAddress(recCanUuid: string): Promise<Address | undefined> {
+  async getAddress(recCanUuid: string): Promise<CandAddress | undefined> {
     return addressRepository.findByCandidateUuid(recCanUuid);
   }
 
   async upsertAddress(
     recCanUuid: string,
-    data: UpsertAddressRequest,
-    updatedByUuid?: string
-  ): Promise<Address> {
-    const addrUuid = uuidv4();
+    data: Partial<InsertAddress>,
+    userUuid?: string
+  ): Promise<CandAddress> {
     return addressRepository.upsert(recCanUuid, {
-      addrUuid,
+      addrUuid: uuidv4(),
       ...data,
-      updatedByUuid,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
     });
   }
 
-  // ============================================================================
-  // FAMILY INFO
-  // ============================================================================
-
-  async getFamilyInfo(recCanUuid: string): Promise<FamilyInfo | undefined> {
+  async getFamilyInfo(recCanUuid: string): Promise<CandFamilyInfo | undefined> {
     return familyInfoRepository.findByCandidateUuid(recCanUuid);
   }
 
   async upsertFamilyInfo(
     recCanUuid: string,
-    data: UpsertFamilyInfoRequest,
-    updatedByUuid?: string
-  ): Promise<FamilyInfo> {
-    const famUuid = uuidv4();
+    data: Partial<InsertFamilyInfo>,
+    userUuid?: string
+  ): Promise<CandFamilyInfo> {
     return familyInfoRepository.upsert(recCanUuid, {
-      famUuid,
+      famUuid: uuidv4(),
       ...data,
-      updatedByUuid,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
     });
   }
 
-  // ============================================================================
-  // CHILDREN
-  // ============================================================================
-
-  async getChildren(recCanUuid: string): Promise<Child[]> {
+  async getChildren(recCanUuid: string): Promise<CandChild[]> {
     return childrenRepository.findByCandidateUuid(recCanUuid);
   }
 
   async createChild(
     recCanUuid: string,
-    data: CreateChildRequest,
+    data: Partial<InsertChild>,
     createdByUuid?: string
-  ): Promise<Child> {
-    const childUuid = uuidv4();
+  ): Promise<CandChild> {
     return childrenRepository.create({
-      childUuid,
+      childUuid: uuidv4(),
       recCanUuid,
       ...data,
       createdByUuid,
       updatedByUuid: createdByUuid,
-    });
+    } as InsertChild);
   }
 
   async updateChild(
     id: number,
-    data: UpdateChildRequest,
+    data: Partial<InsertChild>,
     updatedByUuid?: string
-  ): Promise<Child | undefined> {
+  ): Promise<CandChild | undefined> {
     return childrenRepository.update(id, {
       ...data,
       updatedByUuid,
@@ -202,42 +189,21 @@ export class CandidateService {
     return childrenRepository.softDelete(id);
   }
 
-  // ============================================================================
-  // NEXT OF KIN
-  // ============================================================================
-
-  async getNextOfKin(recCanUuid: string): Promise<NextOfKin[]> {
+  async getNextOfKin(recCanUuid: string): Promise<CandNextOfKin | undefined> {
     return nextOfKinRepository.findByCandidateUuid(recCanUuid);
   }
 
-  async createNextOfKin(
+  async upsertNextOfKin(
     recCanUuid: string,
-    data: CreateNextOfKinRequest,
-    createdByUuid?: string
-  ): Promise<NextOfKin> {
-    const nokUuid = uuidv4();
-    return nextOfKinRepository.create({
-      nokUuid,
-      recCanUuid,
+    data: Partial<InsertNextOfKin>,
+    userUuid?: string
+  ): Promise<CandNextOfKin> {
+    return nextOfKinRepository.upsert(recCanUuid, {
+      nokUuid: uuidv4(),
       ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
     });
-  }
-
-  async updateNextOfKin(
-    id: number,
-    data: UpdateNextOfKinRequest,
-    updatedByUuid?: string
-  ): Promise<NextOfKin | undefined> {
-    return nextOfKinRepository.update(id, {
-      ...data,
-      updatedByUuid,
-    });
-  }
-
-  async deleteNextOfKin(id: number): Promise<boolean> {
-    return nextOfKinRepository.softDelete(id);
   }
 }
 

@@ -1,88 +1,111 @@
 import { eq, and } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
-  recruitmentCandidatesV2,
+  recruitmentCandidates,
   candVesselTypesApplied,
 } from "../../../../shared/v2/recruitment/schema";
 import type {
-  CandidateV2,
-  InsertCandidateV2,
-  VesselTypesApplied,
-  InsertVesselTypesApplied,
+  RecruitmentCandidate,
+  InsertCandidate,
+  CandVesselTypeApplied,
+  InsertVesselTypeApplied,
 } from "../../../../shared/v2/recruitment/types";
 
 export class CandidateRepository {
-  async findAll(): Promise<CandidateV2[]> {
+  async findAll(): Promise<RecruitmentCandidate[]> {
     const db = getDb();
     return db
       .select()
-      .from(recruitmentCandidatesV2)
-      .where(eq(recruitmentCandidatesV2.isDeleted, false));
+      .from(recruitmentCandidates)
+      .where(eq(recruitmentCandidates.isDeleted, false));
   }
 
-  async findById(id: number): Promise<CandidateV2 | undefined> {
+  async findById(id: string): Promise<RecruitmentCandidate | undefined> {
     const db = getDb();
     const results = await db
       .select()
-      .from(recruitmentCandidatesV2)
+      .from(recruitmentCandidates)
       .where(
         and(
-          eq(recruitmentCandidatesV2.id, id),
-          eq(recruitmentCandidatesV2.isDeleted, false)
+          eq(recruitmentCandidates.id, id),
+          eq(recruitmentCandidates.isDeleted, false)
         )
       );
     return results[0];
   }
 
-  async findByUuid(recCanUuid: string): Promise<CandidateV2 | undefined> {
+  async findByUuid(recCanUuid: string): Promise<RecruitmentCandidate | undefined> {
     const db = getDb();
     const results = await db
       .select()
-      .from(recruitmentCandidatesV2)
+      .from(recruitmentCandidates)
       .where(
         and(
-          eq(recruitmentCandidatesV2.recCanUuid, recCanUuid),
-          eq(recruitmentCandidatesV2.isDeleted, false)
+          eq(recruitmentCandidates.recCanUuid, recCanUuid),
+          eq(recruitmentCandidates.isDeleted, false)
         )
       );
     return results[0];
   }
 
-  async create(data: InsertCandidateV2): Promise<CandidateV2> {
+  async create(data: InsertCandidate): Promise<RecruitmentCandidate> {
     const db = getDb();
     const results = await db
-      .insert(recruitmentCandidatesV2)
+      .insert(recruitmentCandidates)
       .values(data)
       .returning();
     return results[0];
   }
 
   async update(
-    id: number,
-    data: Partial<InsertCandidateV2>
-  ): Promise<CandidateV2 | undefined> {
+    id: string,
+    data: Partial<InsertCandidate>
+  ): Promise<RecruitmentCandidate | undefined> {
     const db = getDb();
     const results = await db
-      .update(recruitmentCandidatesV2)
+      .update(recruitmentCandidates)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(recruitmentCandidatesV2.id, id))
+      .where(eq(recruitmentCandidates.id, id))
       .returning();
     return results[0];
   }
 
-  async softDelete(id: number): Promise<boolean> {
+  async updateByUuid(
+    recCanUuid: string,
+    data: Partial<InsertCandidate>
+  ): Promise<RecruitmentCandidate | undefined> {
     const db = getDb();
     const results = await db
-      .update(recruitmentCandidatesV2)
+      .update(recruitmentCandidates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(recruitmentCandidates.recCanUuid, recCanUuid))
+      .returning();
+    return results[0];
+  }
+
+  async softDelete(id: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db
+      .update(recruitmentCandidates)
       .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(recruitmentCandidatesV2.id, id))
+      .where(eq(recruitmentCandidates.id, id))
+      .returning();
+    return results.length > 0;
+  }
+
+  async softDeleteByUuid(recCanUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db
+      .update(recruitmentCandidates)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(recruitmentCandidates.recCanUuid, recCanUuid))
       .returning();
     return results.length > 0;
   }
 }
 
 export class VesselTypesAppliedRepository {
-  async findByCandidateUuid(recCanUuid: string): Promise<VesselTypesApplied[]> {
+  async findByCandidateUuid(recCanUuid: string): Promise<CandVesselTypeApplied[]> {
     const db = getDb();
     return db
       .select()
@@ -95,7 +118,7 @@ export class VesselTypesAppliedRepository {
       );
   }
 
-  async create(data: InsertVesselTypesApplied): Promise<VesselTypesApplied> {
+  async create(data: InsertVesselTypeApplied): Promise<CandVesselTypeApplied> {
     const db = getDb();
     const results = await db
       .insert(candVesselTypesApplied)
@@ -110,6 +133,16 @@ export class VesselTypesAppliedRepository {
       .update(candVesselTypesApplied)
       .set({ isDeleted: true, updatedAt: new Date() })
       .where(eq(candVesselTypesApplied.id, id))
+      .returning();
+    return results.length > 0;
+  }
+
+  async deleteByCandidateUuid(recCanUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db
+      .update(candVesselTypesApplied)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(candVesselTypesApplied.recCanUuid, recCanUuid))
       .returning();
     return results.length > 0;
   }

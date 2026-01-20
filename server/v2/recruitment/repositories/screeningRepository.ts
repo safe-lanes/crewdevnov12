@@ -1,1088 +1,615 @@
 import { eq, and } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import {
-  screeningGeneralInfo,
-  screeningAvailability,
-  screeningSalaryHistory,
-  screeningDocumentsChecklist,
-  screeningTechnicalSkills,
-  screeningCompetencyRatings,
-  screeningEquipmentExperience,
-  screeningLanguageProficiency,
-  screeningPracticalTests,
-  screeningInterviews,
-  screeningInterviewPanelists,
-  screeningInterviewQuestions,
-  screeningInterviewNotes,
-  screeningEmployerReferences,
-  screeningReferenceResponses,
-  screeningPersonalReferences,
-  screeningSeaServiceVerification,
-  screeningBackgroundChecks,
-  screeningCriminalRecords,
-  screeningEmploymentVerification,
-  screeningEducationVerification,
-  screeningPsychometricTests,
-  screeningPsychometricDimensions,
-  screeningBehavioralAssessments,
-  screeningPeme,
-  screeningPemeResults,
-  screeningDrugAlcoholTests,
-  screeningFinalEvaluation,
-  screeningEvaluationApprovals,
-} from "@shared/v2/recruitment/schema";
+  screeningB1Initial,
+  screeningB1Comments,
+  screeningB1Attachments,
+  screeningB2References,
+  screeningB2ReferenceItems,
+  screeningB2Comments,
+  screeningB2Attachments,
+  screeningB3Security,
+  screeningB3Authorities,
+  screeningB3Comments,
+  screeningB3Attachments,
+  screeningB4Certificates,
+  screeningB4CertItems,
+  screeningB4Comments,
+  screeningB4Attachments,
+  screeningB5Tests,
+  screeningB5TestItems,
+  screeningB5Comments,
+  screeningB5Attachments,
+  screeningB6Interviews,
+  screeningB6InterviewItems,
+  screeningB6Comments,
+  screeningB6Attachments,
+  screeningB7Training,
+  screeningB7TrainingItems,
+  screeningB8Shortlisting,
+  screeningB8SelectedApprovers,
+  screeningB8Comments,
+  screeningB8Attachments,
+} from "../../../../shared/v2/recruitment/schema";
+import type {
+  ScreeningB1Initial,
+  InsertScreeningB1Initial,
+  ScreeningB1Comment,
+  InsertScreeningB1Comment,
+  ScreeningB1Attachment,
+  InsertScreeningB1Attachment,
+  ScreeningB2References,
+  InsertScreeningB2References,
+  ScreeningB2ReferenceItem,
+  InsertScreeningB2ReferenceItem,
+  ScreeningB2Comment,
+  InsertScreeningB2Comment,
+  ScreeningB2Attachment,
+  InsertScreeningB2Attachment,
+  ScreeningB3Security,
+  InsertScreeningB3Security,
+  ScreeningB3Authority,
+  InsertScreeningB3Authority,
+  ScreeningB3Comment,
+  InsertScreeningB3Comment,
+  ScreeningB3Attachment,
+  InsertScreeningB3Attachment,
+  ScreeningB4Certificates,
+  InsertScreeningB4Certificates,
+  ScreeningB4CertItem,
+  InsertScreeningB4CertItem,
+  ScreeningB4Comment,
+  InsertScreeningB4Comment,
+  ScreeningB4Attachment,
+  InsertScreeningB4Attachment,
+  ScreeningB5Tests,
+  InsertScreeningB5Tests,
+  ScreeningB5TestItem,
+  InsertScreeningB5TestItem,
+  ScreeningB5Comment,
+  InsertScreeningB5Comment,
+  ScreeningB5Attachment,
+  InsertScreeningB5Attachment,
+  ScreeningB6Interviews,
+  InsertScreeningB6Interviews,
+  ScreeningB6InterviewItem,
+  InsertScreeningB6InterviewItem,
+  ScreeningB6Comment,
+  InsertScreeningB6Comment,
+  ScreeningB6Attachment,
+  InsertScreeningB6Attachment,
+  ScreeningB7Training,
+  InsertScreeningB7Training,
+  ScreeningB7TrainingItem,
+  InsertScreeningB7TrainingItem,
+  ScreeningB8Shortlisting,
+  InsertScreeningB8Shortlisting,
+  ScreeningB8Approver,
+  InsertScreeningB8Approver,
+  ScreeningB8Comment,
+  InsertScreeningB8Comment,
+  ScreeningB8Attachment,
+  InsertScreeningB8Attachment,
+} from "../../../../shared/v2/recruitment/types";
 
-type ScreeningGeneralInfo = typeof screeningGeneralInfo.$inferSelect;
-type ScreeningAvailability = typeof screeningAvailability.$inferSelect;
-type ScreeningSalaryHistory = typeof screeningSalaryHistory.$inferSelect;
-type ScreeningDocumentsChecklist = typeof screeningDocumentsChecklist.$inferSelect;
-type ScreeningTechnicalSkills = typeof screeningTechnicalSkills.$inferSelect;
-type ScreeningCompetencyRatings = typeof screeningCompetencyRatings.$inferSelect;
-type ScreeningEquipmentExperience = typeof screeningEquipmentExperience.$inferSelect;
-type ScreeningLanguageProficiency = typeof screeningLanguageProficiency.$inferSelect;
-type ScreeningPracticalTests = typeof screeningPracticalTests.$inferSelect;
-type ScreeningInterviews = typeof screeningInterviews.$inferSelect;
-type ScreeningInterviewPanelists = typeof screeningInterviewPanelists.$inferSelect;
-type ScreeningInterviewQuestions = typeof screeningInterviewQuestions.$inferSelect;
-type ScreeningInterviewNotes = typeof screeningInterviewNotes.$inferSelect;
-type ScreeningEmployerReferences = typeof screeningEmployerReferences.$inferSelect;
-type ScreeningReferenceResponses = typeof screeningReferenceResponses.$inferSelect;
-type ScreeningPersonalReferences = typeof screeningPersonalReferences.$inferSelect;
-type ScreeningSeaServiceVerification = typeof screeningSeaServiceVerification.$inferSelect;
-type ScreeningBackgroundChecks = typeof screeningBackgroundChecks.$inferSelect;
-type ScreeningCriminalRecords = typeof screeningCriminalRecords.$inferSelect;
-type ScreeningEmploymentVerification = typeof screeningEmploymentVerification.$inferSelect;
-type ScreeningEducationVerification = typeof screeningEducationVerification.$inferSelect;
-type ScreeningPsychometricTests = typeof screeningPsychometricTests.$inferSelect;
-type ScreeningPsychometricDimensions = typeof screeningPsychometricDimensions.$inferSelect;
-type ScreeningBehavioralAssessments = typeof screeningBehavioralAssessments.$inferSelect;
-type ScreeningPeme = typeof screeningPeme.$inferSelect;
-type ScreeningPemeResults = typeof screeningPemeResults.$inferSelect;
-type ScreeningDrugAlcoholTests = typeof screeningDrugAlcoholTests.$inferSelect;
-type ScreeningFinalEvaluation = typeof screeningFinalEvaluation.$inferSelect;
-type ScreeningEvaluationApprovals = typeof screeningEvaluationApprovals.$inferSelect;
-
-// ============================================================================
-// B1: GENERAL SCREENING
-// ============================================================================
-
-export const screeningGeneralInfoRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningGeneralInfo | null> {
+export class ScreeningB1Repository {
+  async findByCandidateUuid(recCanUuid: string): Promise<ScreeningB1Initial | undefined> {
     const db = getDb();
-    const results = await db.select().from(screeningGeneralInfo)
-      .where(and(eq(screeningGeneralInfo.recCanUuid, recCanUuid), eq(screeningGeneralInfo.isDeleted, false)));
-    return results[0] || null;
-  },
+    const results = await db.select().from(screeningB1Initial).where(
+      and(eq(screeningB1Initial.recCanUuid, recCanUuid), eq(screeningB1Initial.isDeleted, false))
+    );
+    return results[0];
+  }
 
-  async upsert(recCanUuid: string, data: Partial<Omit<ScreeningGeneralInfo, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningGeneralInfo> {
+  async create(data: InsertScreeningB1Initial): Promise<ScreeningB1Initial> {
     const db = getDb();
-    const existing = await this.findByCandidate(recCanUuid);
+    const results = await db.insert(screeningB1Initial).values(data).returning();
+    return results[0];
+  }
+
+  async update(id: number, data: Partial<InsertScreeningB1Initial>): Promise<ScreeningB1Initial | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB1Initial).set({ ...data, updatedAt: new Date() }).where(eq(screeningB1Initial.id, id)).returning();
+    return results[0];
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB1Initial>): Promise<ScreeningB1Initial> {
+    const existing = await this.findByCandidateUuid(recCanUuid);
     if (existing) {
-      const [updated] = await db.update(screeningGeneralInfo)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(screeningGeneralInfo.id, existing.id))
-        .returning();
-      return updated;
+      return (await this.update(existing.id, data))!;
     }
-    const [created] = await db.insert(screeningGeneralInfo)
-      .values({ sgiUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-};
+    return this.create({ ...data, recCanUuid } as InsertScreeningB1Initial);
+  }
 
-export const screeningAvailabilityRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningAvailability[]> {
+  async findComments(b1Uuid: string): Promise<ScreeningB1Comment[]> {
     const db = getDb();
-    return db.select().from(screeningAvailability)
-      .where(and(eq(screeningAvailability.recCanUuid, recCanUuid), eq(screeningAvailability.isDeleted, false)));
-  },
+    return db.select().from(screeningB1Comments).where(
+      and(eq(screeningB1Comments.b1Uuid, b1Uuid), eq(screeningB1Comments.isDeleted, false))
+    );
+  }
 
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningAvailability, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningAvailability> {
+  async createComment(data: InsertScreeningB1Comment): Promise<ScreeningB1Comment> {
     const db = getDb();
-    const [created] = await db.insert(screeningAvailability)
-      .values({ availUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
+    const results = await db.insert(screeningB1Comments).values(data).returning();
+    return results[0];
+  }
 
-  async update(id: number, data: Partial<Omit<ScreeningAvailability, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningAvailability | null> {
+  async findAttachments(b1Uuid: string): Promise<ScreeningB1Attachment[]> {
     const db = getDb();
-    const [updated] = await db.update(screeningAvailability)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningAvailability.id, id))
-      .returning();
-    return updated || null;
-  },
+    return db.select().from(screeningB1Attachments).where(
+      and(eq(screeningB1Attachments.b1Uuid, b1Uuid), eq(screeningB1Attachments.isDeleted, false))
+    );
+  }
 
-  async delete(id: number): Promise<ScreeningAvailability | null> {
+  async createAttachment(data: InsertScreeningB1Attachment): Promise<ScreeningB1Attachment> {
     const db = getDb();
-    const [deleted] = await db.update(screeningAvailability)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningAvailability.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
+    const results = await db.insert(screeningB1Attachments).values(data).returning();
+    return results[0];
+  }
+}
 
-export const screeningSalaryHistoryRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningSalaryHistory[]> {
+export class ScreeningB2Repository {
+  async findByCandidateUuid(recCanUuid: string): Promise<ScreeningB2References | undefined> {
     const db = getDb();
-    return db.select().from(screeningSalaryHistory)
-      .where(and(eq(screeningSalaryHistory.recCanUuid, recCanUuid), eq(screeningSalaryHistory.isDeleted, false)));
-  },
+    const results = await db.select().from(screeningB2References).where(
+      and(eq(screeningB2References.recCanUuid, recCanUuid), eq(screeningB2References.isDeleted, false))
+    );
+    return results[0];
+  }
 
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningSalaryHistory, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningSalaryHistory> {
+  async create(data: InsertScreeningB2References): Promise<ScreeningB2References> {
     const db = getDb();
-    const [created] = await db.insert(screeningSalaryHistory)
-      .values({ salHistUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
+    const results = await db.insert(screeningB2References).values(data).returning();
+    return results[0];
+  }
 
-  async update(id: number, data: Partial<Omit<ScreeningSalaryHistory, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningSalaryHistory | null> {
+  async update(id: number, data: Partial<InsertScreeningB2References>): Promise<ScreeningB2References | undefined> {
     const db = getDb();
-    const [updated] = await db.update(screeningSalaryHistory)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningSalaryHistory.id, id))
-      .returning();
-    return updated || null;
-  },
+    const results = await db.update(screeningB2References).set({ ...data, updatedAt: new Date() }).where(eq(screeningB2References.id, id)).returning();
+    return results[0];
+  }
 
-  async delete(id: number): Promise<ScreeningSalaryHistory | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningSalaryHistory)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningSalaryHistory.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningDocumentsChecklistRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningDocumentsChecklist | null> {
-    const db = getDb();
-    const results = await db.select().from(screeningDocumentsChecklist)
-      .where(and(eq(screeningDocumentsChecklist.recCanUuid, recCanUuid), eq(screeningDocumentsChecklist.isDeleted, false)));
-    return results[0] || null;
-  },
-
-  async upsert(recCanUuid: string, data: Partial<Omit<ScreeningDocumentsChecklist, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningDocumentsChecklist> {
-    const db = getDb();
-    const existing = await this.findByCandidate(recCanUuid);
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB2References>): Promise<ScreeningB2References> {
+    const existing = await this.findByCandidateUuid(recCanUuid);
     if (existing) {
-      const [updated] = await db.update(screeningDocumentsChecklist)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(screeningDocumentsChecklist.id, existing.id))
-        .returning();
-      return updated;
+      return (await this.update(existing.id, data))!;
     }
-    const [created] = await db.insert(screeningDocumentsChecklist)
-      .values({ docCheckUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-};
+    return this.create({ ...data, recCanUuid } as InsertScreeningB2References);
+  }
 
-// ============================================================================
-// B2: SKILLS ASSESSMENT
-// ============================================================================
-
-export const screeningTechnicalSkillsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningTechnicalSkills[]> {
+  async findItems(b2Uuid: string): Promise<ScreeningB2ReferenceItem[]> {
     const db = getDb();
-    return db.select().from(screeningTechnicalSkills)
-      .where(and(eq(screeningTechnicalSkills.recCanUuid, recCanUuid), eq(screeningTechnicalSkills.isDeleted, false)));
-  },
+    return db.select().from(screeningB2ReferenceItems).where(
+      and(eq(screeningB2ReferenceItems.b2Uuid, b2Uuid), eq(screeningB2ReferenceItems.isDeleted, false))
+    );
+  }
 
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningTechnicalSkills, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningTechnicalSkills> {
+  async createItem(data: InsertScreeningB2ReferenceItem): Promise<ScreeningB2ReferenceItem> {
     const db = getDb();
-    const [created] = await db.insert(screeningTechnicalSkills)
-      .values({ techSkillUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
+    const results = await db.insert(screeningB2ReferenceItems).values(data).returning();
+    return results[0];
+  }
 
-  async update(id: number, data: Partial<Omit<ScreeningTechnicalSkills, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningTechnicalSkills | null> {
+  async findComments(b2Uuid: string): Promise<ScreeningB2Comment[]> {
     const db = getDb();
-    const [updated] = await db.update(screeningTechnicalSkills)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningTechnicalSkills.id, id))
-      .returning();
-    return updated || null;
-  },
+    return db.select().from(screeningB2Comments).where(
+      and(eq(screeningB2Comments.b2Uuid, b2Uuid), eq(screeningB2Comments.isDeleted, false))
+    );
+  }
 
-  async delete(id: number): Promise<ScreeningTechnicalSkills | null> {
+  async createComment(data: InsertScreeningB2Comment): Promise<ScreeningB2Comment> {
     const db = getDb();
-    const [deleted] = await db.update(screeningTechnicalSkills)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningTechnicalSkills.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
+    const results = await db.insert(screeningB2Comments).values(data).returning();
+    return results[0];
+  }
 
-export const screeningCompetencyRatingsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningCompetencyRatings[]> {
+  async findAttachments(b2Uuid: string): Promise<ScreeningB2Attachment[]> {
     const db = getDb();
-    return db.select().from(screeningCompetencyRatings)
-      .where(and(eq(screeningCompetencyRatings.recCanUuid, recCanUuid), eq(screeningCompetencyRatings.isDeleted, false)));
-  },
+    return db.select().from(screeningB2Attachments).where(
+      and(eq(screeningB2Attachments.b2Uuid, b2Uuid), eq(screeningB2Attachments.isDeleted, false))
+    );
+  }
 
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningCompetencyRatings, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningCompetencyRatings> {
+  async createAttachment(data: InsertScreeningB2Attachment): Promise<ScreeningB2Attachment> {
     const db = getDb();
-    const [created] = await db.insert(screeningCompetencyRatings)
-      .values({ compRatingUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
+    const results = await db.insert(screeningB2Attachments).values(data).returning();
+    return results[0];
+  }
+}
 
-  async update(id: number, data: Partial<Omit<ScreeningCompetencyRatings, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningCompetencyRatings | null> {
+export class ScreeningB3Repository {
+  async findByCandidateUuid(recCanUuid: string): Promise<ScreeningB3Security | undefined> {
     const db = getDb();
-    const [updated] = await db.update(screeningCompetencyRatings)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningCompetencyRatings.id, id))
-      .returning();
-    return updated || null;
-  },
+    const results = await db.select().from(screeningB3Security).where(
+      and(eq(screeningB3Security.recCanUuid, recCanUuid), eq(screeningB3Security.isDeleted, false))
+    );
+    return results[0];
+  }
 
-  async delete(id: number): Promise<ScreeningCompetencyRatings | null> {
+  async create(data: InsertScreeningB3Security): Promise<ScreeningB3Security> {
     const db = getDb();
-    const [deleted] = await db.update(screeningCompetencyRatings)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningCompetencyRatings.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
+    const results = await db.insert(screeningB3Security).values(data).returning();
+    return results[0];
+  }
 
-export const screeningEquipmentExperienceRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningEquipmentExperience[]> {
+  async update(id: number, data: Partial<InsertScreeningB3Security>): Promise<ScreeningB3Security | undefined> {
     const db = getDb();
-    return db.select().from(screeningEquipmentExperience)
-      .where(and(eq(screeningEquipmentExperience.recCanUuid, recCanUuid), eq(screeningEquipmentExperience.isDeleted, false)));
-  },
+    const results = await db.update(screeningB3Security).set({ ...data, updatedAt: new Date() }).where(eq(screeningB3Security.id, id)).returning();
+    return results[0];
+  }
 
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningEquipmentExperience, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningEquipmentExperience> {
-    const db = getDb();
-    const [created] = await db.insert(screeningEquipmentExperience)
-      .values({ equipExpUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningEquipmentExperience, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningEquipmentExperience | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningEquipmentExperience)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningEquipmentExperience.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningEquipmentExperience | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningEquipmentExperience)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningEquipmentExperience.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningLanguageProficiencyRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningLanguageProficiency[]> {
-    const db = getDb();
-    return db.select().from(screeningLanguageProficiency)
-      .where(and(eq(screeningLanguageProficiency.recCanUuid, recCanUuid), eq(screeningLanguageProficiency.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningLanguageProficiency, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningLanguageProficiency> {
-    const db = getDb();
-    const [created] = await db.insert(screeningLanguageProficiency)
-      .values({ langProfUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningLanguageProficiency, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningLanguageProficiency | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningLanguageProficiency)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningLanguageProficiency.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningLanguageProficiency | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningLanguageProficiency)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningLanguageProficiency.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningPracticalTestsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningPracticalTests[]> {
-    const db = getDb();
-    return db.select().from(screeningPracticalTests)
-      .where(and(eq(screeningPracticalTests.recCanUuid, recCanUuid), eq(screeningPracticalTests.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningPracticalTests, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningPracticalTests> {
-    const db = getDb();
-    const [created] = await db.insert(screeningPracticalTests)
-      .values({ practTestUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningPracticalTests, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningPracticalTests | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningPracticalTests)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningPracticalTests.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningPracticalTests | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningPracticalTests)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningPracticalTests.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-// ============================================================================
-// B3: INTERVIEW ASSESSMENT
-// ============================================================================
-
-export const screeningInterviewsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningInterviews[]> {
-    const db = getDb();
-    return db.select().from(screeningInterviews)
-      .where(and(eq(screeningInterviews.recCanUuid, recCanUuid), eq(screeningInterviews.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningInterviews, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningInterviews> {
-    const db = getDb();
-    const [created] = await db.insert(screeningInterviews)
-      .values({ interviewUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningInterviews, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningInterviews | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningInterviews)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningInterviews.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningInterviews | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningInterviews)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningInterviews.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningInterviewPanelistsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningInterviewPanelists[]> {
-    const db = getDb();
-    return db.select().from(screeningInterviewPanelists)
-      .where(and(eq(screeningInterviewPanelists.recCanUuid, recCanUuid), eq(screeningInterviewPanelists.isDeleted, false)));
-  },
-
-  async findByInterview(interviewUuid: string): Promise<ScreeningInterviewPanelists[]> {
-    const db = getDb();
-    return db.select().from(screeningInterviewPanelists)
-      .where(and(eq(screeningInterviewPanelists.interviewUuid, interviewUuid), eq(screeningInterviewPanelists.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningInterviewPanelists, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningInterviewPanelists> {
-    const db = getDb();
-    const [created] = await db.insert(screeningInterviewPanelists)
-      .values({ panelistUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningInterviewPanelists, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningInterviewPanelists | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningInterviewPanelists)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningInterviewPanelists.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningInterviewPanelists | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningInterviewPanelists)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningInterviewPanelists.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningInterviewQuestionsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningInterviewQuestions[]> {
-    const db = getDb();
-    return db.select().from(screeningInterviewQuestions)
-      .where(and(eq(screeningInterviewQuestions.recCanUuid, recCanUuid), eq(screeningInterviewQuestions.isDeleted, false)));
-  },
-
-  async findByInterview(interviewUuid: string): Promise<ScreeningInterviewQuestions[]> {
-    const db = getDb();
-    return db.select().from(screeningInterviewQuestions)
-      .where(and(eq(screeningInterviewQuestions.interviewUuid, interviewUuid), eq(screeningInterviewQuestions.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningInterviewQuestions, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningInterviewQuestions> {
-    const db = getDb();
-    const [created] = await db.insert(screeningInterviewQuestions)
-      .values({ intQuestUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningInterviewQuestions, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningInterviewQuestions | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningInterviewQuestions)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningInterviewQuestions.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningInterviewQuestions | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningInterviewQuestions)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningInterviewQuestions.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningInterviewNotesRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningInterviewNotes[]> {
-    const db = getDb();
-    return db.select().from(screeningInterviewNotes)
-      .where(and(eq(screeningInterviewNotes.recCanUuid, recCanUuid), eq(screeningInterviewNotes.isDeleted, false)));
-  },
-
-  async findByInterview(interviewUuid: string): Promise<ScreeningInterviewNotes[]> {
-    const db = getDb();
-    return db.select().from(screeningInterviewNotes)
-      .where(and(eq(screeningInterviewNotes.interviewUuid, interviewUuid), eq(screeningInterviewNotes.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningInterviewNotes, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningInterviewNotes> {
-    const db = getDb();
-    const [created] = await db.insert(screeningInterviewNotes)
-      .values({ intNoteUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningInterviewNotes, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningInterviewNotes | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningInterviewNotes)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningInterviewNotes.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningInterviewNotes | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningInterviewNotes)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningInterviewNotes.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-// ============================================================================
-// B4: REFERENCE CHECKS
-// ============================================================================
-
-export const screeningEmployerReferencesRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningEmployerReferences[]> {
-    const db = getDb();
-    return db.select().from(screeningEmployerReferences)
-      .where(and(eq(screeningEmployerReferences.recCanUuid, recCanUuid), eq(screeningEmployerReferences.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningEmployerReferences, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningEmployerReferences> {
-    const db = getDb();
-    const [created] = await db.insert(screeningEmployerReferences)
-      .values({ empRefUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningEmployerReferences, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningEmployerReferences | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningEmployerReferences)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningEmployerReferences.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningEmployerReferences | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningEmployerReferences)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningEmployerReferences.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningReferenceResponsesRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningReferenceResponses[]> {
-    const db = getDb();
-    return db.select().from(screeningReferenceResponses)
-      .where(and(eq(screeningReferenceResponses.recCanUuid, recCanUuid), eq(screeningReferenceResponses.isDeleted, false)));
-  },
-
-  async findByReference(empRefUuid: string): Promise<ScreeningReferenceResponses[]> {
-    const db = getDb();
-    return db.select().from(screeningReferenceResponses)
-      .where(and(eq(screeningReferenceResponses.empRefUuid, empRefUuid), eq(screeningReferenceResponses.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningReferenceResponses, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningReferenceResponses> {
-    const db = getDb();
-    const [created] = await db.insert(screeningReferenceResponses)
-      .values({ refRespUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningReferenceResponses, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningReferenceResponses | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningReferenceResponses)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningReferenceResponses.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningReferenceResponses | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningReferenceResponses)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningReferenceResponses.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningPersonalReferencesRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningPersonalReferences[]> {
-    const db = getDb();
-    return db.select().from(screeningPersonalReferences)
-      .where(and(eq(screeningPersonalReferences.recCanUuid, recCanUuid), eq(screeningPersonalReferences.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningPersonalReferences, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningPersonalReferences> {
-    const db = getDb();
-    const [created] = await db.insert(screeningPersonalReferences)
-      .values({ persRefUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningPersonalReferences, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningPersonalReferences | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningPersonalReferences)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningPersonalReferences.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningPersonalReferences | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningPersonalReferences)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningPersonalReferences.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningSeaServiceVerificationRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningSeaServiceVerification[]> {
-    const db = getDb();
-    return db.select().from(screeningSeaServiceVerification)
-      .where(and(eq(screeningSeaServiceVerification.recCanUuid, recCanUuid), eq(screeningSeaServiceVerification.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningSeaServiceVerification, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningSeaServiceVerification> {
-    const db = getDb();
-    const [created] = await db.insert(screeningSeaServiceVerification)
-      .values({ ssVerifUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningSeaServiceVerification, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningSeaServiceVerification | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningSeaServiceVerification)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningSeaServiceVerification.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningSeaServiceVerification | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningSeaServiceVerification)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningSeaServiceVerification.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-// ============================================================================
-// B5: BACKGROUND VERIFICATION
-// ============================================================================
-
-export const screeningBackgroundChecksRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningBackgroundChecks | null> {
-    const db = getDb();
-    const results = await db.select().from(screeningBackgroundChecks)
-      .where(and(eq(screeningBackgroundChecks.recCanUuid, recCanUuid), eq(screeningBackgroundChecks.isDeleted, false)));
-    return results[0] || null;
-  },
-
-  async upsert(recCanUuid: string, data: Partial<Omit<ScreeningBackgroundChecks, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningBackgroundChecks> {
-    const db = getDb();
-    const existing = await this.findByCandidate(recCanUuid);
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB3Security>): Promise<ScreeningB3Security> {
+    const existing = await this.findByCandidateUuid(recCanUuid);
     if (existing) {
-      const [updated] = await db.update(screeningBackgroundChecks)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(screeningBackgroundChecks.id, existing.id))
-        .returning();
-      return updated;
+      return (await this.update(existing.id, data))!;
     }
-    const [created] = await db.insert(screeningBackgroundChecks)
-      .values({ bgCheckUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-};
+    return this.create({ ...data, recCanUuid } as InsertScreeningB3Security);
+  }
 
-export const screeningCriminalRecordsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningCriminalRecords[]> {
+  async findAuthorities(b3Uuid: string): Promise<ScreeningB3Authority[]> {
     const db = getDb();
-    return db.select().from(screeningCriminalRecords)
-      .where(and(eq(screeningCriminalRecords.recCanUuid, recCanUuid), eq(screeningCriminalRecords.isDeleted, false)));
-  },
+    return db.select().from(screeningB3Authorities).where(
+      and(eq(screeningB3Authorities.b3Uuid, b3Uuid), eq(screeningB3Authorities.isDeleted, false))
+    );
+  }
 
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningCriminalRecords, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningCriminalRecords> {
+  async createAuthority(data: InsertScreeningB3Authority): Promise<ScreeningB3Authority> {
     const db = getDb();
-    const [created] = await db.insert(screeningCriminalRecords)
-      .values({ crimRecUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
+    const results = await db.insert(screeningB3Authorities).values(data).returning();
+    return results[0];
+  }
 
-  async update(id: number, data: Partial<Omit<ScreeningCriminalRecords, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningCriminalRecords | null> {
+  async findComments(b3Uuid: string): Promise<ScreeningB3Comment[]> {
     const db = getDb();
-    const [updated] = await db.update(screeningCriminalRecords)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningCriminalRecords.id, id))
-      .returning();
-    return updated || null;
-  },
+    return db.select().from(screeningB3Comments).where(
+      and(eq(screeningB3Comments.b3Uuid, b3Uuid), eq(screeningB3Comments.isDeleted, false))
+    );
+  }
 
-  async delete(id: number): Promise<ScreeningCriminalRecords | null> {
+  async createComment(data: InsertScreeningB3Comment): Promise<ScreeningB3Comment> {
     const db = getDb();
-    const [deleted] = await db.update(screeningCriminalRecords)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningCriminalRecords.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
+    const results = await db.insert(screeningB3Comments).values(data).returning();
+    return results[0];
+  }
 
-export const screeningEmploymentVerificationRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningEmploymentVerification[]> {
+  async findAttachments(b3Uuid: string): Promise<ScreeningB3Attachment[]> {
     const db = getDb();
-    return db.select().from(screeningEmploymentVerification)
-      .where(and(eq(screeningEmploymentVerification.recCanUuid, recCanUuid), eq(screeningEmploymentVerification.isDeleted, false)));
-  },
+    return db.select().from(screeningB3Attachments).where(
+      and(eq(screeningB3Attachments.b3Uuid, b3Uuid), eq(screeningB3Attachments.isDeleted, false))
+    );
+  }
 
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningEmploymentVerification, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningEmploymentVerification> {
+  async createAttachment(data: InsertScreeningB3Attachment): Promise<ScreeningB3Attachment> {
     const db = getDb();
-    const [created] = await db.insert(screeningEmploymentVerification)
-      .values({ empVerifUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
+    const results = await db.insert(screeningB3Attachments).values(data).returning();
+    return results[0];
+  }
+}
 
-  async update(id: number, data: Partial<Omit<ScreeningEmploymentVerification, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningEmploymentVerification | null> {
+export class ScreeningB4Repository {
+  async findByCandidateUuid(recCanUuid: string): Promise<ScreeningB4Certificates | undefined> {
     const db = getDb();
-    const [updated] = await db.update(screeningEmploymentVerification)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningEmploymentVerification.id, id))
-      .returning();
-    return updated || null;
-  },
+    const results = await db.select().from(screeningB4Certificates).where(
+      and(eq(screeningB4Certificates.recCanUuid, recCanUuid), eq(screeningB4Certificates.isDeleted, false))
+    );
+    return results[0];
+  }
 
-  async delete(id: number): Promise<ScreeningEmploymentVerification | null> {
+  async create(data: InsertScreeningB4Certificates): Promise<ScreeningB4Certificates> {
     const db = getDb();
-    const [deleted] = await db.update(screeningEmploymentVerification)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningEmploymentVerification.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
+    const results = await db.insert(screeningB4Certificates).values(data).returning();
+    return results[0];
+  }
 
-export const screeningEducationVerificationRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningEducationVerification[]> {
+  async update(id: number, data: Partial<InsertScreeningB4Certificates>): Promise<ScreeningB4Certificates | undefined> {
     const db = getDb();
-    return db.select().from(screeningEducationVerification)
-      .where(and(eq(screeningEducationVerification.recCanUuid, recCanUuid), eq(screeningEducationVerification.isDeleted, false)));
-  },
+    const results = await db.update(screeningB4Certificates).set({ ...data, updatedAt: new Date() }).where(eq(screeningB4Certificates.id, id)).returning();
+    return results[0];
+  }
 
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningEducationVerification, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningEducationVerification> {
-    const db = getDb();
-    const [created] = await db.insert(screeningEducationVerification)
-      .values({ eduVerifUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningEducationVerification, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningEducationVerification | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningEducationVerification)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningEducationVerification.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningEducationVerification | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningEducationVerification)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningEducationVerification.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-// ============================================================================
-// B6: PSYCHOLOGICAL ASSESSMENT
-// ============================================================================
-
-export const screeningPsychometricTestsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningPsychometricTests[]> {
-    const db = getDb();
-    return db.select().from(screeningPsychometricTests)
-      .where(and(eq(screeningPsychometricTests.recCanUuid, recCanUuid), eq(screeningPsychometricTests.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningPsychometricTests, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningPsychometricTests> {
-    const db = getDb();
-    const [created] = await db.insert(screeningPsychometricTests)
-      .values({ psychTestUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningPsychometricTests, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningPsychometricTests | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningPsychometricTests)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningPsychometricTests.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningPsychometricTests | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningPsychometricTests)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningPsychometricTests.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningPsychometricDimensionsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningPsychometricDimensions[]> {
-    const db = getDb();
-    return db.select().from(screeningPsychometricDimensions)
-      .where(and(eq(screeningPsychometricDimensions.recCanUuid, recCanUuid), eq(screeningPsychometricDimensions.isDeleted, false)));
-  },
-
-  async findByTest(psychTestUuid: string): Promise<ScreeningPsychometricDimensions[]> {
-    const db = getDb();
-    return db.select().from(screeningPsychometricDimensions)
-      .where(and(eq(screeningPsychometricDimensions.psychTestUuid, psychTestUuid), eq(screeningPsychometricDimensions.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningPsychometricDimensions, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningPsychometricDimensions> {
-    const db = getDb();
-    const [created] = await db.insert(screeningPsychometricDimensions)
-      .values({ psychDimUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningPsychometricDimensions, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningPsychometricDimensions | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningPsychometricDimensions)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningPsychometricDimensions.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningPsychometricDimensions | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningPsychometricDimensions)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningPsychometricDimensions.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningBehavioralAssessmentsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningBehavioralAssessments[]> {
-    const db = getDb();
-    return db.select().from(screeningBehavioralAssessments)
-      .where(and(eq(screeningBehavioralAssessments.recCanUuid, recCanUuid), eq(screeningBehavioralAssessments.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningBehavioralAssessments, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningBehavioralAssessments> {
-    const db = getDb();
-    const [created] = await db.insert(screeningBehavioralAssessments)
-      .values({ behAssessUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningBehavioralAssessments, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningBehavioralAssessments | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningBehavioralAssessments)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningBehavioralAssessments.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningBehavioralAssessments | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningBehavioralAssessments)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningBehavioralAssessments.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-// ============================================================================
-// B7: MEDICAL SCREENING
-// ============================================================================
-
-export const screeningPemeRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningPeme[]> {
-    const db = getDb();
-    return db.select().from(screeningPeme)
-      .where(and(eq(screeningPeme.recCanUuid, recCanUuid), eq(screeningPeme.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningPeme, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningPeme> {
-    const db = getDb();
-    const [created] = await db.insert(screeningPeme)
-      .values({ pemeUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningPeme, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningPeme | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningPeme)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningPeme.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningPeme | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningPeme)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningPeme.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningPemeResultsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningPemeResults[]> {
-    const db = getDb();
-    return db.select().from(screeningPemeResults)
-      .where(and(eq(screeningPemeResults.recCanUuid, recCanUuid), eq(screeningPemeResults.isDeleted, false)));
-  },
-
-  async findByPeme(pemeUuid: string): Promise<ScreeningPemeResults[]> {
-    const db = getDb();
-    return db.select().from(screeningPemeResults)
-      .where(and(eq(screeningPemeResults.pemeUuid, pemeUuid), eq(screeningPemeResults.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningPemeResults, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningPemeResults> {
-    const db = getDb();
-    const [created] = await db.insert(screeningPemeResults)
-      .values({ pemeResultUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningPemeResults, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningPemeResults | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningPemeResults)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningPemeResults.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningPemeResults | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningPemeResults)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningPemeResults.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-export const screeningDrugAlcoholTestsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningDrugAlcoholTests[]> {
-    const db = getDb();
-    return db.select().from(screeningDrugAlcoholTests)
-      .where(and(eq(screeningDrugAlcoholTests.recCanUuid, recCanUuid), eq(screeningDrugAlcoholTests.isDeleted, false)));
-  },
-
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningDrugAlcoholTests, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningDrugAlcoholTests> {
-    const db = getDb();
-    const [created] = await db.insert(screeningDrugAlcoholTests)
-      .values({ daTestUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-
-  async update(id: number, data: Partial<Omit<ScreeningDrugAlcoholTests, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningDrugAlcoholTests | null> {
-    const db = getDb();
-    const [updated] = await db.update(screeningDrugAlcoholTests)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningDrugAlcoholTests.id, id))
-      .returning();
-    return updated || null;
-  },
-
-  async delete(id: number): Promise<ScreeningDrugAlcoholTests | null> {
-    const db = getDb();
-    const [deleted] = await db.update(screeningDrugAlcoholTests)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningDrugAlcoholTests.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
-
-// ============================================================================
-// B8: FINAL EVALUATION
-// ============================================================================
-
-export const screeningFinalEvaluationRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningFinalEvaluation | null> {
-    const db = getDb();
-    const results = await db.select().from(screeningFinalEvaluation)
-      .where(and(eq(screeningFinalEvaluation.recCanUuid, recCanUuid), eq(screeningFinalEvaluation.isDeleted, false)));
-    return results[0] || null;
-  },
-
-  async upsert(recCanUuid: string, data: Partial<Omit<ScreeningFinalEvaluation, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningFinalEvaluation> {
-    const db = getDb();
-    const existing = await this.findByCandidate(recCanUuid);
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB4Certificates>): Promise<ScreeningB4Certificates> {
+    const existing = await this.findByCandidateUuid(recCanUuid);
     if (existing) {
-      const [updated] = await db.update(screeningFinalEvaluation)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(screeningFinalEvaluation.id, existing.id))
-        .returning();
-      return updated;
+      return (await this.update(existing.id, data))!;
     }
-    const [created] = await db.insert(screeningFinalEvaluation)
-      .values({ finalEvalUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
-};
+    return this.create({ ...data, recCanUuid } as InsertScreeningB4Certificates);
+  }
 
-export const screeningEvaluationApprovalsRepository = {
-  async findByCandidate(recCanUuid: string): Promise<ScreeningEvaluationApprovals[]> {
+  async findCertItems(b4Uuid: string): Promise<ScreeningB4CertItem[]> {
     const db = getDb();
-    return db.select().from(screeningEvaluationApprovals)
-      .where(and(eq(screeningEvaluationApprovals.recCanUuid, recCanUuid), eq(screeningEvaluationApprovals.isDeleted, false)));
-  },
+    return db.select().from(screeningB4CertItems).where(
+      and(eq(screeningB4CertItems.b4Uuid, b4Uuid), eq(screeningB4CertItems.isDeleted, false))
+    );
+  }
 
-  async findByEvaluation(finalEvalUuid: string): Promise<ScreeningEvaluationApprovals[]> {
+  async createCertItem(data: InsertScreeningB4CertItem): Promise<ScreeningB4CertItem> {
     const db = getDb();
-    return db.select().from(screeningEvaluationApprovals)
-      .where(and(eq(screeningEvaluationApprovals.finalEvalUuid, finalEvalUuid), eq(screeningEvaluationApprovals.isDeleted, false)));
-  },
+    const results = await db.insert(screeningB4CertItems).values(data).returning();
+    return results[0];
+  }
 
-  async create(recCanUuid: string, data: Partial<Omit<ScreeningEvaluationApprovals, "id" | "createdAt" | "updatedAt" | "recCanUuid">>): Promise<ScreeningEvaluationApprovals> {
+  async findComments(b4Uuid: string): Promise<ScreeningB4Comment[]> {
     const db = getDb();
-    const [created] = await db.insert(screeningEvaluationApprovals)
-      .values({ evalApprovalUuid: uuidv4(), recCanUuid, ...data })
-      .returning();
-    return created;
-  },
+    return db.select().from(screeningB4Comments).where(
+      and(eq(screeningB4Comments.b4Uuid, b4Uuid), eq(screeningB4Comments.isDeleted, false))
+    );
+  }
 
-  async update(id: number, data: Partial<Omit<ScreeningEvaluationApprovals, "id" | "createdAt" | "updatedAt">>): Promise<ScreeningEvaluationApprovals | null> {
+  async createComment(data: InsertScreeningB4Comment): Promise<ScreeningB4Comment> {
     const db = getDb();
-    const [updated] = await db.update(screeningEvaluationApprovals)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(screeningEvaluationApprovals.id, id))
-      .returning();
-    return updated || null;
-  },
+    const results = await db.insert(screeningB4Comments).values(data).returning();
+    return results[0];
+  }
 
-  async delete(id: number): Promise<ScreeningEvaluationApprovals | null> {
+  async findAttachments(b4Uuid: string): Promise<ScreeningB4Attachment[]> {
     const db = getDb();
-    const [deleted] = await db.update(screeningEvaluationApprovals)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(screeningEvaluationApprovals.id, id))
-      .returning();
-    return deleted || null;
-  },
-};
+    return db.select().from(screeningB4Attachments).where(
+      and(eq(screeningB4Attachments.b4Uuid, b4Uuid), eq(screeningB4Attachments.isDeleted, false))
+    );
+  }
+
+  async createAttachment(data: InsertScreeningB4Attachment): Promise<ScreeningB4Attachment> {
+    const db = getDb();
+    const results = await db.insert(screeningB4Attachments).values(data).returning();
+    return results[0];
+  }
+}
+
+export class ScreeningB5Repository {
+  async findByCandidateUuid(recCanUuid: string): Promise<ScreeningB5Tests | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB5Tests).where(
+      and(eq(screeningB5Tests.recCanUuid, recCanUuid), eq(screeningB5Tests.isDeleted, false))
+    );
+    return results[0];
+  }
+
+  async create(data: InsertScreeningB5Tests): Promise<ScreeningB5Tests> {
+    const db = getDb();
+    const results = await db.insert(screeningB5Tests).values(data).returning();
+    return results[0];
+  }
+
+  async update(id: number, data: Partial<InsertScreeningB5Tests>): Promise<ScreeningB5Tests | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB5Tests).set({ ...data, updatedAt: new Date() }).where(eq(screeningB5Tests.id, id)).returning();
+    return results[0];
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB5Tests>): Promise<ScreeningB5Tests> {
+    const existing = await this.findByCandidateUuid(recCanUuid);
+    if (existing) {
+      return (await this.update(existing.id, data))!;
+    }
+    return this.create({ ...data, recCanUuid } as InsertScreeningB5Tests);
+  }
+
+  async findTestItems(b5Uuid: string): Promise<ScreeningB5TestItem[]> {
+    const db = getDb();
+    return db.select().from(screeningB5TestItems).where(
+      and(eq(screeningB5TestItems.b5Uuid, b5Uuid), eq(screeningB5TestItems.isDeleted, false))
+    );
+  }
+
+  async createTestItem(data: InsertScreeningB5TestItem): Promise<ScreeningB5TestItem> {
+    const db = getDb();
+    const results = await db.insert(screeningB5TestItems).values(data).returning();
+    return results[0];
+  }
+
+  async findComments(b5Uuid: string): Promise<ScreeningB5Comment[]> {
+    const db = getDb();
+    return db.select().from(screeningB5Comments).where(
+      and(eq(screeningB5Comments.b5Uuid, b5Uuid), eq(screeningB5Comments.isDeleted, false))
+    );
+  }
+
+  async createComment(data: InsertScreeningB5Comment): Promise<ScreeningB5Comment> {
+    const db = getDb();
+    const results = await db.insert(screeningB5Comments).values(data).returning();
+    return results[0];
+  }
+
+  async findAttachments(b5Uuid: string): Promise<ScreeningB5Attachment[]> {
+    const db = getDb();
+    return db.select().from(screeningB5Attachments).where(
+      and(eq(screeningB5Attachments.b5Uuid, b5Uuid), eq(screeningB5Attachments.isDeleted, false))
+    );
+  }
+
+  async createAttachment(data: InsertScreeningB5Attachment): Promise<ScreeningB5Attachment> {
+    const db = getDb();
+    const results = await db.insert(screeningB5Attachments).values(data).returning();
+    return results[0];
+  }
+}
+
+export class ScreeningB6Repository {
+  async findByCandidateUuid(recCanUuid: string): Promise<ScreeningB6Interviews | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB6Interviews).where(
+      and(eq(screeningB6Interviews.recCanUuid, recCanUuid), eq(screeningB6Interviews.isDeleted, false))
+    );
+    return results[0];
+  }
+
+  async create(data: InsertScreeningB6Interviews): Promise<ScreeningB6Interviews> {
+    const db = getDb();
+    const results = await db.insert(screeningB6Interviews).values(data).returning();
+    return results[0];
+  }
+
+  async update(id: number, data: Partial<InsertScreeningB6Interviews>): Promise<ScreeningB6Interviews | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB6Interviews).set({ ...data, updatedAt: new Date() }).where(eq(screeningB6Interviews.id, id)).returning();
+    return results[0];
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB6Interviews>): Promise<ScreeningB6Interviews> {
+    const existing = await this.findByCandidateUuid(recCanUuid);
+    if (existing) {
+      return (await this.update(existing.id, data))!;
+    }
+    return this.create({ ...data, recCanUuid } as InsertScreeningB6Interviews);
+  }
+
+  async findInterviewItems(b6Uuid: string): Promise<ScreeningB6InterviewItem[]> {
+    const db = getDb();
+    return db.select().from(screeningB6InterviewItems).where(
+      and(eq(screeningB6InterviewItems.b6Uuid, b6Uuid), eq(screeningB6InterviewItems.isDeleted, false))
+    );
+  }
+
+  async createInterviewItem(data: InsertScreeningB6InterviewItem): Promise<ScreeningB6InterviewItem> {
+    const db = getDb();
+    const results = await db.insert(screeningB6InterviewItems).values(data).returning();
+    return results[0];
+  }
+
+  async findComments(b6Uuid: string): Promise<ScreeningB6Comment[]> {
+    const db = getDb();
+    return db.select().from(screeningB6Comments).where(
+      and(eq(screeningB6Comments.b6Uuid, b6Uuid), eq(screeningB6Comments.isDeleted, false))
+    );
+  }
+
+  async createComment(data: InsertScreeningB6Comment): Promise<ScreeningB6Comment> {
+    const db = getDb();
+    const results = await db.insert(screeningB6Comments).values(data).returning();
+    return results[0];
+  }
+
+  async findAttachments(b6Uuid: string): Promise<ScreeningB6Attachment[]> {
+    const db = getDb();
+    return db.select().from(screeningB6Attachments).where(
+      and(eq(screeningB6Attachments.b6Uuid, b6Uuid), eq(screeningB6Attachments.isDeleted, false))
+    );
+  }
+
+  async createAttachment(data: InsertScreeningB6Attachment): Promise<ScreeningB6Attachment> {
+    const db = getDb();
+    const results = await db.insert(screeningB6Attachments).values(data).returning();
+    return results[0];
+  }
+}
+
+export class ScreeningB7Repository {
+  async findByCandidateUuid(recCanUuid: string): Promise<ScreeningB7Training | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB7Training).where(
+      and(eq(screeningB7Training.recCanUuid, recCanUuid), eq(screeningB7Training.isDeleted, false))
+    );
+    return results[0];
+  }
+
+  async create(data: InsertScreeningB7Training): Promise<ScreeningB7Training> {
+    const db = getDb();
+    const results = await db.insert(screeningB7Training).values(data).returning();
+    return results[0];
+  }
+
+  async update(id: number, data: Partial<InsertScreeningB7Training>): Promise<ScreeningB7Training | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB7Training).set({ ...data, updatedAt: new Date() }).where(eq(screeningB7Training.id, id)).returning();
+    return results[0];
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB7Training>): Promise<ScreeningB7Training> {
+    const existing = await this.findByCandidateUuid(recCanUuid);
+    if (existing) {
+      return (await this.update(existing.id, data))!;
+    }
+    return this.create({ ...data, recCanUuid } as InsertScreeningB7Training);
+  }
+
+  async findTrainingItems(b7Uuid: string): Promise<ScreeningB7TrainingItem[]> {
+    const db = getDb();
+    return db.select().from(screeningB7TrainingItems).where(
+      and(eq(screeningB7TrainingItems.b7Uuid, b7Uuid), eq(screeningB7TrainingItems.isDeleted, false))
+    );
+  }
+
+  async createTrainingItem(data: InsertScreeningB7TrainingItem): Promise<ScreeningB7TrainingItem> {
+    const db = getDb();
+    const results = await db.insert(screeningB7TrainingItems).values(data).returning();
+    return results[0];
+  }
+}
+
+export class ScreeningB8Repository {
+  async findByCandidateUuid(recCanUuid: string): Promise<ScreeningB8Shortlisting | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB8Shortlisting).where(
+      and(eq(screeningB8Shortlisting.recCanUuid, recCanUuid), eq(screeningB8Shortlisting.isDeleted, false))
+    );
+    return results[0];
+  }
+
+  async create(data: InsertScreeningB8Shortlisting): Promise<ScreeningB8Shortlisting> {
+    const db = getDb();
+    const results = await db.insert(screeningB8Shortlisting).values(data).returning();
+    return results[0];
+  }
+
+  async update(id: number, data: Partial<InsertScreeningB8Shortlisting>): Promise<ScreeningB8Shortlisting | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB8Shortlisting).set({ ...data, updatedAt: new Date() }).where(eq(screeningB8Shortlisting.id, id)).returning();
+    return results[0];
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB8Shortlisting>): Promise<ScreeningB8Shortlisting> {
+    const existing = await this.findByCandidateUuid(recCanUuid);
+    if (existing) {
+      return (await this.update(existing.id, data))!;
+    }
+    return this.create({ ...data, recCanUuid } as InsertScreeningB8Shortlisting);
+  }
+
+  async findApprovers(b8Uuid: string): Promise<ScreeningB8Approver[]> {
+    const db = getDb();
+    return db.select().from(screeningB8SelectedApprovers).where(
+      and(eq(screeningB8SelectedApprovers.b8Uuid, b8Uuid), eq(screeningB8SelectedApprovers.isDeleted, false))
+    );
+  }
+
+  async createApprover(data: InsertScreeningB8Approver): Promise<ScreeningB8Approver> {
+    const db = getDb();
+    const results = await db.insert(screeningB8SelectedApprovers).values(data).returning();
+    return results[0];
+  }
+
+  async findComments(b8Uuid: string): Promise<ScreeningB8Comment[]> {
+    const db = getDb();
+    return db.select().from(screeningB8Comments).where(
+      and(eq(screeningB8Comments.b8Uuid, b8Uuid), eq(screeningB8Comments.isDeleted, false))
+    );
+  }
+
+  async createComment(data: InsertScreeningB8Comment): Promise<ScreeningB8Comment> {
+    const db = getDb();
+    const results = await db.insert(screeningB8Comments).values(data).returning();
+    return results[0];
+  }
+
+  async findAttachments(b8Uuid: string): Promise<ScreeningB8Attachment[]> {
+    const db = getDb();
+    return db.select().from(screeningB8Attachments).where(
+      and(eq(screeningB8Attachments.b8Uuid, b8Uuid), eq(screeningB8Attachments.isDeleted, false))
+    );
+  }
+
+  async createAttachment(data: InsertScreeningB8Attachment): Promise<ScreeningB8Attachment> {
+    const db = getDb();
+    const results = await db.insert(screeningB8Attachments).values(data).returning();
+    return results[0];
+  }
+}
+
+export const screeningB1Repository = new ScreeningB1Repository();
+export const screeningB2Repository = new ScreeningB2Repository();
+export const screeningB3Repository = new ScreeningB3Repository();
+export const screeningB4Repository = new ScreeningB4Repository();
+export const screeningB5Repository = new ScreeningB5Repository();
+export const screeningB6Repository = new ScreeningB6Repository();
+export const screeningB7Repository = new ScreeningB7Repository();
+export const screeningB8Repository = new ScreeningB8Repository();

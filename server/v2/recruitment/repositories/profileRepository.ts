@@ -8,24 +8,20 @@ import {
   candNextOfKin,
 } from "../../../../shared/v2/recruitment/schema";
 import type {
-  PersonalDetails,
+  CandPersonalDetails,
   InsertPersonalDetails,
-  Address,
+  CandAddress,
   InsertAddress,
-  FamilyInfo,
+  CandFamilyInfo,
   InsertFamilyInfo,
-  Child,
+  CandChild,
   InsertChild,
-  NextOfKin,
+  CandNextOfKin,
   InsertNextOfKin,
 } from "../../../../shared/v2/recruitment/types";
 
-// ============================================================================
-// PERSONAL DETAILS REPOSITORY
-// ============================================================================
-
 export class PersonalDetailsRepository {
-  async findByCandidateUuid(recCanUuid: string): Promise<PersonalDetails | undefined> {
+  async findByCandidateUuid(recCanUuid: string): Promise<CandPersonalDetails | undefined> {
     const db = getDb();
     const results = await db
       .select()
@@ -39,33 +35,33 @@ export class PersonalDetailsRepository {
     return results[0];
   }
 
-  async upsert(recCanUuid: string, data: Partial<InsertPersonalDetails>): Promise<PersonalDetails> {
+  async create(data: InsertPersonalDetails): Promise<CandPersonalDetails> {
     const db = getDb();
+    const results = await db.insert(candPersonalDetails).values(data).returning();
+    return results[0];
+  }
+
+  async update(id: number, data: Partial<InsertPersonalDetails>): Promise<CandPersonalDetails | undefined> {
+    const db = getDb();
+    const results = await db
+      .update(candPersonalDetails)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(candPersonalDetails.id, id))
+      .returning();
+    return results[0];
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertPersonalDetails>): Promise<CandPersonalDetails> {
     const existing = await this.findByCandidateUuid(recCanUuid);
-    
     if (existing) {
-      const results = await db
-        .update(candPersonalDetails)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(candPersonalDetails.id, existing.id))
-        .returning();
-      return results[0];
-    } else {
-      const results = await db
-        .insert(candPersonalDetails)
-        .values({ ...data, recCanUuid } as InsertPersonalDetails)
-        .returning();
-      return results[0];
+      return (await this.update(existing.id, data))!;
     }
+    return this.create({ ...data, recCanUuid } as InsertPersonalDetails);
   }
 }
 
-// ============================================================================
-// ADDRESS REPOSITORY
-// ============================================================================
-
 export class AddressRepository {
-  async findByCandidateUuid(recCanUuid: string): Promise<Address | undefined> {
+  async findByCandidateUuid(recCanUuid: string): Promise<CandAddress | undefined> {
     const db = getDb();
     const results = await db
       .select()
@@ -79,33 +75,33 @@ export class AddressRepository {
     return results[0];
   }
 
-  async upsert(recCanUuid: string, data: Partial<InsertAddress>): Promise<Address> {
+  async create(data: InsertAddress): Promise<CandAddress> {
     const db = getDb();
+    const results = await db.insert(candAddresses).values(data).returning();
+    return results[0];
+  }
+
+  async update(id: number, data: Partial<InsertAddress>): Promise<CandAddress | undefined> {
+    const db = getDb();
+    const results = await db
+      .update(candAddresses)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(candAddresses.id, id))
+      .returning();
+    return results[0];
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertAddress>): Promise<CandAddress> {
     const existing = await this.findByCandidateUuid(recCanUuid);
-    
     if (existing) {
-      const results = await db
-        .update(candAddresses)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(candAddresses.id, existing.id))
-        .returning();
-      return results[0];
-    } else {
-      const results = await db
-        .insert(candAddresses)
-        .values({ ...data, recCanUuid } as InsertAddress)
-        .returning();
-      return results[0];
+      return (await this.update(existing.id, data))!;
     }
+    return this.create({ ...data, recCanUuid } as InsertAddress);
   }
 }
 
-// ============================================================================
-// FAMILY INFO REPOSITORY
-// ============================================================================
-
 export class FamilyInfoRepository {
-  async findByCandidateUuid(recCanUuid: string): Promise<FamilyInfo | undefined> {
+  async findByCandidateUuid(recCanUuid: string): Promise<CandFamilyInfo | undefined> {
     const db = getDb();
     const results = await db
       .select()
@@ -119,33 +115,33 @@ export class FamilyInfoRepository {
     return results[0];
   }
 
-  async upsert(recCanUuid: string, data: Partial<InsertFamilyInfo>): Promise<FamilyInfo> {
+  async create(data: InsertFamilyInfo): Promise<CandFamilyInfo> {
     const db = getDb();
+    const results = await db.insert(candFamilyInfo).values(data).returning();
+    return results[0];
+  }
+
+  async update(id: number, data: Partial<InsertFamilyInfo>): Promise<CandFamilyInfo | undefined> {
+    const db = getDb();
+    const results = await db
+      .update(candFamilyInfo)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(candFamilyInfo.id, id))
+      .returning();
+    return results[0];
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertFamilyInfo>): Promise<CandFamilyInfo> {
     const existing = await this.findByCandidateUuid(recCanUuid);
-    
     if (existing) {
-      const results = await db
-        .update(candFamilyInfo)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(candFamilyInfo.id, existing.id))
-        .returning();
-      return results[0];
-    } else {
-      const results = await db
-        .insert(candFamilyInfo)
-        .values({ ...data, recCanUuid } as InsertFamilyInfo)
-        .returning();
-      return results[0];
+      return (await this.update(existing.id, data))!;
     }
+    return this.create({ ...data, recCanUuid } as InsertFamilyInfo);
   }
 }
 
-// ============================================================================
-// CHILDREN REPOSITORY
-// ============================================================================
-
 export class ChildrenRepository {
-  async findByCandidateUuid(recCanUuid: string): Promise<Child[]> {
+  async findByCandidateUuid(recCanUuid: string): Promise<CandChild[]> {
     const db = getDb();
     return db
       .select()
@@ -158,30 +154,13 @@ export class ChildrenRepository {
       );
   }
 
-  async findById(id: number): Promise<Child | undefined> {
+  async create(data: InsertChild): Promise<CandChild> {
     const db = getDb();
-    const results = await db
-      .select()
-      .from(candChildren)
-      .where(
-        and(
-          eq(candChildren.id, id),
-          eq(candChildren.isDeleted, false)
-        )
-      );
+    const results = await db.insert(candChildren).values(data).returning();
     return results[0];
   }
 
-  async create(data: InsertChild): Promise<Child> {
-    const db = getDb();
-    const results = await db
-      .insert(candChildren)
-      .values(data)
-      .returning();
-    return results[0];
-  }
-
-  async update(id: number, data: Partial<InsertChild>): Promise<Child | undefined> {
+  async update(id: number, data: Partial<InsertChild>): Promise<CandChild | undefined> {
     const db = getDb();
     const results = await db
       .update(candChildren)
@@ -202,14 +181,10 @@ export class ChildrenRepository {
   }
 }
 
-// ============================================================================
-// NEXT OF KIN REPOSITORY
-// ============================================================================
-
 export class NextOfKinRepository {
-  async findByCandidateUuid(recCanUuid: string): Promise<NextOfKin[]> {
+  async findByCandidateUuid(recCanUuid: string): Promise<CandNextOfKin | undefined> {
     const db = getDb();
-    return db
+    const results = await db
       .select()
       .from(candNextOfKin)
       .where(
@@ -218,32 +193,16 @@ export class NextOfKinRepository {
           eq(candNextOfKin.isDeleted, false)
         )
       );
-  }
-
-  async findById(id: number): Promise<NextOfKin | undefined> {
-    const db = getDb();
-    const results = await db
-      .select()
-      .from(candNextOfKin)
-      .where(
-        and(
-          eq(candNextOfKin.id, id),
-          eq(candNextOfKin.isDeleted, false)
-        )
-      );
     return results[0];
   }
 
-  async create(data: InsertNextOfKin): Promise<NextOfKin> {
+  async create(data: InsertNextOfKin): Promise<CandNextOfKin> {
     const db = getDb();
-    const results = await db
-      .insert(candNextOfKin)
-      .values(data)
-      .returning();
+    const results = await db.insert(candNextOfKin).values(data).returning();
     return results[0];
   }
 
-  async update(id: number, data: Partial<InsertNextOfKin>): Promise<NextOfKin | undefined> {
+  async update(id: number, data: Partial<InsertNextOfKin>): Promise<CandNextOfKin | undefined> {
     const db = getDb();
     const results = await db
       .update(candNextOfKin)
@@ -253,18 +212,15 @@ export class NextOfKinRepository {
     return results[0];
   }
 
-  async softDelete(id: number): Promise<boolean> {
-    const db = getDb();
-    const results = await db
-      .update(candNextOfKin)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(eq(candNextOfKin.id, id))
-      .returning();
-    return results.length > 0;
+  async upsert(recCanUuid: string, data: Partial<InsertNextOfKin>): Promise<CandNextOfKin> {
+    const existing = await this.findByCandidateUuid(recCanUuid);
+    if (existing) {
+      return (await this.update(existing.id, data))!;
+    }
+    return this.create({ ...data, recCanUuid } as InsertNextOfKin);
   }
 }
 
-// Export singleton instances
 export const personalDetailsRepository = new PersonalDetailsRepository();
 export const addressRepository = new AddressRepository();
 export const familyInfoRepository = new FamilyInfoRepository();

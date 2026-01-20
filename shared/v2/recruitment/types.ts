@@ -1,34 +1,69 @@
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import {
-  recruitmentCandidatesV2,
+  recruitmentCandidates,
   candVesselTypesApplied,
   candPersonalDetails,
   candAddresses,
   candFamilyInfo,
   candChildren,
   candNextOfKin,
-  candTravelDocuments,
+  candDocuments,
+  candDocumentsAttachments,
   candVisas,
-  candCoc,
-  candCop,
-  candStcwCertificates,
-  candFlagEndorsements,
-  candMedicalCertificates,
-  candVaccinations,
-  candTrainingCertificates,
+  candVisasAttachments,
   candEducation,
-  candSeaServiceInternal,
-  candSeaServiceExternal,
+  candEducationAttachments,
   candLicenses,
-  candDocumentAttachments,
+  candLicensesAttachments,
+  candTrainingCourses,
+  candTrainingAttachments,
+  candSeaService,
+  candSeaServiceAttachments,
+  candAdditionalInfo,
+  candAdditionalInfoAttachments,
+  screeningB1Initial,
+  screeningB1Comments,
+  screeningB1Attachments,
+  screeningB2References,
+  screeningB2ReferenceItems,
+  screeningB2Comments,
+  screeningB2Attachments,
+  screeningB3Security,
+  screeningB3Authorities,
+  screeningB3Comments,
+  screeningB3Attachments,
+  screeningB4Certificates,
+  screeningB4CertItems,
+  screeningB4Comments,
+  screeningB4Attachments,
+  screeningB5Tests,
+  screeningB5TestItems,
+  screeningB5Comments,
+  screeningB5Attachments,
+  screeningB6Interviews,
+  screeningB6InterviewItems,
+  screeningB6Comments,
+  screeningB6Attachments,
+  screeningB7Training,
+  screeningB7TrainingItems,
+  screeningB8Shortlisting,
+  screeningB8SelectedApprovers,
+  screeningB8Comments,
+  screeningB8Attachments,
+  candApprovals,
+  candSuitability,
+  candSuitabilityVesselTypes,
+  candSuitabilityFleetGroups,
+  candRecruitmentDecision,
+  candAssignedGroups,
 } from "./schema";
 
 // ============================================================================
-// INSERT SCHEMAS
+// CANDIDATE CORE - INSERT SCHEMAS
 // ============================================================================
 
-export const insertCandidateV2Schema = createInsertSchema(recruitmentCandidatesV2).omit({
+export const insertCandidateSchema = createInsertSchema(recruitmentCandidates).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -70,8 +105,17 @@ export const insertNextOfKinSchema = createInsertSchema(candNextOfKin).omit({
   updatedAt: true,
 });
 
-// Phase 2: Documents & Certificates Insert Schemas
-export const insertTravelDocumentSchema = createInsertSchema(candTravelDocuments).omit({
+// ============================================================================
+// DOCUMENTS & ATTACHMENTS - INSERT SCHEMAS
+// ============================================================================
+
+export const insertDocumentSchema = createInsertSchema(candDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDocumentAttachmentSchema = createInsertSchema(candDocumentsAttachments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -83,43 +127,7 @@ export const insertVisaSchema = createInsertSchema(candVisas).omit({
   updatedAt: true,
 });
 
-export const insertCocSchema = createInsertSchema(candCoc).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertCopSchema = createInsertSchema(candCop).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertStcwCertificateSchema = createInsertSchema(candStcwCertificates).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertFlagEndorsementSchema = createInsertSchema(candFlagEndorsements).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertMedicalCertificateSchema = createInsertSchema(candMedicalCertificates).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertVaccinationSchema = createInsertSchema(candVaccinations).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertTrainingCertificateSchema = createInsertSchema(candTrainingCertificates).omit({
+export const insertVisaAttachmentSchema = createInsertSchema(candVisasAttachments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -131,13 +139,7 @@ export const insertEducationSchema = createInsertSchema(candEducation).omit({
   updatedAt: true,
 });
 
-export const insertSeaServiceInternalSchema = createInsertSchema(candSeaServiceInternal).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertSeaServiceExternalSchema = createInsertSchema(candSeaServiceExternal).omit({
+export const insertEducationAttachmentSchema = createInsertSchema(candEducationAttachments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -149,867 +151,546 @@ export const insertLicenseSchema = createInsertSchema(candLicenses).omit({
   updatedAt: true,
 });
 
-export const insertDocumentAttachmentSchema = createInsertSchema(candDocumentAttachments).omit({
+export const insertLicenseAttachmentSchema = createInsertSchema(candLicensesAttachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTrainingCourseSchema = createInsertSchema(candTrainingCourses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTrainingAttachmentSchema = createInsertSchema(candTrainingAttachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSeaServiceSchema = createInsertSchema(candSeaService).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSeaServiceAttachmentSchema = createInsertSchema(candSeaServiceAttachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAdditionalInfoSchema = createInsertSchema(candAdditionalInfo).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAdditionalInfoAttachmentSchema = createInsertSchema(candAdditionalInfoAttachments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
 // ============================================================================
+// SCREENING B1 - INSERT SCHEMAS
+// ============================================================================
+
+export const insertScreeningB1InitialSchema = createInsertSchema(screeningB1Initial).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB1CommentSchema = createInsertSchema(screeningB1Comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB1AttachmentSchema = createInsertSchema(screeningB1Attachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================================================
+// SCREENING B2 - INSERT SCHEMAS
+// ============================================================================
+
+export const insertScreeningB2ReferencesSchema = createInsertSchema(screeningB2References).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB2ReferenceItemSchema = createInsertSchema(screeningB2ReferenceItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB2CommentSchema = createInsertSchema(screeningB2Comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB2AttachmentSchema = createInsertSchema(screeningB2Attachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================================================
+// SCREENING B3 - INSERT SCHEMAS
+// ============================================================================
+
+export const insertScreeningB3SecuritySchema = createInsertSchema(screeningB3Security).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB3AuthoritySchema = createInsertSchema(screeningB3Authorities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB3CommentSchema = createInsertSchema(screeningB3Comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB3AttachmentSchema = createInsertSchema(screeningB3Attachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================================================
+// SCREENING B4 - INSERT SCHEMAS
+// ============================================================================
+
+export const insertScreeningB4CertificatesSchema = createInsertSchema(screeningB4Certificates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB4CertItemSchema = createInsertSchema(screeningB4CertItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB4CommentSchema = createInsertSchema(screeningB4Comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB4AttachmentSchema = createInsertSchema(screeningB4Attachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================================================
+// SCREENING B5 - INSERT SCHEMAS
+// ============================================================================
+
+export const insertScreeningB5TestsSchema = createInsertSchema(screeningB5Tests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB5TestItemSchema = createInsertSchema(screeningB5TestItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB5CommentSchema = createInsertSchema(screeningB5Comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB5AttachmentSchema = createInsertSchema(screeningB5Attachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================================================
+// SCREENING B6 - INSERT SCHEMAS
+// ============================================================================
+
+export const insertScreeningB6InterviewsSchema = createInsertSchema(screeningB6Interviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB6InterviewItemSchema = createInsertSchema(screeningB6InterviewItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB6CommentSchema = createInsertSchema(screeningB6Comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB6AttachmentSchema = createInsertSchema(screeningB6Attachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================================================
+// SCREENING B7 - INSERT SCHEMAS
+// ============================================================================
+
+export const insertScreeningB7TrainingSchema = createInsertSchema(screeningB7Training).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB7TrainingItemSchema = createInsertSchema(screeningB7TrainingItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================================================
+// SCREENING B8 - INSERT SCHEMAS
+// ============================================================================
+
+export const insertScreeningB8ShortlistingSchema = createInsertSchema(screeningB8Shortlisting).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB8ApproverSchema = createInsertSchema(screeningB8SelectedApprovers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB8CommentSchema = createInsertSchema(screeningB8Comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreeningB8AttachmentSchema = createInsertSchema(screeningB8Attachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================================================
+// APPROVALS & DECISION - INSERT SCHEMAS
+// ============================================================================
+
+export const insertApprovalSchema = createInsertSchema(candApprovals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSuitabilitySchema = createInsertSchema(candSuitability).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSuitabilityVesselTypeSchema = createInsertSchema(candSuitabilityVesselTypes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSuitabilityFleetGroupSchema = createInsertSchema(candSuitabilityFleetGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRecruitmentDecisionSchema = createInsertSchema(candRecruitmentDecision).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAssignedGroupSchema = createInsertSchema(candAssignedGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============================================================================
+// SELECT TYPES
+// ============================================================================
+
+export type RecruitmentCandidate = typeof recruitmentCandidates.$inferSelect;
+export type CandVesselTypeApplied = typeof candVesselTypesApplied.$inferSelect;
+export type CandPersonalDetails = typeof candPersonalDetails.$inferSelect;
+export type CandAddress = typeof candAddresses.$inferSelect;
+export type CandFamilyInfo = typeof candFamilyInfo.$inferSelect;
+export type CandChild = typeof candChildren.$inferSelect;
+export type CandNextOfKin = typeof candNextOfKin.$inferSelect;
+
+export type CandDocument = typeof candDocuments.$inferSelect;
+export type CandDocumentAttachment = typeof candDocumentsAttachments.$inferSelect;
+export type CandVisa = typeof candVisas.$inferSelect;
+export type CandVisaAttachment = typeof candVisasAttachments.$inferSelect;
+export type CandEducation = typeof candEducation.$inferSelect;
+export type CandEducationAttachment = typeof candEducationAttachments.$inferSelect;
+export type CandLicense = typeof candLicenses.$inferSelect;
+export type CandLicenseAttachment = typeof candLicensesAttachments.$inferSelect;
+export type CandTrainingCourse = typeof candTrainingCourses.$inferSelect;
+export type CandTrainingAttachment = typeof candTrainingAttachments.$inferSelect;
+export type CandSeaService = typeof candSeaService.$inferSelect;
+export type CandSeaServiceAttachment = typeof candSeaServiceAttachments.$inferSelect;
+export type CandAdditionalInfo = typeof candAdditionalInfo.$inferSelect;
+export type CandAdditionalInfoAttachment = typeof candAdditionalInfoAttachments.$inferSelect;
+
+export type ScreeningB1Initial = typeof screeningB1Initial.$inferSelect;
+export type ScreeningB1Comment = typeof screeningB1Comments.$inferSelect;
+export type ScreeningB1Attachment = typeof screeningB1Attachments.$inferSelect;
+
+export type ScreeningB2References = typeof screeningB2References.$inferSelect;
+export type ScreeningB2ReferenceItem = typeof screeningB2ReferenceItems.$inferSelect;
+export type ScreeningB2Comment = typeof screeningB2Comments.$inferSelect;
+export type ScreeningB2Attachment = typeof screeningB2Attachments.$inferSelect;
+
+export type ScreeningB3Security = typeof screeningB3Security.$inferSelect;
+export type ScreeningB3Authority = typeof screeningB3Authorities.$inferSelect;
+export type ScreeningB3Comment = typeof screeningB3Comments.$inferSelect;
+export type ScreeningB3Attachment = typeof screeningB3Attachments.$inferSelect;
+
+export type ScreeningB4Certificates = typeof screeningB4Certificates.$inferSelect;
+export type ScreeningB4CertItem = typeof screeningB4CertItems.$inferSelect;
+export type ScreeningB4Comment = typeof screeningB4Comments.$inferSelect;
+export type ScreeningB4Attachment = typeof screeningB4Attachments.$inferSelect;
+
+export type ScreeningB5Tests = typeof screeningB5Tests.$inferSelect;
+export type ScreeningB5TestItem = typeof screeningB5TestItems.$inferSelect;
+export type ScreeningB5Comment = typeof screeningB5Comments.$inferSelect;
+export type ScreeningB5Attachment = typeof screeningB5Attachments.$inferSelect;
+
+export type ScreeningB6Interviews = typeof screeningB6Interviews.$inferSelect;
+export type ScreeningB6InterviewItem = typeof screeningB6InterviewItems.$inferSelect;
+export type ScreeningB6Comment = typeof screeningB6Comments.$inferSelect;
+export type ScreeningB6Attachment = typeof screeningB6Attachments.$inferSelect;
+
+export type ScreeningB7Training = typeof screeningB7Training.$inferSelect;
+export type ScreeningB7TrainingItem = typeof screeningB7TrainingItems.$inferSelect;
+
+export type ScreeningB8Shortlisting = typeof screeningB8Shortlisting.$inferSelect;
+export type ScreeningB8Approver = typeof screeningB8SelectedApprovers.$inferSelect;
+export type ScreeningB8Comment = typeof screeningB8Comments.$inferSelect;
+export type ScreeningB8Attachment = typeof screeningB8Attachments.$inferSelect;
+
+export type CandApproval = typeof candApprovals.$inferSelect;
+export type CandSuitability = typeof candSuitability.$inferSelect;
+export type CandSuitabilityVesselType = typeof candSuitabilityVesselTypes.$inferSelect;
+export type CandSuitabilityFleetGroup = typeof candSuitabilityFleetGroups.$inferSelect;
+export type CandRecruitmentDecision = typeof candRecruitmentDecision.$inferSelect;
+export type CandAssignedGroup = typeof candAssignedGroups.$inferSelect;
+
+// ============================================================================
 // INSERT TYPES
 // ============================================================================
 
-export type InsertCandidateV2 = z.infer<typeof insertCandidateV2Schema>;
-export type InsertVesselTypesApplied = z.infer<typeof insertVesselTypesAppliedSchema>;
+export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
+export type InsertVesselTypeApplied = z.infer<typeof insertVesselTypesAppliedSchema>;
 export type InsertPersonalDetails = z.infer<typeof insertPersonalDetailsSchema>;
 export type InsertAddress = z.infer<typeof insertAddressSchema>;
 export type InsertFamilyInfo = z.infer<typeof insertFamilyInfoSchema>;
 export type InsertChild = z.infer<typeof insertChildSchema>;
 export type InsertNextOfKin = z.infer<typeof insertNextOfKinSchema>;
 
-// Phase 2: Documents & Certificates Insert Types
-export type InsertTravelDocument = z.infer<typeof insertTravelDocumentSchema>;
-export type InsertVisa = z.infer<typeof insertVisaSchema>;
-export type InsertCoc = z.infer<typeof insertCocSchema>;
-export type InsertCop = z.infer<typeof insertCopSchema>;
-export type InsertStcwCertificate = z.infer<typeof insertStcwCertificateSchema>;
-export type InsertFlagEndorsement = z.infer<typeof insertFlagEndorsementSchema>;
-export type InsertMedicalCertificate = z.infer<typeof insertMedicalCertificateSchema>;
-export type InsertVaccination = z.infer<typeof insertVaccinationSchema>;
-export type InsertTrainingCertificate = z.infer<typeof insertTrainingCertificateSchema>;
-export type InsertEducation = z.infer<typeof insertEducationSchema>;
-export type InsertSeaServiceInternal = z.infer<typeof insertSeaServiceInternalSchema>;
-export type InsertSeaServiceExternal = z.infer<typeof insertSeaServiceExternalSchema>;
-export type InsertLicense = z.infer<typeof insertLicenseSchema>;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type InsertDocumentAttachment = z.infer<typeof insertDocumentAttachmentSchema>;
+export type InsertVisa = z.infer<typeof insertVisaSchema>;
+export type InsertVisaAttachment = z.infer<typeof insertVisaAttachmentSchema>;
+export type InsertEducation = z.infer<typeof insertEducationSchema>;
+export type InsertEducationAttachment = z.infer<typeof insertEducationAttachmentSchema>;
+export type InsertLicense = z.infer<typeof insertLicenseSchema>;
+export type InsertLicenseAttachment = z.infer<typeof insertLicenseAttachmentSchema>;
+export type InsertTrainingCourse = z.infer<typeof insertTrainingCourseSchema>;
+export type InsertTrainingAttachment = z.infer<typeof insertTrainingAttachmentSchema>;
+export type InsertSeaService = z.infer<typeof insertSeaServiceSchema>;
+export type InsertSeaServiceAttachment = z.infer<typeof insertSeaServiceAttachmentSchema>;
+export type InsertAdditionalInfo = z.infer<typeof insertAdditionalInfoSchema>;
+export type InsertAdditionalInfoAttachment = z.infer<typeof insertAdditionalInfoAttachmentSchema>;
+
+export type InsertScreeningB1Initial = z.infer<typeof insertScreeningB1InitialSchema>;
+export type InsertScreeningB1Comment = z.infer<typeof insertScreeningB1CommentSchema>;
+export type InsertScreeningB1Attachment = z.infer<typeof insertScreeningB1AttachmentSchema>;
+
+export type InsertScreeningB2References = z.infer<typeof insertScreeningB2ReferencesSchema>;
+export type InsertScreeningB2ReferenceItem = z.infer<typeof insertScreeningB2ReferenceItemSchema>;
+export type InsertScreeningB2Comment = z.infer<typeof insertScreeningB2CommentSchema>;
+export type InsertScreeningB2Attachment = z.infer<typeof insertScreeningB2AttachmentSchema>;
+
+export type InsertScreeningB3Security = z.infer<typeof insertScreeningB3SecuritySchema>;
+export type InsertScreeningB3Authority = z.infer<typeof insertScreeningB3AuthoritySchema>;
+export type InsertScreeningB3Comment = z.infer<typeof insertScreeningB3CommentSchema>;
+export type InsertScreeningB3Attachment = z.infer<typeof insertScreeningB3AttachmentSchema>;
+
+export type InsertScreeningB4Certificates = z.infer<typeof insertScreeningB4CertificatesSchema>;
+export type InsertScreeningB4CertItem = z.infer<typeof insertScreeningB4CertItemSchema>;
+export type InsertScreeningB4Comment = z.infer<typeof insertScreeningB4CommentSchema>;
+export type InsertScreeningB4Attachment = z.infer<typeof insertScreeningB4AttachmentSchema>;
+
+export type InsertScreeningB5Tests = z.infer<typeof insertScreeningB5TestsSchema>;
+export type InsertScreeningB5TestItem = z.infer<typeof insertScreeningB5TestItemSchema>;
+export type InsertScreeningB5Comment = z.infer<typeof insertScreeningB5CommentSchema>;
+export type InsertScreeningB5Attachment = z.infer<typeof insertScreeningB5AttachmentSchema>;
+
+export type InsertScreeningB6Interviews = z.infer<typeof insertScreeningB6InterviewsSchema>;
+export type InsertScreeningB6InterviewItem = z.infer<typeof insertScreeningB6InterviewItemSchema>;
+export type InsertScreeningB6Comment = z.infer<typeof insertScreeningB6CommentSchema>;
+export type InsertScreeningB6Attachment = z.infer<typeof insertScreeningB6AttachmentSchema>;
+
+export type InsertScreeningB7Training = z.infer<typeof insertScreeningB7TrainingSchema>;
+export type InsertScreeningB7TrainingItem = z.infer<typeof insertScreeningB7TrainingItemSchema>;
+
+export type InsertScreeningB8Shortlisting = z.infer<typeof insertScreeningB8ShortlistingSchema>;
+export type InsertScreeningB8Approver = z.infer<typeof insertScreeningB8ApproverSchema>;
+export type InsertScreeningB8Comment = z.infer<typeof insertScreeningB8CommentSchema>;
+export type InsertScreeningB8Attachment = z.infer<typeof insertScreeningB8AttachmentSchema>;
+
+export type InsertApproval = z.infer<typeof insertApprovalSchema>;
+export type InsertSuitability = z.infer<typeof insertSuitabilitySchema>;
+export type InsertSuitabilityVesselType = z.infer<typeof insertSuitabilityVesselTypeSchema>;
+export type InsertSuitabilityFleetGroup = z.infer<typeof insertSuitabilityFleetGroupSchema>;
+export type InsertRecruitmentDecision = z.infer<typeof insertRecruitmentDecisionSchema>;
+export type InsertAssignedGroup = z.infer<typeof insertAssignedGroupSchema>;
 
 // ============================================================================
-// SELECT TYPES
+// REQUEST SCHEMAS (for API validation)
 // ============================================================================
 
-export type CandidateV2 = typeof recruitmentCandidatesV2.$inferSelect;
-export type VesselTypesApplied = typeof candVesselTypesApplied.$inferSelect;
-export type PersonalDetails = typeof candPersonalDetails.$inferSelect;
-export type Address = typeof candAddresses.$inferSelect;
-export type FamilyInfo = typeof candFamilyInfo.$inferSelect;
-export type Child = typeof candChildren.$inferSelect;
-export type NextOfKin = typeof candNextOfKin.$inferSelect;
-
-// Phase 2: Documents & Certificates Select Types
-export type TravelDocument = typeof candTravelDocuments.$inferSelect;
-export type Visa = typeof candVisas.$inferSelect;
-export type Coc = typeof candCoc.$inferSelect;
-export type Cop = typeof candCop.$inferSelect;
-export type StcwCertificate = typeof candStcwCertificates.$inferSelect;
-export type FlagEndorsement = typeof candFlagEndorsements.$inferSelect;
-export type MedicalCertificate = typeof candMedicalCertificates.$inferSelect;
-export type Vaccination = typeof candVaccinations.$inferSelect;
-export type TrainingCertificate = typeof candTrainingCertificates.$inferSelect;
-export type Education = typeof candEducation.$inferSelect;
-export type SeaServiceInternal = typeof candSeaServiceInternal.$inferSelect;
-export type SeaServiceExternal = typeof candSeaServiceExternal.$inferSelect;
-export type License = typeof candLicenses.$inferSelect;
-export type DocumentAttachment = typeof candDocumentAttachments.$inferSelect;
-
-// ============================================================================
-// API REQUEST/RESPONSE DTOs
-// ============================================================================
-
-export const createCandidateRequestSchema = z.object({
-  firstName: z.string().optional(),
-  middleName: z.string().optional(),
-  familyName: z.string().optional(),
-  gender: z.string().optional(),
-  dob: z.string().optional(),
-  nationalityUuid: z.string().optional(),
-  presentRank: z.string().optional(),
-  rankAppliedFor: z.string().optional(),
-  status: z.string().optional(),
+export const createCandidateRequestSchema = insertCandidateSchema.omit({
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-export const updateCandidateRequestSchema = createCandidateRequestSchema.partial();
-
-export const upsertPersonalDetailsRequestSchema = z.object({
-  heightCm: z.string().optional(),
-  weightKg: z.string().optional(),
-  placeOfBirthCity: z.string().optional(),
-  placeOfBirthCountryUuid: z.string().optional(),
-  ageInYears: z.string().optional(),
-  nativeLanguageUuid: z.string().optional(),
-  foreignLanguages: z.string().optional(),
-  englishProficiency: z.string().optional(),
-  manningAgent: z.string().optional(),
+export const createDocumentRequestSchema = insertDocumentSchema.omit({
+  docUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-export const upsertAddressRequestSchema = z.object({
-  countryOfResidenceUuid: z.string().optional(),
-  nearestAirport: z.string().optional(),
-  addressLine1: z.string().optional(),
-  addressLine2: z.string().optional(),
-  contactLandline: z.string().optional(),
-  mobile: z.string().optional(),
-  email: z.string().optional(),
+export const createVisaRequestSchema = insertVisaSchema.omit({
+  visaUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-export const upsertFamilyInfoRequestSchema = z.object({
-  maritalStatus: z.string().optional(),
-  numDependentChildren: z.string().optional(),
-  fatherName: z.string().optional(),
-  motherName: z.string().optional(),
-  spouseFirstName: z.string().optional(),
-  spouseMiddleName: z.string().optional(),
-  spouseFamilyName: z.string().optional(),
-  spouseDob: z.string().optional(),
+export const createEducationRequestSchema = insertEducationSchema.omit({
+  eduUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-export const createChildRequestSchema = z.object({
-  firstName: z.string().optional(),
-  middleName: z.string().optional(),
-  familyName: z.string().optional(),
-  dob: z.string().optional(),
-  gender: z.string().optional(),
-  sortOrder: z.number().optional(),
+export const createLicenseRequestSchema = insertLicenseSchema.omit({
+  licUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-export const updateChildRequestSchema = createChildRequestSchema.partial();
-
-export const createNextOfKinRequestSchema = z.object({
-  firstName: z.string().optional(),
-  middleName: z.string().optional(),
-  familyName: z.string().optional(),
-  telephone: z.string().optional(),
-  email: z.string().optional(),
-  address: z.string().optional(),
-  relationship: z.string().optional(),
+export const createTrainingCourseRequestSchema = insertTrainingCourseSchema.omit({
+  trainUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-export const updateNextOfKinRequestSchema = createNextOfKinRequestSchema.partial();
-
-export const addVesselTypeAppliedRequestSchema = z.object({
-  vesselTypeUuid: z.string(),
-  sortOrder: z.number().optional(),
+export const createSeaServiceRequestSchema = insertSeaServiceSchema.omit({
+  seaUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-// ============================================================================
-// PHASE 2: DOCUMENTS & CERTIFICATES REQUEST SCHEMAS
-// ============================================================================
-
-export const createTravelDocumentRequestSchema = z.object({
-  documentType: z.string().optional(),
-  documentNumber: z.string().optional(),
-  issuingCountryUuid: z.string().optional(),
-  issueDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  issuingAuthority: z.string().optional(),
-  placeOfIssue: z.string().optional(),
-  sortOrder: z.number().optional(),
+export const createAdditionalInfoRequestSchema = insertAdditionalInfoSchema.omit({
+  infoUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-export const createVisaRequestSchema = z.object({
-  visaType: z.string().optional(),
-  issuingCountryUuid: z.string().optional(),
-  serialNumber: z.string().optional(),
-  issueDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  multipleEntry: z.boolean().optional(),
-  sortOrder: z.number().optional(),
+export const createApprovalRequestSchema = insertApprovalSchema.omit({
+  approvalUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-export const createCocRequestSchema = z.object({
-  certificateType: z.string().optional(),
-  grade: z.string().optional(),
-  limitation: z.string().optional(),
-  certificateNumber: z.string().optional(),
-  issuingCountryUuid: z.string().optional(),
-  issueDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  issuingAuthority: z.string().optional(),
-  sortOrder: z.number().optional(),
+export const createSuitabilityRequestSchema = insertSuitabilitySchema.omit({
+  suitUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
 
-export const createCopRequestSchema = z.object({
-  certificateName: z.string().optional(),
-  certificateNumber: z.string().optional(),
-  issuingCountryUuid: z.string().optional(),
-  issueDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  issuingAuthority: z.string().optional(),
-  sortOrder: z.number().optional(),
+export const createRecruitmentDecisionRequestSchema = insertRecruitmentDecisionSchema.omit({
+  decisionUuid: true,
+  recCanUuid: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
 });
-
-export const createStcwCertificateRequestSchema = z.object({
-  stcwCode: z.string().optional(),
-  certificateName: z.string().optional(),
-  certificateNumber: z.string().optional(),
-  issuingCountryUuid: z.string().optional(),
-  issueDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  issuingAuthority: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createFlagEndorsementRequestSchema = z.object({
-  flagStateUuid: z.string().optional(),
-  endorsementType: z.string().optional(),
-  certificateNumber: z.string().optional(),
-  issueDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  issuingAuthority: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createMedicalCertificateRequestSchema = z.object({
-  certificateType: z.string().optional(),
-  certificateNumber: z.string().optional(),
-  clinicName: z.string().optional(),
-  clinicLocation: z.string().optional(),
-  issueDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  fitnessStatus: z.string().optional(),
-  restrictions: z.string().optional(),
-  bloodType: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createVaccinationRequestSchema = z.object({
-  vaccineName: z.string().optional(),
-  vaccineType: z.string().optional(),
-  dateAdministered: z.string().optional(),
-  expiryDate: z.string().optional(),
-  batchNumber: z.string().optional(),
-  administeredBy: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createTrainingCertificateRequestSchema = z.object({
-  courseName: z.string().optional(),
-  courseCode: z.string().optional(),
-  certificateNumber: z.string().optional(),
-  trainingCenter: z.string().optional(),
-  trainingLocation: z.string().optional(),
-  issueDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createEducationRequestSchema = z.object({
-  institutionName: z.string().optional(),
-  qualification: z.string().optional(),
-  fieldOfStudy: z.string().optional(),
-  startDate: z.string().optional(),
-  completionDate: z.string().optional(),
-  grade: z.string().optional(),
-  countryUuid: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createSeaServiceInternalRequestSchema = z.object({
-  vesselName: z.string().optional(),
-  vesselTypeUuid: z.string().optional(),
-  imoNumber: z.string().optional(),
-  grossTonnage: z.string().optional(),
-  enginePower: z.string().optional(),
-  rank: z.string().optional(),
-  signOnDate: z.string().optional(),
-  signOffDate: z.string().optional(),
-  durationMonths: z.string().optional(),
-  flagStateUuid: z.string().optional(),
-  tradingArea: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createSeaServiceExternalRequestSchema = z.object({
-  companyName: z.string().optional(),
-  vesselName: z.string().optional(),
-  vesselTypeUuid: z.string().optional(),
-  imoNumber: z.string().optional(),
-  grossTonnage: z.string().optional(),
-  enginePower: z.string().optional(),
-  rank: z.string().optional(),
-  signOnDate: z.string().optional(),
-  signOffDate: z.string().optional(),
-  durationMonths: z.string().optional(),
-  flagStateUuid: z.string().optional(),
-  tradingArea: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createLicenseRequestSchema = z.object({
-  licenseType: z.string().optional(),
-  licenseName: z.string().optional(),
-  licenseNumber: z.string().optional(),
-  issuingCountryUuid: z.string().optional(),
-  issueDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  issuingAuthority: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createDocumentAttachmentRequestSchema = z.object({
-  parentTableName: z.string().optional(),
-  parentRecordUuid: z.string().optional(),
-  fileName: z.string().optional(),
-  fileType: z.string().optional(),
-  fileSize: z.number().optional(),
-  filePath: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-// ============================================================================
-// PHASE 3: SCREENING B1-B8 SCHEMAS (29 tables)
-// ============================================================================
-
-// B1: GENERAL SCREENING
-export const createScreeningGeneralInfoRequestSchema = z.object({
-  availabilityDate: z.string().optional(),
-  noticePeriodDays: z.number().optional(),
-  expectedSalaryUsd: z.string().optional(),
-  contractDurationPreference: z.string().optional(),
-  willingToRelocate: z.boolean().optional(),
-  preferredVesselTypes: z.string().optional(),
-  preferredTradingAreas: z.string().optional(),
-  reasonForLeaving: z.string().optional(),
-  careerObjectives: z.string().optional(),
-});
-
-export const createScreeningAvailabilityRequestSchema = z.object({
-  availableFromDate: z.string().optional(),
-  availableToDate: z.string().optional(),
-  availabilityType: z.string().optional(),
-  remarks: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningSalaryHistoryRequestSchema = z.object({
-  employerName: z.string().optional(),
-  position: z.string().optional(),
-  salaryAmountUsd: z.string().optional(),
-  currency: z.string().optional(),
-  periodFrom: z.string().optional(),
-  periodTo: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningDocumentsChecklistRequestSchema = z.object({
-  passportVerified: z.boolean().optional(),
-  seamanBookVerified: z.boolean().optional(),
-  cocVerified: z.boolean().optional(),
-  stcwVerified: z.boolean().optional(),
-  medicalVerified: z.boolean().optional(),
-  flagEndorsementVerified: z.boolean().optional(),
-  visaVerified: z.boolean().optional(),
-  remarks: z.string().optional(),
-});
-
-// B2: SKILLS ASSESSMENT
-export const createScreeningTechnicalSkillsRequestSchema = z.object({
-  skillCategory: z.string().optional(),
-  skillName: z.string().optional(),
-  proficiencyLevel: z.string().optional(),
-  yearsExperience: z.number().optional(),
-  lastUsedDate: z.string().optional(),
-  certificationUuid: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningCompetencyRatingsRequestSchema = z.object({
-  competencyArea: z.string().optional(),
-  competencyName: z.string().optional(),
-  rating: z.number().optional(),
-  ratingDescription: z.string().optional(),
-  evidenceNotes: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningEquipmentExperienceRequestSchema = z.object({
-  equipmentCategory: z.string().optional(),
-  equipmentType: z.string().optional(),
-  manufacturer: z.string().optional(),
-  model: z.string().optional(),
-  experienceLevel: z.string().optional(),
-  yearsExperience: z.number().optional(),
-  lastUsedDate: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningLanguageProficiencyRequestSchema = z.object({
-  languageUuid: z.string().optional(),
-  languageName: z.string().optional(),
-  speakingLevel: z.string().optional(),
-  readingLevel: z.string().optional(),
-  writingLevel: z.string().optional(),
-  listeningLevel: z.string().optional(),
-  testName: z.string().optional(),
-  testScore: z.string().optional(),
-  testDate: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningPracticalTestsRequestSchema = z.object({
-  testCategory: z.string().optional(),
-  testName: z.string().optional(),
-  testDescription: z.string().optional(),
-  testDate: z.string().optional(),
-  testLocation: z.string().optional(),
-  maxScore: z.number().optional(),
-  achievedScore: z.number().optional(),
-  passScore: z.number().optional(),
-  result: z.string().optional(),
-  assessorUuid: z.string().optional(),
-  assessorNotes: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-// B3: INTERVIEW ASSESSMENT
-export const createScreeningInterviewsRequestSchema = z.object({
-  interviewType: z.string().optional(),
-  interviewStage: z.string().optional(),
-  scheduledDate: z.string().optional(),
-  scheduledTime: z.string().optional(),
-  duration: z.number().optional(),
-  location: z.string().optional(),
-  meetingLink: z.string().optional(),
-  status: z.string().optional(),
-  overallRating: z.number().optional(),
-  recommendation: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningInterviewPanelistsRequestSchema = z.object({
-  interviewUuid: z.string().optional(),
-  panelistUserUuid: z.string().optional(),
-  panelistName: z.string().optional(),
-  panelistRole: z.string().optional(),
-  individualRating: z.number().optional(),
-  feedback: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningInterviewQuestionsRequestSchema = z.object({
-  interviewUuid: z.string().optional(),
-  questionCategory: z.string().optional(),
-  questionText: z.string().optional(),
-  expectedAnswer: z.string().optional(),
-  candidateResponse: z.string().optional(),
-  rating: z.number().optional(),
-  notes: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningInterviewNotesRequestSchema = z.object({
-  interviewUuid: z.string().optional(),
-  noteType: z.string().optional(),
-  noteContent: z.string().optional(),
-  authorUuid: z.string().optional(),
-  authorName: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-// B4: REFERENCE CHECKS
-export const createScreeningEmployerReferencesRequestSchema = z.object({
-  companyName: z.string().optional(),
-  contactName: z.string().optional(),
-  contactPosition: z.string().optional(),
-  contactEmail: z.string().optional(),
-  contactPhone: z.string().optional(),
-  relationshipToCandidate: z.string().optional(),
-  employmentPeriodFrom: z.string().optional(),
-  employmentPeriodTo: z.string().optional(),
-  positionHeld: z.string().optional(),
-  referenceStatus: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningReferenceResponsesRequestSchema = z.object({
-  empRefUuid: z.string().optional(),
-  questionText: z.string().optional(),
-  responseText: z.string().optional(),
-  rating: z.number().optional(),
-  contactedDate: z.string().optional(),
-  contactedByUuid: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningPersonalReferencesRequestSchema = z.object({
-  referenceName: z.string().optional(),
-  relationship: z.string().optional(),
-  occupation: z.string().optional(),
-  contactEmail: z.string().optional(),
-  contactPhone: z.string().optional(),
-  yearsKnown: z.number().optional(),
-  referenceStatus: z.string().optional(),
-  referenceNotes: z.string().optional(),
-  contactedDate: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningSeaServiceVerificationRequestSchema = z.object({
-  seaServiceUuid: z.string().optional(),
-  seaServiceType: z.string().optional(),
-  verificationStatus: z.string().optional(),
-  companyContactName: z.string().optional(),
-  companyContactEmail: z.string().optional(),
-  discrepancyNotes: z.string().optional(),
-  verificationNotes: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-// B5: BACKGROUND VERIFICATION
-export const createScreeningBackgroundChecksRequestSchema = z.object({
-  overallStatus: z.string().optional(),
-  initiatedDate: z.string().optional(),
-  completedDate: z.string().optional(),
-  vendorName: z.string().optional(),
-  vendorReferenceNumber: z.string().optional(),
-  expiryDate: z.string().optional(),
-  remarks: z.string().optional(),
-});
-
-export const createScreeningCriminalRecordsRequestSchema = z.object({
-  countryUuid: z.string().optional(),
-  countryName: z.string().optional(),
-  checkType: z.string().optional(),
-  checkDate: z.string().optional(),
-  result: z.string().optional(),
-  recordDetails: z.string().optional(),
-  certificateNumber: z.string().optional(),
-  issuingAuthority: z.string().optional(),
-  expiryDate: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningEmploymentVerificationRequestSchema = z.object({
-  employerName: z.string().optional(),
-  positionClaimed: z.string().optional(),
-  positionVerified: z.string().optional(),
-  periodClaimedFrom: z.string().optional(),
-  periodClaimedTo: z.string().optional(),
-  periodVerifiedFrom: z.string().optional(),
-  periodVerifiedTo: z.string().optional(),
-  salaryVerified: z.boolean().optional(),
-  verificationStatus: z.string().optional(),
-  discrepancyNotes: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningEducationVerificationRequestSchema = z.object({
-  educationUuid: z.string().optional(),
-  institutionName: z.string().optional(),
-  degreeClaimed: z.string().optional(),
-  degreeVerified: z.string().optional(),
-  yearClaimedFrom: z.string().optional(),
-  yearClaimedTo: z.string().optional(),
-  yearVerifiedFrom: z.string().optional(),
-  yearVerifiedTo: z.string().optional(),
-  verificationStatus: z.string().optional(),
-  discrepancyNotes: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-// B6: PSYCHOLOGICAL ASSESSMENT
-export const createScreeningPsychometricTestsRequestSchema = z.object({
-  testName: z.string().optional(),
-  testType: z.string().optional(),
-  testProvider: z.string().optional(),
-  testDate: z.string().optional(),
-  expiryDate: z.string().optional(),
-  overallScore: z.string().optional(),
-  percentile: z.number().optional(),
-  result: z.string().optional(),
-  remarks: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningPsychometricDimensionsRequestSchema = z.object({
-  psychTestUuid: z.string().optional(),
-  dimensionName: z.string().optional(),
-  dimensionScore: z.string().optional(),
-  percentile: z.number().optional(),
-  normalRange: z.string().optional(),
-  interpretation: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningBehavioralAssessmentsRequestSchema = z.object({
-  assessmentType: z.string().optional(),
-  assessmentDate: z.string().optional(),
-  assessorUuid: z.string().optional(),
-  assessorName: z.string().optional(),
-  primaryStyle: z.string().optional(),
-  secondaryStyle: z.string().optional(),
-  strengthsIdentified: z.string().optional(),
-  areasOfDevelopment: z.string().optional(),
-  teamFitScore: z.number().optional(),
-  leadershipPotential: z.string().optional(),
-  overallNotes: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-// B7: MEDICAL SCREENING
-export const createScreeningPemeRequestSchema = z.object({
-  examDate: z.string().optional(),
-  clinicName: z.string().optional(),
-  clinicLocation: z.string().optional(),
-  examType: z.string().optional(),
-  overallResult: z.string().optional(),
-  restrictions: z.string().optional(),
-  validUntil: z.string().optional(),
-  examinerName: z.string().optional(),
-  examinerLicense: z.string().optional(),
-  certificateNumber: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningPemeResultsRequestSchema = z.object({
-  pemeUuid: z.string().optional(),
-  testCategory: z.string().optional(),
-  testName: z.string().optional(),
-  testResult: z.string().optional(),
-  normalRange: z.string().optional(),
-  status: z.string().optional(),
-  remarks: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createScreeningDrugAlcoholTestsRequestSchema = z.object({
-  testType: z.string().optional(),
-  testDate: z.string().optional(),
-  testLocation: z.string().optional(),
-  collectorName: z.string().optional(),
-  specimenType: z.string().optional(),
-  chainOfCustodyNumber: z.string().optional(),
-  laboratoryName: z.string().optional(),
-  result: z.string().optional(),
-  substancesTestedFor: z.string().optional(),
-  substancesDetected: z.string().optional(),
-  confirmedByMro: z.boolean().optional(),
-  mroName: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-// B8: FINAL EVALUATION
-export const createScreeningFinalEvaluationRequestSchema = z.object({
-  evaluationDate: z.string().optional(),
-  evaluatorUuid: z.string().optional(),
-  evaluatorName: z.string().optional(),
-  technicalScore: z.number().optional(),
-  interviewScore: z.number().optional(),
-  referenceScore: z.number().optional(),
-  backgroundScore: z.number().optional(),
-  medicalScore: z.number().optional(),
-  overallScore: z.number().optional(),
-  overallRating: z.string().optional(),
-  hiringRecommendation: z.string().optional(),
-  recommendedRank: z.string().optional(),
-  recommendedVesselType: z.string().optional(),
-  startDateRecommended: z.string().optional(),
-  salaryRecommended: z.string().optional(),
-  conditionsForHire: z.string().optional(),
-  evaluationNotes: z.string().optional(),
-});
-
-export const createScreeningEvaluationApprovalsRequestSchema = z.object({
-  finalEvalUuid: z.string().optional(),
-  approvalLevel: z.number().optional(),
-  approverUuid: z.string().optional(),
-  approverName: z.string().optional(),
-  approverRole: z.string().optional(),
-  approvalStatus: z.string().optional(),
-  approvalDate: z.string().optional(),
-  comments: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-// ============================================================================
-// REQUEST TYPES
-// ============================================================================
 
 export type CreateCandidateRequest = z.infer<typeof createCandidateRequestSchema>;
-export type UpdateCandidateRequest = z.infer<typeof updateCandidateRequestSchema>;
-export type UpsertPersonalDetailsRequest = z.infer<typeof upsertPersonalDetailsRequestSchema>;
-export type UpsertAddressRequest = z.infer<typeof upsertAddressRequestSchema>;
-export type UpsertFamilyInfoRequest = z.infer<typeof upsertFamilyInfoRequestSchema>;
-export type CreateChildRequest = z.infer<typeof createChildRequestSchema>;
-export type UpdateChildRequest = z.infer<typeof updateChildRequestSchema>;
-export type CreateNextOfKinRequest = z.infer<typeof createNextOfKinRequestSchema>;
-export type UpdateNextOfKinRequest = z.infer<typeof updateNextOfKinRequestSchema>;
-export type AddVesselTypeAppliedRequest = z.infer<typeof addVesselTypeAppliedRequestSchema>;
-
-// Phase 2: Documents & Certificates Request Types
-export type CreateTravelDocumentRequest = z.infer<typeof createTravelDocumentRequestSchema>;
+export type CreateDocumentRequest = z.infer<typeof createDocumentRequestSchema>;
 export type CreateVisaRequest = z.infer<typeof createVisaRequestSchema>;
-export type CreateCocRequest = z.infer<typeof createCocRequestSchema>;
-export type CreateCopRequest = z.infer<typeof createCopRequestSchema>;
-export type CreateStcwCertificateRequest = z.infer<typeof createStcwCertificateRequestSchema>;
-export type CreateFlagEndorsementRequest = z.infer<typeof createFlagEndorsementRequestSchema>;
-export type CreateMedicalCertificateRequest = z.infer<typeof createMedicalCertificateRequestSchema>;
-export type CreateVaccinationRequest = z.infer<typeof createVaccinationRequestSchema>;
-export type CreateTrainingCertificateRequest = z.infer<typeof createTrainingCertificateRequestSchema>;
 export type CreateEducationRequest = z.infer<typeof createEducationRequestSchema>;
-export type CreateSeaServiceInternalRequest = z.infer<typeof createSeaServiceInternalRequestSchema>;
-export type CreateSeaServiceExternalRequest = z.infer<typeof createSeaServiceExternalRequestSchema>;
 export type CreateLicenseRequest = z.infer<typeof createLicenseRequestSchema>;
-export type CreateDocumentAttachmentRequest = z.infer<typeof createDocumentAttachmentRequestSchema>;
-
-// Phase 3: Screening B1-B8 Request Types
-export type CreateScreeningGeneralInfoRequest = z.infer<typeof createScreeningGeneralInfoRequestSchema>;
-export type CreateScreeningAvailabilityRequest = z.infer<typeof createScreeningAvailabilityRequestSchema>;
-export type CreateScreeningSalaryHistoryRequest = z.infer<typeof createScreeningSalaryHistoryRequestSchema>;
-export type CreateScreeningDocumentsChecklistRequest = z.infer<typeof createScreeningDocumentsChecklistRequestSchema>;
-export type CreateScreeningTechnicalSkillsRequest = z.infer<typeof createScreeningTechnicalSkillsRequestSchema>;
-export type CreateScreeningCompetencyRatingsRequest = z.infer<typeof createScreeningCompetencyRatingsRequestSchema>;
-export type CreateScreeningEquipmentExperienceRequest = z.infer<typeof createScreeningEquipmentExperienceRequestSchema>;
-export type CreateScreeningLanguageProficiencyRequest = z.infer<typeof createScreeningLanguageProficiencyRequestSchema>;
-export type CreateScreeningPracticalTestsRequest = z.infer<typeof createScreeningPracticalTestsRequestSchema>;
-export type CreateScreeningInterviewsRequest = z.infer<typeof createScreeningInterviewsRequestSchema>;
-export type CreateScreeningInterviewPanelistsRequest = z.infer<typeof createScreeningInterviewPanelistsRequestSchema>;
-export type CreateScreeningInterviewQuestionsRequest = z.infer<typeof createScreeningInterviewQuestionsRequestSchema>;
-export type CreateScreeningInterviewNotesRequest = z.infer<typeof createScreeningInterviewNotesRequestSchema>;
-export type CreateScreeningEmployerReferencesRequest = z.infer<typeof createScreeningEmployerReferencesRequestSchema>;
-export type CreateScreeningReferenceResponsesRequest = z.infer<typeof createScreeningReferenceResponsesRequestSchema>;
-export type CreateScreeningPersonalReferencesRequest = z.infer<typeof createScreeningPersonalReferencesRequestSchema>;
-export type CreateScreeningSeaServiceVerificationRequest = z.infer<typeof createScreeningSeaServiceVerificationRequestSchema>;
-export type CreateScreeningBackgroundChecksRequest = z.infer<typeof createScreeningBackgroundChecksRequestSchema>;
-export type CreateScreeningCriminalRecordsRequest = z.infer<typeof createScreeningCriminalRecordsRequestSchema>;
-export type CreateScreeningEmploymentVerificationRequest = z.infer<typeof createScreeningEmploymentVerificationRequestSchema>;
-export type CreateScreeningEducationVerificationRequest = z.infer<typeof createScreeningEducationVerificationRequestSchema>;
-export type CreateScreeningPsychometricTestsRequest = z.infer<typeof createScreeningPsychometricTestsRequestSchema>;
-export type CreateScreeningPsychometricDimensionsRequest = z.infer<typeof createScreeningPsychometricDimensionsRequestSchema>;
-export type CreateScreeningBehavioralAssessmentsRequest = z.infer<typeof createScreeningBehavioralAssessmentsRequestSchema>;
-export type CreateScreeningPemeRequest = z.infer<typeof createScreeningPemeRequestSchema>;
-export type CreateScreeningPemeResultsRequest = z.infer<typeof createScreeningPemeResultsRequestSchema>;
-export type CreateScreeningDrugAlcoholTestsRequest = z.infer<typeof createScreeningDrugAlcoholTestsRequestSchema>;
-export type CreateScreeningFinalEvaluationRequest = z.infer<typeof createScreeningFinalEvaluationRequestSchema>;
-export type CreateScreeningEvaluationApprovalsRequest = z.infer<typeof createScreeningEvaluationApprovalsRequestSchema>;
-
-// ============================================================================
-// PHASE 4: APPROVALS & DECISIONS SCHEMAS
-// ============================================================================
-
-export const createHiringDecisionRequestSchema = z.object({
-  finalEvalUuid: z.string().optional(),
-  decisionType: z.string().optional(),
-  decisionDate: z.string().optional(),
-  decidedByUuid: z.string().optional(),
-  decidedByName: z.string().optional(),
-  decisionReason: z.string().optional(),
-  approvedRank: z.string().optional(),
-  approvedVesselType: z.string().optional(),
-  approvedSalary: z.string().optional(),
-  proposedJoiningDate: z.string().optional(),
-  probationPeriodMonths: z.number().optional(),
-  specialConditions: z.string().optional(),
-  rejectionReason: z.string().optional(),
-  holdUntilDate: z.string().optional(),
-});
-
-export const createOfferLetterRequestSchema = z.object({
-  decisionUuid: z.string().optional(),
-  offerNumber: z.string().optional(),
-  offerDate: z.string().optional(),
-  offerExpiryDate: z.string().optional(),
-  offeredRank: z.string().optional(),
-  offeredVesselType: z.string().optional(),
-  offeredVesselName: z.string().optional(),
-  offeredSalaryUsd: z.string().optional(),
-  contractDurationMonths: z.number().optional(),
-  joiningDate: z.string().optional(),
-  joiningPort: z.string().optional(),
-  benefits: z.string().optional(),
-  termsAndConditions: z.string().optional(),
-  offerStatus: z.string().optional(),
-  sentDate: z.string().optional(),
-  responseDate: z.string().optional(),
-  declineReason: z.string().optional(),
-  offerLetterPath: z.string().optional(),
-  signedOfferPath: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createEmploymentContractRequestSchema = z.object({
-  offerUuid: z.string().optional(),
-  contractNumber: z.string().optional(),
-  contractType: z.string().optional(),
-  contractStartDate: z.string().optional(),
-  contractEndDate: z.string().optional(),
-  contractedRank: z.string().optional(),
-  contractedVesselType: z.string().optional(),
-  basicSalaryUsd: z.string().optional(),
-  allowances: z.string().optional(),
-  totalPackageUsd: z.string().optional(),
-  leaveEntitlementDays: z.number().optional(),
-  medicalCoverage: z.string().optional(),
-  insuranceCoverage: z.string().optional(),
-  noticePeriodDays: z.number().optional(),
-  contractStatus: z.string().optional(),
-  signedByCandidate: z.boolean().optional(),
-  candidateSignatureDate: z.string().optional(),
-  signedByCompany: z.boolean().optional(),
-  companySignerUuid: z.string().optional(),
-  companySignatureDate: z.string().optional(),
-  contractDocumentPath: z.string().optional(),
-  signedContractPath: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createOnboardingTaskRequestSchema = z.object({
-  contractUuid: z.string().optional(),
-  taskCategory: z.string().optional(),
-  taskName: z.string().optional(),
-  taskDescription: z.string().optional(),
-  assignedToUuid: z.string().optional(),
-  assignedToName: z.string().optional(),
-  dueDate: z.string().optional(),
-  priority: z.string().optional(),
-  taskStatus: z.string().optional(),
-  completedDate: z.string().optional(),
-  completedByUuid: z.string().optional(),
-  completedByName: z.string().optional(),
-  notes: z.string().optional(),
-  attachmentPath: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createDecisionAuditTrailRequestSchema = z.object({
-  entityType: z.string().optional(),
-  entityUuid: z.string().optional(),
-  actionType: z.string().optional(),
-  previousValue: z.string().optional(),
-  newValue: z.string().optional(),
-  fieldChanged: z.string().optional(),
-  actionByUuid: z.string().optional(),
-  actionByName: z.string().optional(),
-  actionDate: z.string().optional(),
-  ipAddress: z.string().optional(),
-  userAgent: z.string().optional(),
-  notes: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-export const createApprovalWorkflowRequestSchema = z.object({
-  entityType: z.string().optional(),
-  entityUuid: z.string().optional(),
-  workflowName: z.string().optional(),
-  currentStep: z.number().optional(),
-  totalSteps: z.number().optional(),
-  stepName: z.string().optional(),
-  approverUuid: z.string().optional(),
-  approverName: z.string().optional(),
-  approverRole: z.string().optional(),
-  approvalRequired: z.boolean().optional(),
-  approvalStatus: z.string().optional(),
-  approvalDate: z.string().optional(),
-  delegatedToUuid: z.string().optional(),
-  delegatedToName: z.string().optional(),
-  escalationDate: z.string().optional(),
-  comments: z.string().optional(),
-  sortOrder: z.number().optional(),
-});
-
-// Phase 4: Request Types
-export type CreateHiringDecisionRequest = z.infer<typeof createHiringDecisionRequestSchema>;
-export type CreateOfferLetterRequest = z.infer<typeof createOfferLetterRequestSchema>;
-export type CreateEmploymentContractRequest = z.infer<typeof createEmploymentContractRequestSchema>;
-export type CreateOnboardingTaskRequest = z.infer<typeof createOnboardingTaskRequestSchema>;
-export type CreateDecisionAuditTrailRequest = z.infer<typeof createDecisionAuditTrailRequestSchema>;
-export type CreateApprovalWorkflowRequest = z.infer<typeof createApprovalWorkflowRequestSchema>;
+export type CreateTrainingCourseRequest = z.infer<typeof createTrainingCourseRequestSchema>;
+export type CreateSeaServiceRequest = z.infer<typeof createSeaServiceRequestSchema>;
+export type CreateAdditionalInfoRequest = z.infer<typeof createAdditionalInfoRequestSchema>;
+export type CreateApprovalRequest = z.infer<typeof createApprovalRequestSchema>;
+export type CreateSuitabilityRequest = z.infer<typeof createSuitabilityRequestSchema>;
+export type CreateRecruitmentDecisionRequest = z.infer<typeof createRecruitmentDecisionRequestSchema>;

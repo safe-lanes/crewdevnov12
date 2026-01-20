@@ -1,199 +1,126 @@
 import { v4 as uuidv4 } from "uuid";
 import {
-  hiringDecisionsRepository,
-  offerLettersRepository,
-  employmentContractsRepository,
-  onboardingTasksRepository,
-  decisionAuditTrailRepository,
-  approvalWorkflowsRepository,
+  approvalsRepository,
+  suitabilityRepository,
+  recruitmentDecisionRepository,
 } from "../repositories/approvalsRepository";
-import {
-  CreateHiringDecisionRequest,
-  CreateOfferLetterRequest,
-  CreateEmploymentContractRequest,
-  CreateOnboardingTaskRequest,
-  CreateDecisionAuditTrailRequest,
-  CreateApprovalWorkflowRequest,
-} from "@shared/v2/recruitment/types";
+import type {
+  CandApproval,
+  InsertApproval,
+  CandSuitability,
+  InsertSuitability,
+  CandRecruitmentDecision,
+  InsertRecruitmentDecision,
+} from "../../../../shared/v2/recruitment/types";
 
-// Default audit columns for new records
-const auditDefaults = {
-  createdByUuid: null,
-  updatedByUuid: null,
-  isDeleted: false,
-  isSync: false,
-};
+export class ApprovalsService {
+  async getApprovals(recCanUuid: string): Promise<CandApproval[]> {
+    return approvalsRepository.findByCandidateUuid(recCanUuid);
+  }
 
-// ============================================================================
-// HIRING DECISIONS SERVICE
-// ============================================================================
+  async createApproval(recCanUuid: string, data: Partial<InsertApproval>, createdByUuid?: string): Promise<CandApproval> {
+    return approvalsRepository.create({
+      approvalUuid: uuidv4(),
+      recCanUuid,
+      ...data,
+      createdByUuid,
+      updatedByUuid: createdByUuid,
+    } as InsertApproval);
+  }
 
-export const hiringDecisionsService = {
-  async getByRecCanUuid(recCanUuid: string) {
-    return hiringDecisionsRepository.findByRecCanUuid(recCanUuid);
-  },
+  async updateApproval(id: number, data: Partial<InsertApproval>, updatedByUuid?: string): Promise<CandApproval | undefined> {
+    return approvalsRepository.update(id, { ...data, updatedByUuid });
+  }
 
-  async upsert(recCanUuid: string, data: CreateHiringDecisionRequest) {
-    const existing = await hiringDecisionsRepository.findByRecCanUuid(recCanUuid);
-    if (existing) {
-      return hiringDecisionsRepository.update(existing.decisionUuid, data);
-    }
-    return hiringDecisionsRepository.create({
+  async deleteApproval(id: number): Promise<boolean> {
+    return approvalsRepository.softDelete(id);
+  }
+}
+
+export class SuitabilityService {
+  async getSuitability(recCanUuid: string): Promise<CandSuitability | undefined> {
+    return suitabilityRepository.findByCandidateUuid(recCanUuid);
+  }
+
+  async upsertSuitability(recCanUuid: string, data: Partial<InsertSuitability>, userUuid?: string): Promise<CandSuitability> {
+    return suitabilityRepository.upsert(recCanUuid, {
+      suitUuid: uuidv4(),
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
+
+  async getVesselTypes(suitUuid: string) {
+    return suitabilityRepository.findVesselTypes(suitUuid);
+  }
+
+  async addVesselType(suitUuid: string, vesselTypeUuid: string, userUuid?: string) {
+    return suitabilityRepository.createVesselType({
+      svtUuid: uuidv4(),
+      suitUuid,
+      vesselTypeUuid,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
+
+  async clearVesselTypes(suitUuid: string) {
+    return suitabilityRepository.deleteVesselTypes(suitUuid);
+  }
+
+  async getFleetGroups(suitUuid: string) {
+    return suitabilityRepository.findFleetGroups(suitUuid);
+  }
+
+  async addFleetGroup(suitUuid: string, fleetGroupUuid: string, userUuid?: string) {
+    return suitabilityRepository.createFleetGroup({
+      sfgUuid: uuidv4(),
+      suitUuid,
+      fleetGroupUuid,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
+
+  async clearFleetGroups(suitUuid: string) {
+    return suitabilityRepository.deleteFleetGroups(suitUuid);
+  }
+}
+
+export class RecruitmentDecisionService {
+  async getDecision(recCanUuid: string): Promise<CandRecruitmentDecision | undefined> {
+    return recruitmentDecisionRepository.findByCandidateUuid(recCanUuid);
+  }
+
+  async upsertDecision(recCanUuid: string, data: Partial<InsertRecruitmentDecision>, userUuid?: string): Promise<CandRecruitmentDecision> {
+    return recruitmentDecisionRepository.upsert(recCanUuid, {
       decisionUuid: uuidv4(),
-      recCanUuid,
-      ...auditDefaults,
       ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
     });
-  },
+  }
 
-  async delete(decisionUuid: string) {
-    return hiringDecisionsRepository.softDelete(decisionUuid);
-  },
-};
+  async getAssignedGroups(decisionUuid: string) {
+    return recruitmentDecisionRepository.findAssignedGroups(decisionUuid);
+  }
 
-// ============================================================================
-// OFFER LETTERS SERVICE
-// ============================================================================
-
-export const offerLettersService = {
-  async getAllByRecCanUuid(recCanUuid: string) {
-    return offerLettersRepository.findAllByRecCanUuid(recCanUuid);
-  },
-
-  async getByOfferUuid(offerUuid: string) {
-    return offerLettersRepository.findByOfferUuid(offerUuid);
-  },
-
-  async create(recCanUuid: string, data: CreateOfferLetterRequest) {
-    return offerLettersRepository.create({
-      offerUuid: uuidv4(),
-      recCanUuid,
-      ...auditDefaults,
-      ...data,
+  async addAssignedGroup(decisionUuid: string, groupUuid: string, userUuid?: string) {
+    return recruitmentDecisionRepository.createAssignedGroup({
+      cagUuid: uuidv4(),
+      decisionUuid,
+      groupUuid,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
     });
-  },
+  }
 
-  async update(offerUuid: string, data: CreateOfferLetterRequest) {
-    return offerLettersRepository.update(offerUuid, data);
-  },
+  async clearAssignedGroups(decisionUuid: string) {
+    return recruitmentDecisionRepository.deleteAssignedGroups(decisionUuid);
+  }
+}
 
-  async delete(offerUuid: string) {
-    return offerLettersRepository.softDelete(offerUuid);
-  },
-};
-
-// ============================================================================
-// EMPLOYMENT CONTRACTS SERVICE
-// ============================================================================
-
-export const employmentContractsService = {
-  async getAllByRecCanUuid(recCanUuid: string) {
-    return employmentContractsRepository.findAllByRecCanUuid(recCanUuid);
-  },
-
-  async getByContractUuid(contractUuid: string) {
-    return employmentContractsRepository.findByContractUuid(contractUuid);
-  },
-
-  async create(recCanUuid: string, data: CreateEmploymentContractRequest) {
-    return employmentContractsRepository.create({
-      contractUuid: uuidv4(),
-      recCanUuid,
-      ...auditDefaults,
-      ...data,
-    });
-  },
-
-  async update(contractUuid: string, data: CreateEmploymentContractRequest) {
-    return employmentContractsRepository.update(contractUuid, data);
-  },
-
-  async delete(contractUuid: string) {
-    return employmentContractsRepository.softDelete(contractUuid);
-  },
-};
-
-// ============================================================================
-// ONBOARDING TASKS SERVICE
-// ============================================================================
-
-export const onboardingTasksService = {
-  async getAllByRecCanUuid(recCanUuid: string) {
-    return onboardingTasksRepository.findAllByRecCanUuid(recCanUuid);
-  },
-
-  async getByTaskUuid(taskUuid: string) {
-    return onboardingTasksRepository.findByTaskUuid(taskUuid);
-  },
-
-  async create(recCanUuid: string, data: CreateOnboardingTaskRequest) {
-    return onboardingTasksRepository.create({
-      taskUuid: uuidv4(),
-      recCanUuid,
-      ...auditDefaults,
-      ...data,
-    });
-  },
-
-  async update(taskUuid: string, data: CreateOnboardingTaskRequest) {
-    return onboardingTasksRepository.update(taskUuid, data);
-  },
-
-  async delete(taskUuid: string) {
-    return onboardingTasksRepository.softDelete(taskUuid);
-  },
-};
-
-// ============================================================================
-// DECISION AUDIT TRAIL SERVICE
-// ============================================================================
-
-export const decisionAuditTrailService = {
-  async getAllByRecCanUuid(recCanUuid: string) {
-    return decisionAuditTrailRepository.findAllByRecCanUuid(recCanUuid);
-  },
-
-  async create(recCanUuid: string, data: CreateDecisionAuditTrailRequest) {
-    return decisionAuditTrailRepository.create({
-      auditUuid: uuidv4(),
-      recCanUuid,
-      ...auditDefaults,
-      ...data,
-    });
-  },
-
-  async delete(auditUuid: string) {
-    return decisionAuditTrailRepository.softDelete(auditUuid);
-  },
-};
-
-// ============================================================================
-// APPROVAL WORKFLOWS SERVICE
-// ============================================================================
-
-export const approvalWorkflowsService = {
-  async getAllByRecCanUuid(recCanUuid: string) {
-    return approvalWorkflowsRepository.findAllByRecCanUuid(recCanUuid);
-  },
-
-  async getByWorkflowUuid(workflowUuid: string) {
-    return approvalWorkflowsRepository.findByWorkflowUuid(workflowUuid);
-  },
-
-  async create(recCanUuid: string, data: CreateApprovalWorkflowRequest) {
-    return approvalWorkflowsRepository.create({
-      workflowUuid: uuidv4(),
-      recCanUuid,
-      ...auditDefaults,
-      ...data,
-    });
-  },
-
-  async update(workflowUuid: string, data: CreateApprovalWorkflowRequest) {
-    return approvalWorkflowsRepository.update(workflowUuid, data);
-  },
-
-  async delete(workflowUuid: string) {
-    return approvalWorkflowsRepository.softDelete(workflowUuid);
-  },
-};
+export const approvalsService = new ApprovalsService();
+export const suitabilityService = new SuitabilityService();
+export const recruitmentDecisionService = new RecruitmentDecisionService();

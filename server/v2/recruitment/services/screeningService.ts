@@ -1,268 +1,452 @@
+import { v4 as uuidv4 } from "uuid";
 import {
-  screeningGeneralInfoRepository,
-  screeningAvailabilityRepository,
-  screeningSalaryHistoryRepository,
-  screeningDocumentsChecklistRepository,
-  screeningTechnicalSkillsRepository,
-  screeningCompetencyRatingsRepository,
-  screeningEquipmentExperienceRepository,
-  screeningLanguageProficiencyRepository,
-  screeningPracticalTestsRepository,
-  screeningInterviewsRepository,
-  screeningInterviewPanelistsRepository,
-  screeningInterviewQuestionsRepository,
-  screeningInterviewNotesRepository,
-  screeningEmployerReferencesRepository,
-  screeningReferenceResponsesRepository,
-  screeningPersonalReferencesRepository,
-  screeningSeaServiceVerificationRepository,
-  screeningBackgroundChecksRepository,
-  screeningCriminalRecordsRepository,
-  screeningEmploymentVerificationRepository,
-  screeningEducationVerificationRepository,
-  screeningPsychometricTestsRepository,
-  screeningPsychometricDimensionsRepository,
-  screeningBehavioralAssessmentsRepository,
-  screeningPemeRepository,
-  screeningPemeResultsRepository,
-  screeningDrugAlcoholTestsRepository,
-  screeningFinalEvaluationRepository,
-  screeningEvaluationApprovalsRepository,
+  screeningB1Repository,
+  screeningB2Repository,
+  screeningB3Repository,
+  screeningB4Repository,
+  screeningB5Repository,
+  screeningB6Repository,
+  screeningB7Repository,
+  screeningB8Repository,
 } from "../repositories/screeningRepository";
+import type {
+  ScreeningB1Initial,
+  InsertScreeningB1Initial,
+  ScreeningB2References,
+  InsertScreeningB2References,
+  ScreeningB3Security,
+  InsertScreeningB3Security,
+  ScreeningB4Certificates,
+  InsertScreeningB4Certificates,
+  ScreeningB5Tests,
+  InsertScreeningB5Tests,
+  ScreeningB6Interviews,
+  InsertScreeningB6Interviews,
+  ScreeningB7Training,
+  InsertScreeningB7Training,
+  ScreeningB8Shortlisting,
+  InsertScreeningB8Shortlisting,
+} from "../../../../shared/v2/recruitment/types";
 
-// Helper type for create data
-type CreateData<T> = Partial<Omit<T, "id" | "createdAt" | "updatedAt" | "recCanUuid">>;
+export class ScreeningB1Service {
+  async getByCandidate(recCanUuid: string): Promise<ScreeningB1Initial | undefined> {
+    return screeningB1Repository.findByCandidateUuid(recCanUuid);
+  }
 
-// ============================================================================
-// B1: GENERAL SCREENING SERVICES
-// ============================================================================
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB1Initial>, userUuid?: string): Promise<ScreeningB1Initial> {
+    return screeningB1Repository.upsert(recCanUuid, {
+      b1Uuid: uuidv4(),
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
 
-export const screeningGeneralInfoService = {
-  getByCandidate: (recCanUuid: string) => screeningGeneralInfoRepository.findByCandidate(recCanUuid),
-  upsert: <T>(recCanUuid: string, data: CreateData<T>) => screeningGeneralInfoRepository.upsert(recCanUuid, data as any),
-};
+  async getComments(b1Uuid: string) {
+    return screeningB1Repository.findComments(b1Uuid);
+  }
 
-export const screeningAvailabilityService = {
-  getByCandidate: (recCanUuid: string) => screeningAvailabilityRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningAvailabilityRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningAvailabilityRepository.update(id, data as any),
-  delete: (id: number) => screeningAvailabilityRepository.delete(id),
-};
+  async createComment(b1Uuid: string, data: { fieldKey?: string; userUuid?: string; commentText?: string }, userUuid?: string) {
+    return screeningB1Repository.createComment({
+      commentUuid: uuidv4(),
+      b1Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
 
-export const screeningSalaryHistoryService = {
-  getByCandidate: (recCanUuid: string) => screeningSalaryHistoryRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningSalaryHistoryRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningSalaryHistoryRepository.update(id, data as any),
-  delete: (id: number) => screeningSalaryHistoryRepository.delete(id),
-};
+  async getAttachments(b1Uuid: string) {
+    return screeningB1Repository.findAttachments(b1Uuid);
+  }
 
-export const screeningDocumentsChecklistService = {
-  getByCandidate: (recCanUuid: string) => screeningDocumentsChecklistRepository.findByCandidate(recCanUuid),
-  upsert: <T>(recCanUuid: string, data: CreateData<T>) => screeningDocumentsChecklistRepository.upsert(recCanUuid, data as any),
-};
+  async createAttachment(b1Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB1Repository.createAttachment({
+      attUuid: uuidv4(),
+      b1Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+}
 
-// ============================================================================
-// B2: SKILLS ASSESSMENT SERVICES
-// ============================================================================
+export class ScreeningB2Service {
+  async getByCandidate(recCanUuid: string): Promise<ScreeningB2References | undefined> {
+    return screeningB2Repository.findByCandidateUuid(recCanUuid);
+  }
 
-export const screeningTechnicalSkillsService = {
-  getByCandidate: (recCanUuid: string) => screeningTechnicalSkillsRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningTechnicalSkillsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningTechnicalSkillsRepository.update(id, data as any),
-  delete: (id: number) => screeningTechnicalSkillsRepository.delete(id),
-};
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB2References>, userUuid?: string): Promise<ScreeningB2References> {
+    return screeningB2Repository.upsert(recCanUuid, {
+      b2Uuid: uuidv4(),
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
 
-export const screeningCompetencyRatingsService = {
-  getByCandidate: (recCanUuid: string) => screeningCompetencyRatingsRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningCompetencyRatingsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningCompetencyRatingsRepository.update(id, data as any),
-  delete: (id: number) => screeningCompetencyRatingsRepository.delete(id),
-};
+  async getItems(b2Uuid: string) {
+    return screeningB2Repository.findItems(b2Uuid);
+  }
 
-export const screeningEquipmentExperienceService = {
-  getByCandidate: (recCanUuid: string) => screeningEquipmentExperienceRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningEquipmentExperienceRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningEquipmentExperienceRepository.update(id, data as any),
-  delete: (id: number) => screeningEquipmentExperienceRepository.delete(id),
-};
+  async createItem(b2Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB2Repository.createItem({
+      refUuid: uuidv4(),
+      b2Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
 
-export const screeningLanguageProficiencyService = {
-  getByCandidate: (recCanUuid: string) => screeningLanguageProficiencyRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningLanguageProficiencyRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningLanguageProficiencyRepository.update(id, data as any),
-  delete: (id: number) => screeningLanguageProficiencyRepository.delete(id),
-};
+  async getComments(b2Uuid: string) {
+    return screeningB2Repository.findComments(b2Uuid);
+  }
 
-export const screeningPracticalTestsService = {
-  getByCandidate: (recCanUuid: string) => screeningPracticalTestsRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningPracticalTestsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningPracticalTestsRepository.update(id, data as any),
-  delete: (id: number) => screeningPracticalTestsRepository.delete(id),
-};
+  async createComment(b2Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB2Repository.createComment({
+      commentUuid: uuidv4(),
+      b2Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
 
-// ============================================================================
-// B3: INTERVIEW ASSESSMENT SERVICES
-// ============================================================================
+  async getAttachments(b2Uuid: string) {
+    return screeningB2Repository.findAttachments(b2Uuid);
+  }
 
-export const screeningInterviewsService = {
-  getByCandidate: (recCanUuid: string) => screeningInterviewsRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningInterviewsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningInterviewsRepository.update(id, data as any),
-  delete: (id: number) => screeningInterviewsRepository.delete(id),
-};
+  async createAttachment(b2Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB2Repository.createAttachment({
+      attUuid: uuidv4(),
+      b2Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+}
 
-export const screeningInterviewPanelistsService = {
-  getByCandidate: (recCanUuid: string) => screeningInterviewPanelistsRepository.findByCandidate(recCanUuid),
-  getByInterview: (interviewUuid: string) => screeningInterviewPanelistsRepository.findByInterview(interviewUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningInterviewPanelistsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningInterviewPanelistsRepository.update(id, data as any),
-  delete: (id: number) => screeningInterviewPanelistsRepository.delete(id),
-};
+export class ScreeningB3Service {
+  async getByCandidate(recCanUuid: string): Promise<ScreeningB3Security | undefined> {
+    return screeningB3Repository.findByCandidateUuid(recCanUuid);
+  }
 
-export const screeningInterviewQuestionsService = {
-  getByCandidate: (recCanUuid: string) => screeningInterviewQuestionsRepository.findByCandidate(recCanUuid),
-  getByInterview: (interviewUuid: string) => screeningInterviewQuestionsRepository.findByInterview(interviewUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningInterviewQuestionsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningInterviewQuestionsRepository.update(id, data as any),
-  delete: (id: number) => screeningInterviewQuestionsRepository.delete(id),
-};
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB3Security>, userUuid?: string): Promise<ScreeningB3Security> {
+    return screeningB3Repository.upsert(recCanUuid, {
+      b3Uuid: uuidv4(),
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
 
-export const screeningInterviewNotesService = {
-  getByCandidate: (recCanUuid: string) => screeningInterviewNotesRepository.findByCandidate(recCanUuid),
-  getByInterview: (interviewUuid: string) => screeningInterviewNotesRepository.findByInterview(interviewUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningInterviewNotesRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningInterviewNotesRepository.update(id, data as any),
-  delete: (id: number) => screeningInterviewNotesRepository.delete(id),
-};
+  async getAuthorities(b3Uuid: string) {
+    return screeningB3Repository.findAuthorities(b3Uuid);
+  }
 
-// ============================================================================
-// B4: REFERENCE CHECKS SERVICES
-// ============================================================================
+  async createAuthority(b3Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB3Repository.createAuthority({
+      authUuid: uuidv4(),
+      b3Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
 
-export const screeningEmployerReferencesService = {
-  getByCandidate: (recCanUuid: string) => screeningEmployerReferencesRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningEmployerReferencesRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningEmployerReferencesRepository.update(id, data as any),
-  delete: (id: number) => screeningEmployerReferencesRepository.delete(id),
-};
+  async getComments(b3Uuid: string) {
+    return screeningB3Repository.findComments(b3Uuid);
+  }
 
-export const screeningReferenceResponsesService = {
-  getByCandidate: (recCanUuid: string) => screeningReferenceResponsesRepository.findByCandidate(recCanUuid),
-  getByReference: (empRefUuid: string) => screeningReferenceResponsesRepository.findByReference(empRefUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningReferenceResponsesRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningReferenceResponsesRepository.update(id, data as any),
-  delete: (id: number) => screeningReferenceResponsesRepository.delete(id),
-};
+  async createComment(b3Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB3Repository.createComment({
+      commentUuid: uuidv4(),
+      b3Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
 
-export const screeningPersonalReferencesService = {
-  getByCandidate: (recCanUuid: string) => screeningPersonalReferencesRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningPersonalReferencesRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningPersonalReferencesRepository.update(id, data as any),
-  delete: (id: number) => screeningPersonalReferencesRepository.delete(id),
-};
+  async getAttachments(b3Uuid: string) {
+    return screeningB3Repository.findAttachments(b3Uuid);
+  }
 
-export const screeningSeaServiceVerificationService = {
-  getByCandidate: (recCanUuid: string) => screeningSeaServiceVerificationRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningSeaServiceVerificationRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningSeaServiceVerificationRepository.update(id, data as any),
-  delete: (id: number) => screeningSeaServiceVerificationRepository.delete(id),
-};
+  async createAttachment(b3Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB3Repository.createAttachment({
+      attUuid: uuidv4(),
+      b3Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+}
 
-// ============================================================================
-// B5: BACKGROUND VERIFICATION SERVICES
-// ============================================================================
+export class ScreeningB4Service {
+  async getByCandidate(recCanUuid: string): Promise<ScreeningB4Certificates | undefined> {
+    return screeningB4Repository.findByCandidateUuid(recCanUuid);
+  }
 
-export const screeningBackgroundChecksService = {
-  getByCandidate: (recCanUuid: string) => screeningBackgroundChecksRepository.findByCandidate(recCanUuid),
-  upsert: <T>(recCanUuid: string, data: CreateData<T>) => screeningBackgroundChecksRepository.upsert(recCanUuid, data as any),
-};
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB4Certificates>, userUuid?: string): Promise<ScreeningB4Certificates> {
+    return screeningB4Repository.upsert(recCanUuid, {
+      b4Uuid: uuidv4(),
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
 
-export const screeningCriminalRecordsService = {
-  getByCandidate: (recCanUuid: string) => screeningCriminalRecordsRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningCriminalRecordsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningCriminalRecordsRepository.update(id, data as any),
-  delete: (id: number) => screeningCriminalRecordsRepository.delete(id),
-};
+  async getCertItems(b4Uuid: string) {
+    return screeningB4Repository.findCertItems(b4Uuid);
+  }
 
-export const screeningEmploymentVerificationService = {
-  getByCandidate: (recCanUuid: string) => screeningEmploymentVerificationRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningEmploymentVerificationRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningEmploymentVerificationRepository.update(id, data as any),
-  delete: (id: number) => screeningEmploymentVerificationRepository.delete(id),
-};
+  async createCertItem(b4Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB4Repository.createCertItem({
+      certUuid: uuidv4(),
+      b4Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
 
-export const screeningEducationVerificationService = {
-  getByCandidate: (recCanUuid: string) => screeningEducationVerificationRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningEducationVerificationRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningEducationVerificationRepository.update(id, data as any),
-  delete: (id: number) => screeningEducationVerificationRepository.delete(id),
-};
+  async getComments(b4Uuid: string) {
+    return screeningB4Repository.findComments(b4Uuid);
+  }
 
-// ============================================================================
-// B6: PSYCHOLOGICAL ASSESSMENT SERVICES
-// ============================================================================
+  async createComment(b4Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB4Repository.createComment({
+      commentUuid: uuidv4(),
+      b4Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
 
-export const screeningPsychometricTestsService = {
-  getByCandidate: (recCanUuid: string) => screeningPsychometricTestsRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningPsychometricTestsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningPsychometricTestsRepository.update(id, data as any),
-  delete: (id: number) => screeningPsychometricTestsRepository.delete(id),
-};
+  async getAttachments(b4Uuid: string) {
+    return screeningB4Repository.findAttachments(b4Uuid);
+  }
 
-export const screeningPsychometricDimensionsService = {
-  getByCandidate: (recCanUuid: string) => screeningPsychometricDimensionsRepository.findByCandidate(recCanUuid),
-  getByTest: (psychTestUuid: string) => screeningPsychometricDimensionsRepository.findByTest(psychTestUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningPsychometricDimensionsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningPsychometricDimensionsRepository.update(id, data as any),
-  delete: (id: number) => screeningPsychometricDimensionsRepository.delete(id),
-};
+  async createAttachment(b4Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB4Repository.createAttachment({
+      attUuid: uuidv4(),
+      b4Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+}
 
-export const screeningBehavioralAssessmentsService = {
-  getByCandidate: (recCanUuid: string) => screeningBehavioralAssessmentsRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningBehavioralAssessmentsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningBehavioralAssessmentsRepository.update(id, data as any),
-  delete: (id: number) => screeningBehavioralAssessmentsRepository.delete(id),
-};
+export class ScreeningB5Service {
+  async getByCandidate(recCanUuid: string): Promise<ScreeningB5Tests | undefined> {
+    return screeningB5Repository.findByCandidateUuid(recCanUuid);
+  }
 
-// ============================================================================
-// B7: MEDICAL SCREENING SERVICES
-// ============================================================================
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB5Tests>, userUuid?: string): Promise<ScreeningB5Tests> {
+    return screeningB5Repository.upsert(recCanUuid, {
+      b5Uuid: uuidv4(),
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
 
-export const screeningPemeService = {
-  getByCandidate: (recCanUuid: string) => screeningPemeRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningPemeRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningPemeRepository.update(id, data as any),
-  delete: (id: number) => screeningPemeRepository.delete(id),
-};
+  async getTestItems(b5Uuid: string) {
+    return screeningB5Repository.findTestItems(b5Uuid);
+  }
 
-export const screeningPemeResultsService = {
-  getByCandidate: (recCanUuid: string) => screeningPemeResultsRepository.findByCandidate(recCanUuid),
-  getByPeme: (pemeUuid: string) => screeningPemeResultsRepository.findByPeme(pemeUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningPemeResultsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningPemeResultsRepository.update(id, data as any),
-  delete: (id: number) => screeningPemeResultsRepository.delete(id),
-};
+  async createTestItem(b5Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB5Repository.createTestItem({
+      testUuid: uuidv4(),
+      b5Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
 
-export const screeningDrugAlcoholTestsService = {
-  getByCandidate: (recCanUuid: string) => screeningDrugAlcoholTestsRepository.findByCandidate(recCanUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningDrugAlcoholTestsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningDrugAlcoholTestsRepository.update(id, data as any),
-  delete: (id: number) => screeningDrugAlcoholTestsRepository.delete(id),
-};
+  async getComments(b5Uuid: string) {
+    return screeningB5Repository.findComments(b5Uuid);
+  }
 
-// ============================================================================
-// B8: FINAL EVALUATION SERVICES
-// ============================================================================
+  async createComment(b5Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB5Repository.createComment({
+      commentUuid: uuidv4(),
+      b5Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
 
-export const screeningFinalEvaluationService = {
-  getByCandidate: (recCanUuid: string) => screeningFinalEvaluationRepository.findByCandidate(recCanUuid),
-  upsert: <T>(recCanUuid: string, data: CreateData<T>) => screeningFinalEvaluationRepository.upsert(recCanUuid, data as any),
-};
+  async getAttachments(b5Uuid: string) {
+    return screeningB5Repository.findAttachments(b5Uuid);
+  }
 
-export const screeningEvaluationApprovalsService = {
-  getByCandidate: (recCanUuid: string) => screeningEvaluationApprovalsRepository.findByCandidate(recCanUuid),
-  getByEvaluation: (finalEvalUuid: string) => screeningEvaluationApprovalsRepository.findByEvaluation(finalEvalUuid),
-  create: <T>(recCanUuid: string, data: CreateData<T>) => screeningEvaluationApprovalsRepository.create(recCanUuid, data as any),
-  update: <T>(id: number, data: CreateData<T>) => screeningEvaluationApprovalsRepository.update(id, data as any),
-  delete: (id: number) => screeningEvaluationApprovalsRepository.delete(id),
-};
+  async createAttachment(b5Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB5Repository.createAttachment({
+      attUuid: uuidv4(),
+      b5Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+}
+
+export class ScreeningB6Service {
+  async getByCandidate(recCanUuid: string): Promise<ScreeningB6Interviews | undefined> {
+    return screeningB6Repository.findByCandidateUuid(recCanUuid);
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB6Interviews>, userUuid?: string): Promise<ScreeningB6Interviews> {
+    return screeningB6Repository.upsert(recCanUuid, {
+      b6Uuid: uuidv4(),
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
+
+  async getInterviewItems(b6Uuid: string) {
+    return screeningB6Repository.findInterviewItems(b6Uuid);
+  }
+
+  async createInterviewItem(b6Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB6Repository.createInterviewItem({
+      intUuid: uuidv4(),
+      b6Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async getComments(b6Uuid: string) {
+    return screeningB6Repository.findComments(b6Uuid);
+  }
+
+  async createComment(b6Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB6Repository.createComment({
+      commentUuid: uuidv4(),
+      b6Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async getAttachments(b6Uuid: string) {
+    return screeningB6Repository.findAttachments(b6Uuid);
+  }
+
+  async createAttachment(b6Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB6Repository.createAttachment({
+      attUuid: uuidv4(),
+      b6Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+}
+
+export class ScreeningB7Service {
+  async getByCandidate(recCanUuid: string): Promise<ScreeningB7Training | undefined> {
+    return screeningB7Repository.findByCandidateUuid(recCanUuid);
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB7Training>, userUuid?: string): Promise<ScreeningB7Training> {
+    return screeningB7Repository.upsert(recCanUuid, {
+      b7Uuid: uuidv4(),
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
+
+  async getTrainingItems(b7Uuid: string) {
+    return screeningB7Repository.findTrainingItems(b7Uuid);
+  }
+
+  async createTrainingItem(b7Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB7Repository.createTrainingItem({
+      trainItemUuid: uuidv4(),
+      b7Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+}
+
+export class ScreeningB8Service {
+  async getByCandidate(recCanUuid: string): Promise<ScreeningB8Shortlisting | undefined> {
+    return screeningB8Repository.findByCandidateUuid(recCanUuid);
+  }
+
+  async upsert(recCanUuid: string, data: Partial<InsertScreeningB8Shortlisting>, userUuid?: string): Promise<ScreeningB8Shortlisting> {
+    return screeningB8Repository.upsert(recCanUuid, {
+      b8Uuid: uuidv4(),
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    });
+  }
+
+  async getApprovers(b8Uuid: string) {
+    return screeningB8Repository.findApprovers(b8Uuid);
+  }
+
+  async createApprover(b8Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB8Repository.createApprover({
+      approverUuid: uuidv4(),
+      b8Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async getComments(b8Uuid: string) {
+    return screeningB8Repository.findComments(b8Uuid);
+  }
+
+  async createComment(b8Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB8Repository.createComment({
+      commentUuid: uuidv4(),
+      b8Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async getAttachments(b8Uuid: string) {
+    return screeningB8Repository.findAttachments(b8Uuid);
+  }
+
+  async createAttachment(b8Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB8Repository.createAttachment({
+      attUuid: uuidv4(),
+      b8Uuid,
+      ...data,
+      createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+}
+
+export const screeningB1Service = new ScreeningB1Service();
+export const screeningB2Service = new ScreeningB2Service();
+export const screeningB3Service = new ScreeningB3Service();
+export const screeningB4Service = new ScreeningB4Service();
+export const screeningB5Service = new ScreeningB5Service();
+export const screeningB6Service = new ScreeningB6Service();
+export const screeningB7Service = new ScreeningB7Service();
+export const screeningB8Service = new ScreeningB8Service();

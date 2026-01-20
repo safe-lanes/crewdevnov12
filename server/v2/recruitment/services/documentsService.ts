@@ -1,333 +1,139 @@
 import { v4 as uuidv4 } from "uuid";
 import {
-  travelDocumentRepository,
-  visaRepository,
-  cocRepository,
-  copRepository,
-  stcwCertificateRepository,
-  flagEndorsementRepository,
-  medicalCertificateRepository,
-  vaccinationRepository,
-  trainingCertificateRepository,
+  documentsRepository,
+  documentAttachmentsRepository,
+  visasRepository,
+  visaAttachmentsRepository,
   educationRepository,
-  seaServiceInternalRepository,
-  seaServiceExternalRepository,
-  licenseRepository,
-  documentAttachmentRepository,
+  educationAttachmentsRepository,
+  licensesRepository,
+  licenseAttachmentsRepository,
+  trainingCoursesRepository,
+  trainingAttachmentsRepository,
+  seaServiceRepository,
+  seaServiceAttachmentsRepository,
+  additionalInfoRepository,
+  additionalInfoAttachmentsRepository,
 } from "../repositories";
 import type {
-  TravelDocument,
-  Visa,
-  Coc,
-  Cop,
-  StcwCertificate,
-  FlagEndorsement,
-  MedicalCertificate,
-  Vaccination,
-  TrainingCertificate,
-  Education,
-  SeaServiceInternal,
-  SeaServiceExternal,
-  License,
-  DocumentAttachment,
+  CandDocument,
+  CandDocumentAttachment,
+  CandVisa,
+  CandVisaAttachment,
+  CandEducation,
+  CandEducationAttachment,
+  CandLicense,
+  CandLicenseAttachment,
+  CandTrainingCourse,
+  CandTrainingAttachment,
+  CandSeaService,
+  CandSeaServiceAttachment,
+  CandAdditionalInfo,
+  CandAdditionalInfoAttachment,
+  InsertDocument,
+  InsertDocumentAttachment,
+  InsertVisa,
+  InsertVisaAttachment,
+  InsertEducation,
+  InsertEducationAttachment,
+  InsertLicense,
+  InsertLicenseAttachment,
+  InsertTrainingCourse,
+  InsertTrainingAttachment,
+  InsertSeaService,
+  InsertSeaServiceAttachment,
+  InsertAdditionalInfo,
+  InsertAdditionalInfoAttachment,
 } from "../../../../shared/v2/recruitment/types";
 
-type CreateData<T> = Partial<Omit<T, "id" | "createdAt" | "updatedAt" | "recCanUuid">>;
-
 export class DocumentsService {
-  async getTravelDocuments(recCanUuid: string): Promise<TravelDocument[]> {
-    return travelDocumentRepository.findByCandidateUuid(recCanUuid);
+  async getDocuments(recCanUuid: string): Promise<CandDocument[]> {
+    return documentsRepository.findByCandidateUuid(recCanUuid);
   }
 
-  async createTravelDocument(
-    recCanUuid: string,
-    data: CreateData<TravelDocument>,
-    createdByUuid?: string
-  ): Promise<TravelDocument> {
-    return travelDocumentRepository.create({
-      tdocUuid: uuidv4(),
+  async createDocument(recCanUuid: string, data: Partial<InsertDocument>, createdByUuid?: string): Promise<CandDocument> {
+    return documentsRepository.create({
+      docUuid: uuidv4(),
       recCanUuid,
       ...data,
       createdByUuid,
       updatedByUuid: createdByUuid,
-    });
+    } as InsertDocument);
   }
 
-  async updateTravelDocument(
-    id: number,
-    data: CreateData<TravelDocument>,
-    updatedByUuid?: string
-  ): Promise<TravelDocument | undefined> {
-    return travelDocumentRepository.update(id, { ...data, updatedByUuid });
+  async updateDocument(id: number, data: Partial<InsertDocument>, updatedByUuid?: string): Promise<CandDocument | undefined> {
+    return documentsRepository.update(id, { ...data, updatedByUuid });
   }
 
-  async deleteTravelDocument(id: number): Promise<boolean> {
-    return travelDocumentRepository.softDelete(id);
+  async deleteDocument(id: number): Promise<boolean> {
+    return documentsRepository.softDelete(id);
   }
 
-  async getVisas(recCanUuid: string): Promise<Visa[]> {
-    return visaRepository.findByCandidateUuid(recCanUuid);
+  async getDocumentAttachments(docUuid: string): Promise<CandDocumentAttachment[]> {
+    return documentAttachmentsRepository.findByDocUuid(docUuid);
   }
 
-  async createVisa(
-    recCanUuid: string,
-    data: CreateData<Visa>,
-    createdByUuid?: string
-  ): Promise<Visa> {
-    return visaRepository.create({
+  async createDocumentAttachment(docUuid: string, data: Partial<InsertDocumentAttachment>, createdByUuid?: string): Promise<CandDocumentAttachment> {
+    return documentAttachmentsRepository.create({
+      attUuid: uuidv4(),
+      docUuid,
+      ...data,
+      createdByUuid,
+      updatedByUuid: createdByUuid,
+    } as InsertDocumentAttachment);
+  }
+
+  async getVisas(recCanUuid: string): Promise<CandVisa[]> {
+    return visasRepository.findByCandidateUuid(recCanUuid);
+  }
+
+  async createVisa(recCanUuid: string, data: Partial<InsertVisa>, createdByUuid?: string): Promise<CandVisa> {
+    return visasRepository.create({
       visaUuid: uuidv4(),
       recCanUuid,
       ...data,
       createdByUuid,
       updatedByUuid: createdByUuid,
-    });
+    } as InsertVisa);
   }
 
-  async updateVisa(
-    id: number,
-    data: CreateData<Visa>,
-    updatedByUuid?: string
-  ): Promise<Visa | undefined> {
-    return visaRepository.update(id, { ...data, updatedByUuid });
+  async updateVisa(id: number, data: Partial<InsertVisa>, updatedByUuid?: string): Promise<CandVisa | undefined> {
+    return visasRepository.update(id, { ...data, updatedByUuid });
   }
 
   async deleteVisa(id: number): Promise<boolean> {
-    return visaRepository.softDelete(id);
+    return visasRepository.softDelete(id);
   }
 
-  async getCocs(recCanUuid: string): Promise<Coc[]> {
-    return cocRepository.findByCandidateUuid(recCanUuid);
+  async getVisaAttachments(visaUuid: string): Promise<CandVisaAttachment[]> {
+    return visaAttachmentsRepository.findByVisaUuid(visaUuid);
   }
 
-  async createCoc(
-    recCanUuid: string,
-    data: CreateData<Coc>,
-    createdByUuid?: string
-  ): Promise<Coc> {
-    return cocRepository.create({
-      cocUuid: uuidv4(),
-      recCanUuid,
+  async createVisaAttachment(visaUuid: string, data: Partial<InsertVisaAttachment>, createdByUuid?: string): Promise<CandVisaAttachment> {
+    return visaAttachmentsRepository.create({
+      attUuid: uuidv4(),
+      visaUuid,
       ...data,
       createdByUuid,
       updatedByUuid: createdByUuid,
-    });
+    } as InsertVisaAttachment);
   }
 
-  async updateCoc(
-    id: number,
-    data: CreateData<Coc>,
-    updatedByUuid?: string
-  ): Promise<Coc | undefined> {
-    return cocRepository.update(id, { ...data, updatedByUuid });
-  }
-
-  async deleteCoc(id: number): Promise<boolean> {
-    return cocRepository.softDelete(id);
-  }
-
-  async getCops(recCanUuid: string): Promise<Cop[]> {
-    return copRepository.findByCandidateUuid(recCanUuid);
-  }
-
-  async createCop(
-    recCanUuid: string,
-    data: CreateData<Cop>,
-    createdByUuid?: string
-  ): Promise<Cop> {
-    return copRepository.create({
-      copUuid: uuidv4(),
-      recCanUuid,
-      ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
-    });
-  }
-
-  async updateCop(
-    id: number,
-    data: CreateData<Cop>,
-    updatedByUuid?: string
-  ): Promise<Cop | undefined> {
-    return copRepository.update(id, { ...data, updatedByUuid });
-  }
-
-  async deleteCop(id: number): Promise<boolean> {
-    return copRepository.softDelete(id);
-  }
-
-  async getStcwCertificates(recCanUuid: string): Promise<StcwCertificate[]> {
-    return stcwCertificateRepository.findByCandidateUuid(recCanUuid);
-  }
-
-  async createStcwCertificate(
-    recCanUuid: string,
-    data: CreateData<StcwCertificate>,
-    createdByUuid?: string
-  ): Promise<StcwCertificate> {
-    return stcwCertificateRepository.create({
-      stcwUuid: uuidv4(),
-      recCanUuid,
-      ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
-    });
-  }
-
-  async updateStcwCertificate(
-    id: number,
-    data: CreateData<StcwCertificate>,
-    updatedByUuid?: string
-  ): Promise<StcwCertificate | undefined> {
-    return stcwCertificateRepository.update(id, { ...data, updatedByUuid });
-  }
-
-  async deleteStcwCertificate(id: number): Promise<boolean> {
-    return stcwCertificateRepository.softDelete(id);
-  }
-
-  async getFlagEndorsements(recCanUuid: string): Promise<FlagEndorsement[]> {
-    return flagEndorsementRepository.findByCandidateUuid(recCanUuid);
-  }
-
-  async createFlagEndorsement(
-    recCanUuid: string,
-    data: CreateData<FlagEndorsement>,
-    createdByUuid?: string
-  ): Promise<FlagEndorsement> {
-    return flagEndorsementRepository.create({
-      flagUuid: uuidv4(),
-      recCanUuid,
-      ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
-    });
-  }
-
-  async updateFlagEndorsement(
-    id: number,
-    data: CreateData<FlagEndorsement>,
-    updatedByUuid?: string
-  ): Promise<FlagEndorsement | undefined> {
-    return flagEndorsementRepository.update(id, { ...data, updatedByUuid });
-  }
-
-  async deleteFlagEndorsement(id: number): Promise<boolean> {
-    return flagEndorsementRepository.softDelete(id);
-  }
-
-  async getMedicalCertificates(recCanUuid: string): Promise<MedicalCertificate[]> {
-    return medicalCertificateRepository.findByCandidateUuid(recCanUuid);
-  }
-
-  async createMedicalCertificate(
-    recCanUuid: string,
-    data: CreateData<MedicalCertificate>,
-    createdByUuid?: string
-  ): Promise<MedicalCertificate> {
-    return medicalCertificateRepository.create({
-      medUuid: uuidv4(),
-      recCanUuid,
-      ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
-    });
-  }
-
-  async updateMedicalCertificate(
-    id: number,
-    data: CreateData<MedicalCertificate>,
-    updatedByUuid?: string
-  ): Promise<MedicalCertificate | undefined> {
-    return medicalCertificateRepository.update(id, { ...data, updatedByUuid });
-  }
-
-  async deleteMedicalCertificate(id: number): Promise<boolean> {
-    return medicalCertificateRepository.softDelete(id);
-  }
-
-  async getVaccinations(recCanUuid: string): Promise<Vaccination[]> {
-    return vaccinationRepository.findByCandidateUuid(recCanUuid);
-  }
-
-  async createVaccination(
-    recCanUuid: string,
-    data: CreateData<Vaccination>,
-    createdByUuid?: string
-  ): Promise<Vaccination> {
-    return vaccinationRepository.create({
-      vaccUuid: uuidv4(),
-      recCanUuid,
-      ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
-    });
-  }
-
-  async updateVaccination(
-    id: number,
-    data: CreateData<Vaccination>,
-    updatedByUuid?: string
-  ): Promise<Vaccination | undefined> {
-    return vaccinationRepository.update(id, { ...data, updatedByUuid });
-  }
-
-  async deleteVaccination(id: number): Promise<boolean> {
-    return vaccinationRepository.softDelete(id);
-  }
-
-  async getTrainingCertificates(recCanUuid: string): Promise<TrainingCertificate[]> {
-    return trainingCertificateRepository.findByCandidateUuid(recCanUuid);
-  }
-
-  async createTrainingCertificate(
-    recCanUuid: string,
-    data: CreateData<TrainingCertificate>,
-    createdByUuid?: string
-  ): Promise<TrainingCertificate> {
-    return trainingCertificateRepository.create({
-      trainUuid: uuidv4(),
-      recCanUuid,
-      ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
-    });
-  }
-
-  async updateTrainingCertificate(
-    id: number,
-    data: CreateData<TrainingCertificate>,
-    updatedByUuid?: string
-  ): Promise<TrainingCertificate | undefined> {
-    return trainingCertificateRepository.update(id, { ...data, updatedByUuid });
-  }
-
-  async deleteTrainingCertificate(id: number): Promise<boolean> {
-    return trainingCertificateRepository.softDelete(id);
-  }
-
-  async getEducation(recCanUuid: string): Promise<Education[]> {
+  async getEducation(recCanUuid: string): Promise<CandEducation[]> {
     return educationRepository.findByCandidateUuid(recCanUuid);
   }
 
-  async createEducation(
-    recCanUuid: string,
-    data: CreateData<Education>,
-    createdByUuid?: string
-  ): Promise<Education> {
+  async createEducation(recCanUuid: string, data: Partial<InsertEducation>, createdByUuid?: string): Promise<CandEducation> {
     return educationRepository.create({
       eduUuid: uuidv4(),
       recCanUuid,
       ...data,
       createdByUuid,
       updatedByUuid: createdByUuid,
-    });
+    } as InsertEducation);
   }
 
-  async updateEducation(
-    id: number,
-    data: CreateData<Education>,
-    updatedByUuid?: string
-  ): Promise<Education | undefined> {
+  async updateEducation(id: number, data: Partial<InsertEducation>, updatedByUuid?: string): Promise<CandEducation | undefined> {
     return educationRepository.update(id, { ...data, updatedByUuid });
   }
 
@@ -335,131 +141,162 @@ export class DocumentsService {
     return educationRepository.softDelete(id);
   }
 
-  async getSeaServiceInternal(recCanUuid: string): Promise<SeaServiceInternal[]> {
-    return seaServiceInternalRepository.findByCandidateUuid(recCanUuid);
+  async getEducationAttachments(eduUuid: string): Promise<CandEducationAttachment[]> {
+    return educationAttachmentsRepository.findByEduUuid(eduUuid);
   }
 
-  async createSeaServiceInternal(
-    recCanUuid: string,
-    data: CreateData<SeaServiceInternal>,
-    createdByUuid?: string
-  ): Promise<SeaServiceInternal> {
-    return seaServiceInternalRepository.create({
-      ssIntUuid: uuidv4(),
-      recCanUuid,
+  async createEducationAttachment(eduUuid: string, data: Partial<InsertEducationAttachment>, createdByUuid?: string): Promise<CandEducationAttachment> {
+    return educationAttachmentsRepository.create({
+      attUuid: uuidv4(),
+      eduUuid,
       ...data,
       createdByUuid,
       updatedByUuid: createdByUuid,
-    });
+    } as InsertEducationAttachment);
   }
 
-  async updateSeaServiceInternal(
-    id: number,
-    data: CreateData<SeaServiceInternal>,
-    updatedByUuid?: string
-  ): Promise<SeaServiceInternal | undefined> {
-    return seaServiceInternalRepository.update(id, { ...data, updatedByUuid });
+  async getLicenses(recCanUuid: string): Promise<CandLicense[]> {
+    return licensesRepository.findByCandidateUuid(recCanUuid);
   }
 
-  async deleteSeaServiceInternal(id: number): Promise<boolean> {
-    return seaServiceInternalRepository.softDelete(id);
-  }
-
-  async getSeaServiceExternal(recCanUuid: string): Promise<SeaServiceExternal[]> {
-    return seaServiceExternalRepository.findByCandidateUuid(recCanUuid);
-  }
-
-  async createSeaServiceExternal(
-    recCanUuid: string,
-    data: CreateData<SeaServiceExternal>,
-    createdByUuid?: string
-  ): Promise<SeaServiceExternal> {
-    return seaServiceExternalRepository.create({
-      ssExtUuid: uuidv4(),
-      recCanUuid,
-      ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
-    });
-  }
-
-  async updateSeaServiceExternal(
-    id: number,
-    data: CreateData<SeaServiceExternal>,
-    updatedByUuid?: string
-  ): Promise<SeaServiceExternal | undefined> {
-    return seaServiceExternalRepository.update(id, { ...data, updatedByUuid });
-  }
-
-  async deleteSeaServiceExternal(id: number): Promise<boolean> {
-    return seaServiceExternalRepository.softDelete(id);
-  }
-
-  async getLicenses(recCanUuid: string): Promise<License[]> {
-    return licenseRepository.findByCandidateUuid(recCanUuid);
-  }
-
-  async createLicense(
-    recCanUuid: string,
-    data: CreateData<License>,
-    createdByUuid?: string
-  ): Promise<License> {
-    return licenseRepository.create({
+  async createLicense(recCanUuid: string, data: Partial<InsertLicense>, createdByUuid?: string): Promise<CandLicense> {
+    return licensesRepository.create({
       licUuid: uuidv4(),
       recCanUuid,
       ...data,
       createdByUuid,
       updatedByUuid: createdByUuid,
-    });
+    } as InsertLicense);
   }
 
-  async updateLicense(
-    id: number,
-    data: CreateData<License>,
-    updatedByUuid?: string
-  ): Promise<License | undefined> {
-    return licenseRepository.update(id, { ...data, updatedByUuid });
+  async updateLicense(id: number, data: Partial<InsertLicense>, updatedByUuid?: string): Promise<CandLicense | undefined> {
+    return licensesRepository.update(id, { ...data, updatedByUuid });
   }
 
   async deleteLicense(id: number): Promise<boolean> {
-    return licenseRepository.softDelete(id);
+    return licensesRepository.softDelete(id);
   }
 
-  async getDocumentAttachments(recCanUuid: string): Promise<DocumentAttachment[]> {
-    return documentAttachmentRepository.findByCandidateUuid(recCanUuid);
+  async getLicenseAttachments(licUuid: string): Promise<CandLicenseAttachment[]> {
+    return licenseAttachmentsRepository.findByLicUuid(licUuid);
   }
 
-  async getDocumentAttachmentsByParent(
-    parentTableName: string,
-    parentRecordUuid: string
-  ): Promise<DocumentAttachment[]> {
-    return documentAttachmentRepository.findByParentRecord(parentTableName, parentRecordUuid);
+  async createLicenseAttachment(licUuid: string, data: Partial<InsertLicenseAttachment>, createdByUuid?: string): Promise<CandLicenseAttachment> {
+    return licenseAttachmentsRepository.create({
+      attUuid: uuidv4(),
+      licUuid,
+      ...data,
+      createdByUuid,
+      updatedByUuid: createdByUuid,
+    } as InsertLicenseAttachment);
   }
 
-  async createDocumentAttachment(
-    recCanUuid: string,
-    data: CreateData<DocumentAttachment>,
-    createdByUuid?: string
-  ): Promise<DocumentAttachment> {
-    return documentAttachmentRepository.create({
-      attachUuid: uuidv4(),
+  async getTrainingCourses(recCanUuid: string): Promise<CandTrainingCourse[]> {
+    return trainingCoursesRepository.findByCandidateUuid(recCanUuid);
+  }
+
+  async createTrainingCourse(recCanUuid: string, data: Partial<InsertTrainingCourse>, createdByUuid?: string): Promise<CandTrainingCourse> {
+    return trainingCoursesRepository.create({
+      trainUuid: uuidv4(),
       recCanUuid,
       ...data,
       createdByUuid,
       updatedByUuid: createdByUuid,
-    });
+    } as InsertTrainingCourse);
   }
 
-  async updateDocumentAttachment(
-    id: number,
-    data: CreateData<DocumentAttachment>,
-    updatedByUuid?: string
-  ): Promise<DocumentAttachment | undefined> {
-    return documentAttachmentRepository.update(id, { ...data, updatedByUuid });
+  async updateTrainingCourse(id: number, data: Partial<InsertTrainingCourse>, updatedByUuid?: string): Promise<CandTrainingCourse | undefined> {
+    return trainingCoursesRepository.update(id, { ...data, updatedByUuid });
   }
 
-  async deleteDocumentAttachment(id: number): Promise<boolean> {
-    return documentAttachmentRepository.softDelete(id);
+  async deleteTrainingCourse(id: number): Promise<boolean> {
+    return trainingCoursesRepository.softDelete(id);
+  }
+
+  async getTrainingAttachments(trainUuid: string): Promise<CandTrainingAttachment[]> {
+    return trainingAttachmentsRepository.findByTrainUuid(trainUuid);
+  }
+
+  async createTrainingAttachment(trainUuid: string, data: Partial<InsertTrainingAttachment>, createdByUuid?: string): Promise<CandTrainingAttachment> {
+    return trainingAttachmentsRepository.create({
+      attUuid: uuidv4(),
+      trainUuid,
+      ...data,
+      createdByUuid,
+      updatedByUuid: createdByUuid,
+    } as InsertTrainingAttachment);
+  }
+
+  async getSeaService(recCanUuid: string): Promise<CandSeaService[]> {
+    return seaServiceRepository.findByCandidateUuid(recCanUuid);
+  }
+
+  async createSeaService(recCanUuid: string, data: Partial<InsertSeaService>, createdByUuid?: string): Promise<CandSeaService> {
+    return seaServiceRepository.create({
+      seaUuid: uuidv4(),
+      recCanUuid,
+      ...data,
+      createdByUuid,
+      updatedByUuid: createdByUuid,
+    } as InsertSeaService);
+  }
+
+  async updateSeaService(id: number, data: Partial<InsertSeaService>, updatedByUuid?: string): Promise<CandSeaService | undefined> {
+    return seaServiceRepository.update(id, { ...data, updatedByUuid });
+  }
+
+  async deleteSeaService(id: number): Promise<boolean> {
+    return seaServiceRepository.softDelete(id);
+  }
+
+  async getSeaServiceAttachments(seaUuid: string): Promise<CandSeaServiceAttachment[]> {
+    return seaServiceAttachmentsRepository.findBySeaUuid(seaUuid);
+  }
+
+  async createSeaServiceAttachment(seaUuid: string, data: Partial<InsertSeaServiceAttachment>, createdByUuid?: string): Promise<CandSeaServiceAttachment> {
+    return seaServiceAttachmentsRepository.create({
+      attUuid: uuidv4(),
+      seaUuid,
+      ...data,
+      createdByUuid,
+      updatedByUuid: createdByUuid,
+    } as InsertSeaServiceAttachment);
+  }
+
+  async getAdditionalInfo(recCanUuid: string): Promise<CandAdditionalInfo[]> {
+    return additionalInfoRepository.findByCandidateUuid(recCanUuid);
+  }
+
+  async createAdditionalInfo(recCanUuid: string, data: Partial<InsertAdditionalInfo>, createdByUuid?: string): Promise<CandAdditionalInfo> {
+    return additionalInfoRepository.create({
+      infoUuid: uuidv4(),
+      recCanUuid,
+      ...data,
+      createdByUuid,
+      updatedByUuid: createdByUuid,
+    } as InsertAdditionalInfo);
+  }
+
+  async updateAdditionalInfo(id: number, data: Partial<InsertAdditionalInfo>, updatedByUuid?: string): Promise<CandAdditionalInfo | undefined> {
+    return additionalInfoRepository.update(id, { ...data, updatedByUuid });
+  }
+
+  async deleteAdditionalInfo(id: number): Promise<boolean> {
+    return additionalInfoRepository.softDelete(id);
+  }
+
+  async getAdditionalInfoAttachments(infoUuid: string): Promise<CandAdditionalInfoAttachment[]> {
+    return additionalInfoAttachmentsRepository.findByInfoUuid(infoUuid);
+  }
+
+  async createAdditionalInfoAttachment(infoUuid: string, data: Partial<InsertAdditionalInfoAttachment>, createdByUuid?: string): Promise<CandAdditionalInfoAttachment> {
+    return additionalInfoAttachmentsRepository.create({
+      attUuid: uuidv4(),
+      infoUuid,
+      ...data,
+      createdByUuid,
+      updatedByUuid: createdByUuid,
+    } as InsertAdditionalInfoAttachment);
   }
 }
 

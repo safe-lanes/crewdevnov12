@@ -1,21 +1,6 @@
 import { Request, Response } from "express";
 import { candidateService } from "../services";
-import {
-  createCandidateRequestSchema,
-  updateCandidateRequestSchema,
-  upsertPersonalDetailsRequestSchema,
-  upsertAddressRequestSchema,
-  upsertFamilyInfoRequestSchema,
-  createChildRequestSchema,
-  updateChildRequestSchema,
-  createNextOfKinRequestSchema,
-  updateNextOfKinRequestSchema,
-  addVesselTypeAppliedRequestSchema,
-} from "../../../../shared/v2/recruitment/types";
-
-// ============================================================================
-// CANDIDATE ENDPOINTS
-// ============================================================================
+import { createCandidateRequestSchema } from "../../../../shared/v2/recruitment/types";
 
 export async function getAllCandidates(req: Request, res: Response) {
   try {
@@ -29,16 +14,25 @@ export async function getAllCandidates(req: Request, res: Response) {
 
 export async function getCandidateById(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
+    const { id } = req.params;
     const candidate = await candidateService.getCandidateById(id);
     if (!candidate) {
       return res.status(404).json({ error: "Candidate not found" });
     }
-    
+    res.json(candidate);
+  } catch (error) {
+    console.error("Error fetching candidate:", error);
+    res.status(500).json({ error: "Failed to fetch candidate" });
+  }
+}
+
+export async function getCandidateByUuid(req: Request, res: Response) {
+  try {
+    const { recCanUuid } = req.params;
+    const candidate = await candidateService.getCandidateByUuid(recCanUuid);
+    if (!candidate) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
     res.json(candidate);
   } catch (error) {
     console.error("Error fetching candidate:", error);
@@ -52,7 +46,6 @@ export async function createCandidate(req: Request, res: Response) {
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.errors });
     }
-    
     const candidate = await candidateService.createCandidate(parsed.data);
     res.status(201).json(candidate);
   } catch (error) {
@@ -63,21 +56,25 @@ export async function createCandidate(req: Request, res: Response) {
 
 export async function updateCandidate(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const parsed = updateCandidateRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    
-    const candidate = await candidateService.updateCandidate(id, parsed.data);
+    const { id } = req.params;
+    const candidate = await candidateService.updateCandidate(id, req.body);
     if (!candidate) {
       return res.status(404).json({ error: "Candidate not found" });
     }
-    
+    res.json(candidate);
+  } catch (error) {
+    console.error("Error updating candidate:", error);
+    res.status(500).json({ error: "Failed to update candidate" });
+  }
+}
+
+export async function updateCandidateByUuid(req: Request, res: Response) {
+  try {
+    const { recCanUuid } = req.params;
+    const candidate = await candidateService.updateCandidateByUuid(recCanUuid, req.body);
+    if (!candidate) {
+      return res.status(404).json({ error: "Candidate not found" });
+    }
     res.json(candidate);
   } catch (error) {
     console.error("Error updating candidate:", error);
@@ -87,40 +84,30 @@ export async function updateCandidate(req: Request, res: Response) {
 
 export async function deleteCandidate(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const success = await candidateService.deleteCandidate(id);
-    if (!success) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    res.status(204).send();
+    const { id } = req.params;
+    const deleted = await candidateService.deleteCandidate(id);
+    res.json({ success: deleted });
   } catch (error) {
     console.error("Error deleting candidate:", error);
     res.status(500).json({ error: "Failed to delete candidate" });
   }
 }
 
-// ============================================================================
-// VESSEL TYPES APPLIED ENDPOINTS
-// ============================================================================
+export async function deleteCandidateByUuid(req: Request, res: Response) {
+  try {
+    const { recCanUuid } = req.params;
+    const deleted = await candidateService.deleteCandidateByUuid(recCanUuid);
+    res.json({ success: deleted });
+  } catch (error) {
+    console.error("Error deleting candidate:", error);
+    res.status(500).json({ error: "Failed to delete candidate" });
+  }
+}
 
 export async function getVesselTypesApplied(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const vesselTypes = await candidateService.getVesselTypesApplied(candidate.recCanUuid);
+    const { recCanUuid } = req.params;
+    const vesselTypes = await candidateService.getVesselTypesApplied(recCanUuid);
     res.json(vesselTypes);
   } catch (error) {
     console.error("Error fetching vessel types:", error);
@@ -130,25 +117,9 @@ export async function getVesselTypesApplied(req: Request, res: Response) {
 
 export async function addVesselTypeApplied(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const parsed = addVesselTypeAppliedRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    
-    const vesselType = await candidateService.addVesselTypeApplied(
-      candidate.recCanUuid,
-      parsed.data
-    );
+    const { recCanUuid } = req.params;
+    const { vesselTypeUuid } = req.body;
+    const vesselType = await candidateService.addVesselTypeApplied(recCanUuid, vesselTypeUuid);
     res.status(201).json(vesselType);
   } catch (error) {
     console.error("Error adding vessel type:", error);
@@ -158,41 +129,23 @@ export async function addVesselTypeApplied(req: Request, res: Response) {
 
 export async function removeVesselTypeApplied(req: Request, res: Response) {
   try {
-    const vtaId = parseInt(req.params.vtaId, 10);
-    if (isNaN(vtaId)) {
-      return res.status(400).json({ error: "Invalid vessel type ID" });
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid ID" });
     }
-    
-    const success = await candidateService.removeVesselTypeApplied(vtaId);
-    if (!success) {
-      return res.status(404).json({ error: "Vessel type not found" });
-    }
-    
-    res.status(204).send();
+    const deleted = await candidateService.removeVesselTypeApplied(id);
+    res.json({ success: deleted });
   } catch (error) {
     console.error("Error removing vessel type:", error);
     res.status(500).json({ error: "Failed to remove vessel type" });
   }
 }
 
-// ============================================================================
-// PERSONAL DETAILS ENDPOINTS
-// ============================================================================
-
 export async function getPersonalDetails(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const details = await candidateService.getPersonalDetails(candidate.recCanUuid);
-    res.json(details || {});
+    const { recCanUuid } = req.params;
+    const details = await candidateService.getPersonalDetails(recCanUuid);
+    res.json(details);
   } catch (error) {
     console.error("Error fetching personal details:", error);
     res.status(500).json({ error: "Failed to fetch personal details" });
@@ -201,25 +154,8 @@ export async function getPersonalDetails(req: Request, res: Response) {
 
 export async function upsertPersonalDetails(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const parsed = upsertPersonalDetailsRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    
-    const details = await candidateService.upsertPersonalDetails(
-      candidate.recCanUuid,
-      parsed.data
-    );
+    const { recCanUuid } = req.params;
+    const details = await candidateService.upsertPersonalDetails(recCanUuid, req.body);
     res.json(details);
   } catch (error) {
     console.error("Error upserting personal details:", error);
@@ -227,24 +163,11 @@ export async function upsertPersonalDetails(req: Request, res: Response) {
   }
 }
 
-// ============================================================================
-// ADDRESS ENDPOINTS
-// ============================================================================
-
 export async function getAddress(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const address = await candidateService.getAddress(candidate.recCanUuid);
-    res.json(address || {});
+    const { recCanUuid } = req.params;
+    const address = await candidateService.getAddress(recCanUuid);
+    res.json(address);
   } catch (error) {
     console.error("Error fetching address:", error);
     res.status(500).json({ error: "Failed to fetch address" });
@@ -253,25 +176,8 @@ export async function getAddress(req: Request, res: Response) {
 
 export async function upsertAddress(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const parsed = upsertAddressRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    
-    const address = await candidateService.upsertAddress(
-      candidate.recCanUuid,
-      parsed.data
-    );
+    const { recCanUuid } = req.params;
+    const address = await candidateService.upsertAddress(recCanUuid, req.body);
     res.json(address);
   } catch (error) {
     console.error("Error upserting address:", error);
@@ -279,24 +185,11 @@ export async function upsertAddress(req: Request, res: Response) {
   }
 }
 
-// ============================================================================
-// FAMILY INFO ENDPOINTS
-// ============================================================================
-
 export async function getFamilyInfo(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const familyInfo = await candidateService.getFamilyInfo(candidate.recCanUuid);
-    res.json(familyInfo || {});
+    const { recCanUuid } = req.params;
+    const info = await candidateService.getFamilyInfo(recCanUuid);
+    res.json(info);
   } catch (error) {
     console.error("Error fetching family info:", error);
     res.status(500).json({ error: "Failed to fetch family info" });
@@ -305,49 +198,19 @@ export async function getFamilyInfo(req: Request, res: Response) {
 
 export async function upsertFamilyInfo(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const parsed = upsertFamilyInfoRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    
-    const familyInfo = await candidateService.upsertFamilyInfo(
-      candidate.recCanUuid,
-      parsed.data
-    );
-    res.json(familyInfo);
+    const { recCanUuid } = req.params;
+    const info = await candidateService.upsertFamilyInfo(recCanUuid, req.body);
+    res.json(info);
   } catch (error) {
     console.error("Error upserting family info:", error);
     res.status(500).json({ error: "Failed to upsert family info" });
   }
 }
 
-// ============================================================================
-// CHILDREN ENDPOINTS
-// ============================================================================
-
 export async function getChildren(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const children = await candidateService.getChildren(candidate.recCanUuid);
+    const { recCanUuid } = req.params;
+    const children = await candidateService.getChildren(recCanUuid);
     res.json(children);
   } catch (error) {
     console.error("Error fetching children:", error);
@@ -357,25 +220,8 @@ export async function getChildren(req: Request, res: Response) {
 
 export async function createChild(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const parsed = createChildRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    
-    const child = await candidateService.createChild(
-      candidate.recCanUuid,
-      parsed.data
-    );
+    const { recCanUuid } = req.params;
+    const child = await candidateService.createChild(recCanUuid, req.body);
     res.status(201).json(child);
   } catch (error) {
     console.error("Error creating child:", error);
@@ -385,21 +231,14 @@ export async function createChild(req: Request, res: Response) {
 
 export async function updateChild(req: Request, res: Response) {
   try {
-    const childId = parseInt(req.params.childId, 10);
-    if (isNaN(childId)) {
-      return res.status(400).json({ error: "Invalid child ID" });
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid ID" });
     }
-    
-    const parsed = updateChildRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    
-    const child = await candidateService.updateChild(childId, parsed.data);
+    const child = await candidateService.updateChild(id, req.body);
     if (!child) {
       return res.status(404).json({ error: "Child not found" });
     }
-    
     res.json(child);
   } catch (error) {
     console.error("Error updating child:", error);
@@ -409,114 +248,36 @@ export async function updateChild(req: Request, res: Response) {
 
 export async function deleteChild(req: Request, res: Response) {
   try {
-    const childId = parseInt(req.params.childId, 10);
-    if (isNaN(childId)) {
-      return res.status(400).json({ error: "Invalid child ID" });
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid ID" });
     }
-    
-    const success = await candidateService.deleteChild(childId);
-    if (!success) {
-      return res.status(404).json({ error: "Child not found" });
-    }
-    
-    res.status(204).send();
+    const deleted = await candidateService.deleteChild(id);
+    res.json({ success: deleted });
   } catch (error) {
     console.error("Error deleting child:", error);
     res.status(500).json({ error: "Failed to delete child" });
   }
 }
 
-// ============================================================================
-// NEXT OF KIN ENDPOINTS
-// ============================================================================
-
 export async function getNextOfKin(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const nextOfKin = await candidateService.getNextOfKin(candidate.recCanUuid);
-    res.json(nextOfKin);
+    const { recCanUuid } = req.params;
+    const nok = await candidateService.getNextOfKin(recCanUuid);
+    res.json(nok);
   } catch (error) {
     console.error("Error fetching next of kin:", error);
     res.status(500).json({ error: "Failed to fetch next of kin" });
   }
 }
 
-export async function createNextOfKin(req: Request, res: Response) {
+export async function upsertNextOfKin(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid candidate ID" });
-    }
-    
-    const candidate = await candidateService.getCandidateById(id);
-    if (!candidate) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
-    
-    const parsed = createNextOfKinRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    
-    const nextOfKin = await candidateService.createNextOfKin(
-      candidate.recCanUuid,
-      parsed.data
-    );
-    res.status(201).json(nextOfKin);
+    const { recCanUuid } = req.params;
+    const nok = await candidateService.upsertNextOfKin(recCanUuid, req.body);
+    res.json(nok);
   } catch (error) {
-    console.error("Error creating next of kin:", error);
-    res.status(500).json({ error: "Failed to create next of kin" });
-  }
-}
-
-export async function updateNextOfKin(req: Request, res: Response) {
-  try {
-    const nokId = parseInt(req.params.nokId, 10);
-    if (isNaN(nokId)) {
-      return res.status(400).json({ error: "Invalid next of kin ID" });
-    }
-    
-    const parsed = updateNextOfKinRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    
-    const nextOfKin = await candidateService.updateNextOfKin(nokId, parsed.data);
-    if (!nextOfKin) {
-      return res.status(404).json({ error: "Next of kin not found" });
-    }
-    
-    res.json(nextOfKin);
-  } catch (error) {
-    console.error("Error updating next of kin:", error);
-    res.status(500).json({ error: "Failed to update next of kin" });
-  }
-}
-
-export async function deleteNextOfKin(req: Request, res: Response) {
-  try {
-    const nokId = parseInt(req.params.nokId, 10);
-    if (isNaN(nokId)) {
-      return res.status(400).json({ error: "Invalid next of kin ID" });
-    }
-    
-    const success = await candidateService.deleteNextOfKin(nokId);
-    if (!success) {
-      return res.status(404).json({ error: "Next of kin not found" });
-    }
-    
-    res.status(204).send();
-  } catch (error) {
-    console.error("Error deleting next of kin:", error);
-    res.status(500).json({ error: "Failed to delete next of kin" });
+    console.error("Error upserting next of kin:", error);
+    res.status(500).json({ error: "Failed to upsert next of kin" });
   }
 }
