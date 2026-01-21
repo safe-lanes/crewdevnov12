@@ -2198,12 +2198,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const handleA5SubmitForScreening = async () => {
     try {
-      let currentUuid = recCanUuid;
+      // Always save all form data first (including additional info)
+      await handleSaveAndContinue();
       
-      if (!currentUuid) {
-        await handleSaveAndContinue();
-        currentUuid = recCanUuid;
-      }
+      const currentUuid = recCanUuid;
       
       if (currentUuid) {
         await updateCandidateMutation.mutateAsync({
