@@ -34,8 +34,9 @@ export class ScreeningB1Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB1Initial>, userUuid?: string): Promise<ScreeningB1Initial> {
+    const existing = await screeningB1Repository.findByCandidateUuid(recCanUuid);
     return screeningB1Repository.upsert(recCanUuid, {
-      b1Uuid: uuidv4(),
+      ...(existing ? {} : { b1Uuid: uuidv4() }),
       ...data,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
@@ -77,8 +78,9 @@ export class ScreeningB2Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB2References>, userUuid?: string): Promise<ScreeningB2References> {
+    const existing = await screeningB2Repository.findByCandidateUuid(recCanUuid);
     return screeningB2Repository.upsert(recCanUuid, {
-      b2Uuid: uuidv4(),
+      ...(existing ? {} : { b2Uuid: uuidv4() }),
       ...data,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
@@ -134,8 +136,9 @@ export class ScreeningB3Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB3Security>, userUuid?: string): Promise<ScreeningB3Security> {
+    const existing = await screeningB3Repository.findByCandidateUuid(recCanUuid);
     return screeningB3Repository.upsert(recCanUuid, {
-      b3Uuid: uuidv4(),
+      ...(existing ? {} : { b3Uuid: uuidv4() }),
       ...data,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
@@ -191,8 +194,9 @@ export class ScreeningB4Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB4Certificates>, userUuid?: string): Promise<ScreeningB4Certificates> {
+    const existing = await screeningB4Repository.findByCandidateUuid(recCanUuid);
     return screeningB4Repository.upsert(recCanUuid, {
-      b4Uuid: uuidv4(),
+      ...(existing ? {} : { b4Uuid: uuidv4() }),
       ...data,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
@@ -248,8 +252,9 @@ export class ScreeningB5Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB5Tests>, userUuid?: string): Promise<ScreeningB5Tests> {
+    const existing = await screeningB5Repository.findByCandidateUuid(recCanUuid);
     return screeningB5Repository.upsert(recCanUuid, {
-      b5Uuid: uuidv4(),
+      ...(existing ? {} : { b5Uuid: uuidv4() }),
       ...data,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
@@ -305,8 +310,9 @@ export class ScreeningB6Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB6Interviews>, userUuid?: string): Promise<ScreeningB6Interviews> {
+    const existing = await screeningB6Repository.findByCandidateUuid(recCanUuid);
     return screeningB6Repository.upsert(recCanUuid, {
-      b6Uuid: uuidv4(),
+      ...(existing ? {} : { b6Uuid: uuidv4() }),
       ...data,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
@@ -362,8 +368,9 @@ export class ScreeningB7Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB7Training>, userUuid?: string): Promise<ScreeningB7Training> {
+    const existing = await screeningB7Repository.findByCandidateUuid(recCanUuid);
     return screeningB7Repository.upsert(recCanUuid, {
-      b7Uuid: uuidv4(),
+      ...(existing ? {} : { b7Uuid: uuidv4() }),
       ...data,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
@@ -391,8 +398,9 @@ export class ScreeningB8Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB8Shortlisting>, userUuid?: string): Promise<ScreeningB8Shortlisting> {
+    const existing = await screeningB8Repository.findByCandidateUuid(recCanUuid);
     return screeningB8Repository.upsert(recCanUuid, {
-      b8Uuid: uuidv4(),
+      ...(existing ? {} : { b8Uuid: uuidv4() }),
       ...data,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
