@@ -292,6 +292,7 @@ interface LocalFormData {
   b6InterviewCompleted: string;
   b6Interviews: Array<{ id: string; serverId?: number; date: string; interviewer: string; status: string; result: string; comments: string }>;
   b6InterviewItems: Array<{ id: string; serverId?: number; date?: string; interviewer?: string; status?: string; result?: string; comments?: string; interviewerName?: string; interviewDate?: string; interviewType?: string; remarks?: string }>;
+  b6InterviewComments: {[key: string]: string};
   b7TrainingNeeds: Array<{ id: string; serverId?: number; training?: string; identifiedBy?: string; category?: string; dueDate?: string; comments?: string; trainingName?: string; trainingType?: string; provider?: string; scheduledDate?: string; status?: string; remarks?: string }>;
   b8Shortlisted: string;
   b8SelectedApprovers: Array<{ id: string; serverId?: number; approverName?: string; approverRole?: string; approvalDate?: string; decision?: string; remarks?: string }>;
@@ -422,6 +423,7 @@ const getInitialFormData = (): LocalFormData => ({
   b6InterviewCompleted: '',
   b6Interviews: [{ id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }],
   b6InterviewItems: [],
+  b6InterviewComments: {},
   b7TrainingNeeds: [{ id: '1', training: '', identifiedBy: '', category: '', dueDate: '', comments: '' }],
   b8Shortlisted: '',
   b8SelectedApprovers: [],
@@ -510,6 +512,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [editingB5Comment, setEditingB5Comment] = useState<string | null>(null);
   const [newB5Comment, setNewB5Comment] = useState<{[key: string]: string}>({});
   const [editingB6Comment, setEditingB6Comment] = useState<string | null>(null);
+  const [editingB6InterviewComment, setEditingB6InterviewComment] = useState<string | null>(null);
   const [newB6Comment, setNewB6Comment] = useState<{[key: string]: string}>({});
   const [editingB7Comment, setEditingB7Comment] = useState<string | null>(null);
   const [newB7Comment, setNewB7Comment] = useState<{[key: string]: string}>({});
@@ -6289,7 +6292,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       {formData.b6InterviewCompleted === 'yes' && (
                         <div className="ml-4 mb-4 space-y-3">
                           {formData.b6Interviews.map((interview, index) => (
-                            <div key={interview.id} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div key={interview.id}>
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div>
                                 <Input
                                   type="date"
@@ -6420,10 +6424,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     size="sm"
                                     className="h-10 w-10 p-0"
                                     onClick={() => {
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        b6Interviews: prev.b6Interviews.filter(int => int.id !== interview.id)
-                                      }));
+                                      setFormData(prev => {
+                                        const newComments = { ...prev.b6InterviewComments };
+                                        delete newComments[interview.id];
+                                        return {
+                                          ...prev,
+                                          b6Interviews: prev.b6Interviews.filter(int => int.id !== interview.id),
+                                          b6InterviewComments: newComments
+                                        };
+                                      });
+                                      if (editingB6InterviewComment === interview.id) {
+                                        setEditingB6InterviewComment(null);
+                                      }
                                     }}
                                     data-testid={`button-remove-b6-interview-${index}`}
                                   >
@@ -6442,6 +6454,44 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 )}
                               </div>
                             </div>
+                            
+                            {/* Individual interview comment - only show when interviewer is selected */}
+                            {interview.interviewer && (
+                              <div className="ml-4">
+                                <div className="text-blue-600 italic text-[13px] mb-2">
+                                  {interview.interviewer}:
+                                </div>
+                                {editingB6InterviewComment === interview.id ? (
+                                  <Textarea
+                                    value={interview.comments || ''}
+                                    onChange={(e) => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b6Interviews: prev.b6Interviews.map(int => 
+                                          int.id === interview.id 
+                                            ? { ...int, comments: e.target.value }
+                                            : int
+                                        )
+                                      }));
+                                    }}
+                                    onBlur={() => setEditingB6InterviewComment(null)}
+                                    placeholder="Comment: Add your observations here..."
+                                    className="text-blue-600 italic border-blue-200 text-[13px] mb-2"
+                                    rows={2}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <div 
+                                    className="text-blue-600 italic cursor-pointer rounded hover:bg-gray-50 text-[13px] mb-2 p-1"
+                                    onClick={() => setEditingB6InterviewComment(interview.id)}
+                                    data-testid={`text-b6-interview-comment-${index}`}
+                                  >
+                                    {interview.comments || "Click to add comment..."}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           ))}
                         </div>
                       )}
