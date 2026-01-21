@@ -562,6 +562,67 @@ export function useV2SaveScreeningB1() {
   });
 }
 
+export interface ScreeningB1Attachment {
+  id: number;
+  attachUuid: string;
+  b1Uuid: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileType?: string;
+  fileSize?: number;
+  uploadedAt?: string;
+  comments?: string;
+  sortOrder?: number;
+}
+
+export function useV2ScreeningB1Attachments(b1Uuid: string | null) {
+  return useQuery<ScreeningB1Attachment[]>({
+    queryKey: ['v2', 'screening-b1-attachments', b1Uuid],
+    queryFn: () => fetchApi(`/screening/b1/${b1Uuid}/attachments`),
+    enabled: !!b1Uuid,
+  });
+}
+
+export function useV2CreateScreeningB1Attachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b1Uuid, data }: { b1Uuid: string; data: Partial<ScreeningB1Attachment> }) =>
+      postApi<ScreeningB1Attachment>(`/screening/b1/${b1Uuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1-attachments', variables.b1Uuid] });
+    },
+  });
+}
+
+export interface ScreeningB1Comment {
+  id: number;
+  commentUuid: string;
+  b1Uuid: string;
+  comment?: string;
+  commentedByUuid?: string;
+  commentedAt?: string;
+  sortOrder?: number;
+}
+
+export function useV2ScreeningB1Comments(b1Uuid: string | null) {
+  return useQuery<ScreeningB1Comment[]>({
+    queryKey: ['v2', 'screening-b1-comments', b1Uuid],
+    queryFn: () => fetchApi(`/screening/b1/${b1Uuid}/comments`),
+    enabled: !!b1Uuid,
+  });
+}
+
+export function useV2CreateScreeningB1Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b1Uuid, data }: { b1Uuid: string; data: Partial<ScreeningB1Comment> }) =>
+      postApi<ScreeningB1Comment>(`/screening/b1/${b1Uuid}/comments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1-comments', variables.b1Uuid] });
+    },
+  });
+}
+
 export function useV2ScreeningB2(recCanUuid: string | null) {
   return useQuery<ScreeningB2>({
     queryKey: ['v2', 'screening-b2', recCanUuid],
