@@ -65,6 +65,36 @@ import {
   useV2SaveAdditionalInfo,
   useV2UpdateAdditionalInfo,
   useV2DeleteAdditionalInfo,
+  useV2ScreeningB1,
+  useV2SaveScreeningB1,
+  useV2ScreeningB2,
+  useV2SaveScreeningB2,
+  useV2ScreeningB3,
+  useV2SaveScreeningB3,
+  useV2ScreeningB4,
+  useV2SaveScreeningB4,
+  useV2ScreeningB5,
+  useV2SaveScreeningB5,
+  useV2ScreeningB6,
+  useV2SaveScreeningB6,
+  useV2ScreeningB7,
+  useV2SaveScreeningB7,
+  useV2ScreeningB8,
+  useV2SaveScreeningB8,
+  useV2ScreeningB2Items,
+  useV2CreateScreeningB2Item,
+  useV2ScreeningB3Authorities,
+  useV2CreateScreeningB3Authority,
+  useV2ScreeningB4CertItems,
+  useV2CreateScreeningB4CertItem,
+  useV2ScreeningB5TestItems,
+  useV2CreateScreeningB5TestItem,
+  useV2ScreeningB6InterviewItems,
+  useV2CreateScreeningB6InterviewItem,
+  useV2ScreeningB7TrainingItems,
+  useV2CreateScreeningB7TrainingItem,
+  useV2ScreeningB8Approvers,
+  useV2CreateScreeningB8Approver,
 } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
 import { LicenseSelectionDialog } from '@/modules/crew-pool/LicenseSelectionDialog';
@@ -210,6 +240,26 @@ interface LocalFormData {
     response: string;
     attachments?: FileAttachment[];
   }>;
+  b1AgeMeetsCriteria: string;
+  b1RankMeetsCriteria: string;
+  b1CertificatesValid: string;
+  b1Shortlisted: string;
+  b2ReferencesCompleted: string;
+  b2EmployerFeedback: string;
+  b2References: Array<{ id: string; date: string; nameDesignation: string; contactInfo: string }>;
+  b3ChecksCompleted: string;
+  b3Results: string;
+  b3Authorities: Array<{ id: string; date: string; authority: string }>;
+  b4CertificatesAuthenticated: string;
+  b4Results: string;
+  b4Certs: Array<{ id: string; date: string; certificate: string; authority: string }>;
+  b5TestsCompleted: string;
+  b5Tests: Array<{ id: string; date: string; subject: string; score: string; result: string }>;
+  b6InterviewCompleted: string;
+  b6Interviews: Array<{ id: string; date: string; interviewer: string; status: string; result: string; comments: string }>;
+  b7TrainingNeeds: Array<{ id: string; training: string; category: string; dueDate: string; comments: string }>;
+  b8Shortlisted: string;
+  b8SelectedApprovers: string[];
 }
 
 const getInitialFormData = (): LocalFormData => ({
@@ -263,6 +313,26 @@ const getInitialFormData = (): LocalFormData => ({
   trainingCourses: [],
   seaService: [],
   additionalInfo: [],
+  b1AgeMeetsCriteria: '',
+  b1RankMeetsCriteria: '',
+  b1CertificatesValid: '',
+  b1Shortlisted: '',
+  b2ReferencesCompleted: '',
+  b2EmployerFeedback: '',
+  b2References: [{ id: '1', date: '', nameDesignation: '', contactInfo: '' }],
+  b3ChecksCompleted: '',
+  b3Results: '',
+  b3Authorities: [{ id: '1', date: '', authority: '' }],
+  b4CertificatesAuthenticated: '',
+  b4Results: '',
+  b4Certs: [{ id: '1', date: '', certificate: '', authority: '' }],
+  b5TestsCompleted: '',
+  b5Tests: [{ id: '1', date: '', subject: '', score: '', result: '' }],
+  b6InterviewCompleted: '',
+  b6Interviews: [{ id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }],
+  b7TrainingNeeds: [{ id: '1', training: '', category: '', dueDate: '', comments: '' }],
+  b8Shortlisted: '',
+  b8SelectedApprovers: [],
 });
 
 type SectionType = 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'B' | 'C';
@@ -328,6 +398,31 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const { data: seaServiceData } = useV2SeaService(recCanUuid);
   const { data: additionalInfoData } = useV2AdditionalInfo(recCanUuid);
 
+  const { data: screeningB1Data } = useV2ScreeningB1(recCanUuid);
+  const { data: screeningB2Data } = useV2ScreeningB2(recCanUuid);
+  const { data: screeningB3Data } = useV2ScreeningB3(recCanUuid);
+  const { data: screeningB4Data } = useV2ScreeningB4(recCanUuid);
+  const { data: screeningB5Data } = useV2ScreeningB5(recCanUuid);
+  const { data: screeningB6Data } = useV2ScreeningB6(recCanUuid);
+  const { data: screeningB7Data } = useV2ScreeningB7(recCanUuid);
+  const { data: screeningB8Data } = useV2ScreeningB8(recCanUuid);
+
+  const b2Uuid = screeningB2Data?.b2Uuid || null;
+  const b3Uuid = screeningB3Data?.b3Uuid || null;
+  const b4Uuid = screeningB4Data?.b4Uuid || null;
+  const b5Uuid = screeningB5Data?.b5Uuid || null;
+  const b6Uuid = screeningB6Data?.b6Uuid || null;
+  const b7Uuid = screeningB7Data?.b7Uuid || null;
+  const b8Uuid = screeningB8Data?.b8Uuid || null;
+
+  const { data: screeningB2Items } = useV2ScreeningB2Items(b2Uuid);
+  const { data: screeningB3Authorities } = useV2ScreeningB3Authorities(b3Uuid);
+  const { data: screeningB4CertItems } = useV2ScreeningB4CertItems(b4Uuid);
+  const { data: screeningB5TestItems } = useV2ScreeningB5TestItems(b5Uuid);
+  const { data: screeningB6InterviewItems } = useV2ScreeningB6InterviewItems(b6Uuid);
+  const { data: screeningB7TrainingItems } = useV2ScreeningB7TrainingItems(b7Uuid);
+  const { data: screeningB8Approvers } = useV2ScreeningB8Approvers(b8Uuid);
+
   const createCandidateMutation = useV2CreateCandidate();
   const updateCandidateMutation = useV2UpdateCandidate();
   const savePersonalDetailsMutation = useV2SavePersonalDetails();
@@ -364,6 +459,23 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const saveAdditionalInfoMutation = useV2SaveAdditionalInfo();
   const updateAdditionalInfoMutation = useV2UpdateAdditionalInfo();
   const deleteAdditionalInfoMutation = useV2DeleteAdditionalInfo();
+
+  const saveScreeningB1Mutation = useV2SaveScreeningB1();
+  const saveScreeningB2Mutation = useV2SaveScreeningB2();
+  const saveScreeningB3Mutation = useV2SaveScreeningB3();
+  const saveScreeningB4Mutation = useV2SaveScreeningB4();
+  const saveScreeningB5Mutation = useV2SaveScreeningB5();
+  const saveScreeningB6Mutation = useV2SaveScreeningB6();
+  const saveScreeningB7Mutation = useV2SaveScreeningB7();
+  const saveScreeningB8Mutation = useV2SaveScreeningB8();
+  
+  const createB2ItemMutation = useV2CreateScreeningB2Item();
+  const createB3AuthorityMutation = useV2CreateScreeningB3Authority();
+  const createB4CertItemMutation = useV2CreateScreeningB4CertItem();
+  const createB5TestItemMutation = useV2CreateScreeningB5TestItem();
+  const createB6InterviewItemMutation = useV2CreateScreeningB6InterviewItem();
+  const createB7TrainingItemMutation = useV2CreateScreeningB7TrainingItem();
+  const createB8ApproverMutation = useV2CreateScreeningB8Approver();
   
   const savingInProgress = savePersonalDetailsMutation.isPending || 
     saveAddressMutation.isPending || saveFamilyInfoMutation.isPending ||
@@ -679,6 +791,196 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }));
     }
   }, [additionalInfoData]);
+
+  useEffect(() => {
+    if (screeningB1Data) {
+      setFormData(prev => ({
+        ...prev,
+        b1AgeMeetsCriteria: screeningB1Data.ageMeetsCriteria || '',
+        b1RankMeetsCriteria: screeningB1Data.rankMeetsCriteria || '',
+        b1CertificatesValid: screeningB1Data.certificatesValid || '',
+        b1Shortlisted: screeningB1Data.shortlisted || '',
+      }));
+    }
+  }, [screeningB1Data]);
+
+  useEffect(() => {
+    if (screeningB2Data) {
+      setFormData(prev => ({
+        ...prev,
+        b2ReferencesCompleted: screeningB2Data.referencesCompleted || '',
+        b2EmployerFeedback: screeningB2Data.employerFeedback || '',
+      }));
+    }
+  }, [screeningB2Data]);
+
+  useEffect(() => {
+    if (screeningB3Data) {
+      setFormData(prev => ({
+        ...prev,
+        b3ChecksCompleted: screeningB3Data.checksCompleted || '',
+        b3Results: screeningB3Data.results || '',
+      }));
+    }
+  }, [screeningB3Data]);
+
+  useEffect(() => {
+    if (screeningB4Data) {
+      setFormData(prev => ({
+        ...prev,
+        b4CertificatesAuthenticated: screeningB4Data.certificatesAuthenticated || '',
+        b4Results: screeningB4Data.results || '',
+      }));
+    }
+  }, [screeningB4Data]);
+
+  useEffect(() => {
+    if (screeningB5Data) {
+      setFormData(prev => ({
+        ...prev,
+        b5TestsCompleted: screeningB5Data.testsCompleted || '',
+      }));
+    }
+  }, [screeningB5Data]);
+
+  useEffect(() => {
+    if (screeningB6Data) {
+      setFormData(prev => ({
+        ...prev,
+        b6InterviewCompleted: screeningB6Data.interviewCompleted || '',
+      }));
+    }
+  }, [screeningB6Data]);
+
+  useEffect(() => {
+    if (screeningB8Data) {
+      setFormData(prev => ({
+        ...prev,
+        b8Shortlisted: screeningB8Data.shortlisted || '',
+      }));
+    }
+  }, [screeningB8Data]);
+
+  useEffect(() => {
+    if (screeningB2Items && screeningB2Items.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b2ReferenceItems: screeningB2Items.map(item => ({
+          id: item.itemUuid,
+          serverId: item.id,
+          employerName: item.employerName || '',
+          contactPerson: item.contactPerson || '',
+          contactNumber: item.contactNumber || '',
+          dateContacted: item.dateContacted || '',
+          feedback: item.feedback || '',
+          rating: item.rating || '',
+        })),
+      }));
+    }
+  }, [screeningB2Items]);
+
+  useEffect(() => {
+    if (screeningB3Authorities && screeningB3Authorities.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b3Authorities: screeningB3Authorities.map(auth => ({
+          id: auth.authorityUuid,
+          serverId: auth.id,
+          authorityName: auth.authorityName || '',
+          checkType: auth.checkType || '',
+          dateChecked: auth.dateChecked || '',
+          result: auth.result || '',
+          remarks: auth.remarks || '',
+        })),
+      }));
+    }
+  }, [screeningB3Authorities]);
+
+  useEffect(() => {
+    if (screeningB4CertItems && screeningB4CertItems.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b4CertItems: screeningB4CertItems.map(cert => ({
+          id: cert.certItemUuid,
+          serverId: cert.id,
+          certificateName: cert.certificateName || '',
+          issuingAuthority: cert.issuingAuthority || '',
+          dateVerified: cert.dateVerified || '',
+          verificationResult: cert.verificationResult || '',
+          remarks: cert.remarks || '',
+        })),
+      }));
+    }
+  }, [screeningB4CertItems]);
+
+  useEffect(() => {
+    if (screeningB5TestItems && screeningB5TestItems.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b5TestItems: screeningB5TestItems.map(test => ({
+          id: test.testItemUuid,
+          serverId: test.id,
+          testType: test.testType || '',
+          testDate: test.testDate || '',
+          result: test.result || '',
+          score: test.score || '',
+          remarks: test.remarks || '',
+        })),
+      }));
+    }
+  }, [screeningB5TestItems]);
+
+  useEffect(() => {
+    if (screeningB6InterviewItems && screeningB6InterviewItems.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b6InterviewItems: screeningB6InterviewItems.map(interview => ({
+          id: interview.interviewItemUuid,
+          serverId: interview.id,
+          interviewerName: interview.interviewerName || '',
+          interviewDate: interview.interviewDate || '',
+          interviewType: interview.interviewType || '',
+          result: interview.result || '',
+          remarks: interview.remarks || '',
+        })),
+      }));
+    }
+  }, [screeningB6InterviewItems]);
+
+  useEffect(() => {
+    if (screeningB7TrainingItems && screeningB7TrainingItems.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b7TrainingNeeds: screeningB7TrainingItems.map(training => ({
+          id: training.trainingItemUuid,
+          serverId: training.id,
+          trainingName: training.trainingName || '',
+          trainingType: training.trainingType || '',
+          provider: training.provider || '',
+          scheduledDate: training.scheduledDate || '',
+          status: training.status || '',
+          remarks: training.remarks || '',
+        })),
+      }));
+    }
+  }, [screeningB7TrainingItems]);
+
+  useEffect(() => {
+    if (screeningB8Approvers && screeningB8Approvers.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b8SelectedApprovers: screeningB8Approvers.map(approver => ({
+          id: approver.approverUuid,
+          serverId: approver.id,
+          approverName: approver.approverName || '',
+          approverRole: approver.approverRole || '',
+          approvalDate: approver.approvalDate || '',
+          decision: approver.decision || '',
+          remarks: approver.remarks || '',
+        })),
+      }));
+    }
+  }, [screeningB8Approvers]);
 
   const calculateAge = (dob: string): string => {
     if (!dob) return '';
@@ -1546,6 +1848,229 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to submit application",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveScreening = async () => {
+    if (!recCanUuid) {
+      toast({
+        title: "Error",
+        description: "Please save the candidate first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Saving...",
+        description: "Saving screening data",
+      });
+
+      const [b1Result, b2Result, b3Result, b4Result, b5Result, b6Result, b7Result, b8Result] = await Promise.all([
+        saveScreeningB1Mutation.mutateAsync({
+          recCanUuid,
+          data: {
+            ageMeetsCriteria: formData.b1AgeMeetsCriteria || undefined,
+            rankMeetsCriteria: formData.b1RankMeetsCriteria || undefined,
+            certificatesValid: formData.b1CertificatesValid || undefined,
+            shortlisted: formData.b1Shortlisted || undefined,
+          },
+        }),
+        saveScreeningB2Mutation.mutateAsync({
+          recCanUuid,
+          data: {
+            referencesCompleted: formData.b2ReferencesCompleted || undefined,
+            employerFeedback: formData.b2EmployerFeedback || undefined,
+          },
+        }),
+        saveScreeningB3Mutation.mutateAsync({
+          recCanUuid,
+          data: {
+            checksCompleted: formData.b3ChecksCompleted || undefined,
+            results: formData.b3Results || undefined,
+          },
+        }),
+        saveScreeningB4Mutation.mutateAsync({
+          recCanUuid,
+          data: {
+            certificatesAuthenticated: formData.b4CertificatesAuthenticated || undefined,
+            results: formData.b4Results || undefined,
+          },
+        }),
+        saveScreeningB5Mutation.mutateAsync({
+          recCanUuid,
+          data: {
+            testsCompleted: formData.b5TestsCompleted || undefined,
+          },
+        }),
+        saveScreeningB6Mutation.mutateAsync({
+          recCanUuid,
+          data: {
+            interviewCompleted: formData.b6InterviewCompleted || undefined,
+          },
+        }),
+        saveScreeningB7Mutation.mutateAsync({
+          recCanUuid,
+          data: {},
+        }),
+        saveScreeningB8Mutation.mutateAsync({
+          recCanUuid,
+          data: {
+            shortlisted: formData.b8Shortlisted || undefined,
+          },
+        }),
+      ]);
+
+      const currentB2Uuid = b2Result?.b2Uuid || b2Uuid;
+      const currentB3Uuid = b3Result?.b3Uuid || b3Uuid;
+      const currentB4Uuid = b4Result?.b4Uuid || b4Uuid;
+      const currentB5Uuid = b5Result?.b5Uuid || b5Uuid;
+      const currentB6Uuid = b6Result?.b6Uuid || b6Uuid;
+      const currentB7Uuid = b7Result?.b7Uuid || b7Uuid;
+      const currentB8Uuid = b8Result?.b8Uuid || b8Uuid;
+
+      const serverB2ItemMap = new Map((screeningB2Items || []).map(i => [i.itemUuid, i.id]));
+      for (const item of formData.b2ReferenceItems) {
+        if (!serverB2ItemMap.has(item.id) && currentB2Uuid) {
+          await createB2ItemMutation.mutateAsync({
+            b2Uuid: currentB2Uuid,
+            data: {
+              employerName: item.employerName || undefined,
+              contactPerson: item.contactPerson || undefined,
+              contactNumber: item.contactNumber || undefined,
+              dateContacted: item.dateContacted || undefined,
+              feedback: item.feedback || undefined,
+              rating: item.rating || undefined,
+            },
+          });
+        }
+      }
+
+      const serverB3AuthMap = new Map((screeningB3Authorities || []).map(a => [a.authorityUuid, a.id]));
+      for (const auth of formData.b3Authorities) {
+        if (!serverB3AuthMap.has(auth.id) && currentB3Uuid) {
+          await createB3AuthorityMutation.mutateAsync({
+            b3Uuid: currentB3Uuid,
+            data: {
+              authorityName: auth.authorityName || undefined,
+              checkType: auth.checkType || undefined,
+              dateChecked: auth.dateChecked || undefined,
+              result: auth.result || undefined,
+              remarks: auth.remarks || undefined,
+            },
+          });
+        }
+      }
+
+      const serverB4CertMap = new Map((screeningB4CertItems || []).map(c => [c.certItemUuid, c.id]));
+      for (const cert of formData.b4CertItems) {
+        if (!serverB4CertMap.has(cert.id) && currentB4Uuid) {
+          await createB4CertItemMutation.mutateAsync({
+            b4Uuid: currentB4Uuid,
+            data: {
+              certificateName: cert.certificateName || undefined,
+              issuingAuthority: cert.issuingAuthority || undefined,
+              dateVerified: cert.dateVerified || undefined,
+              verificationResult: cert.verificationResult || undefined,
+              remarks: cert.remarks || undefined,
+            },
+          });
+        }
+      }
+
+      const serverB5TestMap = new Map((screeningB5TestItems || []).map(t => [t.testItemUuid, t.id]));
+      for (const test of formData.b5TestItems) {
+        if (!serverB5TestMap.has(test.id) && currentB5Uuid) {
+          await createB5TestItemMutation.mutateAsync({
+            b5Uuid: currentB5Uuid,
+            data: {
+              testType: test.testType || undefined,
+              testDate: test.testDate || undefined,
+              result: test.result || undefined,
+              score: test.score || undefined,
+              remarks: test.remarks || undefined,
+            },
+          });
+        }
+      }
+
+      const serverB6InterviewMap = new Map((screeningB6InterviewItems || []).map(i => [i.interviewItemUuid, i.id]));
+      for (const interview of formData.b6InterviewItems) {
+        if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid) {
+          await createB6InterviewItemMutation.mutateAsync({
+            b6Uuid: currentB6Uuid,
+            data: {
+              interviewerName: interview.interviewerName || undefined,
+              interviewDate: interview.interviewDate || undefined,
+              interviewType: interview.interviewType || undefined,
+              result: interview.result || undefined,
+              remarks: interview.remarks || undefined,
+            },
+          });
+        }
+      }
+
+      const serverB7TrainingMap = new Map((screeningB7TrainingItems || []).map(t => [t.trainingItemUuid, t.id]));
+      for (const training of formData.b7TrainingNeeds) {
+        if (!serverB7TrainingMap.has(training.id) && currentB7Uuid) {
+          await createB7TrainingItemMutation.mutateAsync({
+            b7Uuid: currentB7Uuid,
+            data: {
+              trainingName: training.trainingName || undefined,
+              trainingType: training.trainingType || undefined,
+              provider: training.provider || undefined,
+              scheduledDate: training.scheduledDate || undefined,
+              status: training.status || undefined,
+              remarks: training.remarks || undefined,
+            },
+          });
+        }
+      }
+
+      const serverB8ApproverMap = new Map((screeningB8Approvers || []).map(a => [a.approverUuid, a.id]));
+      for (const approver of formData.b8SelectedApprovers) {
+        if (!serverB8ApproverMap.has(approver.id) && currentB8Uuid) {
+          await createB8ApproverMutation.mutateAsync({
+            b8Uuid: currentB8Uuid,
+            data: {
+              approverName: approver.approverName || undefined,
+              approverRole: approver.approverRole || undefined,
+              approvalDate: approver.approvalDate || undefined,
+              decision: approver.decision || undefined,
+              remarks: approver.remarks || undefined,
+            },
+          });
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2-items', currentB2Uuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-authorities', currentB3Uuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-cert-items', currentB4Uuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-test-items', currentB5Uuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-interview-items', currentB6Uuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7-training-items', currentB7Uuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-approvers', currentB8Uuid] });
+
+      toast({
+        title: "Success",
+        description: "Screening data saved successfully",
+      });
+    } catch (error) {
+      console.error('Save screening error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save screening data",
         variant: "destructive",
       });
     }
@@ -2891,8 +3416,758 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <div style={{ color: '#16569e' }} className="text-sm">For office use only - Crew executives processing</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
-              <div className="text-center text-gray-500 py-12">
-                Part B sections will be implemented in Phase 2
+              
+              <div className="space-y-8">
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B1. Initial Screening</h3>
+                  <div className="space-y-4">
+                    {[
+                      { field: 'b1AgeMeetsCriteria', label: 'B1.1 Age meets Company Criteria for the Rank applied for?' },
+                      { field: 'b1RankMeetsCriteria', label: 'B1.2 Experience meets Company Criteria for the Rank applied for?' },
+                      { field: 'b1CertificatesValid', label: 'B1.3 Certificates & Documents in order & valid as per Company Criteria?' },
+                      { field: 'b1Shortlisted', label: 'B1.4 Shortlisted (Initial Screening)?' },
+                    ].map((item) => (
+                      <div key={item.field} className="flex items-center justify-between border-b pb-3">
+                        <span className="text-sm text-gray-700">{item.label}</span>
+                        <div className="flex gap-4">
+                          {['Yes', 'No', 'N/A'].map((option) => (
+                            <label key={option} className="flex items-center gap-1 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={item.field}
+                                value={option}
+                                checked={formData[item.field as keyof LocalFormData] === option}
+                                onChange={(e) => setFormData(prev => ({ ...prev, [item.field]: e.target.value }))}
+                                className="w-4 h-4"
+                                data-testid={`radio-${item.field}-${option.toLowerCase()}`}
+                              />
+                              <span className="text-sm">{option}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B2. Reference Checks with Previous Employer</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <span className="text-sm text-gray-700">B2.1 Reference checks completed?</span>
+                      <div className="flex gap-4">
+                        {['Yes', 'No', 'N/A'].map((option) => (
+                          <label key={option} className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="b2ReferencesCompleted"
+                              value={option}
+                              checked={formData.b2ReferencesCompleted === option}
+                              onChange={(e) => setFormData(prev => ({ ...prev, b2ReferencesCompleted: e.target.value }))}
+                              className="w-4 h-4"
+                              data-testid={`radio-b2ReferencesCompleted-${option.toLowerCase()}`}
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm">B2.2 Employer Feedback</Label>
+                      <Input
+                        value={formData.b2EmployerFeedback}
+                        onChange={(e) => setFormData(prev => ({ ...prev, b2EmployerFeedback: e.target.value }))}
+                        placeholder="Enter employer feedback..."
+                        className="mt-1"
+                        data-testid="input-b2-employer-feedback"
+                      />
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-[13px]">Date</TableHead>
+                          <TableHead className="text-[13px]">Name & Designation</TableHead>
+                          <TableHead className="text-[13px]">Contact Info</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.b2References.map((ref, idx) => (
+                          <TableRow key={ref.id}>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={ref.date}
+                                onChange={(e) => {
+                                  const updated = [...formData.b2References];
+                                  updated[idx] = { ...updated[idx], date: e.target.value };
+                                  setFormData(prev => ({ ...prev, b2References: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b2-ref-date-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={ref.nameDesignation}
+                                onChange={(e) => {
+                                  const updated = [...formData.b2References];
+                                  updated[idx] = { ...updated[idx], nameDesignation: e.target.value };
+                                  setFormData(prev => ({ ...prev, b2References: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b2-ref-name-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={ref.contactInfo}
+                                onChange={(e) => {
+                                  const updated = [...formData.b2References];
+                                  updated[idx] = { ...updated[idx], contactInfo: e.target.value };
+                                  setFormData(prev => ({ ...prev, b2References: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b2-ref-contact-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {formData.b2References.length > 1 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setFormData(prev => ({ ...prev, b2References: prev.b2References.filter((_, i) => i !== idx) }))}
+                                  data-testid={`button-remove-b2-ref-${idx}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        b2References: [...prev.b2References, { id: String(Date.now()), date: '', nameDesignation: '', contactInfo: '' }]
+                      }))}
+                      data-testid="button-add-b2-reference"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Reference
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B3. Background Security Checks</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <span className="text-sm text-gray-700">B3.1 Security checks completed?</span>
+                      <div className="flex gap-4">
+                        {['Yes', 'No', 'N/A'].map((option) => (
+                          <label key={option} className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="b3ChecksCompleted"
+                              value={option}
+                              checked={formData.b3ChecksCompleted === option}
+                              onChange={(e) => setFormData(prev => ({ ...prev, b3ChecksCompleted: e.target.value }))}
+                              className="w-4 h-4"
+                              data-testid={`radio-b3ChecksCompleted-${option.toLowerCase()}`}
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm">B3.2 Results</Label>
+                      <Input
+                        value={formData.b3Results}
+                        onChange={(e) => setFormData(prev => ({ ...prev, b3Results: e.target.value }))}
+                        placeholder="Enter security check results..."
+                        className="mt-1"
+                        data-testid="input-b3-results"
+                      />
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-[13px]">Check Date</TableHead>
+                          <TableHead className="text-[13px]">Authority Checked</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.b3Authorities.map((auth, idx) => (
+                          <TableRow key={auth.id}>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={auth.date}
+                                onChange={(e) => {
+                                  const updated = [...formData.b3Authorities];
+                                  updated[idx] = { ...updated[idx], date: e.target.value };
+                                  setFormData(prev => ({ ...prev, b3Authorities: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b3-auth-date-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={auth.authority}
+                                onChange={(e) => {
+                                  const updated = [...formData.b3Authorities];
+                                  updated[idx] = { ...updated[idx], authority: e.target.value };
+                                  setFormData(prev => ({ ...prev, b3Authorities: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b3-auth-name-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {formData.b3Authorities.length > 1 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setFormData(prev => ({ ...prev, b3Authorities: prev.b3Authorities.filter((_, i) => i !== idx) }))}
+                                  data-testid={`button-remove-b3-auth-${idx}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        b3Authorities: [...prev.b3Authorities, { id: String(Date.now()), date: '', authority: '' }]
+                      }))}
+                      data-testid="button-add-b3-authority"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Authority
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B4. Authentication of Certificates & Documents</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <span className="text-sm text-gray-700">B4.1 Certificates authenticated?</span>
+                      <div className="flex gap-4">
+                        {['Yes', 'No', 'N/A'].map((option) => (
+                          <label key={option} className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="b4CertificatesAuthenticated"
+                              value={option}
+                              checked={formData.b4CertificatesAuthenticated === option}
+                              onChange={(e) => setFormData(prev => ({ ...prev, b4CertificatesAuthenticated: e.target.value }))}
+                              className="w-4 h-4"
+                              data-testid={`radio-b4CertificatesAuthenticated-${option.toLowerCase()}`}
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm">B4.2 Results</Label>
+                      <Input
+                        value={formData.b4Results}
+                        onChange={(e) => setFormData(prev => ({ ...prev, b4Results: e.target.value }))}
+                        placeholder="Enter authentication results..."
+                        className="mt-1"
+                        data-testid="input-b4-results"
+                      />
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-[13px]">Date</TableHead>
+                          <TableHead className="text-[13px]">Certificate/Document</TableHead>
+                          <TableHead className="text-[13px]">Authority</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.b4Certs.map((cert, idx) => (
+                          <TableRow key={cert.id}>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={cert.date}
+                                onChange={(e) => {
+                                  const updated = [...formData.b4Certs];
+                                  updated[idx] = { ...updated[idx], date: e.target.value };
+                                  setFormData(prev => ({ ...prev, b4Certs: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b4-cert-date-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={cert.certificate}
+                                onChange={(e) => {
+                                  const updated = [...formData.b4Certs];
+                                  updated[idx] = { ...updated[idx], certificate: e.target.value };
+                                  setFormData(prev => ({ ...prev, b4Certs: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b4-cert-name-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={cert.authority}
+                                onChange={(e) => {
+                                  const updated = [...formData.b4Certs];
+                                  updated[idx] = { ...updated[idx], authority: e.target.value };
+                                  setFormData(prev => ({ ...prev, b4Certs: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b4-cert-auth-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {formData.b4Certs.length > 1 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setFormData(prev => ({ ...prev, b4Certs: prev.b4Certs.filter((_, i) => i !== idx) }))}
+                                  data-testid={`button-remove-b4-cert-${idx}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        b4Certs: [...prev.b4Certs, { id: String(Date.now()), date: '', certificate: '', authority: '' }]
+                      }))}
+                      data-testid="button-add-b4-cert"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Certificate
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B5. CES/Language Test Results</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <span className="text-sm text-gray-700">B5.1 Tests completed?</span>
+                      <div className="flex gap-4">
+                        {['Yes', 'No', 'N/A'].map((option) => (
+                          <label key={option} className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="b5TestsCompleted"
+                              value={option}
+                              checked={formData.b5TestsCompleted === option}
+                              onChange={(e) => setFormData(prev => ({ ...prev, b5TestsCompleted: e.target.value }))}
+                              className="w-4 h-4"
+                              data-testid={`radio-b5TestsCompleted-${option.toLowerCase()}`}
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-[13px]">Date</TableHead>
+                          <TableHead className="text-[13px]">Subject</TableHead>
+                          <TableHead className="text-[13px]">Score</TableHead>
+                          <TableHead className="text-[13px]">Result</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.b5Tests.map((test, idx) => (
+                          <TableRow key={test.id}>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={test.date}
+                                onChange={(e) => {
+                                  const updated = [...formData.b5Tests];
+                                  updated[idx] = { ...updated[idx], date: e.target.value };
+                                  setFormData(prev => ({ ...prev, b5Tests: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b5-test-date-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={test.subject}
+                                onChange={(e) => {
+                                  const updated = [...formData.b5Tests];
+                                  updated[idx] = { ...updated[idx], subject: e.target.value };
+                                  setFormData(prev => ({ ...prev, b5Tests: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b5-test-subject-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={test.score}
+                                onChange={(e) => {
+                                  const updated = [...formData.b5Tests];
+                                  updated[idx] = { ...updated[idx], score: e.target.value };
+                                  setFormData(prev => ({ ...prev, b5Tests: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b5-test-score-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={test.result}
+                                onValueChange={(value) => {
+                                  const updated = [...formData.b5Tests];
+                                  updated[idx] = { ...updated[idx], result: value };
+                                  setFormData(prev => ({ ...prev, b5Tests: updated }));
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs" data-testid={`select-b5-test-result-${idx}`}>
+                                  <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Pass">Pass</SelectItem>
+                                  <SelectItem value="Fail">Fail</SelectItem>
+                                  <SelectItem value="Pending">Pending</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              {formData.b5Tests.length > 1 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setFormData(prev => ({ ...prev, b5Tests: prev.b5Tests.filter((_, i) => i !== idx) }))}
+                                  data-testid={`button-remove-b5-test-${idx}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        b5Tests: [...prev.b5Tests, { id: String(Date.now()), date: '', subject: '', score: '', result: '' }]
+                      }))}
+                      data-testid="button-add-b5-test"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Test
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B6. Interviews</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <span className="text-sm text-gray-700">B6.1 Interview completed?</span>
+                      <div className="flex gap-4">
+                        {['Yes', 'No', 'N/A'].map((option) => (
+                          <label key={option} className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="b6InterviewCompleted"
+                              value={option}
+                              checked={formData.b6InterviewCompleted === option}
+                              onChange={(e) => setFormData(prev => ({ ...prev, b6InterviewCompleted: e.target.value }))}
+                              className="w-4 h-4"
+                              data-testid={`radio-b6InterviewCompleted-${option.toLowerCase()}`}
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-[13px]">Date</TableHead>
+                          <TableHead className="text-[13px]">Interviewer</TableHead>
+                          <TableHead className="text-[13px]">Status</TableHead>
+                          <TableHead className="text-[13px]">Result</TableHead>
+                          <TableHead className="text-[13px]">Comments</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.b6Interviews.map((interview, idx) => (
+                          <TableRow key={interview.id}>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={interview.date}
+                                onChange={(e) => {
+                                  const updated = [...formData.b6Interviews];
+                                  updated[idx] = { ...updated[idx], date: e.target.value };
+                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b6-interview-date-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={interview.interviewer}
+                                onChange={(e) => {
+                                  const updated = [...formData.b6Interviews];
+                                  updated[idx] = { ...updated[idx], interviewer: e.target.value };
+                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b6-interview-interviewer-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={interview.status}
+                                onValueChange={(value) => {
+                                  const updated = [...formData.b6Interviews];
+                                  updated[idx] = { ...updated[idx], status: value };
+                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs" data-testid={`select-b6-interview-status-${idx}`}>
+                                  <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Scheduled">Scheduled</SelectItem>
+                                  <SelectItem value="Completed">Completed</SelectItem>
+                                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={interview.result}
+                                onValueChange={(value) => {
+                                  const updated = [...formData.b6Interviews];
+                                  updated[idx] = { ...updated[idx], result: value };
+                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs" data-testid={`select-b6-interview-result-${idx}`}>
+                                  <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Pass">Pass</SelectItem>
+                                  <SelectItem value="Fail">Fail</SelectItem>
+                                  <SelectItem value="Pending">Pending</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={interview.comments}
+                                onChange={(e) => {
+                                  const updated = [...formData.b6Interviews];
+                                  updated[idx] = { ...updated[idx], comments: e.target.value };
+                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`input-b6-interview-comments-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {formData.b6Interviews.length > 1 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setFormData(prev => ({ ...prev, b6Interviews: prev.b6Interviews.filter((_, i) => i !== idx) }))}
+                                  data-testid={`button-remove-b6-interview-${idx}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        b6Interviews: [...prev.b6Interviews, { id: String(Date.now()), date: '', interviewer: '', status: '', result: '', comments: '' }]
+                      }))}
+                      data-testid="button-add-b6-interview"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Interview
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B7. Training Needs Identified</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-[13px]">Training</TableHead>
+                        <TableHead className="text-[13px]">Category</TableHead>
+                        <TableHead className="text-[13px]">Due Date</TableHead>
+                        <TableHead className="text-[13px]">Comments</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {formData.b7TrainingNeeds.map((training, idx) => (
+                        <TableRow key={training.id}>
+                          <TableCell>
+                            <Input
+                              value={training.training}
+                              onChange={(e) => {
+                                const updated = [...formData.b7TrainingNeeds];
+                                updated[idx] = { ...updated[idx], training: e.target.value };
+                                setFormData(prev => ({ ...prev, b7TrainingNeeds: updated }));
+                              }}
+                              className="h-8 text-xs"
+                              data-testid={`input-b7-training-name-${idx}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={training.category}
+                              onValueChange={(value) => {
+                                const updated = [...formData.b7TrainingNeeds];
+                                updated[idx] = { ...updated[idx], category: value };
+                                setFormData(prev => ({ ...prev, b7TrainingNeeds: updated }));
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs" data-testid={`select-b7-training-category-${idx}`}>
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Mandatory">Mandatory</SelectItem>
+                                <SelectItem value="Recommended">Recommended</SelectItem>
+                                <SelectItem value="Optional">Optional</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={training.dueDate}
+                              onChange={(e) => {
+                                const updated = [...formData.b7TrainingNeeds];
+                                updated[idx] = { ...updated[idx], dueDate: e.target.value };
+                                setFormData(prev => ({ ...prev, b7TrainingNeeds: updated }));
+                              }}
+                              className="h-8 text-xs"
+                              data-testid={`input-b7-training-due-${idx}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={training.comments}
+                              onChange={(e) => {
+                                const updated = [...formData.b7TrainingNeeds];
+                                updated[idx] = { ...updated[idx], comments: e.target.value };
+                                setFormData(prev => ({ ...prev, b7TrainingNeeds: updated }));
+                              }}
+                              className="h-8 text-xs"
+                              data-testid={`input-b7-training-comments-${idx}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {formData.b7TrainingNeeds.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFormData(prev => ({ ...prev, b7TrainingNeeds: prev.b7TrainingNeeds.filter((_, i) => i !== idx) }))}
+                                data-testid={`button-remove-b7-training-${idx}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      b7TrainingNeeds: [...prev.b7TrainingNeeds, { id: String(Date.now()), training: '', category: '', dueDate: '', comments: '' }]
+                    }))}
+                    data-testid="button-add-b7-training"
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Add Training
+                  </Button>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B8. Short Listing</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <span className="text-sm text-gray-700">B8.1 Shortlisted for approval?</span>
+                      <div className="flex gap-4">
+                        {['Yes', 'No'].map((option) => (
+                          <label key={option} className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="b8Shortlisted"
+                              value={option}
+                              checked={formData.b8Shortlisted === option}
+                              onChange={(e) => setFormData(prev => ({ ...prev, b8Shortlisted: e.target.value }))}
+                              className="w-4 h-4"
+                              data-testid={`radio-b8Shortlisted-${option.toLowerCase()}`}
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
+                    onClick={handleSaveScreening}
+                    disabled={savingInProgress}
+                    data-testid="button-save-screening"
+                  >
+                    {savingInProgress ? 'Saving...' : 'Save Screening'}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

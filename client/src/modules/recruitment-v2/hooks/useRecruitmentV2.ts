@@ -779,3 +779,222 @@ export function useV2DeleteAttachment() {
     },
   });
 }
+
+// Screening B2 Items (Reference Checks)
+export interface ScreeningB2Item {
+  id: number;
+  itemUuid: string;
+  b2Uuid: string;
+  employerName?: string;
+  contactPerson?: string;
+  contactNumber?: string;
+  dateContacted?: string;
+  feedback?: string;
+  rating?: string;
+}
+
+export function useV2ScreeningB2Items(b2Uuid: string | null) {
+  return useQuery<ScreeningB2Item[]>({
+    queryKey: ['v2', 'screening-b2-items', b2Uuid],
+    queryFn: () => fetchApi(`/screening/b2/${b2Uuid}/items`),
+    enabled: !!b2Uuid,
+  });
+}
+
+export function useV2CreateScreeningB2Item() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b2Uuid, data }: { b2Uuid: string; data: Partial<ScreeningB2Item> }) =>
+      postApi<ScreeningB2Item>(`/screening/b2/${b2Uuid}/items`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2-items', variables.b2Uuid] });
+    },
+  });
+}
+
+// Screening B3 Authorities
+export interface ScreeningB3Authority {
+  id: number;
+  authorityUuid: string;
+  b3Uuid: string;
+  authorityName?: string;
+  checkType?: string;
+  dateChecked?: string;
+  result?: string;
+  remarks?: string;
+}
+
+export function useV2ScreeningB3Authorities(b3Uuid: string | null) {
+  return useQuery<ScreeningB3Authority[]>({
+    queryKey: ['v2', 'screening-b3-authorities', b3Uuid],
+    queryFn: () => fetchApi(`/screening/b3/${b3Uuid}/authorities`),
+    enabled: !!b3Uuid,
+  });
+}
+
+export function useV2CreateScreeningB3Authority() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b3Uuid, data }: { b3Uuid: string; data: Partial<ScreeningB3Authority> }) =>
+      postApi<ScreeningB3Authority>(`/screening/b3/${b3Uuid}/authorities`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-authorities', variables.b3Uuid] });
+    },
+  });
+}
+
+// Screening B4 Cert Items
+export interface ScreeningB4CertItem {
+  id: number;
+  certItemUuid: string;
+  b4Uuid: string;
+  certificateName?: string;
+  issuingAuthority?: string;
+  dateVerified?: string;
+  verificationResult?: string;
+  remarks?: string;
+}
+
+export function useV2ScreeningB4CertItems(b4Uuid: string | null) {
+  return useQuery<ScreeningB4CertItem[]>({
+    queryKey: ['v2', 'screening-b4-cert-items', b4Uuid],
+    queryFn: () => fetchApi(`/screening/b4/${b4Uuid}/cert-items`),
+    enabled: !!b4Uuid,
+  });
+}
+
+export function useV2CreateScreeningB4CertItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b4Uuid, data }: { b4Uuid: string; data: Partial<ScreeningB4CertItem> }) =>
+      postApi<ScreeningB4CertItem>(`/screening/b4/${b4Uuid}/cert-items`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-cert-items', variables.b4Uuid] });
+    },
+  });
+}
+
+// Screening B5 Test Items
+export interface ScreeningB5TestItem {
+  id: number;
+  testItemUuid: string;
+  b5Uuid: string;
+  testType?: string;
+  testDate?: string;
+  result?: string;
+  score?: string;
+  remarks?: string;
+}
+
+export function useV2ScreeningB5TestItems(b5Uuid: string | null) {
+  return useQuery<ScreeningB5TestItem[]>({
+    queryKey: ['v2', 'screening-b5-test-items', b5Uuid],
+    queryFn: () => fetchApi(`/screening/b5/${b5Uuid}/test-items`),
+    enabled: !!b5Uuid,
+  });
+}
+
+export function useV2CreateScreeningB5TestItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b5Uuid, data }: { b5Uuid: string; data: Partial<ScreeningB5TestItem> }) =>
+      postApi<ScreeningB5TestItem>(`/screening/b5/${b5Uuid}/test-items`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-test-items', variables.b5Uuid] });
+    },
+  });
+}
+
+// Screening B6 Interview Items
+export interface ScreeningB6InterviewItem {
+  id: number;
+  interviewItemUuid: string;
+  b6Uuid: string;
+  interviewerName?: string;
+  interviewDate?: string;
+  interviewType?: string;
+  result?: string;
+  remarks?: string;
+}
+
+export function useV2ScreeningB6InterviewItems(b6Uuid: string | null) {
+  return useQuery<ScreeningB6InterviewItem[]>({
+    queryKey: ['v2', 'screening-b6-interview-items', b6Uuid],
+    queryFn: () => fetchApi(`/screening/b6/${b6Uuid}/interview-items`),
+    enabled: !!b6Uuid,
+  });
+}
+
+export function useV2CreateScreeningB6InterviewItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b6Uuid, data }: { b6Uuid: string; data: Partial<ScreeningB6InterviewItem> }) =>
+      postApi<ScreeningB6InterviewItem>(`/screening/b6/${b6Uuid}/interview-items`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-interview-items', variables.b6Uuid] });
+    },
+  });
+}
+
+// Screening B7 Training Items
+export interface ScreeningB7TrainingItem {
+  id: number;
+  trainingItemUuid: string;
+  b7Uuid: string;
+  trainingName?: string;
+  trainingType?: string;
+  provider?: string;
+  scheduledDate?: string;
+  status?: string;
+  remarks?: string;
+}
+
+export function useV2ScreeningB7TrainingItems(b7Uuid: string | null) {
+  return useQuery<ScreeningB7TrainingItem[]>({
+    queryKey: ['v2', 'screening-b7-training-items', b7Uuid],
+    queryFn: () => fetchApi(`/screening/b7/${b7Uuid}/training-items`),
+    enabled: !!b7Uuid,
+  });
+}
+
+export function useV2CreateScreeningB7TrainingItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b7Uuid, data }: { b7Uuid: string; data: Partial<ScreeningB7TrainingItem> }) =>
+      postApi<ScreeningB7TrainingItem>(`/screening/b7/${b7Uuid}/training-items`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7-training-items', variables.b7Uuid] });
+    },
+  });
+}
+
+// Screening B8 Approvers
+export interface ScreeningB8Approver {
+  id: number;
+  approverUuid: string;
+  b8Uuid: string;
+  approverName?: string;
+  approverRole?: string;
+  approvalDate?: string;
+  decision?: string;
+  remarks?: string;
+}
+
+export function useV2ScreeningB8Approvers(b8Uuid: string | null) {
+  return useQuery<ScreeningB8Approver[]>({
+    queryKey: ['v2', 'screening-b8-approvers', b8Uuid],
+    queryFn: () => fetchApi(`/screening/b8/${b8Uuid}/approvers`),
+    enabled: !!b8Uuid,
+  });
+}
+
+export function useV2CreateScreeningB8Approver() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b8Uuid, data }: { b8Uuid: string; data: Partial<ScreeningB8Approver> }) =>
+      postApi<ScreeningB8Approver>(`/screening/b8/${b8Uuid}/approvers`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-approvers', variables.b8Uuid] });
+    },
+  });
+}
