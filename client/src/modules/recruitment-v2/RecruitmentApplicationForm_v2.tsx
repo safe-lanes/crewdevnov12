@@ -863,6 +863,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return options;
   }, [externalVesselsData, externalFleetGroupsData]);
 
+  const calculateAge = (dob: string): string => {
+    if (!dob) return '';
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age > 0 ? age.toString() : '';
+  };
+
   useEffect(() => {
     const observerOptions = {
       root: null,
@@ -1632,18 +1644,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }));
     }
   }, [decisionData]);
-
-  const calculateAge = (dob: string): string => {
-    if (!dob) return '';
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age > 0 ? age.toString() : '';
-  };
 
   const calculatePeriod = (fromDate: string, toDate: string): string => {
     if (!fromDate || !toDate) return '';
