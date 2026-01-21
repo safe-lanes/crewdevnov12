@@ -8027,7 +8027,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <Button 
                   className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
                   onClick={() => {
-                    handleSaveScreening();
+                    handleSaveOnly();
                   }}
                   disabled={savingInProgress}
                   data-testid="button-save-approval"
