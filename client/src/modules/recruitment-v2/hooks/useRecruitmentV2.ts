@@ -51,6 +51,18 @@ async function postApi<T>(endpoint: string, data: unknown): Promise<T> {
   return response.json();
 }
 
+async function putApi<T>(endpoint: string, data: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status}`);
+  }
+  return response.json();
+}
+
 async function patchApi<T>(endpoint: string, data: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: 'PATCH',
@@ -139,7 +151,7 @@ export function useV2SavePersonalDetails() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidatePersonalDetails> }) =>
-      postApi<CandidatePersonalDetails>(`/candidates/${recCanUuid}/personal-details`, data),
+      putApi<CandidatePersonalDetails>(`/candidates/${recCanUuid}/personal-details`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'personal-details', variables.recCanUuid] });
     },
@@ -177,7 +189,7 @@ export function useV2SaveAddress() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateAddress> }) =>
-      postApi<CandidateAddress>(`/candidates/${recCanUuid}/address`, data),
+      putApi<CandidateAddress>(`/candidates/${recCanUuid}/address`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'address', variables.recCanUuid] });
     },
@@ -196,7 +208,7 @@ export function useV2SaveFamilyInfo() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateFamilyInfo> }) =>
-      postApi<CandidateFamilyInfo>(`/candidates/${recCanUuid}/family-info`, data),
+      putApi<CandidateFamilyInfo>(`/candidates/${recCanUuid}/family-info`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'family-info', variables.recCanUuid] });
     },
@@ -234,7 +246,7 @@ export function useV2SaveNextOfKin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateNextOfKin> }) =>
-      postApi<CandidateNextOfKin>(`/candidates/${recCanUuid}/next-of-kin`, data),
+      putApi<CandidateNextOfKin>(`/candidates/${recCanUuid}/next-of-kin`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'next-of-kin', variables.recCanUuid] });
     },
