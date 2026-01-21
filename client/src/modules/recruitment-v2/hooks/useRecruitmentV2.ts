@@ -34,6 +34,10 @@ import type {
 
 const API_BASE = '/api/v2/recruitment';
 
+// Performance: Cache queries for 5 minutes to reduce network requests
+const QUERY_STALE_TIME = 5 * 60 * 1000; // 5 minutes
+const QUERY_GC_TIME = 10 * 60 * 1000; // 10 minutes
+
 async function fetchApi<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`);
   if (!response.ok) {
@@ -92,6 +96,8 @@ export function useV2Candidates() {
   return useQuery<V2CandidateListItem[]>({
     queryKey: ['v2', 'candidates'],
     queryFn: () => fetchApi('/candidates'),
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -100,6 +106,8 @@ export function useV2Candidate(recCanUuid: string | null) {
     queryKey: ['v2', 'candidates', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -147,6 +155,8 @@ export function useV2PersonalDetails(recCanUuid: string | null) {
     queryKey: ['v2', 'personal-details', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/personal-details`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -166,6 +176,8 @@ export function useV2VesselTypes(recCanUuid: string | null) {
     queryKey: ['v2', 'vessel-types', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/vessel-types`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -185,6 +197,8 @@ export function useV2Address(recCanUuid: string | null) {
     queryKey: ['v2', 'address', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/address`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -204,6 +218,8 @@ export function useV2FamilyInfo(recCanUuid: string | null) {
     queryKey: ['v2', 'family-info', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/family-info`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -223,6 +239,8 @@ export function useV2Children(recCanUuid: string | null) {
     queryKey: ['v2', 'children', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/children`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -242,6 +260,8 @@ export function useV2NextOfKin(recCanUuid: string | null) {
     queryKey: ['v2', 'next-of-kin', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/next-of-kin`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -261,6 +281,8 @@ export function useV2Documents(recCanUuid: string | null) {
     queryKey: ['v2', 'documents', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/documents`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -302,6 +324,8 @@ export function useV2Visas(recCanUuid: string | null) {
     queryKey: ['v2', 'visas', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/visas`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -343,6 +367,8 @@ export function useV2Education(recCanUuid: string | null) {
     queryKey: ['v2', 'education', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/education`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -384,6 +410,8 @@ export function useV2Licenses(recCanUuid: string | null) {
     queryKey: ['v2', 'licenses', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/licenses`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -425,6 +453,8 @@ export function useV2TrainingCourses(recCanUuid: string | null) {
     queryKey: ['v2', 'training-courses', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/training`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -466,6 +496,8 @@ export function useV2SeaService(recCanUuid: string | null) {
     queryKey: ['v2', 'sea-service', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/sea-service`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -507,6 +539,8 @@ export function useV2AdditionalInfo(recCanUuid: string | null) {
     queryKey: ['v2', 'additional-info', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/additional-info`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -548,6 +582,8 @@ export function useV2ScreeningB1(recCanUuid: string | null) {
     queryKey: ['v2', 'screening-b1', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b1`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -629,6 +665,8 @@ export function useV2ScreeningB2(recCanUuid: string | null) {
     queryKey: ['v2', 'screening-b2', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b2`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -699,6 +737,8 @@ export function useV2ScreeningB3(recCanUuid: string | null) {
     queryKey: ['v2', 'screening-b3', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b3`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -769,6 +809,8 @@ export function useV2ScreeningB4(recCanUuid: string | null) {
     queryKey: ['v2', 'screening-b4', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b4`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -839,6 +881,8 @@ export function useV2ScreeningB5(recCanUuid: string | null) {
     queryKey: ['v2', 'screening-b5', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b5`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -909,6 +953,8 @@ export function useV2ScreeningB6(recCanUuid: string | null) {
     queryKey: ['v2', 'screening-b6', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b6`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -979,6 +1025,8 @@ export function useV2ScreeningB7(recCanUuid: string | null) {
     queryKey: ['v2', 'screening-b7', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b7`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -998,6 +1046,8 @@ export function useV2ScreeningB8(recCanUuid: string | null) {
     queryKey: ['v2', 'screening-b8', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b8`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -1068,6 +1118,8 @@ export function useV2Approvals(recCanUuid: string | null) {
     queryKey: ['v2', 'approvals', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/approvals`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -1098,6 +1150,8 @@ export function useV2Suitability(recCanUuid: string | null) {
     queryKey: ['v2', 'suitability', recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/suitability`),
     enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -1137,6 +1191,8 @@ export function useV2SuitabilityVesselTypes(suitUuid: string | null) {
     queryKey: ['v2', 'suitability-vessel-types', suitUuid],
     queryFn: () => fetchApi(`/suitability/${suitUuid}/vessel-types`),
     enabled: !!suitUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -1156,6 +1212,8 @@ export function useV2SuitabilityFleetGroups(suitUuid: string | null) {
     queryKey: ['v2', 'suitability-fleet-groups', suitUuid],
     queryFn: () => fetchApi(`/suitability/${suitUuid}/fleet-groups`),
     enabled: !!suitUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
@@ -1175,6 +1233,8 @@ export function useV2DecisionAssignedGroups(decisionUuid: string | null) {
     queryKey: ['v2', 'decision-assigned-groups', decisionUuid],
     queryFn: () => fetchApi(`/decisions/${decisionUuid}/assigned-groups`),
     enabled: !!decisionUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
   });
 }
 
