@@ -199,6 +199,12 @@ export class ScreeningB2Repository {
     return results[0];
   }
 
+  async updateItem(refUuid: string, data: Partial<InsertScreeningB2ReferenceItem>): Promise<ScreeningB2ReferenceItem | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB2ReferenceItems).set({ ...data, updatedAt: new Date() }).where(eq(screeningB2ReferenceItems.refUuid, refUuid)).returning();
+    return results[0];
+  }
+
   async findComments(b2Uuid: string): Promise<ScreeningB2Comment[]> {
     const db = getDb();
     return db.select().from(screeningB2Comments).where(

@@ -97,6 +97,7 @@ import {
   useV2CreateScreeningB8Attachment,
   useV2ScreeningB2Items,
   useV2CreateScreeningB2Item,
+  useV2UpdateScreeningB2Item,
   useV2ScreeningB3Authorities,
   useV2CreateScreeningB3Authority,
   useV2UpdateScreeningB3Authority,
@@ -705,6 +706,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const createB8AttachmentMutation = useV2CreateScreeningB8Attachment();
   
   const createB2ItemMutation = useV2CreateScreeningB2Item();
+  const updateB2ItemMutation = useV2UpdateScreeningB2Item();
   const createB3AuthorityMutation = useV2CreateScreeningB3Authority();
   const updateB3AuthorityMutation = useV2UpdateScreeningB3Authority();
   const createB4CertItemMutation = useV2CreateScreeningB4CertItem();
@@ -2820,7 +2822,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       const serverB2ItemMap = new Map((screeningB2Items || []).map((i: any) => [i.refUuid, i.id]));
       for (const item of formData.b2References) {
-        if (!serverB2ItemMap.has(item.id) && currentB2Uuid && (item.date || item.nameDesignation || item.contactInfo)) {
+        if (serverB2ItemMap.has(item.id) && currentB2Uuid) {
+          await updateB2ItemMutation.mutateAsync({
+            refUuid: item.id,
+            b2Uuid: currentB2Uuid,
+            data: {
+              refDate: item.date || undefined,
+              nameDesignation: item.nameDesignation || undefined,
+              contactInfo: item.contactInfo || undefined,
+            } as any,
+          });
+        } else if (!serverB2ItemMap.has(item.id) && currentB2Uuid && (item.date || item.nameDesignation || item.contactInfo)) {
           await createB2ItemMutation.mutateAsync({
             b2Uuid: currentB2Uuid,
             data: {

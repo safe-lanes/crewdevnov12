@@ -134,6 +134,17 @@ export const screeningB2Controller = {
     }
   },
 
+  async updateItem(req: Request, res: Response) {
+    try {
+      const { refUuid } = req.params;
+      const result = await screeningB2Service.updateItem(refUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B2 item:", error);
+      res.status(500).json({ error: "Failed to update B2 item" });
+    }
+  },
+
   async getComments(req: Request, res: Response) {
     try {
       const { b2Uuid } = req.params;

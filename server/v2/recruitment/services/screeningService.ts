@@ -108,6 +108,13 @@ export class ScreeningB2Service {
     } as any);
   }
 
+  async updateItem(refUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB2Repository.updateItem(refUuid, {
+      ...data,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
   async getComments(b2Uuid: string) {
     return screeningB2Repository.findComments(b2Uuid);
   }

@@ -181,6 +181,7 @@ router.get("/candidates/:recCanUuid/screening/b2", screeningB2Controller.get);
 router.put("/candidates/:recCanUuid/screening/b2", screeningB2Controller.upsert);
 router.get("/screening/b2/:b2Uuid/items", screeningB2Controller.getItems);
 router.post("/screening/b2/:b2Uuid/items", screeningB2Controller.createItem);
+router.put("/screening/b2/items/:refUuid", screeningB2Controller.updateItem);
 router.get("/screening/b2/:b2Uuid/comments", screeningB2Controller.getComments);
 router.post("/screening/b2/:b2Uuid/comments", screeningB2Controller.createComment);
 router.put("/screening/b2/comments/:commentUuid", screeningB2Controller.updateComment);

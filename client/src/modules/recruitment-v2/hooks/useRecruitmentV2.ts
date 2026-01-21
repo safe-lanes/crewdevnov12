@@ -2069,6 +2069,26 @@ export function useV2CreateScreeningB2Item() {
   });
 }
 
+export function useV2UpdateScreeningB2Item() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      refUuid,
+      b2Uuid,
+      data,
+    }: {
+      refUuid: string;
+      b2Uuid: string;
+      data: Partial<ScreeningB2Item>;
+    }) => putApi<ScreeningB2Item>(`/screening/b2/items/${refUuid}`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b2-items", variables.b2Uuid],
+      });
+    },
+  });
+}
+
 // Screening B3 Authorities
 export interface ScreeningB3Authority {
   id: number;
