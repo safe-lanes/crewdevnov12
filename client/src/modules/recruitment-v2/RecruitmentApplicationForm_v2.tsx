@@ -263,7 +263,7 @@ interface LocalFormData {
   b6InterviewCompleted: string;
   b6Interviews: Array<{ id: string; serverId?: number; date: string; interviewer: string; status: string; result: string; comments: string }>;
   b6InterviewItems: Array<{ id: string; serverId?: number; date?: string; interviewer?: string; status?: string; result?: string; comments?: string; interviewerName?: string; interviewDate?: string; interviewType?: string; remarks?: string }>;
-  b7TrainingNeeds: Array<{ id: string; serverId?: number; training?: string; category?: string; dueDate?: string; comments?: string; trainingName?: string; trainingType?: string; provider?: string; scheduledDate?: string; status?: string; remarks?: string }>;
+  b7TrainingNeeds: Array<{ id: string; serverId?: number; training?: string; identifiedBy?: string; category?: string; dueDate?: string; comments?: string; trainingName?: string; trainingType?: string; provider?: string; scheduledDate?: string; status?: string; remarks?: string }>;
   b8Shortlisted: string;
   b8SelectedApprovers: Array<{ id: string; serverId?: number; approverName?: string; approverRole?: string; approvalDate?: string; decision?: string; remarks?: string }>;
   b2ReferenceItems: Array<{ id: string; serverId?: number; date?: string; nameDesignation?: string; contactInfo?: string; employerName?: string; contactPerson?: string; contactNumber?: string; dateContacted?: string; feedback?: string; rating?: string }>;
@@ -375,7 +375,7 @@ const getInitialFormData = (): LocalFormData => ({
   b6InterviewCompleted: '',
   b6Interviews: [{ id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }],
   b6InterviewItems: [],
-  b7TrainingNeeds: [{ id: '1', training: '', category: '', dueDate: '', comments: '' }],
+  b7TrainingNeeds: [{ id: '1', training: '', identifiedBy: '', category: '', dueDate: '', comments: '' }],
   b8Shortlisted: '',
   b8SelectedApprovers: [],
   b2ReferenceItems: [],
@@ -5854,132 +5854,207 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B7. Training Needs Identified</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-[13px]">Training</TableHead>
-                        <TableHead className="text-[13px]">Category</TableHead>
-                        <TableHead className="text-[13px]">Due Date</TableHead>
-                        <TableHead className="text-[13px]">Comments</TableHead>
-                        <TableHead className="w-12"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {formData.b7TrainingNeeds.map((training, idx) => (
-                        <TableRow key={training.id}>
-                          <TableCell>
-                            <Input
-                              value={training.training}
-                              onChange={(e) => {
-                                const updated = [...formData.b7TrainingNeeds];
-                                updated[idx] = { ...updated[idx], training: e.target.value };
-                                setFormData(prev => ({ ...prev, b7TrainingNeeds: updated }));
-                              }}
-                              className="h-8 text-xs"
-                              data-testid={`input-b7-training-name-${idx}`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              value={training.category}
-                              onValueChange={(value) => {
-                                const updated = [...formData.b7TrainingNeeds];
-                                updated[idx] = { ...updated[idx], category: value };
-                                setFormData(prev => ({ ...prev, b7TrainingNeeds: updated }));
-                              }}
-                            >
-                              <SelectTrigger className="h-8 text-xs" data-testid={`select-b7-training-category-${idx}`}>
-                                <SelectValue placeholder="Select" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Mandatory">Mandatory</SelectItem>
-                                <SelectItem value="Recommended">Recommended</SelectItem>
-                                <SelectItem value="Optional">Optional</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="date"
-                              value={training.dueDate}
-                              onChange={(e) => {
-                                const updated = [...formData.b7TrainingNeeds];
-                                updated[idx] = { ...updated[idx], dueDate: e.target.value };
-                                setFormData(prev => ({ ...prev, b7TrainingNeeds: updated }));
-                              }}
-                              className="h-8 text-xs"
-                              data-testid={`input-b7-training-due-${idx}`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              value={training.comments}
-                              onChange={(e) => {
-                                const updated = [...formData.b7TrainingNeeds];
-                                updated[idx] = { ...updated[idx], comments: e.target.value };
-                                setFormData(prev => ({ ...prev, b7TrainingNeeds: updated }));
-                              }}
-                              className="h-8 text-xs"
-                              data-testid={`input-b7-training-comments-${idx}`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {formData.b7TrainingNeeds.length > 1 && (
+                {/* B7. Training Needs Identified - matching legacy exactly */}
+                <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B7. Training Needs Identified</h3>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // TODO: Open training database dialog
+                        }}
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
+                        data-testid="button-add-b7-training-from-db"
+                      >
+                        + ADD FROM DATABASE
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newId = String(Date.now());
+                          setFormData(prev => ({
+                            ...prev,
+                            b7TrainingNeeds: [...prev.b7TrainingNeeds, { id: newId, training: '', identifiedBy: '', category: '', dueDate: '', comments: '' }]
+                          }));
+                        }}
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                        data-testid="button-add-b7-training"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        ADD
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {/* Training needs table */}
+                    <Table className="w-full">
+                      <TableHeader>
+                        <TableRow className="bg-gray-100">
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/ Course</TableHead>
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Identified by</TableHead>
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Category</TableHead>
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Due Date</TableHead>
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Comments</TableHead>
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.b7TrainingNeeds.map((training, idx) => (
+                          <TableRow key={training.id} className="border-b border-gray-200">
+                            <TableCell className="p-3">
+                              <Input
+                                value={training.training || ''}
+                                onChange={(e) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b7TrainingNeeds: prev.b7TrainingNeeds.map(t => 
+                                      t.id === training.id ? { ...t, training: e.target.value } : t
+                                    )
+                                  }));
+                                }}
+                                className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                                placeholder="Enter training/course name"
+                                data-testid={`input-b7-training-name-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell className="p-3">
+                              <Select
+                                value={training.identifiedBy || ''}
+                                onValueChange={(value) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b7TrainingNeeds: prev.b7TrainingNeeds.map(t => 
+                                      t.id === training.id ? { ...t, identifiedBy: value } : t
+                                    )
+                                  }));
+                                }}
+                              >
+                                <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto" data-testid={`select-b7-training-identified-${idx}`}>
+                                  <SelectValue placeholder="Select person" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {isLoadingUsers ? (
+                                    <SelectItem value="_loading" disabled>Loading...</SelectItem>
+                                  ) : approverMasterData.length === 0 ? (
+                                    <SelectItem value="_empty" disabled>No users found</SelectItem>
+                                  ) : (
+                                    approverMasterData.map((name: string) => (
+                                      <SelectItem key={name} value={name}>
+                                        {name}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="p-3">
+                              <Select
+                                value={training.category || ''}
+                                onValueChange={(value) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b7TrainingNeeds: prev.b7TrainingNeeds.map(t => 
+                                      t.id === training.id ? { ...t, category: value } : t
+                                    )
+                                  }));
+                                }}
+                              >
+                                <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto" data-testid={`select-b7-training-category-${idx}`}>
+                                  <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Mandatory">Mandatory</SelectItem>
+                                  <SelectItem value="Recommended">Recommended</SelectItem>
+                                  <SelectItem value="Optional">Optional</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="p-3">
+                              <Input
+                                type="date"
+                                value={training.dueDate || ''}
+                                onChange={(e) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b7TrainingNeeds: prev.b7TrainingNeeds.map(t => 
+                                      t.id === training.id ? { ...t, dueDate: e.target.value } : t
+                                    )
+                                  }));
+                                }}
+                                className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                                data-testid={`input-b7-training-due-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell className="p-3">
+                              <Input
+                                value={training.comments || ''}
+                                onChange={(e) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b7TrainingNeeds: prev.b7TrainingNeeds.map(t => 
+                                      t.id === training.id ? { ...t, comments: e.target.value } : t
+                                    )
+                                  }));
+                                }}
+                                className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                                placeholder="Enter comments"
+                                data-testid={`input-b7-training-comments-${idx}`}
+                              />
+                            </TableCell>
+                            <TableCell className="p-3">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setFormData(prev => ({ ...prev, b7TrainingNeeds: prev.b7TrainingNeeds.filter((_, i) => i !== idx) }))}
+                                onClick={() => {
+                                  if (formData.b7TrainingNeeds.length > 1) {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b7TrainingNeeds: prev.b7TrainingNeeds.filter(t => t.id !== training.id)
+                                    }));
+                                  }
+                                }}
+                                className="h-8 w-8 p-0"
                                 data-testid={`button-remove-b7-training-${idx}`}
                               >
                                 <Trash2 className="h-4 w-4 text-red-500" />
                               </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => setFormData(prev => ({
-                      ...prev,
-                      b7TrainingNeeds: [...prev.b7TrainingNeeds, { id: String(Date.now()), training: '', category: '', dueDate: '', comments: '' }]
-                    }))}
-                    data-testid="button-add-b7-training"
-                  >
-                    <Plus className="h-4 w-4 mr-1" /> Add Training
-                  </Button>
-                  
-                  {/* Submitted by section - B7 doesn't typically have attachments */}
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs text-gray-500">
-                        {formData.b7SubmittedBy ? (
-                          <>
-                            <span className="font-medium">Submitted by:</span> {formData.b7SubmittedBy}
-                            {formData.b7SubmittedDate && ` on ${formData.b7SubmittedDate}`}
-                          </>
-                        ) : (
-                          <span className="text-gray-400">Not yet submitted</span>
-                        )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Submitted by section */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-gray-500">
+                          {formData.b7SubmittedBy ? (
+                            <>
+                              <span className="font-medium">Submitted by:</span> {formData.b7SubmittedBy}
+                              {formData.b7SubmittedDate && ` on ${formData.b7SubmittedDate}`}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">Not yet submitted</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            const currentDate = new Date().toLocaleDateString();
+                            setFormData(prev => ({ ...prev, b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate }));
+                            setTimeout(() => handleSaveScreening(), 100);
+                          }}
+                          data-testid="button-b7-submit"
+                        >
+                          Submit
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => {
-                          const currentDate = new Date().toLocaleDateString();
-                          setFormData(prev => ({ ...prev, b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate }));
-                          setTimeout(() => handleSaveScreening(), 100);
-                        }}
-                        data-testid="button-b7-submit"
-                      >
-                        Submit
-                      </Button>
                     </div>
                   </div>
                 </div>
