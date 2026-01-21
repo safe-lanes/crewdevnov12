@@ -263,8 +263,8 @@ export function useV2SaveDocument() {
 export function useV2UpdateDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ docUuid, data }: { docUuid: string; data: Partial<CandidateDocument>; recCanUuid: string }) =>
-      patchApi<CandidateDocument>(`/documents/${docUuid}`, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateDocument>; recCanUuid: string }) =>
+      patchApi<CandidateDocument>(`/documents/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'documents', variables.recCanUuid] });
     },
@@ -274,8 +274,8 @@ export function useV2UpdateDocument() {
 export function useV2DeleteDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ docUuid, recCanUuid }: { docUuid: string; recCanUuid: string }) =>
-      deleteApi(`/documents/${docUuid}`),
+    mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
+      deleteApi(`/documents/${id}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'documents', variables.recCanUuid] });
     },
@@ -304,8 +304,8 @@ export function useV2SaveVisa() {
 export function useV2UpdateVisa() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ visaUuid, data }: { visaUuid: string; data: Partial<CandidateVisa>; recCanUuid: string }) =>
-      patchApi<CandidateVisa>(`/visas/${visaUuid}`, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateVisa>; recCanUuid: string }) =>
+      patchApi<CandidateVisa>(`/visas/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'visas', variables.recCanUuid] });
     },
@@ -315,8 +315,8 @@ export function useV2UpdateVisa() {
 export function useV2DeleteVisa() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ visaUuid, recCanUuid }: { visaUuid: string; recCanUuid: string }) =>
-      deleteApi(`/visas/${visaUuid}`),
+    mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
+      deleteApi(`/visas/${id}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'visas', variables.recCanUuid] });
     },
@@ -345,8 +345,8 @@ export function useV2SaveEducation() {
 export function useV2UpdateEducation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ eduUuid, data }: { eduUuid: string; data: Partial<CandidateEducation>; recCanUuid: string }) =>
-      patchApi<CandidateEducation>(`/education/${eduUuid}`, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateEducation>; recCanUuid: string }) =>
+      patchApi<CandidateEducation>(`/education/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'education', variables.recCanUuid] });
     },
@@ -356,8 +356,8 @@ export function useV2UpdateEducation() {
 export function useV2DeleteEducation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ eduUuid, recCanUuid }: { eduUuid: string; recCanUuid: string }) =>
-      deleteApi(`/education/${eduUuid}`),
+    mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
+      deleteApi(`/education/${id}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'education', variables.recCanUuid] });
     },
@@ -386,8 +386,8 @@ export function useV2SaveLicense() {
 export function useV2UpdateLicense() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ licUuid, data }: { licUuid: string; data: Partial<CandidateLicense>; recCanUuid: string }) =>
-      patchApi<CandidateLicense>(`/licenses/${licUuid}`, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateLicense>; recCanUuid: string }) =>
+      patchApi<CandidateLicense>(`/licenses/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'licenses', variables.recCanUuid] });
     },
@@ -397,8 +397,8 @@ export function useV2UpdateLicense() {
 export function useV2DeleteLicense() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ licUuid, recCanUuid }: { licUuid: string; recCanUuid: string }) =>
-      deleteApi(`/licenses/${licUuid}`),
+    mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
+      deleteApi(`/licenses/${id}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'licenses', variables.recCanUuid] });
     },
@@ -427,8 +427,8 @@ export function useV2SaveTrainingCourse() {
 export function useV2UpdateTrainingCourse() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ trainUuid, data }: { trainUuid: string; data: Partial<CandidateTrainingCourse>; recCanUuid: string }) =>
-      patchApi<CandidateTrainingCourse>(`/training-courses/${trainUuid}`, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateTrainingCourse>; recCanUuid: string }) =>
+      patchApi<CandidateTrainingCourse>(`/training/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'training-courses', variables.recCanUuid] });
     },
@@ -438,8 +438,8 @@ export function useV2UpdateTrainingCourse() {
 export function useV2DeleteTrainingCourse() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ trainUuid, recCanUuid }: { trainUuid: string; recCanUuid: string }) =>
-      deleteApi(`/training-courses/${trainUuid}`),
+    mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
+      deleteApi(`/training/${id}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'training-courses', variables.recCanUuid] });
     },
@@ -468,8 +468,8 @@ export function useV2SaveSeaService() {
 export function useV2UpdateSeaService() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ seaUuid, data }: { seaUuid: string; data: Partial<CandidateSeaService>; recCanUuid: string }) =>
-      patchApi<CandidateSeaService>(`/sea-service/${seaUuid}`, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateSeaService>; recCanUuid: string }) =>
+      patchApi<CandidateSeaService>(`/sea-service/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'sea-service', variables.recCanUuid] });
     },
@@ -479,8 +479,8 @@ export function useV2UpdateSeaService() {
 export function useV2DeleteSeaService() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ seaUuid, recCanUuid }: { seaUuid: string; recCanUuid: string }) =>
-      deleteApi(`/sea-service/${seaUuid}`),
+    mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
+      deleteApi(`/sea-service/${id}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'sea-service', variables.recCanUuid] });
     },
@@ -509,8 +509,8 @@ export function useV2SaveAdditionalInfo() {
 export function useV2UpdateAdditionalInfo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ infoUuid, data }: { infoUuid: string; data: Partial<CandidateAdditionalInfo>; recCanUuid: string }) =>
-      patchApi<CandidateAdditionalInfo>(`/additional-info/${infoUuid}`, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateAdditionalInfo>; recCanUuid: string }) =>
+      patchApi<CandidateAdditionalInfo>(`/additional-info/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'additional-info', variables.recCanUuid] });
     },
@@ -520,8 +520,8 @@ export function useV2UpdateAdditionalInfo() {
 export function useV2DeleteAdditionalInfo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ infoUuid, recCanUuid }: { infoUuid: string; recCanUuid: string }) =>
-      deleteApi(`/additional-info/${infoUuid}`),
+    mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
+      deleteApi(`/additional-info/${id}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'additional-info', variables.recCanUuid] });
     },

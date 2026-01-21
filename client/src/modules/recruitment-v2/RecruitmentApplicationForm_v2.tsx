@@ -134,6 +134,7 @@ interface LocalFormData {
   nokRelationship: string;
   documents: Array<{
     id: string;
+    serverId?: number;
     documentId?: string;
     document: string;
     number: string;
@@ -144,6 +145,7 @@ interface LocalFormData {
   }>;
   visas: Array<{
     id: string;
+    serverId?: number;
     countryId?: string;
     issuingCountry: string;
     serialNo: string;
@@ -154,6 +156,7 @@ interface LocalFormData {
   }>;
   education: Array<{
     id: string;
+    serverId?: number;
     dateOfCompletion: string;
     schoolCollegeUniversity: string;
     subjectsField: string;
@@ -162,6 +165,7 @@ interface LocalFormData {
   }>;
   licenses: Array<{
     id: string;
+    serverId?: number;
     licenseId?: string;
     certificateDocument: string;
     abbr: string;
@@ -174,6 +178,7 @@ interface LocalFormData {
   }>;
   trainingCourses: Array<{
     id: string;
+    serverId?: number;
     courseId?: string;
     trainingCourse: string;
     abbr: string;
@@ -186,6 +191,7 @@ interface LocalFormData {
   }>;
   seaService: Array<{
     id: string;
+    serverId?: number;
     vesselName: string;
     vesselType: string;
     deadweight: string;
@@ -199,6 +205,7 @@ interface LocalFormData {
   }>;
   additionalInfo: Array<{
     id: string;
+    serverId?: number;
     information: string;
     response: string;
     attachments?: FileAttachment[];
@@ -545,6 +552,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         documents: documentsData.map(doc => ({
           id: doc.docUuid,
+          serverId: doc.id,
           documentId: doc.documentId || '',
           document: doc.documentName || '',
           number: doc.number || '',
@@ -563,6 +571,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         visas: visasData.map(visa => ({
           id: visa.visaUuid,
+          serverId: visa.id,
           countryId: visa.countryUuid || '',
           issuingCountry: visa.countryUuid || '',
           serialNo: visa.serialNo || '',
@@ -581,6 +590,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         education: educationData.map(edu => ({
           id: edu.eduUuid,
+          serverId: edu.id,
           dateOfCompletion: edu.dateOfCompletion || '',
           schoolCollegeUniversity: edu.institution || '',
           subjectsField: edu.subjectsField || '',
@@ -597,6 +607,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         licenses: licensesData.map(lic => ({
           id: lic.licUuid,
+          serverId: lic.id,
           licenseId: lic.licenseId || '',
           certificateDocument: lic.certificateDocument || '',
           abbr: lic.abbr || '',
@@ -617,6 +628,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         trainingCourses: trainingData.map(course => ({
           id: course.trainUuid,
+          serverId: course.id,
           courseId: course.courseId || '',
           trainingCourse: course.trainingCourse || '',
           abbr: course.abbr || '',
@@ -637,6 +649,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         seaService: seaServiceData.map(service => ({
           id: service.seaUuid,
+          serverId: service.id,
           vesselName: service.vesselName || '',
           vesselType: service.vesselTypeUuid || '',
           deadweight: service.deadweight || '',
@@ -658,6 +671,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         additionalInfo: additionalInfoData.map(ai => ({
           id: ai.infoUuid,
+          serverId: ai.id,
           information: ai.information || '',
           response: ai.response || '',
           attachments: (ai.attachments || []) as any,
@@ -1204,24 +1218,24 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
       }
       
-      const serverDocUuids = new Set((documentsData || []).map(d => d.docUuid));
+      const serverDocMap = new Map((documentsData || []).map(d => [d.docUuid, d.id]));
       const localDocIds = new Set(formData.documents.map(d => d.id));
       
       for (const doc of formData.documents) {
         const docPayload = {
-          documentId: doc.documentId || '',
-          documentName: doc.document || '',
-          number: doc.number || '',
-          issued: doc.issued || '',
-          expiry: doc.expiry || '',
-          issuingAuthority: doc.issuingAuthority || '',
-          issuingCountryUuid: '',
+          documentId: doc.documentId || undefined,
+          documentName: doc.document || undefined,
+          number: doc.number || undefined,
+          issued: doc.issued || undefined,
+          expiry: doc.expiry || undefined,
+          issuingAuthority: doc.issuingAuthority || undefined,
           sortOrder: formData.documents.indexOf(doc),
         };
         
-        if (serverDocUuids.has(doc.id)) {
+        const serverNumericId = serverDocMap.get(doc.id);
+        if (serverNumericId !== undefined) {
           await updateDocumentMutation.mutateAsync({
-            docUuid: doc.id,
+            id: serverNumericId,
             data: docPayload,
             recCanUuid: currentUuid,
           });
@@ -1236,28 +1250,29 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (const serverDoc of (documentsData || [])) {
         if (!localDocIds.has(serverDoc.docUuid)) {
           await deleteDocumentMutation.mutateAsync({
-            docUuid: serverDoc.docUuid,
+            id: serverDoc.id,
             recCanUuid: currentUuid,
           });
         }
       }
       
-      const serverVisaUuids = new Set((visasData || []).map(v => v.visaUuid));
+      const serverVisaMap = new Map((visasData || []).map(v => [v.visaUuid, v.id]));
       const localVisaIds = new Set(formData.visas.map(v => v.id));
       
       for (const visa of formData.visas) {
         const visaPayload = {
-          countryUuid: visa.countryId || visa.issuingCountry || '',
-          serialNo: visa.serialNo || '',
-          issued: visa.issued || '',
-          expiry: visa.expiry || '',
-          visaType: visa.visaType || '',
+          countryUuid: visa.countryId || visa.issuingCountry || undefined,
+          serialNo: visa.serialNo || undefined,
+          issued: visa.issued || undefined,
+          expiry: visa.expiry || undefined,
+          visaType: visa.visaType || undefined,
           sortOrder: formData.visas.indexOf(visa),
         };
         
-        if (serverVisaUuids.has(visa.id)) {
+        const serverNumericId = serverVisaMap.get(visa.id);
+        if (serverNumericId !== undefined) {
           await updateVisaMutation.mutateAsync({
-            visaUuid: visa.id,
+            id: serverNumericId,
             data: visaPayload,
             recCanUuid: currentUuid,
           });
@@ -1272,27 +1287,28 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (const serverVisa of (visasData || [])) {
         if (!localVisaIds.has(serverVisa.visaUuid)) {
           await deleteVisaMutation.mutateAsync({
-            visaUuid: serverVisa.visaUuid,
+            id: serverVisa.id,
             recCanUuid: currentUuid,
           });
         }
       }
       
-      const serverEduUuids = new Set((educationData || []).map(e => e.eduUuid));
+      const serverEduMap = new Map((educationData || []).map(e => [e.eduUuid, e.id]));
       const localEduIds = new Set(formData.education.map(e => e.id));
       
       for (const edu of formData.education) {
         const eduPayload = {
-          dateOfCompletion: edu.dateOfCompletion || '',
-          institution: edu.schoolCollegeUniversity || '',
-          subjectsField: edu.subjectsField || '',
-          qualifications: edu.qualifications || '',
+          dateOfCompletion: edu.dateOfCompletion || undefined,
+          institution: edu.schoolCollegeUniversity || undefined,
+          subjectsField: edu.subjectsField || undefined,
+          qualifications: edu.qualifications || undefined,
           sortOrder: formData.education.indexOf(edu),
         };
         
-        if (serverEduUuids.has(edu.id)) {
+        const serverNumericId = serverEduMap.get(edu.id);
+        if (serverNumericId !== undefined) {
           await updateEducationMutation.mutateAsync({
-            eduUuid: edu.id,
+            id: serverNumericId,
             data: eduPayload,
             recCanUuid: currentUuid,
           });
@@ -1307,32 +1323,32 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (const serverEdu of (educationData || [])) {
         if (!localEduIds.has(serverEdu.eduUuid)) {
           await deleteEducationMutation.mutateAsync({
-            eduUuid: serverEdu.eduUuid,
+            id: serverEdu.id,
             recCanUuid: currentUuid,
           });
         }
       }
       
-      const serverLicUuids = new Set((licensesData || []).map(l => l.licUuid));
+      const serverLicMap = new Map((licensesData || []).map(l => [l.licUuid, l.id]));
       const localLicIds = new Set(formData.licenses.map(l => l.id));
       
       for (const lic of formData.licenses) {
         const licPayload = {
-          licenseId: lic.licenseId || '',
-          certificateDocument: lic.certificateDocument || '',
-          abbr: lic.abbr || '',
-          requirement: lic.requirement || '',
-          certificateNo: lic.certificateNo || '',
-          issuingAuthority: lic.issuingAuthority || '',
-          issuingCountryUuid: '',
-          issued: lic.issued || '',
-          expiry: lic.expiry || '',
+          licenseId: lic.licenseId || undefined,
+          certificateDocument: lic.certificateDocument || undefined,
+          abbr: lic.abbr || undefined,
+          requirement: lic.requirement || undefined,
+          certificateNo: lic.certificateNo || undefined,
+          issuingAuthority: lic.issuingAuthority || undefined,
+          issued: lic.issued || undefined,
+          expiry: lic.expiry || undefined,
           sortOrder: formData.licenses.indexOf(lic),
         };
         
-        if (serverLicUuids.has(lic.id)) {
+        const serverNumericId = serverLicMap.get(lic.id);
+        if (serverNumericId !== undefined) {
           await updateLicenseMutation.mutateAsync({
-            licUuid: lic.id,
+            id: serverNumericId,
             data: licPayload,
             recCanUuid: currentUuid,
           });
@@ -1347,32 +1363,32 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (const serverLic of (licensesData || [])) {
         if (!localLicIds.has(serverLic.licUuid)) {
           await deleteLicenseMutation.mutateAsync({
-            licUuid: serverLic.licUuid,
+            id: serverLic.id,
             recCanUuid: currentUuid,
           });
         }
       }
       
-      const serverTrainUuids = new Set((trainingData || []).map(t => t.trainUuid));
+      const serverTrainMap = new Map((trainingData || []).map(t => [t.trainUuid, t.id]));
       const localTrainIds = new Set(formData.trainingCourses.map(t => t.id));
       
       for (const train of formData.trainingCourses) {
         const trainPayload = {
-          courseId: train.courseId || '',
-          trainingCourse: train.trainingCourse || '',
-          abbr: train.abbr || '',
-          requirement: train.requirement || '',
-          certificateNo: train.certificateNo || '',
-          issuingAuthority: train.issuingAuthority || '',
-          issuingCountryUuid: '',
-          issued: train.issued || '',
-          expiry: train.expiry || '',
+          courseId: train.courseId || undefined,
+          trainingCourse: train.trainingCourse || undefined,
+          abbr: train.abbr || undefined,
+          requirement: train.requirement || undefined,
+          certificateNo: train.certificateNo || undefined,
+          issuingAuthority: train.issuingAuthority || undefined,
+          issued: train.issued || undefined,
+          expiry: train.expiry || undefined,
           sortOrder: formData.trainingCourses.indexOf(train),
         };
         
-        if (serverTrainUuids.has(train.id)) {
+        const serverNumericId = serverTrainMap.get(train.id);
+        if (serverNumericId !== undefined) {
           await updateTrainingMutation.mutateAsync({
-            trainUuid: train.id,
+            id: serverNumericId,
             data: trainPayload,
             recCanUuid: currentUuid,
           });
@@ -1387,33 +1403,33 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (const serverTrain of (trainingData || [])) {
         if (!localTrainIds.has(serverTrain.trainUuid)) {
           await deleteTrainingMutation.mutateAsync({
-            trainUuid: serverTrain.trainUuid,
+            id: serverTrain.id,
             recCanUuid: currentUuid,
           });
         }
       }
       
-      const serverSeaUuids = new Set((seaServiceData || []).map(s => s.seaUuid));
+      const serverSeaMap = new Map((seaServiceData || []).map(s => [s.seaUuid, s.id]));
       const localSeaIds = new Set(formData.seaService.map(s => s.id));
       
       for (const sea of formData.seaService) {
         const seaPayload = {
-          vesselName: sea.vesselName || '',
-          vesselUuid: '',
-          vesselTypeUuid: sea.vesselType || '',
-          deadweight: sea.deadweight || '',
-          engineTypePower: sea.engineTypePower || '',
-          ownerOperator: sea.ownerOperator || '',
-          rank: sea.rank || '',
-          fromDate: sea.from || '',
-          toDate: sea.to || '',
-          periodMonths: sea.periodMonths || '',
+          vesselName: sea.vesselName || undefined,
+          vesselTypeUuid: sea.vesselType || undefined,
+          deadweight: sea.deadweight || undefined,
+          engineTypePower: sea.engineTypePower || undefined,
+          ownerOperator: sea.ownerOperator || undefined,
+          rank: sea.rank || undefined,
+          fromDate: sea.from || undefined,
+          toDate: sea.to || undefined,
+          periodMonths: sea.periodMonths || undefined,
           sortOrder: formData.seaService.indexOf(sea),
         };
         
-        if (serverSeaUuids.has(sea.id)) {
+        const serverNumericId = serverSeaMap.get(sea.id);
+        if (serverNumericId !== undefined) {
           await updateSeaServiceMutation.mutateAsync({
-            seaUuid: sea.id,
+            id: serverNumericId,
             data: seaPayload,
             recCanUuid: currentUuid,
           });
@@ -1428,25 +1444,26 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (const serverSea of (seaServiceData || [])) {
         if (!localSeaIds.has(serverSea.seaUuid)) {
           await deleteSeaServiceMutation.mutateAsync({
-            seaUuid: serverSea.seaUuid,
+            id: serverSea.id,
             recCanUuid: currentUuid,
           });
         }
       }
       
-      const serverInfoUuids = new Set((additionalInfoData || []).map(a => a.infoUuid));
+      const serverInfoMap = new Map((additionalInfoData || []).map(a => [a.infoUuid, a.id]));
       const localInfoIds = new Set(formData.additionalInfo.map(a => a.id));
       
       for (const info of formData.additionalInfo) {
         const infoPayload = {
-          information: info.information || '',
-          response: info.response || '',
+          information: info.information || undefined,
+          response: info.response || undefined,
           sortOrder: formData.additionalInfo.indexOf(info),
         };
         
-        if (serverInfoUuids.has(info.id)) {
+        const serverNumericId = serverInfoMap.get(info.id);
+        if (serverNumericId !== undefined) {
           await updateAdditionalInfoMutation.mutateAsync({
-            infoUuid: info.id,
+            id: serverNumericId,
             data: infoPayload,
             recCanUuid: currentUuid,
           });
@@ -1461,7 +1478,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (const serverInfo of (additionalInfoData || [])) {
         if (!localInfoIds.has(serverInfo.infoUuid)) {
           await deleteAdditionalInfoMutation.mutateAsync({
-            infoUuid: serverInfo.infoUuid,
+            id: serverInfo.id,
             recCanUuid: currentUuid,
           });
         }
