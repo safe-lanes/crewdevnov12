@@ -1058,16 +1058,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   useEffect(() => {
     if (screeningB6InterviewItems && screeningB6InterviewItems.length > 0) {
+      // Map API fields (DB column names) to UI form fields
       setFormData(prev => ({
         ...prev,
-        b6InterviewItems: screeningB6InterviewItems.map(interview => ({
-          id: interview.interviewItemUuid,
+        b6Interviews: screeningB6InterviewItems.map(interview => ({
+          id: interview.intUuid,
           serverId: interview.id,
-          interviewerName: interview.interviewerName || '',
-          interviewDate: interview.interviewDate || '',
-          interviewType: interview.interviewType || '',
+          interviewer: interview.interviewerUuid || '',
+          date: interview.interviewDate || '',
+          status: interview.status || '',
           result: interview.result || '',
-          remarks: interview.remarks || '',
+          comments: interview.comments || '',
         })),
       }));
     }
@@ -1075,17 +1076,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   useEffect(() => {
     if (screeningB7TrainingItems && screeningB7TrainingItems.length > 0) {
+      // Map API fields (DB column names) to UI form fields  
       setFormData(prev => ({
         ...prev,
         b7TrainingNeeds: screeningB7TrainingItems.map(training => ({
-          id: training.trainingItemUuid,
+          id: training.trainItemUuid,
           serverId: training.id,
-          trainingName: training.trainingName || '',
-          trainingType: training.trainingType || '',
-          provider: training.provider || '',
-          scheduledDate: training.scheduledDate || '',
-          status: training.status || '',
-          remarks: training.remarks || '',
+          training: training.training || '',
+          identifiedBy: training.identifiedByUuid || '',
+          category: training.category || '',
+          dueDate: training.dueDate || '',
+          comments: training.comments || '',
         })),
       }));
     }
@@ -2176,34 +2177,36 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
 
       // Save B6 interviews from UI (formData.b6Interviews has: date, interviewer, status, result, comments)
-      const serverB6InterviewMap = new Map((screeningB6InterviewItems || []).map(i => [i.interviewItemUuid, i.id]));
+      // DB columns: interview_date, interviewer_uuid, status, result, comments
+      const serverB6InterviewMap = new Map((screeningB6InterviewItems || []).map(i => [i.intUuid, i.id]));
       for (const interview of formData.b6Interviews) {
         if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid) {
           await createB6InterviewItemMutation.mutateAsync({
             b6Uuid: currentB6Uuid,
             data: {
-              interviewerName: interview.interviewer || undefined,
+              interviewerUuid: interview.interviewer || undefined,
               interviewDate: interview.date || undefined,
-              interviewType: interview.status || undefined,
+              status: interview.status || undefined,
               result: interview.result || undefined,
-              remarks: interview.comments || undefined,
+              comments: interview.comments || undefined,
             },
           });
         }
       }
 
       // Save B7 training needs from UI (formData.b7TrainingNeeds has: training, identifiedBy, category, dueDate, comments)
-      const serverB7TrainingMap = new Map((screeningB7TrainingItems || []).map(t => [t.trainingItemUuid, t.id]));
+      // DB columns: training, identified_by_uuid, category, due_date, comments
+      const serverB7TrainingMap = new Map((screeningB7TrainingItems || []).map(t => [t.trainItemUuid, t.id]));
       for (const training of formData.b7TrainingNeeds) {
         if (!serverB7TrainingMap.has(training.id) && currentB7Uuid) {
           await createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {
-              trainingName: training.training || undefined,
-              trainingType: training.category || undefined,
-              provider: training.identifiedBy || undefined,
-              scheduledDate: training.dueDate || undefined,
-              remarks: training.comments || undefined,
+              training: training.training || undefined,
+              category: training.category || undefined,
+              identifiedByUuid: training.identifiedBy || undefined,
+              dueDate: training.dueDate || undefined,
+              comments: training.comments || undefined,
             },
           });
         }

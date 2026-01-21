@@ -906,15 +906,17 @@ export function useV2CreateScreeningB5TestItem() {
 }
 
 // Screening B6 Interview Items
+// DB columns: int_uuid, b6_uuid, interview_date, interviewer_uuid, status, result, comments, sort_order
 export interface ScreeningB6InterviewItem {
   id: number;
-  interviewItemUuid: string;
+  intUuid: string;
   b6Uuid: string;
-  interviewerName?: string;
   interviewDate?: string;
-  interviewType?: string;
+  interviewerUuid?: string;
+  status?: string;
   result?: string;
-  remarks?: string;
+  comments?: string;
+  sortOrder?: number;
 }
 
 export function useV2ScreeningB6InterviewItems(b6Uuid: string | null) {
@@ -937,16 +939,17 @@ export function useV2CreateScreeningB6InterviewItem() {
 }
 
 // Screening B7 Training Items
+// DB columns: train_item_uuid, b7_uuid, training, identified_by_uuid, category, due_date, comments, sort_order
 export interface ScreeningB7TrainingItem {
   id: number;
-  trainingItemUuid: string;
+  trainItemUuid: string;
   b7Uuid: string;
-  trainingName?: string;
-  trainingType?: string;
-  provider?: string;
-  scheduledDate?: string;
-  status?: string;
-  remarks?: string;
+  training?: string;
+  identifiedByUuid?: string;
+  category?: string;
+  dueDate?: string;
+  comments?: string;
+  sortOrder?: number;
 }
 
 export function useV2ScreeningB7TrainingItems(b7Uuid: string | null) {
