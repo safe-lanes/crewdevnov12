@@ -391,7 +391,7 @@ export interface CandidateApproval {
   approvalDate: string;
   approverUuid: string;
   status: string;
-  approval: string;
+  approvalResult: string;
   comments: string;
   sortOrder: number;
 }

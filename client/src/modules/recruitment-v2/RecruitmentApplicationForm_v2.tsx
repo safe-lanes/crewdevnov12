@@ -1602,7 +1602,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           date: approval.approvalDate || '',
           approver: approval.approverUuid || '',
           status: approval.status || '',
-          approval: approval.approval || '',
+          approval: approval.approvalResult || '',
           comments: approval.comments || '',
         })),
       }));
@@ -3156,7 +3156,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               approvalDate: approver.date || undefined,
               approverUuid: approver.approver || undefined,
               status: approver.status || undefined,
-              approval: approver.approval || undefined,
+              approvalResult: approver.approval || undefined,
               comments: approver.comments || undefined,
             } as any,
           });
@@ -3167,7 +3167,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               approvalDate: approver.date || undefined,
               approverUuid: approver.approver || undefined,
               status: approver.status || undefined,
-              approval: approver.approval || undefined,
+              approvalResult: approver.approval || undefined,
               comments: approver.comments || undefined,
             } as any,
           });
