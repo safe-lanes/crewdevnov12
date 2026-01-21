@@ -119,10 +119,16 @@ export function FileAttachmentDialog({
     // Open file in new browser tab for universal compatibility
     const newWindow = window.open();
     if (newWindow) {
-      // Sanitize filename to prevent XSS
-      const safeName = escapeHtml(attachment.name);
+      // Handle both frontend (name, type, data) and backend (fileName, fileType, fileData) property names
+      const att = attachment as any;
+      const fileName = attachment.name || att.fileName || 'file';
+      const fileType = attachment.type || att.fileType || '';
+      const fileData = attachment.data || att.fileData || '';
       
-      if (attachment.type === 'application/pdf') {
+      // Sanitize filename to prevent XSS
+      const safeName = escapeHtml(fileName);
+      
+      if (fileType === 'application/pdf') {
         // For PDFs, embed in an HTML page for better display
         newWindow.document.write(`
           <!DOCTYPE html>
@@ -135,11 +141,11 @@ export function FileAttachmentDialog({
               </style>
             </head>
             <body>
-              <iframe src="${attachment.data}"></iframe>
+              <iframe src="${fileData}"></iframe>
             </body>
           </html>
         `);
-      } else if (attachment.type.startsWith('image/')) {
+      } else if (fileType.startsWith('image/')) {
         // For images, display centered
         newWindow.document.write(`
           <!DOCTYPE html>
@@ -160,13 +166,13 @@ export function FileAttachmentDialog({
               </style>
             </head>
             <body>
-              <img src="${attachment.data}" alt="${safeName}" />
+              <img src="${fileData}" alt="${safeName}" />
             </body>
           </html>
         `);
       } else {
         // Fallback for other types
-        newWindow.location.href = attachment.data;
+        newWindow.location.href = fileData;
       }
       newWindow.document.close();
     } else {
@@ -237,23 +243,23 @@ export function FileAttachmentDialog({
                       data-testid={`attachment-item-${attachment.id}`}
                     >
                       <div className="flex-shrink-0">
-                        {attachment.type.startsWith('image/') ? (
+                        {(attachment.type || (attachment as any).fileType || '')?.startsWith('image/') ? (
                           <img
-                            src={attachment.data}
-                            alt={attachment.name}
+                            src={attachment.data || (attachment as any).fileData}
+                            alt={attachment.name || (attachment as any).fileName}
                             className="h-10 w-10 object-cover rounded"
                           />
                         ) : (
-                          getFileIcon(attachment.type)
+                          getFileIcon(attachment.type || (attachment as any).fileType || '')
                         )}
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {attachment.name}
+                          {attachment.name || (attachment as any).fileName}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {formatFileSize(attachment.size)}
+                          {formatFileSize(attachment.size || parseInt((attachment as any).fileSize || '0'))}
                         </p>
                       </div>
 
