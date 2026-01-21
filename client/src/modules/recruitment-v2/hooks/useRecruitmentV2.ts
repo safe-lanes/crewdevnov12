@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
   CandidateCore,
   CandidateVesselType,
@@ -30,13 +30,13 @@ import type {
   CandidateRecruitmentDecision,
   AssignedGroup,
   V2CandidateListItem,
-} from '../types/formTypes';
+} from "../types/formTypes";
 
-const API_BASE = '/api/v2/recruitment';
+const API_BASE = "/api/v2/recruitment";
 
 // Performance: Cache queries for 5 minutes to reduce network requests
-const QUERY_STALE_TIME = 5 * 60 * 1000; // 5 minutes
-const QUERY_GC_TIME = 10 * 60 * 1000; // 10 minutes
+const QUERY_STALE_TIME = 1 * 60 * 1000; // 1 minutes
+const QUERY_GC_TIME = 1 * 60 * 1000; // 1 minutes
 
 async function fetchApi<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`);
@@ -48,8 +48,8 @@ async function fetchApi<T>(endpoint: string): Promise<T> {
 
 async function postApi<T>(endpoint: string, data: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!response.ok) {
@@ -60,8 +60,8 @@ async function postApi<T>(endpoint: string, data: unknown): Promise<T> {
 
 async function putApi<T>(endpoint: string, data: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!response.ok) {
@@ -72,8 +72,8 @@ async function putApi<T>(endpoint: string, data: unknown): Promise<T> {
 
 async function patchApi<T>(endpoint: string, data: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!response.ok) {
@@ -84,7 +84,7 @@ async function patchApi<T>(endpoint: string, data: unknown): Promise<T> {
 
 async function deleteApi<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
   if (!response.ok) {
     throw new Error(`API Error: ${response.status}`);
@@ -94,8 +94,8 @@ async function deleteApi<T>(endpoint: string): Promise<T> {
 
 export function useV2Candidates() {
   return useQuery<V2CandidateListItem[]>({
-    queryKey: ['v2', 'candidates'],
-    queryFn: () => fetchApi('/candidates'),
+    queryKey: ["v2", "candidates"],
+    queryFn: () => fetchApi("/candidates"),
     staleTime: QUERY_STALE_TIME,
     gcTime: QUERY_GC_TIME,
   });
@@ -103,7 +103,7 @@ export function useV2Candidates() {
 
 export function useV2Candidate(recCanUuid: string | null) {
   return useQuery<CandidateCore>({
-    queryKey: ['v2', 'candidates', recCanUuid],
+    queryKey: ["v2", "candidates", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -114,9 +114,10 @@ export function useV2Candidate(recCanUuid: string | null) {
 export function useV2CreateCandidate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<CandidateCore>) => postApi<CandidateCore>('/candidates', data),
+    mutationFn: (data: Partial<CandidateCore>) =>
+      postApi<CandidateCore>("/candidates", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "candidates"] });
     },
   });
 }
@@ -124,11 +125,18 @@ export function useV2CreateCandidate() {
 export function useV2UpdateCandidate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateCore> }) =>
-      patchApi<CandidateCore>(`/candidates/${recCanUuid}`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateCore>;
+    }) => patchApi<CandidateCore>(`/candidates/${recCanUuid}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates', variables.recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "candidates"] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "candidates", variables.recCanUuid],
+      });
     },
   });
 }
@@ -138,21 +146,21 @@ export function useV2DeleteCandidate() {
   return useMutation({
     mutationFn: (recCanUuid: string) => deleteApi(`/candidates/${recCanUuid}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "candidates"] });
     },
   });
 }
 
 export function useV2NextFileNumber() {
   return useQuery<{ nextFileNo: string }>({
-    queryKey: ['v2', 'candidates', 'next-file-number'],
-    queryFn: () => fetchApi('/candidates/next-file-number'),
+    queryKey: ["v2", "candidates", "next-file-number"],
+    queryFn: () => fetchApi("/candidates/next-file-number"),
   });
 }
 
 export function useV2PersonalDetails(recCanUuid: string | null) {
   return useQuery<CandidatePersonalDetails>({
-    queryKey: ['v2', 'personal-details', recCanUuid],
+    queryKey: ["v2", "personal-details", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/personal-details`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -163,17 +171,28 @@ export function useV2PersonalDetails(recCanUuid: string | null) {
 export function useV2SavePersonalDetails() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidatePersonalDetails> }) =>
-      putApi<CandidatePersonalDetails>(`/candidates/${recCanUuid}/personal-details`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidatePersonalDetails>;
+    }) =>
+      putApi<CandidatePersonalDetails>(
+        `/candidates/${recCanUuid}/personal-details`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'personal-details', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "personal-details", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2VesselTypes(recCanUuid: string | null) {
   return useQuery<CandidateVesselType[]>({
-    queryKey: ['v2', 'vessel-types', recCanUuid],
+    queryKey: ["v2", "vessel-types", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/vessel-types`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -184,17 +203,28 @@ export function useV2VesselTypes(recCanUuid: string | null) {
 export function useV2SaveVesselTypes() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: CandidateVesselType[] }) =>
-      putApi<CandidateVesselType[]>(`/candidates/${recCanUuid}/vessel-types`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: CandidateVesselType[];
+    }) =>
+      putApi<CandidateVesselType[]>(
+        `/candidates/${recCanUuid}/vessel-types`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'vessel-types', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "vessel-types", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2Address(recCanUuid: string | null) {
   return useQuery<CandidateAddress>({
-    queryKey: ['v2', 'address', recCanUuid],
+    queryKey: ["v2", "address", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/address`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -205,17 +235,24 @@ export function useV2Address(recCanUuid: string | null) {
 export function useV2SaveAddress() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateAddress> }) =>
-      putApi<CandidateAddress>(`/candidates/${recCanUuid}/address`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateAddress>;
+    }) => putApi<CandidateAddress>(`/candidates/${recCanUuid}/address`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'address', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "address", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2FamilyInfo(recCanUuid: string | null) {
   return useQuery<CandidateFamilyInfo>({
-    queryKey: ['v2', 'family-info', recCanUuid],
+    queryKey: ["v2", "family-info", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/family-info`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -226,17 +263,28 @@ export function useV2FamilyInfo(recCanUuid: string | null) {
 export function useV2SaveFamilyInfo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateFamilyInfo> }) =>
-      putApi<CandidateFamilyInfo>(`/candidates/${recCanUuid}/family-info`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateFamilyInfo>;
+    }) =>
+      putApi<CandidateFamilyInfo>(
+        `/candidates/${recCanUuid}/family-info`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'family-info', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "family-info", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2Children(recCanUuid: string | null) {
   return useQuery<CandidateChild[]>({
-    queryKey: ['v2', 'children', recCanUuid],
+    queryKey: ["v2", "children", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/children`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -247,17 +295,24 @@ export function useV2Children(recCanUuid: string | null) {
 export function useV2SaveChildren() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: CandidateChild[] }) =>
-      putApi<CandidateChild[]>(`/candidates/${recCanUuid}/children`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: CandidateChild[];
+    }) => putApi<CandidateChild[]>(`/candidates/${recCanUuid}/children`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'children', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "children", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2NextOfKin(recCanUuid: string | null) {
   return useQuery<CandidateNextOfKin>({
-    queryKey: ['v2', 'next-of-kin', recCanUuid],
+    queryKey: ["v2", "next-of-kin", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/next-of-kin`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -268,17 +323,25 @@ export function useV2NextOfKin(recCanUuid: string | null) {
 export function useV2SaveNextOfKin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateNextOfKin> }) =>
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateNextOfKin>;
+    }) =>
       putApi<CandidateNextOfKin>(`/candidates/${recCanUuid}/next-of-kin`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'next-of-kin', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "next-of-kin", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2Documents(recCanUuid: string | null) {
   return useQuery<CandidateDocument[]>({
-    queryKey: ['v2', 'documents', recCanUuid],
+    queryKey: ["v2", "documents", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/documents`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -289,10 +352,18 @@ export function useV2Documents(recCanUuid: string | null) {
 export function useV2SaveDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateDocument> }) =>
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateDocument>;
+    }) =>
       postApi<CandidateDocument>(`/candidates/${recCanUuid}/documents`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'documents', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "documents", variables.recCanUuid],
+      });
     },
   });
 }
@@ -300,10 +371,18 @@ export function useV2SaveDocument() {
 export function useV2UpdateDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateDocument>; recCanUuid: string }) =>
-      patchApi<CandidateDocument>(`/documents/${id}`, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CandidateDocument>;
+      recCanUuid: string;
+    }) => patchApi<CandidateDocument>(`/documents/${id}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'documents', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "documents", variables.recCanUuid],
+      });
     },
   });
 }
@@ -314,14 +393,16 @@ export function useV2DeleteDocument() {
     mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
       deleteApi(`/documents/${id}`),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'documents', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "documents", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2Visas(recCanUuid: string | null) {
   return useQuery<CandidateVisa[]>({
-    queryKey: ['v2', 'visas', recCanUuid],
+    queryKey: ["v2", "visas", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/visas`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -332,10 +413,17 @@ export function useV2Visas(recCanUuid: string | null) {
 export function useV2SaveVisa() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateVisa> }) =>
-      postApi<CandidateVisa>(`/candidates/${recCanUuid}/visas`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateVisa>;
+    }) => postApi<CandidateVisa>(`/candidates/${recCanUuid}/visas`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'visas', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "visas", variables.recCanUuid],
+      });
     },
   });
 }
@@ -343,10 +431,18 @@ export function useV2SaveVisa() {
 export function useV2UpdateVisa() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateVisa>; recCanUuid: string }) =>
-      patchApi<CandidateVisa>(`/visas/${id}`, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CandidateVisa>;
+      recCanUuid: string;
+    }) => patchApi<CandidateVisa>(`/visas/${id}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'visas', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "visas", variables.recCanUuid],
+      });
     },
   });
 }
@@ -357,14 +453,16 @@ export function useV2DeleteVisa() {
     mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
       deleteApi(`/visas/${id}`),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'visas', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "visas", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2Education(recCanUuid: string | null) {
   return useQuery<CandidateEducation[]>({
-    queryKey: ['v2', 'education', recCanUuid],
+    queryKey: ["v2", "education", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/education`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -375,10 +473,18 @@ export function useV2Education(recCanUuid: string | null) {
 export function useV2SaveEducation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateEducation> }) =>
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateEducation>;
+    }) =>
       postApi<CandidateEducation>(`/candidates/${recCanUuid}/education`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'education', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "education", variables.recCanUuid],
+      });
     },
   });
 }
@@ -386,10 +492,18 @@ export function useV2SaveEducation() {
 export function useV2UpdateEducation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateEducation>; recCanUuid: string }) =>
-      patchApi<CandidateEducation>(`/education/${id}`, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CandidateEducation>;
+      recCanUuid: string;
+    }) => patchApi<CandidateEducation>(`/education/${id}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'education', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "education", variables.recCanUuid],
+      });
     },
   });
 }
@@ -400,14 +514,16 @@ export function useV2DeleteEducation() {
     mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
       deleteApi(`/education/${id}`),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'education', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "education", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2Licenses(recCanUuid: string | null) {
   return useQuery<CandidateLicense[]>({
-    queryKey: ['v2', 'licenses', recCanUuid],
+    queryKey: ["v2", "licenses", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/licenses`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -418,10 +534,17 @@ export function useV2Licenses(recCanUuid: string | null) {
 export function useV2SaveLicense() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateLicense> }) =>
-      postApi<CandidateLicense>(`/candidates/${recCanUuid}/licenses`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateLicense>;
+    }) => postApi<CandidateLicense>(`/candidates/${recCanUuid}/licenses`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'licenses', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "licenses", variables.recCanUuid],
+      });
     },
   });
 }
@@ -429,10 +552,18 @@ export function useV2SaveLicense() {
 export function useV2UpdateLicense() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateLicense>; recCanUuid: string }) =>
-      patchApi<CandidateLicense>(`/licenses/${id}`, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CandidateLicense>;
+      recCanUuid: string;
+    }) => patchApi<CandidateLicense>(`/licenses/${id}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'licenses', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "licenses", variables.recCanUuid],
+      });
     },
   });
 }
@@ -443,14 +574,16 @@ export function useV2DeleteLicense() {
     mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
       deleteApi(`/licenses/${id}`),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'licenses', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "licenses", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2TrainingCourses(recCanUuid: string | null) {
   return useQuery<CandidateTrainingCourse[]>({
-    queryKey: ['v2', 'training-courses', recCanUuid],
+    queryKey: ["v2", "training-courses", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/training`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -461,10 +594,21 @@ export function useV2TrainingCourses(recCanUuid: string | null) {
 export function useV2SaveTrainingCourse() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateTrainingCourse> }) =>
-      postApi<CandidateTrainingCourse>(`/candidates/${recCanUuid}/training`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateTrainingCourse>;
+    }) =>
+      postApi<CandidateTrainingCourse>(
+        `/candidates/${recCanUuid}/training`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'training-courses', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "training-courses", variables.recCanUuid],
+      });
     },
   });
 }
@@ -472,10 +616,18 @@ export function useV2SaveTrainingCourse() {
 export function useV2UpdateTrainingCourse() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateTrainingCourse>; recCanUuid: string }) =>
-      patchApi<CandidateTrainingCourse>(`/training/${id}`, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CandidateTrainingCourse>;
+      recCanUuid: string;
+    }) => patchApi<CandidateTrainingCourse>(`/training/${id}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'training-courses', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "training-courses", variables.recCanUuid],
+      });
     },
   });
 }
@@ -486,14 +638,16 @@ export function useV2DeleteTrainingCourse() {
     mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
       deleteApi(`/training/${id}`),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'training-courses', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "training-courses", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2SeaService(recCanUuid: string | null) {
   return useQuery<CandidateSeaService[]>({
-    queryKey: ['v2', 'sea-service', recCanUuid],
+    queryKey: ["v2", "sea-service", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/sea-service`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -504,10 +658,21 @@ export function useV2SeaService(recCanUuid: string | null) {
 export function useV2SaveSeaService() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateSeaService> }) =>
-      postApi<CandidateSeaService>(`/candidates/${recCanUuid}/sea-service`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateSeaService>;
+    }) =>
+      postApi<CandidateSeaService>(
+        `/candidates/${recCanUuid}/sea-service`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'sea-service', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "sea-service", variables.recCanUuid],
+      });
     },
   });
 }
@@ -515,10 +680,18 @@ export function useV2SaveSeaService() {
 export function useV2UpdateSeaService() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateSeaService>; recCanUuid: string }) =>
-      patchApi<CandidateSeaService>(`/sea-service/${id}`, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CandidateSeaService>;
+      recCanUuid: string;
+    }) => patchApi<CandidateSeaService>(`/sea-service/${id}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'sea-service', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "sea-service", variables.recCanUuid],
+      });
     },
   });
 }
@@ -529,14 +702,16 @@ export function useV2DeleteSeaService() {
     mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
       deleteApi(`/sea-service/${id}`),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'sea-service', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "sea-service", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2AdditionalInfo(recCanUuid: string | null) {
   return useQuery<CandidateAdditionalInfo[]>({
-    queryKey: ['v2', 'additional-info', recCanUuid],
+    queryKey: ["v2", "additional-info", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/additional-info`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -547,10 +722,21 @@ export function useV2AdditionalInfo(recCanUuid: string | null) {
 export function useV2SaveAdditionalInfo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateAdditionalInfo> }) =>
-      postApi<CandidateAdditionalInfo>(`/candidates/${recCanUuid}/additional-info`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateAdditionalInfo>;
+    }) =>
+      postApi<CandidateAdditionalInfo>(
+        `/candidates/${recCanUuid}/additional-info`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'additional-info', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "additional-info", variables.recCanUuid],
+      });
     },
   });
 }
@@ -558,10 +744,18 @@ export function useV2SaveAdditionalInfo() {
 export function useV2UpdateAdditionalInfo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CandidateAdditionalInfo>; recCanUuid: string }) =>
-      patchApi<CandidateAdditionalInfo>(`/additional-info/${id}`, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CandidateAdditionalInfo>;
+      recCanUuid: string;
+    }) => patchApi<CandidateAdditionalInfo>(`/additional-info/${id}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'additional-info', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "additional-info", variables.recCanUuid],
+      });
     },
   });
 }
@@ -572,14 +766,16 @@ export function useV2DeleteAdditionalInfo() {
     mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
       deleteApi(`/additional-info/${id}`),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'additional-info', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "additional-info", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB1(recCanUuid: string | null) {
   return useQuery<ScreeningB1>({
-    queryKey: ['v2', 'screening-b1', recCanUuid],
+    queryKey: ["v2", "screening-b1", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b1`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -590,10 +786,17 @@ export function useV2ScreeningB1(recCanUuid: string | null) {
 export function useV2SaveScreeningB1() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB1> }) =>
-      putApi<ScreeningB1>(`/candidates/${recCanUuid}/screening/b1`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<ScreeningB1>;
+    }) => putApi<ScreeningB1>(`/candidates/${recCanUuid}/screening/b1`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b1", variables.recCanUuid],
+      });
     },
   });
 }
@@ -614,7 +817,7 @@ export interface ScreeningB1Attachment {
 
 export function useV2ScreeningB1Attachments(b1Uuid: string | null) {
   return useQuery<ScreeningB1Attachment[]>({
-    queryKey: ['v2', 'screening-b1-attachments', b1Uuid],
+    queryKey: ["v2", "screening-b1-attachments", b1Uuid],
     queryFn: () => fetchApi(`/screening/b1/${b1Uuid}/attachments`),
     enabled: !!b1Uuid,
   });
@@ -623,10 +826,21 @@ export function useV2ScreeningB1Attachments(b1Uuid: string | null) {
 export function useV2CreateScreeningB1Attachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b1Uuid, data }: { b1Uuid: string; data: Partial<ScreeningB1Attachment> }) =>
-      postApi<ScreeningB1Attachment>(`/screening/b1/${b1Uuid}/attachments`, data),
+    mutationFn: ({
+      b1Uuid,
+      data,
+    }: {
+      b1Uuid: string;
+      data: Partial<ScreeningB1Attachment>;
+    }) =>
+      postApi<ScreeningB1Attachment>(
+        `/screening/b1/${b1Uuid}/attachments`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1-attachments', variables.b1Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b1-attachments", variables.b1Uuid],
+      });
     },
   });
 }
@@ -643,7 +857,7 @@ export interface ScreeningB1Comment {
 
 export function useV2ScreeningB1Comments(b1Uuid: string | null) {
   return useQuery<ScreeningB1Comment[]>({
-    queryKey: ['v2', 'screening-b1-comments', b1Uuid],
+    queryKey: ["v2", "screening-b1-comments", b1Uuid],
     queryFn: () => fetchApi(`/screening/b1/${b1Uuid}/comments`),
     enabled: !!b1Uuid,
   });
@@ -652,10 +866,17 @@ export function useV2ScreeningB1Comments(b1Uuid: string | null) {
 export function useV2CreateScreeningB1Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b1Uuid, data }: { b1Uuid: string; data: Partial<ScreeningB1Comment> }) =>
-      postApi<ScreeningB1Comment>(`/screening/b1/${b1Uuid}/comments`, data),
+    mutationFn: ({
+      b1Uuid,
+      data,
+    }: {
+      b1Uuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) => postApi<ScreeningB1Comment>(`/screening/b1/${b1Uuid}/comments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1-comments', variables.b1Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b1-comments", variables.b1Uuid],
+      });
     },
   });
 }
@@ -663,17 +884,23 @@ export function useV2CreateScreeningB1Comment() {
 export function useV2UpdateScreeningB1Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+    mutationFn: ({
+      commentUuid,
+      data,
+    }: {
+      commentUuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) =>
       putApi<ScreeningB1Comment>(`/screening/b1/comments/${commentUuid}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1'] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "screening-b1"] });
     },
   });
 }
 
 export function useV2ScreeningB2(recCanUuid: string | null) {
   return useQuery<ScreeningB2>({
-    queryKey: ['v2', 'screening-b2', recCanUuid],
+    queryKey: ["v2", "screening-b2", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b2`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -684,17 +911,24 @@ export function useV2ScreeningB2(recCanUuid: string | null) {
 export function useV2SaveScreeningB2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB2> }) =>
-      putApi<ScreeningB2>(`/candidates/${recCanUuid}/screening/b2`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<ScreeningB2>;
+    }) => putApi<ScreeningB2>(`/candidates/${recCanUuid}/screening/b2`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b2", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB2Comments(b2Uuid: string | null) {
   return useQuery<ScreeningB1Comment[]>({
-    queryKey: ['v2', 'screening-b2-comments', b2Uuid],
+    queryKey: ["v2", "screening-b2-comments", b2Uuid],
     queryFn: () => fetchApi(`/screening/b2/${b2Uuid}/comments`),
     enabled: !!b2Uuid,
   });
@@ -703,10 +937,17 @@ export function useV2ScreeningB2Comments(b2Uuid: string | null) {
 export function useV2CreateScreeningB2Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b2Uuid, data }: { b2Uuid: string; data: Partial<ScreeningB1Comment> }) =>
-      postApi<ScreeningB1Comment>(`/screening/b2/${b2Uuid}/comments`, data),
+    mutationFn: ({
+      b2Uuid,
+      data,
+    }: {
+      b2Uuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) => postApi<ScreeningB1Comment>(`/screening/b2/${b2Uuid}/comments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2-comments', variables.b2Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b2-comments", variables.b2Uuid],
+      });
     },
   });
 }
@@ -714,10 +955,16 @@ export function useV2CreateScreeningB2Comment() {
 export function useV2UpdateScreeningB2Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+    mutationFn: ({
+      commentUuid,
+      data,
+    }: {
+      commentUuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) =>
       putApi<ScreeningB1Comment>(`/screening/b2/comments/${commentUuid}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2'] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "screening-b2"] });
     },
   });
 }
@@ -737,7 +984,7 @@ export interface ScreeningB2Attachment {
 
 export function useV2ScreeningB2Attachments(b2Uuid: string | null) {
   return useQuery<ScreeningB2Attachment[]>({
-    queryKey: ['v2', 'screening-b2-attachments', b2Uuid],
+    queryKey: ["v2", "screening-b2-attachments", b2Uuid],
     queryFn: () => fetchApi(`/screening/b2/${b2Uuid}/attachments`),
     enabled: !!b2Uuid,
   });
@@ -746,17 +993,28 @@ export function useV2ScreeningB2Attachments(b2Uuid: string | null) {
 export function useV2CreateScreeningB2Attachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b2Uuid, data }: { b2Uuid: string; data: Partial<ScreeningB2Attachment> }) =>
-      postApi<ScreeningB2Attachment>(`/screening/b2/${b2Uuid}/attachments`, data),
+    mutationFn: ({
+      b2Uuid,
+      data,
+    }: {
+      b2Uuid: string;
+      data: Partial<ScreeningB2Attachment>;
+    }) =>
+      postApi<ScreeningB2Attachment>(
+        `/screening/b2/${b2Uuid}/attachments`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2-attachments', variables.b2Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b2-attachments", variables.b2Uuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB3(recCanUuid: string | null) {
   return useQuery<ScreeningB3>({
-    queryKey: ['v2', 'screening-b3', recCanUuid],
+    queryKey: ["v2", "screening-b3", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b3`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -767,17 +1025,24 @@ export function useV2ScreeningB3(recCanUuid: string | null) {
 export function useV2SaveScreeningB3() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB3> }) =>
-      putApi<ScreeningB3>(`/candidates/${recCanUuid}/screening/b3`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<ScreeningB3>;
+    }) => putApi<ScreeningB3>(`/candidates/${recCanUuid}/screening/b3`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b3", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB3Comments(b3Uuid: string | null) {
   return useQuery<ScreeningB1Comment[]>({
-    queryKey: ['v2', 'screening-b3-comments', b3Uuid],
+    queryKey: ["v2", "screening-b3-comments", b3Uuid],
     queryFn: () => fetchApi(`/screening/b3/${b3Uuid}/comments`),
     enabled: !!b3Uuid,
   });
@@ -786,10 +1051,17 @@ export function useV2ScreeningB3Comments(b3Uuid: string | null) {
 export function useV2CreateScreeningB3Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b3Uuid, data }: { b3Uuid: string; data: Partial<ScreeningB1Comment> }) =>
-      postApi<ScreeningB1Comment>(`/screening/b3/${b3Uuid}/comments`, data),
+    mutationFn: ({
+      b3Uuid,
+      data,
+    }: {
+      b3Uuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) => postApi<ScreeningB1Comment>(`/screening/b3/${b3Uuid}/comments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-comments', variables.b3Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b3-comments", variables.b3Uuid],
+      });
     },
   });
 }
@@ -797,10 +1069,16 @@ export function useV2CreateScreeningB3Comment() {
 export function useV2UpdateScreeningB3Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+    mutationFn: ({
+      commentUuid,
+      data,
+    }: {
+      commentUuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) =>
       putApi<ScreeningB1Comment>(`/screening/b3/comments/${commentUuid}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3'] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "screening-b3"] });
     },
   });
 }
@@ -820,7 +1098,7 @@ export interface ScreeningB3Attachment {
 
 export function useV2ScreeningB3Attachments(b3Uuid: string | null) {
   return useQuery<ScreeningB3Attachment[]>({
-    queryKey: ['v2', 'screening-b3-attachments', b3Uuid],
+    queryKey: ["v2", "screening-b3-attachments", b3Uuid],
     queryFn: () => fetchApi(`/screening/b3/${b3Uuid}/attachments`),
     enabled: !!b3Uuid,
   });
@@ -829,17 +1107,28 @@ export function useV2ScreeningB3Attachments(b3Uuid: string | null) {
 export function useV2CreateScreeningB3Attachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b3Uuid, data }: { b3Uuid: string; data: Partial<ScreeningB3Attachment> }) =>
-      postApi<ScreeningB3Attachment>(`/screening/b3/${b3Uuid}/attachments`, data),
+    mutationFn: ({
+      b3Uuid,
+      data,
+    }: {
+      b3Uuid: string;
+      data: Partial<ScreeningB3Attachment>;
+    }) =>
+      postApi<ScreeningB3Attachment>(
+        `/screening/b3/${b3Uuid}/attachments`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-attachments', variables.b3Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b3-attachments", variables.b3Uuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB4(recCanUuid: string | null) {
   return useQuery<ScreeningB4>({
-    queryKey: ['v2', 'screening-b4', recCanUuid],
+    queryKey: ["v2", "screening-b4", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b4`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -850,17 +1139,24 @@ export function useV2ScreeningB4(recCanUuid: string | null) {
 export function useV2SaveScreeningB4() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB4> }) =>
-      putApi<ScreeningB4>(`/candidates/${recCanUuid}/screening/b4`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<ScreeningB4>;
+    }) => putApi<ScreeningB4>(`/candidates/${recCanUuid}/screening/b4`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b4", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB4Comments(b4Uuid: string | null) {
   return useQuery<ScreeningB1Comment[]>({
-    queryKey: ['v2', 'screening-b4-comments', b4Uuid],
+    queryKey: ["v2", "screening-b4-comments", b4Uuid],
     queryFn: () => fetchApi(`/screening/b4/${b4Uuid}/comments`),
     enabled: !!b4Uuid,
   });
@@ -869,10 +1165,17 @@ export function useV2ScreeningB4Comments(b4Uuid: string | null) {
 export function useV2CreateScreeningB4Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b4Uuid, data }: { b4Uuid: string; data: Partial<ScreeningB1Comment> }) =>
-      postApi<ScreeningB1Comment>(`/screening/b4/${b4Uuid}/comments`, data),
+    mutationFn: ({
+      b4Uuid,
+      data,
+    }: {
+      b4Uuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) => postApi<ScreeningB1Comment>(`/screening/b4/${b4Uuid}/comments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-comments', variables.b4Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b4-comments", variables.b4Uuid],
+      });
     },
   });
 }
@@ -880,10 +1183,16 @@ export function useV2CreateScreeningB4Comment() {
 export function useV2UpdateScreeningB4Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+    mutationFn: ({
+      commentUuid,
+      data,
+    }: {
+      commentUuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) =>
       putApi<ScreeningB1Comment>(`/screening/b4/comments/${commentUuid}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4'] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "screening-b4"] });
     },
   });
 }
@@ -903,7 +1212,7 @@ export interface ScreeningB4Attachment {
 
 export function useV2ScreeningB4Attachments(b4Uuid: string | null) {
   return useQuery<ScreeningB4Attachment[]>({
-    queryKey: ['v2', 'screening-b4-attachments', b4Uuid],
+    queryKey: ["v2", "screening-b4-attachments", b4Uuid],
     queryFn: () => fetchApi(`/screening/b4/${b4Uuid}/attachments`),
     enabled: !!b4Uuid,
   });
@@ -912,17 +1221,28 @@ export function useV2ScreeningB4Attachments(b4Uuid: string | null) {
 export function useV2CreateScreeningB4Attachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b4Uuid, data }: { b4Uuid: string; data: Partial<ScreeningB4Attachment> }) =>
-      postApi<ScreeningB4Attachment>(`/screening/b4/${b4Uuid}/attachments`, data),
+    mutationFn: ({
+      b4Uuid,
+      data,
+    }: {
+      b4Uuid: string;
+      data: Partial<ScreeningB4Attachment>;
+    }) =>
+      postApi<ScreeningB4Attachment>(
+        `/screening/b4/${b4Uuid}/attachments`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-attachments', variables.b4Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b4-attachments", variables.b4Uuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB5(recCanUuid: string | null) {
   return useQuery<ScreeningB5>({
-    queryKey: ['v2', 'screening-b5', recCanUuid],
+    queryKey: ["v2", "screening-b5", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b5`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -933,17 +1253,24 @@ export function useV2ScreeningB5(recCanUuid: string | null) {
 export function useV2SaveScreeningB5() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB5> }) =>
-      putApi<ScreeningB5>(`/candidates/${recCanUuid}/screening/b5`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<ScreeningB5>;
+    }) => putApi<ScreeningB5>(`/candidates/${recCanUuid}/screening/b5`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b5", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB5Comments(b5Uuid: string | null) {
   return useQuery<ScreeningB1Comment[]>({
-    queryKey: ['v2', 'screening-b5-comments', b5Uuid],
+    queryKey: ["v2", "screening-b5-comments", b5Uuid],
     queryFn: () => fetchApi(`/screening/b5/${b5Uuid}/comments`),
     enabled: !!b5Uuid,
   });
@@ -952,10 +1279,17 @@ export function useV2ScreeningB5Comments(b5Uuid: string | null) {
 export function useV2CreateScreeningB5Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b5Uuid, data }: { b5Uuid: string; data: Partial<ScreeningB1Comment> }) =>
-      postApi<ScreeningB1Comment>(`/screening/b5/${b5Uuid}/comments`, data),
+    mutationFn: ({
+      b5Uuid,
+      data,
+    }: {
+      b5Uuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) => postApi<ScreeningB1Comment>(`/screening/b5/${b5Uuid}/comments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-comments', variables.b5Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b5-comments", variables.b5Uuid],
+      });
     },
   });
 }
@@ -963,10 +1297,16 @@ export function useV2CreateScreeningB5Comment() {
 export function useV2UpdateScreeningB5Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+    mutationFn: ({
+      commentUuid,
+      data,
+    }: {
+      commentUuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) =>
       putApi<ScreeningB1Comment>(`/screening/b5/comments/${commentUuid}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5'] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "screening-b5"] });
     },
   });
 }
@@ -986,7 +1326,7 @@ export interface ScreeningB5Attachment {
 
 export function useV2ScreeningB5Attachments(b5Uuid: string | null) {
   return useQuery<ScreeningB5Attachment[]>({
-    queryKey: ['v2', 'screening-b5-attachments', b5Uuid],
+    queryKey: ["v2", "screening-b5-attachments", b5Uuid],
     queryFn: () => fetchApi(`/screening/b5/${b5Uuid}/attachments`),
     enabled: !!b5Uuid,
   });
@@ -995,17 +1335,28 @@ export function useV2ScreeningB5Attachments(b5Uuid: string | null) {
 export function useV2CreateScreeningB5Attachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b5Uuid, data }: { b5Uuid: string; data: Partial<ScreeningB5Attachment> }) =>
-      postApi<ScreeningB5Attachment>(`/screening/b5/${b5Uuid}/attachments`, data),
+    mutationFn: ({
+      b5Uuid,
+      data,
+    }: {
+      b5Uuid: string;
+      data: Partial<ScreeningB5Attachment>;
+    }) =>
+      postApi<ScreeningB5Attachment>(
+        `/screening/b5/${b5Uuid}/attachments`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-attachments', variables.b5Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b5-attachments", variables.b5Uuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB6(recCanUuid: string | null) {
   return useQuery<ScreeningB6>({
-    queryKey: ['v2', 'screening-b6', recCanUuid],
+    queryKey: ["v2", "screening-b6", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b6`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -1016,17 +1367,24 @@ export function useV2ScreeningB6(recCanUuid: string | null) {
 export function useV2SaveScreeningB6() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB6> }) =>
-      putApi<ScreeningB6>(`/candidates/${recCanUuid}/screening/b6`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<ScreeningB6>;
+    }) => putApi<ScreeningB6>(`/candidates/${recCanUuid}/screening/b6`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b6", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB6Comments(b6Uuid: string | null) {
   return useQuery<ScreeningB1Comment[]>({
-    queryKey: ['v2', 'screening-b6-comments', b6Uuid],
+    queryKey: ["v2", "screening-b6-comments", b6Uuid],
     queryFn: () => fetchApi(`/screening/b6/${b6Uuid}/comments`),
     enabled: !!b6Uuid,
   });
@@ -1035,10 +1393,17 @@ export function useV2ScreeningB6Comments(b6Uuid: string | null) {
 export function useV2CreateScreeningB6Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b6Uuid, data }: { b6Uuid: string; data: Partial<ScreeningB1Comment> }) =>
-      postApi<ScreeningB1Comment>(`/screening/b6/${b6Uuid}/comments`, data),
+    mutationFn: ({
+      b6Uuid,
+      data,
+    }: {
+      b6Uuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) => postApi<ScreeningB1Comment>(`/screening/b6/${b6Uuid}/comments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-comments', variables.b6Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b6-comments", variables.b6Uuid],
+      });
     },
   });
 }
@@ -1046,10 +1411,16 @@ export function useV2CreateScreeningB6Comment() {
 export function useV2UpdateScreeningB6Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+    mutationFn: ({
+      commentUuid,
+      data,
+    }: {
+      commentUuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) =>
       putApi<ScreeningB1Comment>(`/screening/b6/comments/${commentUuid}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6'] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "screening-b6"] });
     },
   });
 }
@@ -1069,7 +1440,7 @@ export interface ScreeningB6Attachment {
 
 export function useV2ScreeningB6Attachments(b6Uuid: string | null) {
   return useQuery<ScreeningB6Attachment[]>({
-    queryKey: ['v2', 'screening-b6-attachments', b6Uuid],
+    queryKey: ["v2", "screening-b6-attachments", b6Uuid],
     queryFn: () => fetchApi(`/screening/b6/${b6Uuid}/attachments`),
     enabled: !!b6Uuid,
   });
@@ -1078,17 +1449,28 @@ export function useV2ScreeningB6Attachments(b6Uuid: string | null) {
 export function useV2CreateScreeningB6Attachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b6Uuid, data }: { b6Uuid: string; data: Partial<ScreeningB6Attachment> }) =>
-      postApi<ScreeningB6Attachment>(`/screening/b6/${b6Uuid}/attachments`, data),
+    mutationFn: ({
+      b6Uuid,
+      data,
+    }: {
+      b6Uuid: string;
+      data: Partial<ScreeningB6Attachment>;
+    }) =>
+      postApi<ScreeningB6Attachment>(
+        `/screening/b6/${b6Uuid}/attachments`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-attachments', variables.b6Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b6-attachments", variables.b6Uuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB7(recCanUuid: string | null) {
   return useQuery<ScreeningB7>({
-    queryKey: ['v2', 'screening-b7', recCanUuid],
+    queryKey: ["v2", "screening-b7", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b7`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -1099,17 +1481,24 @@ export function useV2ScreeningB7(recCanUuid: string | null) {
 export function useV2SaveScreeningB7() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB7> }) =>
-      putApi<ScreeningB7>(`/candidates/${recCanUuid}/screening/b7`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<ScreeningB7>;
+    }) => putApi<ScreeningB7>(`/candidates/${recCanUuid}/screening/b7`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b7", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB8(recCanUuid: string | null) {
   return useQuery<ScreeningB8>({
-    queryKey: ['v2', 'screening-b8', recCanUuid],
+    queryKey: ["v2", "screening-b8", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/b8`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -1120,17 +1509,24 @@ export function useV2ScreeningB8(recCanUuid: string | null) {
 export function useV2SaveScreeningB8() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB8> }) =>
-      putApi<ScreeningB8>(`/candidates/${recCanUuid}/screening/b8`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<ScreeningB8>;
+    }) => putApi<ScreeningB8>(`/candidates/${recCanUuid}/screening/b8`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b8", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2ScreeningB8Comments(b8Uuid: string | null) {
   return useQuery<ScreeningB1Comment[]>({
-    queryKey: ['v2', 'screening-b8-comments', b8Uuid],
+    queryKey: ["v2", "screening-b8-comments", b8Uuid],
     queryFn: () => fetchApi(`/screening/b8/${b8Uuid}/comments`),
     enabled: !!b8Uuid,
   });
@@ -1139,10 +1535,17 @@ export function useV2ScreeningB8Comments(b8Uuid: string | null) {
 export function useV2CreateScreeningB8Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b8Uuid, data }: { b8Uuid: string; data: Partial<ScreeningB1Comment> }) =>
-      postApi<ScreeningB1Comment>(`/screening/b8/${b8Uuid}/comments`, data),
+    mutationFn: ({
+      b8Uuid,
+      data,
+    }: {
+      b8Uuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) => postApi<ScreeningB1Comment>(`/screening/b8/${b8Uuid}/comments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-comments', variables.b8Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b8-comments", variables.b8Uuid],
+      });
     },
   });
 }
@@ -1150,10 +1553,16 @@ export function useV2CreateScreeningB8Comment() {
 export function useV2UpdateScreeningB8Comment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+    mutationFn: ({
+      commentUuid,
+      data,
+    }: {
+      commentUuid: string;
+      data: Partial<ScreeningB1Comment>;
+    }) =>
       putApi<ScreeningB1Comment>(`/screening/b8/comments/${commentUuid}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8'] });
+      queryClient.invalidateQueries({ queryKey: ["v2", "screening-b8"] });
     },
   });
 }
@@ -1173,7 +1582,7 @@ export interface ScreeningB8Attachment {
 
 export function useV2ScreeningB8Attachments(b8Uuid: string | null) {
   return useQuery<ScreeningB8Attachment[]>({
-    queryKey: ['v2', 'screening-b8-attachments', b8Uuid],
+    queryKey: ["v2", "screening-b8-attachments", b8Uuid],
     queryFn: () => fetchApi(`/screening/b8/${b8Uuid}/attachments`),
     enabled: !!b8Uuid,
   });
@@ -1182,17 +1591,28 @@ export function useV2ScreeningB8Attachments(b8Uuid: string | null) {
 export function useV2CreateScreeningB8Attachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b8Uuid, data }: { b8Uuid: string; data: Partial<ScreeningB8Attachment> }) =>
-      postApi<ScreeningB8Attachment>(`/screening/b8/${b8Uuid}/attachments`, data),
+    mutationFn: ({
+      b8Uuid,
+      data,
+    }: {
+      b8Uuid: string;
+      data: Partial<ScreeningB8Attachment>;
+    }) =>
+      postApi<ScreeningB8Attachment>(
+        `/screening/b8/${b8Uuid}/attachments`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-attachments', variables.b8Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b8-attachments", variables.b8Uuid],
+      });
     },
   });
 }
 
 export function useV2Approvals(recCanUuid: string | null) {
   return useQuery<CandidateApproval[]>({
-    queryKey: ['v2', 'approvals', recCanUuid],
+    queryKey: ["v2", "approvals", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/approvals`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -1203,10 +1623,18 @@ export function useV2Approvals(recCanUuid: string | null) {
 export function useV2SaveApproval() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateApproval> }) =>
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateApproval>;
+    }) =>
       postApi<CandidateApproval>(`/candidates/${recCanUuid}/approvals`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'approvals', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "approvals", variables.recCanUuid],
+      });
     },
   });
 }
@@ -1214,17 +1642,26 @@ export function useV2SaveApproval() {
 export function useV2UpdateApproval() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, id, data }: { recCanUuid: string; id: number; data: Partial<CandidateApproval> }) =>
-      patchApi<CandidateApproval>(`/approvals/${id}`, data),
+    mutationFn: ({
+      recCanUuid,
+      id,
+      data,
+    }: {
+      recCanUuid: string;
+      id: number;
+      data: Partial<CandidateApproval>;
+    }) => patchApi<CandidateApproval>(`/approvals/${id}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'approvals', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "approvals", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2Suitability(recCanUuid: string | null) {
   return useQuery<CandidateSuitability>({
-    queryKey: ['v2', 'suitability', recCanUuid],
+    queryKey: ["v2", "suitability", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/suitability`),
     enabled: !!recCanUuid,
     staleTime: QUERY_STALE_TIME,
@@ -1235,17 +1672,28 @@ export function useV2Suitability(recCanUuid: string | null) {
 export function useV2SaveSuitability() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateSuitability> }) =>
-      putApi<CandidateSuitability>(`/candidates/${recCanUuid}/suitability`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateSuitability>;
+    }) =>
+      putApi<CandidateSuitability>(
+        `/candidates/${recCanUuid}/suitability`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'suitability', variables.recCanUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "suitability", variables.recCanUuid],
+      });
     },
   });
 }
 
 export function useV2RecruitmentDecision(recCanUuid: string | null) {
   return useQuery<CandidateRecruitmentDecision>({
-    queryKey: ['v2', 'recruitment-decision', recCanUuid],
+    queryKey: ["v2", "recruitment-decision", recCanUuid],
     queryFn: () => fetchApi(`/candidates/${recCanUuid}/decision`),
     enabled: !!recCanUuid,
   });
@@ -1254,18 +1702,29 @@ export function useV2RecruitmentDecision(recCanUuid: string | null) {
 export function useV2SaveRecruitmentDecision() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateRecruitmentDecision> }) =>
-      putApi<CandidateRecruitmentDecision>(`/candidates/${recCanUuid}/decision`, data),
+    mutationFn: ({
+      recCanUuid,
+      data,
+    }: {
+      recCanUuid: string;
+      data: Partial<CandidateRecruitmentDecision>;
+    }) =>
+      putApi<CandidateRecruitmentDecision>(
+        `/candidates/${recCanUuid}/decision`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'recruitment-decision', variables.recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "recruitment-decision", variables.recCanUuid],
+      });
+      queryClient.invalidateQueries({ queryKey: ["v2", "candidates"] });
     },
   });
 }
 
 export function useV2SuitabilityVesselTypes(suitUuid: string | null) {
   return useQuery<SuitabilityVesselType[]>({
-    queryKey: ['v2', 'suitability-vessel-types', suitUuid],
+    queryKey: ["v2", "suitability-vessel-types", suitUuid],
     queryFn: () => fetchApi(`/suitability/${suitUuid}/vessel-types`),
     enabled: !!suitUuid,
     staleTime: QUERY_STALE_TIME,
@@ -1276,17 +1735,28 @@ export function useV2SuitabilityVesselTypes(suitUuid: string | null) {
 export function useV2SaveSuitabilityVesselType() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ suitUuid, data }: { suitUuid: string; data: Partial<SuitabilityVesselType> }) =>
-      postApi<SuitabilityVesselType>(`/suitability/${suitUuid}/vessel-types`, data),
+    mutationFn: ({
+      suitUuid,
+      data,
+    }: {
+      suitUuid: string;
+      data: Partial<SuitabilityVesselType>;
+    }) =>
+      postApi<SuitabilityVesselType>(
+        `/suitability/${suitUuid}/vessel-types`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'suitability-vessel-types', variables.suitUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "suitability-vessel-types", variables.suitUuid],
+      });
     },
   });
 }
 
 export function useV2SuitabilityFleetGroups(suitUuid: string | null) {
   return useQuery<SuitabilityFleetGroup[]>({
-    queryKey: ['v2', 'suitability-fleet-groups', suitUuid],
+    queryKey: ["v2", "suitability-fleet-groups", suitUuid],
     queryFn: () => fetchApi(`/suitability/${suitUuid}/fleet-groups`),
     enabled: !!suitUuid,
     staleTime: QUERY_STALE_TIME,
@@ -1297,17 +1767,28 @@ export function useV2SuitabilityFleetGroups(suitUuid: string | null) {
 export function useV2SaveSuitabilityFleetGroup() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ suitUuid, data }: { suitUuid: string; data: Partial<SuitabilityFleetGroup> }) =>
-      postApi<SuitabilityFleetGroup>(`/suitability/${suitUuid}/fleet-groups`, data),
+    mutationFn: ({
+      suitUuid,
+      data,
+    }: {
+      suitUuid: string;
+      data: Partial<SuitabilityFleetGroup>;
+    }) =>
+      postApi<SuitabilityFleetGroup>(
+        `/suitability/${suitUuid}/fleet-groups`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'suitability-fleet-groups', variables.suitUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "suitability-fleet-groups", variables.suitUuid],
+      });
     },
   });
 }
 
 export function useV2DecisionAssignedGroups(decisionUuid: string | null) {
   return useQuery<AssignedGroup[]>({
-    queryKey: ['v2', 'decision-assigned-groups', decisionUuid],
+    queryKey: ["v2", "decision-assigned-groups", decisionUuid],
     queryFn: () => fetchApi(`/decisions/${decisionUuid}/assigned-groups`),
     enabled: !!decisionUuid,
     staleTime: QUERY_STALE_TIME,
@@ -1318,17 +1799,28 @@ export function useV2DecisionAssignedGroups(decisionUuid: string | null) {
 export function useV2SaveDecisionAssignedGroup() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ decisionUuid, data }: { decisionUuid: string; data: Partial<AssignedGroup> }) =>
-      postApi<AssignedGroup>(`/decisions/${decisionUuid}/assigned-groups`, data),
+    mutationFn: ({
+      decisionUuid,
+      data,
+    }: {
+      decisionUuid: string;
+      data: Partial<AssignedGroup>;
+    }) =>
+      postApi<AssignedGroup>(
+        `/decisions/${decisionUuid}/assigned-groups`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'decision-assigned-groups', variables.decisionUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "decision-assigned-groups", variables.decisionUuid],
+      });
     },
   });
 }
 
 export function useV2DocumentAttachments(docUuid: string | null) {
   return useQuery<Attachment[]>({
-    queryKey: ['v2', 'document-attachments', docUuid],
+    queryKey: ["v2", "document-attachments", docUuid],
     queryFn: () => fetchApi(`/documents/${docUuid}/attachments`),
     enabled: !!docUuid,
   });
@@ -1337,10 +1829,17 @@ export function useV2DocumentAttachments(docUuid: string | null) {
 export function useV2SaveDocumentAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ docUuid, data }: { docUuid: string; data: Partial<Attachment> }) =>
-      postApi<Attachment>(`/documents/${docUuid}/attachments`, data),
+    mutationFn: ({
+      docUuid,
+      data,
+    }: {
+      docUuid: string;
+      data: Partial<Attachment>;
+    }) => postApi<Attachment>(`/documents/${docUuid}/attachments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'document-attachments', variables.docUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "document-attachments", variables.docUuid],
+      });
     },
   });
 }
@@ -1348,10 +1847,23 @@ export function useV2SaveDocumentAttachment() {
 export function useV2DeleteAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ attUuid, parentUuid, parentType }: { attUuid: string; parentUuid: string; parentType: string }) =>
-      deleteApi(`/attachments/${attUuid}`),
+    mutationFn: ({
+      attUuid,
+      parentUuid,
+      parentType,
+    }: {
+      attUuid: string;
+      parentUuid: string;
+      parentType: string;
+    }) => deleteApi(`/attachments/${attUuid}`),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', `${variables.parentType}-attachments`, variables.parentUuid] });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "v2",
+          `${variables.parentType}-attachments`,
+          variables.parentUuid,
+        ],
+      });
     },
   });
 }
@@ -1359,7 +1871,7 @@ export function useV2DeleteAttachment() {
 // Visa Attachments
 export function useV2VisaAttachments(visaUuid: string | null) {
   return useQuery<Attachment[]>({
-    queryKey: ['v2', 'visa-attachments', visaUuid],
+    queryKey: ["v2", "visa-attachments", visaUuid],
     queryFn: () => fetchApi(`/visas/${visaUuid}/attachments`),
     enabled: !!visaUuid,
   });
@@ -1368,10 +1880,17 @@ export function useV2VisaAttachments(visaUuid: string | null) {
 export function useV2SaveVisaAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ visaUuid, data }: { visaUuid: string; data: Partial<Attachment> }) =>
-      postApi<Attachment>(`/visas/${visaUuid}/attachments`, data),
+    mutationFn: ({
+      visaUuid,
+      data,
+    }: {
+      visaUuid: string;
+      data: Partial<Attachment>;
+    }) => postApi<Attachment>(`/visas/${visaUuid}/attachments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'visa-attachments', variables.visaUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "visa-attachments", variables.visaUuid],
+      });
     },
   });
 }
@@ -1379,7 +1898,7 @@ export function useV2SaveVisaAttachment() {
 // Education Attachments
 export function useV2EducationAttachments(eduUuid: string | null) {
   return useQuery<Attachment[]>({
-    queryKey: ['v2', 'education-attachments', eduUuid],
+    queryKey: ["v2", "education-attachments", eduUuid],
     queryFn: () => fetchApi(`/education/${eduUuid}/attachments`),
     enabled: !!eduUuid,
   });
@@ -1388,10 +1907,17 @@ export function useV2EducationAttachments(eduUuid: string | null) {
 export function useV2SaveEducationAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ eduUuid, data }: { eduUuid: string; data: Partial<Attachment> }) =>
-      postApi<Attachment>(`/education/${eduUuid}/attachments`, data),
+    mutationFn: ({
+      eduUuid,
+      data,
+    }: {
+      eduUuid: string;
+      data: Partial<Attachment>;
+    }) => postApi<Attachment>(`/education/${eduUuid}/attachments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'education-attachments', variables.eduUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "education-attachments", variables.eduUuid],
+      });
     },
   });
 }
@@ -1399,7 +1925,7 @@ export function useV2SaveEducationAttachment() {
 // License Attachments
 export function useV2LicenseAttachments(licUuid: string | null) {
   return useQuery<Attachment[]>({
-    queryKey: ['v2', 'license-attachments', licUuid],
+    queryKey: ["v2", "license-attachments", licUuid],
     queryFn: () => fetchApi(`/licenses/${licUuid}/attachments`),
     enabled: !!licUuid,
   });
@@ -1408,10 +1934,17 @@ export function useV2LicenseAttachments(licUuid: string | null) {
 export function useV2SaveLicenseAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ licUuid, data }: { licUuid: string; data: Partial<Attachment> }) =>
-      postApi<Attachment>(`/licenses/${licUuid}/attachments`, data),
+    mutationFn: ({
+      licUuid,
+      data,
+    }: {
+      licUuid: string;
+      data: Partial<Attachment>;
+    }) => postApi<Attachment>(`/licenses/${licUuid}/attachments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'license-attachments', variables.licUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "license-attachments", variables.licUuid],
+      });
     },
   });
 }
@@ -1419,7 +1952,7 @@ export function useV2SaveLicenseAttachment() {
 // Training Attachments
 export function useV2TrainingAttachments(trainUuid: string | null) {
   return useQuery<Attachment[]>({
-    queryKey: ['v2', 'training-attachments', trainUuid],
+    queryKey: ["v2", "training-attachments", trainUuid],
     queryFn: () => fetchApi(`/training/${trainUuid}/attachments`),
     enabled: !!trainUuid,
   });
@@ -1428,10 +1961,17 @@ export function useV2TrainingAttachments(trainUuid: string | null) {
 export function useV2SaveTrainingAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ trainUuid, data }: { trainUuid: string; data: Partial<Attachment> }) =>
-      postApi<Attachment>(`/training/${trainUuid}/attachments`, data),
+    mutationFn: ({
+      trainUuid,
+      data,
+    }: {
+      trainUuid: string;
+      data: Partial<Attachment>;
+    }) => postApi<Attachment>(`/training/${trainUuid}/attachments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'training-attachments', variables.trainUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "training-attachments", variables.trainUuid],
+      });
     },
   });
 }
@@ -1439,7 +1979,7 @@ export function useV2SaveTrainingAttachment() {
 // Sea Service Attachments
 export function useV2SeaServiceAttachments(seaUuid: string | null) {
   return useQuery<Attachment[]>({
-    queryKey: ['v2', 'sea-service-attachments', seaUuid],
+    queryKey: ["v2", "sea-service-attachments", seaUuid],
     queryFn: () => fetchApi(`/sea-service/${seaUuid}/attachments`),
     enabled: !!seaUuid,
   });
@@ -1448,10 +1988,17 @@ export function useV2SeaServiceAttachments(seaUuid: string | null) {
 export function useV2SaveSeaServiceAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ seaUuid, data }: { seaUuid: string; data: Partial<Attachment> }) =>
-      postApi<Attachment>(`/sea-service/${seaUuid}/attachments`, data),
+    mutationFn: ({
+      seaUuid,
+      data,
+    }: {
+      seaUuid: string;
+      data: Partial<Attachment>;
+    }) => postApi<Attachment>(`/sea-service/${seaUuid}/attachments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'sea-service-attachments', variables.seaUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "sea-service-attachments", variables.seaUuid],
+      });
     },
   });
 }
@@ -1459,7 +2006,7 @@ export function useV2SaveSeaServiceAttachment() {
 // Additional Info Attachments
 export function useV2AdditionalInfoAttachments(infoUuid: string | null) {
   return useQuery<Attachment[]>({
-    queryKey: ['v2', 'additional-info-attachments', infoUuid],
+    queryKey: ["v2", "additional-info-attachments", infoUuid],
     queryFn: () => fetchApi(`/additional-info/${infoUuid}/attachments`),
     enabled: !!infoUuid,
   });
@@ -1468,10 +2015,17 @@ export function useV2AdditionalInfoAttachments(infoUuid: string | null) {
 export function useV2SaveAdditionalInfoAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ infoUuid, data }: { infoUuid: string; data: Partial<Attachment> }) =>
-      postApi<Attachment>(`/additional-info/${infoUuid}/attachments`, data),
+    mutationFn: ({
+      infoUuid,
+      data,
+    }: {
+      infoUuid: string;
+      data: Partial<Attachment>;
+    }) => postApi<Attachment>(`/additional-info/${infoUuid}/attachments`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'additional-info-attachments', variables.infoUuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "additional-info-attachments", variables.infoUuid],
+      });
     },
   });
 }
@@ -1491,7 +2045,7 @@ export interface ScreeningB2Item {
 
 export function useV2ScreeningB2Items(b2Uuid: string | null) {
   return useQuery<ScreeningB2Item[]>({
-    queryKey: ['v2', 'screening-b2-items', b2Uuid],
+    queryKey: ["v2", "screening-b2-items", b2Uuid],
     queryFn: () => fetchApi(`/screening/b2/${b2Uuid}/items`),
     enabled: !!b2Uuid,
   });
@@ -1500,10 +2054,17 @@ export function useV2ScreeningB2Items(b2Uuid: string | null) {
 export function useV2CreateScreeningB2Item() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b2Uuid, data }: { b2Uuid: string; data: Partial<ScreeningB2Item> }) =>
-      postApi<ScreeningB2Item>(`/screening/b2/${b2Uuid}/items`, data),
+    mutationFn: ({
+      b2Uuid,
+      data,
+    }: {
+      b2Uuid: string;
+      data: Partial<ScreeningB2Item>;
+    }) => postApi<ScreeningB2Item>(`/screening/b2/${b2Uuid}/items`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2-items', variables.b2Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b2-items", variables.b2Uuid],
+      });
     },
   });
 }
@@ -1522,7 +2083,7 @@ export interface ScreeningB3Authority {
 
 export function useV2ScreeningB3Authorities(b3Uuid: string | null) {
   return useQuery<ScreeningB3Authority[]>({
-    queryKey: ['v2', 'screening-b3-authorities', b3Uuid],
+    queryKey: ["v2", "screening-b3-authorities", b3Uuid],
     queryFn: () => fetchApi(`/screening/b3/${b3Uuid}/authorities`),
     enabled: !!b3Uuid,
   });
@@ -1531,10 +2092,21 @@ export function useV2ScreeningB3Authorities(b3Uuid: string | null) {
 export function useV2CreateScreeningB3Authority() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b3Uuid, data }: { b3Uuid: string; data: Partial<ScreeningB3Authority> }) =>
-      postApi<ScreeningB3Authority>(`/screening/b3/${b3Uuid}/authorities`, data),
+    mutationFn: ({
+      b3Uuid,
+      data,
+    }: {
+      b3Uuid: string;
+      data: Partial<ScreeningB3Authority>;
+    }) =>
+      postApi<ScreeningB3Authority>(
+        `/screening/b3/${b3Uuid}/authorities`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-authorities', variables.b3Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b3-authorities", variables.b3Uuid],
+      });
     },
   });
 }
@@ -1542,10 +2114,23 @@ export function useV2CreateScreeningB3Authority() {
 export function useV2UpdateScreeningB3Authority() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ authUuid, b3Uuid, data }: { authUuid: string; b3Uuid: string; data: Partial<ScreeningB3Authority> }) =>
-      putApi<ScreeningB3Authority>(`/screening/b3/authorities/${authUuid}`, data),
+    mutationFn: ({
+      authUuid,
+      b3Uuid,
+      data,
+    }: {
+      authUuid: string;
+      b3Uuid: string;
+      data: Partial<ScreeningB3Authority>;
+    }) =>
+      putApi<ScreeningB3Authority>(
+        `/screening/b3/authorities/${authUuid}`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-authorities', variables.b3Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b3-authorities", variables.b3Uuid],
+      });
     },
   });
 }
@@ -1564,7 +2149,7 @@ export interface ScreeningB4CertItem {
 
 export function useV2ScreeningB4CertItems(b4Uuid: string | null) {
   return useQuery<ScreeningB4CertItem[]>({
-    queryKey: ['v2', 'screening-b4-cert-items', b4Uuid],
+    queryKey: ["v2", "screening-b4-cert-items", b4Uuid],
     queryFn: () => fetchApi(`/screening/b4/${b4Uuid}/cert-items`),
     enabled: !!b4Uuid,
   });
@@ -1573,10 +2158,18 @@ export function useV2ScreeningB4CertItems(b4Uuid: string | null) {
 export function useV2CreateScreeningB4CertItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b4Uuid, data }: { b4Uuid: string; data: Partial<ScreeningB4CertItem> }) =>
+    mutationFn: ({
+      b4Uuid,
+      data,
+    }: {
+      b4Uuid: string;
+      data: Partial<ScreeningB4CertItem>;
+    }) =>
       postApi<ScreeningB4CertItem>(`/screening/b4/${b4Uuid}/cert-items`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-cert-items', variables.b4Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b4-cert-items", variables.b4Uuid],
+      });
     },
   });
 }
@@ -1584,10 +2177,20 @@ export function useV2CreateScreeningB4CertItem() {
 export function useV2UpdateScreeningB4CertItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ certUuid, b4Uuid, data }: { certUuid: string; b4Uuid: string; data: Partial<ScreeningB4CertItem> }) =>
+    mutationFn: ({
+      certUuid,
+      b4Uuid,
+      data,
+    }: {
+      certUuid: string;
+      b4Uuid: string;
+      data: Partial<ScreeningB4CertItem>;
+    }) =>
       putApi<ScreeningB4CertItem>(`/screening/b4/cert-items/${certUuid}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-cert-items', variables.b4Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b4-cert-items", variables.b4Uuid],
+      });
     },
   });
 }
@@ -1606,7 +2209,7 @@ export interface ScreeningB5TestItem {
 
 export function useV2ScreeningB5TestItems(b5Uuid: string | null) {
   return useQuery<ScreeningB5TestItem[]>({
-    queryKey: ['v2', 'screening-b5-test-items', b5Uuid],
+    queryKey: ["v2", "screening-b5-test-items", b5Uuid],
     queryFn: () => fetchApi(`/screening/b5/${b5Uuid}/test-items`),
     enabled: !!b5Uuid,
   });
@@ -1615,10 +2218,18 @@ export function useV2ScreeningB5TestItems(b5Uuid: string | null) {
 export function useV2CreateScreeningB5TestItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b5Uuid, data }: { b5Uuid: string; data: Partial<ScreeningB5TestItem> }) =>
+    mutationFn: ({
+      b5Uuid,
+      data,
+    }: {
+      b5Uuid: string;
+      data: Partial<ScreeningB5TestItem>;
+    }) =>
       postApi<ScreeningB5TestItem>(`/screening/b5/${b5Uuid}/test-items`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-test-items', variables.b5Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b5-test-items", variables.b5Uuid],
+      });
     },
   });
 }
@@ -1626,10 +2237,20 @@ export function useV2CreateScreeningB5TestItem() {
 export function useV2UpdateScreeningB5TestItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ testUuid, b5Uuid, data }: { testUuid: string; b5Uuid: string; data: Partial<ScreeningB5TestItem> }) =>
+    mutationFn: ({
+      testUuid,
+      b5Uuid,
+      data,
+    }: {
+      testUuid: string;
+      b5Uuid: string;
+      data: Partial<ScreeningB5TestItem>;
+    }) =>
       putApi<ScreeningB5TestItem>(`/screening/b5/test-items/${testUuid}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-test-items', variables.b5Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b5-test-items", variables.b5Uuid],
+      });
     },
   });
 }
@@ -1650,7 +2271,7 @@ export interface ScreeningB6InterviewItem {
 
 export function useV2ScreeningB6InterviewItems(b6Uuid: string | null) {
   return useQuery<ScreeningB6InterviewItem[]>({
-    queryKey: ['v2', 'screening-b6-interview-items', b6Uuid],
+    queryKey: ["v2", "screening-b6-interview-items", b6Uuid],
     queryFn: () => fetchApi(`/screening/b6/${b6Uuid}/interview-items`),
     enabled: !!b6Uuid,
   });
@@ -1659,10 +2280,21 @@ export function useV2ScreeningB6InterviewItems(b6Uuid: string | null) {
 export function useV2CreateScreeningB6InterviewItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b6Uuid, data }: { b6Uuid: string; data: Partial<ScreeningB6InterviewItem> }) =>
-      postApi<ScreeningB6InterviewItem>(`/screening/b6/${b6Uuid}/interview-items`, data),
+    mutationFn: ({
+      b6Uuid,
+      data,
+    }: {
+      b6Uuid: string;
+      data: Partial<ScreeningB6InterviewItem>;
+    }) =>
+      postApi<ScreeningB6InterviewItem>(
+        `/screening/b6/${b6Uuid}/interview-items`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-interview-items', variables.b6Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b6-interview-items", variables.b6Uuid],
+      });
     },
   });
 }
@@ -1670,10 +2302,23 @@ export function useV2CreateScreeningB6InterviewItem() {
 export function useV2UpdateScreeningB6InterviewItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ intUuid, b6Uuid, data }: { intUuid: string; b6Uuid: string; data: Partial<ScreeningB6InterviewItem> }) =>
-      putApi<ScreeningB6InterviewItem>(`/screening/b6/interview-items/${intUuid}`, data),
+    mutationFn: ({
+      intUuid,
+      b6Uuid,
+      data,
+    }: {
+      intUuid: string;
+      b6Uuid: string;
+      data: Partial<ScreeningB6InterviewItem>;
+    }) =>
+      putApi<ScreeningB6InterviewItem>(
+        `/screening/b6/interview-items/${intUuid}`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-interview-items', variables.b6Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b6-interview-items", variables.b6Uuid],
+      });
     },
   });
 }
@@ -1694,7 +2339,7 @@ export interface ScreeningB7TrainingItem {
 
 export function useV2ScreeningB7TrainingItems(b7Uuid: string | null) {
   return useQuery<ScreeningB7TrainingItem[]>({
-    queryKey: ['v2', 'screening-b7-training-items', b7Uuid],
+    queryKey: ["v2", "screening-b7-training-items", b7Uuid],
     queryFn: () => fetchApi(`/screening/b7/${b7Uuid}/training-items`),
     enabled: !!b7Uuid,
   });
@@ -1703,10 +2348,21 @@ export function useV2ScreeningB7TrainingItems(b7Uuid: string | null) {
 export function useV2CreateScreeningB7TrainingItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b7Uuid, data }: { b7Uuid: string; data: Partial<ScreeningB7TrainingItem> }) =>
-      postApi<ScreeningB7TrainingItem>(`/screening/b7/${b7Uuid}/training-items`, data),
+    mutationFn: ({
+      b7Uuid,
+      data,
+    }: {
+      b7Uuid: string;
+      data: Partial<ScreeningB7TrainingItem>;
+    }) =>
+      postApi<ScreeningB7TrainingItem>(
+        `/screening/b7/${b7Uuid}/training-items`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7-training-items', variables.b7Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b7-training-items", variables.b7Uuid],
+      });
     },
   });
 }
@@ -1714,10 +2370,23 @@ export function useV2CreateScreeningB7TrainingItem() {
 export function useV2UpdateScreeningB7TrainingItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ trainItemUuid, b7Uuid, data }: { trainItemUuid: string; b7Uuid: string; data: Partial<ScreeningB7TrainingItem> }) =>
-      putApi<ScreeningB7TrainingItem>(`/screening/b7/training-items/${trainItemUuid}`, data),
+    mutationFn: ({
+      trainItemUuid,
+      b7Uuid,
+      data,
+    }: {
+      trainItemUuid: string;
+      b7Uuid: string;
+      data: Partial<ScreeningB7TrainingItem>;
+    }) =>
+      putApi<ScreeningB7TrainingItem>(
+        `/screening/b7/training-items/${trainItemUuid}`,
+        data,
+      ),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7-training-items', variables.b7Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b7-training-items", variables.b7Uuid],
+      });
     },
   });
 }
@@ -1736,7 +2405,7 @@ export interface ScreeningB8Approver {
 
 export function useV2ScreeningB8Approvers(b8Uuid: string | null) {
   return useQuery<ScreeningB8Approver[]>({
-    queryKey: ['v2', 'screening-b8-approvers', b8Uuid],
+    queryKey: ["v2", "screening-b8-approvers", b8Uuid],
     queryFn: () => fetchApi(`/screening/b8/${b8Uuid}/approvers`),
     enabled: !!b8Uuid,
   });
@@ -1745,10 +2414,18 @@ export function useV2ScreeningB8Approvers(b8Uuid: string | null) {
 export function useV2CreateScreeningB8Approver() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ b8Uuid, data }: { b8Uuid: string; data: Partial<ScreeningB8Approver> }) =>
+    mutationFn: ({
+      b8Uuid,
+      data,
+    }: {
+      b8Uuid: string;
+      data: Partial<ScreeningB8Approver>;
+    }) =>
       postApi<ScreeningB8Approver>(`/screening/b8/${b8Uuid}/approvers`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-approvers', variables.b8Uuid] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b8-approvers", variables.b8Uuid],
+      });
     },
   });
 }
