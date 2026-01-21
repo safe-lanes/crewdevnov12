@@ -5122,133 +5122,314 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B5. CES/Language Test Results</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-700">B5.1 Tests completed?</span>
-                      <div className="flex gap-4">
-                        {['Yes', 'No', 'N/A'].map((option) => (
-                          <label key={option} className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="b5TestsCompleted"
-                              value={option}
-                              checked={formData.b5TestsCompleted === option}
-                              onChange={(e) => setFormData(prev => ({ ...prev, b5TestsCompleted: e.target.value }))}
-                              className="w-4 h-4"
-                              data-testid={`radio-b5TestsCompleted-${option.toLowerCase()}`}
-                            />
-                            <span className="text-sm">{option}</span>
-                          </label>
-                        ))}
-                      </div>
+                {/* B5. CES / Language Test Results - matching legacy exactly */}
+                <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B5. CES / Language Test Results</h3>
+                    <div className="cursor-help" title="Guidance for CES/Language Test process">
+                      <Info className="h-4 w-4 text-gray-400" />
                     </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-[13px]">Date</TableHead>
-                          <TableHead className="text-[13px]">Subject</TableHead>
-                          <TableHead className="text-[13px]">Score</TableHead>
-                          <TableHead className="text-[13px]">Result</TableHead>
-                          <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {formData.b5Tests.map((test, idx) => (
-                          <TableRow key={test.id}>
-                            <TableCell>
-                              <Input
-                                type="date"
-                                value={test.date}
-                                onChange={(e) => {
-                                  const updated = [...formData.b5Tests];
-                                  updated[idx] = { ...updated[idx], date: e.target.value };
-                                  setFormData(prev => ({ ...prev, b5Tests: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b5-test-date-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={test.subject}
-                                onChange={(e) => {
-                                  const updated = [...formData.b5Tests];
-                                  updated[idx] = { ...updated[idx], subject: e.target.value };
-                                  setFormData(prev => ({ ...prev, b5Tests: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b5-test-subject-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={test.score}
-                                onChange={(e) => {
-                                  const updated = [...formData.b5Tests];
-                                  updated[idx] = { ...updated[idx], score: e.target.value };
-                                  setFormData(prev => ({ ...prev, b5Tests: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b5-test-score-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={test.result}
-                                onValueChange={(value) => {
-                                  const updated = [...formData.b5Tests];
-                                  updated[idx] = { ...updated[idx], result: value };
-                                  setFormData(prev => ({ ...prev, b5Tests: updated }));
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-xs" data-testid={`select-b5-test-result-${idx}`}>
-                                  <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Pass">Pass</SelectItem>
-                                  <SelectItem value="Fail">Fail</SelectItem>
-                                  <SelectItem value="Pending">Pending</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              {formData.b5Tests.length > 1 && (
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {/* B5.1 Applicable CES / Language Tests completed */}
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                          B5.1 Applicable CES / Language Tests completed?
+                        </Label>
+                        <div className="flex items-center min-w-[300px]">
+                          <div className="flex gap-6 w-[200px]">
+                            <RadioGroup 
+                              value={formData.b5TestsCompleted} 
+                              onValueChange={(value) => setFormData(prev => ({ ...prev, b5TestsCompleted: value }))}
+                              className="flex gap-6"
+                            >
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="b5-completed-yes" />
+                                  <Label htmlFor="b5-completed-yes" className="text-sm cursor-pointer">Yes</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="b5-completed-no" />
+                                  <Label htmlFor="b5-completed-no" className="text-sm cursor-pointer">No</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="na" id="b5-completed-na" />
+                                  <Label htmlFor="b5-completed-na" className="text-sm cursor-pointer">NA</Label>
+                                </div>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 ml-4"
+                            onClick={() => setNewB5Comment(prev => ({ ...prev, 'b5-completed': "" }))}
+                            data-testid="button-b5-completed-comment"
+                          >
+                            <MessageSquare className="h-4 w-4 text-gray-400" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Test details when Yes is selected */}
+                      {formData.b5TestsCompleted === 'yes' && (
+                        <div className="ml-4 mb-4 space-y-3">
+                          {formData.b5Tests.map((test, index) => (
+                            <div key={test.id} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div>
+                                <Input
+                                  type="date"
+                                  placeholder="Date"
+                                  className="text-sm"
+                                  value={test.date}
+                                  onChange={(e) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b5Tests: prev.b5Tests.map(t => 
+                                        t.id === test.id 
+                                          ? { ...t, date: e.target.value }
+                                          : t
+                                      )
+                                    }));
+                                  }}
+                                  data-testid={`input-b5-test-date-${index}`}
+                                />
+                              </div>
+                              <div>
+                                <Select
+                                  value={test.subject}
+                                  onValueChange={(value) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b5Tests: prev.b5Tests.map(t => 
+                                        t.id === test.id 
+                                          ? { ...t, subject: value }
+                                          : t
+                                      )
+                                    }));
+                                  }}
+                                >
+                                  <SelectTrigger className="text-sm" data-testid={`select-b5-test-subject-${index}`}>
+                                    <SelectValue placeholder="Subject" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="English">English</SelectItem>
+                                    <SelectItem value="Navigation">Navigation</SelectItem>
+                                    <SelectItem value="Seamanship">Seamanship</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Input
+                                  type="text"
+                                  placeholder="Score"
+                                  className="text-sm"
+                                  value={test.score}
+                                  onChange={(e) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b5Tests: prev.b5Tests.map(t => 
+                                        t.id === test.id 
+                                          ? { ...t, score: e.target.value }
+                                          : t
+                                      )
+                                    }));
+                                  }}
+                                  data-testid={`input-b5-test-score-${index}`}
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Select
+                                  value={test.result}
+                                  onValueChange={(value) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b5Tests: prev.b5Tests.map(t => 
+                                        t.id === test.id 
+                                          ? { ...t, result: value }
+                                          : t
+                                      )
+                                    }));
+                                  }}
+                                >
+                                  <SelectTrigger className="text-sm flex-1" data-testid={`select-b5-test-result-${index}`}>
+                                    <SelectValue placeholder="Result" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Pass">Pass</SelectItem>
+                                    <SelectItem value="Fail">Fail</SelectItem>
+                                    <SelectItem value="Pending">Pending</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                {index === formData.b5Tests.length - 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10 w-10 p-0 border-gray-300"
+                                    onClick={() => {
+                                      const newId = String(Date.now());
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b5Tests: [...prev.b5Tests, { 
+                                          id: newId, 
+                                          date: '', 
+                                          subject: '',
+                                          score: '',
+                                          result: '' 
+                                        }]
+                                      }));
+                                    }}
+                                    data-testid="button-add-b5-test"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {formData.b5Tests.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-10 w-10 p-0"
+                                    onClick={() => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b5Tests: prev.b5Tests.filter(t => t.id !== test.id)
+                                      }));
+                                    }}
+                                    data-testid={`button-remove-b5-test-${index}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {formData.b5Tests.length === 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-10 w-10 p-0"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Comments for B5.1 */}
+                      {(formData.b5Comments['b5-completed']?.length > 0 || newB5Comment['b5-completed'] !== undefined) && (
+                        <div className="ml-4 mb-4 space-y-2">
+                          {formData.b5Comments['b5-completed']?.map((comment) => (
+                            <div key={comment.id} className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                                {editingB5Comment === comment.id ? (
+                                  <Textarea
+                                    value={comment.text}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b5Comments: {
+                                          ...prev.b5Comments,
+                                          'b5-completed': prev.b5Comments['b5-completed']?.map(c => 
+                                            c.id === comment.id ? { ...c, text: e.target.value } : c
+                                          ) || []
+                                        }
+                                      }));
+                                    }}
+                                    onBlur={() => setEditingB5Comment(null)}
+                                    autoFocus
+                                    className="min-h-[80px] w-full"
+                                  />
+                                ) : (
+                                  <div 
+                                    className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                    onClick={() => setEditingB5Comment(comment.id)}
+                                  >
+                                    {comment.text}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-2">
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setFormData(prev => ({ ...prev, b5Tests: prev.b5Tests.filter((_, i) => i !== idx) }))}
-                                  data-testid={`button-remove-b5-test-${idx}`}
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b5Comments: {
+                                        ...prev.b5Comments,
+                                        'b5-completed': prev.b5Comments['b5-completed']?.filter(c => c.id !== comment.id) || []
+                                      }
+                                    }));
+                                    if (editingB5Comment === comment.id) {
+                                      setEditingB5Comment(null);
+                                    }
+                                  }}
                                 >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({
-                        ...prev,
-                        b5Tests: [...prev.b5Tests, { id: String(Date.now()), date: '', subject: '', score: '', result: '' }]
-                      }))}
-                      data-testid="button-add-b5-test"
-                    >
-                      <Plus className="h-4 w-4 mr-1" /> Add Test
-                    </Button>
-                    
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {newB5Comment['b5-completed'] !== undefined && (
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                              <Textarea
+                                value={newB5Comment['b5-completed']}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                  setNewB5Comment(prev => ({ ...prev, 'b5-completed': e.target.value }));
+                                }}
+                                onBlur={() => {
+                                  if (newB5Comment['b5-completed']?.trim()) {
+                                    const commentId = Date.now().toString();
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b5Comments: {
+                                        ...prev.b5Comments,
+                                        'b5-completed': [
+                                          ...(prev.b5Comments['b5-completed'] || []),
+                                          { id: commentId, user: currentUserDisplay, text: newB5Comment['b5-completed'] }
+                                        ]
+                                      }
+                                    }));
+                                  }
+                                  setNewB5Comment(prev => {
+                                    const newState = { ...prev };
+                                    delete newState['b5-completed'];
+                                    return newState;
+                                  });
+                                }}
+                                placeholder="Comment: Add your observations here..."
+                                className="text-blue-600 italic border-blue-200 text-[13px]"
+                                rows={2}
+                                autoFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Attachment button */}
-                    <div className="flex justify-start mt-6">
+                    <div className="flex justify-start">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         className="text-gray-600 border-gray-300 hover:bg-gray-50"
-                        onClick={() => openAttachmentDialog('b5', 'b5', 'B5. CES/Language Test Results')}
+                        onClick={() => openAttachmentDialog('b5', 'b5', 'B5. CES / Language Test Results')}
                         data-testid="button-b5-attachments"
                       >
                         <Paperclip className="h-4 w-4 mr-2" />
