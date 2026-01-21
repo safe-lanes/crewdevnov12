@@ -428,7 +428,7 @@ const sections: { id: SectionType; number: string; title: string; type: 'continu
   { id: 'A3', number: 'A3', title: 'Training & Certificates', type: 'continuous' },
   { id: 'A4', number: 'A4', title: 'Sea Service', type: 'continuous' },
   { id: 'A5', number: 'A5', title: 'Additional Information', type: 'continuous' },
-  { id: 'B', number: 'B', title: 'Office Screening', type: 'stepper' },
+  { id: 'B', number: 'B', title: 'Company Processing', type: 'stepper' },
   { id: 'C', number: 'C', title: 'Approval', type: 'stepper' },
 ];
 
@@ -3572,7 +3572,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
-                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B - Office Screening</h2>
+                <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B - Company Processing</h2>
                 <div style={{ color: '#16569e' }} className="text-sm">For office use only - Crew executives processing</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
@@ -6415,9 +6415,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <div className="block sm:hidden bg-white border-b px-4 py-3">
           <nav className="flex justify-center space-x-4">
             {sections.map((section, index) => {
+              // For continuous sections (A1-A5), highlight if it matches activeContinuousSection
+              // For B section, also highlight if we're on any A section (since A sections are within Part B)
+              // For C section, only highlight if activeSection is C
               const isActive = section.type === 'continuous' 
                 ? activeContinuousSection === section.id
-                : activeSection === section.id;
+                : section.id === 'B' 
+                  ? ['A1', 'A2', 'A3', 'A4', 'A5', 'B'].includes(activeSection)
+                  : activeSection === section.id;
               
               return (
                 <div key={section.id} className="flex items-center">
@@ -6449,9 +6454,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div className="p-3">
               <nav className="space-y-1">
                 {sections.map((section, index) => {
+                  // For continuous sections (A1-A5), highlight if it matches activeContinuousSection
+                  // For B section, also highlight if we're on any A section (since A sections are within Part B)
+                  // For C section, only highlight if activeSection is C
                   const isActive = section.type === 'continuous' 
                     ? activeContinuousSection === section.id
-                    : activeSection === section.id;
+                    : section.id === 'B' 
+                      ? ['A1', 'A2', 'A3', 'A4', 'A5', 'B'].includes(activeSection)
+                      : activeSection === section.id;
                   
                   return (
                     <div key={section.id} className="relative">
