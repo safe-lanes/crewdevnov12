@@ -182,6 +182,8 @@ router.get("/screening/b2/:b2Uuid/items", screeningB2Controller.getItems);
 router.post("/screening/b2/:b2Uuid/items", screeningB2Controller.createItem);
 router.get("/screening/b2/:b2Uuid/comments", screeningB2Controller.getComments);
 router.post("/screening/b2/:b2Uuid/comments", screeningB2Controller.createComment);
+router.get("/screening/b2/:b2Uuid/attachments", screeningB2Controller.getAttachments);
+router.post("/screening/b2/:b2Uuid/attachments", screeningB2Controller.createAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b3", screeningB3Controller.get);
 router.put("/candidates/:recCanUuid/screening/b3", screeningB3Controller.upsert);
@@ -190,6 +192,8 @@ router.post("/screening/b3/:b3Uuid/authorities", screeningB3Controller.createAut
 router.put("/screening/b3/authorities/:authUuid", screeningB3Controller.updateAuthority);
 router.get("/screening/b3/:b3Uuid/comments", screeningB3Controller.getComments);
 router.post("/screening/b3/:b3Uuid/comments", screeningB3Controller.createComment);
+router.get("/screening/b3/:b3Uuid/attachments", screeningB3Controller.getAttachments);
+router.post("/screening/b3/:b3Uuid/attachments", screeningB3Controller.createAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b4", screeningB4Controller.get);
 router.put("/candidates/:recCanUuid/screening/b4", screeningB4Controller.upsert);
@@ -198,6 +202,8 @@ router.post("/screening/b4/:b4Uuid/cert-items", screeningB4Controller.createCert
 router.put("/screening/b4/cert-items/:certUuid", screeningB4Controller.updateCertItem);
 router.get("/screening/b4/:b4Uuid/comments", screeningB4Controller.getComments);
 router.post("/screening/b4/:b4Uuid/comments", screeningB4Controller.createComment);
+router.get("/screening/b4/:b4Uuid/attachments", screeningB4Controller.getAttachments);
+router.post("/screening/b4/:b4Uuid/attachments", screeningB4Controller.createAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b5", screeningB5Controller.get);
 router.put("/candidates/:recCanUuid/screening/b5", screeningB5Controller.upsert);
@@ -206,6 +212,8 @@ router.post("/screening/b5/:b5Uuid/test-items", screeningB5Controller.createTest
 router.put("/screening/b5/test-items/:testUuid", screeningB5Controller.updateTestItem);
 router.get("/screening/b5/:b5Uuid/comments", screeningB5Controller.getComments);
 router.post("/screening/b5/:b5Uuid/comments", screeningB5Controller.createComment);
+router.get("/screening/b5/:b5Uuid/attachments", screeningB5Controller.getAttachments);
+router.post("/screening/b5/:b5Uuid/attachments", screeningB5Controller.createAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b6", screeningB6Controller.get);
 router.put("/candidates/:recCanUuid/screening/b6", screeningB6Controller.upsert);
@@ -214,6 +222,8 @@ router.post("/screening/b6/:b6Uuid/interview-items", screeningB6Controller.creat
 router.put("/screening/b6/interview-items/:intUuid", screeningB6Controller.updateInterviewItem);
 router.get("/screening/b6/:b6Uuid/comments", screeningB6Controller.getComments);
 router.post("/screening/b6/:b6Uuid/comments", screeningB6Controller.createComment);
+router.get("/screening/b6/:b6Uuid/attachments", screeningB6Controller.getAttachments);
+router.post("/screening/b6/:b6Uuid/attachments", screeningB6Controller.createAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b7", screeningB7Controller.get);
 router.put("/candidates/:recCanUuid/screening/b7", screeningB7Controller.upsert);
@@ -227,6 +237,8 @@ router.get("/screening/b8/:b8Uuid/approvers", screeningB8Controller.getApprovers
 router.post("/screening/b8/:b8Uuid/approvers", screeningB8Controller.createApprover);
 router.get("/screening/b8/:b8Uuid/comments", screeningB8Controller.getComments);
 router.post("/screening/b8/:b8Uuid/comments", screeningB8Controller.createComment);
+router.get("/screening/b8/:b8Uuid/attachments", screeningB8Controller.getAttachments);
+router.post("/screening/b8/:b8Uuid/attachments", screeningB8Controller.createAttachment);
 
 router.get("/candidates/:recCanUuid/approvals", approvalsController.getApprovals);
 router.post("/candidates/:recCanUuid/approvals", approvalsController.createApproval);
