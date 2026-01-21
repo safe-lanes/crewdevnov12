@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useExternalNationalities } from '@/hooks/useExternalNationalities';
@@ -695,6 +695,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
     return [];
   }, [externalLanguagesData]);
+
+  // Fetch Manning Agents from Master 021
+  const { data: manningAgentsData } = useQuery<any[]>({
+    queryKey: ['/api/masters/021/data'],
+  });
+  
+  // Extract manning agent names from master data
+  const manningAgentOptions = useMemo(() => {
+    const agents = manningAgentsData || [];
+    return agents
+      .filter((agent: any) => agent.name && agent.name.trim().length > 0)
+      .map((agent: any) => ({
+        id: agent.id,
+        name: agent.name,
+        country: agent.country || '',
+        email: agent.email || ''
+      }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [manningAgentsData]);
 
   // Fetch vessels and fleet groups for C2/C3 dropdowns
   const { data: externalVesselsData, isLoading: isLoadingVessels } = useExternalVessels();
@@ -1566,6 +1585,51 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     setFormData(prev => ({ ...prev, vesselType: prev.vesselType.filter(t => t !== type) }));
   };
 
+  const isVesselTypeSelected = (type: string): boolean => {
+    return formData.vesselType.includes(type);
+  };
+
+  const handleVesselTypeSelection = (selectedVesselType: string) => {
+    const currentVesselTypes = formData.vesselType;
+    const isAlreadySelected = currentVesselTypes.includes(selectedVesselType);
+    
+    let updatedVesselTypes;
+    if (isAlreadySelected) {
+      updatedVesselTypes = currentVesselTypes.filter(type => type !== selectedVesselType);
+    } else {
+      updatedVesselTypes = [...currentVesselTypes, selectedVesselType];
+    }
+    
+    setFormData(prev => ({ ...prev, vesselType: updatedVesselTypes }));
+  };
+
+  const handleLanguageSelection = (field: 'nativeLanguage' | 'foreignLanguages', selectedLanguage: string) => {
+    if (field === 'nativeLanguage') {
+      updateFormData('nativeLanguage', selectedLanguage);
+    } else {
+      const currentLanguages = formData.foreignLanguages ? formData.foreignLanguages.split(', ') : [];
+      const isAlreadySelected = currentLanguages.includes(selectedLanguage);
+      
+      let updatedLanguages;
+      if (isAlreadySelected) {
+        updatedLanguages = currentLanguages.filter(lang => lang !== selectedLanguage);
+      } else {
+        updatedLanguages = [...currentLanguages, selectedLanguage];
+      }
+      
+      updateFormData('foreignLanguages', updatedLanguages.join(', '));
+    }
+  };
+
+  const isLanguageSelected = (field: 'nativeLanguage' | 'foreignLanguages', language: string): boolean => {
+    if (field === 'nativeLanguage') {
+      return formData.nativeLanguage === language;
+    } else {
+      const currentLanguages = formData.foreignLanguages ? formData.foreignLanguages.split(', ') : [];
+      return currentLanguages.includes(language);
+    }
+  };
+
   const addLicensesFromDatabase = (selectedLicenses: LicenseTemplate[]) => {
     const existingLicenses = formData.licenses.filter(l => l.certificateDocument.trim() !== '');
     const maxNum = Math.max(0, ...formData.licenses.map(l => {
@@ -2404,7 +2468,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Part C - Save approvals (C1)
       const serverApprovalMap = new Map((approvalsData || []).map(a => [a.appUuid, a.id]));
       for (const approver of formData.c1Approvers) {
-        const existingServerId = approver.serverId || serverApprovalMap.get(approver.appUuid);
+        const existingServerId = approver.serverId || (approver.appUuid ? serverApprovalMap.get(approver.appUuid) : undefined);
         if (existingServerId) {
           await updateApprovalMutation.mutateAsync({
             recCanUuid,
