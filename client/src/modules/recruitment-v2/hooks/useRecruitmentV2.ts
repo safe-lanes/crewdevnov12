@@ -595,12 +595,12 @@ export function useV2CreateScreeningB1Attachment() {
 }
 
 export interface ScreeningB1Comment {
-  id: number;
-  commentUuid: string;
-  b1Uuid: string;
-  comment?: string;
-  commentedByUuid?: string;
-  commentedAt?: string;
+  id?: number;
+  commentUuid?: string;
+  b1Uuid?: string;
+  fieldKey?: string;
+  userUuid?: string;
+  commentText?: string;
   sortOrder?: number;
 }
 
