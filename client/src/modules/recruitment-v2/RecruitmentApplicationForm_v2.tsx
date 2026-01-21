@@ -2510,38 +2510,162 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           </Button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex flex-col items-center gap-2">
-            <div 
-              className="w-32 h-40 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50"
-              data-testid="photo-preview"
-            >
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Photo Upload Area - Left Column */}
+          <div className="lg:col-span-3 space-y-4">
+            <div className="relative">
+              <input
+                id="photo-upload-v2"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+                data-testid="input-photo-upload"
+              />
+              
               {formData.uploadedPhoto ? (
-                <img src={formData.uploadedPhoto} alt="Candidate" className="w-full h-full object-cover" />
+                <div className="relative w-32 h-40 rounded-lg overflow-hidden border-2 border-gray-300">
+                  <img 
+                    src={formData.uploadedPhoto} 
+                    alt="Uploaded photo" 
+                    className="w-full h-full object-cover"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={() => updateFormData('uploadedPhoto', '')}
+                    data-testid="button-remove-photo"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
               ) : (
-                <Camera className="h-8 w-8 text-gray-400" />
+                <label htmlFor="photo-upload-v2" className="cursor-pointer block">
+                  <div className="w-32 h-40 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                    <div className="text-center">
+                      <Camera className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <div className="text-sm text-gray-500 mb-2">Upload Photo</div>
+                      <div className="text-xs text-blue-600 hover:text-blue-800">Choose file</div>
+                    </div>
+                  </div>
+                </label>
+              )}
+              {formData.uploadedPhoto && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs mt-2"
+                  onClick={() => document.getElementById('photo-upload-v2')?.click()}
+                  data-testid="button-change-photo"
+                >
+                  Change Photo
+                </Button>
               )}
             </div>
-            {isEditing && (
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                  data-testid="input-photo-upload"
-                />
-                <div className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700">
-                  <Upload className="h-4 w-4" />
-                  <span>Upload Photo</span>
+            
+            {/* Fields below photograph */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-gray-500 tracking-wide">Rank Applied For</Label>
+                {isEditing ? (
+                  <Select value={formData.rankAppliedFor} onValueChange={(value) => updateFormData('rankAppliedFor', value)}>
+                    <SelectTrigger className="mt-1" data-testid="select-rank-applied-for">
+                      <SelectValue placeholder="Select rank" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {ranksLoading ? (
+                        <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                      ) : (
+                        rankOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="mt-1 text-sm text-gray-900" data-testid="text-rank-applied-for">{formData.rankAppliedFor}</div>
+                )}
+              </div>
+              
+              <div>
+                <Label className="text-xs text-gray-500 tracking-wide">Vessel Type</Label>
+                {isEditing ? (
+                  <div className="mt-1">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.vesselType.map((vesselType) => (
+                        <span
+                          key={vesselType}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {vesselType}
+                          <button
+                            type="button"
+                            onClick={() => handleVesselTypeSelection(vesselType)}
+                            className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-600 hover:bg-blue-200 hover:text-blue-900"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <Select onValueChange={(value) => handleVesselTypeSelection(value)}>
+                      <SelectTrigger className="mt-1" data-testid="select-vessel-type">
+                        <SelectValue placeholder="Select vessel types" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[200px]">
+                        {vesselTypeMasterData.map((vesselType: string) => (
+                          <SelectItem 
+                            key={vesselType} 
+                            value={vesselType}
+                            className={isVesselTypeSelected(vesselType) ? 'bg-blue-50 text-blue-900' : ''}
+                          >
+                            <div className="flex items-center">
+                              {isVesselTypeSelected(vesselType) && <span className="mr-2 text-blue-600">✓</span>}
+                              {vesselType}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="mt-1 text-sm text-gray-900">
+                    {formData.vesselType.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {formData.vesselType.map((vesselType) => (
+                          <span
+                            key={vesselType}
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                          >
+                            {vesselType}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-500">No vessel types selected</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <Label className="text-xs text-gray-500 tracking-wide">File No</Label>
+                <div className="mt-1 text-sm text-gray-900">
+                  {formData.fileNo || (
+                    <span className="text-gray-400 italic">Auto-generated on Submit for Screening</span>
+                  )}
                 </div>
-              </label>
-            )}
+              </div>
+            </div>
           </div>
-
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          
+          {/* Form Fields - Right Column */}
+          <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">First Name *</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.firstName}
@@ -2567,7 +2691,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Family Name *</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Family Name</Label>
               {isEditing ? (
                 <Input
                   value={formData.familyName}
@@ -2596,7 +2720,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Nationality *</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Nationality</Label>
               {isEditing ? (
                 <Select value={formData.nationality} onValueChange={(value) => updateFormData('nationality', value)}>
                   <SelectTrigger className="mt-1" data-testid="select-nationality">
@@ -2634,7 +2758,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Date of Birth *</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
               {isEditing ? (
                 <Input
                   type="date"
@@ -2648,11 +2772,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Age (Years)</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Age( Years )</Label>
               <div className="mt-1 text-sm text-gray-900" data-testid="text-age">{formData.ageInYears}</div>
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Place of Birth (City)</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Place of birth( City )</Label>
               {isEditing ? (
                 <Input
                   value={formData.placeOfBirthCity}
@@ -2665,7 +2789,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Place of Birth (Country)</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Place of birth( Country )</Label>
               {isEditing ? (
                 <Select value={formData.placeOfBirthCountry} onValueChange={(value) => updateFormData('placeOfBirthCountry', value)}>
                   <SelectTrigger className="mt-1" data-testid="select-pob-country">
@@ -2682,7 +2806,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Height (cm)</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Height( Cm )</Label>
               {isEditing ? (
                 <Input
                   value={formData.heightCm}
@@ -2695,7 +2819,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Weight (kg)</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Weight( kg )</Label>
               {isEditing ? (
                 <Input
                   value={formData.weightKg}
@@ -2744,66 +2868,84 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Rank Applied For *</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Foreign Languages</Label>
               {isEditing ? (
-                <Select value={formData.rankAppliedFor} onValueChange={(value) => updateFormData('rankAppliedFor', value)}>
-                  <SelectTrigger className="mt-1" data-testid="select-rank-applied-for">
-                    <SelectValue placeholder="Select rank" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ranksLoading ? (
-                      <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
-                    ) : (
-                      rankOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Select 
+                    value="" 
+                    onValueChange={(value) => handleLanguageSelection('foreignLanguages', value)}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-foreign-languages">
+                      <SelectValue>
+                        {formData.foreignLanguages ? (
+                          <div className="text-left">
+                            <span className="text-sm">{formData.foreignLanguages}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">Select foreign languages</span>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {languageMasterData.map((language: string) => {
+                        const isSelected = isLanguageSelected('foreignLanguages', language);
+                        return (
+                          <SelectItem 
+                            key={language} 
+                            value={language} 
+                            className={`cursor-pointer ${isSelected ? "bg-blue-50" : ""}`}
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <span className={`w-4 h-4 border rounded flex items-center justify-center text-xs ${
+                                isSelected ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'
+                              }`}>
+                                {isSelected && '✓'}
+                              </span>
+                              <span>{language}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {formData.foreignLanguages && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {formData.foreignLanguages.split(', ').map((lang, index) => (
+                        <span key={index} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                          {lang}
+                          <button
+                            type="button"
+                            onClick={() => handleLanguageSelection('foreignLanguages', lang)}
+                            className="hover:text-blue-600"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-rank-applied-for">{formData.rankAppliedFor}</div>
+                <div className="mt-1 text-sm text-gray-900" data-testid="text-foreign-languages">{formData.foreignLanguages}</div>
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">File No</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Manning Agent</Label>
               {isEditing ? (
-                <Input
-                  value={formData.fileNo}
-                  onChange={(e) => updateFormData('fileNo', e.target.value)}
-                  className="mt-1"
-                  data-testid="input-file-no"
-                />
-              ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-file-no">{formData.fileNo}</div>
-              )}
-            </div>
-            <div className="col-span-full">
-              <Label className="text-xs text-gray-500 tracking-wide mb-2 block">Vessel Type(s) *</Label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {formData.vesselType.map((type) => (
-                  <div key={type} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
-                    <span>{type}</span>
-                    {isEditing && (
-                      <button onClick={() => removeVesselType(type)} className="ml-2 hover:text-blue-600">
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {isEditing && (
-                <Select value="" onValueChange={(value) => addVesselType(value)}>
-                  <SelectTrigger className="w-full max-w-md" data-testid="select-vessel-type">
-                    <SelectValue placeholder="Add vessel type..." />
+                <Select value={formData.manningAgent} onValueChange={(value) => updateFormData('manningAgent', value)}>
+                  <SelectTrigger className="mt-1" data-testid="select-manning-agent">
+                    <SelectValue placeholder="Select manning agent" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {vesselTypeMasterData
-                      .filter((vt: string) => !formData.vesselType.includes(vt))
-                      .map((vt: string) => (
-                        <SelectItem key={vt} value={vt}>{vt}</SelectItem>
-                      ))}
+                  <SelectContent className="max-h-[200px]">
+                    {manningAgentOptions.map((agent: any) => (
+                      <SelectItem key={agent.id} value={agent.name}>
+                        {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+              ) : (
+                <div className="mt-1 text-sm text-gray-900" data-testid="text-manning-agent">{formData.manningAgent}</div>
               )}
             </div>
           </div>
