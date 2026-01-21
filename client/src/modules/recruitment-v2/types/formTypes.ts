@@ -448,6 +448,8 @@ export interface V2CandidateListItem {
   gender: string;
   dob: string;
   nationalityUuid: string;
+  nationality: string;
+  vesselType: string;
   presentRank: string;
   rankAppliedFor: string;
   status: string;

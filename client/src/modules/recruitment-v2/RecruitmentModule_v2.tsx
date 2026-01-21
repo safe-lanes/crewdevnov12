@@ -265,7 +265,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
       
       baseColumns.splice(5, 0, {
         headerName: 'Nationality',
-        field: 'nationalityUuid',
+        field: 'nationality',
         flex: 1,
         minWidth: 100,
         cellStyle: { fontSize: '13px', color: '#4f5863' },
@@ -337,10 +337,11 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         `${candidate.firstName} ${candidate.middleName || ''} ${candidate.familyName}`
           .toLowerCase().includes(filters.searchName.toLowerCase());
       const matchesRank = filters.rankAppliedFor === "" || normalizeRank(candidate.rankAppliedFor || '') === filters.rankAppliedFor;
-      const matchesNationality = filters.nationality === "" || candidate.nationalityUuid === filters.nationality;
+      const matchesVesselType = filters.vesselType === "" || candidate.vesselType === filters.vesselType;
+      const matchesNationality = filters.nationality === "" || candidate.nationality === filters.nationality;
       const matchesStatus = filters.status === "" || candidate.status === filters.status;
       
-      return matchesName && matchesRank && matchesNationality && matchesStatus;
+      return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesStatus;
     });
     
     return filtered.map(candidate => ({
