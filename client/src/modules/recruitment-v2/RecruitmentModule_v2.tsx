@@ -27,10 +27,10 @@ import { useV2Candidates, useV2DeleteCandidate } from './hooks/useRecruitmentV2'
 import type { V2CandidateListItem } from './types/formTypes';
 
 const STATUS_MAPPING = {
-  "in-progress": ["Draft", "Applied", "Screening", "For Approval"],
-  "recruited": ["Recruited"],
-  "waitlist": ["Waitlisted"],
-  "rejected": ["Rejected"]
+  "in-progress": ["draft", "Draft", "applied", "Applied", "screening", "Screening", "for_approval", "For Approval"],
+  "recruited": ["recruited", "Recruited"],
+  "waitlist": ["waitlisted", "Waitlisted"],
+  "rejected": ["rejected", "Rejected"]
 };
 
 export const RecruitmentModuleV2 = (): JSX.Element => {
