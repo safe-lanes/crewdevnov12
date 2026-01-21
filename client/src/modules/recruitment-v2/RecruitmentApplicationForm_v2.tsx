@@ -1281,14 +1281,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     if (screeningB3Authorities && screeningB3Authorities.length > 0) {
       setFormData(prev => ({
         ...prev,
-        b3Authorities: screeningB3Authorities.map(auth => ({
-          id: auth.authorityUuid,
+        b3Authorities: screeningB3Authorities.map((auth: any) => ({
+          id: auth.authUuid,
           serverId: auth.id,
-          authorityName: auth.authorityName || '',
-          checkType: auth.checkType || '',
-          dateChecked: auth.dateChecked || '',
-          result: auth.result || '',
-          remarks: auth.remarks || '',
+          date: auth.checkDate || '',
+          authority: auth.authority || '',
         })),
       }));
     }
@@ -1298,14 +1295,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     if (screeningB4CertItems && screeningB4CertItems.length > 0) {
       setFormData(prev => ({
         ...prev,
-        b4CertItems: screeningB4CertItems.map(cert => ({
-          id: cert.certItemUuid,
+        b4Certs: screeningB4CertItems.map((cert: any) => ({
+          id: cert.certUuid,
           serverId: cert.id,
-          certificateName: cert.certificateName || '',
-          issuingAuthority: cert.issuingAuthority || '',
-          dateVerified: cert.dateVerified || '',
-          verificationResult: cert.verificationResult || '',
-          remarks: cert.remarks || '',
+          date: cert.authDate || '',
+          certificate: cert.certificate || '',
+          authority: cert.authority || '',
         })),
       }));
     }
@@ -1315,14 +1310,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     if (screeningB5TestItems && screeningB5TestItems.length > 0) {
       setFormData(prev => ({
         ...prev,
-        b5TestItems: screeningB5TestItems.map(test => ({
-          id: test.testItemUuid,
+        b5Tests: screeningB5TestItems.map((test: any) => ({
+          id: test.testUuid,
           serverId: test.id,
-          testType: test.testType || '',
-          testDate: test.testDate || '',
-          result: test.result || '',
+          date: test.testDate || '',
+          subject: test.subject || '',
           score: test.score || '',
-          remarks: test.remarks || '',
+          result: test.result || '',
         })),
       }));
     }
@@ -1330,14 +1324,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   useEffect(() => {
     if (screeningB6InterviewItems && screeningB6InterviewItems.length > 0) {
-      // Map API fields (DB column names) to UI form fields
       setFormData(prev => ({
         ...prev,
-        b6Interviews: screeningB6InterviewItems.map(interview => ({
+        b6Interviews: screeningB6InterviewItems.map((interview: any) => ({
           id: interview.intUuid,
           serverId: interview.id,
-          interviewer: interview.interviewerUuid || '',
           date: interview.interviewDate || '',
+          interviewer: interview.interviewerUuid || '',
           status: interview.status || '',
           result: interview.result || '',
           comments: interview.comments || '',
@@ -2537,74 +2530,64 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
-      const serverB3AuthMap = new Map((screeningB3Authorities || []).map(a => [a.authorityUuid, a.id]));
+      const serverB3AuthMap = new Map((screeningB3Authorities || []).map((a: any) => [a.authUuid, a.id]));
       for (const auth of formData.b3Authorities) {
-        if (!serverB3AuthMap.has(auth.id) && currentB3Uuid) {
+        if (!serverB3AuthMap.has(auth.id) && currentB3Uuid && (auth.date || auth.authority)) {
           await createB3AuthorityMutation.mutateAsync({
             b3Uuid: currentB3Uuid,
             data: {
-              authorityName: auth.authorityName || undefined,
-              checkType: auth.checkType || undefined,
-              dateChecked: auth.dateChecked || undefined,
-              result: auth.result || undefined,
-              remarks: auth.remarks || undefined,
-            },
+              checkDate: auth.date || undefined,
+              authority: auth.authority || undefined,
+            } as any,
           });
         }
       }
 
-      const serverB4CertMap = new Map((screeningB4CertItems || []).map(c => [c.certItemUuid, c.id]));
-      for (const cert of formData.b4CertItems) {
-        if (!serverB4CertMap.has(cert.id) && currentB4Uuid) {
+      const serverB4CertMap = new Map((screeningB4CertItems || []).map((c: any) => [c.certUuid, c.id]));
+      for (const cert of formData.b4Certs) {
+        if (!serverB4CertMap.has(cert.id) && currentB4Uuid && (cert.date || cert.certificate || cert.authority)) {
           await createB4CertItemMutation.mutateAsync({
             b4Uuid: currentB4Uuid,
             data: {
-              certificateName: cert.certificateName || undefined,
-              issuingAuthority: cert.issuingAuthority || undefined,
-              dateVerified: cert.dateVerified || undefined,
-              verificationResult: cert.verificationResult || undefined,
-              remarks: cert.remarks || undefined,
-            },
+              authDate: cert.date || undefined,
+              certificate: cert.certificate || undefined,
+              authority: cert.authority || undefined,
+            } as any,
           });
         }
       }
 
-      const serverB5TestMap = new Map((screeningB5TestItems || []).map(t => [t.testItemUuid, t.id]));
-      for (const test of formData.b5TestItems) {
-        if (!serverB5TestMap.has(test.id) && currentB5Uuid) {
+      const serverB5TestMap = new Map((screeningB5TestItems || []).map((t: any) => [t.testUuid, t.id]));
+      for (const test of formData.b5Tests) {
+        if (!serverB5TestMap.has(test.id) && currentB5Uuid && (test.date || test.subject || test.score || test.result)) {
           await createB5TestItemMutation.mutateAsync({
             b5Uuid: currentB5Uuid,
             data: {
-              testType: test.testType || undefined,
-              testDate: test.testDate || undefined,
-              result: test.result || undefined,
+              testDate: test.date || undefined,
+              subject: test.subject || undefined,
               score: test.score || undefined,
-              remarks: test.remarks || undefined,
-            },
+              result: test.result || undefined,
+            } as any,
           });
         }
       }
 
-      // Save B6 interviews from UI (formData.b6Interviews has: date, interviewer, status, result, comments)
-      // DB columns: interview_date, interviewer_uuid, status, result, comments
-      const serverB6InterviewMap = new Map((screeningB6InterviewItems || []).map(i => [i.intUuid, i.id]));
+      const serverB6InterviewMap = new Map((screeningB6InterviewItems || []).map((i: any) => [i.intUuid, i.id]));
       for (const interview of formData.b6Interviews) {
-        if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid) {
+        if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid && (interview.date || interview.interviewer || interview.status || interview.result)) {
           await createB6InterviewItemMutation.mutateAsync({
             b6Uuid: currentB6Uuid,
             data: {
-              interviewerUuid: interview.interviewer || undefined,
               interviewDate: interview.date || undefined,
+              interviewerUuid: interview.interviewer || undefined,
               status: interview.status || undefined,
               result: interview.result || undefined,
               comments: interview.comments || undefined,
-            },
+            } as any,
           });
         }
       }
 
-      // Save B7 training needs from UI (formData.b7TrainingNeeds has: training, identifiedBy, category, dueDate, comments)
-      // DB columns: training, identified_by_uuid, category, due_date, comments
       const serverB7TrainingMap = new Map((screeningB7TrainingItems || []).map(t => [t.trainItemUuid, t.id]));
       for (const training of formData.b7TrainingNeeds) {
         if (!serverB7TrainingMap.has(training.id) && currentB7Uuid) {
