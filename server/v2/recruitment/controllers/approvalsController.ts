@@ -58,8 +58,9 @@ export const suitabilityController = {
   async get(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await suitabilityService.getSuitability(recCanUuid);
-      res.json(result);
+      // Return suitability with vessel types and fleet groups for proper data binding
+      const result = await suitabilityService.getSuitabilityWithRelations(recCanUuid);
+      res.json(result || {});
     } catch (error) {
       console.error("Error getting suitability:", error);
       res.status(500).json({ error: "Failed to get suitability" });
@@ -158,8 +159,9 @@ export const recruitmentDecisionController = {
   async get(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await recruitmentDecisionService.getDecision(recCanUuid);
-      res.json(result);
+      // Return decision with assigned groups for proper data binding
+      const result = await recruitmentDecisionService.getDecisionWithRelations(recCanUuid);
+      res.json(result || {});
     } catch (error) {
       console.error("Error getting decision:", error);
       res.status(500).json({ error: "Failed to get decision" });

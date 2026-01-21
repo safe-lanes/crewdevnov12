@@ -2748,24 +2748,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
       }
 
-      queryClient.invalidateQueries({ queryKey: ['v2', 'approvals', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'suitability', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'recruitment-decision', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8', recCanUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2-items', currentB2Uuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-authorities', currentB3Uuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-cert-items', currentB4Uuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-test-items', currentB5Uuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-interview-items', currentB6Uuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7-training-items', currentB7Uuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-approvers', currentB8Uuid] });
+      // Batch invalidate all V2 queries for this candidate at once for faster refresh
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey[0] === 'v2' && 
+          (query.queryKey.includes(recCanUuid) || 
+           query.queryKey.includes(currentB2Uuid) ||
+           query.queryKey.includes(currentB3Uuid) ||
+           query.queryKey.includes(currentB4Uuid) ||
+           query.queryKey.includes(currentB5Uuid) ||
+           query.queryKey.includes(currentB6Uuid) ||
+           query.queryKey.includes(currentB7Uuid) ||
+           query.queryKey.includes(currentB8Uuid))
+      });
 
       toast({
         title: "Success",
