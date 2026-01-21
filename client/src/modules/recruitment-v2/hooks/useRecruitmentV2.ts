@@ -173,7 +173,7 @@ export function useV2SaveVesselTypes() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: CandidateVesselType[] }) =>
-      postApi<CandidateVesselType[]>(`/candidates/${recCanUuid}/vessel-types`, data),
+      putApi<CandidateVesselType[]>(`/candidates/${recCanUuid}/vessel-types`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'vessel-types', variables.recCanUuid] });
     },
@@ -230,7 +230,7 @@ export function useV2SaveChildren() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: CandidateChild[] }) =>
-      postApi<CandidateChild[]>(`/candidates/${recCanUuid}/children`, data),
+      putApi<CandidateChild[]>(`/candidates/${recCanUuid}/children`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'children', variables.recCanUuid] });
     },

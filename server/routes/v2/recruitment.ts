@@ -11,6 +11,7 @@ import {
   getVesselTypesApplied,
   addVesselTypeApplied,
   removeVesselTypeApplied,
+  replaceVesselTypes,
   getPersonalDetails,
   upsertPersonalDetails,
   getAddress,
@@ -21,6 +22,7 @@ import {
   createChild,
   updateChild,
   deleteChild,
+  replaceChildren,
   getNextOfKin,
   upsertNextOfKin,
 } from "../../v2/recruitment/controllers/candidateController";
@@ -85,6 +87,7 @@ router.delete("/candidates/:recCanUuid", deleteCandidateByUuid);
 
 router.get("/candidates/:recCanUuid/vessel-types", getVesselTypesApplied);
 router.post("/candidates/:recCanUuid/vessel-types", addVesselTypeApplied);
+router.put("/candidates/:recCanUuid/vessel-types", replaceVesselTypes);
 router.delete("/candidates/:recCanUuid/vessel-types/:id", removeVesselTypeApplied);
 
 router.get("/candidates/:recCanUuid/personal-details", getPersonalDetails);
@@ -98,6 +101,7 @@ router.put("/candidates/:recCanUuid/family-info", upsertFamilyInfo);
 
 router.get("/candidates/:recCanUuid/children", getChildren);
 router.post("/candidates/:recCanUuid/children", createChild);
+router.put("/candidates/:recCanUuid/children", replaceChildren);
 router.patch("/candidates/:recCanUuid/children/:id", updateChild);
 router.delete("/candidates/:recCanUuid/children/:id", deleteChild);
 

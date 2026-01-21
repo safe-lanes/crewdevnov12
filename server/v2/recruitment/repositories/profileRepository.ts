@@ -179,6 +179,16 @@ export class ChildrenRepository {
       .returning();
     return results.length > 0;
   }
+
+  async deleteByCandidateUuid(recCanUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db
+      .update(candChildren)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(candChildren.recCanUuid, recCanUuid))
+      .returning();
+    return results.length > 0;
+  }
 }
 
 export class NextOfKinRepository {

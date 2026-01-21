@@ -122,6 +122,27 @@ export class CandidateService {
     return vesselTypesAppliedRepository.softDelete(id);
   }
 
+  async replaceVesselTypes(
+    recCanUuid: string,
+    vesselTypeUuids: string[],
+    createdByUuid?: string
+  ): Promise<CandVesselTypeApplied[]> {
+    await vesselTypesAppliedRepository.deleteByCandidateUuid(recCanUuid);
+    const results: CandVesselTypeApplied[] = [];
+    for (let i = 0; i < vesselTypeUuids.length; i++) {
+      const vt = await vesselTypesAppliedRepository.create({
+        cvtaUuid: uuidv4(),
+        recCanUuid,
+        vesselTypeUuid: vesselTypeUuids[i],
+        sortOrder: i,
+        createdByUuid,
+        updatedByUuid: createdByUuid,
+      });
+      results.push(vt);
+    }
+    return results;
+  }
+
   async getPersonalDetails(recCanUuid: string): Promise<CandPersonalDetails | undefined> {
     return personalDetailsRepository.findByCandidateUuid(recCanUuid);
   }
@@ -204,6 +225,33 @@ export class CandidateService {
 
   async deleteChild(id: number): Promise<boolean> {
     return childrenRepository.softDelete(id);
+  }
+
+  async replaceChildren(
+    recCanUuid: string,
+    children: Partial<InsertChild>[],
+    createdByUuid?: string
+  ): Promise<CandChild[]> {
+    await childrenRepository.deleteByCandidateUuid(recCanUuid);
+    const results: CandChild[] = [];
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (!child.firstName?.trim()) continue;
+      const created = await childrenRepository.create({
+        childUuid: uuidv4(),
+        recCanUuid,
+        firstName: child.firstName,
+        middleName: child.middleName,
+        familyName: child.familyName,
+        dob: child.dob,
+        gender: child.gender,
+        sortOrder: i,
+        createdByUuid,
+        updatedByUuid: createdByUuid,
+      } as InsertChild);
+      results.push(created);
+    }
+    return results;
   }
 
   async getNextOfKin(recCanUuid: string): Promise<CandNextOfKin | undefined> {

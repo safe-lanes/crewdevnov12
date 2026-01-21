@@ -150,6 +150,22 @@ export async function removeVesselTypeApplied(req: Request, res: Response) {
   }
 }
 
+export async function replaceVesselTypes(req: Request, res: Response) {
+  try {
+    const { recCanUuid } = req.params;
+    const vesselTypes = req.body;
+    if (!Array.isArray(vesselTypes)) {
+      return res.status(400).json({ error: "Expected array of vessel types" });
+    }
+    const vesselTypeUuids = vesselTypes.map((vt: any) => vt.vesselTypeUuid);
+    const results = await candidateService.replaceVesselTypes(recCanUuid, vesselTypeUuids);
+    res.json(results);
+  } catch (error) {
+    console.error("Error replacing vessel types:", error);
+    res.status(500).json({ error: "Failed to replace vessel types" });
+  }
+}
+
 export async function getPersonalDetails(req: Request, res: Response) {
   try {
     const { recCanUuid } = req.params;
@@ -266,6 +282,21 @@ export async function deleteChild(req: Request, res: Response) {
   } catch (error) {
     console.error("Error deleting child:", error);
     res.status(500).json({ error: "Failed to delete child" });
+  }
+}
+
+export async function replaceChildren(req: Request, res: Response) {
+  try {
+    const { recCanUuid } = req.params;
+    const children = req.body;
+    if (!Array.isArray(children)) {
+      return res.status(400).json({ error: "Expected array of children" });
+    }
+    const results = await candidateService.replaceChildren(recCanUuid, children);
+    res.json(results);
+  } catch (error) {
+    console.error("Error replacing children:", error);
+    res.status(500).json({ error: "Failed to replace children" });
   }
 }
 
