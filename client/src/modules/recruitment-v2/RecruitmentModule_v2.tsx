@@ -3,7 +3,7 @@ import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucid
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useQueryClient } from '@tanstack/react-query';
 import MainLayout from '../../components/main/MainLayout';
-import RecruitmentSideBarV2 from './RecruitmentSideBar_v2';
+import RecruitmentSideBar from '../recruitment/RecruitmentSideBar';
 import { RecruitmentApplicationFormV2 } from './RecruitmentApplicationForm_v2';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
@@ -85,12 +85,25 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
 
   const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
     const handleAttachmentClick = () => {
-      setSelectedCandidate(params.data);
+      setSelectedCandidate({
+        ...params.data,
+        middleName: params.data.middleName || ''
+      });
       setShowApplicationForm(true);
+      
+      setTimeout(() => {
+        const a2Section = document.querySelector('[data-section="A2"]');
+        if (a2Section) {
+          a2Section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 500);
     };
 
     const handleEditClick = () => {
-      setSelectedCandidate(params.data);
+      setSelectedCandidate({
+        ...params.data,
+        middleName: params.data.middleName || ''
+      });
       setShowApplicationForm(true);
     };
 
@@ -132,7 +145,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
           size="sm"
           className="h-7 w-7 p-0 hover:bg-gray-100"
           onClick={handleAttachmentClick}
-          data-testid={`button-attachment-${params.data.id}`}
+          data-testid={`button-attachment-${params.data.recCanUuid}`}
         >
           <PaperclipIcon className="h-4 w-4 text-gray-600" />
         </Button>
@@ -141,7 +154,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
           size="sm"
           className="h-7 w-7 p-0 hover:bg-gray-100"
           onClick={handleEditClick}
-          data-testid={`button-edit-${params.data.id}`}
+          data-testid={`button-edit-${params.data.recCanUuid}`}
         >
           <EditIcon className="h-4 w-4 text-gray-600" />
         </Button>
@@ -150,7 +163,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
           size="sm"
           className="h-7 w-7 p-0 hover:bg-red-100"
           onClick={handleDeleteClick}
-          data-testid={`button-delete-${params.data.id}`}
+          data-testid={`button-delete-${params.data.recCanUuid}`}
         >
           <Trash2Icon className="h-4 w-4 text-red-600" />
         </Button>
@@ -274,10 +287,23 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         resizable: true,
         enableRowGroup: false
       });
+      
+      const statusIndex = baseColumns.findIndex(col => col.field === 'status');
+      baseColumns.splice(statusIndex, 0, {
+        headerName: 'Vessel Type',
+        field: 'vesselType',
+        flex: 1,
+        minWidth: 100,
+        cellStyle: { fontSize: '13px', color: '#4f5863' },
+        filter: 'agSetColumnFilter',
+        sortable: true,
+        resizable: true,
+        enableRowGroup: false
+      });
     }
 
     return baseColumns;
-  }, [ActionsCellRenderer, isPhone, isTablet, isSmallScreen]);
+  }, [ActionsCellRenderer, normalizeRank, isPhone, isTablet, isSmallScreen]);
 
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
@@ -339,95 +365,132 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     }
   };
 
-  const getStatusOptions = () => {
-    switch (selectedRecruitmentPage) {
-      case "in-progress":
-        return [
-          <SelectItem key="applied" value="Applied">Applied</SelectItem>,
-          <SelectItem key="screening" value="Screening">Screening</SelectItem>,
-          <SelectItem key="for-approval" value="For Approval">For Approval</SelectItem>
-        ];
-      case "recruited":
-        return [<SelectItem key="recruited" value="Recruited">Recruited</SelectItem>];
-      case "waitlist":
-        return [<SelectItem key="waitlisted" value="Waitlisted">Waitlisted</SelectItem>];
-      case "rejected":
-        return [<SelectItem key="rejected" value="Rejected">Rejected</SelectItem>];
-      default:
-        return [];
-    }
-  };
+  const renderFiltersAndTable = () => {
+    const getStatusOptions = () => {
+      switch (selectedRecruitmentPage) {
+        case "in-progress":
+          return [
+            <SelectItem key="applied" value="Applied">Applied</SelectItem>,
+            <SelectItem key="screening" value="Screening">Screening</SelectItem>,
+            <SelectItem key="for-approval" value="For Approval">For Approval</SelectItem>
+          ];
+        case "recruited":
+          return [<SelectItem key="recruited" value="Recruited">Recruited</SelectItem>];
+        case "waitlist":
+          return [<SelectItem key="waitlisted" value="Waitlisted">Waitlisted</SelectItem>];
+        case "rejected":
+          return [<SelectItem key="rejected" value="Rejected">Rejected</SelectItem>];
+        default:
+          return [];
+      }
+    };
 
-  const handleCloseForm = () => {
-    setShowApplicationForm(false);
-    setSelectedCandidate(null);
-  };
-
-  const handleNewCandidate = () => {
-    setSelectedCandidate(null);
-    setShowApplicationForm(true);
-  };
-
-  if (showApplicationForm) {
     return (
-      <RecruitmentApplicationFormV2
-        candidate={selectedCandidate}
-        onClose={handleCloseForm}
-      />
-    );
-  }
-
-  return (
-    <MainLayout>
-      <RecruitmentSideBarV2
-        selectedRecruitmentPage={selectedRecruitmentPage}
-        setSelectedRecruitmentPage={setSelectedRecruitmentPage}
-        allowedPages={allowedPages}
-      />
-      
-      <div className="flex-1 overflow-y-auto p-4 md:p-6">
-        <SectionTitleComponents title={`Recruitment V2 - ${getTitle()}`}>
-          <span className="text-sm text-gray-500">Showing {filteredData.length} candidates</span>
-        </SectionTitleComponents>
-        
-        <Card className="mt-4">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowFilters(!showFilters)}
-                  data-testid="button-toggle-filters"
-                >
-                  <FilterIcon className="h-4 w-4 mr-2" />
-                  {showFilters ? 'Hide Filters' : 'Show Filters'}
-                </Button>
-              </div>
-              
-              <Button
-                onClick={handleNewCandidate}
-                className="bg-[#16569e] hover:bg-[#0d4a8f]"
-                data-testid="button-new-candidate"
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                New Candidate
-              </Button>
-            </div>
-
-            {showFilters && (
-              <div className="mb-4 p-4 bg-[#f7fafc] rounded-lg">
-                <div className="flex flex-wrap items-center gap-3">
+      <>
+        {showFilters && (
+          <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
+            {!isSmallScreen && (
+              <div className="flex flex-nowrap items-center gap-2">
+                <div className="shrink-0 w-36">
                   <Input
                     placeholder="Search Name..."
-                    className="h-8 text-xs w-36"
+                    className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                    value={filters.searchName}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                    data-testid="input-search-name-v2"
+                  />
+                </div>
+
+                <div className="shrink-0 w-[120px]">
+                  <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-rank-filter-v2">
+                      <SelectValue placeholder="Rank Applied" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {ranksLoading ? (
+                        <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                      ) : (
+                        rankNames.map(rank => (
+                          <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="shrink-0 w-[110px]">
+                  <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-vessel-type-filter-v2">
+                      <SelectValue placeholder="Vessel Type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {vesselTypesLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        vesselTypeMasterData.map((vesselType: string) => (
+                          <SelectItem key={vesselType} value={vesselType}>{vesselType}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="shrink-0 w-[110px]">
+                  <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-nationality-filter-v2">
+                      <SelectValue placeholder="Nationality" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {nationalitiesLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        nationalityMasterData.map((nationality: string) => (
+                          <SelectItem key={nationality} value={nationality}>{nationality}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="shrink-0 w-[100px]">
+                  <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-status-filter-v2">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getStatusOptions()}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] px-4 shrink-0" data-testid="button-apply-filters-v2">
+                  Apply
+                </Button>
+
+                <Button 
+                  variant="outline" 
+                  className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+                  onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+                  data-testid="button-clear-filters-v2"
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
+
+            {isTablet && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 lg:grid-cols-4 gap-3">
+                  <Input
+                    placeholder="Search Name..."
+                    className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
                     value={filters.searchName}
                     onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
                     data-testid="input-search-name-v2"
                   />
 
                   <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
-                    <SelectTrigger className="h-8 text-xs w-[120px]" data-testid="select-rank-filter-v2">
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-rank-filter-v2">
                       <SelectValue placeholder="Rank Applied" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
@@ -441,8 +504,23 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                     </SelectContent>
                   </Select>
 
+                  <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-vessel-type-filter-v2">
+                      <SelectValue placeholder="Vessel Type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {vesselTypesLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        vesselTypeMasterData.map((vesselType: string) => (
+                          <SelectItem key={vesselType} value={vesselType}>{vesselType}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
                   <Select value={filters.nationality} onValueChange={(value) => setFilters(prev => ({ ...prev, nationality: value }))}>
-                    <SelectTrigger className="h-8 text-xs w-[110px]" data-testid="select-nationality-filter-v2">
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-nationality-filter-v2">
                       <SelectValue placeholder="Nationality" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
@@ -457,17 +535,22 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                   </Select>
 
                   <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
-                    <SelectTrigger className="h-8 text-xs w-[100px]" data-testid="select-status-filter-v2">
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-status-filter-v2">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
                       {getStatusOptions()}
                     </SelectContent>
                   </Select>
-
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] px-4" data-testid="button-apply-filters-v2">
+                    Apply
+                  </Button>
                   <Button 
                     variant="outline" 
-                    className="h-8 text-xs"
+                    className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3"
                     onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
                     data-testid="button-clear-filters-v2"
                   >
@@ -477,40 +560,150 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
               </div>
             )}
 
-            <div className="ag-theme-alpine" style={{ height: 'calc(100vh - 350px)', width: '100%' }}>
-              {isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-gray-500">Loading candidates...</div>
-                </div>
-              ) : error ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-red-500">Error loading candidates</div>
-                </div>
-              ) : (
-                <AgGridTable
-                  rowData={filteredData}
-                  columnDefs={columnDefs}
-                  onGridReady={onGridReady}
-                  pagination={true}
-                  paginationPageSize={20}
-                  animateRows={true}
-                  rowSelection="single"
-                  suppressRowClickSelection={true}
-                  gridOptions={{
-                    defaultColDef: {
-                      sortable: true,
-                      filter: true,
-                      resizable: true
-                    },
-                    getRowId: (params: any) => params.data.recCanUuid
-                  }}
+            {isPhone && (
+              <div className="space-y-2">
+                <Input
+                  placeholder="Search Name..."
+                  className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                  value={filters.searchName}
+                  onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                  data-testid="input-search-name-v2"
                 />
-              )}
-            </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-rank-filter-v2">
+                      <SelectValue placeholder="Rank" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {ranksLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        rankNames.map(rank => (
+                          <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-status-filter-v2">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getStatusOptions()}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] px-4 flex-1" data-testid="button-apply-filters-v2">
+                    Apply
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3"
+                    onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+                    data-testid="button-clear-filters-v2"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg flex flex-col flex-1">
+          <CardContent className={`bg-[#f7fafc] flex flex-col flex-1 ${isPhone ? 'p-2 pl-0' : 'p-4 pl-0'}`}>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-gray-500">Loading candidates...</div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-red-500">Error loading candidates</div>
+              </div>
+            ) : (
+              <AgGridTable
+                rowData={filteredData}
+                columnDefs={columnDefs}
+                onGridReady={onGridReady}
+                fillAvailableHeight={true}
+                bottomPadding={isPhone ? 10 : 20}
+                width="100%"
+                enableExport={!isPhone}
+                enableSideBar={!isSmallScreen}
+                enableStatusBar={false}
+                enableRowGrouping={!isSmallScreen}
+                enablePivoting={!isSmallScreen}
+                enableAdvancedFilter={false}
+                rowSelection={false}
+              />
+            )}
           </CardContent>
         </Card>
+      </>
+    );
+  };
+
+  const renderContent = () => {
+    if (["in-progress", "recruited", "waitlist", "rejected"].includes(selectedRecruitmentPage)) {
+      return renderFiltersAndTable();
+    }
+    
+    return (
+      <div className="p-6 text-center text-gray-600">
+        Content for {getTitle()} will be implemented in future iterations.
       </div>
-    </MainLayout>
+    );
+  };
+
+  return (
+    <div data-testid="recruitment-v2-container">
+      <RecruitmentSideBar 
+        selectedRecruitmentPage={selectedRecruitmentPage}
+        setSelectedRecruitmentPage={setSelectedRecruitmentPage}
+        allowedPages={allowedPages}
+      />
+      <MainLayout hasSidebar={true}>
+        <SectionTitleComponents title={getTitle()}>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className={`h-8 text-[#8798ad] text-xs border-[#e1e8ed] ${isPhone ? 'w-auto px-3' : 'w-32'}`}
+              onClick={() => setShowFilters(!showFilters)}
+              data-testid="button-toggle-filters-v2"
+            >
+              <FilterIcon className={`h-3 w-3 ${isPhone ? '' : 'mr-1'}`} />
+              {!isPhone && 'Filters'}
+            </Button>
+            <Button
+              className={`h-8 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white ${isPhone ? 'w-auto px-3' : 'w-32'}`}
+              onClick={() => {
+                setSelectedCandidate(null);
+                setShowApplicationForm(true);
+              }}
+              data-testid="button-new-crew-v2"
+            >
+              <PlusIcon className={`h-3 w-3 ${isPhone ? '' : 'mr-1'}`} />
+              {!isPhone && 'New Crew'}
+            </Button>
+          </div>
+        </SectionTitleComponents>
+        {renderContent()}
+      </MainLayout>
+
+      {showApplicationForm && (
+        <RecruitmentApplicationFormV2
+          candidate={selectedCandidate}
+          onClose={() => {
+            setShowApplicationForm(false);
+            setSelectedCandidate(null);
+          }}
+        />
+      )}
+    </div>
   );
 };
 
