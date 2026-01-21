@@ -4218,151 +4218,397 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-4">
                     <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B3. Background Security Checks</h3>
-                    <div className="cursor-help" title="Guidance for background security checks">
+                    <div className="cursor-help" title="Guidance for background security checks process">
                       <Info className="h-4 w-4 text-gray-400" />
                     </div>
                   </div>
                   
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
-                        B3.1 Security checks completed?
-                      </Label>
-                      <div className="flex items-center min-w-[300px]">
-                        <div className="flex gap-6 w-[200px]">
-                          <RadioGroup 
-                            value={formData.b3ChecksCompleted} 
-                            onValueChange={(value) => setFormData(prev => ({ ...prev, b3ChecksCompleted: value }))}
-                            className="flex gap-6"
+                  <div className="space-y-6">
+                    {/* B3.1 Background security checks completed */}
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                          B3.1 Background security checks completed?
+                        </Label>
+                        <div className="flex items-center min-w-[300px]">
+                          <div className="flex gap-6 w-[200px]">
+                            <RadioGroup 
+                              value={formData.b3ChecksCompleted} 
+                              onValueChange={(value) => setFormData(prev => ({ ...prev, b3ChecksCompleted: value }))}
+                              className="flex gap-6"
+                            >
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="b3-completed-yes" />
+                                  <Label htmlFor="b3-completed-yes" className="text-sm cursor-pointer">Yes</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="b3-completed-no" />
+                                  <Label htmlFor="b3-completed-no" className="text-sm cursor-pointer">No</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="na" id="b3-completed-na" />
+                                  <Label htmlFor="b3-completed-na" className="text-sm cursor-pointer">NA</Label>
+                                </div>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 ml-4"
+                            onClick={() => setNewB3Comment(prev => ({ ...prev, 'b3-completed': "" }))}
+                            data-testid="button-b3-completed-comment"
                           >
-                            <div className="flex items-center space-x-2 w-[50px]">
-                              <RadioGroupItem value="yes" id="b3-check-yes" />
-                              <Label htmlFor="b3-check-yes" className="text-sm cursor-pointer">Yes</Label>
-                            </div>
-                            <div className="flex items-center space-x-2 w-[50px]">
-                              <RadioGroupItem value="no" id="b3-check-no" />
-                              <Label htmlFor="b3-check-no" className="text-sm cursor-pointer">No</Label>
-                            </div>
-                            <div className="flex items-center space-x-2 w-[50px]">
-                              <RadioGroupItem value="na" id="b3-check-na" />
-                              <Label htmlFor="b3-check-na" className="text-sm cursor-pointer">NA</Label>
-                            </div>
-                          </RadioGroup>
+                            <MessageSquare className="h-4 w-4 text-gray-400" />
+                          </Button>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 ml-4"
-                          data-testid="button-b3-check-comment"
-                        >
-                          <MessageSquare className="h-4 w-4 text-gray-400" />
-                        </Button>
                       </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
-                        B3.2 Results
-                      </Label>
-                      <div className="flex items-center min-w-[300px]">
-                        <div className="flex gap-6 w-[200px]">
-                          <RadioGroup 
-                            value={formData.b3Results} 
-                            onValueChange={(value) => setFormData(prev => ({ ...prev, b3Results: value }))}
-                            className="flex gap-6"
-                          >
-                            <div className="flex items-center space-x-2 w-[50px]">
-                              <RadioGroupItem value="yes" id="b3-results-yes" />
-                              <Label htmlFor="b3-results-yes" className="text-sm cursor-pointer">Yes</Label>
+
+                      {/* Authority details when Yes is selected */}
+                      {formData.b3ChecksCompleted === 'yes' && (
+                        <div className="ml-4 mb-4 space-y-3">
+                          {formData.b3Authorities.map((authority, index) => (
+                            <div key={authority.id} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Input
+                                  type="date"
+                                  placeholder="Date"
+                                  className="text-sm"
+                                  value={authority.date}
+                                  onChange={(e) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b3Authorities: prev.b3Authorities.map(auth => 
+                                        auth.id === authority.id 
+                                          ? { ...auth, date: e.target.value }
+                                          : auth
+                                      )
+                                    }));
+                                  }}
+                                  data-testid={`input-b3-auth-date-${index}`}
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="text"
+                                  placeholder="Authority Involved"
+                                  className="text-sm flex-1"
+                                  value={authority.authority}
+                                  onChange={(e) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b3Authorities: prev.b3Authorities.map(auth => 
+                                        auth.id === authority.id 
+                                          ? { ...auth, authority: e.target.value }
+                                          : auth
+                                      )
+                                    }));
+                                  }}
+                                  data-testid={`input-b3-auth-name-${index}`}
+                                />
+                                {index === formData.b3Authorities.length - 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10 w-10 p-0 border-gray-300"
+                                    onClick={() => {
+                                      const newId = String(Date.now());
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b3Authorities: [...prev.b3Authorities, { 
+                                          id: newId, 
+                                          date: '', 
+                                          authority: '' 
+                                        }]
+                                      }));
+                                    }}
+                                    data-testid="button-add-b3-authority"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {formData.b3Authorities.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-10 w-10 p-0"
+                                    onClick={() => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b3Authorities: prev.b3Authorities.filter(auth => auth.id !== authority.id)
+                                      }));
+                                    }}
+                                    data-testid={`button-remove-b3-auth-${index}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {formData.b3Authorities.length === 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-10 w-10 p-0"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-2 w-[50px]">
-                              <RadioGroupItem value="no" id="b3-results-no" />
-                              <Label htmlFor="b3-results-no" className="text-sm cursor-pointer">No</Label>
-                            </div>
-                            <div className="flex items-center space-x-2 w-[50px]">
-                              <RadioGroupItem value="na" id="b3-results-na" />
-                              <Label htmlFor="b3-results-na" className="text-sm cursor-pointer">NA</Label>
-                            </div>
-                          </RadioGroup>
+                          ))}
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 ml-4"
-                          data-testid="button-b3-results-comment"
-                        >
-                          <MessageSquare className="h-4 w-4 text-gray-400" />
-                        </Button>
-                      </div>
-                    </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-[13px]">Check Date</TableHead>
-                          <TableHead className="text-[13px]">Authority Checked</TableHead>
-                          <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {formData.b3Authorities.map((auth, idx) => (
-                          <TableRow key={auth.id}>
-                            <TableCell>
-                              <Input
-                                type="date"
-                                value={auth.date}
-                                onChange={(e) => {
-                                  const updated = [...formData.b3Authorities];
-                                  updated[idx] = { ...updated[idx], date: e.target.value };
-                                  setFormData(prev => ({ ...prev, b3Authorities: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b3-auth-date-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={auth.authority}
-                                onChange={(e) => {
-                                  const updated = [...formData.b3Authorities];
-                                  updated[idx] = { ...updated[idx], authority: e.target.value };
-                                  setFormData(prev => ({ ...prev, b3Authorities: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b3-auth-name-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {formData.b3Authorities.length > 1 && (
+                      )}
+
+                      {/* Comments for B3.1 */}
+                      {(formData.b3Comments['b3-completed']?.length > 0 || newB3Comment['b3-completed'] !== undefined) && (
+                        <div className="ml-4 mb-4 space-y-2">
+                          {formData.b3Comments['b3-completed']?.map((comment) => (
+                            <div key={comment.id} className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                                {editingB3Comment === comment.id ? (
+                                  <Textarea
+                                    value={comment.text}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b3Comments: {
+                                          ...prev.b3Comments,
+                                          'b3-completed': prev.b3Comments['b3-completed']?.map(c => 
+                                            c.id === comment.id ? { ...c, text: e.target.value } : c
+                                          ) || []
+                                        }
+                                      }));
+                                    }}
+                                    onBlur={() => setEditingB3Comment(null)}
+                                    autoFocus
+                                    className="min-h-[80px] w-full"
+                                  />
+                                ) : (
+                                  <div 
+                                    className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                    onClick={() => setEditingB3Comment(comment.id)}
+                                  >
+                                    {comment.text}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-2">
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setFormData(prev => ({ ...prev, b3Authorities: prev.b3Authorities.filter((_, i) => i !== idx) }))}
-                                  data-testid={`button-remove-b3-auth-${idx}`}
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b3Comments: {
+                                        ...prev.b3Comments,
+                                        'b3-completed': prev.b3Comments['b3-completed']?.filter(c => c.id !== comment.id) || []
+                                      }
+                                    }));
+                                    if (editingB3Comment === comment.id) {
+                                      setEditingB3Comment(null);
+                                    }
+                                  }}
                                 >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({
-                        ...prev,
-                        b3Authorities: [...prev.b3Authorities, { id: String(Date.now()), date: '', authority: '' }]
-                      }))}
-                      data-testid="button-add-b3-authority"
-                    >
-                      <Plus className="h-4 w-4 mr-1" /> Add Authority
-                    </Button>
-                    
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {newB3Comment['b3-completed'] !== undefined && (
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                              <Textarea
+                                value={newB3Comment['b3-completed']}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                  setNewB3Comment(prev => ({ ...prev, 'b3-completed': e.target.value }));
+                                }}
+                                onBlur={() => {
+                                  if (newB3Comment['b3-completed']?.trim()) {
+                                    const commentId = Date.now().toString();
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b3Comments: {
+                                        ...prev.b3Comments,
+                                        'b3-completed': [
+                                          ...(prev.b3Comments['b3-completed'] || []),
+                                          { id: commentId, user: currentUserDisplay, text: newB3Comment['b3-completed'] }
+                                        ]
+                                      }
+                                    }));
+                                  }
+                                  setNewB3Comment(prev => {
+                                    const newState = { ...prev };
+                                    delete newState['b3-completed'];
+                                    return newState;
+                                  });
+                                }}
+                                placeholder="Comment: Add your observations here..."
+                                className="text-blue-600 italic border-blue-200 text-[13px]"
+                                rows={2}
+                                autoFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* B3.2 Background Security checks results positive */}
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                          B3.2 Background Security checks results positive? If yes, record brief overview of verification. If no state details.
+                        </Label>
+                        <div className="flex items-center min-w-[300px]">
+                          <div className="flex gap-6 w-[200px]">
+                            <RadioGroup 
+                              value={formData.b3Results} 
+                              onValueChange={(value) => setFormData(prev => ({ ...prev, b3Results: value }))}
+                              className="flex gap-6"
+                            >
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="b3-results-yes" />
+                                  <Label htmlFor="b3-results-yes" className="text-sm cursor-pointer">Yes</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="b3-results-no" />
+                                  <Label htmlFor="b3-results-no" className="text-sm cursor-pointer">No</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="na" id="b3-results-na" />
+                                  <Label htmlFor="b3-results-na" className="text-sm cursor-pointer">NA</Label>
+                                </div>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 ml-4"
+                            onClick={() => setNewB3Comment(prev => ({ ...prev, 'b3-results': "" }))}
+                            data-testid="button-b3-results-comment"
+                          >
+                            <MessageSquare className="h-4 w-4 text-gray-400" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Comments for B3.2 */}
+                      {(formData.b3Comments['b3-results']?.length > 0 || newB3Comment['b3-results'] !== undefined) && (
+                        <div className="ml-4 mb-4 space-y-2">
+                          {formData.b3Comments['b3-results']?.map((comment) => (
+                            <div key={comment.id} className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                                {editingB3Comment === comment.id ? (
+                                  <Textarea
+                                    value={comment.text}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b3Comments: {
+                                          ...prev.b3Comments,
+                                          'b3-results': prev.b3Comments['b3-results']?.map(c => 
+                                            c.id === comment.id ? { ...c, text: e.target.value } : c
+                                          ) || []
+                                        }
+                                      }));
+                                    }}
+                                    onBlur={() => setEditingB3Comment(null)}
+                                    autoFocus
+                                    className="min-h-[80px] w-full"
+                                  />
+                                ) : (
+                                  <div 
+                                    className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                    onClick={() => setEditingB3Comment(comment.id)}
+                                  >
+                                    {comment.text}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b3Comments: {
+                                        ...prev.b3Comments,
+                                        'b3-results': prev.b3Comments['b3-results']?.filter(c => c.id !== comment.id) || []
+                                      }
+                                    }));
+                                    if (editingB3Comment === comment.id) {
+                                      setEditingB3Comment(null);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {newB3Comment['b3-results'] !== undefined && (
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                              <Textarea
+                                value={newB3Comment['b3-results']}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                  setNewB3Comment(prev => ({ ...prev, 'b3-results': e.target.value }));
+                                }}
+                                onBlur={() => {
+                                  if (newB3Comment['b3-results']?.trim()) {
+                                    const commentId = Date.now().toString();
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b3Comments: {
+                                        ...prev.b3Comments,
+                                        'b3-results': [
+                                          ...(prev.b3Comments['b3-results'] || []),
+                                          { id: commentId, user: currentUserDisplay, text: newB3Comment['b3-results'] }
+                                        ]
+                                      }
+                                    }));
+                                  }
+                                  setNewB3Comment(prev => {
+                                    const newState = { ...prev };
+                                    delete newState['b3-results'];
+                                    return newState;
+                                  });
+                                }}
+                                placeholder="Comment: Add your observations here..."
+                                className="text-blue-600 italic border-blue-200 text-[13px]"
+                                rows={2}
+                                autoFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Attachment button */}
-                    <div className="flex justify-start mt-6">
+                    <div className="flex justify-start">
                       <Button
                         type="button"
                         variant="outline"
