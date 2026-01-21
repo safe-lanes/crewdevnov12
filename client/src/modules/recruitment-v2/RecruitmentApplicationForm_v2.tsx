@@ -3910,7 +3910,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     
                     {/* Reference check entry fields - only show when B2.1 is Yes */}
                     {formData.b2ReferencesCompleted === 'yes' && (
-                      <div className="ml-4 mb-4 space-y-3">
+                      <div className="mb-4 space-y-3">
                         {formData.b2References.map((reference, index) => (
                           <div key={reference.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
