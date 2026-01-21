@@ -3908,6 +3908,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     </React.Fragment>
                   ))}
                     
+                    {/* Reference check entry fields - only show when B2.1 is Yes */}
+                    {formData.b2ReferencesCompleted === 'yes' && (
+                    <>
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -3984,6 +3987,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     >
                       <Plus className="h-4 w-4 mr-1" /> Add Reference
                     </Button>
+                    </>
+                    )}
                     
                     {/* Attachment button */}
                     <div className="flex justify-start mt-6">
