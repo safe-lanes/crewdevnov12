@@ -128,6 +128,13 @@ import {
   useV2CreateScreeningB6Comment,
   useV2ScreeningB8Comments,
   useV2CreateScreeningB8Comment,
+  useV2ScreeningB1Attachments,
+  useV2ScreeningB2Attachments,
+  useV2ScreeningB3Attachments,
+  useV2ScreeningB4Attachments,
+  useV2ScreeningB5Attachments,
+  useV2ScreeningB6Attachments,
+  useV2ScreeningB8Attachments,
   useV2Approvals,
   useV2SaveApproval,
   useV2UpdateApproval,
@@ -609,6 +616,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const { data: screeningB5Comments } = useV2ScreeningB5Comments(b5Uuid);
   const { data: screeningB6Comments } = useV2ScreeningB6Comments(b6Uuid);
   const { data: screeningB8Comments } = useV2ScreeningB8Comments(b8Uuid);
+
+  // Fetch B1-B8 attachments for loading when editing
+  const { data: screeningB1Attachments } = useV2ScreeningB1Attachments(b1Uuid);
+  const { data: screeningB2Attachments } = useV2ScreeningB2Attachments(b2Uuid);
+  const { data: screeningB3Attachments } = useV2ScreeningB3Attachments(b3Uuid);
+  const { data: screeningB4Attachments } = useV2ScreeningB4Attachments(b4Uuid);
+  const { data: screeningB5Attachments } = useV2ScreeningB5Attachments(b5Uuid);
+  const { data: screeningB6Attachments } = useV2ScreeningB6Attachments(b6Uuid);
+  const { data: screeningB8Attachments } = useV2ScreeningB8Attachments(b8Uuid);
 
   const { data: screeningB2Items } = useV2ScreeningB2Items(b2Uuid);
   const { data: screeningB3Authorities } = useV2ScreeningB3Authorities(b3Uuid);
@@ -1314,6 +1330,133 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }));
     }
   }, [screeningB8Comments]);
+
+  // Load B1-B8 attachments when editing
+  useEffect(() => {
+    if (screeningB1Attachments && screeningB1Attachments.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b1Attachments: screeningB1Attachments.map((att: any) => ({
+          id: att.attachUuid || att.attUuid || att.id?.toString(),
+          attUuid: att.attachUuid || att.attUuid,
+          name: att.fileName || '',
+          type: att.fileType || '',
+          size: Number(att.fileSize) || 0,
+          data: att.fileData || '',
+          uploadedAt: att.uploadedAt || new Date().toISOString(),
+          isNew: false,
+        })),
+      }));
+    }
+  }, [screeningB1Attachments]);
+
+  useEffect(() => {
+    if (screeningB2Attachments && screeningB2Attachments.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b2Attachments: screeningB2Attachments.map((att: any) => ({
+          id: att.attachUuid || att.attUuid || att.id?.toString(),
+          attUuid: att.attachUuid || att.attUuid,
+          name: att.fileName || '',
+          type: att.fileType || '',
+          size: Number(att.fileSize) || 0,
+          data: att.fileData || '',
+          uploadedAt: att.uploadedAt || new Date().toISOString(),
+          isNew: false,
+        })),
+      }));
+    }
+  }, [screeningB2Attachments]);
+
+  useEffect(() => {
+    if (screeningB3Attachments && screeningB3Attachments.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b3Attachments: screeningB3Attachments.map((att: any) => ({
+          id: att.attachUuid || att.attUuid || att.id?.toString(),
+          attUuid: att.attachUuid || att.attUuid,
+          name: att.fileName || '',
+          type: att.fileType || '',
+          size: Number(att.fileSize) || 0,
+          data: att.fileData || '',
+          uploadedAt: att.uploadedAt || new Date().toISOString(),
+          isNew: false,
+        })),
+      }));
+    }
+  }, [screeningB3Attachments]);
+
+  useEffect(() => {
+    if (screeningB4Attachments && screeningB4Attachments.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b4Attachments: screeningB4Attachments.map((att: any) => ({
+          id: att.attachUuid || att.attUuid || att.id?.toString(),
+          attUuid: att.attachUuid || att.attUuid,
+          name: att.fileName || '',
+          type: att.fileType || '',
+          size: Number(att.fileSize) || 0,
+          data: att.fileData || '',
+          uploadedAt: att.uploadedAt || new Date().toISOString(),
+          isNew: false,
+        })),
+      }));
+    }
+  }, [screeningB4Attachments]);
+
+  useEffect(() => {
+    if (screeningB5Attachments && screeningB5Attachments.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b5Attachments: screeningB5Attachments.map((att: any) => ({
+          id: att.attachUuid || att.attUuid || att.id?.toString(),
+          attUuid: att.attachUuid || att.attUuid,
+          name: att.fileName || '',
+          type: att.fileType || '',
+          size: Number(att.fileSize) || 0,
+          data: att.fileData || '',
+          uploadedAt: att.uploadedAt || new Date().toISOString(),
+          isNew: false,
+        })),
+      }));
+    }
+  }, [screeningB5Attachments]);
+
+  useEffect(() => {
+    if (screeningB6Attachments && screeningB6Attachments.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b6Attachments: screeningB6Attachments.map((att: any) => ({
+          id: att.attachUuid || att.attUuid || att.id?.toString(),
+          attUuid: att.attachUuid || att.attUuid,
+          name: att.fileName || '',
+          type: att.fileType || '',
+          size: Number(att.fileSize) || 0,
+          data: att.fileData || '',
+          uploadedAt: att.uploadedAt || new Date().toISOString(),
+          isNew: false,
+        })),
+      }));
+    }
+  }, [screeningB6Attachments]);
+
+  useEffect(() => {
+    if (screeningB8Attachments && screeningB8Attachments.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        b8Attachments: screeningB8Attachments.map((att: any) => ({
+          id: att.attachUuid || att.attUuid || att.id?.toString(),
+          attUuid: att.attachUuid || att.attUuid,
+          name: att.fileName || '',
+          type: att.fileType || '',
+          size: Number(att.fileSize) || 0,
+          data: att.fileData || '',
+          uploadedAt: att.uploadedAt || new Date().toISOString(),
+          isNew: false,
+        })),
+      }));
+    }
+  }, [screeningB8Attachments]);
 
   useEffect(() => {
     if (screeningB2Items && screeningB2Items.length > 0) {
