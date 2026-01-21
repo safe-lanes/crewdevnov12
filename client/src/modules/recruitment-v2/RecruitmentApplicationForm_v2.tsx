@@ -315,6 +315,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const { data: additionalInfoData } = useV2AdditionalInfo(recCanUuid);
 
   const createCandidateMutation = useV2CreateCandidate();
+  const updateCandidateMutation = useV2UpdateCandidate();
   const savePersonalDetailsMutation = useV2SavePersonalDetails();
   const saveAddressMutation = useV2SaveAddress();
   const saveFamilyInfoMutation = useV2SaveFamilyInfo();
@@ -393,6 +394,239 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (candidateData) {
+      setFormData(prev => ({
+        ...prev,
+        firstName: candidateData.firstName || '',
+        middleName: candidateData.middleName || '',
+        familyName: candidateData.familyName || '',
+        gender: candidateData.gender || '',
+        dateOfBirth: candidateData.dob || '',
+        nationality: candidateData.nationalityUuid || '',
+        presentRank: candidateData.presentRank || '',
+        rankAppliedFor: candidateData.rankAppliedFor || '',
+        fileNo: candidateData.fileNo || '',
+        uploadedPhoto: candidateData.uploadedPhoto || '',
+        ageInYears: candidateData.dob ? calculateAge(candidateData.dob) : '',
+      }));
+    }
+  }, [candidateData]);
+
+  useEffect(() => {
+    if (personalDetails) {
+      setFormData(prev => ({
+        ...prev,
+        placeOfBirthCity: personalDetails.placeOfBirthCity || '',
+        placeOfBirthCountry: personalDetails.placeOfBirthCountryUuid || '',
+        heightCm: personalDetails.heightCm || '',
+        weightKg: personalDetails.weightKg || '',
+        nativeLanguage: personalDetails.nativeLanguageUuid || '',
+        foreignLanguages: personalDetails.foreignLanguages || '',
+        englishProficiency: personalDetails.englishProficiency || '',
+        manningAgent: personalDetails.manningAgent || '',
+      }));
+    }
+  }, [personalDetails]);
+
+  useEffect(() => {
+    if (addressData) {
+      setFormData(prev => ({
+        ...prev,
+        countryOfResidence: addressData.countryOfResidenceUuid || '',
+        nearestAirport: addressData.nearestAirport || '',
+        residentialAddressLine1: addressData.addressLine1 || '',
+        residentialAddressLine2: addressData.addressLine2 || '',
+        contactLandline: addressData.contactLandline || '',
+        mobile: addressData.mobile || '',
+        email: addressData.email || '',
+      }));
+    }
+  }, [addressData]);
+
+  useEffect(() => {
+    if (familyInfo) {
+      setFormData(prev => ({
+        ...prev,
+        maritalStatus: familyInfo.maritalStatus || '',
+        numberOfDependentChildren: familyInfo.numDependentChildren || '',
+        fatherName: familyInfo.fatherName || '',
+        motherName: familyInfo.motherName || '',
+        spouseFirstName: familyInfo.spouseFirstName || '',
+        spouseMiddleName: familyInfo.spouseMiddleName || '',
+        spouseFamilyName: familyInfo.spouseFamilyName || '',
+        spouseDateOfBirth: familyInfo.spouseDob || '',
+      }));
+    }
+  }, [familyInfo]);
+
+  useEffect(() => {
+    if (nextOfKinData) {
+      setFormData(prev => ({
+        ...prev,
+        nokFirstName: nextOfKinData.firstName || '',
+        nokMiddleName: nextOfKinData.middleName || '',
+        nokFamilyName: nextOfKinData.familyName || '',
+        nokTelephone: nextOfKinData.telephone || '',
+        nokEmail: nextOfKinData.email || '',
+        nokAddress: nextOfKinData.address || '',
+        nokRelationship: nextOfKinData.relationship || '',
+      }));
+    }
+  }, [nextOfKinData]);
+
+  useEffect(() => {
+    if (childrenData && childrenData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        children: childrenData.map(child => ({
+          id: child.childUuid,
+          firstName: child.firstName || '',
+          middleName: child.middleName || '',
+          familyName: child.familyName || '',
+          dateOfBirth: child.dob || '',
+          gender: child.gender || '',
+        })),
+      }));
+    }
+  }, [childrenData]);
+
+  useEffect(() => {
+    if (vesselTypesData && vesselTypesData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        vesselType: vesselTypesData.map(vt => vt.vesselTypeUuid),
+      }));
+    }
+  }, [vesselTypesData]);
+
+  useEffect(() => {
+    if (documentsData && documentsData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        documents: documentsData.map(doc => ({
+          id: doc.docUuid,
+          documentId: doc.documentId || '',
+          document: doc.documentName || '',
+          number: doc.number || '',
+          issued: doc.issued || '',
+          expiry: doc.expiry || '',
+          issuingAuthority: doc.issuingAuthority || '',
+          attachments: (doc.attachments || []) as any,
+        })),
+      }));
+    }
+  }, [documentsData]);
+
+  useEffect(() => {
+    if (visasData && visasData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        visas: visasData.map(visa => ({
+          id: visa.visaUuid,
+          countryId: visa.countryUuid || '',
+          issuingCountry: visa.countryUuid || '',
+          serialNo: visa.serialNo || '',
+          issued: visa.issued || '',
+          expiry: visa.expiry || '',
+          visaType: visa.visaType || '',
+          attachments: (visa.attachments || []) as any,
+        })),
+      }));
+    }
+  }, [visasData]);
+
+  useEffect(() => {
+    if (educationData && educationData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        education: educationData.map(edu => ({
+          id: edu.eduUuid,
+          dateOfCompletion: edu.dateOfCompletion || '',
+          schoolCollegeUniversity: edu.institution || '',
+          subjectsField: edu.subjectsField || '',
+          qualifications: edu.qualifications || '',
+          attachments: (edu.attachments || []) as any,
+        })),
+      }));
+    }
+  }, [educationData]);
+
+  useEffect(() => {
+    if (licensesData && licensesData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        licenses: licensesData.map(lic => ({
+          id: lic.licUuid,
+          licenseId: lic.licenseId || '',
+          certificateDocument: lic.certificateDocument || '',
+          abbr: lic.abbr || '',
+          requirement: lic.requirement || '',
+          certificateNo: lic.certificateNo || '',
+          issuingAuthority: lic.issuingAuthority || '',
+          issued: lic.issued || '',
+          expiry: lic.expiry || '',
+          attachments: (lic.attachments || []) as any,
+        })),
+      }));
+    }
+  }, [licensesData]);
+
+  useEffect(() => {
+    if (trainingData && trainingData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        trainingCourses: trainingData.map(course => ({
+          id: course.trainUuid,
+          courseId: course.courseId || '',
+          trainingCourse: course.trainingCourse || '',
+          abbr: course.abbr || '',
+          requirement: course.requirement || '',
+          certificateNo: course.certificateNo || '',
+          issuingAuthority: course.issuingAuthority || '',
+          issued: course.issued || '',
+          expiry: course.expiry || '',
+          attachments: (course.attachments || []) as any,
+        })),
+      }));
+    }
+  }, [trainingData]);
+
+  useEffect(() => {
+    if (seaServiceData && seaServiceData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        seaService: seaServiceData.map(service => ({
+          id: service.seaUuid,
+          vesselName: service.vesselName || '',
+          vesselType: service.vesselTypeUuid || '',
+          deadweight: service.deadweight || '',
+          engineTypePower: service.engineTypePower || '',
+          ownerOperator: service.ownerOperator || '',
+          rank: service.rank || '',
+          from: service.fromDate || '',
+          to: service.toDate || '',
+          periodMonths: service.periodMonths || '',
+          attachments: (service.attachments || []) as any,
+        })),
+      }));
+    }
+  }, [seaServiceData]);
+
+  useEffect(() => {
+    if (additionalInfoData && additionalInfoData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        additionalInfo: additionalInfoData.map(ai => ({
+          id: ai.infoUuid,
+          information: ai.information || '',
+          response: ai.response || '',
+          attachments: (ai.attachments || []) as any,
+        })),
+      }));
+    }
+  }, [additionalInfoData]);
 
   const calculateAge = (dob: string): string => {
     if (!dob) return '';
@@ -811,31 +1045,185 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const handleSaveAndContinue = async () => {
-    toast({
-      title: "Saving...",
-      description: "Saving form data",
-    });
-    
-    setTimeout(() => {
+    try {
+      toast({
+        title: "Saving...",
+        description: "Saving form data to database",
+      });
+      
+      let currentUuid = recCanUuid;
+      
+      if (!currentUuid) {
+        const newCandidate = await createCandidateMutation.mutateAsync({
+          firstName: formData.firstName,
+          middleName: formData.middleName || '',
+          familyName: formData.familyName,
+          gender: formData.gender || '',
+          dob: formData.dateOfBirth || '',
+          nationalityUuid: formData.nationality || '',
+          presentRank: formData.presentRank || '',
+          rankAppliedFor: formData.rankAppliedFor || '',
+          status: 'draft',
+          uploadedPhoto: formData.uploadedPhoto || '',
+        });
+        currentUuid = newCandidate.recCanUuid;
+        setRecCanUuid(currentUuid);
+      } else {
+        await updateCandidateMutation.mutateAsync({
+          recCanUuid: currentUuid,
+          data: {
+            firstName: formData.firstName,
+            middleName: formData.middleName || '',
+            familyName: formData.familyName,
+            gender: formData.gender || '',
+            dob: formData.dateOfBirth || '',
+            nationalityUuid: formData.nationality || '',
+            presentRank: formData.presentRank || '',
+            rankAppliedFor: formData.rankAppliedFor || '',
+            uploadedPhoto: formData.uploadedPhoto || '',
+          },
+        });
+      }
+      
+      if (!currentUuid) {
+        throw new Error('Failed to create candidate');
+      }
+      
+      await Promise.all([
+        savePersonalDetailsMutation.mutateAsync({
+          recCanUuid: currentUuid,
+          data: {
+            placeOfBirthCity: formData.placeOfBirthCity || undefined,
+            placeOfBirthCountryUuid: formData.placeOfBirthCountry || undefined,
+            heightCm: formData.heightCm || undefined,
+            weightKg: formData.weightKg || undefined,
+            nativeLanguageUuid: formData.nativeLanguage || undefined,
+            foreignLanguages: formData.foreignLanguages || undefined,
+            englishProficiency: formData.englishProficiency || undefined,
+            manningAgent: formData.manningAgent || undefined,
+          },
+        }),
+        saveAddressMutation.mutateAsync({
+          recCanUuid: currentUuid,
+          data: {
+            countryOfResidenceUuid: formData.countryOfResidence || undefined,
+            nearestAirport: formData.nearestAirport || undefined,
+            addressLine1: formData.residentialAddressLine1 || undefined,
+            addressLine2: formData.residentialAddressLine2 || undefined,
+            contactLandline: formData.contactLandline || undefined,
+            mobile: formData.mobile || undefined,
+            email: formData.email || undefined,
+          },
+        }),
+        saveFamilyInfoMutation.mutateAsync({
+          recCanUuid: currentUuid,
+          data: {
+            maritalStatus: formData.maritalStatus || undefined,
+            numDependentChildren: formData.numberOfDependentChildren || undefined,
+            fatherName: formData.fatherName || undefined,
+            motherName: formData.motherName || undefined,
+            spouseFirstName: formData.spouseFirstName || undefined,
+            spouseMiddleName: formData.spouseMiddleName || undefined,
+            spouseFamilyName: formData.spouseFamilyName || undefined,
+            spouseDob: formData.spouseDateOfBirth || undefined,
+          },
+        }),
+        saveNextOfKinMutation.mutateAsync({
+          recCanUuid: currentUuid,
+          data: {
+            firstName: formData.nokFirstName || undefined,
+            middleName: formData.nokMiddleName || undefined,
+            familyName: formData.nokFamilyName || undefined,
+            telephone: formData.nokTelephone || undefined,
+            email: formData.nokEmail || undefined,
+            address: formData.nokAddress || undefined,
+            relationship: formData.nokRelationship || undefined,
+          },
+        }),
+      ]);
+      
+      if (formData.children.length > 0) {
+        await saveChildrenMutation.mutateAsync({
+          recCanUuid: currentUuid,
+          data: formData.children.map((child, index) => ({
+            firstName: child.firstName,
+            middleName: child.middleName || undefined,
+            familyName: child.familyName || undefined,
+            dob: child.dateOfBirth || undefined,
+            gender: child.gender || undefined,
+            sortOrder: index,
+          })) as any,
+        });
+      }
+      
+      if (formData.vesselType.length > 0) {
+        await saveVesselTypesMutation.mutateAsync({
+          recCanUuid: currentUuid,
+          data: formData.vesselType.map((vt, index) => ({
+            vesselTypeUuid: vt,
+            sortOrder: index,
+          })) as any,
+        });
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
+      
       toast({
         title: "Saved",
-        description: "Form data saved successfully (V2)",
+        description: "Form data saved successfully",
       });
-    }, 500);
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save form data",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSaveOnly = async () => {
-    toast({
-      title: "Saved",
-      description: "Draft saved successfully (V2)",
-    });
+    await handleSaveAndContinue();
   };
 
   const handleA5SubmitForScreening = async () => {
-    toast({
-      title: "Submitted",
-      description: "Application submitted for screening (V2)",
-    });
+    try {
+      let currentUuid = recCanUuid;
+      
+      if (!currentUuid) {
+        await handleSaveAndContinue();
+        currentUuid = recCanUuid;
+      }
+      
+      if (currentUuid) {
+        await updateCandidateMutation.mutateAsync({
+          recCanUuid: currentUuid,
+          data: {
+            status: 'submitted',
+          },
+        });
+        
+        toast({
+          title: "Submitted",
+          description: "Application submitted for screening",
+        });
+        
+        queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
+      } else {
+        toast({
+          title: "Error",
+          description: "Please save the form first before submitting",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Submit error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to submit application",
+        variant: "destructive",
+      });
+    }
   };
 
   const renderA11GeneralParticulars = () => {
