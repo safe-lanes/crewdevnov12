@@ -6415,8 +6415,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <div className="block sm:hidden bg-white border-b px-4 py-3">
           <nav className="flex justify-center space-x-4">
             {sections.map((section, index) => {
+              // Only highlight continuous sections (A1-A5) when activeSection is also in A1-A5
+              // Otherwise highlight based on activeSection for B/C
               const isActive = section.type === 'continuous' 
-                ? activeContinuousSection === section.id
+                ? (activeContinuousSection === section.id && ['A1', 'A2', 'A3', 'A4', 'A5'].includes(activeSection))
                 : activeSection === section.id;
               
               return (
@@ -6449,8 +6451,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div className="p-3">
               <nav className="space-y-1">
                 {sections.map((section, index) => {
+                  // Only highlight continuous sections (A1-A5) when activeSection is also in A1-A5
+                  // Otherwise highlight based on activeSection for B/C
                   const isActive = section.type === 'continuous' 
-                    ? activeContinuousSection === section.id
+                    ? (activeContinuousSection === section.id && ['A1', 'A2', 'A3', 'A4', 'A5'].includes(activeSection))
                     : activeSection === section.id;
                   
                   return (
