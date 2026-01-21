@@ -25,7 +25,10 @@ import type {
   ScreeningB8,
   CandidateApproval,
   CandidateSuitability,
+  SuitabilityVesselType,
+  SuitabilityFleetGroup,
   CandidateRecruitmentDecision,
+  AssignedGroup,
   V2CandidateListItem,
 } from '../types/formTypes';
 
@@ -746,6 +749,63 @@ export function useV2SaveRecruitmentDecision() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'recruitment-decision', variables.recCanUuid] });
       queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
+    },
+  });
+}
+
+export function useV2SuitabilityVesselTypes(suitUuid: string | null) {
+  return useQuery<SuitabilityVesselType[]>({
+    queryKey: ['v2', 'suitability-vessel-types', suitUuid],
+    queryFn: () => fetchApi(`/suitability/${suitUuid}/vessel-types`),
+    enabled: !!suitUuid,
+  });
+}
+
+export function useV2SaveSuitabilityVesselType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ suitUuid, data }: { suitUuid: string; data: Partial<SuitabilityVesselType> }) =>
+      postApi<SuitabilityVesselType>(`/suitability/${suitUuid}/vessel-types`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'suitability-vessel-types', variables.suitUuid] });
+    },
+  });
+}
+
+export function useV2SuitabilityFleetGroups(suitUuid: string | null) {
+  return useQuery<SuitabilityFleetGroup[]>({
+    queryKey: ['v2', 'suitability-fleet-groups', suitUuid],
+    queryFn: () => fetchApi(`/suitability/${suitUuid}/fleet-groups`),
+    enabled: !!suitUuid,
+  });
+}
+
+export function useV2SaveSuitabilityFleetGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ suitUuid, data }: { suitUuid: string; data: Partial<SuitabilityFleetGroup> }) =>
+      postApi<SuitabilityFleetGroup>(`/suitability/${suitUuid}/fleet-groups`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'suitability-fleet-groups', variables.suitUuid] });
+    },
+  });
+}
+
+export function useV2DecisionAssignedGroups(decisionUuid: string | null) {
+  return useQuery<AssignedGroup[]>({
+    queryKey: ['v2', 'decision-assigned-groups', decisionUuid],
+    queryFn: () => fetchApi(`/decisions/${decisionUuid}/assigned-groups`),
+    enabled: !!decisionUuid,
+  });
+}
+
+export function useV2SaveDecisionAssignedGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ decisionUuid, data }: { decisionUuid: string; data: Partial<AssignedGroup> }) =>
+      postApi<AssignedGroup>(`/decisions/${decisionUuid}/assigned-groups`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'decision-assigned-groups', variables.decisionUuid] });
     },
   });
 }
