@@ -24,9 +24,29 @@ import type {
   InsertNextOfKin,
 } from "../../../../shared/v2/recruitment/types";
 
+export interface CandidateListItem extends RecruitmentCandidate {
+  nationality: string;
+  vesselType: string;
+}
+
 export class CandidateService {
-  async getAllCandidates(): Promise<RecruitmentCandidate[]> {
-    return candidateRepository.findAll();
+  async getAllCandidates(): Promise<CandidateListItem[]> {
+    const candidates = await candidateRepository.findAll();
+    
+    const enrichedCandidates: CandidateListItem[] = await Promise.all(
+      candidates.map(async (candidate) => {
+        const vesselTypes = await vesselTypesAppliedRepository.findByCandidateUuid(candidate.recCanUuid);
+        const primaryVesselType = vesselTypes.length > 0 ? vesselTypes[0].vesselTypeUuid || '' : '';
+        
+        return {
+          ...candidate,
+          nationality: candidate.nationalityUuid || '',
+          vesselType: primaryVesselType,
+        };
+      })
+    );
+    
+    return enrichedCandidates;
   }
 
   async getCandidateById(id: number): Promise<RecruitmentCandidate | undefined> {

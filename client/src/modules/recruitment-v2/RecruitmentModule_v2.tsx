@@ -59,6 +59,22 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     return [];
   }, [externalVesselTypesData]);
 
+  const vesselTypeLookup = useMemo(() => {
+    const vesselTypes = (externalVesselTypesData as any)?.vesseltypes || (externalVesselTypesData as any)?.vesselTypes || externalVesselTypesData || [];
+    const lookup: Record<string, string> = {};
+    if (Array.isArray(vesselTypes)) {
+      vesselTypes.forEach((vt: any) => {
+        const uuid = vt.vesselTypeUuid || vt.uuid || vt.id;
+        const name = vt.vesselType || vt.name;
+        if (uuid && name) {
+          lookup[uuid] = name;
+          lookup[name] = name;
+        }
+      });
+    }
+    return lookup;
+  }, [externalVesselTypesData]);
+
   const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useExternalNationalities();
 
   const nationalityMasterData = useMemo(() => {
@@ -67,6 +83,22 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
       return nationalities.map((n: any) => n.nationality || n.countryName || n.name).filter(Boolean);
     }
     return [];
+  }, [externalNationalitiesData]);
+
+  const nationalityLookup = useMemo(() => {
+    const nationalities = (externalNationalitiesData as any)?.nationalities || externalNationalitiesData || [];
+    const lookup: Record<string, string> = {};
+    if (Array.isArray(nationalities)) {
+      nationalities.forEach((n: any) => {
+        const uuid = n.nationalityUuid || n.uuid || n.id;
+        const name = n.nationality || n.countryName || n.name;
+        if (uuid && name) {
+          lookup[uuid] = name;
+          lookup[name] = name;
+        }
+      });
+    }
+    return lookup;
   }, [externalNationalitiesData]);
 
   const [filters, setFilters] = useState({
@@ -333,12 +365,15 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     }
     
     filtered = filtered.filter(candidate => {
+      const nationalityDisplay = nationalityLookup[candidate.nationality] || candidate.nationality || '';
+      const vesselTypeDisplay = vesselTypeLookup[candidate.vesselType] || candidate.vesselType || '';
+      
       const matchesName = filters.searchName === "" || 
         `${candidate.firstName} ${candidate.middleName || ''} ${candidate.familyName}`
           .toLowerCase().includes(filters.searchName.toLowerCase());
       const matchesRank = filters.rankAppliedFor === "" || normalizeRank(candidate.rankAppliedFor || '') === filters.rankAppliedFor;
-      const matchesVesselType = filters.vesselType === "" || candidate.vesselType === filters.vesselType;
-      const matchesNationality = filters.nationality === "" || candidate.nationality === filters.nationality;
+      const matchesVesselType = filters.vesselType === "" || vesselTypeDisplay === filters.vesselType;
+      const matchesNationality = filters.nationality === "" || nationalityDisplay === filters.nationality;
       const matchesStatus = filters.status === "" || candidate.status === filters.status;
       
       return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesStatus;
@@ -346,10 +381,12 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     
     return filtered.map(candidate => ({
       ...candidate,
+      nationality: nationalityLookup[candidate.nationality] || candidate.nationality || '',
+      vesselType: vesselTypeLookup[candidate.vesselType] || candidate.vesselType || '',
       rankAppliedFor: normalizeRank(candidate.rankAppliedFor || '') || candidate.rankAppliedFor,
       presentRank: normalizeRank(candidate.presentRank || '') || candidate.presentRank
     }));
-  }, [allCandidates, selectedRecruitmentPage, filters, normalizeRank]);
+  }, [allCandidates, selectedRecruitmentPage, filters, normalizeRank, nationalityLookup, vesselTypeLookup]);
 
   const getTitle = () => {
     switch (selectedRecruitmentPage) {
