@@ -74,20 +74,27 @@ import {
   useV2DeleteAdditionalInfo,
   useV2ScreeningB1,
   useV2SaveScreeningB1,
+  useV2CreateScreeningB1Attachment,
   useV2ScreeningB2,
   useV2SaveScreeningB2,
+  useV2CreateScreeningB2Attachment,
   useV2ScreeningB3,
   useV2SaveScreeningB3,
+  useV2CreateScreeningB3Attachment,
   useV2ScreeningB4,
   useV2SaveScreeningB4,
+  useV2CreateScreeningB4Attachment,
   useV2ScreeningB5,
   useV2SaveScreeningB5,
+  useV2CreateScreeningB5Attachment,
   useV2ScreeningB6,
   useV2SaveScreeningB6,
+  useV2CreateScreeningB6Attachment,
   useV2ScreeningB7,
   useV2SaveScreeningB7,
   useV2ScreeningB8,
   useV2SaveScreeningB8,
+  useV2CreateScreeningB8Attachment,
   useV2ScreeningB2Items,
   useV2CreateScreeningB2Item,
   useV2ScreeningB3Authorities,
@@ -666,6 +673,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const saveScreeningB7Mutation = useV2SaveScreeningB7();
   const saveScreeningB8Mutation = useV2SaveScreeningB8();
   
+  const createB1AttachmentMutation = useV2CreateScreeningB1Attachment();
+  const createB2AttachmentMutation = useV2CreateScreeningB2Attachment();
+  const createB3AttachmentMutation = useV2CreateScreeningB3Attachment();
+  const createB4AttachmentMutation = useV2CreateScreeningB4Attachment();
+  const createB5AttachmentMutation = useV2CreateScreeningB5Attachment();
+  const createB6AttachmentMutation = useV2CreateScreeningB6Attachment();
+  const createB8AttachmentMutation = useV2CreateScreeningB8Attachment();
+  
   const createB2ItemMutation = useV2CreateScreeningB2Item();
   const createB3AuthorityMutation = useV2CreateScreeningB3Authority();
   const updateB3AuthorityMutation = useV2UpdateScreeningB3Authority();
@@ -705,7 +720,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     saveDocumentAttachmentMutation.isPending || saveVisaAttachmentMutation.isPending ||
     saveEducationAttachmentMutation.isPending || saveLicenseAttachmentMutation.isPending ||
     saveTrainingAttachmentMutation.isPending || saveSeaServiceAttachmentMutation.isPending ||
-    saveAdditionalInfoAttachmentMutation.isPending;
+    saveAdditionalInfoAttachmentMutation.isPending ||
+    createB1AttachmentMutation.isPending || createB2AttachmentMutation.isPending ||
+    createB3AttachmentMutation.isPending || createB4AttachmentMutation.isPending ||
+    createB5AttachmentMutation.isPending || createB6AttachmentMutation.isPending ||
+    createB8AttachmentMutation.isPending;
 
   const { data: companyRanks, isLoading: ranksLoading, rankOptions } = useCompanyRanks();
   const { data: externalNationalitiesData } = useExternalNationalities();
@@ -2795,6 +2814,163 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               approverName: approverName || undefined,
             },
           });
+        }
+      }
+
+      // Save B1-B8 section attachments and merge server responses back to form state
+      const currentB1Uuid = b1Result?.b1Uuid || b1Uuid;
+      
+      // Helper function to update form data with saved attachment UUIDs
+      const updateScreeningAttachments = (sectionKey: string, savedAttachments: any[]) => {
+        setFormData(prev => ({
+          ...prev,
+          [sectionKey]: (prev as any)[sectionKey].map((att: any, idx: number) => {
+            const savedAtt = savedAttachments.find((s: any) => 
+              s.fileName === (att.fileName || att.name) && 
+              s.fileType === (att.fileType || att.type)
+            );
+            return savedAtt ? { ...att, attUuid: savedAtt.attUuid, isNew: false } : att;
+          }),
+        }));
+      };
+      
+      // B1 Attachments
+      if (currentB1Uuid && formData.b1Attachments?.length > 0) {
+        const newB1Atts = formData.b1Attachments.filter((att: any) => !att.attUuid || att.isNew);
+        if (newB1Atts.length > 0) {
+          const savedB1Atts = await Promise.all(newB1Atts.map((att: any) => 
+            createB1AttachmentMutation.mutateAsync({
+              b1Uuid: currentB1Uuid,
+              data: {
+                fileName: att.fileName || att.name,
+                fileType: att.fileType || att.type,
+                fileSize: att.fileSize || String(att.size || 0),
+                fileData: att.fileData || att.data,
+                sortOrder: att.sortOrder || 0,
+              },
+            })
+          ));
+          updateScreeningAttachments('b1Attachments', savedB1Atts);
+        }
+      }
+
+      // B2 Attachments
+      if (currentB2Uuid && formData.b2Attachments?.length > 0) {
+        const newB2Atts = formData.b2Attachments.filter((att: any) => !att.attUuid || att.isNew);
+        if (newB2Atts.length > 0) {
+          const savedB2Atts = await Promise.all(newB2Atts.map((att: any) => 
+            createB2AttachmentMutation.mutateAsync({
+              b2Uuid: currentB2Uuid,
+              data: {
+                fileName: att.fileName || att.name,
+                fileType: att.fileType || att.type,
+                fileSize: att.fileSize || String(att.size || 0),
+                fileData: att.fileData || att.data,
+                sortOrder: att.sortOrder || 0,
+              },
+            })
+          ));
+          updateScreeningAttachments('b2Attachments', savedB2Atts);
+        }
+      }
+
+      // B3 Attachments
+      if (currentB3Uuid && formData.b3Attachments?.length > 0) {
+        const newB3Atts = formData.b3Attachments.filter((att: any) => !att.attUuid || att.isNew);
+        if (newB3Atts.length > 0) {
+          const savedB3Atts = await Promise.all(newB3Atts.map((att: any) => 
+            createB3AttachmentMutation.mutateAsync({
+              b3Uuid: currentB3Uuid,
+              data: {
+                fileName: att.fileName || att.name,
+                fileType: att.fileType || att.type,
+                fileSize: att.fileSize || String(att.size || 0),
+                fileData: att.fileData || att.data,
+                sortOrder: att.sortOrder || 0,
+              },
+            })
+          ));
+          updateScreeningAttachments('b3Attachments', savedB3Atts);
+        }
+      }
+
+      // B4 Attachments
+      if (currentB4Uuid && formData.b4Attachments?.length > 0) {
+        const newB4Atts = formData.b4Attachments.filter((att: any) => !att.attUuid || att.isNew);
+        if (newB4Atts.length > 0) {
+          const savedB4Atts = await Promise.all(newB4Atts.map((att: any) => 
+            createB4AttachmentMutation.mutateAsync({
+              b4Uuid: currentB4Uuid,
+              data: {
+                fileName: att.fileName || att.name,
+                fileType: att.fileType || att.type,
+                fileSize: att.fileSize || String(att.size || 0),
+                fileData: att.fileData || att.data,
+                sortOrder: att.sortOrder || 0,
+              },
+            })
+          ));
+          updateScreeningAttachments('b4Attachments', savedB4Atts);
+        }
+      }
+
+      // B5 Attachments
+      if (currentB5Uuid && formData.b5Attachments?.length > 0) {
+        const newB5Atts = formData.b5Attachments.filter((att: any) => !att.attUuid || att.isNew);
+        if (newB5Atts.length > 0) {
+          const savedB5Atts = await Promise.all(newB5Atts.map((att: any) => 
+            createB5AttachmentMutation.mutateAsync({
+              b5Uuid: currentB5Uuid,
+              data: {
+                fileName: att.fileName || att.name,
+                fileType: att.fileType || att.type,
+                fileSize: att.fileSize || String(att.size || 0),
+                fileData: att.fileData || att.data,
+                sortOrder: att.sortOrder || 0,
+              },
+            })
+          ));
+          updateScreeningAttachments('b5Attachments', savedB5Atts);
+        }
+      }
+
+      // B6 Attachments
+      if (currentB6Uuid && formData.b6Attachments?.length > 0) {
+        const newB6Atts = formData.b6Attachments.filter((att: any) => !att.attUuid || att.isNew);
+        if (newB6Atts.length > 0) {
+          const savedB6Atts = await Promise.all(newB6Atts.map((att: any) => 
+            createB6AttachmentMutation.mutateAsync({
+              b6Uuid: currentB6Uuid,
+              data: {
+                fileName: att.fileName || att.name,
+                fileType: att.fileType || att.type,
+                fileSize: att.fileSize || String(att.size || 0),
+                fileData: att.fileData || att.data,
+                sortOrder: att.sortOrder || 0,
+              },
+            })
+          ));
+          updateScreeningAttachments('b6Attachments', savedB6Atts);
+        }
+      }
+
+      // B8 Attachments (B7 has no attachments per schema)
+      if (currentB8Uuid && formData.b8Attachments?.length > 0) {
+        const newB8Atts = formData.b8Attachments.filter((att: any) => !att.attUuid || att.isNew);
+        if (newB8Atts.length > 0) {
+          const savedB8Atts = await Promise.all(newB8Atts.map((att: any) => 
+            createB8AttachmentMutation.mutateAsync({
+              b8Uuid: currentB8Uuid,
+              data: {
+                fileName: att.fileName || att.name,
+                fileType: att.fileType || att.type,
+                fileSize: att.fileSize || String(att.size || 0),
+                fileData: att.fileData || att.data,
+                sortOrder: att.sortOrder || 0,
+              },
+            })
+          ));
+          updateScreeningAttachments('b8Attachments', savedB8Atts);
         }
       }
 

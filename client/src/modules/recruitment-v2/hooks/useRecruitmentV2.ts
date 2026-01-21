@@ -570,6 +570,7 @@ export interface ScreeningB1Attachment {
   fileUrl?: string;
   fileType?: string;
   fileSize?: number;
+  fileData?: string;
   uploadedAt?: string;
   comments?: string;
   sortOrder?: number;
