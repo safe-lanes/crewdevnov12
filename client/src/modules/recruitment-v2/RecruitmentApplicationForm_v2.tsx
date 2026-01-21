@@ -3757,149 +3757,60 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
                   
                   {/* B2.1 Reference checks completed */}
-                  <div className="flex justify-between items-center mb-2">
-                    <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
-                      B2.1 Reference checks completed?
-                    </Label>
-                    <div className="flex items-center min-w-[300px]">
-                      <div className="flex gap-6 w-[200px]">
-                        <RadioGroup 
-                          value={formData.b2ReferencesCompleted} 
-                          onValueChange={(value) => setFormData(prev => ({ ...prev, b2ReferencesCompleted: value }))}
-                          className="flex gap-6"
-                        >
-                          <div className="flex items-center space-x-2 w-[50px]">
-                            <RadioGroupItem value="yes" id="b2-ref-yes" />
-                            <Label htmlFor="b2-ref-yes" className="text-sm cursor-pointer">Yes</Label>
-                          </div>
-                          <div className="flex items-center space-x-2 w-[50px]">
-                            <RadioGroupItem value="no" id="b2-ref-no" />
-                            <Label htmlFor="b2-ref-no" className="text-sm cursor-pointer">No</Label>
-                          </div>
-                          <div className="flex items-center space-x-2 w-[50px]">
-                            <RadioGroupItem value="na" id="b2-ref-na" />
-                            <Label htmlFor="b2-ref-na" className="text-sm cursor-pointer">NA</Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 ml-4"
-                        onClick={() => setNewB2Comment(prev => ({ ...prev, 'b2-ref': "" }))}
-                        data-testid="button-b2-ref-comment"
-                      >
-                        <MessageSquare className="h-4 w-4 text-gray-400" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Comments for B2.1 */}
-                  {(formData.b2Comments['b2-ref']?.length > 0 || newB2Comment['b2-ref'] !== undefined) && (
-                    <div className="mb-4 space-y-2">
-                      {formData.b2Comments['b2-ref']?.map((comment) => (
-                        <div key={comment.id} className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
-                            {editingB2Comment === comment.id ? (
-                              <Textarea
-                                value={comment.text}
-                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    b2Comments: {
-                                      ...prev.b2Comments,
-                                      'b2-ref': prev.b2Comments['b2-ref']?.map(c => 
-                                        c.id === comment.id ? { ...c, text: e.target.value } : c
-                                      ) || []
-                                    }
-                                  }));
-                                }}
-                                onBlur={() => setEditingB2Comment(null)}
-                                autoFocus
-                                className="min-h-[80px] w-full"
-                              />
-                            ) : (
-                              <div 
-                                className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
-                                onClick={() => setEditingB2Comment(comment.id)}
-                              >
-                                {comment.text}
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                        B2.1 Reference checks completed?
+                      </Label>
+                      <div className="flex items-center min-w-[300px]">
+                        <div className="flex gap-6 w-[200px]">
+                          <RadioGroup 
+                            value={formData.b2ReferencesCompleted} 
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, b2ReferencesCompleted: value }))}
+                            className="flex gap-6"
+                          >
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="yes" id="b2-completed-yes" />
+                                <Label htmlFor="b2-completed-yes" className="text-sm cursor-pointer">Yes</Label>
                               </div>
-                            )}
-                          </div>
-                          <div className="ml-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  b2Comments: {
-                                    ...prev.b2Comments,
-                                    'b2-ref': prev.b2Comments['b2-ref']?.filter(c => c.id !== comment.id) || []
-                                  }
-                                }));
-                                if (editingB2Comment === comment.id) {
-                                  setEditingB2Comment(null);
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="no" id="b2-completed-no" />
+                                <Label htmlFor="b2-completed-no" className="text-sm cursor-pointer">No</Label>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="na" id="b2-completed-na" />
+                                <Label htmlFor="b2-completed-na" className="text-sm cursor-pointer">NA</Label>
+                              </div>
+                            </div>
+                          </RadioGroup>
                         </div>
-                      ))}
-                      
-                      {newB2Comment['b2-ref'] !== undefined && (
-                        <div>
-                          <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
-                          <Textarea
-                            value={newB2Comment['b2-ref']}
-                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                              setNewB2Comment(prev => ({ ...prev, 'b2-ref': e.target.value }));
-                            }}
-                            onBlur={() => {
-                              if (newB2Comment['b2-ref']?.trim()) {
-                                const commentId = Date.now().toString();
-                                setFormData(prev => ({
-                                  ...prev,
-                                  b2Comments: {
-                                    ...prev.b2Comments,
-                                    'b2-ref': [
-                                      ...(prev.b2Comments['b2-ref'] || []),
-                                      { id: commentId, user: currentUserDisplay, text: newB2Comment['b2-ref'] }
-                                    ]
-                                  }
-                                }));
-                              }
-                              setNewB2Comment(prev => {
-                                const newState = { ...prev };
-                                delete newState['b2-ref'];
-                                return newState;
-                              });
-                            }}
-                            placeholder="Comment: Add your observations here..."
-                            className="text-blue-600 italic border-blue-200 text-[13px]"
-                            rows={2}
-                            autoFocus
-                          />
-                        </div>
-                      )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 ml-4"
+                          onClick={() => setNewB2Comment(prev => ({ ...prev, 'b2-completed': "" }))}
+                          data-testid="button-b2-completed-comment"
+                        >
+                          <MessageSquare className="h-4 w-4 text-gray-400" />
+                        </Button>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Reference check entry fields - only show when B2.1 is Yes */}
-                  {formData.b2ReferencesCompleted === 'yes' && (
-                      <div className="mb-4 space-y-3">
+                    {/* Reference check entry fields - only show when B2.1 is Yes */}
+                    {formData.b2ReferencesCompleted === 'yes' && (
+                      <div className="ml-4 mb-4 space-y-3">
                         {formData.b2References.map((reference, index) => (
                           <div key={reference.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                               <Input
                                 type="date"
-                                placeholder="dd-mm-yyyy"
+                                placeholder="Date"
                                 className="text-sm"
                                 value={reference.date}
                                 onChange={(e) => {
@@ -3989,7 +3900,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }}
                                   data-testid={`button-remove-b2-ref-${index}`}
                                 >
-                                  <Edit className="h-4 w-4 text-gray-400" />
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {formData.b2References.length === 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-10 w-10 p-0"
+                                >
+                                  <Edit className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
@@ -3998,140 +3919,245 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       </div>
                     )}
 
-                  {/* B2.2 Employer Feedback */}
-                  <div className="flex justify-between items-center mb-2">
-                    <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
-                      B2.2 Reference checks results positive? If yes, record brief overview of verification in comment. If no state details.
-                    </Label>
-                    <div className="flex items-center min-w-[300px]">
-                      <div className="flex gap-6 w-[200px]">
-                        <RadioGroup 
-                          value={formData.b2EmployerFeedback} 
-                          onValueChange={(value) => setFormData(prev => ({ ...prev, b2EmployerFeedback: value }))}
-                          className="flex gap-6"
-                        >
-                          <div className="flex items-center space-x-2 w-[50px]">
-                            <RadioGroupItem value="yes" id="b2-fb-yes" />
-                            <Label htmlFor="b2-fb-yes" className="text-sm cursor-pointer">Yes</Label>
-                          </div>
-                          <div className="flex items-center space-x-2 w-[50px]">
-                            <RadioGroupItem value="no" id="b2-fb-no" />
-                            <Label htmlFor="b2-fb-no" className="text-sm cursor-pointer">No</Label>
-                          </div>
-                          <div className="flex items-center space-x-2 w-[50px]">
-                            <RadioGroupItem value="na" id="b2-fb-na" />
-                            <Label htmlFor="b2-fb-na" className="text-sm cursor-pointer">NA</Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 ml-4"
-                        onClick={() => setNewB2Comment(prev => ({ ...prev, 'b2-fb': "" }))}
-                        data-testid="button-b2-fb-comment"
-                      >
-                        <MessageSquare className="h-4 w-4 text-gray-400" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Comments for B2.2 */}
-                  {(formData.b2Comments['b2-fb']?.length > 0 || newB2Comment['b2-fb'] !== undefined) && (
-                    <div className="mb-4 space-y-2">
-                      {formData.b2Comments['b2-fb']?.map((comment) => (
-                        <div key={comment.id} className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
-                            {editingB2Comment === comment.id ? (
-                              <Textarea
-                                value={comment.text}
-                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                    {/* Comments for B2.1 */}
+                    {(formData.b2Comments['b2-completed']?.length > 0 || newB2Comment['b2-completed'] !== undefined) && (
+                      <div className="ml-4 mb-4 space-y-2">
+                        {formData.b2Comments['b2-completed']?.map((comment) => (
+                          <div key={comment.id} className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                              {editingB2Comment === comment.id ? (
+                                <Textarea
+                                  value={comment.text}
+                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b2Comments: {
+                                        ...prev.b2Comments,
+                                        'b2-completed': prev.b2Comments['b2-completed']?.map(c => 
+                                          c.id === comment.id ? { ...c, text: e.target.value } : c
+                                        ) || []
+                                      }
+                                    }));
+                                  }}
+                                  onBlur={() => setEditingB2Comment(null)}
+                                  autoFocus
+                                  className="min-h-[80px] w-full"
+                                />
+                              ) : (
+                                <div 
+                                  className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                  onClick={() => setEditingB2Comment(comment.id)}
+                                >
+                                  {comment.text}
+                                </div>
+                              )}
+                            </div>
+                            <div className="ml-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
                                   setFormData(prev => ({
                                     ...prev,
                                     b2Comments: {
                                       ...prev.b2Comments,
-                                      'b2-fb': prev.b2Comments['b2-fb']?.map(c => 
-                                        c.id === comment.id ? { ...c, text: e.target.value } : c
-                                      ) || []
+                                      'b2-completed': prev.b2Comments['b2-completed']?.filter(c => c.id !== comment.id) || []
                                     }
                                   }));
+                                  if (editingB2Comment === comment.id) {
+                                    setEditingB2Comment(null);
+                                  }
                                 }}
-                                onBlur={() => setEditingB2Comment(null)}
-                                autoFocus
-                                className="min-h-[80px] w-full"
-                              />
-                            ) : (
-                              <div 
-                                className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
-                                onClick={() => setEditingB2Comment(comment.id)}
                               >
-                                {comment.text}
-                              </div>
-                            )}
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="ml-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  b2Comments: {
-                                    ...prev.b2Comments,
-                                    'b2-fb': prev.b2Comments['b2-fb']?.filter(c => c.id !== comment.id) || []
-                                  }
-                                }));
-                                if (editingB2Comment === comment.id) {
-                                  setEditingB2Comment(null);
-                                }
+                        ))}
+                        
+                        {newB2Comment['b2-completed'] !== undefined && (
+                          <div>
+                            <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                            <Textarea
+                              value={newB2Comment['b2-completed']}
+                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                setNewB2Comment(prev => ({ ...prev, 'b2-completed': e.target.value }));
                               }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              onBlur={() => {
+                                if (newB2Comment['b2-completed']?.trim()) {
+                                  const commentId = Date.now().toString();
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b2Comments: {
+                                      ...prev.b2Comments,
+                                      'b2-completed': [
+                                        ...(prev.b2Comments['b2-completed'] || []),
+                                        { id: commentId, user: currentUserDisplay, text: newB2Comment['b2-completed'] }
+                                      ]
+                                    }
+                                  }));
+                                }
+                                setNewB2Comment(prev => {
+                                  const newState = { ...prev };
+                                  delete newState['b2-completed'];
+                                  return newState;
+                                });
+                              }}
+                              placeholder="Comment: Add your observations here..."
+                              className="text-blue-600 italic border-blue-200 text-[13px]"
+                              rows={2}
+                              autoFocus
+                            />
                           </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* B2.2 Reference checks results positive */}
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                        B2.2 Reference checks results positive? If yes, record brief overview of verification in comment. If no state details.
+                      </Label>
+                      <div className="flex items-center min-w-[300px]">
+                        <div className="flex gap-6 w-[200px]">
+                          <RadioGroup 
+                            value={formData.b2EmployerFeedback} 
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, b2EmployerFeedback: value }))}
+                            className="flex gap-6"
+                          >
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="yes" id="b2-results-yes" />
+                                <Label htmlFor="b2-results-yes" className="text-sm cursor-pointer">Yes</Label>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="no" id="b2-results-no" />
+                                <Label htmlFor="b2-results-no" className="text-sm cursor-pointer">No</Label>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="na" id="b2-results-na" />
+                                <Label htmlFor="b2-results-na" className="text-sm cursor-pointer">NA</Label>
+                              </div>
+                            </div>
+                          </RadioGroup>
                         </div>
-                      ))}
-                      
-                      {newB2Comment['b2-fb'] !== undefined && (
-                        <div>
-                          <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
-                          <Textarea
-                            value={newB2Comment['b2-fb']}
-                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                              setNewB2Comment(prev => ({ ...prev, 'b2-fb': e.target.value }));
-                            }}
-                            onBlur={() => {
-                              if (newB2Comment['b2-fb']?.trim()) {
-                                const commentId = Date.now().toString();
-                                setFormData(prev => ({
-                                  ...prev,
-                                  b2Comments: {
-                                    ...prev.b2Comments,
-                                    'b2-fb': [
-                                      ...(prev.b2Comments['b2-fb'] || []),
-                                      { id: commentId, user: currentUserDisplay, text: newB2Comment['b2-fb'] }
-                                    ]
-                                  }
-                                }));
-                              }
-                              setNewB2Comment(prev => {
-                                const newState = { ...prev };
-                                delete newState['b2-fb'];
-                                return newState;
-                              });
-                            }}
-                            placeholder="Comment: Add your observations here..."
-                            className="text-blue-600 italic border-blue-200 text-[13px]"
-                            rows={2}
-                            autoFocus
-                          />
-                        </div>
-                      )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 ml-4"
+                          onClick={() => setNewB2Comment(prev => ({ ...prev, 'b2-results': "" }))}
+                          data-testid="button-b2-results-comment"
+                        >
+                          <MessageSquare className="h-4 w-4 text-gray-400" />
+                        </Button>
+                      </div>
                     </div>
-                  )}
+
+                    {/* Comments for B2.2 */}
+                    {(formData.b2Comments['b2-results']?.length > 0 || newB2Comment['b2-results'] !== undefined) && (
+                      <div className="ml-4 mb-4 space-y-2">
+                        {formData.b2Comments['b2-results']?.map((comment) => (
+                          <div key={comment.id} className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                              {editingB2Comment === comment.id ? (
+                                <Textarea
+                                  value={comment.text}
+                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b2Comments: {
+                                        ...prev.b2Comments,
+                                        'b2-results': prev.b2Comments['b2-results']?.map(c => 
+                                          c.id === comment.id ? { ...c, text: e.target.value } : c
+                                        ) || []
+                                      }
+                                    }));
+                                  }}
+                                  onBlur={() => setEditingB2Comment(null)}
+                                  autoFocus
+                                  className="min-h-[80px] w-full"
+                                />
+                              ) : (
+                                <div 
+                                  className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                  onClick={() => setEditingB2Comment(comment.id)}
+                                >
+                                  {comment.text}
+                                </div>
+                              )}
+                            </div>
+                            <div className="ml-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b2Comments: {
+                                      ...prev.b2Comments,
+                                      'b2-results': prev.b2Comments['b2-results']?.filter(c => c.id !== comment.id) || []
+                                    }
+                                  }));
+                                  if (editingB2Comment === comment.id) {
+                                    setEditingB2Comment(null);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {newB2Comment['b2-results'] !== undefined && (
+                          <div>
+                            <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                            <Textarea
+                              value={newB2Comment['b2-results']}
+                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                setNewB2Comment(prev => ({ ...prev, 'b2-results': e.target.value }));
+                              }}
+                              onBlur={() => {
+                                if (newB2Comment['b2-results']?.trim()) {
+                                  const commentId = Date.now().toString();
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b2Comments: {
+                                      ...prev.b2Comments,
+                                      'b2-results': [
+                                        ...(prev.b2Comments['b2-results'] || []),
+                                        { id: commentId, user: currentUserDisplay, text: newB2Comment['b2-results'] }
+                                      ]
+                                    }
+                                  }));
+                                }
+                                setNewB2Comment(prev => {
+                                  const newState = { ...prev };
+                                  delete newState['b2-results'];
+                                  return newState;
+                                });
+                              }}
+                              placeholder="Comment: Add your observations here..."
+                              className="text-blue-600 italic border-blue-200 text-[13px]"
+                              rows={2}
+                              autoFocus
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                     
                     {/* Attachment button */}
                     <div className="flex justify-start mt-6">
