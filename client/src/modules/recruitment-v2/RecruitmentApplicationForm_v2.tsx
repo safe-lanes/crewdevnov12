@@ -474,7 +474,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const [attachmentDialog, setAttachmentDialog] = useState<{
     open: boolean;
-    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo' | null;
+    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo' | 'b1' | 'b2' | 'b3' | 'b4' | 'b5' | 'b6' | 'b7' | 'b8' | null;
     itemId: string;
     itemName: string;
   }>({ open: false, type: null, itemId: '', itemName: '' });
@@ -1449,7 +1449,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const openAttachmentDialog = (
-    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo',
+    type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo' | 'b1' | 'b2' | 'b3' | 'b4' | 'b5' | 'b6' | 'b7' | 'b8',
     itemId: string,
     itemName: string
   ) => {
@@ -1466,6 +1466,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       case 'training': return formData.trainingCourses.find(t => t.id === attachmentDialog.itemId)?.attachments || [];
       case 'seaService': return formData.seaService.find(s => s.id === attachmentDialog.itemId)?.attachments || [];
       case 'additionalInfo': return formData.additionalInfo.find(a => a.id === attachmentDialog.itemId)?.attachments || [];
+      case 'b1': return formData.b1Attachments || [];
+      case 'b2': return formData.b2Attachments || [];
+      case 'b3': return formData.b3Attachments || [];
+      case 'b4': return formData.b4Attachments || [];
+      case 'b5': return formData.b5Attachments || [];
+      case 'b6': return formData.b6Attachments || [];
+      case 'b7': return formData.b7Attachments || [];
+      case 'b8': return formData.b8Attachments || [];
       default: return [];
     }
   };
@@ -1481,6 +1489,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         case 'training': return { ...prev, trainingCourses: prev.trainingCourses.map(t => t.id === attachmentDialog.itemId ? { ...t, attachments } : t) };
         case 'seaService': return { ...prev, seaService: prev.seaService.map(s => s.id === attachmentDialog.itemId ? { ...s, attachments } : s) };
         case 'additionalInfo': return { ...prev, additionalInfo: prev.additionalInfo.map(a => a.id === attachmentDialog.itemId ? { ...a, attachments } : a) };
+        case 'b1': return { ...prev, b1Attachments: attachments };
+        case 'b2': return { ...prev, b2Attachments: attachments };
+        case 'b3': return { ...prev, b3Attachments: attachments };
+        case 'b4': return { ...prev, b4Attachments: attachments };
+        case 'b5': return { ...prev, b5Attachments: attachments };
+        case 'b6': return { ...prev, b6Attachments: attachments };
+        case 'b7': return { ...prev, b7Attachments: attachments };
+        case 'b8': return { ...prev, b8Attachments: attachments };
         default: return prev;
       }
     });
@@ -3968,6 +3984,55 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     >
                       <Plus className="h-4 w-4 mr-1" /> Add Reference
                     </Button>
+                    
+                    {/* Attachment button */}
+                    <div className="flex justify-start mt-6">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                        onClick={() => openAttachmentDialog('b2', 'b2', 'B2. Reference Checks')}
+                        data-testid="button-b2-attachments"
+                      >
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Attachment(s)
+                        {formData.b2Attachments?.length > 0 && (
+                          <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {formData.b2Attachments.length}
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Submitted by section */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-gray-500">
+                          {formData.b2SubmittedBy ? (
+                            <>
+                              <span className="font-medium">Submitted by:</span> {formData.b2SubmittedBy}
+                              {formData.b2SubmittedDate && ` on ${formData.b2SubmittedDate}`}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">Not yet submitted</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            const currentDate = new Date().toLocaleDateString();
+                            setFormData(prev => ({ ...prev, b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate }));
+                            setTimeout(() => handleSaveScreening(), 100);
+                          }}
+                          data-testid="button-b2-submit"
+                        >
+                          Submit
+                        </Button>
+                      </div>
+                    </div>
                 </div>
 
                 {/* B3. Background Security Checks - matching legacy exactly */}
@@ -4116,6 +4181,55 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     >
                       <Plus className="h-4 w-4 mr-1" /> Add Authority
                     </Button>
+                    
+                    {/* Attachment button */}
+                    <div className="flex justify-start mt-6">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                        onClick={() => openAttachmentDialog('b3', 'b3', 'B3. Background Security Checks')}
+                        data-testid="button-b3-attachments"
+                      >
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Attachment(s)
+                        {formData.b3Attachments?.length > 0 && (
+                          <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {formData.b3Attachments.length}
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Submitted by section */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-gray-500">
+                          {formData.b3SubmittedBy ? (
+                            <>
+                              <span className="font-medium">Submitted by:</span> {formData.b3SubmittedBy}
+                              {formData.b3SubmittedDate && ` on ${formData.b3SubmittedDate}`}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">Not yet submitted</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            const currentDate = new Date().toLocaleDateString();
+                            setFormData(prev => ({ ...prev, b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate }));
+                            setTimeout(() => handleSaveScreening(), 100);
+                          }}
+                          data-testid="button-b3-submit"
+                        >
+                          Submit
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -4227,6 +4341,55 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     >
                       <Plus className="h-4 w-4 mr-1" /> Add Certificate
                     </Button>
+                    
+                    {/* Attachment button */}
+                    <div className="flex justify-start mt-6">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                        onClick={() => openAttachmentDialog('b4', 'b4', 'B4. Authentication of Certificates')}
+                        data-testid="button-b4-attachments"
+                      >
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Attachment(s)
+                        {formData.b4Attachments?.length > 0 && (
+                          <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {formData.b4Attachments.length}
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Submitted by section */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-gray-500">
+                          {formData.b4SubmittedBy ? (
+                            <>
+                              <span className="font-medium">Submitted by:</span> {formData.b4SubmittedBy}
+                              {formData.b4SubmittedDate && ` on ${formData.b4SubmittedDate}`}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">Not yet submitted</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            const currentDate = new Date().toLocaleDateString();
+                            setFormData(prev => ({ ...prev, b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate }));
+                            setTimeout(() => handleSaveScreening(), 100);
+                          }}
+                          data-testid="button-b4-submit"
+                        >
+                          Submit
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -4348,6 +4511,55 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     >
                       <Plus className="h-4 w-4 mr-1" /> Add Test
                     </Button>
+                    
+                    {/* Attachment button */}
+                    <div className="flex justify-start mt-6">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                        onClick={() => openAttachmentDialog('b5', 'b5', 'B5. CES/Language Test Results')}
+                        data-testid="button-b5-attachments"
+                      >
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Attachment(s)
+                        {formData.b5Attachments?.length > 0 && (
+                          <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {formData.b5Attachments.length}
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Submitted by section */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-gray-500">
+                          {formData.b5SubmittedBy ? (
+                            <>
+                              <span className="font-medium">Submitted by:</span> {formData.b5SubmittedBy}
+                              {formData.b5SubmittedDate && ` on ${formData.b5SubmittedDate}`}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">Not yet submitted</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            const currentDate = new Date().toLocaleDateString();
+                            setFormData(prev => ({ ...prev, b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate }));
+                            setTimeout(() => handleSaveScreening(), 100);
+                          }}
+                          data-testid="button-b5-submit"
+                        >
+                          Submit
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -4489,6 +4701,55 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     >
                       <Plus className="h-4 w-4 mr-1" /> Add Interview
                     </Button>
+                    
+                    {/* Attachment button */}
+                    <div className="flex justify-start mt-6">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                        onClick={() => openAttachmentDialog('b6', 'b6', 'B6. Interviews')}
+                        data-testid="button-b6-attachments"
+                      >
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Attachment(s)
+                        {formData.b6Attachments?.length > 0 && (
+                          <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {formData.b6Attachments.length}
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Submitted by section */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-gray-500">
+                          {formData.b6SubmittedBy ? (
+                            <>
+                              <span className="font-medium">Submitted by:</span> {formData.b6SubmittedBy}
+                              {formData.b6SubmittedDate && ` on ${formData.b6SubmittedDate}`}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">Not yet submitted</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            const currentDate = new Date().toLocaleDateString();
+                            setFormData(prev => ({ ...prev, b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate }));
+                            setTimeout(() => handleSaveScreening(), 100);
+                          }}
+                          data-testid="button-b6-submit"
+                        >
+                          Submit
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -4591,6 +4852,35 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   >
                     <Plus className="h-4 w-4 mr-1" /> Add Training
                   </Button>
+                  
+                  {/* Submitted by section - B7 doesn't typically have attachments */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs text-gray-500">
+                        {formData.b7SubmittedBy ? (
+                          <>
+                            <span className="font-medium">Submitted by:</span> {formData.b7SubmittedBy}
+                            {formData.b7SubmittedDate && ` on ${formData.b7SubmittedDate}`}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">Not yet submitted</span>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => {
+                          const currentDate = new Date().toLocaleDateString();
+                          setFormData(prev => ({ ...prev, b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate }));
+                          setTimeout(() => handleSaveScreening(), 100);
+                        }}
+                        data-testid="button-b7-submit"
+                      >
+                        Submit
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="border rounded-lg p-4">
@@ -4615,17 +4905,68 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         ))}
                       </div>
                     </div>
+                    
+                    {/* Attachment button */}
+                    <div className="flex justify-start mt-6">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                        onClick={() => openAttachmentDialog('b8', 'b8', 'B8. Short Listing')}
+                        data-testid="button-b8-attachments"
+                      >
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Attachment(s)
+                        {formData.b8Attachments?.length > 0 && (
+                          <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {formData.b8Attachments.length}
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Submitted by section */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-gray-500">
+                          {formData.b8SubmittedBy ? (
+                            <>
+                              <span className="font-medium">Submitted by:</span> {formData.b8SubmittedBy}
+                              {formData.b8SubmittedDate && ` on ${formData.b8SubmittedDate}`}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">Not yet submitted</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            const currentDate = new Date().toLocaleDateString();
+                            setFormData(prev => ({ ...prev, b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate }));
+                            setTimeout(() => handleSaveScreening(), 100);
+                          }}
+                          data-testid="button-b8-submit"
+                        >
+                          Submit
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8"
-                    onClick={handleSaveScreening}
+                <div className="flex justify-end gap-2 mt-6 pt-4">
+                  <Button 
+                    className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
+                    onClick={() => {
+                      handleSaveScreening();
+                    }}
                     disabled={savingInProgress}
-                    data-testid="button-save-screening"
+                    data-testid="button-submit-for-approval"
                   >
-                    {savingInProgress ? 'Saving...' : 'Save Screening'}
+                    {savingInProgress ? 'Saving...' : 'Submit for Approval'}
                   </Button>
                 </div>
               </div>
