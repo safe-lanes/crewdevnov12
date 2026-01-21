@@ -78,13 +78,10 @@ import {
 const router = Router();
 
 router.get("/candidates", getAllCandidates);
-router.get("/candidates/:id", getCandidateById);
-router.get("/candidates/uuid/:recCanUuid", getCandidateByUuid);
 router.post("/candidates", createCandidate);
-router.patch("/candidates/:id", updateCandidate);
-router.patch("/candidates/uuid/:recCanUuid", updateCandidateByUuid);
-router.delete("/candidates/:id", deleteCandidate);
-router.delete("/candidates/uuid/:recCanUuid", deleteCandidateByUuid);
+router.get("/candidates/:recCanUuid", getCandidateByUuid);
+router.patch("/candidates/:recCanUuid", updateCandidateByUuid);
+router.delete("/candidates/:recCanUuid", deleteCandidateByUuid);
 
 router.get("/candidates/:recCanUuid/vessel-types", getVesselTypesApplied);
 router.post("/candidates/:recCanUuid/vessel-types", addVesselTypeApplied);
