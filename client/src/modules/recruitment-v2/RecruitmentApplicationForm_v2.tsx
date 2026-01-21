@@ -4224,6 +4224,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       size="sm"
                       className="text-gray-600 border-gray-300 hover:bg-gray-50"
                       data-testid="button-b1-attachments"
+                      onClick={() => openAttachmentDialog('b1', 'b1', 'B1. Initial Screening')}
                     >
                       <Paperclip className="h-4 w-4 mr-2" />
                       Attachment(s)
