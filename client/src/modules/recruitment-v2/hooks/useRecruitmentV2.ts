@@ -714,6 +714,17 @@ export function useV2SaveApproval() {
   });
 }
 
+export function useV2UpdateApproval() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ recCanUuid, id, data }: { recCanUuid: string; id: number; data: Partial<CandidateApproval> }) =>
+      patchApi<CandidateApproval>(`/approvals/${id}`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'approvals', variables.recCanUuid] });
+    },
+  });
+}
+
 export function useV2Suitability(recCanUuid: string | null) {
   return useQuery<CandidateSuitability>({
     queryKey: ['v2', 'suitability', recCanUuid],

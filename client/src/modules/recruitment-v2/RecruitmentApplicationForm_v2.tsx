@@ -26,6 +26,8 @@ import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
 import { useExternalCountries } from '@/hooks/useExternalCountries';
 import { useExternalLanguages } from '@/hooks/useExternalLanguages';
 import { useExternalUsers } from '@/hooks/useExternalUsers';
+import { useExternalVessels } from '@/hooks/useExternalVessels';
+import { useExternalFleetGroups } from '@/hooks/useExternalFleetGroups';
 import {
   useV2Candidate,
   useV2CreateCandidate,
@@ -100,6 +102,13 @@ import {
   useV2CreateScreeningB7TrainingItem,
   useV2ScreeningB8Approvers,
   useV2CreateScreeningB8Approver,
+  useV2Approvals,
+  useV2SaveApproval,
+  useV2UpdateApproval,
+  useV2Suitability,
+  useV2SaveSuitability,
+  useV2RecruitmentDecision,
+  useV2SaveRecruitmentDecision,
 } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
 import { LicenseSelectionDialog } from '@/modules/crew-pool/LicenseSelectionDialog';
@@ -305,6 +314,23 @@ interface LocalFormData {
   b8SubmittedBy: string;
   selectedApproversForSubmission: string[];
   b8SubmittedDate: string;
+  // Part C - Approval fields
+  c1Approvers: Array<{
+    id: string;
+    serverId?: number;
+    appUuid?: string;
+    date: string;
+    approver: string;
+    status: string;
+    approval: string;
+    comments: string;
+  }>;
+  c2VesselTypes: string[];
+  c2FleetGroups: string[];
+  c3RecruitmentStatus: string;
+  c3AssignedGroups: string[];
+  c3SubmittedBy: string;
+  c3SubmittedDate: string;
 }
 
 const getInitialFormData = (): LocalFormData => ({
@@ -418,6 +444,14 @@ const getInitialFormData = (): LocalFormData => ({
   b8SubmittedBy: '',
   selectedApproversForSubmission: [],
   b8SubmittedDate: '',
+  // Part C - Approval initial values
+  c1Approvers: [],
+  c2VesselTypes: [],
+  c2FleetGroups: [],
+  c3RecruitmentStatus: '',
+  c3AssignedGroups: [],
+  c3SubmittedBy: '',
+  c3SubmittedDate: '',
 });
 
 type SectionType = 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'B' | 'C';
@@ -518,6 +552,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const { data: screeningB7Data } = useV2ScreeningB7(recCanUuid);
   const { data: screeningB8Data } = useV2ScreeningB8(recCanUuid);
 
+  // Part C - Approval data
+  const { data: approvalsData } = useV2Approvals(recCanUuid);
+  const { data: suitabilityData } = useV2Suitability(recCanUuid);
+  const { data: decisionData } = useV2RecruitmentDecision(recCanUuid);
+
   const b2Uuid = screeningB2Data?.b2Uuid || null;
   const b3Uuid = screeningB3Data?.b3Uuid || null;
   const b4Uuid = screeningB4Data?.b4Uuid || null;
@@ -587,6 +626,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const createB6InterviewItemMutation = useV2CreateScreeningB6InterviewItem();
   const createB7TrainingItemMutation = useV2CreateScreeningB7TrainingItem();
   const createB8ApproverMutation = useV2CreateScreeningB8Approver();
+
+  // Part C - Approval mutations
+  const saveApprovalMutation = useV2SaveApproval();
+  const updateApprovalMutation = useV2UpdateApproval();
+  const saveSuitabilityMutation = useV2SaveSuitability();
+  const saveDecisionMutation = useV2SaveRecruitmentDecision();
   
   const savingInProgress = savePersonalDetailsMutation.isPending || 
     saveAddressMutation.isPending || saveFamilyInfoMutation.isPending ||
@@ -594,7 +639,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     saveVesselTypesMutation.isPending || saveDocumentMutation.isPending ||
     saveVisaMutation.isPending || saveEducationMutation.isPending ||
     saveLicenseMutation.isPending || saveTrainingMutation.isPending ||
-    saveSeaServiceMutation.isPending || saveAdditionalInfoMutation.isPending;
+    saveSeaServiceMutation.isPending || saveAdditionalInfoMutation.isPending ||
+    saveApprovalMutation.isPending || saveSuitabilityMutation.isPending ||
+    saveDecisionMutation.isPending;
 
   const { data: companyRanks, isLoading: ranksLoading, rankOptions } = useCompanyRanks();
   const { data: externalNationalitiesData } = useExternalNationalities();
@@ -648,6 +695,38 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
     return [];
   }, [externalLanguagesData]);
+
+  // Fetch vessels and fleet groups for C2/C3 dropdowns
+  const { data: externalVesselsData, isLoading: isLoadingVessels } = useExternalVessels();
+  const { data: externalFleetGroupsData, isLoading: isLoadingFleetGroups } = useExternalFleetGroups();
+
+  const isLoadingVesselFleetData = isLoadingVessels || isLoadingFleetGroups;
+
+  const vesselFleetOptions = useMemo(() => {
+    const options: Array<{ value: string; label: string; category: 'vessel' | 'fleet' }> = [];
+    const addedValues = new Set<string>();
+
+    const addOption = (name: string, category: 'vessel' | 'fleet') => {
+      const trimmedName = name?.trim();
+      if (trimmedName && trimmedName.length > 0 && !addedValues.has(trimmedName)) {
+        addedValues.add(trimmedName);
+        options.push({ value: trimmedName, label: trimmedName, category });
+      }
+    };
+
+    const vessels = (externalVesselsData as any)?.vessels || externalVesselsData || [];
+    vessels.forEach((v: any) => {
+      const vesselName = v.vessel || v.name;
+      if (vesselName) addOption(vesselName, 'vessel');
+    });
+
+    const fleetGroups = (externalFleetGroupsData as any)?.fleetGroups || externalFleetGroupsData || [];
+    fleetGroups.forEach((f: any) => {
+      if (f.name) addOption(f.name, 'fleet');
+    });
+
+    return options;
+  }, [externalVesselsData, externalFleetGroupsData]);
 
   useEffect(() => {
     const observerOptions = {
@@ -1109,6 +1188,49 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
   }, [screeningB8Approvers]);
 
+  // Part C - Load approvals data
+  useEffect(() => {
+    if (approvalsData && approvalsData.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        c1Approvers: approvalsData.map(approval => ({
+          id: approval.appUuid,
+          serverId: approval.id,
+          appUuid: approval.appUuid,
+          date: approval.approvalDate || '',
+          approver: approval.approverUuid || '',
+          status: approval.status || '',
+          approval: approval.approval || '',
+          comments: approval.comments || '',
+        })),
+      }));
+    }
+  }, [approvalsData]);
+
+  // Part C - Load suitability data
+  useEffect(() => {
+    if (suitabilityData) {
+      setFormData(prev => ({
+        ...prev,
+        c2VesselTypes: suitabilityData.vesselTypes?.map(vt => vt.vesselTypeUuid) || [],
+        c2FleetGroups: suitabilityData.fleetGroups?.map(fg => fg.fleetGroupUuid) || [],
+      }));
+    }
+  }, [suitabilityData]);
+
+  // Part C - Load decision data
+  useEffect(() => {
+    if (decisionData) {
+      setFormData(prev => ({
+        ...prev,
+        c3RecruitmentStatus: decisionData.recruitmentStatus || '',
+        c3AssignedGroups: decisionData.assignedGroups?.map(ag => ag.groupUuid) || [],
+        c3SubmittedBy: decisionData.submittedByUuid || '',
+        c3SubmittedDate: decisionData.submittedDate || '',
+      }));
+    }
+  }, [decisionData]);
+
   const calculateAge = (dob: string): string => {
     if (!dob) return '';
     const birthDate = new Date(dob);
@@ -1378,6 +1500,60 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       ...prev,
       children: prev.children.map(c => c.id === id ? { ...c, [field]: value } : c)
     }));
+  };
+
+  // Part C - Approval management functions
+  const addC1Approver = () => {
+    const newApprover = {
+      id: `APP-${Date.now()}`,
+      date: '',
+      approver: '',
+      status: '',
+      approval: '',
+      comments: ''
+    };
+    setFormData(prev => ({ ...prev, c1Approvers: [...prev.c1Approvers, newApprover] }));
+  };
+
+  const removeC1Approver = (id: string) => {
+    setFormData(prev => ({ ...prev, c1Approvers: prev.c1Approvers.filter(a => a.id !== id) }));
+  };
+
+  const updateC1Approver = (id: string, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      c1Approvers: prev.c1Approvers.map(a => a.id === id ? { ...a, [field]: value } : a)
+    }));
+  };
+
+  const addC2VesselType = (vesselType: string) => {
+    if (!formData.c2VesselTypes.includes(vesselType)) {
+      setFormData(prev => ({ ...prev, c2VesselTypes: [...prev.c2VesselTypes, vesselType] }));
+    }
+  };
+
+  const removeC2VesselType = (vesselType: string) => {
+    setFormData(prev => ({ ...prev, c2VesselTypes: prev.c2VesselTypes.filter(v => v !== vesselType) }));
+  };
+
+  const addC2FleetGroup = (fleetGroup: string) => {
+    if (!formData.c2FleetGroups.includes(fleetGroup)) {
+      setFormData(prev => ({ ...prev, c2FleetGroups: [...prev.c2FleetGroups, fleetGroup] }));
+    }
+  };
+
+  const removeC2FleetGroup = (fleetGroup: string) => {
+    setFormData(prev => ({ ...prev, c2FleetGroups: prev.c2FleetGroups.filter(f => f !== fleetGroup) }));
+  };
+
+  const addC3AssignedGroup = (group: string) => {
+    if (!formData.c3AssignedGroups.includes(group)) {
+      setFormData(prev => ({ ...prev, c3AssignedGroups: [...prev.c3AssignedGroups, group] }));
+    }
+  };
+
+  const removeC3AssignedGroup = (group: string) => {
+    setFormData(prev => ({ ...prev, c3AssignedGroups: prev.c3AssignedGroups.filter(g => g !== group) }));
   };
 
   const addVesselType = (type: string) => {
@@ -2225,6 +2401,67 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
+      // Part C - Save approvals (C1)
+      const serverApprovalMap = new Map((approvalsData || []).map(a => [a.appUuid, a.id]));
+      for (const approver of formData.c1Approvers) {
+        const existingServerId = approver.serverId || serverApprovalMap.get(approver.appUuid);
+        if (existingServerId) {
+          await updateApprovalMutation.mutateAsync({
+            recCanUuid,
+            id: existingServerId,
+            data: {
+              approvalDate: approver.date || undefined,
+              approverUuid: approver.approver || undefined,
+              status: approver.status || undefined,
+              approval: approver.approval || undefined,
+              comments: approver.comments || undefined,
+            } as any,
+          });
+        } else if (approver.date || approver.approver) {
+          const newApproval = await saveApprovalMutation.mutateAsync({
+            recCanUuid,
+            data: {
+              approvalDate: approver.date || undefined,
+              approverUuid: approver.approver || undefined,
+              status: approver.status || undefined,
+              approval: approver.approval || undefined,
+              comments: approver.comments || undefined,
+            } as any,
+          });
+          if (newApproval?.id) {
+            setFormData(prev => ({
+              ...prev,
+              c1Approvers: prev.c1Approvers.map(a => 
+                a.id === approver.id ? { ...a, serverId: newApproval.id, appUuid: newApproval.appUuid } : a
+              ),
+            }));
+          }
+        }
+      }
+
+      // Part C - Save suitability (C2)
+      await saveSuitabilityMutation.mutateAsync({
+        recCanUuid,
+        data: {
+          vesselTypes: formData.c2VesselTypes.map(vt => ({ vesselTypeUuid: vt })),
+          fleetGroups: formData.c2FleetGroups.map(fg => ({ fleetGroupUuid: fg })),
+        } as any,
+      });
+
+      // Part C - Save decision (C3)
+      if (formData.c3RecruitmentStatus) {
+        await saveDecisionMutation.mutateAsync({
+          recCanUuid,
+          data: {
+            recruitmentStatus: formData.c3RecruitmentStatus || undefined,
+            assignedGroups: formData.c3AssignedGroups.map(g => ({ groupUuid: g })),
+          } as any,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['v2', 'approvals', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'suitability', recCanUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'recruitment-decision', recCanUuid] });
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1', recCanUuid] });
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2', recCanUuid] });
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3', recCanUuid] });
@@ -6371,8 +6608,363 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <div style={{ color: '#16569e' }} className="text-sm">To be completed by the designated approver</div>
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
-              <div className="text-center text-gray-500 py-12">
-                Part C sections will be implemented in Phase 2
+
+              {/* C1 Approval Section */}
+              <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C.1 Approval</h3>
+                  <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
+                    <span className="text-xs text-gray-600">i</span>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                        C1.1 Approved?
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addC1Approver}
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                        data-testid="button-add-c1-approver"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Approver
+                      </Button>
+                    </div>
+
+                    <div className="ml-4 mb-4 space-y-3">
+                      {formData.c1Approvers.map((approver) => (
+                        <div key={approver.id} className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                              <Input
+                                type="date"
+                                placeholder="Date"
+                                className="text-sm"
+                                value={approver.date}
+                                onChange={(e) => updateC1Approver(approver.id, 'date', e.target.value)}
+                                data-testid={`input-c1-date-${approver.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Select
+                                value={approver.approver}
+                                onValueChange={(value) => updateC1Approver(approver.id, 'approver', value)}
+                              >
+                                <SelectTrigger className="text-sm" data-testid={`select-c1-approver-${approver.id}`}>
+                                  <SelectValue placeholder="Approver" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {isLoadingUsers ? (
+                                    <SelectItem value="_loading" disabled>Loading approvers...</SelectItem>
+                                  ) : approverMasterData.length === 0 ? (
+                                    <SelectItem value="_empty" disabled>No office users found</SelectItem>
+                                  ) : (
+                                    approverMasterData.map((approverName: string) => (
+                                      <SelectItem key={approverName} value={approverName}>
+                                        {approverName}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Select
+                                value={approver.status}
+                                onValueChange={(value) => updateC1Approver(approver.id, 'status', value)}
+                              >
+                                <SelectTrigger className="text-sm" data-testid={`select-c1-status-${approver.id}`}>
+                                  <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Review Pending">Review Pending</SelectItem>
+                                  <SelectItem value="Review Completed">Review Completed</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex gap-3">
+                                <label className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    name={`approval-${approver.id}`}
+                                    value="Yes"
+                                    checked={approver.approval === 'Yes'}
+                                    onChange={(e) => updateC1Approver(approver.id, 'approval', e.target.value)}
+                                    className="mr-1"
+                                  />
+                                  <span className="text-[13px]">Yes</span>
+                                </label>
+                                <label className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    name={`approval-${approver.id}`}
+                                    value="Yes, Conditional"
+                                    checked={approver.approval === 'Yes, Conditional'}
+                                    onChange={(e) => updateC1Approver(approver.id, 'approval', e.target.value)}
+                                    className="mr-1"
+                                  />
+                                  <span className="text-[13px]">Yes, Conditional</span>
+                                </label>
+                                <label className="flex items-center">
+                                  <input
+                                    type="radio"
+                                    name={`approval-${approver.id}`}
+                                    value="No"
+                                    checked={approver.approval === 'No'}
+                                    onChange={(e) => updateC1Approver(approver.id, 'approval', e.target.value)}
+                                    className="mr-1"
+                                  />
+                                  <span className="text-[13px]">No</span>
+                                </label>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-10 w-10 p-0"
+                                onClick={() => removeC1Approver(approver.id)}
+                                data-testid={`button-remove-c1-approver-${approver.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {approver.approver && (
+                            <div className="ml-4">
+                              <div className="text-blue-600 italic text-[13px] mb-2">
+                                {approver.approver}:
+                              </div>
+                              <Textarea
+                                value={approver.comments || ''}
+                                onChange={(e) => updateC1Approver(approver.id, 'comments', e.target.value)}
+                                placeholder="Click to add comment..."
+                                className="text-blue-600 italic border-blue-200 text-[13px] mb-2"
+                                rows={2}
+                                data-testid={`textarea-c1-approver-comment-${approver.id}`}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* C2 Suitable for Section */}
+              <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C2 Suitable for</h3>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-xs text-gray-500 tracking-wide mb-2 block">C2.1 Vessel type(s):</label>
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {formData.c2VesselTypes.map((vesselType) => (
+                          <div key={vesselType} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
+                            <span>{vesselType}</span>
+                            <button
+                              onClick={() => removeC2VesselType(vesselType)}
+                              className="ml-2 hover:text-blue-600"
+                              data-testid={`button-remove-c2-vessel-${vesselType}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <Select
+                        value=""
+                        onValueChange={(value) => addC2VesselType(value)}
+                      >
+                        <SelectTrigger className="w-full max-w-md" data-testid="select-c2-vessel-type">
+                          <SelectValue placeholder="Add vessel type..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vesselTypeMasterData.filter((type: string) => !formData.c2VesselTypes.includes(type)).map((vesselType: string) => (
+                            <SelectItem key={vesselType} value={vesselType}>
+                              {vesselType}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-gray-500 tracking-wide mb-2 block">C2.2 Vessel Class/ Fleet:</label>
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {formData.c2FleetGroups.map((fleetGroup) => (
+                          <div key={fleetGroup} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
+                            <span>{fleetGroup}</span>
+                            <button
+                              onClick={() => removeC2FleetGroup(fleetGroup)}
+                              className="ml-2 hover:text-blue-600"
+                              data-testid={`button-remove-c2-fleet-${fleetGroup}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <Select
+                        value=""
+                        onValueChange={(value) => addC2FleetGroup(value)}
+                      >
+                        <SelectTrigger className="w-full max-w-md" data-testid="select-c2-fleet-group">
+                          <SelectValue placeholder={isLoadingVesselFleetData ? "Loading options..." : "Add fleet group..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {isLoadingVesselFleetData && (
+                            <SelectItem value="_loading" disabled>Loading options...</SelectItem>
+                          )}
+                          {vesselFleetOptions
+                            .filter(option => !formData.c2FleetGroups.includes(option.value))
+                            .map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* C3 Recruited & Assigned to Section */}
+              <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C3 Recruited & Assigned to</h3>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                        C3.1 Recruitment confirmed:
+                      </Label>
+                      <div className="flex items-center min-w-[300px]">
+                        <div className="flex gap-6">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="recruitment-status"
+                              value="Yes"
+                              checked={formData.c3RecruitmentStatus === 'Yes'}
+                              onChange={(e) => updateFormData('c3RecruitmentStatus', e.target.value)}
+                              className="mr-2"
+                            />
+                            <span className="text-[13px]">Yes</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="recruitment-status"
+                              value="Waitlist"
+                              checked={formData.c3RecruitmentStatus === 'Waitlist'}
+                              onChange={(e) => updateFormData('c3RecruitmentStatus', e.target.value)}
+                              className="mr-2"
+                            />
+                            <span className="text-[13px]">Waitlist</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="recruitment-status"
+                              value="Rejected"
+                              checked={formData.c3RecruitmentStatus === 'Rejected'}
+                              onChange={(e) => updateFormData('c3RecruitmentStatus', e.target.value)}
+                              className="mr-2"
+                            />
+                            <span className="text-[13px]">Rejected</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-gray-500 tracking-wide mb-2 block">C3.2 Vessel, Vessel Class/ Fleet:</label>
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {formData.c3AssignedGroups.map((group) => (
+                          <div key={group} className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
+                            <span>{group}</span>
+                            <button
+                              onClick={() => removeC3AssignedGroup(group)}
+                              className="ml-2 hover:text-blue-600"
+                              data-testid={`button-remove-c3-group-${group}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <Select
+                        value=""
+                        onValueChange={(value) => addC3AssignedGroup(value)}
+                      >
+                        <SelectTrigger className="w-full max-w-md" data-testid="select-c3-vessel-fleet">
+                          <SelectValue placeholder={isLoadingVesselFleetData ? "Loading options..." : "Add vessel/fleet..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {isLoadingVesselFleetData && (
+                            <SelectItem value="_loading" disabled>Loading options...</SelectItem>
+                          )}
+                          {vesselFleetOptions
+                            .filter(option => !formData.c3AssignedGroups.includes(option.value))
+                            .map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs text-gray-500">
+                        {formData.c3SubmittedBy ? (
+                          <>Submitted by: {formData.c3SubmittedBy}</>
+                        ) : (
+                          <span className="text-gray-400">Not yet submitted</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formData.c3SubmittedDate && (
+                          <>Date: {formData.c3SubmittedDate}</>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6 pt-4">
+                <Button 
+                  className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
+                  onClick={() => {
+                    handleSaveOnly();
+                  }}
+                  disabled={savingInProgress}
+                  data-testid="button-save-approval"
+                >
+                  {savingInProgress ? 'Saving...' : 'Save Approval'}
+                </Button>
               </div>
             </CardContent>
           </Card>
