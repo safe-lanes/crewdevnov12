@@ -122,6 +122,28 @@ export const screeningB2Controller = {
       res.status(500).json({ error: "Failed to create B2 item" });
     }
   },
+
+  async getComments(req: Request, res: Response) {
+    try {
+      const { b2Uuid } = req.params;
+      const result = await screeningB2Service.getComments(b2Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B2 comments:", error);
+      res.status(500).json({ error: "Failed to get B2 comments" });
+    }
+  },
+
+  async createComment(req: Request, res: Response) {
+    try {
+      const { b2Uuid } = req.params;
+      const result = await screeningB2Service.createComment(b2Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B2 comment:", error);
+      res.status(500).json({ error: "Failed to create B2 comment" });
+    }
+  },
 };
 
 export const screeningB3Controller = {
@@ -166,6 +188,28 @@ export const screeningB3Controller = {
     } catch (error) {
       console.error("Error creating B3 authority:", error);
       res.status(500).json({ error: "Failed to create B3 authority" });
+    }
+  },
+
+  async getComments(req: Request, res: Response) {
+    try {
+      const { b3Uuid } = req.params;
+      const result = await screeningB3Service.getComments(b3Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B3 comments:", error);
+      res.status(500).json({ error: "Failed to get B3 comments" });
+    }
+  },
+
+  async createComment(req: Request, res: Response) {
+    try {
+      const { b3Uuid } = req.params;
+      const result = await screeningB3Service.createComment(b3Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B3 comment:", error);
+      res.status(500).json({ error: "Failed to create B3 comment" });
     }
   },
 };
@@ -214,6 +258,28 @@ export const screeningB4Controller = {
       res.status(500).json({ error: "Failed to create B4 cert item" });
     }
   },
+
+  async getComments(req: Request, res: Response) {
+    try {
+      const { b4Uuid } = req.params;
+      const result = await screeningB4Service.getComments(b4Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B4 comments:", error);
+      res.status(500).json({ error: "Failed to get B4 comments" });
+    }
+  },
+
+  async createComment(req: Request, res: Response) {
+    try {
+      const { b4Uuid } = req.params;
+      const result = await screeningB4Service.createComment(b4Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B4 comment:", error);
+      res.status(500).json({ error: "Failed to create B4 comment" });
+    }
+  },
 };
 
 export const screeningB5Controller = {
@@ -260,6 +326,28 @@ export const screeningB5Controller = {
       res.status(500).json({ error: "Failed to create B5 test item" });
     }
   },
+
+  async getComments(req: Request, res: Response) {
+    try {
+      const { b5Uuid } = req.params;
+      const result = await screeningB5Service.getComments(b5Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B5 comments:", error);
+      res.status(500).json({ error: "Failed to get B5 comments" });
+    }
+  },
+
+  async createComment(req: Request, res: Response) {
+    try {
+      const { b5Uuid } = req.params;
+      const result = await screeningB5Service.createComment(b5Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B5 comment:", error);
+      res.status(500).json({ error: "Failed to create B5 comment" });
+    }
+  },
 };
 
 export const screeningB6Controller = {
@@ -304,6 +392,28 @@ export const screeningB6Controller = {
     } catch (error) {
       console.error("Error creating B6 interview item:", error);
       res.status(500).json({ error: "Failed to create B6 interview item" });
+    }
+  },
+
+  async getComments(req: Request, res: Response) {
+    try {
+      const { b6Uuid } = req.params;
+      const result = await screeningB6Service.getComments(b6Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B6 comments:", error);
+      res.status(500).json({ error: "Failed to get B6 comments" });
+    }
+  },
+
+  async createComment(req: Request, res: Response) {
+    try {
+      const { b6Uuid } = req.params;
+      const result = await screeningB6Service.createComment(b6Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B6 comment:", error);
+      res.status(500).json({ error: "Failed to create B6 comment" });
     }
   },
 };
@@ -396,6 +506,28 @@ export const screeningB8Controller = {
     } catch (error) {
       console.error("Error creating B8 approver:", error);
       res.status(500).json({ error: "Failed to create B8 approver" });
+    }
+  },
+
+  async getComments(req: Request, res: Response) {
+    try {
+      const { b8Uuid } = req.params;
+      const result = await screeningB8Service.getComments(b8Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B8 comments:", error);
+      res.status(500).json({ error: "Failed to get B8 comments" });
+    }
+  },
+
+  async createComment(req: Request, res: Response) {
+    try {
+      const { b8Uuid } = req.params;
+      const result = await screeningB8Service.createComment(b8Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B8 comment:", error);
+      res.status(500).json({ error: "Failed to create B8 comment" });
     }
   },
 };

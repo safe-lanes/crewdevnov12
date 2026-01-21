@@ -642,6 +642,25 @@ export function useV2SaveScreeningB2() {
   });
 }
 
+export function useV2ScreeningB2Comments(b2Uuid: string | null) {
+  return useQuery<ScreeningB1Comment[]>({
+    queryKey: ['v2', 'screening-b2-comments', b2Uuid],
+    queryFn: () => fetchApi(`/screening/b2/${b2Uuid}/comments`),
+    enabled: !!b2Uuid,
+  });
+}
+
+export function useV2CreateScreeningB2Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b2Uuid, data }: { b2Uuid: string; data: Partial<ScreeningB1Comment> }) =>
+      postApi<ScreeningB1Comment>(`/screening/b2/${b2Uuid}/comments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2-comments', variables.b2Uuid] });
+    },
+  });
+}
+
 export function useV2ScreeningB3(recCanUuid: string | null) {
   return useQuery<ScreeningB3>({
     queryKey: ['v2', 'screening-b3', recCanUuid],
@@ -657,6 +676,25 @@ export function useV2SaveScreeningB3() {
       putApi<ScreeningB3>(`/candidates/${recCanUuid}/screening/b3`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3', variables.recCanUuid] });
+    },
+  });
+}
+
+export function useV2ScreeningB3Comments(b3Uuid: string | null) {
+  return useQuery<ScreeningB1Comment[]>({
+    queryKey: ['v2', 'screening-b3-comments', b3Uuid],
+    queryFn: () => fetchApi(`/screening/b3/${b3Uuid}/comments`),
+    enabled: !!b3Uuid,
+  });
+}
+
+export function useV2CreateScreeningB3Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b3Uuid, data }: { b3Uuid: string; data: Partial<ScreeningB1Comment> }) =>
+      postApi<ScreeningB1Comment>(`/screening/b3/${b3Uuid}/comments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-comments', variables.b3Uuid] });
     },
   });
 }
@@ -680,6 +718,25 @@ export function useV2SaveScreeningB4() {
   });
 }
 
+export function useV2ScreeningB4Comments(b4Uuid: string | null) {
+  return useQuery<ScreeningB1Comment[]>({
+    queryKey: ['v2', 'screening-b4-comments', b4Uuid],
+    queryFn: () => fetchApi(`/screening/b4/${b4Uuid}/comments`),
+    enabled: !!b4Uuid,
+  });
+}
+
+export function useV2CreateScreeningB4Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b4Uuid, data }: { b4Uuid: string; data: Partial<ScreeningB1Comment> }) =>
+      postApi<ScreeningB1Comment>(`/screening/b4/${b4Uuid}/comments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-comments', variables.b4Uuid] });
+    },
+  });
+}
+
 export function useV2ScreeningB5(recCanUuid: string | null) {
   return useQuery<ScreeningB5>({
     queryKey: ['v2', 'screening-b5', recCanUuid],
@@ -699,6 +756,25 @@ export function useV2SaveScreeningB5() {
   });
 }
 
+export function useV2ScreeningB5Comments(b5Uuid: string | null) {
+  return useQuery<ScreeningB1Comment[]>({
+    queryKey: ['v2', 'screening-b5-comments', b5Uuid],
+    queryFn: () => fetchApi(`/screening/b5/${b5Uuid}/comments`),
+    enabled: !!b5Uuid,
+  });
+}
+
+export function useV2CreateScreeningB5Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b5Uuid, data }: { b5Uuid: string; data: Partial<ScreeningB1Comment> }) =>
+      postApi<ScreeningB1Comment>(`/screening/b5/${b5Uuid}/comments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-comments', variables.b5Uuid] });
+    },
+  });
+}
+
 export function useV2ScreeningB6(recCanUuid: string | null) {
   return useQuery<ScreeningB6>({
     queryKey: ['v2', 'screening-b6', recCanUuid],
@@ -714,6 +790,25 @@ export function useV2SaveScreeningB6() {
       putApi<ScreeningB6>(`/candidates/${recCanUuid}/screening/b6`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6', variables.recCanUuid] });
+    },
+  });
+}
+
+export function useV2ScreeningB6Comments(b6Uuid: string | null) {
+  return useQuery<ScreeningB1Comment[]>({
+    queryKey: ['v2', 'screening-b6-comments', b6Uuid],
+    queryFn: () => fetchApi(`/screening/b6/${b6Uuid}/comments`),
+    enabled: !!b6Uuid,
+  });
+}
+
+export function useV2CreateScreeningB6Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b6Uuid, data }: { b6Uuid: string; data: Partial<ScreeningB1Comment> }) =>
+      postApi<ScreeningB1Comment>(`/screening/b6/${b6Uuid}/comments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-comments', variables.b6Uuid] });
     },
   });
 }
@@ -752,6 +847,25 @@ export function useV2SaveScreeningB8() {
       putApi<ScreeningB8>(`/candidates/${recCanUuid}/screening/b8`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8', variables.recCanUuid] });
+    },
+  });
+}
+
+export function useV2ScreeningB8Comments(b8Uuid: string | null) {
+  return useQuery<ScreeningB1Comment[]>({
+    queryKey: ['v2', 'screening-b8-comments', b8Uuid],
+    queryFn: () => fetchApi(`/screening/b8/${b8Uuid}/comments`),
+    enabled: !!b8Uuid,
+  });
+}
+
+export function useV2CreateScreeningB8Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b8Uuid, data }: { b8Uuid: string; data: Partial<ScreeningB1Comment> }) =>
+      postApi<ScreeningB1Comment>(`/screening/b8/${b8Uuid}/comments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-comments', variables.b8Uuid] });
     },
   });
 }
