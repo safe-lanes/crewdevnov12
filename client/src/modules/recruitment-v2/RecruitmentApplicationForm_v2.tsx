@@ -1248,7 +1248,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
       
       for (const serverDoc of (documentsData || [])) {
-        if (!localDocIds.has(serverDoc.docUuid)) {
+        if (!localDocIds.has(serverDoc.docUuid) && serverDoc.id) {
           await deleteDocumentMutation.mutateAsync({
             id: serverDoc.id,
             recCanUuid: currentUuid,
@@ -1285,7 +1285,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
       
       for (const serverVisa of (visasData || [])) {
-        if (!localVisaIds.has(serverVisa.visaUuid)) {
+        if (!localVisaIds.has(serverVisa.visaUuid) && serverVisa.id) {
           await deleteVisaMutation.mutateAsync({
             id: serverVisa.id,
             recCanUuid: currentUuid,
@@ -1321,7 +1321,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
       
       for (const serverEdu of (educationData || [])) {
-        if (!localEduIds.has(serverEdu.eduUuid)) {
+        if (!localEduIds.has(serverEdu.eduUuid) && serverEdu.id) {
           await deleteEducationMutation.mutateAsync({
             id: serverEdu.id,
             recCanUuid: currentUuid,
@@ -1361,7 +1361,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
       
       for (const serverLic of (licensesData || [])) {
-        if (!localLicIds.has(serverLic.licUuid)) {
+        if (!localLicIds.has(serverLic.licUuid) && serverLic.id) {
           await deleteLicenseMutation.mutateAsync({
             id: serverLic.id,
             recCanUuid: currentUuid,
@@ -1401,7 +1401,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
       
       for (const serverTrain of (trainingData || [])) {
-        if (!localTrainIds.has(serverTrain.trainUuid)) {
+        if (!localTrainIds.has(serverTrain.trainUuid) && serverTrain.id) {
           await deleteTrainingMutation.mutateAsync({
             id: serverTrain.id,
             recCanUuid: currentUuid,
@@ -1442,7 +1442,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
       
       for (const serverSea of (seaServiceData || [])) {
-        if (!localSeaIds.has(serverSea.seaUuid)) {
+        if (!localSeaIds.has(serverSea.seaUuid) && serverSea.id) {
           await deleteSeaServiceMutation.mutateAsync({
             id: serverSea.id,
             recCanUuid: currentUuid,
@@ -1476,7 +1476,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
       
       for (const serverInfo of (additionalInfoData || [])) {
-        if (!localInfoIds.has(serverInfo.infoUuid)) {
+        if (!localInfoIds.has(serverInfo.infoUuid) && serverInfo.id) {
           await deleteAdditionalInfoMutation.mutateAsync({
             id: serverInfo.id,
             recCanUuid: currentUuid,
