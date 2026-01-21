@@ -445,7 +445,7 @@ const getInitialFormData = (): LocalFormData => ({
   selectedApproversForSubmission: [],
   b8SubmittedDate: '',
   // Part C - Approval initial values
-  c1Approvers: [],
+  c1Approvers: [{ id: `approver-${Date.now()}`, serverId: undefined, appUuid: undefined, date: '', approver: '', status: '', approval: '', comments: '' }],
   c2VesselTypes: [],
   c2FleetGroups: [],
   c3RecruitmentStatus: '',
