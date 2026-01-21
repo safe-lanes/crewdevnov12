@@ -92,12 +92,16 @@ import {
   useV2CreateScreeningB2Item,
   useV2ScreeningB3Authorities,
   useV2CreateScreeningB3Authority,
+  useV2UpdateScreeningB3Authority,
   useV2ScreeningB4CertItems,
   useV2CreateScreeningB4CertItem,
+  useV2UpdateScreeningB4CertItem,
   useV2ScreeningB5TestItems,
   useV2CreateScreeningB5TestItem,
+  useV2UpdateScreeningB5TestItem,
   useV2ScreeningB6InterviewItems,
   useV2CreateScreeningB6InterviewItem,
+  useV2UpdateScreeningB6InterviewItem,
   useV2ScreeningB7TrainingItems,
   useV2CreateScreeningB7TrainingItem,
   useV2ScreeningB8Approvers,
@@ -644,9 +648,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   
   const createB2ItemMutation = useV2CreateScreeningB2Item();
   const createB3AuthorityMutation = useV2CreateScreeningB3Authority();
+  const updateB3AuthorityMutation = useV2UpdateScreeningB3Authority();
   const createB4CertItemMutation = useV2CreateScreeningB4CertItem();
+  const updateB4CertItemMutation = useV2UpdateScreeningB4CertItem();
   const createB5TestItemMutation = useV2CreateScreeningB5TestItem();
+  const updateB5TestItemMutation = useV2UpdateScreeningB5TestItem();
   const createB6InterviewItemMutation = useV2CreateScreeningB6InterviewItem();
+  const updateB6InterviewItemMutation = useV2UpdateScreeningB6InterviewItem();
   const createB7TrainingItemMutation = useV2CreateScreeningB7TrainingItem();
   const createB8ApproverMutation = useV2CreateScreeningB8Approver();
 
@@ -2532,7 +2540,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       const serverB3AuthMap = new Map((screeningB3Authorities || []).map((a: any) => [a.authUuid, a.id]));
       for (const auth of formData.b3Authorities) {
-        if (!serverB3AuthMap.has(auth.id) && currentB3Uuid && (auth.date || auth.authority)) {
+        if (serverB3AuthMap.has(auth.id) && currentB3Uuid) {
+          await updateB3AuthorityMutation.mutateAsync({
+            authUuid: auth.id,
+            b3Uuid: currentB3Uuid,
+            data: {
+              checkDate: auth.date || undefined,
+              authority: auth.authority || undefined,
+            } as any,
+          });
+        } else if (!serverB3AuthMap.has(auth.id) && currentB3Uuid && (auth.date || auth.authority)) {
           await createB3AuthorityMutation.mutateAsync({
             b3Uuid: currentB3Uuid,
             data: {
@@ -2545,7 +2562,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       const serverB4CertMap = new Map((screeningB4CertItems || []).map((c: any) => [c.certUuid, c.id]));
       for (const cert of formData.b4Certs) {
-        if (!serverB4CertMap.has(cert.id) && currentB4Uuid && (cert.date || cert.certificate || cert.authority)) {
+        if (serverB4CertMap.has(cert.id) && currentB4Uuid) {
+          await updateB4CertItemMutation.mutateAsync({
+            certUuid: cert.id,
+            b4Uuid: currentB4Uuid,
+            data: {
+              authDate: cert.date || undefined,
+              certificate: cert.certificate || undefined,
+              authority: cert.authority || undefined,
+            } as any,
+          });
+        } else if (!serverB4CertMap.has(cert.id) && currentB4Uuid && (cert.date || cert.certificate || cert.authority)) {
           await createB4CertItemMutation.mutateAsync({
             b4Uuid: currentB4Uuid,
             data: {
@@ -2559,7 +2586,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       const serverB5TestMap = new Map((screeningB5TestItems || []).map((t: any) => [t.testUuid, t.id]));
       for (const test of formData.b5Tests) {
-        if (!serverB5TestMap.has(test.id) && currentB5Uuid && (test.date || test.subject || test.score || test.result)) {
+        if (serverB5TestMap.has(test.id) && currentB5Uuid) {
+          await updateB5TestItemMutation.mutateAsync({
+            testUuid: test.id,
+            b5Uuid: currentB5Uuid,
+            data: {
+              testDate: test.date || undefined,
+              subject: test.subject || undefined,
+              score: test.score || undefined,
+              result: test.result || undefined,
+            } as any,
+          });
+        } else if (!serverB5TestMap.has(test.id) && currentB5Uuid && (test.date || test.subject || test.score || test.result)) {
           await createB5TestItemMutation.mutateAsync({
             b5Uuid: currentB5Uuid,
             data: {
@@ -2574,7 +2612,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       const serverB6InterviewMap = new Map((screeningB6InterviewItems || []).map((i: any) => [i.intUuid, i.id]));
       for (const interview of formData.b6Interviews) {
-        if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid && (interview.date || interview.interviewer || interview.status || interview.result)) {
+        if (serverB6InterviewMap.has(interview.id) && currentB6Uuid) {
+          await updateB6InterviewItemMutation.mutateAsync({
+            intUuid: interview.id,
+            b6Uuid: currentB6Uuid,
+            data: {
+              interviewDate: interview.date || undefined,
+              interviewerUuid: interview.interviewer || undefined,
+              status: interview.status || undefined,
+              result: interview.result || undefined,
+              comments: interview.comments || undefined,
+            } as any,
+          });
+        } else if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid && (interview.date || interview.interviewer || interview.status || interview.result)) {
           await createB6InterviewItemMutation.mutateAsync({
             b6Uuid: currentB6Uuid,
             data: {

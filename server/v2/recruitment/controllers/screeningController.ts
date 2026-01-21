@@ -212,6 +212,17 @@ export const screeningB3Controller = {
       res.status(500).json({ error: "Failed to create B3 comment" });
     }
   },
+
+  async updateAuthority(req: Request, res: Response) {
+    try {
+      const { authUuid } = req.params;
+      const result = await screeningB3Service.updateAuthority(authUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B3 authority:", error);
+      res.status(500).json({ error: "Failed to update B3 authority" });
+    }
+  },
 };
 
 export const screeningB4Controller = {
@@ -278,6 +289,17 @@ export const screeningB4Controller = {
     } catch (error) {
       console.error("Error creating B4 comment:", error);
       res.status(500).json({ error: "Failed to create B4 comment" });
+    }
+  },
+
+  async updateCertItem(req: Request, res: Response) {
+    try {
+      const { certUuid } = req.params;
+      const result = await screeningB4Service.updateCertItem(certUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B4 cert item:", error);
+      res.status(500).json({ error: "Failed to update B4 cert item" });
     }
   },
 };
@@ -348,6 +370,17 @@ export const screeningB5Controller = {
       res.status(500).json({ error: "Failed to create B5 comment" });
     }
   },
+
+  async updateTestItem(req: Request, res: Response) {
+    try {
+      const { testUuid } = req.params;
+      const result = await screeningB5Service.updateTestItem(testUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B5 test item:", error);
+      res.status(500).json({ error: "Failed to update B5 test item" });
+    }
+  },
 };
 
 export const screeningB6Controller = {
@@ -414,6 +447,17 @@ export const screeningB6Controller = {
     } catch (error) {
       console.error("Error creating B6 comment:", error);
       res.status(500).json({ error: "Failed to create B6 comment" });
+    }
+  },
+
+  async updateInterviewItem(req: Request, res: Response) {
+    try {
+      const { intUuid } = req.params;
+      const result = await screeningB6Service.updateInterviewItem(intUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B6 interview item:", error);
+      res.status(500).json({ error: "Failed to update B6 interview item" });
     }
   },
 };

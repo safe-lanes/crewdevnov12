@@ -1089,6 +1089,17 @@ export function useV2CreateScreeningB3Authority() {
   });
 }
 
+export function useV2UpdateScreeningB3Authority() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ authUuid, b3Uuid, data }: { authUuid: string; b3Uuid: string; data: Partial<ScreeningB3Authority> }) =>
+      putApi<ScreeningB3Authority>(`/screening/b3/authorities/${authUuid}`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-authorities', variables.b3Uuid] });
+    },
+  });
+}
+
 // Screening B4 Cert Items
 export interface ScreeningB4CertItem {
   id: number;
@@ -1114,6 +1125,17 @@ export function useV2CreateScreeningB4CertItem() {
   return useMutation({
     mutationFn: ({ b4Uuid, data }: { b4Uuid: string; data: Partial<ScreeningB4CertItem> }) =>
       postApi<ScreeningB4CertItem>(`/screening/b4/${b4Uuid}/cert-items`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-cert-items', variables.b4Uuid] });
+    },
+  });
+}
+
+export function useV2UpdateScreeningB4CertItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ certUuid, b4Uuid, data }: { certUuid: string; b4Uuid: string; data: Partial<ScreeningB4CertItem> }) =>
+      putApi<ScreeningB4CertItem>(`/screening/b4/cert-items/${certUuid}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-cert-items', variables.b4Uuid] });
     },
@@ -1151,6 +1173,17 @@ export function useV2CreateScreeningB5TestItem() {
   });
 }
 
+export function useV2UpdateScreeningB5TestItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ testUuid, b5Uuid, data }: { testUuid: string; b5Uuid: string; data: Partial<ScreeningB5TestItem> }) =>
+      putApi<ScreeningB5TestItem>(`/screening/b5/test-items/${testUuid}`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-test-items', variables.b5Uuid] });
+    },
+  });
+}
+
 // Screening B6 Interview Items
 // DB columns: int_uuid, b6_uuid, interview_date, interviewer_uuid, status, result, comments, sort_order
 export interface ScreeningB6InterviewItem {
@@ -1178,6 +1211,17 @@ export function useV2CreateScreeningB6InterviewItem() {
   return useMutation({
     mutationFn: ({ b6Uuid, data }: { b6Uuid: string; data: Partial<ScreeningB6InterviewItem> }) =>
       postApi<ScreeningB6InterviewItem>(`/screening/b6/${b6Uuid}/interview-items`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-interview-items', variables.b6Uuid] });
+    },
+  });
+}
+
+export function useV2UpdateScreeningB6InterviewItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ intUuid, b6Uuid, data }: { intUuid: string; b6Uuid: string; data: Partial<ScreeningB6InterviewItem> }) =>
+      putApi<ScreeningB6InterviewItem>(`/screening/b6/interview-items/${intUuid}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-interview-items', variables.b6Uuid] });
     },

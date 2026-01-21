@@ -159,6 +159,13 @@ export class ScreeningB3Service {
     } as any);
   }
 
+  async updateAuthority(authUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB3Repository.updateAuthority(authUuid, {
+      ...data,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
   async getComments(b3Uuid: string) {
     return screeningB3Repository.findComments(b3Uuid);
   }
@@ -213,6 +220,13 @@ export class ScreeningB4Service {
       b4Uuid,
       ...data,
       createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async updateCertItem(certUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB4Repository.updateCertItem(certUuid, {
+      ...data,
       updatedByUuid: userUuid,
     } as any);
   }
@@ -275,6 +289,13 @@ export class ScreeningB5Service {
     } as any);
   }
 
+  async updateTestItem(testUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB5Repository.updateTestItem(testUuid, {
+      ...data,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
   async getComments(b5Uuid: string) {
     return screeningB5Repository.findComments(b5Uuid);
   }
@@ -329,6 +350,13 @@ export class ScreeningB6Service {
       b6Uuid,
       ...data,
       createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async updateInterviewItem(intUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB6Repository.updateInterviewItem(intUuid, {
+      ...data,
       updatedByUuid: userUuid,
     } as any);
   }

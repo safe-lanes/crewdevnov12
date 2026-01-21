@@ -259,6 +259,12 @@ export class ScreeningB3Repository {
     return results[0];
   }
 
+  async updateAuthority(authUuid: string, data: Partial<InsertScreeningB3Authority>): Promise<ScreeningB3Authority | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB3Authorities).set({ ...data, updatedAt: new Date() }).where(eq(screeningB3Authorities.authUuid, authUuid)).returning();
+    return results[0];
+  }
+
   async findComments(b3Uuid: string): Promise<ScreeningB3Comment[]> {
     const db = getDb();
     return db.select().from(screeningB3Comments).where(
@@ -325,6 +331,12 @@ export class ScreeningB4Repository {
   async createCertItem(data: InsertScreeningB4CertItem): Promise<ScreeningB4CertItem> {
     const db = getDb();
     const results = await db.insert(screeningB4CertItems).values(data).returning();
+    return results[0];
+  }
+
+  async updateCertItem(certUuid: string, data: Partial<InsertScreeningB4CertItem>): Promise<ScreeningB4CertItem | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB4CertItems).set({ ...data, updatedAt: new Date() }).where(eq(screeningB4CertItems.certUuid, certUuid)).returning();
     return results[0];
   }
 
@@ -397,6 +409,12 @@ export class ScreeningB5Repository {
     return results[0];
   }
 
+  async updateTestItem(testUuid: string, data: Partial<InsertScreeningB5TestItem>): Promise<ScreeningB5TestItem | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB5TestItems).set({ ...data, updatedAt: new Date() }).where(eq(screeningB5TestItems.testUuid, testUuid)).returning();
+    return results[0];
+  }
+
   async findComments(b5Uuid: string): Promise<ScreeningB5Comment[]> {
     const db = getDb();
     return db.select().from(screeningB5Comments).where(
@@ -463,6 +481,12 @@ export class ScreeningB6Repository {
   async createInterviewItem(data: InsertScreeningB6InterviewItem): Promise<ScreeningB6InterviewItem> {
     const db = getDb();
     const results = await db.insert(screeningB6InterviewItems).values(data).returning();
+    return results[0];
+  }
+
+  async updateInterviewItem(intUuid: string, data: Partial<InsertScreeningB6InterviewItem>): Promise<ScreeningB6InterviewItem | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB6InterviewItems).set({ ...data, updatedAt: new Date() }).where(eq(screeningB6InterviewItems.intUuid, intUuid)).returning();
     return results[0];
   }
 

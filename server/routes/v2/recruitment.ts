@@ -163,6 +163,7 @@ router.get("/candidates/:recCanUuid/screening/b3", screeningB3Controller.get);
 router.put("/candidates/:recCanUuid/screening/b3", screeningB3Controller.upsert);
 router.get("/screening/b3/:b3Uuid/authorities", screeningB3Controller.getAuthorities);
 router.post("/screening/b3/:b3Uuid/authorities", screeningB3Controller.createAuthority);
+router.put("/screening/b3/authorities/:authUuid", screeningB3Controller.updateAuthority);
 router.get("/screening/b3/:b3Uuid/comments", screeningB3Controller.getComments);
 router.post("/screening/b3/:b3Uuid/comments", screeningB3Controller.createComment);
 
@@ -170,6 +171,7 @@ router.get("/candidates/:recCanUuid/screening/b4", screeningB4Controller.get);
 router.put("/candidates/:recCanUuid/screening/b4", screeningB4Controller.upsert);
 router.get("/screening/b4/:b4Uuid/cert-items", screeningB4Controller.getCertItems);
 router.post("/screening/b4/:b4Uuid/cert-items", screeningB4Controller.createCertItem);
+router.put("/screening/b4/cert-items/:certUuid", screeningB4Controller.updateCertItem);
 router.get("/screening/b4/:b4Uuid/comments", screeningB4Controller.getComments);
 router.post("/screening/b4/:b4Uuid/comments", screeningB4Controller.createComment);
 
@@ -177,6 +179,7 @@ router.get("/candidates/:recCanUuid/screening/b5", screeningB5Controller.get);
 router.put("/candidates/:recCanUuid/screening/b5", screeningB5Controller.upsert);
 router.get("/screening/b5/:b5Uuid/test-items", screeningB5Controller.getTestItems);
 router.post("/screening/b5/:b5Uuid/test-items", screeningB5Controller.createTestItem);
+router.put("/screening/b5/test-items/:testUuid", screeningB5Controller.updateTestItem);
 router.get("/screening/b5/:b5Uuid/comments", screeningB5Controller.getComments);
 router.post("/screening/b5/:b5Uuid/comments", screeningB5Controller.createComment);
 
@@ -184,6 +187,7 @@ router.get("/candidates/:recCanUuid/screening/b6", screeningB6Controller.get);
 router.put("/candidates/:recCanUuid/screening/b6", screeningB6Controller.upsert);
 router.get("/screening/b6/:b6Uuid/interview-items", screeningB6Controller.getInterviewItems);
 router.post("/screening/b6/:b6Uuid/interview-items", screeningB6Controller.createInterviewItem);
+router.put("/screening/b6/interview-items/:intUuid", screeningB6Controller.updateInterviewItem);
 router.get("/screening/b6/:b6Uuid/comments", screeningB6Controller.getComments);
 router.post("/screening/b6/:b6Uuid/comments", screeningB6Controller.createComment);
 
