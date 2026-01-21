@@ -660,6 +660,17 @@ export function useV2CreateScreeningB1Comment() {
   });
 }
 
+export function useV2UpdateScreeningB1Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+      putApi<ScreeningB1Comment>(`/screening/b1/comments/${commentUuid}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1'] });
+    },
+  });
+}
+
 export function useV2ScreeningB2(recCanUuid: string | null) {
   return useQuery<ScreeningB2>({
     queryKey: ['v2', 'screening-b2', recCanUuid],
@@ -696,6 +707,17 @@ export function useV2CreateScreeningB2Comment() {
       postApi<ScreeningB1Comment>(`/screening/b2/${b2Uuid}/comments`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2-comments', variables.b2Uuid] });
+    },
+  });
+}
+
+export function useV2UpdateScreeningB2Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+      putApi<ScreeningB1Comment>(`/screening/b2/comments/${commentUuid}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2'] });
     },
   });
 }
@@ -772,6 +794,17 @@ export function useV2CreateScreeningB3Comment() {
   });
 }
 
+export function useV2UpdateScreeningB3Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+      putApi<ScreeningB1Comment>(`/screening/b3/comments/${commentUuid}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3'] });
+    },
+  });
+}
+
 export interface ScreeningB3Attachment {
   id: number;
   attUuid: string;
@@ -840,6 +873,17 @@ export function useV2CreateScreeningB4Comment() {
       postApi<ScreeningB1Comment>(`/screening/b4/${b4Uuid}/comments`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-comments', variables.b4Uuid] });
+    },
+  });
+}
+
+export function useV2UpdateScreeningB4Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+      putApi<ScreeningB1Comment>(`/screening/b4/comments/${commentUuid}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4'] });
     },
   });
 }
@@ -916,6 +960,17 @@ export function useV2CreateScreeningB5Comment() {
   });
 }
 
+export function useV2UpdateScreeningB5Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+      putApi<ScreeningB1Comment>(`/screening/b5/comments/${commentUuid}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5'] });
+    },
+  });
+}
+
 export interface ScreeningB5Attachment {
   id: number;
   attUuid: string;
@@ -984,6 +1039,17 @@ export function useV2CreateScreeningB6Comment() {
       postApi<ScreeningB1Comment>(`/screening/b6/${b6Uuid}/comments`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-comments', variables.b6Uuid] });
+    },
+  });
+}
+
+export function useV2UpdateScreeningB6Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+      putApi<ScreeningB1Comment>(`/screening/b6/comments/${commentUuid}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6'] });
     },
   });
 }
@@ -1077,6 +1143,17 @@ export function useV2CreateScreeningB8Comment() {
       postApi<ScreeningB1Comment>(`/screening/b8/${b8Uuid}/comments`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-comments', variables.b8Uuid] });
+    },
+  });
+}
+
+export function useV2UpdateScreeningB8Comment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentUuid, data }: { commentUuid: string; data: Partial<ScreeningB1Comment> }) =>
+      putApi<ScreeningB1Comment>(`/screening/b8/comments/${commentUuid}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8'] });
     },
   });
 }

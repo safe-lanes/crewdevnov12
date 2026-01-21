@@ -173,6 +173,7 @@ router.get("/candidates/:recCanUuid/screening/b1", screeningB1Controller.get);
 router.put("/candidates/:recCanUuid/screening/b1", screeningB1Controller.upsert);
 router.get("/screening/b1/:b1Uuid/comments", screeningB1Controller.getComments);
 router.post("/screening/b1/:b1Uuid/comments", screeningB1Controller.createComment);
+router.put("/screening/b1/comments/:commentUuid", screeningB1Controller.updateComment);
 router.get("/screening/b1/:b1Uuid/attachments", screeningB1Controller.getAttachments);
 router.post("/screening/b1/:b1Uuid/attachments", screeningB1Controller.createAttachment);
 
@@ -182,6 +183,7 @@ router.get("/screening/b2/:b2Uuid/items", screeningB2Controller.getItems);
 router.post("/screening/b2/:b2Uuid/items", screeningB2Controller.createItem);
 router.get("/screening/b2/:b2Uuid/comments", screeningB2Controller.getComments);
 router.post("/screening/b2/:b2Uuid/comments", screeningB2Controller.createComment);
+router.put("/screening/b2/comments/:commentUuid", screeningB2Controller.updateComment);
 router.get("/screening/b2/:b2Uuid/attachments", screeningB2Controller.getAttachments);
 router.post("/screening/b2/:b2Uuid/attachments", screeningB2Controller.createAttachment);
 
@@ -192,6 +194,7 @@ router.post("/screening/b3/:b3Uuid/authorities", screeningB3Controller.createAut
 router.put("/screening/b3/authorities/:authUuid", screeningB3Controller.updateAuthority);
 router.get("/screening/b3/:b3Uuid/comments", screeningB3Controller.getComments);
 router.post("/screening/b3/:b3Uuid/comments", screeningB3Controller.createComment);
+router.put("/screening/b3/comments/:commentUuid", screeningB3Controller.updateComment);
 router.get("/screening/b3/:b3Uuid/attachments", screeningB3Controller.getAttachments);
 router.post("/screening/b3/:b3Uuid/attachments", screeningB3Controller.createAttachment);
 
@@ -202,6 +205,7 @@ router.post("/screening/b4/:b4Uuid/cert-items", screeningB4Controller.createCert
 router.put("/screening/b4/cert-items/:certUuid", screeningB4Controller.updateCertItem);
 router.get("/screening/b4/:b4Uuid/comments", screeningB4Controller.getComments);
 router.post("/screening/b4/:b4Uuid/comments", screeningB4Controller.createComment);
+router.put("/screening/b4/comments/:commentUuid", screeningB4Controller.updateComment);
 router.get("/screening/b4/:b4Uuid/attachments", screeningB4Controller.getAttachments);
 router.post("/screening/b4/:b4Uuid/attachments", screeningB4Controller.createAttachment);
 
@@ -212,6 +216,7 @@ router.post("/screening/b5/:b5Uuid/test-items", screeningB5Controller.createTest
 router.put("/screening/b5/test-items/:testUuid", screeningB5Controller.updateTestItem);
 router.get("/screening/b5/:b5Uuid/comments", screeningB5Controller.getComments);
 router.post("/screening/b5/:b5Uuid/comments", screeningB5Controller.createComment);
+router.put("/screening/b5/comments/:commentUuid", screeningB5Controller.updateComment);
 router.get("/screening/b5/:b5Uuid/attachments", screeningB5Controller.getAttachments);
 router.post("/screening/b5/:b5Uuid/attachments", screeningB5Controller.createAttachment);
 
@@ -222,6 +227,7 @@ router.post("/screening/b6/:b6Uuid/interview-items", screeningB6Controller.creat
 router.put("/screening/b6/interview-items/:intUuid", screeningB6Controller.updateInterviewItem);
 router.get("/screening/b6/:b6Uuid/comments", screeningB6Controller.getComments);
 router.post("/screening/b6/:b6Uuid/comments", screeningB6Controller.createComment);
+router.put("/screening/b6/comments/:commentUuid", screeningB6Controller.updateComment);
 router.get("/screening/b6/:b6Uuid/attachments", screeningB6Controller.getAttachments);
 router.post("/screening/b6/:b6Uuid/attachments", screeningB6Controller.createAttachment);
 
@@ -237,6 +243,7 @@ router.get("/screening/b8/:b8Uuid/approvers", screeningB8Controller.getApprovers
 router.post("/screening/b8/:b8Uuid/approvers", screeningB8Controller.createApprover);
 router.get("/screening/b8/:b8Uuid/comments", screeningB8Controller.getComments);
 router.post("/screening/b8/:b8Uuid/comments", screeningB8Controller.createComment);
+router.put("/screening/b8/comments/:commentUuid", screeningB8Controller.updateComment);
 router.get("/screening/b8/:b8Uuid/attachments", screeningB8Controller.getAttachments);
 router.post("/screening/b8/:b8Uuid/attachments", screeningB8Controller.createAttachment);
 

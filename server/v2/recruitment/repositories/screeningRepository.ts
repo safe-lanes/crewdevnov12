@@ -134,6 +134,15 @@ export class ScreeningB1Repository {
     return results[0];
   }
 
+  async updateComment(commentUuid: string, data: Partial<InsertScreeningB1Comment>): Promise<ScreeningB1Comment | null> {
+    const db = getDb();
+    const results = await db.update(screeningB1Comments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(screeningB1Comments.commentUuid, commentUuid))
+      .returning();
+    return results[0] || null;
+  }
+
   async findAttachments(b1Uuid: string): Promise<ScreeningB1Attachment[]> {
     const db = getDb();
     return db.select().from(screeningB1Attachments).where(
@@ -201,6 +210,15 @@ export class ScreeningB2Repository {
     const db = getDb();
     const results = await db.insert(screeningB2Comments).values(data).returning();
     return results[0];
+  }
+
+  async updateComment(commentUuid: string, data: Partial<InsertScreeningB2Comment>): Promise<ScreeningB2Comment | null> {
+    const db = getDb();
+    const results = await db.update(screeningB2Comments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(screeningB2Comments.commentUuid, commentUuid))
+      .returning();
+    return results[0] || null;
   }
 
   async findAttachments(b2Uuid: string): Promise<ScreeningB2Attachment[]> {
@@ -278,6 +296,15 @@ export class ScreeningB3Repository {
     return results[0];
   }
 
+  async updateComment(commentUuid: string, data: Partial<InsertScreeningB3Comment>): Promise<ScreeningB3Comment | null> {
+    const db = getDb();
+    const results = await db.update(screeningB3Comments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(screeningB3Comments.commentUuid, commentUuid))
+      .returning();
+    return results[0] || null;
+  }
+
   async findAttachments(b3Uuid: string): Promise<ScreeningB3Attachment[]> {
     const db = getDb();
     return db.select().from(screeningB3Attachments).where(
@@ -351,6 +378,15 @@ export class ScreeningB4Repository {
     const db = getDb();
     const results = await db.insert(screeningB4Comments).values(data).returning();
     return results[0];
+  }
+
+  async updateComment(commentUuid: string, data: Partial<InsertScreeningB4Comment>): Promise<ScreeningB4Comment | null> {
+    const db = getDb();
+    const results = await db.update(screeningB4Comments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(screeningB4Comments.commentUuid, commentUuid))
+      .returning();
+    return results[0] || null;
   }
 
   async findAttachments(b4Uuid: string): Promise<ScreeningB4Attachment[]> {
@@ -428,6 +464,15 @@ export class ScreeningB5Repository {
     return results[0];
   }
 
+  async updateComment(commentUuid: string, data: Partial<InsertScreeningB5Comment>): Promise<ScreeningB5Comment | null> {
+    const db = getDb();
+    const results = await db.update(screeningB5Comments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(screeningB5Comments.commentUuid, commentUuid))
+      .returning();
+    return results[0] || null;
+  }
+
   async findAttachments(b5Uuid: string): Promise<ScreeningB5Attachment[]> {
     const db = getDb();
     return db.select().from(screeningB5Attachments).where(
@@ -501,6 +546,15 @@ export class ScreeningB6Repository {
     const db = getDb();
     const results = await db.insert(screeningB6Comments).values(data).returning();
     return results[0];
+  }
+
+  async updateComment(commentUuid: string, data: Partial<InsertScreeningB6Comment>): Promise<ScreeningB6Comment | null> {
+    const db = getDb();
+    const results = await db.update(screeningB6Comments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(screeningB6Comments.commentUuid, commentUuid))
+      .returning();
+    return results[0] || null;
   }
 
   async findAttachments(b6Uuid: string): Promise<ScreeningB6Attachment[]> {
@@ -622,6 +676,15 @@ export class ScreeningB8Repository {
     const db = getDb();
     const results = await db.insert(screeningB8Comments).values(data).returning();
     return results[0];
+  }
+
+  async updateComment(commentUuid: string, data: Partial<InsertScreeningB8Comment>): Promise<ScreeningB8Comment | null> {
+    const db = getDb();
+    const results = await db.update(screeningB8Comments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(screeningB8Comments.commentUuid, commentUuid))
+      .returning();
+    return results[0] || null;
   }
 
   async findAttachments(b8Uuid: string): Promise<ScreeningB8Attachment[]> {

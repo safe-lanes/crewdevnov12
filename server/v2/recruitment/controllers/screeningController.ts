@@ -55,6 +55,17 @@ export const screeningB1Controller = {
     }
   },
 
+  async updateComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB1Service.updateComment(commentUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B1 comment:", error);
+      res.status(500).json({ error: "Failed to update B1 comment" });
+    }
+  },
+
   async getAttachments(req: Request, res: Response) {
     try {
       const { b1Uuid } = req.params;
@@ -145,6 +156,17 @@ export const screeningB2Controller = {
     }
   },
 
+  async updateComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB2Service.updateComment(commentUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B2 comment:", error);
+      res.status(500).json({ error: "Failed to update B2 comment" });
+    }
+  },
+
   async getAttachments(req: Request, res: Response) {
     try {
       const { b2Uuid } = req.params;
@@ -232,6 +254,17 @@ export const screeningB3Controller = {
     } catch (error) {
       console.error("Error creating B3 comment:", error);
       res.status(500).json({ error: "Failed to create B3 comment" });
+    }
+  },
+
+  async updateComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB3Service.updateComment(commentUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B3 comment:", error);
+      res.status(500).json({ error: "Failed to update B3 comment" });
     }
   },
 
@@ -336,6 +369,17 @@ export const screeningB4Controller = {
     }
   },
 
+  async updateComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB4Service.updateComment(commentUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B4 comment:", error);
+      res.status(500).json({ error: "Failed to update B4 comment" });
+    }
+  },
+
   async updateCertItem(req: Request, res: Response) {
     try {
       const { certUuid } = req.params;
@@ -437,6 +481,17 @@ export const screeningB5Controller = {
     }
   },
 
+  async updateComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB5Service.updateComment(commentUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B5 comment:", error);
+      res.status(500).json({ error: "Failed to update B5 comment" });
+    }
+  },
+
   async updateTestItem(req: Request, res: Response) {
     try {
       const { testUuid } = req.params;
@@ -535,6 +590,17 @@ export const screeningB6Controller = {
     } catch (error) {
       console.error("Error creating B6 comment:", error);
       res.status(500).json({ error: "Failed to create B6 comment" });
+    }
+  },
+
+  async updateComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB6Service.updateComment(commentUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B6 comment:", error);
+      res.status(500).json({ error: "Failed to update B6 comment" });
     }
   },
 
@@ -696,6 +762,17 @@ export const screeningB8Controller = {
     } catch (error) {
       console.error("Error creating B8 comment:", error);
       res.status(500).json({ error: "Failed to create B8 comment" });
+    }
+  },
+
+  async updateComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB8Service.updateComment(commentUuid, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B8 comment:", error);
+      res.status(500).json({ error: "Failed to update B8 comment" });
     }
   },
 

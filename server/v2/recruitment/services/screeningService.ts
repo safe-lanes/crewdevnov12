@@ -57,6 +57,13 @@ export class ScreeningB1Service {
     });
   }
 
+  async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB1Repository.updateComment(commentUuid, {
+      ...data,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
   async getAttachments(b1Uuid: string) {
     return screeningB1Repository.findAttachments(b1Uuid);
   }
@@ -111,6 +118,13 @@ export class ScreeningB2Service {
       b2Uuid,
       ...data,
       createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB2Repository.updateComment(commentUuid, {
+      ...data,
       updatedByUuid: userUuid,
     } as any);
   }
@@ -180,6 +194,13 @@ export class ScreeningB3Service {
     } as any);
   }
 
+  async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB3Repository.updateComment(commentUuid, {
+      ...data,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
   async getAttachments(b3Uuid: string) {
     return screeningB3Repository.findAttachments(b3Uuid);
   }
@@ -241,6 +262,13 @@ export class ScreeningB4Service {
       b4Uuid,
       ...data,
       createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB4Repository.updateComment(commentUuid, {
+      ...data,
       updatedByUuid: userUuid,
     } as any);
   }
@@ -310,6 +338,13 @@ export class ScreeningB5Service {
     } as any);
   }
 
+  async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB5Repository.updateComment(commentUuid, {
+      ...data,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
   async getAttachments(b5Uuid: string) {
     return screeningB5Repository.findAttachments(b5Uuid);
   }
@@ -371,6 +406,13 @@ export class ScreeningB6Service {
       b6Uuid,
       ...data,
       createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB6Repository.updateComment(commentUuid, {
+      ...data,
       updatedByUuid: userUuid,
     } as any);
   }
@@ -466,6 +508,13 @@ export class ScreeningB8Service {
       b8Uuid,
       ...data,
       createdByUuid: userUuid,
+      updatedByUuid: userUuid,
+    } as any);
+  }
+
+  async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB8Repository.updateComment(commentUuid, {
+      ...data,
       updatedByUuid: userUuid,
     } as any);
   }

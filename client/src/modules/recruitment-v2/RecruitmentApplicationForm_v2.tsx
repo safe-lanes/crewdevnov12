@@ -116,18 +116,25 @@ import {
   useV2CreateScreeningB8Approver,
   useV2ScreeningB1Comments,
   useV2CreateScreeningB1Comment,
+  useV2UpdateScreeningB1Comment,
   useV2ScreeningB2Comments,
   useV2CreateScreeningB2Comment,
+  useV2UpdateScreeningB2Comment,
   useV2ScreeningB3Comments,
   useV2CreateScreeningB3Comment,
+  useV2UpdateScreeningB3Comment,
   useV2ScreeningB4Comments,
   useV2CreateScreeningB4Comment,
+  useV2UpdateScreeningB4Comment,
   useV2ScreeningB5Comments,
   useV2CreateScreeningB5Comment,
+  useV2UpdateScreeningB5Comment,
   useV2ScreeningB6Comments,
   useV2CreateScreeningB6Comment,
+  useV2UpdateScreeningB6Comment,
   useV2ScreeningB8Comments,
   useV2CreateScreeningB8Comment,
+  useV2UpdateScreeningB8Comment,
   useV2ScreeningB1Attachments,
   useV2ScreeningB2Attachments,
   useV2ScreeningB3Attachments,
@@ -717,6 +724,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const createB5CommentMutation = useV2CreateScreeningB5Comment();
   const createB6CommentMutation = useV2CreateScreeningB6Comment();
   const createB8CommentMutation = useV2CreateScreeningB8Comment();
+
+  const updateB1CommentMutation = useV2UpdateScreeningB1Comment();
+  const updateB2CommentMutation = useV2UpdateScreeningB2Comment();
+  const updateB3CommentMutation = useV2UpdateScreeningB3Comment();
+  const updateB4CommentMutation = useV2UpdateScreeningB4Comment();
+  const updateB5CommentMutation = useV2UpdateScreeningB5Comment();
+  const updateB6CommentMutation = useV2UpdateScreeningB6Comment();
+  const updateB8CommentMutation = useV2UpdateScreeningB8Comment();
 
   // Part C - Approval mutations
   const saveApprovalMutation = useV2SaveApproval();
@@ -4796,7 +4811,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         }
                                       }));
                                     }}
-                                    onBlur={() => setEditingB1Comment(null)}
+                                    onBlur={() => {
+                                      updateB1CommentMutation.mutate({
+                                        commentUuid: comment.id,
+                                        data: { commentText: comment.text }
+                                      });
+                                      setEditingB1Comment(null);
+                                    }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
                                   />
@@ -5129,7 +5150,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                       }
                                     }));
                                   }}
-                                  onBlur={() => setEditingB2Comment(null)}
+                                  onBlur={() => {
+                                    updateB2CommentMutation.mutate({
+                                      commentUuid: comment.id,
+                                      data: { commentText: comment.text }
+                                    });
+                                    setEditingB2Comment(null);
+                                  }}
                                   autoFocus
                                   className="min-h-[80px] w-full"
                                 />
@@ -5277,7 +5304,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                       }
                                     }));
                                   }}
-                                  onBlur={() => setEditingB2Comment(null)}
+                                  onBlur={() => {
+                                    updateB2CommentMutation.mutate({
+                                      commentUuid: comment.id,
+                                      data: { commentText: comment.text }
+                                    });
+                                    setEditingB2Comment(null);
+                                  }}
                                   autoFocus
                                   className="min-h-[80px] w-full"
                                 />
@@ -5582,7 +5615,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         }
                                       }));
                                     }}
-                                    onBlur={() => setEditingB3Comment(null)}
+                                    onBlur={() => {
+                                      updateB3CommentMutation.mutate({
+                                        commentUuid: comment.id,
+                                        data: { commentText: comment.text }
+                                      });
+                                      setEditingB3Comment(null);
+                                    }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
                                   />
@@ -5730,7 +5769,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         }
                                       }));
                                     }}
-                                    onBlur={() => setEditingB3Comment(null)}
+                                    onBlur={() => {
+                                      updateB3CommentMutation.mutate({
+                                        commentUuid: comment.id,
+                                        data: { commentText: comment.text }
+                                      });
+                                      setEditingB3Comment(null);
+                                    }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
                                   />
@@ -6056,7 +6101,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         }
                                       }));
                                     }}
-                                    onBlur={() => setEditingB4Comment(null)}
+                                    onBlur={() => {
+                                      updateB4CommentMutation.mutate({
+                                        commentUuid: comment.id,
+                                        data: { commentText: comment.text }
+                                      });
+                                      setEditingB4Comment(null);
+                                    }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
                                   />
@@ -6204,7 +6255,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         }
                                       }));
                                     }}
-                                    onBlur={() => setEditingB4Comment(null)}
+                                    onBlur={() => {
+                                      updateB4CommentMutation.mutate({
+                                        commentUuid: comment.id,
+                                        data: { commentText: comment.text }
+                                      });
+                                      setEditingB4Comment(null);
+                                    }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
                                   />
@@ -6560,7 +6617,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         }
                                       }));
                                     }}
-                                    onBlur={() => setEditingB5Comment(null)}
+                                    onBlur={() => {
+                                      updateB5CommentMutation.mutate({
+                                        commentUuid: comment.id,
+                                        data: { commentText: comment.text }
+                                      });
+                                      setEditingB5Comment(null);
+                                    }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
                                   />
@@ -6977,7 +7040,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         }
                                       }));
                                     }}
-                                    onBlur={() => setEditingB6Comment(null)}
+                                    onBlur={() => {
+                                      updateB6CommentMutation.mutate({
+                                        commentUuid: comment.id,
+                                        data: { commentText: comment.text }
+                                      });
+                                      setEditingB6Comment(null);
+                                    }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
                                   />
@@ -7385,7 +7454,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         }
                                       }));
                                     }}
-                                    onBlur={() => setEditingB8Comment(null)}
+                                    onBlur={() => {
+                                      updateB8CommentMutation.mutate({
+                                        commentUuid: comment.id,
+                                        data: { commentText: comment.text }
+                                      });
+                                      setEditingB8Comment(null);
+                                    }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
                                   />
