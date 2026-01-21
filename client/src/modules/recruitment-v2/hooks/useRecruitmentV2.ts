@@ -661,6 +661,38 @@ export function useV2CreateScreeningB2Comment() {
   });
 }
 
+export interface ScreeningB2Attachment {
+  id: number;
+  attUuid: string;
+  b2Uuid: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileType?: string;
+  fileSize?: number;
+  fileData?: string;
+  comments?: string;
+  sortOrder?: number;
+}
+
+export function useV2ScreeningB2Attachments(b2Uuid: string | null) {
+  return useQuery<ScreeningB2Attachment[]>({
+    queryKey: ['v2', 'screening-b2-attachments', b2Uuid],
+    queryFn: () => fetchApi(`/screening/b2/${b2Uuid}/attachments`),
+    enabled: !!b2Uuid,
+  });
+}
+
+export function useV2CreateScreeningB2Attachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b2Uuid, data }: { b2Uuid: string; data: Partial<ScreeningB2Attachment> }) =>
+      postApi<ScreeningB2Attachment>(`/screening/b2/${b2Uuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2-attachments', variables.b2Uuid] });
+    },
+  });
+}
+
 export function useV2ScreeningB3(recCanUuid: string | null) {
   return useQuery<ScreeningB3>({
     queryKey: ['v2', 'screening-b3', recCanUuid],
@@ -695,6 +727,38 @@ export function useV2CreateScreeningB3Comment() {
       postApi<ScreeningB1Comment>(`/screening/b3/${b3Uuid}/comments`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-comments', variables.b3Uuid] });
+    },
+  });
+}
+
+export interface ScreeningB3Attachment {
+  id: number;
+  attUuid: string;
+  b3Uuid: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileType?: string;
+  fileSize?: number;
+  fileData?: string;
+  comments?: string;
+  sortOrder?: number;
+}
+
+export function useV2ScreeningB3Attachments(b3Uuid: string | null) {
+  return useQuery<ScreeningB3Attachment[]>({
+    queryKey: ['v2', 'screening-b3-attachments', b3Uuid],
+    queryFn: () => fetchApi(`/screening/b3/${b3Uuid}/attachments`),
+    enabled: !!b3Uuid,
+  });
+}
+
+export function useV2CreateScreeningB3Attachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b3Uuid, data }: { b3Uuid: string; data: Partial<ScreeningB3Attachment> }) =>
+      postApi<ScreeningB3Attachment>(`/screening/b3/${b3Uuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3-attachments', variables.b3Uuid] });
     },
   });
 }
@@ -737,6 +801,38 @@ export function useV2CreateScreeningB4Comment() {
   });
 }
 
+export interface ScreeningB4Attachment {
+  id: number;
+  attUuid: string;
+  b4Uuid: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileType?: string;
+  fileSize?: number;
+  fileData?: string;
+  comments?: string;
+  sortOrder?: number;
+}
+
+export function useV2ScreeningB4Attachments(b4Uuid: string | null) {
+  return useQuery<ScreeningB4Attachment[]>({
+    queryKey: ['v2', 'screening-b4-attachments', b4Uuid],
+    queryFn: () => fetchApi(`/screening/b4/${b4Uuid}/attachments`),
+    enabled: !!b4Uuid,
+  });
+}
+
+export function useV2CreateScreeningB4Attachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b4Uuid, data }: { b4Uuid: string; data: Partial<ScreeningB4Attachment> }) =>
+      postApi<ScreeningB4Attachment>(`/screening/b4/${b4Uuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4-attachments', variables.b4Uuid] });
+    },
+  });
+}
+
 export function useV2ScreeningB5(recCanUuid: string | null) {
   return useQuery<ScreeningB5>({
     queryKey: ['v2', 'screening-b5', recCanUuid],
@@ -775,6 +871,38 @@ export function useV2CreateScreeningB5Comment() {
   });
 }
 
+export interface ScreeningB5Attachment {
+  id: number;
+  attUuid: string;
+  b5Uuid: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileType?: string;
+  fileSize?: number;
+  fileData?: string;
+  comments?: string;
+  sortOrder?: number;
+}
+
+export function useV2ScreeningB5Attachments(b5Uuid: string | null) {
+  return useQuery<ScreeningB5Attachment[]>({
+    queryKey: ['v2', 'screening-b5-attachments', b5Uuid],
+    queryFn: () => fetchApi(`/screening/b5/${b5Uuid}/attachments`),
+    enabled: !!b5Uuid,
+  });
+}
+
+export function useV2CreateScreeningB5Attachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b5Uuid, data }: { b5Uuid: string; data: Partial<ScreeningB5Attachment> }) =>
+      postApi<ScreeningB5Attachment>(`/screening/b5/${b5Uuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5-attachments', variables.b5Uuid] });
+    },
+  });
+}
+
 export function useV2ScreeningB6(recCanUuid: string | null) {
   return useQuery<ScreeningB6>({
     queryKey: ['v2', 'screening-b6', recCanUuid],
@@ -809,6 +937,38 @@ export function useV2CreateScreeningB6Comment() {
       postApi<ScreeningB1Comment>(`/screening/b6/${b6Uuid}/comments`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-comments', variables.b6Uuid] });
+    },
+  });
+}
+
+export interface ScreeningB6Attachment {
+  id: number;
+  attUuid: string;
+  b6Uuid: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileType?: string;
+  fileSize?: number;
+  fileData?: string;
+  comments?: string;
+  sortOrder?: number;
+}
+
+export function useV2ScreeningB6Attachments(b6Uuid: string | null) {
+  return useQuery<ScreeningB6Attachment[]>({
+    queryKey: ['v2', 'screening-b6-attachments', b6Uuid],
+    queryFn: () => fetchApi(`/screening/b6/${b6Uuid}/attachments`),
+    enabled: !!b6Uuid,
+  });
+}
+
+export function useV2CreateScreeningB6Attachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b6Uuid, data }: { b6Uuid: string; data: Partial<ScreeningB6Attachment> }) =>
+      postApi<ScreeningB6Attachment>(`/screening/b6/${b6Uuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6-attachments', variables.b6Uuid] });
     },
   });
 }
@@ -866,6 +1026,38 @@ export function useV2CreateScreeningB8Comment() {
       postApi<ScreeningB1Comment>(`/screening/b8/${b8Uuid}/comments`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-comments', variables.b8Uuid] });
+    },
+  });
+}
+
+export interface ScreeningB8Attachment {
+  id: number;
+  attUuid: string;
+  b8Uuid: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileType?: string;
+  fileSize?: number;
+  fileData?: string;
+  comments?: string;
+  sortOrder?: number;
+}
+
+export function useV2ScreeningB8Attachments(b8Uuid: string | null) {
+  return useQuery<ScreeningB8Attachment[]>({
+    queryKey: ['v2', 'screening-b8-attachments', b8Uuid],
+    queryFn: () => fetchApi(`/screening/b8/${b8Uuid}/attachments`),
+    enabled: !!b8Uuid,
+  });
+}
+
+export function useV2CreateScreeningB8Attachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ b8Uuid, data }: { b8Uuid: string; data: Partial<ScreeningB8Attachment> }) =>
+      postApi<ScreeningB8Attachment>(`/screening/b8/${b8Uuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8-attachments', variables.b8Uuid] });
     },
   });
 }
