@@ -37,7 +37,7 @@ export function RecruitmentWrapper() {
 
   return (
     <div className="relative h-full">
-      <div className="absolute top-2 right-2 z-50 flex items-center gap-2 bg-white/90 rounded-lg p-1 shadow-sm border">
+      <div className="absolute top-14 right-2 z-50 flex items-center gap-2 bg-white/90 rounded-lg p-1 shadow-sm border">
         <Badge 
           variant={version === 'legacy' ? 'default' : 'outline'} 
           className={version === 'legacy' ? 'bg-gray-500' : ''}
