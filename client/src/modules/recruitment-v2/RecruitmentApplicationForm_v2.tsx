@@ -12,7 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText, Info, MessageSquare } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -3418,70 +3419,179 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               </div>
               
               <div className="space-y-8">
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B1. Initial Screening</h3>
+                {/* B1. Initial Screening - matching legacy exactly */}
+                <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B1. Initial Screening</h3>
+                    <div className="cursor-help" title="Guidance for initial screening process">
+                      <Info className="h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+                  
                   <div className="space-y-4">
                     {[
-                      { field: 'b1AgeMeetsCriteria', label: 'B1.1 Age meets Company Criteria for the Rank applied for?' },
-                      { field: 'b1RankMeetsCriteria', label: 'B1.2 Experience meets Company Criteria for the Rank applied for?' },
-                      { field: 'b1CertificatesValid', label: 'B1.3 Certificates & Documents in order & valid as per Company Criteria?' },
-                      { field: 'b1Shortlisted', label: 'B1.4 Shortlisted (Initial Screening)?' },
-                    ].map((item) => (
-                      <div key={item.field} className="flex items-center justify-between border-b pb-3">
-                        <span className="text-sm text-gray-700">{item.label}</span>
-                        <div className="flex gap-4">
-                          {['Yes', 'No', 'N/A'].map((option) => (
-                            <label key={option} className="flex items-center gap-1 cursor-pointer">
-                              <input
-                                type="radio"
-                                name={item.field}
-                                value={option}
-                                checked={formData[item.field as keyof LocalFormData] === option}
-                                onChange={(e) => setFormData(prev => ({ ...prev, [item.field]: e.target.value }))}
-                                className="w-4 h-4"
-                                data-testid={`radio-${item.field}-${option.toLowerCase()}`}
-                              />
-                              <span className="text-sm">{option}</span>
-                            </label>
-                          ))}
+                      { id: 'b1-age', field: 'b1AgeMeetsCriteria', label: 'B1.1 Age meets Company Criteria for the Rank applied for?', hasNA: true },
+                      { id: 'b1-rank', field: 'b1RankMeetsCriteria', label: 'B1.2 Experience meets Company Criteria for the Rank applied for?', hasNA: true },
+                      { id: 'b1-cert', field: 'b1CertificatesValid', label: 'B1.3 Certificates & Documents in order & valid as per Company Criteria?', hasNA: true },
+                      { id: 'b1-shortlist', field: 'b1Shortlisted', label: 'B1.4 Shortlisted (Initial Screening)?', hasNA: false },
+                    ].map((question) => (
+                      <div key={question.id} className="flex justify-between items-center">
+                        <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                          {question.label}
+                        </Label>
+                        <div className="flex items-center min-w-[300px]">
+                          <div className="flex gap-6 w-[200px]">
+                            <RadioGroup 
+                              value={formData[question.field as keyof LocalFormData] as string} 
+                              onValueChange={(value) => setFormData(prev => ({ ...prev, [question.field]: value }))}
+                              className="flex gap-6"
+                            >
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <RadioGroupItem value="yes" id={`${question.id}-yes`} />
+                                <Label htmlFor={`${question.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <RadioGroupItem value="no" id={`${question.id}-no`} />
+                                <Label htmlFor={`${question.id}-no`} className="text-sm cursor-pointer">No</Label>
+                              </div>
+                              {question.hasNA && (
+                                <div className="flex items-center space-x-2 w-[50px]">
+                                  <RadioGroupItem value="na" id={`${question.id}-na`} />
+                                  <Label htmlFor={`${question.id}-na`} className="text-sm cursor-pointer">NA</Label>
+                                </div>
+                              )}
+                              {!question.hasNA && <div className="w-[50px]"></div>}
+                            </RadioGroup>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 ml-4"
+                            data-testid={`button-${question.id}-comment`}
+                          >
+                            <MessageSquare className="h-4 w-4 text-gray-400" />
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
+                  
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                      data-testid="button-b1-attachments"
+                    >
+                      <Paperclip className="h-4 w-4 mr-2" />
+                      Attachment(s)
+                    </Button>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs text-gray-500">
+                        <span className="text-gray-400">Not yet submitted</span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={handleSaveScreening}
+                        data-testid="button-b1-submit"
+                      >
+                        Submit
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B2. Reference Checks with Previous Employer</h3>
+                {/* B2. Reference Checks - matching legacy exactly */}
+                <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B2. Reference Checks with Previous Employer</h3>
+                    <div className="cursor-help" title="Guidance for reference checks">
+                      <Info className="h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+                  
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-700">B2.1 Reference checks completed?</span>
-                      <div className="flex gap-4">
-                        {['Yes', 'No', 'N/A'].map((option) => (
-                          <label key={option} className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="b2ReferencesCompleted"
-                              value={option}
-                              checked={formData.b2ReferencesCompleted === option}
-                              onChange={(e) => setFormData(prev => ({ ...prev, b2ReferencesCompleted: e.target.value }))}
-                              className="w-4 h-4"
-                              data-testid={`radio-b2ReferencesCompleted-${option.toLowerCase()}`}
-                            />
-                            <span className="text-sm">{option}</span>
-                          </label>
-                        ))}
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                        B2.1 Reference checks completed?
+                      </Label>
+                      <div className="flex items-center min-w-[300px]">
+                        <div className="flex gap-6 w-[200px]">
+                          <RadioGroup 
+                            value={formData.b2ReferencesCompleted} 
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, b2ReferencesCompleted: value }))}
+                            className="flex gap-6"
+                          >
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="yes" id="b2-ref-yes" />
+                              <Label htmlFor="b2-ref-yes" className="text-sm cursor-pointer">Yes</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="no" id="b2-ref-no" />
+                              <Label htmlFor="b2-ref-no" className="text-sm cursor-pointer">No</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="na" id="b2-ref-na" />
+                              <Label htmlFor="b2-ref-na" className="text-sm cursor-pointer">NA</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 ml-4"
+                          data-testid="button-b2-ref-comment"
+                        >
+                          <MessageSquare className="h-4 w-4 text-gray-400" />
+                        </Button>
                       </div>
                     </div>
-                    <div>
-                      <Label className="text-sm">B2.2 Employer Feedback</Label>
-                      <Input
-                        value={formData.b2EmployerFeedback}
-                        onChange={(e) => setFormData(prev => ({ ...prev, b2EmployerFeedback: e.target.value }))}
-                        placeholder="Enter employer feedback..."
-                        className="mt-1"
-                        data-testid="input-b2-employer-feedback"
-                      />
+                    
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                        B2.2 Employer Feedback
+                      </Label>
+                      <div className="flex items-center min-w-[300px]">
+                        <div className="flex gap-6 w-[200px]">
+                          <RadioGroup 
+                            value={formData.b2EmployerFeedback} 
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, b2EmployerFeedback: value }))}
+                            className="flex gap-6"
+                          >
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="yes" id="b2-fb-yes" />
+                              <Label htmlFor="b2-fb-yes" className="text-sm cursor-pointer">Yes</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="no" id="b2-fb-no" />
+                              <Label htmlFor="b2-fb-no" className="text-sm cursor-pointer">No</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="na" id="b2-fb-na" />
+                              <Label htmlFor="b2-fb-na" className="text-sm cursor-pointer">NA</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 ml-4"
+                          data-testid="button-b2-fb-comment"
+                        >
+                          <MessageSquare className="h-4 w-4 text-gray-400" />
+                        </Button>
+                      </div>
                     </div>
+                    
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -3561,37 +3671,88 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B3. Background Security Checks</h3>
+                {/* B3. Background Security Checks - matching legacy exactly */}
+                <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B3. Background Security Checks</h3>
+                    <div className="cursor-help" title="Guidance for background security checks">
+                      <Info className="h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+                  
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-700">B3.1 Security checks completed?</span>
-                      <div className="flex gap-4">
-                        {['Yes', 'No', 'N/A'].map((option) => (
-                          <label key={option} className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="b3ChecksCompleted"
-                              value={option}
-                              checked={formData.b3ChecksCompleted === option}
-                              onChange={(e) => setFormData(prev => ({ ...prev, b3ChecksCompleted: e.target.value }))}
-                              className="w-4 h-4"
-                              data-testid={`radio-b3ChecksCompleted-${option.toLowerCase()}`}
-                            />
-                            <span className="text-sm">{option}</span>
-                          </label>
-                        ))}
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                        B3.1 Security checks completed?
+                      </Label>
+                      <div className="flex items-center min-w-[300px]">
+                        <div className="flex gap-6 w-[200px]">
+                          <RadioGroup 
+                            value={formData.b3ChecksCompleted} 
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, b3ChecksCompleted: value }))}
+                            className="flex gap-6"
+                          >
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="yes" id="b3-check-yes" />
+                              <Label htmlFor="b3-check-yes" className="text-sm cursor-pointer">Yes</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="no" id="b3-check-no" />
+                              <Label htmlFor="b3-check-no" className="text-sm cursor-pointer">No</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="na" id="b3-check-na" />
+                              <Label htmlFor="b3-check-na" className="text-sm cursor-pointer">NA</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 ml-4"
+                          data-testid="button-b3-check-comment"
+                        >
+                          <MessageSquare className="h-4 w-4 text-gray-400" />
+                        </Button>
                       </div>
                     </div>
-                    <div>
-                      <Label className="text-sm">B3.2 Results</Label>
-                      <Input
-                        value={formData.b3Results}
-                        onChange={(e) => setFormData(prev => ({ ...prev, b3Results: e.target.value }))}
-                        placeholder="Enter security check results..."
-                        className="mt-1"
-                        data-testid="input-b3-results"
-                      />
+                    
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                        B3.2 Results
+                      </Label>
+                      <div className="flex items-center min-w-[300px]">
+                        <div className="flex gap-6 w-[200px]">
+                          <RadioGroup 
+                            value={formData.b3Results} 
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, b3Results: value }))}
+                            className="flex gap-6"
+                          >
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="yes" id="b3-results-yes" />
+                              <Label htmlFor="b3-results-yes" className="text-sm cursor-pointer">Yes</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="no" id="b3-results-no" />
+                              <Label htmlFor="b3-results-no" className="text-sm cursor-pointer">No</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 w-[50px]">
+                              <RadioGroupItem value="na" id="b3-results-na" />
+                              <Label htmlFor="b3-results-na" className="text-sm cursor-pointer">NA</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 ml-4"
+                          data-testid="button-b3-results-comment"
+                        >
+                          <MessageSquare className="h-4 w-4 text-gray-400" />
+                        </Button>
+                      </div>
                     </div>
                     <Table>
                       <TableHeader>
