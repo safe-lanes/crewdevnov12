@@ -3024,7 +3024,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.2 Address & Contact</h3>
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A1.2 Address & Contact Info</h3>
           <Button
             variant="ghost"
             size="sm"
@@ -3036,13 +3036,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Row 1: Country of Residence, Nearest Airport, Mobile, Email */}
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Country of Residence</Label>
             {isEditing ? (
               <Select value={formData.countryOfResidence} onValueChange={(value) => updateFormData('countryOfResidence', value)}>
                 <SelectTrigger className="mt-1" data-testid="select-country-residence">
-                  <SelectValue placeholder="Select country" />
+                  <SelectValue placeholder="Select country of residence" />
                 </SelectTrigger>
                 <SelectContent>
                   {countryMasterData.map((country: string) => (
@@ -3067,47 +3068,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <div className="mt-1 text-sm text-gray-900">{formData.nearestAirport}</div>
             )}
           </div>
-          <div className="sm:col-span-2">
-            <Label className="text-xs text-gray-500 tracking-wide">Address Line 1</Label>
-            {isEditing ? (
-              <Input
-                value={formData.residentialAddressLine1}
-                onChange={(e) => updateFormData('residentialAddressLine1', e.target.value)}
-                className="mt-1"
-                data-testid="input-address-line1"
-              />
-            ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.residentialAddressLine1}</div>
-            )}
-          </div>
-          <div className="sm:col-span-2">
-            <Label className="text-xs text-gray-500 tracking-wide">Address Line 2</Label>
-            {isEditing ? (
-              <Input
-                value={formData.residentialAddressLine2}
-                onChange={(e) => updateFormData('residentialAddressLine2', e.target.value)}
-                className="mt-1"
-                data-testid="input-address-line2"
-              />
-            ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.residentialAddressLine2}</div>
-            )}
-          </div>
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Contact Landline</Label>
-            {isEditing ? (
-              <Input
-                value={formData.contactLandline}
-                onChange={(e) => updateFormData('contactLandline', e.target.value)}
-                className="mt-1"
-                data-testid="input-landline"
-              />
-            ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.contactLandline}</div>
-            )}
-          </div>
-          <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Mobile *</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Mobile</Label>
             {isEditing ? (
               <Input
                 value={formData.mobile}
@@ -3119,8 +3081,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <div className="mt-1 text-sm text-gray-900">{formData.mobile}</div>
             )}
           </div>
-          <div className="sm:col-span-2">
-            <Label className="text-xs text-gray-500 tracking-wide">Email *</Label>
+          <div>
+            <Label className="text-xs text-gray-500 tracking-wide">Email</Label>
             {isEditing ? (
               <Input
                 type="email"
@@ -3131,6 +3093,50 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.email}</div>
+            )}
+          </div>
+
+          {/* Row 2: Residential Address Line 1, Residential Address Line 2 */}
+          <div className="lg:col-span-2">
+            <Label className="text-xs text-gray-500 tracking-wide">Residential Address Line 1( House No./Building/Street )</Label>
+            {isEditing ? (
+              <Input
+                value={formData.residentialAddressLine1}
+                onChange={(e) => updateFormData('residentialAddressLine1', e.target.value)}
+                className="mt-1"
+                data-testid="input-address-line1"
+              />
+            ) : (
+              <div className="mt-1 text-sm text-gray-900">{formData.residentialAddressLine1}</div>
+            )}
+          </div>
+          <div className="lg:col-span-2">
+            <Label className="text-xs text-gray-500 tracking-wide">Residential Address Line 2( City, State, PIN )</Label>
+            {isEditing ? (
+              <Input
+                value={formData.residentialAddressLine2}
+                onChange={(e) => updateFormData('residentialAddressLine2', e.target.value)}
+                className="mt-1"
+                placeholder="Enter city, state, PIN"
+                data-testid="input-address-line2"
+              />
+            ) : (
+              <div className="mt-1 text-sm text-gray-900">{formData.residentialAddressLine2}</div>
+            )}
+          </div>
+
+          {/* Row 3: Contact Landline */}
+          <div>
+            <Label className="text-xs text-gray-500 tracking-wide">Contact Landline</Label>
+            {isEditing ? (
+              <Input
+                value={formData.contactLandline}
+                onChange={(e) => updateFormData('contactLandline', e.target.value)}
+                className="mt-1"
+                data-testid="input-landline"
+              />
+            ) : (
+              <div className="mt-1 text-sm text-gray-900">{formData.contactLandline}</div>
             )}
           </div>
         </div>
