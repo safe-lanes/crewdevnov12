@@ -423,7 +423,7 @@ export function useV2DeleteLicense() {
 export function useV2TrainingCourses(recCanUuid: string | null) {
   return useQuery<CandidateTrainingCourse[]>({
     queryKey: ['v2', 'training-courses', recCanUuid],
-    queryFn: () => fetchApi(`/candidates/${recCanUuid}/training-courses`),
+    queryFn: () => fetchApi(`/candidates/${recCanUuid}/training`),
     enabled: !!recCanUuid,
   });
 }
@@ -432,7 +432,7 @@ export function useV2SaveTrainingCourse() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateTrainingCourse> }) =>
-      postApi<CandidateTrainingCourse>(`/candidates/${recCanUuid}/training-courses`, data),
+      postApi<CandidateTrainingCourse>(`/candidates/${recCanUuid}/training`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'training-courses', variables.recCanUuid] });
     },
