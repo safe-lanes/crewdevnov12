@@ -102,6 +102,20 @@ import {
   useV2CreateScreeningB7TrainingItem,
   useV2ScreeningB8Approvers,
   useV2CreateScreeningB8Approver,
+  useV2ScreeningB1Comments,
+  useV2CreateScreeningB1Comment,
+  useV2ScreeningB2Comments,
+  useV2CreateScreeningB2Comment,
+  useV2ScreeningB3Comments,
+  useV2CreateScreeningB3Comment,
+  useV2ScreeningB4Comments,
+  useV2CreateScreeningB4Comment,
+  useV2ScreeningB5Comments,
+  useV2CreateScreeningB5Comment,
+  useV2ScreeningB6Comments,
+  useV2CreateScreeningB6Comment,
+  useV2ScreeningB8Comments,
+  useV2CreateScreeningB8Comment,
   useV2Approvals,
   useV2SaveApproval,
   useV2UpdateApproval,
@@ -557,6 +571,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const { data: suitabilityData } = useV2Suitability(recCanUuid);
   const { data: decisionData } = useV2RecruitmentDecision(recCanUuid);
 
+  const b1Uuid = screeningB1Data?.b1Uuid || null;
   const b2Uuid = screeningB2Data?.b2Uuid || null;
   const b3Uuid = screeningB3Data?.b3Uuid || null;
   const b4Uuid = screeningB4Data?.b4Uuid || null;
@@ -564,6 +579,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const b6Uuid = screeningB6Data?.b6Uuid || null;
   const b7Uuid = screeningB7Data?.b7Uuid || null;
   const b8Uuid = screeningB8Data?.b8Uuid || null;
+
+  const { data: screeningB1Comments } = useV2ScreeningB1Comments(b1Uuid);
+  const { data: screeningB2Comments } = useV2ScreeningB2Comments(b2Uuid);
+  const { data: screeningB3Comments } = useV2ScreeningB3Comments(b3Uuid);
+  const { data: screeningB4Comments } = useV2ScreeningB4Comments(b4Uuid);
+  const { data: screeningB5Comments } = useV2ScreeningB5Comments(b5Uuid);
+  const { data: screeningB6Comments } = useV2ScreeningB6Comments(b6Uuid);
+  const { data: screeningB8Comments } = useV2ScreeningB8Comments(b8Uuid);
 
   const { data: screeningB2Items } = useV2ScreeningB2Items(b2Uuid);
   const { data: screeningB3Authorities } = useV2ScreeningB3Authorities(b3Uuid);
@@ -1029,6 +1052,27 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB1Data]);
 
   useEffect(() => {
+    if (screeningB1Comments && screeningB1Comments.length > 0) {
+      const commentsMap: {[key: string]: Array<{user: string; text: string; id: string}>} = {};
+      screeningB1Comments.forEach((comment: any) => {
+        const key = comment.fieldKey || 'general';
+        if (!commentsMap[key]) {
+          commentsMap[key] = [];
+        }
+        commentsMap[key].push({
+          user: comment.userUuid || 'Unknown',
+          text: comment.commentText || '',
+          id: comment.commentUuid || comment.id?.toString() || '',
+        });
+      });
+      setFormData(prev => ({
+        ...prev,
+        b1Comments: commentsMap,
+      }));
+    }
+  }, [screeningB1Comments]);
+
+  useEffect(() => {
     if (screeningB2Data) {
       setFormData(prev => ({
         ...prev,
@@ -1084,6 +1128,132 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }));
     }
   }, [screeningB8Data]);
+
+  useEffect(() => {
+    if (screeningB2Comments && screeningB2Comments.length > 0) {
+      const commentsMap: {[key: string]: Array<{user: string; text: string; id: string}>} = {};
+      screeningB2Comments.forEach((comment: any) => {
+        const key = comment.fieldKey || 'general';
+        if (!commentsMap[key]) {
+          commentsMap[key] = [];
+        }
+        commentsMap[key].push({
+          user: comment.userUuid || 'Unknown',
+          text: comment.commentText || '',
+          id: comment.commentUuid || comment.id?.toString() || '',
+        });
+      });
+      setFormData(prev => ({
+        ...prev,
+        b2Comments: commentsMap,
+      }));
+    }
+  }, [screeningB2Comments]);
+
+  useEffect(() => {
+    if (screeningB3Comments && screeningB3Comments.length > 0) {
+      const commentsMap: {[key: string]: Array<{user: string; text: string; id: string}>} = {};
+      screeningB3Comments.forEach((comment: any) => {
+        const key = comment.fieldKey || 'general';
+        if (!commentsMap[key]) {
+          commentsMap[key] = [];
+        }
+        commentsMap[key].push({
+          user: comment.userUuid || 'Unknown',
+          text: comment.commentText || '',
+          id: comment.commentUuid || comment.id?.toString() || '',
+        });
+      });
+      setFormData(prev => ({
+        ...prev,
+        b3Comments: commentsMap,
+      }));
+    }
+  }, [screeningB3Comments]);
+
+  useEffect(() => {
+    if (screeningB4Comments && screeningB4Comments.length > 0) {
+      const commentsMap: {[key: string]: Array<{user: string; text: string; id: string}>} = {};
+      screeningB4Comments.forEach((comment: any) => {
+        const key = comment.fieldKey || 'general';
+        if (!commentsMap[key]) {
+          commentsMap[key] = [];
+        }
+        commentsMap[key].push({
+          user: comment.userUuid || 'Unknown',
+          text: comment.commentText || '',
+          id: comment.commentUuid || comment.id?.toString() || '',
+        });
+      });
+      setFormData(prev => ({
+        ...prev,
+        b4Comments: commentsMap,
+      }));
+    }
+  }, [screeningB4Comments]);
+
+  useEffect(() => {
+    if (screeningB5Comments && screeningB5Comments.length > 0) {
+      const commentsMap: {[key: string]: Array<{user: string; text: string; id: string}>} = {};
+      screeningB5Comments.forEach((comment: any) => {
+        const key = comment.fieldKey || 'general';
+        if (!commentsMap[key]) {
+          commentsMap[key] = [];
+        }
+        commentsMap[key].push({
+          user: comment.userUuid || 'Unknown',
+          text: comment.commentText || '',
+          id: comment.commentUuid || comment.id?.toString() || '',
+        });
+      });
+      setFormData(prev => ({
+        ...prev,
+        b5Comments: commentsMap,
+      }));
+    }
+  }, [screeningB5Comments]);
+
+  useEffect(() => {
+    if (screeningB6Comments && screeningB6Comments.length > 0) {
+      const commentsMap: {[key: string]: Array<{user: string; text: string; id: string}>} = {};
+      screeningB6Comments.forEach((comment: any) => {
+        const key = comment.fieldKey || 'general';
+        if (!commentsMap[key]) {
+          commentsMap[key] = [];
+        }
+        commentsMap[key].push({
+          user: comment.userUuid || 'Unknown',
+          text: comment.commentText || '',
+          id: comment.commentUuid || comment.id?.toString() || '',
+        });
+      });
+      setFormData(prev => ({
+        ...prev,
+        b6Comments: commentsMap,
+      }));
+    }
+  }, [screeningB6Comments]);
+
+  useEffect(() => {
+    if (screeningB8Comments && screeningB8Comments.length > 0) {
+      const commentsMap: {[key: string]: Array<{user: string; text: string; id: string}>} = {};
+      screeningB8Comments.forEach((comment: any) => {
+        const key = comment.fieldKey || 'general';
+        if (!commentsMap[key]) {
+          commentsMap[key] = [];
+        }
+        commentsMap[key].push({
+          user: comment.userUuid || 'Unknown',
+          text: comment.commentText || '',
+          id: comment.commentUuid || comment.id?.toString() || '',
+        });
+      });
+      setFormData(prev => ({
+        ...prev,
+        b8Comments: commentsMap,
+      }));
+    }
+  }, [screeningB8Comments]);
 
   useEffect(() => {
     if (screeningB2Items && screeningB2Items.length > 0) {
