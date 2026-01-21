@@ -13,7 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText, Info, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText, Info, MessageSquare, ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { useQueryClient } from '@tanstack/react-query';
@@ -301,6 +303,7 @@ interface LocalFormData {
   b7SubmittedBy: string;
   b7SubmittedDate: string;
   b8SubmittedBy: string;
+  selectedApproversForSubmission: string[];
   b8SubmittedDate: string;
 }
 
@@ -413,6 +416,7 @@ const getInitialFormData = (): LocalFormData => ({
   b7SubmittedBy: '',
   b7SubmittedDate: '',
   b8SubmittedBy: '',
+  selectedApproversForSubmission: [],
   b8SubmittedDate: '',
 });
 
@@ -1989,6 +1993,24 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         variant: "destructive",
       });
     }
+  };
+
+  // Toggle approver selection for "Submit for Approval to" multi-select
+  const toggleApproverSelection = (approverName: string) => {
+    setFormData(prev => {
+      const currentSelected = prev.selectedApproversForSubmission;
+      if (currentSelected.includes(approverName)) {
+        return {
+          ...prev,
+          selectedApproversForSubmission: currentSelected.filter(a => a !== approverName)
+        };
+      } else {
+        return {
+          ...prev,
+          selectedApproversForSubmission: [...currentSelected, approverName]
+        };
+      }
+    });
   };
 
   const handleSaveScreening = async () => {
@@ -6059,31 +6081,155 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B8. Short Listing</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-700">B8.1 Shortlisted for approval?</span>
-                      <div className="flex gap-4">
-                        {['Yes', 'No'].map((option) => (
-                          <label key={option} className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="b8Shortlisted"
-                              value={option}
-                              checked={formData.b8Shortlisted === option}
-                              onChange={(e) => setFormData(prev => ({ ...prev, b8Shortlisted: e.target.value }))}
-                              className="w-4 h-4"
-                              data-testid={`radio-b8Shortlisted-${option.toLowerCase()}`}
-                            />
-                            <span className="text-sm">{option}</span>
-                          </label>
-                        ))}
+                {/* B8. Short Listing - matching legacy exactly */}
+                <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B8. Short Listing</h3>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {/* B1.4 Shortlisted (For final approval) */}
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                          B1.4 Shortlisted (For final approval)?
+                        </Label>
+                        <div className="flex items-center min-w-[300px]">
+                          <div className="flex gap-6 w-[200px]">
+                            <RadioGroup 
+                              value={formData.b8Shortlisted} 
+                              onValueChange={(value) => setFormData(prev => ({ ...prev, b8Shortlisted: value }))}
+                              className="flex gap-6"
+                            >
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="b8-shortlisted-yes" />
+                                  <Label htmlFor="b8-shortlisted-yes" className="text-sm cursor-pointer">Yes</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="b8-shortlisted-no" />
+                                  <Label htmlFor="b8-shortlisted-no" className="text-sm cursor-pointer">No</Label>
+                                </div>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 ml-4"
+                            onClick={() => setNewB8Comment(prev => ({
+                              ...prev,
+                              'b8-shortlisted': ""
+                            }))}
+                            data-testid="button-b8-shortlisted-comment"
+                          >
+                            <MessageSquare className="h-4 w-4 text-gray-400" />
+                          </Button>
+                        </div>
                       </div>
+
+                      {/* Comments for B8 */}
+                      {(formData.b8Comments['b8-shortlisted']?.length > 0 || newB8Comment['b8-shortlisted'] !== undefined) && (
+                        <div className="ml-4 mb-4 space-y-2">
+                          {formData.b8Comments['b8-shortlisted']?.map((comment) => (
+                            <div key={comment.id} className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                                {editingB8Comment === comment.id ? (
+                                  <Textarea
+                                    value={comment.text}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b8Comments: {
+                                          ...prev.b8Comments,
+                                          'b8-shortlisted': prev.b8Comments['b8-shortlisted']?.map(c => 
+                                            c.id === comment.id ? { ...c, text: e.target.value } : c
+                                          ) || []
+                                        }
+                                      }));
+                                    }}
+                                    onBlur={() => setEditingB8Comment(null)}
+                                    autoFocus
+                                    className="min-h-[80px] w-full"
+                                  />
+                                ) : (
+                                  <div 
+                                    className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                    onClick={() => setEditingB8Comment(comment.id)}
+                                  >
+                                    {comment.text}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b8Comments: {
+                                        ...prev.b8Comments,
+                                        'b8-shortlisted': prev.b8Comments['b8-shortlisted']?.filter(c => c.id !== comment.id) || []
+                                      }
+                                    }));
+                                    if (editingB8Comment === comment.id) {
+                                      setEditingB8Comment(null);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {newB8Comment['b8-shortlisted'] !== undefined && (
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                              <Textarea
+                                value={newB8Comment['b8-shortlisted']}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                  setNewB8Comment(prev => ({ ...prev, 'b8-shortlisted': e.target.value }));
+                                }}
+                                onBlur={() => {
+                                  if (newB8Comment['b8-shortlisted']?.trim()) {
+                                    const commentId = Date.now().toString();
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b8Comments: {
+                                        ...prev.b8Comments,
+                                        'b8-shortlisted': [
+                                          ...(prev.b8Comments['b8-shortlisted'] || []),
+                                          { id: commentId, user: currentUserDisplay, text: newB8Comment['b8-shortlisted'] }
+                                        ]
+                                      }
+                                    }));
+                                  }
+                                  setNewB8Comment(prev => {
+                                    const newState = { ...prev };
+                                    delete newState['b8-shortlisted'];
+                                    return newState;
+                                  });
+                                }}
+                                placeholder="Comment: Add your observations here..."
+                                className="text-blue-600 italic border-blue-200 text-[13px]"
+                                rows={2}
+                                autoFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    
+
                     {/* Attachment button */}
-                    <div className="flex justify-start mt-6">
+                    <div className="flex justify-start">
                       <Button
                         type="button"
                         variant="outline"
@@ -6128,6 +6274,54 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         >
                           Submit
                         </Button>
+                      </div>
+                    </div>
+
+                    {/* Submit for Approval to */}
+                    <div className="pt-4 border-t border-gray-200">
+                      <div className="flex items-center gap-4">
+                        <Label className="text-sm text-gray-600 whitespace-nowrap">Submit for Approval to:</Label>
+                        <div className="relative flex-1 max-w-md">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className="w-full justify-between text-sm font-normal"
+                                data-testid="button-approver-multi-select"
+                              >
+                                {formData.selectedApproversForSubmission.length > 0
+                                  ? `${formData.selectedApproversForSubmission.length} approver(s) selected`
+                                  : "Approver"}
+                                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[350px] p-0" align="start">
+                              <div className="max-h-[300px] overflow-y-auto">
+                                {isLoadingUsers ? (
+                                  <div className="px-3 py-4 text-sm text-gray-500 text-center">Loading approvers...</div>
+                                ) : approverMasterData.length === 0 ? (
+                                  <div className="px-3 py-4 text-sm text-gray-500 text-center">No office users found</div>
+                                ) : (
+                                  approverMasterData.map((approverName: string) => (
+                                    <div
+                                      key={approverName}
+                                      className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
+                                      onClick={() => toggleApproverSelection(approverName)}
+                                      data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                                    >
+                                      <Checkbox
+                                        checked={formData.selectedApproversForSubmission.includes(approverName)}
+                                        className="mr-2"
+                                      />
+                                      <span className="text-sm text-gray-700">{approverName}</span>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       </div>
                     </div>
                   </div>
