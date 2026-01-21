@@ -1261,6 +1261,17 @@ export function useV2CreateScreeningB7TrainingItem() {
   });
 }
 
+export function useV2UpdateScreeningB7TrainingItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ trainItemUuid, b7Uuid, data }: { trainItemUuid: string; b7Uuid: string; data: Partial<ScreeningB7TrainingItem> }) =>
+      putApi<ScreeningB7TrainingItem>(`/screening/b7/training-items/${trainItemUuid}`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7-training-items', variables.b7Uuid] });
+    },
+  });
+}
+
 // Screening B8 Approvers
 export interface ScreeningB8Approver {
   id: number;

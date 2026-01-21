@@ -558,6 +558,15 @@ export class ScreeningB7Repository {
     const results = await db.insert(screeningB7TrainingItems).values(data).returning();
     return results[0];
   }
+
+  async updateTrainingItem(trainItemUuid: string, data: Partial<InsertScreeningB7TrainingItem>): Promise<ScreeningB7TrainingItem | undefined> {
+    const db = getDb();
+    const results = await db.update(screeningB7TrainingItems)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(screeningB7TrainingItems.trainItemUuid, trainItemUuid))
+      .returning();
+    return results[0];
+  }
 }
 
 export class ScreeningB8Repository {

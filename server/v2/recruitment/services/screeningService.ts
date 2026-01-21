@@ -418,6 +418,13 @@ export class ScreeningB7Service {
       updatedByUuid: userUuid,
     } as any);
   }
+
+  async updateTrainingItem(trainItemUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    return screeningB7Repository.updateTrainingItem(trainItemUuid, {
+      ...data,
+      updatedByUuid: userUuid,
+    } as any);
+  }
 }
 
 export class ScreeningB8Service {

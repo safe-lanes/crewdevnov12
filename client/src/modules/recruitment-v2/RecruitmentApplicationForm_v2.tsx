@@ -104,6 +104,7 @@ import {
   useV2UpdateScreeningB6InterviewItem,
   useV2ScreeningB7TrainingItems,
   useV2CreateScreeningB7TrainingItem,
+  useV2UpdateScreeningB7TrainingItem,
   useV2ScreeningB8Approvers,
   useV2CreateScreeningB8Approver,
   useV2ScreeningB1Comments,
@@ -659,6 +660,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const createB6InterviewItemMutation = useV2CreateScreeningB6InterviewItem();
   const updateB6InterviewItemMutation = useV2UpdateScreeningB6InterviewItem();
   const createB7TrainingItemMutation = useV2CreateScreeningB7TrainingItem();
+  const updateB7TrainingItemMutation = useV2UpdateScreeningB7TrainingItem();
   const createB8ApproverMutation = useV2CreateScreeningB8Approver();
 
   const createB1CommentMutation = useV2CreateScreeningB1Comment();
@@ -1381,6 +1383,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           decision: approver.decision || '',
           remarks: approver.remarks || '',
         })),
+        // Also populate selectedApproversForSubmission for the checkbox UI
+        selectedApproversForSubmission: screeningB8Approvers
+          .map(approver => approver.approverName)
+          .filter((name): name is string => !!name),
       }));
     }
   }, [screeningB8Approvers]);
@@ -2643,7 +2649,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       const serverB7TrainingMap = new Map((screeningB7TrainingItems || []).map(t => [t.trainItemUuid, t.id]));
       for (const training of formData.b7TrainingNeeds) {
-        if (!serverB7TrainingMap.has(training.id) && currentB7Uuid) {
+        if (serverB7TrainingMap.has(training.id) && currentB7Uuid) {
+          // Update existing training item
+          await updateB7TrainingItemMutation.mutateAsync({
+            trainItemUuid: training.id,
+            b7Uuid: currentB7Uuid,
+            data: {
+              training: training.training || undefined,
+              category: training.category || undefined,
+              identifiedByUuid: training.identifiedBy || undefined,
+              dueDate: training.dueDate || undefined,
+              comments: training.comments || undefined,
+            },
+          });
+        } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate)) {
+          // Create new training item
           await createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {

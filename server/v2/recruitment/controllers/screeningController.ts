@@ -506,6 +506,20 @@ export const screeningB7Controller = {
       res.status(500).json({ error: "Failed to create B7 training item" });
     }
   },
+
+  async updateTrainingItem(req: Request, res: Response) {
+    try {
+      const { trainItemUuid } = req.params;
+      const result = await screeningB7Service.updateTrainingItem(trainItemUuid, req.body);
+      if (!result) {
+        return res.status(404).json({ error: "B7 training item not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating B7 training item:", error);
+      res.status(500).json({ error: "Failed to update B7 training item" });
+    }
+  },
 };
 
 export const screeningB8Controller = {

@@ -195,6 +195,7 @@ router.get("/candidates/:recCanUuid/screening/b7", screeningB7Controller.get);
 router.put("/candidates/:recCanUuid/screening/b7", screeningB7Controller.upsert);
 router.get("/screening/b7/:b7Uuid/training-items", screeningB7Controller.getTrainingItems);
 router.post("/screening/b7/:b7Uuid/training-items", screeningB7Controller.createTrainingItem);
+router.put("/screening/b7/training-items/:trainItemUuid", screeningB7Controller.updateTrainingItem);
 
 router.get("/candidates/:recCanUuid/screening/b8", screeningB8Controller.get);
 router.put("/candidates/:recCanUuid/screening/b8", screeningB8Controller.upsert);
