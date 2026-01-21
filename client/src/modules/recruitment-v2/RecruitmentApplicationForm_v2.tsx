@@ -3279,30 +3279,39 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             </div>
           </div>
 
-          {formData.children.length > 0 && (
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <Label className="text-xs text-gray-500 tracking-wide">Children</Label>
-                {isEditing && (
-                  <Button variant="outline" size="sm" onClick={addChild} data-testid="button-add-child">
-                    <Plus className="h-4 w-4 mr-1" /> Add Child
-                  </Button>
-                )}
-              </div>
-              <Table className="w-full">
-                <TableHeader>
-                  <TableRow className="bg-gray-100">
-                    <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">First Name</TableHead>
-                    <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Middle Name</TableHead>
-                    <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Family Name</TableHead>
-                    <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Birth</TableHead>
-                    <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Gender</TableHead>
-                    {isEditing && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-16">Actions</TableHead>}
+          {/* Children Information Section */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <Label className="text-xs text-gray-500 tracking-wide">Children Information</Label>
+              {isEditing && (
+                <Button variant="outline" size="sm" onClick={addChild} data-testid="button-add-child">
+                  <Plus className="h-4 w-4 mr-1" /> Add Child
+                </Button>
+              )}
+            </div>
+            <Table className="w-full">
+              <TableHeader>
+                <TableRow className="bg-gray-100">
+                  <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-16">S.No</TableHead>
+                  <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">First Name</TableHead>
+                  <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Middle Name</TableHead>
+                  <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Family Name</TableHead>
+                  <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Birth</TableHead>
+                  <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Gender</TableHead>
+                  {isEditing && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-16">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {formData.children.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={isEditing ? 7 : 6} className="p-3 text-center text-gray-400 text-[13px]">
+                      No children added
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {formData.children.map((child) => (
+                ) : (
+                  formData.children.map((child, index) => (
                     <TableRow key={child.id} className="border-b border-gray-200">
+                      <TableCell className="p-3 text-[13px]">{index + 1}</TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
                           <Input value={child.firstName} onChange={(e) => updateChild(child.id, 'firstName', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
@@ -3354,77 +3363,71 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         </TableCell>
                       )}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* NOK Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Row 1: NOK: First Name, NOK: Middle Name, NOK: Family Name, NOK: Email */}
+            <div>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: First Name</Label>
+              {isEditing ? (
+                <Input value={formData.nokFirstName} onChange={(e) => updateFormData('nokFirstName', e.target.value)} className="mt-1" data-testid="input-nok-first-name" />
+              ) : (
+                <div className="mt-1 text-sm text-gray-900">{formData.nokFirstName}</div>
+              )}
             </div>
-          )}
-
-          {isEditing && formData.children.length === 0 && (
-            <Button variant="outline" size="sm" onClick={addChild} data-testid="button-add-first-child">
-              <Plus className="h-4 w-4 mr-1" /> Add Child
-            </Button>
-          )}
-
-          <div className="border-t pt-4 mt-4">
-            <h4 className="text-sm font-medium mb-3" style={{ color: '#16569e' }}>Next of Kin</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
-                {isEditing ? (
-                  <Input value={formData.nokFirstName} onChange={(e) => updateFormData('nokFirstName', e.target.value)} className="mt-1" data-testid="input-nok-first-name" />
-                ) : (
-                  <div className="mt-1 text-sm text-gray-900">{formData.nokFirstName}</div>
-                )}
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500 tracking-wide">Middle Name</Label>
-                {isEditing ? (
-                  <Input value={formData.nokMiddleName} onChange={(e) => updateFormData('nokMiddleName', e.target.value)} className="mt-1" data-testid="input-nok-middle-name" />
-                ) : (
-                  <div className="mt-1 text-sm text-gray-900">{formData.nokMiddleName}</div>
-                )}
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500 tracking-wide">Family Name</Label>
-                {isEditing ? (
-                  <Input value={formData.nokFamilyName} onChange={(e) => updateFormData('nokFamilyName', e.target.value)} className="mt-1" data-testid="input-nok-family-name" />
-                ) : (
-                  <div className="mt-1 text-sm text-gray-900">{formData.nokFamilyName}</div>
-                )}
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500 tracking-wide">Relationship</Label>
-                {isEditing ? (
-                  <Input value={formData.nokRelationship} onChange={(e) => updateFormData('nokRelationship', e.target.value)} className="mt-1" data-testid="input-nok-relationship" />
-                ) : (
-                  <div className="mt-1 text-sm text-gray-900">{formData.nokRelationship}</div>
-                )}
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500 tracking-wide">Telephone</Label>
-                {isEditing ? (
-                  <Input value={formData.nokTelephone} onChange={(e) => updateFormData('nokTelephone', e.target.value)} className="mt-1" data-testid="input-nok-telephone" />
-                ) : (
-                  <div className="mt-1 text-sm text-gray-900">{formData.nokTelephone}</div>
-                )}
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500 tracking-wide">Email</Label>
-                {isEditing ? (
-                  <Input type="email" value={formData.nokEmail} onChange={(e) => updateFormData('nokEmail', e.target.value)} className="mt-1" data-testid="input-nok-email" />
-                ) : (
-                  <div className="mt-1 text-sm text-gray-900">{formData.nokEmail}</div>
-                )}
-              </div>
-              <div className="sm:col-span-2">
-                <Label className="text-xs text-gray-500 tracking-wide">Address</Label>
-                {isEditing ? (
-                  <Input value={formData.nokAddress} onChange={(e) => updateFormData('nokAddress', e.target.value)} className="mt-1" data-testid="input-nok-address" />
-                ) : (
-                  <div className="mt-1 text-sm text-gray-900">{formData.nokAddress}</div>
-                )}
-              </div>
+            <div>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Middle Name</Label>
+              {isEditing ? (
+                <Input value={formData.nokMiddleName} onChange={(e) => updateFormData('nokMiddleName', e.target.value)} className="mt-1" data-testid="input-nok-middle-name" />
+              ) : (
+                <div className="mt-1 text-sm text-gray-900">{formData.nokMiddleName}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Family Name</Label>
+              {isEditing ? (
+                <Input value={formData.nokFamilyName} onChange={(e) => updateFormData('nokFamilyName', e.target.value)} className="mt-1" data-testid="input-nok-family-name" />
+              ) : (
+                <div className="mt-1 text-sm text-gray-900">{formData.nokFamilyName}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Email</Label>
+              {isEditing ? (
+                <Input type="email" value={formData.nokEmail} onChange={(e) => updateFormData('nokEmail', e.target.value)} className="mt-1" data-testid="input-nok-email" />
+              ) : (
+                <div className="mt-1 text-sm text-gray-900">{formData.nokEmail}</div>
+              )}
+            </div>
+            {/* Row 2: NOK: Address, NOK: Relationship, NOK: Tel */}
+            <div>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Address</Label>
+              {isEditing ? (
+                <Input value={formData.nokAddress} onChange={(e) => updateFormData('nokAddress', e.target.value)} className="mt-1" data-testid="input-nok-address" />
+              ) : (
+                <div className="mt-1 text-sm text-gray-900">{formData.nokAddress}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Relationship</Label>
+              {isEditing ? (
+                <Input value={formData.nokRelationship} onChange={(e) => updateFormData('nokRelationship', e.target.value)} className="mt-1" data-testid="input-nok-relationship" />
+              ) : (
+                <div className="mt-1 text-sm text-gray-900">{formData.nokRelationship}</div>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500 tracking-wide">NOK: Tel</Label>
+              {isEditing ? (
+                <Input value={formData.nokTelephone} onChange={(e) => updateFormData('nokTelephone', e.target.value)} className="mt-1" data-testid="input-nok-telephone" />
+              ) : (
+                <div className="mt-1 text-sm text-gray-900">{formData.nokTelephone}</div>
+              )}
             </div>
           </div>
         </div>
