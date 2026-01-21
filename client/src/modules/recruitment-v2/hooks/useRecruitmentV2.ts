@@ -555,7 +555,7 @@ export function useV2SaveScreeningB1() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB1> }) =>
-      postApi<ScreeningB1>(`/candidates/${recCanUuid}/screening/b1`, data),
+      putApi<ScreeningB1>(`/candidates/${recCanUuid}/screening/b1`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b1', variables.recCanUuid] });
     },
@@ -574,7 +574,7 @@ export function useV2SaveScreeningB2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB2> }) =>
-      postApi<ScreeningB2>(`/candidates/${recCanUuid}/screening/b2`, data),
+      putApi<ScreeningB2>(`/candidates/${recCanUuid}/screening/b2`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b2', variables.recCanUuid] });
     },
@@ -593,7 +593,7 @@ export function useV2SaveScreeningB3() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB3> }) =>
-      postApi<ScreeningB3>(`/candidates/${recCanUuid}/screening/b3`, data),
+      putApi<ScreeningB3>(`/candidates/${recCanUuid}/screening/b3`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b3', variables.recCanUuid] });
     },
@@ -612,7 +612,7 @@ export function useV2SaveScreeningB4() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB4> }) =>
-      postApi<ScreeningB4>(`/candidates/${recCanUuid}/screening/b4`, data),
+      putApi<ScreeningB4>(`/candidates/${recCanUuid}/screening/b4`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b4', variables.recCanUuid] });
     },
@@ -631,7 +631,7 @@ export function useV2SaveScreeningB5() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB5> }) =>
-      postApi<ScreeningB5>(`/candidates/${recCanUuid}/screening/b5`, data),
+      putApi<ScreeningB5>(`/candidates/${recCanUuid}/screening/b5`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b5', variables.recCanUuid] });
     },
@@ -650,7 +650,7 @@ export function useV2SaveScreeningB6() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB6> }) =>
-      postApi<ScreeningB6>(`/candidates/${recCanUuid}/screening/b6`, data),
+      putApi<ScreeningB6>(`/candidates/${recCanUuid}/screening/b6`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b6', variables.recCanUuid] });
     },
@@ -669,7 +669,7 @@ export function useV2SaveScreeningB7() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB7> }) =>
-      postApi<ScreeningB7>(`/candidates/${recCanUuid}/screening/b7`, data),
+      putApi<ScreeningB7>(`/candidates/${recCanUuid}/screening/b7`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b7', variables.recCanUuid] });
     },
@@ -688,7 +688,7 @@ export function useV2SaveScreeningB8() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<ScreeningB8> }) =>
-      postApi<ScreeningB8>(`/candidates/${recCanUuid}/screening/b8`, data),
+      putApi<ScreeningB8>(`/candidates/${recCanUuid}/screening/b8`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'screening-b8', variables.recCanUuid] });
     },
