@@ -2087,10 +2087,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
       }
       
+      // OPTIMIZED: Save all section items in parallel for better performance
       const serverDocMap = new Map((documentsData || []).map(d => [d.docUuid, d.id]));
       const localDocIds = new Set(formData.documents.map(d => d.id));
-      
-      for (const doc of formData.documents) {
+      const serverVisaMap = new Map((visasData || []).map(v => [v.visaUuid, v.id]));
+      const localVisaIds = new Set(formData.visas.map(v => v.id));
+      const serverEduMap = new Map((educationData || []).map(e => [e.eduUuid, e.id]));
+      const localEduIds = new Set(formData.education.map(e => e.id));
+      const serverLicMap = new Map((licensesData || []).map(l => [l.licUuid, l.id]));
+      const localLicIds = new Set(formData.licenses.map(l => l.id));
+      const serverTrainMap = new Map((trainingData || []).map(t => [t.trainUuid, t.id]));
+      const localTrainIds = new Set(formData.trainingCourses.map(t => t.id));
+      const serverSeaMap = new Map((seaServiceData || []).map(s => [s.seaUuid, s.id]));
+      const localSeaIds = new Set(formData.seaService.map(s => s.id));
+
+      // Build all save/update promises for parallel execution
+      const allSavePromises: Promise<any>[] = [];
+
+      // Documents
+      formData.documents.forEach((doc, index) => {
         const docPayload = {
           documentId: doc.documentId || undefined,
           documentName: doc.document || undefined,
@@ -2098,110 +2113,53 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           issued: doc.issued || undefined,
           expiry: doc.expiry || undefined,
           issuingAuthority: doc.issuingAuthority || undefined,
-          sortOrder: formData.documents.indexOf(doc),
+          sortOrder: index,
         };
-        
         const serverNumericId = serverDocMap.get(doc.id);
         if (serverNumericId !== undefined) {
-          await updateDocumentMutation.mutateAsync({
-            id: serverNumericId,
-            data: docPayload,
-            recCanUuid: currentUuid,
-          });
+          allSavePromises.push(updateDocumentMutation.mutateAsync({ id: serverNumericId, data: docPayload, recCanUuid: currentUuid }));
         } else {
-          await saveDocumentMutation.mutateAsync({
-            recCanUuid: currentUuid,
-            data: docPayload,
-          });
+          allSavePromises.push(saveDocumentMutation.mutateAsync({ recCanUuid: currentUuid, data: docPayload }));
         }
-      }
-      
-      for (const serverDoc of (documentsData || [])) {
-        if (!localDocIds.has(serverDoc.docUuid) && serverDoc.id) {
-          await deleteDocumentMutation.mutateAsync({
-            id: serverDoc.id,
-            recCanUuid: currentUuid,
-          });
-        }
-      }
-      
-      const serverVisaMap = new Map((visasData || []).map(v => [v.visaUuid, v.id]));
-      const localVisaIds = new Set(formData.visas.map(v => v.id));
-      
-      for (const visa of formData.visas) {
+      });
+
+      // Visas
+      formData.visas.forEach((visa, index) => {
         const visaPayload = {
           countryUuid: visa.countryId || visa.issuingCountry || undefined,
           serialNo: visa.serialNo || undefined,
           issued: visa.issued || undefined,
           expiry: visa.expiry || undefined,
           visaType: visa.visaType || undefined,
-          sortOrder: formData.visas.indexOf(visa),
+          sortOrder: index,
         };
-        
         const serverNumericId = serverVisaMap.get(visa.id);
         if (serverNumericId !== undefined) {
-          await updateVisaMutation.mutateAsync({
-            id: serverNumericId,
-            data: visaPayload,
-            recCanUuid: currentUuid,
-          });
+          allSavePromises.push(updateVisaMutation.mutateAsync({ id: serverNumericId, data: visaPayload, recCanUuid: currentUuid }));
         } else {
-          await saveVisaMutation.mutateAsync({
-            recCanUuid: currentUuid,
-            data: visaPayload,
-          });
+          allSavePromises.push(saveVisaMutation.mutateAsync({ recCanUuid: currentUuid, data: visaPayload }));
         }
-      }
-      
-      for (const serverVisa of (visasData || [])) {
-        if (!localVisaIds.has(serverVisa.visaUuid) && serverVisa.id) {
-          await deleteVisaMutation.mutateAsync({
-            id: serverVisa.id,
-            recCanUuid: currentUuid,
-          });
-        }
-      }
-      
-      const serverEduMap = new Map((educationData || []).map(e => [e.eduUuid, e.id]));
-      const localEduIds = new Set(formData.education.map(e => e.id));
-      
-      for (const edu of formData.education) {
+      });
+
+      // Education
+      formData.education.forEach((edu, index) => {
         const eduPayload = {
           dateOfCompletion: edu.dateOfCompletion || undefined,
           institution: edu.schoolCollegeUniversity || undefined,
           subjectsField: edu.subjectsField || undefined,
           qualifications: edu.qualifications || undefined,
-          sortOrder: formData.education.indexOf(edu),
+          sortOrder: index,
         };
-        
         const serverNumericId = serverEduMap.get(edu.id);
         if (serverNumericId !== undefined) {
-          await updateEducationMutation.mutateAsync({
-            id: serverNumericId,
-            data: eduPayload,
-            recCanUuid: currentUuid,
-          });
+          allSavePromises.push(updateEducationMutation.mutateAsync({ id: serverNumericId, data: eduPayload, recCanUuid: currentUuid }));
         } else {
-          await saveEducationMutation.mutateAsync({
-            recCanUuid: currentUuid,
-            data: eduPayload,
-          });
+          allSavePromises.push(saveEducationMutation.mutateAsync({ recCanUuid: currentUuid, data: eduPayload }));
         }
-      }
-      
-      for (const serverEdu of (educationData || [])) {
-        if (!localEduIds.has(serverEdu.eduUuid) && serverEdu.id) {
-          await deleteEducationMutation.mutateAsync({
-            id: serverEdu.id,
-            recCanUuid: currentUuid,
-          });
-        }
-      }
-      
-      const serverLicMap = new Map((licensesData || []).map(l => [l.licUuid, l.id]));
-      const localLicIds = new Set(formData.licenses.map(l => l.id));
-      
-      for (const lic of formData.licenses) {
+      });
+
+      // Licenses
+      formData.licenses.forEach((lic, index) => {
         const licPayload = {
           licenseId: lic.licenseId || undefined,
           certificateDocument: lic.certificateDocument || undefined,
@@ -2211,37 +2169,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           issuingAuthority: lic.issuingAuthority || undefined,
           issued: lic.issued || undefined,
           expiry: lic.expiry || undefined,
-          sortOrder: formData.licenses.indexOf(lic),
+          sortOrder: index,
         };
-        
         const serverNumericId = serverLicMap.get(lic.id);
         if (serverNumericId !== undefined) {
-          await updateLicenseMutation.mutateAsync({
-            id: serverNumericId,
-            data: licPayload,
-            recCanUuid: currentUuid,
-          });
+          allSavePromises.push(updateLicenseMutation.mutateAsync({ id: serverNumericId, data: licPayload, recCanUuid: currentUuid }));
         } else {
-          await saveLicenseMutation.mutateAsync({
-            recCanUuid: currentUuid,
-            data: licPayload,
-          });
+          allSavePromises.push(saveLicenseMutation.mutateAsync({ recCanUuid: currentUuid, data: licPayload }));
         }
-      }
-      
-      for (const serverLic of (licensesData || [])) {
-        if (!localLicIds.has(serverLic.licUuid) && serverLic.id) {
-          await deleteLicenseMutation.mutateAsync({
-            id: serverLic.id,
-            recCanUuid: currentUuid,
-          });
-        }
-      }
-      
-      const serverTrainMap = new Map((trainingData || []).map(t => [t.trainUuid, t.id]));
-      const localTrainIds = new Set(formData.trainingCourses.map(t => t.id));
-      
-      for (const train of formData.trainingCourses) {
+      });
+
+      // Training
+      formData.trainingCourses.forEach((train, index) => {
         const trainPayload = {
           courseId: train.courseId || undefined,
           trainingCourse: train.trainingCourse || undefined,
@@ -2251,37 +2190,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           issuingAuthority: train.issuingAuthority || undefined,
           issued: train.issued || undefined,
           expiry: train.expiry || undefined,
-          sortOrder: formData.trainingCourses.indexOf(train),
+          sortOrder: index,
         };
-        
         const serverNumericId = serverTrainMap.get(train.id);
         if (serverNumericId !== undefined) {
-          await updateTrainingMutation.mutateAsync({
-            id: serverNumericId,
-            data: trainPayload,
-            recCanUuid: currentUuid,
-          });
+          allSavePromises.push(updateTrainingMutation.mutateAsync({ id: serverNumericId, data: trainPayload, recCanUuid: currentUuid }));
         } else {
-          await saveTrainingMutation.mutateAsync({
-            recCanUuid: currentUuid,
-            data: trainPayload,
-          });
+          allSavePromises.push(saveTrainingMutation.mutateAsync({ recCanUuid: currentUuid, data: trainPayload }));
         }
-      }
-      
-      for (const serverTrain of (trainingData || [])) {
-        if (!localTrainIds.has(serverTrain.trainUuid) && serverTrain.id) {
-          await deleteTrainingMutation.mutateAsync({
-            id: serverTrain.id,
-            recCanUuid: currentUuid,
-          });
-        }
-      }
-      
-      const serverSeaMap = new Map((seaServiceData || []).map(s => [s.seaUuid, s.id]));
-      const localSeaIds = new Set(formData.seaService.map(s => s.id));
-      
-      for (const sea of formData.seaService) {
+      });
+
+      // Sea Service
+      formData.seaService.forEach((sea, index) => {
         const seaPayload = {
           vesselName: sea.vesselName || undefined,
           vesselTypeUuid: sea.vesselType || undefined,
@@ -2292,75 +2212,102 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           fromDate: sea.from || undefined,
           toDate: sea.to || undefined,
           periodMonths: sea.periodMonths || undefined,
-          sortOrder: formData.seaService.indexOf(sea),
+          sortOrder: index,
         };
-        
         const serverNumericId = serverSeaMap.get(sea.id);
         if (serverNumericId !== undefined) {
-          await updateSeaServiceMutation.mutateAsync({
-            id: serverNumericId,
-            data: seaPayload,
-            recCanUuid: currentUuid,
-          });
+          allSavePromises.push(updateSeaServiceMutation.mutateAsync({ id: serverNumericId, data: seaPayload, recCanUuid: currentUuid }));
         } else {
-          await saveSeaServiceMutation.mutateAsync({
-            recCanUuid: currentUuid,
-            data: seaPayload,
-          });
+          allSavePromises.push(saveSeaServiceMutation.mutateAsync({ recCanUuid: currentUuid, data: seaPayload }));
         }
-      }
+      });
+
+      // Execute all saves in parallel
+      await Promise.all(allSavePromises);
+
+      // Build all delete promises for parallel execution
+      const allDeletePromises: Promise<any>[] = [];
       
-      for (const serverSea of (seaServiceData || [])) {
+      (documentsData || []).forEach(serverDoc => {
+        if (!localDocIds.has(serverDoc.docUuid) && serverDoc.id) {
+          allDeletePromises.push(deleteDocumentMutation.mutateAsync({ id: serverDoc.id, recCanUuid: currentUuid }));
+        }
+      });
+      (visasData || []).forEach(serverVisa => {
+        if (!localVisaIds.has(serverVisa.visaUuid) && serverVisa.id) {
+          allDeletePromises.push(deleteVisaMutation.mutateAsync({ id: serverVisa.id, recCanUuid: currentUuid }));
+        }
+      });
+      (educationData || []).forEach(serverEdu => {
+        if (!localEduIds.has(serverEdu.eduUuid) && serverEdu.id) {
+          allDeletePromises.push(deleteEducationMutation.mutateAsync({ id: serverEdu.id, recCanUuid: currentUuid }));
+        }
+      });
+      (licensesData || []).forEach(serverLic => {
+        if (!localLicIds.has(serverLic.licUuid) && serverLic.id) {
+          allDeletePromises.push(deleteLicenseMutation.mutateAsync({ id: serverLic.id, recCanUuid: currentUuid }));
+        }
+      });
+      (trainingData || []).forEach(serverTrain => {
+        if (!localTrainIds.has(serverTrain.trainUuid) && serverTrain.id) {
+          allDeletePromises.push(deleteTrainingMutation.mutateAsync({ id: serverTrain.id, recCanUuid: currentUuid }));
+        }
+      });
+      (seaServiceData || []).forEach(serverSea => {
         if (!localSeaIds.has(serverSea.seaUuid) && serverSea.id) {
-          await deleteSeaServiceMutation.mutateAsync({
-            id: serverSea.id,
-            recCanUuid: currentUuid,
-          });
+          allDeletePromises.push(deleteSeaServiceMutation.mutateAsync({ id: serverSea.id, recCanUuid: currentUuid }));
         }
-      }
+      });
       
+      // Execute all deletes in parallel
+      await Promise.all(allDeletePromises);
+      
+      // Additional Info - save in parallel
       const serverInfoMap = new Map((additionalInfoData || []).map(a => [a.infoUuid, a.id]));
       const localInfoIds = new Set(formData.additionalInfo.map(a => a.id));
+      const infoSavePromises: Promise<any>[] = [];
       
-      for (const info of formData.additionalInfo) {
+      formData.additionalInfo.forEach((info, index) => {
         const infoPayload = {
           information: info.information || undefined,
           response: info.response || undefined,
-          sortOrder: formData.additionalInfo.indexOf(info),
+          sortOrder: index,
         };
         
         const serverNumericId = serverInfoMap.get(info.id);
         if (serverNumericId !== undefined) {
-          await updateAdditionalInfoMutation.mutateAsync({
+          infoSavePromises.push(updateAdditionalInfoMutation.mutateAsync({
             id: serverNumericId,
             data: infoPayload,
             recCanUuid: currentUuid,
-          });
+          }));
         } else {
-          await saveAdditionalInfoMutation.mutateAsync({
+          infoSavePromises.push(saveAdditionalInfoMutation.mutateAsync({
             recCanUuid: currentUuid,
             data: infoPayload,
-          });
+          }));
         }
-      }
+      });
       
-      for (const serverInfo of (additionalInfoData || [])) {
+      const infoDeletePromises: Promise<any>[] = [];
+      (additionalInfoData || []).forEach(serverInfo => {
         if (!localInfoIds.has(serverInfo.infoUuid) && serverInfo.id) {
-          await deleteAdditionalInfoMutation.mutateAsync({
+          infoDeletePromises.push(deleteAdditionalInfoMutation.mutateAsync({
             id: serverInfo.id,
             recCanUuid: currentUuid,
-          });
+          }));
         }
-      }
+      });
       
-      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'documents', currentUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'visas', currentUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'education', currentUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'licenses', currentUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'training-courses', currentUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'sea-service', currentUuid] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'additional-info', currentUuid] });
+      await Promise.all([...infoSavePromises, ...infoDeletePromises]);
+      
+      // Batch invalidate all queries
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey[0] === 'v2' && 
+          query.queryKey.includes(currentUuid)
+      });
       
       toast({
         title: "Saved",
