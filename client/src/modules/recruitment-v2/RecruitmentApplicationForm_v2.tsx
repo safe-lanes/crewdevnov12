@@ -2037,50 +2037,68 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             rankMeetsCriteria: formData.b1RankMeetsCriteria || undefined,
             certificatesValid: formData.b1CertificatesValid || undefined,
             shortlisted: formData.b1Shortlisted || undefined,
-          },
+            submittedByUuid: formData.b1SubmittedBy || undefined,
+            submittedDate: formData.b1SubmittedDate || undefined,
+          } as any,
         }),
         saveScreeningB2Mutation.mutateAsync({
           recCanUuid,
           data: {
             referencesCompleted: formData.b2ReferencesCompleted || undefined,
             employerFeedback: formData.b2EmployerFeedback || undefined,
-          },
+            submittedByUuid: formData.b2SubmittedBy || undefined,
+            submittedDate: formData.b2SubmittedDate || undefined,
+          } as any,
         }),
         saveScreeningB3Mutation.mutateAsync({
           recCanUuid,
           data: {
             checksCompleted: formData.b3ChecksCompleted || undefined,
             results: formData.b3Results || undefined,
-          },
+            submittedByUuid: formData.b3SubmittedBy || undefined,
+            submittedDate: formData.b3SubmittedDate || undefined,
+          } as any,
         }),
         saveScreeningB4Mutation.mutateAsync({
           recCanUuid,
           data: {
             certificatesAuthenticated: formData.b4CertificatesAuthenticated || undefined,
             results: formData.b4Results || undefined,
-          },
+            submittedByUuid: formData.b4SubmittedBy || undefined,
+            submittedDate: formData.b4SubmittedDate || undefined,
+          } as any,
         }),
         saveScreeningB5Mutation.mutateAsync({
           recCanUuid,
           data: {
             testsCompleted: formData.b5TestsCompleted || undefined,
-          },
+            submittedByUuid: formData.b5SubmittedBy || undefined,
+            submittedDate: formData.b5SubmittedDate || undefined,
+          } as any,
         }),
         saveScreeningB6Mutation.mutateAsync({
           recCanUuid,
           data: {
             interviewCompleted: formData.b6InterviewCompleted || undefined,
-          },
+            submittedByUuid: formData.b6SubmittedBy || undefined,
+            submittedDate: formData.b6SubmittedDate || undefined,
+          } as any,
         }),
         saveScreeningB7Mutation.mutateAsync({
           recCanUuid,
-          data: {},
+          data: {
+            submittedByUuid: formData.b7SubmittedBy || undefined,
+            submittedDate: formData.b7SubmittedDate || undefined,
+          } as any,
         }),
         saveScreeningB8Mutation.mutateAsync({
           recCanUuid,
           data: {
             shortlisted: formData.b8Shortlisted || undefined,
-          },
+            submittedByUuid: formData.b8SubmittedBy || undefined,
+            submittedDate: formData.b8SubmittedDate || undefined,
+            selectedApprovers: JSON.stringify(formData.selectedApproversForSubmission || []),
+          } as any,
         }),
       ]);
 
@@ -2157,50 +2175,48 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
+      // Save B6 interviews from UI (formData.b6Interviews has: date, interviewer, status, result, comments)
       const serverB6InterviewMap = new Map((screeningB6InterviewItems || []).map(i => [i.interviewItemUuid, i.id]));
-      for (const interview of formData.b6InterviewItems) {
+      for (const interview of formData.b6Interviews) {
         if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid) {
           await createB6InterviewItemMutation.mutateAsync({
             b6Uuid: currentB6Uuid,
             data: {
-              interviewerName: interview.interviewerName || undefined,
-              interviewDate: interview.interviewDate || undefined,
-              interviewType: interview.interviewType || undefined,
+              interviewerName: interview.interviewer || undefined,
+              interviewDate: interview.date || undefined,
+              interviewType: interview.status || undefined,
               result: interview.result || undefined,
-              remarks: interview.remarks || undefined,
+              remarks: interview.comments || undefined,
             },
           });
         }
       }
 
+      // Save B7 training needs from UI (formData.b7TrainingNeeds has: training, identifiedBy, category, dueDate, comments)
       const serverB7TrainingMap = new Map((screeningB7TrainingItems || []).map(t => [t.trainingItemUuid, t.id]));
       for (const training of formData.b7TrainingNeeds) {
         if (!serverB7TrainingMap.has(training.id) && currentB7Uuid) {
           await createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {
-              trainingName: training.trainingName || undefined,
-              trainingType: training.trainingType || undefined,
-              provider: training.provider || undefined,
-              scheduledDate: training.scheduledDate || undefined,
-              status: training.status || undefined,
-              remarks: training.remarks || undefined,
+              trainingName: training.training || undefined,
+              trainingType: training.category || undefined,
+              provider: training.identifiedBy || undefined,
+              scheduledDate: training.dueDate || undefined,
+              remarks: training.comments || undefined,
             },
           });
         }
       }
 
-      const serverB8ApproverMap = new Map((screeningB8Approvers || []).map(a => [a.approverUuid, a.id]));
-      for (const approver of formData.b8SelectedApprovers) {
-        if (!serverB8ApproverMap.has(approver.id) && currentB8Uuid) {
+      // Save B8 approvers from UI (formData.selectedApproversForSubmission is a string array of approver names)
+      const serverB8ApproverMap = new Map((screeningB8Approvers || []).map(a => [a.approverName, a.id]));
+      for (const approverName of formData.selectedApproversForSubmission) {
+        if (!serverB8ApproverMap.has(approverName) && currentB8Uuid) {
           await createB8ApproverMutation.mutateAsync({
             b8Uuid: currentB8Uuid,
             data: {
-              approverName: approver.approverName || undefined,
-              approverRole: approver.approverRole || undefined,
-              approvalDate: approver.approvalDate || undefined,
-              decision: approver.decision || undefined,
-              remarks: approver.remarks || undefined,
+              approverName: approverName || undefined,
             },
           });
         }
