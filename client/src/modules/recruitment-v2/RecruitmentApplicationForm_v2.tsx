@@ -3795,6 +3795,102 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     </div>
                   </div>
 
+                  {/* Comments for B2.1 */}
+                  {(formData.b2Comments['b2-ref']?.length > 0 || newB2Comment['b2-ref'] !== undefined) && (
+                    <div className="mb-4 space-y-2">
+                      {formData.b2Comments['b2-ref']?.map((comment) => (
+                        <div key={comment.id} className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                            {editingB2Comment === comment.id ? (
+                              <Textarea
+                                value={comment.text}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b2Comments: {
+                                      ...prev.b2Comments,
+                                      'b2-ref': prev.b2Comments['b2-ref']?.map(c => 
+                                        c.id === comment.id ? { ...c, text: e.target.value } : c
+                                      ) || []
+                                    }
+                                  }));
+                                }}
+                                onBlur={() => setEditingB2Comment(null)}
+                                autoFocus
+                                className="min-h-[80px] w-full"
+                              />
+                            ) : (
+                              <div 
+                                className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                onClick={() => setEditingB2Comment(comment.id)}
+                              >
+                                {comment.text}
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  b2Comments: {
+                                    ...prev.b2Comments,
+                                    'b2-ref': prev.b2Comments['b2-ref']?.filter(c => c.id !== comment.id) || []
+                                  }
+                                }));
+                                if (editingB2Comment === comment.id) {
+                                  setEditingB2Comment(null);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {newB2Comment['b2-ref'] !== undefined && (
+                        <div>
+                          <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                          <Textarea
+                            value={newB2Comment['b2-ref']}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                              setNewB2Comment(prev => ({ ...prev, 'b2-ref': e.target.value }));
+                            }}
+                            onBlur={() => {
+                              if (newB2Comment['b2-ref']?.trim()) {
+                                const commentId = Date.now().toString();
+                                setFormData(prev => ({
+                                  ...prev,
+                                  b2Comments: {
+                                    ...prev.b2Comments,
+                                    'b2-ref': [
+                                      ...(prev.b2Comments['b2-ref'] || []),
+                                      { id: commentId, user: currentUserDisplay, text: newB2Comment['b2-ref'] }
+                                    ]
+                                  }
+                                }));
+                              }
+                              setNewB2Comment(prev => {
+                                const newState = { ...prev };
+                                delete newState['b2-ref'];
+                                return newState;
+                              });
+                            }}
+                            placeholder="Comment: Add your observations here..."
+                            className="text-blue-600 italic border-blue-200 text-[13px]"
+                            rows={2}
+                            autoFocus
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Reference check entry fields - only show when B2.1 is Yes */}
                   {formData.b2ReferencesCompleted === 'yes' && (
                       <div className="mb-4 space-y-3">
@@ -3940,6 +4036,102 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       </Button>
                     </div>
                   </div>
+
+                  {/* Comments for B2.2 */}
+                  {(formData.b2Comments['b2-fb']?.length > 0 || newB2Comment['b2-fb'] !== undefined) && (
+                    <div className="mb-4 space-y-2">
+                      {formData.b2Comments['b2-fb']?.map((comment) => (
+                        <div key={comment.id} className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                            {editingB2Comment === comment.id ? (
+                              <Textarea
+                                value={comment.text}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b2Comments: {
+                                      ...prev.b2Comments,
+                                      'b2-fb': prev.b2Comments['b2-fb']?.map(c => 
+                                        c.id === comment.id ? { ...c, text: e.target.value } : c
+                                      ) || []
+                                    }
+                                  }));
+                                }}
+                                onBlur={() => setEditingB2Comment(null)}
+                                autoFocus
+                                className="min-h-[80px] w-full"
+                              />
+                            ) : (
+                              <div 
+                                className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                onClick={() => setEditingB2Comment(comment.id)}
+                              >
+                                {comment.text}
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  b2Comments: {
+                                    ...prev.b2Comments,
+                                    'b2-fb': prev.b2Comments['b2-fb']?.filter(c => c.id !== comment.id) || []
+                                  }
+                                }));
+                                if (editingB2Comment === comment.id) {
+                                  setEditingB2Comment(null);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {newB2Comment['b2-fb'] !== undefined && (
+                        <div>
+                          <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                          <Textarea
+                            value={newB2Comment['b2-fb']}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                              setNewB2Comment(prev => ({ ...prev, 'b2-fb': e.target.value }));
+                            }}
+                            onBlur={() => {
+                              if (newB2Comment['b2-fb']?.trim()) {
+                                const commentId = Date.now().toString();
+                                setFormData(prev => ({
+                                  ...prev,
+                                  b2Comments: {
+                                    ...prev.b2Comments,
+                                    'b2-fb': [
+                                      ...(prev.b2Comments['b2-fb'] || []),
+                                      { id: commentId, user: currentUserDisplay, text: newB2Comment['b2-fb'] }
+                                    ]
+                                  }
+                                }));
+                              }
+                              setNewB2Comment(prev => {
+                                const newState = { ...prev };
+                                delete newState['b2-fb'];
+                                return newState;
+                              });
+                            }}
+                            placeholder="Comment: Add your observations here..."
+                            className="text-blue-600 italic border-blue-200 text-[13px]"
+                            rows={2}
+                            autoFocus
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                     
                     {/* Attachment button */}
                     <div className="flex justify-start mt-6">
