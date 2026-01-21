@@ -38,26 +38,38 @@ import {
   createVisa,
   updateVisa,
   deleteVisa,
+  getVisaAttachments,
+  createVisaAttachment,
   getEducation,
   createEducation,
   updateEducation,
   deleteEducation,
+  getEducationAttachments,
+  createEducationAttachment,
   getLicenses,
   createLicense,
   updateLicense,
   deleteLicense,
+  getLicenseAttachments,
+  createLicenseAttachment,
   getTrainingCourses,
   createTrainingCourse,
   updateTrainingCourse,
   deleteTrainingCourse,
+  getTrainingAttachments,
+  createTrainingAttachment,
   getSeaService,
   createSeaService,
   updateSeaService,
   deleteSeaService,
+  getSeaServiceAttachments,
+  createSeaServiceAttachment,
   getAdditionalInfo,
   createAdditionalInfo,
   updateAdditionalInfo,
   deleteAdditionalInfo,
+  getAdditionalInfoAttachments,
+  createAdditionalInfoAttachment,
 } from "../../v2/recruitment/controllers/documentsController";
 
 import {
@@ -119,31 +131,43 @@ router.get("/candidates/:recCanUuid/visas", getVisas);
 router.post("/candidates/:recCanUuid/visas", createVisa);
 router.patch("/visas/:id", updateVisa);
 router.delete("/visas/:id", deleteVisa);
+router.get("/visas/:visaUuid/attachments", getVisaAttachments);
+router.post("/visas/:visaUuid/attachments", createVisaAttachment);
 
 router.get("/candidates/:recCanUuid/education", getEducation);
 router.post("/candidates/:recCanUuid/education", createEducation);
 router.patch("/education/:id", updateEducation);
 router.delete("/education/:id", deleteEducation);
+router.get("/education/:eduUuid/attachments", getEducationAttachments);
+router.post("/education/:eduUuid/attachments", createEducationAttachment);
 
 router.get("/candidates/:recCanUuid/licenses", getLicenses);
 router.post("/candidates/:recCanUuid/licenses", createLicense);
 router.patch("/licenses/:id", updateLicense);
 router.delete("/licenses/:id", deleteLicense);
+router.get("/licenses/:licUuid/attachments", getLicenseAttachments);
+router.post("/licenses/:licUuid/attachments", createLicenseAttachment);
 
 router.get("/candidates/:recCanUuid/training", getTrainingCourses);
 router.post("/candidates/:recCanUuid/training", createTrainingCourse);
 router.patch("/training/:id", updateTrainingCourse);
 router.delete("/training/:id", deleteTrainingCourse);
+router.get("/training/:trainUuid/attachments", getTrainingAttachments);
+router.post("/training/:trainUuid/attachments", createTrainingAttachment);
 
 router.get("/candidates/:recCanUuid/sea-service", getSeaService);
 router.post("/candidates/:recCanUuid/sea-service", createSeaService);
 router.patch("/sea-service/:id", updateSeaService);
 router.delete("/sea-service/:id", deleteSeaService);
+router.get("/sea-service/:seaUuid/attachments", getSeaServiceAttachments);
+router.post("/sea-service/:seaUuid/attachments", createSeaServiceAttachment);
 
 router.get("/candidates/:recCanUuid/additional-info", getAdditionalInfo);
 router.post("/candidates/:recCanUuid/additional-info", createAdditionalInfo);
 router.patch("/additional-info/:id", updateAdditionalInfo);
 router.delete("/additional-info/:id", deleteAdditionalInfo);
+router.get("/additional-info/:infoUuid/attachments", getAdditionalInfoAttachments);
+router.post("/additional-info/:infoUuid/attachments", createAdditionalInfoAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b1", screeningB1Controller.get);
 router.put("/candidates/:recCanUuid/screening/b1", screeningB1Controller.upsert);

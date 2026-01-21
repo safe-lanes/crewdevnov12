@@ -128,6 +128,13 @@ import {
   useV2SaveSuitability,
   useV2RecruitmentDecision,
   useV2SaveRecruitmentDecision,
+  useV2SaveDocumentAttachment,
+  useV2SaveVisaAttachment,
+  useV2SaveEducationAttachment,
+  useV2SaveLicenseAttachment,
+  useV2SaveTrainingAttachment,
+  useV2SaveSeaServiceAttachment,
+  useV2SaveAdditionalInfoAttachment,
 } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
 import { LicenseSelectionDialog } from '@/modules/crew-pool/LicenseSelectionDialog';
@@ -641,6 +648,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const updateAdditionalInfoMutation = useV2UpdateAdditionalInfo();
   const deleteAdditionalInfoMutation = useV2DeleteAdditionalInfo();
 
+  // Attachment mutations
+  const saveDocumentAttachmentMutation = useV2SaveDocumentAttachment();
+  const saveVisaAttachmentMutation = useV2SaveVisaAttachment();
+  const saveEducationAttachmentMutation = useV2SaveEducationAttachment();
+  const saveLicenseAttachmentMutation = useV2SaveLicenseAttachment();
+  const saveTrainingAttachmentMutation = useV2SaveTrainingAttachment();
+  const saveSeaServiceAttachmentMutation = useV2SaveSeaServiceAttachment();
+  const saveAdditionalInfoAttachmentMutation = useV2SaveAdditionalInfoAttachment();
+
   const saveScreeningB1Mutation = useV2SaveScreeningB1();
   const saveScreeningB2Mutation = useV2SaveScreeningB2();
   const saveScreeningB3Mutation = useV2SaveScreeningB3();
@@ -685,7 +701,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     saveLicenseMutation.isPending || saveTrainingMutation.isPending ||
     saveSeaServiceMutation.isPending || saveAdditionalInfoMutation.isPending ||
     saveApprovalMutation.isPending || saveSuitabilityMutation.isPending ||
-    saveDecisionMutation.isPending;
+    saveDecisionMutation.isPending ||
+    saveDocumentAttachmentMutation.isPending || saveVisaAttachmentMutation.isPending ||
+    saveEducationAttachmentMutation.isPending || saveLicenseAttachmentMutation.isPending ||
+    saveTrainingAttachmentMutation.isPending || saveSeaServiceAttachmentMutation.isPending ||
+    saveAdditionalInfoAttachmentMutation.isPending;
 
   const { data: companyRanks, isLoading: ranksLoading, rankOptions } = useCompanyRanks();
   const { data: externalNationalitiesData } = useExternalNationalities();
@@ -2104,7 +2124,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Build all save/update promises for parallel execution
       const allSavePromises: Promise<any>[] = [];
 
-      // Documents
+      // Documents - save with attachments
       formData.documents.forEach((doc, index) => {
         const docPayload = {
           documentId: doc.documentId || undefined,
@@ -2116,14 +2136,35 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           sortOrder: index,
         };
         const serverNumericId = serverDocMap.get(doc.id);
-        if (serverNumericId !== undefined) {
-          allSavePromises.push(updateDocumentMutation.mutateAsync({ id: serverNumericId, data: docPayload, recCanUuid: currentUuid }));
-        } else {
-          allSavePromises.push(saveDocumentMutation.mutateAsync({ recCanUuid: currentUuid, data: docPayload }));
-        }
+        const saveDocPromise = serverNumericId !== undefined
+          ? updateDocumentMutation.mutateAsync({ id: serverNumericId, data: docPayload, recCanUuid: currentUuid })
+          : saveDocumentMutation.mutateAsync({ recCanUuid: currentUuid, data: docPayload });
+        
+        // Chain attachment saves after document save
+        allSavePromises.push(
+          saveDocPromise.then(async (savedDoc: any) => {
+            const docUuid = savedDoc?.docUuid || doc.id;
+            if (docUuid && doc.attachments && doc.attachments.length > 0) {
+              const attachmentPromises = doc.attachments
+                .filter((att: any) => !att.attUuid || att.isNew)
+                .map((att: any) => saveDocumentAttachmentMutation.mutateAsync({
+                  docUuid,
+                  data: {
+                    fileName: att.fileName || att.name,
+                    fileType: att.fileType || att.type,
+                    fileSize: att.fileSize || String(att.size || 0),
+                    fileData: att.fileData || att.data,
+                    sortOrder: att.sortOrder || 0,
+                  },
+                }));
+              await Promise.all(attachmentPromises);
+            }
+            return savedDoc;
+          })
+        );
       });
 
-      // Visas
+      // Visas - save with attachments
       formData.visas.forEach((visa, index) => {
         const visaPayload = {
           countryUuid: visa.countryId || visa.issuingCountry || undefined,
@@ -2134,14 +2175,34 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           sortOrder: index,
         };
         const serverNumericId = serverVisaMap.get(visa.id);
-        if (serverNumericId !== undefined) {
-          allSavePromises.push(updateVisaMutation.mutateAsync({ id: serverNumericId, data: visaPayload, recCanUuid: currentUuid }));
-        } else {
-          allSavePromises.push(saveVisaMutation.mutateAsync({ recCanUuid: currentUuid, data: visaPayload }));
-        }
+        const saveVisaPromise = serverNumericId !== undefined
+          ? updateVisaMutation.mutateAsync({ id: serverNumericId, data: visaPayload, recCanUuid: currentUuid })
+          : saveVisaMutation.mutateAsync({ recCanUuid: currentUuid, data: visaPayload });
+        
+        allSavePromises.push(
+          saveVisaPromise.then(async (savedVisa: any) => {
+            const visaUuid = savedVisa?.visaUuid || visa.id;
+            if (visaUuid && visa.attachments && visa.attachments.length > 0) {
+              const attachmentPromises = visa.attachments
+                .filter((att: any) => !att.attUuid || att.isNew)
+                .map((att: any) => saveVisaAttachmentMutation.mutateAsync({
+                  visaUuid,
+                  data: {
+                    fileName: att.fileName || att.name,
+                    fileType: att.fileType || att.type,
+                    fileSize: att.fileSize || String(att.size || 0),
+                    fileData: att.fileData || att.data,
+                    sortOrder: att.sortOrder || 0,
+                  },
+                }));
+              await Promise.all(attachmentPromises);
+            }
+            return savedVisa;
+          })
+        );
       });
 
-      // Education
+      // Education - save with attachments
       formData.education.forEach((edu, index) => {
         const eduPayload = {
           dateOfCompletion: edu.dateOfCompletion || undefined,
@@ -2151,14 +2212,34 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           sortOrder: index,
         };
         const serverNumericId = serverEduMap.get(edu.id);
-        if (serverNumericId !== undefined) {
-          allSavePromises.push(updateEducationMutation.mutateAsync({ id: serverNumericId, data: eduPayload, recCanUuid: currentUuid }));
-        } else {
-          allSavePromises.push(saveEducationMutation.mutateAsync({ recCanUuid: currentUuid, data: eduPayload }));
-        }
+        const saveEduPromise = serverNumericId !== undefined
+          ? updateEducationMutation.mutateAsync({ id: serverNumericId, data: eduPayload, recCanUuid: currentUuid })
+          : saveEducationMutation.mutateAsync({ recCanUuid: currentUuid, data: eduPayload });
+        
+        allSavePromises.push(
+          saveEduPromise.then(async (savedEdu: any) => {
+            const eduUuid = savedEdu?.eduUuid || edu.id;
+            if (eduUuid && edu.attachments && edu.attachments.length > 0) {
+              const attachmentPromises = edu.attachments
+                .filter((att: any) => !att.attUuid || att.isNew)
+                .map((att: any) => saveEducationAttachmentMutation.mutateAsync({
+                  eduUuid,
+                  data: {
+                    fileName: att.fileName || att.name,
+                    fileType: att.fileType || att.type,
+                    fileSize: att.fileSize || String(att.size || 0),
+                    fileData: att.fileData || att.data,
+                    sortOrder: att.sortOrder || 0,
+                  },
+                }));
+              await Promise.all(attachmentPromises);
+            }
+            return savedEdu;
+          })
+        );
       });
 
-      // Licenses
+      // Licenses - save with attachments
       formData.licenses.forEach((lic, index) => {
         const licPayload = {
           licenseId: lic.licenseId || undefined,
@@ -2172,14 +2253,34 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           sortOrder: index,
         };
         const serverNumericId = serverLicMap.get(lic.id);
-        if (serverNumericId !== undefined) {
-          allSavePromises.push(updateLicenseMutation.mutateAsync({ id: serverNumericId, data: licPayload, recCanUuid: currentUuid }));
-        } else {
-          allSavePromises.push(saveLicenseMutation.mutateAsync({ recCanUuid: currentUuid, data: licPayload }));
-        }
+        const saveLicPromise = serverNumericId !== undefined
+          ? updateLicenseMutation.mutateAsync({ id: serverNumericId, data: licPayload, recCanUuid: currentUuid })
+          : saveLicenseMutation.mutateAsync({ recCanUuid: currentUuid, data: licPayload });
+        
+        allSavePromises.push(
+          saveLicPromise.then(async (savedLic: any) => {
+            const licUuid = savedLic?.licUuid || lic.id;
+            if (licUuid && lic.attachments && lic.attachments.length > 0) {
+              const attachmentPromises = lic.attachments
+                .filter((att: any) => !att.attUuid || att.isNew)
+                .map((att: any) => saveLicenseAttachmentMutation.mutateAsync({
+                  licUuid,
+                  data: {
+                    fileName: att.fileName || att.name,
+                    fileType: att.fileType || att.type,
+                    fileSize: att.fileSize || String(att.size || 0),
+                    fileData: att.fileData || att.data,
+                    sortOrder: att.sortOrder || 0,
+                  },
+                }));
+              await Promise.all(attachmentPromises);
+            }
+            return savedLic;
+          })
+        );
       });
 
-      // Training
+      // Training - save with attachments
       formData.trainingCourses.forEach((train, index) => {
         const trainPayload = {
           courseId: train.courseId || undefined,
@@ -2193,14 +2294,34 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           sortOrder: index,
         };
         const serverNumericId = serverTrainMap.get(train.id);
-        if (serverNumericId !== undefined) {
-          allSavePromises.push(updateTrainingMutation.mutateAsync({ id: serverNumericId, data: trainPayload, recCanUuid: currentUuid }));
-        } else {
-          allSavePromises.push(saveTrainingMutation.mutateAsync({ recCanUuid: currentUuid, data: trainPayload }));
-        }
+        const saveTrainPromise = serverNumericId !== undefined
+          ? updateTrainingMutation.mutateAsync({ id: serverNumericId, data: trainPayload, recCanUuid: currentUuid })
+          : saveTrainingMutation.mutateAsync({ recCanUuid: currentUuid, data: trainPayload });
+        
+        allSavePromises.push(
+          saveTrainPromise.then(async (savedTrain: any) => {
+            const trainUuid = savedTrain?.trainUuid || train.id;
+            if (trainUuid && train.attachments && train.attachments.length > 0) {
+              const attachmentPromises = train.attachments
+                .filter((att: any) => !att.attUuid || att.isNew)
+                .map((att: any) => saveTrainingAttachmentMutation.mutateAsync({
+                  trainUuid,
+                  data: {
+                    fileName: att.fileName || att.name,
+                    fileType: att.fileType || att.type,
+                    fileSize: att.fileSize || String(att.size || 0),
+                    fileData: att.fileData || att.data,
+                    sortOrder: att.sortOrder || 0,
+                  },
+                }));
+              await Promise.all(attachmentPromises);
+            }
+            return savedTrain;
+          })
+        );
       });
 
-      // Sea Service
+      // Sea Service - save with attachments
       formData.seaService.forEach((sea, index) => {
         const seaPayload = {
           vesselName: sea.vesselName || undefined,
@@ -2215,11 +2336,31 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           sortOrder: index,
         };
         const serverNumericId = serverSeaMap.get(sea.id);
-        if (serverNumericId !== undefined) {
-          allSavePromises.push(updateSeaServiceMutation.mutateAsync({ id: serverNumericId, data: seaPayload, recCanUuid: currentUuid }));
-        } else {
-          allSavePromises.push(saveSeaServiceMutation.mutateAsync({ recCanUuid: currentUuid, data: seaPayload }));
-        }
+        const saveSeaPromise = serverNumericId !== undefined
+          ? updateSeaServiceMutation.mutateAsync({ id: serverNumericId, data: seaPayload, recCanUuid: currentUuid })
+          : saveSeaServiceMutation.mutateAsync({ recCanUuid: currentUuid, data: seaPayload });
+        
+        allSavePromises.push(
+          saveSeaPromise.then(async (savedSea: any) => {
+            const seaUuid = savedSea?.seaUuid || sea.id;
+            if (seaUuid && sea.attachments && sea.attachments.length > 0) {
+              const attachmentPromises = sea.attachments
+                .filter((att: any) => !att.attUuid || att.isNew)
+                .map((att: any) => saveSeaServiceAttachmentMutation.mutateAsync({
+                  seaUuid,
+                  data: {
+                    fileName: att.fileName || att.name,
+                    fileType: att.fileType || att.type,
+                    fileSize: att.fileSize || String(att.size || 0),
+                    fileData: att.fileData || att.data,
+                    sortOrder: att.sortOrder || 0,
+                  },
+                }));
+              await Promise.all(attachmentPromises);
+            }
+            return savedSea;
+          })
+        );
       });
 
       // Execute all saves in parallel
@@ -2262,7 +2403,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Execute all deletes in parallel
       await Promise.all(allDeletePromises);
       
-      // Additional Info - save in parallel
+      // Additional Info - save in parallel with attachments
       const serverInfoMap = new Map((additionalInfoData || []).map(a => [a.infoUuid, a.id]));
       const localInfoIds = new Set(formData.additionalInfo.map(a => a.id));
       const infoSavePromises: Promise<any>[] = [];
@@ -2275,18 +2416,38 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         };
         
         const serverNumericId = serverInfoMap.get(info.id);
-        if (serverNumericId !== undefined) {
-          infoSavePromises.push(updateAdditionalInfoMutation.mutateAsync({
-            id: serverNumericId,
-            data: infoPayload,
-            recCanUuid: currentUuid,
-          }));
-        } else {
-          infoSavePromises.push(saveAdditionalInfoMutation.mutateAsync({
-            recCanUuid: currentUuid,
-            data: infoPayload,
-          }));
-        }
+        const saveInfoPromise = serverNumericId !== undefined
+          ? updateAdditionalInfoMutation.mutateAsync({
+              id: serverNumericId,
+              data: infoPayload,
+              recCanUuid: currentUuid,
+            })
+          : saveAdditionalInfoMutation.mutateAsync({
+              recCanUuid: currentUuid,
+              data: infoPayload,
+            });
+        
+        infoSavePromises.push(
+          saveInfoPromise.then(async (savedInfo: any) => {
+            const infoUuid = savedInfo?.infoUuid || info.id;
+            if (infoUuid && info.attachments && info.attachments.length > 0) {
+              const attachmentPromises = info.attachments
+                .filter((att: any) => !att.attUuid || att.isNew)
+                .map((att: any) => saveAdditionalInfoAttachmentMutation.mutateAsync({
+                  infoUuid,
+                  data: {
+                    fileName: att.fileName || att.name,
+                    fileType: att.fileType || att.type,
+                    fileSize: att.fileSize || String(att.size || 0),
+                    fileData: att.fileData || att.data,
+                    sortOrder: att.sortOrder || 0,
+                  },
+                }));
+              await Promise.all(attachmentPromises);
+            }
+            return savedInfo;
+          })
+        );
       });
       
       const infoDeletePromises: Promise<any>[] = [];

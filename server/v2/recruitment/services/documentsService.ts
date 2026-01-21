@@ -47,8 +47,15 @@ import type {
 } from "../../../../shared/v2/recruitment/types";
 
 export class DocumentsService {
-  async getDocuments(recCanUuid: string): Promise<CandDocument[]> {
-    return documentsRepository.findByCandidateUuid(recCanUuid);
+  async getDocuments(recCanUuid: string): Promise<(CandDocument & { attachments: CandDocumentAttachment[] })[]> {
+    const docs = await documentsRepository.findByCandidateUuid(recCanUuid);
+    const docsWithAttachments = await Promise.all(
+      docs.map(async (doc) => {
+        const attachments = await documentAttachmentsRepository.findByDocUuid(doc.docUuid);
+        return { ...doc, attachments };
+      })
+    );
+    return docsWithAttachments;
   }
 
   async createDocument(recCanUuid: string, data: Partial<InsertDocument>, createdByUuid?: string): Promise<CandDocument> {
@@ -83,8 +90,15 @@ export class DocumentsService {
     } as InsertDocumentAttachment);
   }
 
-  async getVisas(recCanUuid: string): Promise<CandVisa[]> {
-    return visasRepository.findByCandidateUuid(recCanUuid);
+  async getVisas(recCanUuid: string): Promise<(CandVisa & { attachments: CandVisaAttachment[] })[]> {
+    const visas = await visasRepository.findByCandidateUuid(recCanUuid);
+    const visasWithAttachments = await Promise.all(
+      visas.map(async (visa) => {
+        const attachments = await visaAttachmentsRepository.findByVisaUuid(visa.visaUuid);
+        return { ...visa, attachments };
+      })
+    );
+    return visasWithAttachments;
   }
 
   async createVisa(recCanUuid: string, data: Partial<InsertVisa>, createdByUuid?: string): Promise<CandVisa> {
@@ -119,8 +133,15 @@ export class DocumentsService {
     } as InsertVisaAttachment);
   }
 
-  async getEducation(recCanUuid: string): Promise<CandEducation[]> {
-    return educationRepository.findByCandidateUuid(recCanUuid);
+  async getEducation(recCanUuid: string): Promise<(CandEducation & { attachments: CandEducationAttachment[] })[]> {
+    const education = await educationRepository.findByCandidateUuid(recCanUuid);
+    const educationWithAttachments = await Promise.all(
+      education.map(async (edu) => {
+        const attachments = await educationAttachmentsRepository.findByEduUuid(edu.eduUuid);
+        return { ...edu, attachments };
+      })
+    );
+    return educationWithAttachments;
   }
 
   async createEducation(recCanUuid: string, data: Partial<InsertEducation>, createdByUuid?: string): Promise<CandEducation> {
@@ -155,8 +176,15 @@ export class DocumentsService {
     } as InsertEducationAttachment);
   }
 
-  async getLicenses(recCanUuid: string): Promise<CandLicense[]> {
-    return licensesRepository.findByCandidateUuid(recCanUuid);
+  async getLicenses(recCanUuid: string): Promise<(CandLicense & { attachments: CandLicenseAttachment[] })[]> {
+    const licenses = await licensesRepository.findByCandidateUuid(recCanUuid);
+    const licensesWithAttachments = await Promise.all(
+      licenses.map(async (lic) => {
+        const attachments = await licenseAttachmentsRepository.findByLicUuid(lic.licUuid);
+        return { ...lic, attachments };
+      })
+    );
+    return licensesWithAttachments;
   }
 
   async createLicense(recCanUuid: string, data: Partial<InsertLicense>, createdByUuid?: string): Promise<CandLicense> {
@@ -191,8 +219,15 @@ export class DocumentsService {
     } as InsertLicenseAttachment);
   }
 
-  async getTrainingCourses(recCanUuid: string): Promise<CandTrainingCourse[]> {
-    return trainingCoursesRepository.findByCandidateUuid(recCanUuid);
+  async getTrainingCourses(recCanUuid: string): Promise<(CandTrainingCourse & { attachments: CandTrainingAttachment[] })[]> {
+    const training = await trainingCoursesRepository.findByCandidateUuid(recCanUuid);
+    const trainingWithAttachments = await Promise.all(
+      training.map(async (course) => {
+        const attachments = await trainingAttachmentsRepository.findByTrainUuid(course.trainUuid);
+        return { ...course, attachments };
+      })
+    );
+    return trainingWithAttachments;
   }
 
   async createTrainingCourse(recCanUuid: string, data: Partial<InsertTrainingCourse>, createdByUuid?: string): Promise<CandTrainingCourse> {
@@ -227,8 +262,15 @@ export class DocumentsService {
     } as InsertTrainingAttachment);
   }
 
-  async getSeaService(recCanUuid: string): Promise<CandSeaService[]> {
-    return seaServiceRepository.findByCandidateUuid(recCanUuid);
+  async getSeaService(recCanUuid: string): Promise<(CandSeaService & { attachments: CandSeaServiceAttachment[] })[]> {
+    const seaService = await seaServiceRepository.findByCandidateUuid(recCanUuid);
+    const seaServiceWithAttachments = await Promise.all(
+      seaService.map(async (sea) => {
+        const attachments = await seaServiceAttachmentsRepository.findBySeaUuid(sea.seaUuid);
+        return { ...sea, attachments };
+      })
+    );
+    return seaServiceWithAttachments;
   }
 
   async createSeaService(recCanUuid: string, data: Partial<InsertSeaService>, createdByUuid?: string): Promise<CandSeaService> {
@@ -263,8 +305,15 @@ export class DocumentsService {
     } as InsertSeaServiceAttachment);
   }
 
-  async getAdditionalInfo(recCanUuid: string): Promise<CandAdditionalInfo[]> {
-    return additionalInfoRepository.findByCandidateUuid(recCanUuid);
+  async getAdditionalInfo(recCanUuid: string): Promise<(CandAdditionalInfo & { attachments: CandAdditionalInfoAttachment[] })[]> {
+    const additionalInfo = await additionalInfoRepository.findByCandidateUuid(recCanUuid);
+    const additionalInfoWithAttachments = await Promise.all(
+      additionalInfo.map(async (info) => {
+        const attachments = await additionalInfoAttachmentsRepository.findByInfoUuid(info.infoUuid);
+        return { ...info, attachments };
+      })
+    );
+    return additionalInfoWithAttachments;
   }
 
   async createAdditionalInfo(recCanUuid: string, data: Partial<InsertAdditionalInfo>, createdByUuid?: string): Promise<CandAdditionalInfo> {

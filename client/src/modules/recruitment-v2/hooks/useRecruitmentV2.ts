@@ -1026,6 +1026,126 @@ export function useV2DeleteAttachment() {
   });
 }
 
+// Visa Attachments
+export function useV2VisaAttachments(visaUuid: string | null) {
+  return useQuery<Attachment[]>({
+    queryKey: ['v2', 'visa-attachments', visaUuid],
+    queryFn: () => fetchApi(`/visas/${visaUuid}/attachments`),
+    enabled: !!visaUuid,
+  });
+}
+
+export function useV2SaveVisaAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ visaUuid, data }: { visaUuid: string; data: Partial<Attachment> }) =>
+      postApi<Attachment>(`/visas/${visaUuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'visa-attachments', variables.visaUuid] });
+    },
+  });
+}
+
+// Education Attachments
+export function useV2EducationAttachments(eduUuid: string | null) {
+  return useQuery<Attachment[]>({
+    queryKey: ['v2', 'education-attachments', eduUuid],
+    queryFn: () => fetchApi(`/education/${eduUuid}/attachments`),
+    enabled: !!eduUuid,
+  });
+}
+
+export function useV2SaveEducationAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eduUuid, data }: { eduUuid: string; data: Partial<Attachment> }) =>
+      postApi<Attachment>(`/education/${eduUuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'education-attachments', variables.eduUuid] });
+    },
+  });
+}
+
+// License Attachments
+export function useV2LicenseAttachments(licUuid: string | null) {
+  return useQuery<Attachment[]>({
+    queryKey: ['v2', 'license-attachments', licUuid],
+    queryFn: () => fetchApi(`/licenses/${licUuid}/attachments`),
+    enabled: !!licUuid,
+  });
+}
+
+export function useV2SaveLicenseAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ licUuid, data }: { licUuid: string; data: Partial<Attachment> }) =>
+      postApi<Attachment>(`/licenses/${licUuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'license-attachments', variables.licUuid] });
+    },
+  });
+}
+
+// Training Attachments
+export function useV2TrainingAttachments(trainUuid: string | null) {
+  return useQuery<Attachment[]>({
+    queryKey: ['v2', 'training-attachments', trainUuid],
+    queryFn: () => fetchApi(`/training/${trainUuid}/attachments`),
+    enabled: !!trainUuid,
+  });
+}
+
+export function useV2SaveTrainingAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ trainUuid, data }: { trainUuid: string; data: Partial<Attachment> }) =>
+      postApi<Attachment>(`/training/${trainUuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'training-attachments', variables.trainUuid] });
+    },
+  });
+}
+
+// Sea Service Attachments
+export function useV2SeaServiceAttachments(seaUuid: string | null) {
+  return useQuery<Attachment[]>({
+    queryKey: ['v2', 'sea-service-attachments', seaUuid],
+    queryFn: () => fetchApi(`/sea-service/${seaUuid}/attachments`),
+    enabled: !!seaUuid,
+  });
+}
+
+export function useV2SaveSeaServiceAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ seaUuid, data }: { seaUuid: string; data: Partial<Attachment> }) =>
+      postApi<Attachment>(`/sea-service/${seaUuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'sea-service-attachments', variables.seaUuid] });
+    },
+  });
+}
+
+// Additional Info Attachments
+export function useV2AdditionalInfoAttachments(infoUuid: string | null) {
+  return useQuery<Attachment[]>({
+    queryKey: ['v2', 'additional-info-attachments', infoUuid],
+    queryFn: () => fetchApi(`/additional-info/${infoUuid}/attachments`),
+    enabled: !!infoUuid,
+  });
+}
+
+export function useV2SaveAdditionalInfoAttachment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ infoUuid, data }: { infoUuid: string; data: Partial<Attachment> }) =>
+      postApi<Attachment>(`/additional-info/${infoUuid}/attachments`, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'additional-info-attachments', variables.infoUuid] });
+    },
+  });
+}
+
 // Screening B2 Items (Reference Checks)
 export interface ScreeningB2Item {
   id: number;

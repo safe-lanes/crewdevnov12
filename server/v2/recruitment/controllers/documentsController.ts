@@ -70,6 +70,138 @@ export async function createDocumentAttachment(req: Request, res: Response) {
   }
 }
 
+export async function getVisaAttachments(req: Request, res: Response) {
+  try {
+    const { visaUuid } = req.params;
+    const attachments = await documentsService.getVisaAttachments(visaUuid);
+    res.json(attachments);
+  } catch (error) {
+    console.error("Error fetching visa attachments:", error);
+    res.status(500).json({ error: "Failed to fetch visa attachments" });
+  }
+}
+
+export async function createVisaAttachment(req: Request, res: Response) {
+  try {
+    const { visaUuid } = req.params;
+    const attachment = await documentsService.createVisaAttachment(visaUuid, req.body);
+    res.status(201).json(attachment);
+  } catch (error) {
+    console.error("Error creating visa attachment:", error);
+    res.status(500).json({ error: "Failed to create visa attachment" });
+  }
+}
+
+export async function getEducationAttachments(req: Request, res: Response) {
+  try {
+    const { eduUuid } = req.params;
+    const attachments = await documentsService.getEducationAttachments(eduUuid);
+    res.json(attachments);
+  } catch (error) {
+    console.error("Error fetching education attachments:", error);
+    res.status(500).json({ error: "Failed to fetch education attachments" });
+  }
+}
+
+export async function createEducationAttachment(req: Request, res: Response) {
+  try {
+    const { eduUuid } = req.params;
+    const attachment = await documentsService.createEducationAttachment(eduUuid, req.body);
+    res.status(201).json(attachment);
+  } catch (error) {
+    console.error("Error creating education attachment:", error);
+    res.status(500).json({ error: "Failed to create education attachment" });
+  }
+}
+
+export async function getLicenseAttachments(req: Request, res: Response) {
+  try {
+    const { licUuid } = req.params;
+    const attachments = await documentsService.getLicenseAttachments(licUuid);
+    res.json(attachments);
+  } catch (error) {
+    console.error("Error fetching license attachments:", error);
+    res.status(500).json({ error: "Failed to fetch license attachments" });
+  }
+}
+
+export async function createLicenseAttachment(req: Request, res: Response) {
+  try {
+    const { licUuid } = req.params;
+    const attachment = await documentsService.createLicenseAttachment(licUuid, req.body);
+    res.status(201).json(attachment);
+  } catch (error) {
+    console.error("Error creating license attachment:", error);
+    res.status(500).json({ error: "Failed to create license attachment" });
+  }
+}
+
+export async function getTrainingAttachments(req: Request, res: Response) {
+  try {
+    const { trainUuid } = req.params;
+    const attachments = await documentsService.getTrainingAttachments(trainUuid);
+    res.json(attachments);
+  } catch (error) {
+    console.error("Error fetching training attachments:", error);
+    res.status(500).json({ error: "Failed to fetch training attachments" });
+  }
+}
+
+export async function createTrainingAttachment(req: Request, res: Response) {
+  try {
+    const { trainUuid } = req.params;
+    const attachment = await documentsService.createTrainingAttachment(trainUuid, req.body);
+    res.status(201).json(attachment);
+  } catch (error) {
+    console.error("Error creating training attachment:", error);
+    res.status(500).json({ error: "Failed to create training attachment" });
+  }
+}
+
+export async function getSeaServiceAttachments(req: Request, res: Response) {
+  try {
+    const { seaUuid } = req.params;
+    const attachments = await documentsService.getSeaServiceAttachments(seaUuid);
+    res.json(attachments);
+  } catch (error) {
+    console.error("Error fetching sea service attachments:", error);
+    res.status(500).json({ error: "Failed to fetch sea service attachments" });
+  }
+}
+
+export async function createSeaServiceAttachment(req: Request, res: Response) {
+  try {
+    const { seaUuid } = req.params;
+    const attachment = await documentsService.createSeaServiceAttachment(seaUuid, req.body);
+    res.status(201).json(attachment);
+  } catch (error) {
+    console.error("Error creating sea service attachment:", error);
+    res.status(500).json({ error: "Failed to create sea service attachment" });
+  }
+}
+
+export async function getAdditionalInfoAttachments(req: Request, res: Response) {
+  try {
+    const { infoUuid } = req.params;
+    const attachments = await documentsService.getAdditionalInfoAttachments(infoUuid);
+    res.json(attachments);
+  } catch (error) {
+    console.error("Error fetching additional info attachments:", error);
+    res.status(500).json({ error: "Failed to fetch additional info attachments" });
+  }
+}
+
+export async function createAdditionalInfoAttachment(req: Request, res: Response) {
+  try {
+    const { infoUuid } = req.params;
+    const attachment = await documentsService.createAdditionalInfoAttachment(infoUuid, req.body);
+    res.status(201).json(attachment);
+  } catch (error) {
+    console.error("Error creating additional info attachment:", error);
+    res.status(500).json({ error: "Failed to create additional info attachment" });
+  }
+}
+
 export async function getVisas(req: Request, res: Response) {
   try {
     const { recCanUuid } = req.params;
