@@ -39,24 +39,31 @@ import {
   useV2SaveVesselTypes,
   useV2Documents,
   useV2SaveDocument,
+  useV2UpdateDocument,
   useV2DeleteDocument,
   useV2Visas,
   useV2SaveVisa,
+  useV2UpdateVisa,
   useV2DeleteVisa,
   useV2Education,
   useV2SaveEducation,
+  useV2UpdateEducation,
   useV2DeleteEducation,
   useV2Licenses,
   useV2SaveLicense,
+  useV2UpdateLicense,
   useV2DeleteLicense,
   useV2TrainingCourses,
   useV2SaveTrainingCourse,
+  useV2UpdateTrainingCourse,
   useV2DeleteTrainingCourse,
   useV2SeaService,
   useV2SaveSeaService,
+  useV2UpdateSeaService,
   useV2DeleteSeaService,
   useV2AdditionalInfo,
   useV2SaveAdditionalInfo,
+  useV2UpdateAdditionalInfo,
   useV2DeleteAdditionalInfo,
 } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
@@ -323,10 +330,41 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const saveNextOfKinMutation = useV2SaveNextOfKin();
   const saveVesselTypesMutation = useV2SaveVesselTypes();
   
+  const saveDocumentMutation = useV2SaveDocument();
+  const updateDocumentMutation = useV2UpdateDocument();
+  const deleteDocumentMutation = useV2DeleteDocument();
+  
+  const saveVisaMutation = useV2SaveVisa();
+  const updateVisaMutation = useV2UpdateVisa();
+  const deleteVisaMutation = useV2DeleteVisa();
+  
+  const saveEducationMutation = useV2SaveEducation();
+  const updateEducationMutation = useV2UpdateEducation();
+  const deleteEducationMutation = useV2DeleteEducation();
+  
+  const saveLicenseMutation = useV2SaveLicense();
+  const updateLicenseMutation = useV2UpdateLicense();
+  const deleteLicenseMutation = useV2DeleteLicense();
+  
+  const saveTrainingMutation = useV2SaveTrainingCourse();
+  const updateTrainingMutation = useV2UpdateTrainingCourse();
+  const deleteTrainingMutation = useV2DeleteTrainingCourse();
+  
+  const saveSeaServiceMutation = useV2SaveSeaService();
+  const updateSeaServiceMutation = useV2UpdateSeaService();
+  const deleteSeaServiceMutation = useV2DeleteSeaService();
+  
+  const saveAdditionalInfoMutation = useV2SaveAdditionalInfo();
+  const updateAdditionalInfoMutation = useV2UpdateAdditionalInfo();
+  const deleteAdditionalInfoMutation = useV2DeleteAdditionalInfo();
+  
   const savingInProgress = savePersonalDetailsMutation.isPending || 
     saveAddressMutation.isPending || saveFamilyInfoMutation.isPending ||
     saveChildrenMutation.isPending || saveNextOfKinMutation.isPending ||
-    saveVesselTypesMutation.isPending;
+    saveVesselTypesMutation.isPending || saveDocumentMutation.isPending ||
+    saveVisaMutation.isPending || saveEducationMutation.isPending ||
+    saveLicenseMutation.isPending || saveTrainingMutation.isPending ||
+    saveSeaServiceMutation.isPending || saveAdditionalInfoMutation.isPending;
 
   const { data: companyRanks, isLoading: ranksLoading, rankOptions } = useCompanyRanks();
   const { data: externalNationalitiesData } = useExternalNationalities();
@@ -1166,7 +1204,277 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
       }
       
+      const serverDocUuids = new Set((documentsData || []).map(d => d.docUuid));
+      const localDocIds = new Set(formData.documents.map(d => d.id));
+      
+      for (const doc of formData.documents) {
+        const docPayload = {
+          documentId: doc.documentId || '',
+          documentName: doc.document || '',
+          number: doc.number || '',
+          issued: doc.issued || '',
+          expiry: doc.expiry || '',
+          issuingAuthority: doc.issuingAuthority || '',
+          issuingCountryUuid: '',
+          sortOrder: formData.documents.indexOf(doc),
+        };
+        
+        if (serverDocUuids.has(doc.id)) {
+          await updateDocumentMutation.mutateAsync({
+            docUuid: doc.id,
+            data: docPayload,
+            recCanUuid: currentUuid,
+          });
+        } else {
+          await saveDocumentMutation.mutateAsync({
+            recCanUuid: currentUuid,
+            data: docPayload,
+          });
+        }
+      }
+      
+      for (const serverDoc of (documentsData || [])) {
+        if (!localDocIds.has(serverDoc.docUuid)) {
+          await deleteDocumentMutation.mutateAsync({
+            docUuid: serverDoc.docUuid,
+            recCanUuid: currentUuid,
+          });
+        }
+      }
+      
+      const serverVisaUuids = new Set((visasData || []).map(v => v.visaUuid));
+      const localVisaIds = new Set(formData.visas.map(v => v.id));
+      
+      for (const visa of formData.visas) {
+        const visaPayload = {
+          countryUuid: visa.countryId || visa.issuingCountry || '',
+          serialNo: visa.serialNo || '',
+          issued: visa.issued || '',
+          expiry: visa.expiry || '',
+          visaType: visa.visaType || '',
+          sortOrder: formData.visas.indexOf(visa),
+        };
+        
+        if (serverVisaUuids.has(visa.id)) {
+          await updateVisaMutation.mutateAsync({
+            visaUuid: visa.id,
+            data: visaPayload,
+            recCanUuid: currentUuid,
+          });
+        } else {
+          await saveVisaMutation.mutateAsync({
+            recCanUuid: currentUuid,
+            data: visaPayload,
+          });
+        }
+      }
+      
+      for (const serverVisa of (visasData || [])) {
+        if (!localVisaIds.has(serverVisa.visaUuid)) {
+          await deleteVisaMutation.mutateAsync({
+            visaUuid: serverVisa.visaUuid,
+            recCanUuid: currentUuid,
+          });
+        }
+      }
+      
+      const serverEduUuids = new Set((educationData || []).map(e => e.eduUuid));
+      const localEduIds = new Set(formData.education.map(e => e.id));
+      
+      for (const edu of formData.education) {
+        const eduPayload = {
+          dateOfCompletion: edu.dateOfCompletion || '',
+          institution: edu.schoolCollegeUniversity || '',
+          subjectsField: edu.subjectsField || '',
+          qualifications: edu.qualifications || '',
+          sortOrder: formData.education.indexOf(edu),
+        };
+        
+        if (serverEduUuids.has(edu.id)) {
+          await updateEducationMutation.mutateAsync({
+            eduUuid: edu.id,
+            data: eduPayload,
+            recCanUuid: currentUuid,
+          });
+        } else {
+          await saveEducationMutation.mutateAsync({
+            recCanUuid: currentUuid,
+            data: eduPayload,
+          });
+        }
+      }
+      
+      for (const serverEdu of (educationData || [])) {
+        if (!localEduIds.has(serverEdu.eduUuid)) {
+          await deleteEducationMutation.mutateAsync({
+            eduUuid: serverEdu.eduUuid,
+            recCanUuid: currentUuid,
+          });
+        }
+      }
+      
+      const serverLicUuids = new Set((licensesData || []).map(l => l.licUuid));
+      const localLicIds = new Set(formData.licenses.map(l => l.id));
+      
+      for (const lic of formData.licenses) {
+        const licPayload = {
+          licenseId: lic.licenseId || '',
+          certificateDocument: lic.certificateDocument || '',
+          abbr: lic.abbr || '',
+          requirement: lic.requirement || '',
+          certificateNo: lic.certificateNo || '',
+          issuingAuthority: lic.issuingAuthority || '',
+          issuingCountryUuid: '',
+          issued: lic.issued || '',
+          expiry: lic.expiry || '',
+          sortOrder: formData.licenses.indexOf(lic),
+        };
+        
+        if (serverLicUuids.has(lic.id)) {
+          await updateLicenseMutation.mutateAsync({
+            licUuid: lic.id,
+            data: licPayload,
+            recCanUuid: currentUuid,
+          });
+        } else {
+          await saveLicenseMutation.mutateAsync({
+            recCanUuid: currentUuid,
+            data: licPayload,
+          });
+        }
+      }
+      
+      for (const serverLic of (licensesData || [])) {
+        if (!localLicIds.has(serverLic.licUuid)) {
+          await deleteLicenseMutation.mutateAsync({
+            licUuid: serverLic.licUuid,
+            recCanUuid: currentUuid,
+          });
+        }
+      }
+      
+      const serverTrainUuids = new Set((trainingData || []).map(t => t.trainUuid));
+      const localTrainIds = new Set(formData.trainingCourses.map(t => t.id));
+      
+      for (const train of formData.trainingCourses) {
+        const trainPayload = {
+          courseId: train.courseId || '',
+          trainingCourse: train.trainingCourse || '',
+          abbr: train.abbr || '',
+          requirement: train.requirement || '',
+          certificateNo: train.certificateNo || '',
+          issuingAuthority: train.issuingAuthority || '',
+          issuingCountryUuid: '',
+          issued: train.issued || '',
+          expiry: train.expiry || '',
+          sortOrder: formData.trainingCourses.indexOf(train),
+        };
+        
+        if (serverTrainUuids.has(train.id)) {
+          await updateTrainingMutation.mutateAsync({
+            trainUuid: train.id,
+            data: trainPayload,
+            recCanUuid: currentUuid,
+          });
+        } else {
+          await saveTrainingMutation.mutateAsync({
+            recCanUuid: currentUuid,
+            data: trainPayload,
+          });
+        }
+      }
+      
+      for (const serverTrain of (trainingData || [])) {
+        if (!localTrainIds.has(serverTrain.trainUuid)) {
+          await deleteTrainingMutation.mutateAsync({
+            trainUuid: serverTrain.trainUuid,
+            recCanUuid: currentUuid,
+          });
+        }
+      }
+      
+      const serverSeaUuids = new Set((seaServiceData || []).map(s => s.seaUuid));
+      const localSeaIds = new Set(formData.seaService.map(s => s.id));
+      
+      for (const sea of formData.seaService) {
+        const seaPayload = {
+          vesselName: sea.vesselName || '',
+          vesselUuid: '',
+          vesselTypeUuid: sea.vesselType || '',
+          deadweight: sea.deadweight || '',
+          engineTypePower: sea.engineTypePower || '',
+          ownerOperator: sea.ownerOperator || '',
+          rank: sea.rank || '',
+          fromDate: sea.from || '',
+          toDate: sea.to || '',
+          periodMonths: sea.periodMonths || '',
+          sortOrder: formData.seaService.indexOf(sea),
+        };
+        
+        if (serverSeaUuids.has(sea.id)) {
+          await updateSeaServiceMutation.mutateAsync({
+            seaUuid: sea.id,
+            data: seaPayload,
+            recCanUuid: currentUuid,
+          });
+        } else {
+          await saveSeaServiceMutation.mutateAsync({
+            recCanUuid: currentUuid,
+            data: seaPayload,
+          });
+        }
+      }
+      
+      for (const serverSea of (seaServiceData || [])) {
+        if (!localSeaIds.has(serverSea.seaUuid)) {
+          await deleteSeaServiceMutation.mutateAsync({
+            seaUuid: serverSea.seaUuid,
+            recCanUuid: currentUuid,
+          });
+        }
+      }
+      
+      const serverInfoUuids = new Set((additionalInfoData || []).map(a => a.infoUuid));
+      const localInfoIds = new Set(formData.additionalInfo.map(a => a.id));
+      
+      for (const info of formData.additionalInfo) {
+        const infoPayload = {
+          information: info.information || '',
+          response: info.response || '',
+          sortOrder: formData.additionalInfo.indexOf(info),
+        };
+        
+        if (serverInfoUuids.has(info.id)) {
+          await updateAdditionalInfoMutation.mutateAsync({
+            infoUuid: info.id,
+            data: infoPayload,
+            recCanUuid: currentUuid,
+          });
+        } else {
+          await saveAdditionalInfoMutation.mutateAsync({
+            recCanUuid: currentUuid,
+            data: infoPayload,
+          });
+        }
+      }
+      
+      for (const serverInfo of (additionalInfoData || [])) {
+        if (!localInfoIds.has(serverInfo.infoUuid)) {
+          await deleteAdditionalInfoMutation.mutateAsync({
+            infoUuid: serverInfo.infoUuid,
+            recCanUuid: currentUuid,
+          });
+        }
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'documents', currentUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'visas', currentUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'education', currentUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'licenses', currentUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'training-courses', currentUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'sea-service', currentUuid] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'additional-info', currentUuid] });
       
       toast({
         title: "Saved",
