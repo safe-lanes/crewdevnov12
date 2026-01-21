@@ -737,7 +737,7 @@ export function useV2SaveSuitability() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateSuitability> }) =>
-      postApi<CandidateSuitability>(`/candidates/${recCanUuid}/suitability`, data),
+      putApi<CandidateSuitability>(`/candidates/${recCanUuid}/suitability`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'suitability', variables.recCanUuid] });
     },
@@ -747,7 +747,7 @@ export function useV2SaveSuitability() {
 export function useV2RecruitmentDecision(recCanUuid: string | null) {
   return useQuery<CandidateRecruitmentDecision>({
     queryKey: ['v2', 'recruitment-decision', recCanUuid],
-    queryFn: () => fetchApi(`/candidates/${recCanUuid}/recruitment-decision`),
+    queryFn: () => fetchApi(`/candidates/${recCanUuid}/decision`),
     enabled: !!recCanUuid,
   });
 }
@@ -756,7 +756,7 @@ export function useV2SaveRecruitmentDecision() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recCanUuid, data }: { recCanUuid: string; data: Partial<CandidateRecruitmentDecision> }) =>
-      postApi<CandidateRecruitmentDecision>(`/candidates/${recCanUuid}/recruitment-decision`, data),
+      putApi<CandidateRecruitmentDecision>(`/candidates/${recCanUuid}/decision`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'recruitment-decision', variables.recCanUuid] });
       queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
