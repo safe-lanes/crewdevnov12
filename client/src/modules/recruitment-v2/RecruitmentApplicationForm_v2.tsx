@@ -1267,15 +1267,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     if (screeningB2Items && screeningB2Items.length > 0) {
       setFormData(prev => ({
         ...prev,
-        b2ReferenceItems: screeningB2Items.map(item => ({
-          id: item.itemUuid,
-          serverId: item.id,
-          employerName: item.employerName || '',
-          contactPerson: item.contactPerson || '',
-          contactNumber: item.contactNumber || '',
-          dateContacted: item.dateContacted || '',
-          feedback: item.feedback || '',
-          rating: item.rating || '',
+        b2References: screeningB2Items.map((item: any) => ({
+          id: item.refUuid || item.id?.toString(),
+          date: item.refDate || '',
+          nameDesignation: item.nameDesignation || '',
+          contactInfo: item.contactInfo || '',
         })),
       }));
     }
@@ -2527,19 +2523,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const currentB7Uuid = b7Result?.b7Uuid || b7Uuid;
       const currentB8Uuid = b8Result?.b8Uuid || b8Uuid;
 
-      const serverB2ItemMap = new Map((screeningB2Items || []).map(i => [i.itemUuid, i.id]));
-      for (const item of formData.b2ReferenceItems) {
-        if (!serverB2ItemMap.has(item.id) && currentB2Uuid) {
+      const serverB2ItemMap = new Map((screeningB2Items || []).map((i: any) => [i.refUuid, i.id]));
+      for (const item of formData.b2References) {
+        if (!serverB2ItemMap.has(item.id) && currentB2Uuid && (item.date || item.nameDesignation || item.contactInfo)) {
           await createB2ItemMutation.mutateAsync({
             b2Uuid: currentB2Uuid,
             data: {
-              employerName: item.employerName || undefined,
-              contactPerson: item.contactPerson || undefined,
-              contactNumber: item.contactNumber || undefined,
-              dateContacted: item.dateContacted || undefined,
-              feedback: item.feedback || undefined,
-              rating: item.rating || undefined,
-            },
+              refDate: item.date || undefined,
+              nameDesignation: item.nameDesignation || undefined,
+              contactInfo: item.contactInfo || undefined,
+            } as any,
           });
         }
       }
