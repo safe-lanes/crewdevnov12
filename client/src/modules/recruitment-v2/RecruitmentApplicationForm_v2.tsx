@@ -4658,123 +4658,427 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B4. Authentication of Certificates & Documents</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-700">B4.1 Certificates authenticated?</span>
-                      <div className="flex gap-4">
-                        {['Yes', 'No', 'N/A'].map((option) => (
-                          <label key={option} className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="b4CertificatesAuthenticated"
-                              value={option}
-                              checked={formData.b4CertificatesAuthenticated === option}
-                              onChange={(e) => setFormData(prev => ({ ...prev, b4CertificatesAuthenticated: e.target.value }))}
-                              className="w-4 h-4"
-                              data-testid={`radio-b4CertificatesAuthenticated-${option.toLowerCase()}`}
-                            />
-                            <span className="text-sm">{option}</span>
-                          </label>
-                        ))}
-                      </div>
+                {/* B4. Authentication of Certificates & Documents - matching legacy exactly */}
+                <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B4. Authentication of Certificates & Documents</h3>
+                    <div className="cursor-help" title="Guidance for certificate authentication process">
+                      <Info className="h-4 w-4 text-gray-400" />
                     </div>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {/* B4.1 Certificates & Documents Authenticated */}
                     <div>
-                      <Label className="text-sm">B4.2 Results</Label>
-                      <Input
-                        value={formData.b4Results}
-                        onChange={(e) => setFormData(prev => ({ ...prev, b4Results: e.target.value }))}
-                        placeholder="Enter authentication results..."
-                        className="mt-1"
-                        data-testid="input-b4-results"
-                      />
-                    </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-[13px]">Date</TableHead>
-                          <TableHead className="text-[13px]">Certificate/Document</TableHead>
-                          <TableHead className="text-[13px]">Authority</TableHead>
-                          <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {formData.b4Certs.map((cert, idx) => (
-                          <TableRow key={cert.id}>
-                            <TableCell>
-                              <Input
-                                type="date"
-                                value={cert.date}
-                                onChange={(e) => {
-                                  const updated = [...formData.b4Certs];
-                                  updated[idx] = { ...updated[idx], date: e.target.value };
-                                  setFormData(prev => ({ ...prev, b4Certs: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b4-cert-date-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={cert.certificate}
-                                onChange={(e) => {
-                                  const updated = [...formData.b4Certs];
-                                  updated[idx] = { ...updated[idx], certificate: e.target.value };
-                                  setFormData(prev => ({ ...prev, b4Certs: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b4-cert-name-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={cert.authority}
-                                onChange={(e) => {
-                                  const updated = [...formData.b4Certs];
-                                  updated[idx] = { ...updated[idx], authority: e.target.value };
-                                  setFormData(prev => ({ ...prev, b4Certs: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b4-cert-auth-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {formData.b4Certs.length > 1 && (
+                      <div className="flex justify-between items-center mb-4">
+                        <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                          B4.1 Certificates & Documents Authenticated?
+                        </Label>
+                        <div className="flex items-center min-w-[300px]">
+                          <div className="flex gap-6 w-[200px]">
+                            <RadioGroup 
+                              value={formData.b4CertificatesAuthenticated} 
+                              onValueChange={(value) => setFormData(prev => ({ ...prev, b4CertificatesAuthenticated: value }))}
+                              className="flex gap-6"
+                            >
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="b4-authenticated-yes" />
+                                  <Label htmlFor="b4-authenticated-yes" className="text-sm cursor-pointer">Yes</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="b4-authenticated-no" />
+                                  <Label htmlFor="b4-authenticated-no" className="text-sm cursor-pointer">No</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="na" id="b4-authenticated-na" />
+                                  <Label htmlFor="b4-authenticated-na" className="text-sm cursor-pointer">NA</Label>
+                                </div>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 ml-4"
+                            onClick={() => setNewB4Comment(prev => ({ ...prev, 'b4-authenticated': "" }))}
+                            data-testid="button-b4-authenticated-comment"
+                          >
+                            <MessageSquare className="h-4 w-4 text-gray-400" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Certificate details when Yes is selected */}
+                      {formData.b4CertificatesAuthenticated === 'yes' && (
+                        <div className="ml-4 mb-4 space-y-3">
+                          {formData.b4Certs.map((certificate, index) => (
+                            <div key={certificate.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Input
+                                  type="date"
+                                  placeholder="Date"
+                                  className="text-sm"
+                                  value={certificate.date}
+                                  onChange={(e) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b4Certs: prev.b4Certs.map(cert => 
+                                        cert.id === certificate.id 
+                                          ? { ...cert, date: e.target.value }
+                                          : cert
+                                      )
+                                    }));
+                                  }}
+                                  data-testid={`input-b4-cert-date-${index}`}
+                                />
+                              </div>
+                              <div>
+                                <Input
+                                  type="text"
+                                  placeholder="Certificate or Document"
+                                  className="text-sm"
+                                  value={certificate.certificate}
+                                  onChange={(e) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b4Certs: prev.b4Certs.map(cert => 
+                                        cert.id === certificate.id 
+                                          ? { ...cert, certificate: e.target.value }
+                                          : cert
+                                      )
+                                    }));
+                                  }}
+                                  data-testid={`input-b4-cert-name-${index}`}
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="text"
+                                  placeholder="Authority Involved"
+                                  className="text-sm flex-1"
+                                  value={certificate.authority}
+                                  onChange={(e) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b4Certs: prev.b4Certs.map(cert => 
+                                        cert.id === certificate.id 
+                                          ? { ...cert, authority: e.target.value }
+                                          : cert
+                                      )
+                                    }));
+                                  }}
+                                  data-testid={`input-b4-cert-auth-${index}`}
+                                />
+                                {index === formData.b4Certs.length - 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10 w-10 p-0 border-gray-300"
+                                    onClick={() => {
+                                      const newId = String(Date.now());
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b4Certs: [...prev.b4Certs, { 
+                                          id: newId, 
+                                          date: '', 
+                                          certificate: '',
+                                          authority: '' 
+                                        }]
+                                      }));
+                                    }}
+                                    data-testid="button-add-b4-cert"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {formData.b4Certs.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-10 w-10 p-0"
+                                    onClick={() => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b4Certs: prev.b4Certs.filter(cert => cert.id !== certificate.id)
+                                      }));
+                                    }}
+                                    data-testid={`button-remove-b4-cert-${index}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {formData.b4Certs.length === 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-10 w-10 p-0"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Comments for B4.1 */}
+                      {(formData.b4Comments['b4-authenticated']?.length > 0 || newB4Comment['b4-authenticated'] !== undefined) && (
+                        <div className="ml-4 mb-4 space-y-2">
+                          {formData.b4Comments['b4-authenticated']?.map((comment) => (
+                            <div key={comment.id} className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                                {editingB4Comment === comment.id ? (
+                                  <Textarea
+                                    value={comment.text}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b4Comments: {
+                                          ...prev.b4Comments,
+                                          'b4-authenticated': prev.b4Comments['b4-authenticated']?.map(c => 
+                                            c.id === comment.id ? { ...c, text: e.target.value } : c
+                                          ) || []
+                                        }
+                                      }));
+                                    }}
+                                    onBlur={() => setEditingB4Comment(null)}
+                                    autoFocus
+                                    className="min-h-[80px] w-full"
+                                  />
+                                ) : (
+                                  <div 
+                                    className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                    onClick={() => setEditingB4Comment(comment.id)}
+                                  >
+                                    {comment.text}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-2">
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setFormData(prev => ({ ...prev, b4Certs: prev.b4Certs.filter((_, i) => i !== idx) }))}
-                                  data-testid={`button-remove-b4-cert-${idx}`}
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b4Comments: {
+                                        ...prev.b4Comments,
+                                        'b4-authenticated': prev.b4Comments['b4-authenticated']?.filter(c => c.id !== comment.id) || []
+                                      }
+                                    }));
+                                    if (editingB4Comment === comment.id) {
+                                      setEditingB4Comment(null);
+                                    }
+                                  }}
                                 >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({
-                        ...prev,
-                        b4Certs: [...prev.b4Certs, { id: String(Date.now()), date: '', certificate: '', authority: '' }]
-                      }))}
-                      data-testid="button-add-b4-cert"
-                    >
-                      <Plus className="h-4 w-4 mr-1" /> Add Certificate
-                    </Button>
-                    
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {newB4Comment['b4-authenticated'] !== undefined && (
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                              <Textarea
+                                value={newB4Comment['b4-authenticated']}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                  setNewB4Comment(prev => ({ ...prev, 'b4-authenticated': e.target.value }));
+                                }}
+                                onBlur={() => {
+                                  if (newB4Comment['b4-authenticated']?.trim()) {
+                                    const commentId = Date.now().toString();
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b4Comments: {
+                                        ...prev.b4Comments,
+                                        'b4-authenticated': [
+                                          ...(prev.b4Comments['b4-authenticated'] || []),
+                                          { id: commentId, user: currentUserDisplay, text: newB4Comment['b4-authenticated'] }
+                                        ]
+                                      }
+                                    }));
+                                  }
+                                  setNewB4Comment(prev => {
+                                    const newState = { ...prev };
+                                    delete newState['b4-authenticated'];
+                                    return newState;
+                                  });
+                                }}
+                                placeholder="Comment: Add your observations here..."
+                                className="text-blue-600 italic border-blue-200 text-[13px]"
+                                rows={2}
+                                autoFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* B4.2 Authentication checks results positive */}
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                          B4.2 Authentication checks results positive? If yes, record brief overview of verification in comment. If no state details
+                        </Label>
+                        <div className="flex items-center min-w-[300px]">
+                          <div className="flex gap-6 w-[200px]">
+                            <RadioGroup 
+                              value={formData.b4Results} 
+                              onValueChange={(value) => setFormData(prev => ({ ...prev, b4Results: value }))}
+                              className="flex gap-6"
+                            >
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="b4-results-yes" />
+                                  <Label htmlFor="b4-results-yes" className="text-sm cursor-pointer">Yes</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="b4-results-no" />
+                                  <Label htmlFor="b4-results-no" className="text-sm cursor-pointer">No</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="na" id="b4-results-na" />
+                                  <Label htmlFor="b4-results-na" className="text-sm cursor-pointer">NA</Label>
+                                </div>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 ml-4"
+                            onClick={() => setNewB4Comment(prev => ({ ...prev, 'b4-results': "" }))}
+                            data-testid="button-b4-results-comment"
+                          >
+                            <MessageSquare className="h-4 w-4 text-gray-400" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Comments for B4.2 */}
+                      {(formData.b4Comments['b4-results']?.length > 0 || newB4Comment['b4-results'] !== undefined) && (
+                        <div className="ml-4 mb-4 space-y-2">
+                          {formData.b4Comments['b4-results']?.map((comment) => (
+                            <div key={comment.id} className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                                {editingB4Comment === comment.id ? (
+                                  <Textarea
+                                    value={comment.text}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b4Comments: {
+                                          ...prev.b4Comments,
+                                          'b4-results': prev.b4Comments['b4-results']?.map(c => 
+                                            c.id === comment.id ? { ...c, text: e.target.value } : c
+                                          ) || []
+                                        }
+                                      }));
+                                    }}
+                                    onBlur={() => setEditingB4Comment(null)}
+                                    autoFocus
+                                    className="min-h-[80px] w-full"
+                                  />
+                                ) : (
+                                  <div 
+                                    className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                    onClick={() => setEditingB4Comment(comment.id)}
+                                  >
+                                    {comment.text}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b4Comments: {
+                                        ...prev.b4Comments,
+                                        'b4-results': prev.b4Comments['b4-results']?.filter(c => c.id !== comment.id) || []
+                                      }
+                                    }));
+                                    if (editingB4Comment === comment.id) {
+                                      setEditingB4Comment(null);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {newB4Comment['b4-results'] !== undefined && (
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                              <Textarea
+                                value={newB4Comment['b4-results']}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                  setNewB4Comment(prev => ({ ...prev, 'b4-results': e.target.value }));
+                                }}
+                                onBlur={() => {
+                                  if (newB4Comment['b4-results']?.trim()) {
+                                    const commentId = Date.now().toString();
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b4Comments: {
+                                        ...prev.b4Comments,
+                                        'b4-results': [
+                                          ...(prev.b4Comments['b4-results'] || []),
+                                          { id: commentId, user: currentUserDisplay, text: newB4Comment['b4-results'] }
+                                        ]
+                                      }
+                                    }));
+                                  }
+                                  setNewB4Comment(prev => {
+                                    const newState = { ...prev };
+                                    delete newState['b4-results'];
+                                    return newState;
+                                  });
+                                }}
+                                placeholder="Comment: Add your observations here..."
+                                className="text-blue-600 italic border-blue-200 text-[13px]"
+                                rows={2}
+                                autoFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Attachment button */}
-                    <div className="flex justify-start mt-6">
+                    <div className="flex justify-start">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         className="text-gray-600 border-gray-300 hover:bg-gray-50"
-                        onClick={() => openAttachmentDialog('b4', 'b4', 'B4. Authentication of Certificates')}
+                        onClick={() => openAttachmentDialog('b4', 'b4', 'B4. Authentication of Certificates & Documents')}
                         data-testid="button-b4-attachments"
                       >
                         <Paperclip className="h-4 w-4 mr-2" />
