@@ -865,14 +865,33 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const calculateAge = (dob: string): string => {
     if (!dob) return '';
-    const birthDate = new Date(dob);
+    let birthDate: Date;
+    
+    // Handle different date formats: DD-MM-YYYY, YYYY-MM-DD, etc.
+    if (dob.includes('-')) {
+      const parts = dob.split('-');
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD format
+        birthDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      } else if (parts[2].length === 4) {
+        // DD-MM-YYYY format
+        birthDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      } else {
+        birthDate = new Date(dob);
+      }
+    } else {
+      birthDate = new Date(dob);
+    }
+    
+    if (isNaN(birthDate.getTime())) return '';
+    
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    return age > 0 ? age.toString() : '';
+    return age >= 0 ? age.toString() : '';
   };
 
   useEffect(() => {
