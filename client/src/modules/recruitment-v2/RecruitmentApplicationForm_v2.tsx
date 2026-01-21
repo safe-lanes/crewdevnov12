@@ -23,6 +23,7 @@ import { useExternalNationalities } from '@/hooks/useExternalNationalities';
 import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
 import { useExternalCountries } from '@/hooks/useExternalCountries';
 import { useExternalLanguages } from '@/hooks/useExternalLanguages';
+import { useExternalUsers } from '@/hooks/useExternalUsers';
 import {
   useV2Candidate,
   useV2CreateCandidate,
@@ -596,6 +597,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const { data: externalVesselTypesData } = useExternalVesselTypes();
   const { data: externalCountriesData } = useExternalCountries();
   const { data: externalLanguagesData } = useExternalLanguages();
+  const { data: externalUsersData, isLoading: isLoadingUsers } = useExternalUsers();
+
+  // Filter users by userType === "Office" and extract displayName for approver/interviewer dropdown
+  const approverMasterData = useMemo(() => {
+    const users = (externalUsersData as any)?.users || externalUsersData || [];
+    if (users.length > 0) {
+      const displayNames = users
+        .filter((user: any) => user.userType?.toLowerCase() === 'office')
+        .map((user: any) => user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`)
+        .filter(Boolean);
+      // Deduplicate to prevent React key warnings
+      return Array.from(new Set(displayNames)).sort() as string[];
+    }
+    return [];
+  }, [externalUsersData]);
 
   const NATIONALITIES = useMemo(() => {
     const nationalities = (externalNationalitiesData as any)?.nationalities || externalNationalitiesData || [];
@@ -5473,153 +5489,328 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
                 </div>
 
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-base font-medium mb-4" style={{ color: '#16569e' }}>B6. Interviews</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <span className="text-sm text-gray-700">B6.1 Interview completed?</span>
-                      <div className="flex gap-4">
-                        {['Yes', 'No', 'N/A'].map((option) => (
-                          <label key={option} className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="b6InterviewCompleted"
-                              value={option}
-                              checked={formData.b6InterviewCompleted === option}
-                              onChange={(e) => setFormData(prev => ({ ...prev, b6InterviewCompleted: e.target.value }))}
-                              className="w-4 h-4"
-                              data-testid={`radio-b6InterviewCompleted-${option.toLowerCase()}`}
-                            />
-                            <span className="text-sm">{option}</span>
-                          </label>
-                        ))}
-                      </div>
+                {/* B6. Interview(s) - matching legacy exactly */}
+                <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B6. Interview(s)</h3>
+                    <div className="cursor-help" title="Guidance for interview process">
+                      <Info className="h-4 w-4 text-gray-400" />
                     </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-[13px]">Date</TableHead>
-                          <TableHead className="text-[13px]">Interviewer</TableHead>
-                          <TableHead className="text-[13px]">Status</TableHead>
-                          <TableHead className="text-[13px]">Result</TableHead>
-                          <TableHead className="text-[13px]">Comments</TableHead>
-                          <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {formData.b6Interviews.map((interview, idx) => (
-                          <TableRow key={interview.id}>
-                            <TableCell>
-                              <Input
-                                type="date"
-                                value={interview.date}
-                                onChange={(e) => {
-                                  const updated = [...formData.b6Interviews];
-                                  updated[idx] = { ...updated[idx], date: e.target.value };
-                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b6-interview-date-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={interview.interviewer}
-                                onChange={(e) => {
-                                  const updated = [...formData.b6Interviews];
-                                  updated[idx] = { ...updated[idx], interviewer: e.target.value };
-                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b6-interview-interviewer-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={interview.status}
-                                onValueChange={(value) => {
-                                  const updated = [...formData.b6Interviews];
-                                  updated[idx] = { ...updated[idx], status: value };
-                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-xs" data-testid={`select-b6-interview-status-${idx}`}>
-                                  <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Scheduled">Scheduled</SelectItem>
-                                  <SelectItem value="Completed">Completed</SelectItem>
-                                  <SelectItem value="Cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={interview.result}
-                                onValueChange={(value) => {
-                                  const updated = [...formData.b6Interviews];
-                                  updated[idx] = { ...updated[idx], result: value };
-                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-xs" data-testid={`select-b6-interview-result-${idx}`}>
-                                  <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Pass">Pass</SelectItem>
-                                  <SelectItem value="Fail">Fail</SelectItem>
-                                  <SelectItem value="Pending">Pending</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={interview.comments}
-                                onChange={(e) => {
-                                  const updated = [...formData.b6Interviews];
-                                  updated[idx] = { ...updated[idx], comments: e.target.value };
-                                  setFormData(prev => ({ ...prev, b6Interviews: updated }));
-                                }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b6-interview-comments-${idx}`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {formData.b6Interviews.length > 1 && (
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {/* B6.1 Interview completed */}
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                          B6.1 Interview completed?
+                        </Label>
+                        <div className="flex items-center min-w-[300px]">
+                          <div className="flex gap-6 w-[200px]">
+                            <RadioGroup 
+                              value={formData.b6InterviewCompleted} 
+                              onValueChange={(value) => setFormData(prev => ({ ...prev, b6InterviewCompleted: value }))}
+                              className="flex gap-6"
+                            >
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="b6-completed-yes" />
+                                  <Label htmlFor="b6-completed-yes" className="text-sm cursor-pointer">Yes</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="b6-completed-no" />
+                                  <Label htmlFor="b6-completed-no" className="text-sm cursor-pointer">No</Label>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 w-[50px]">
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="na" id="b6-completed-na" />
+                                  <Label htmlFor="b6-completed-na" className="text-sm cursor-pointer">NA</Label>
+                                </div>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 ml-4"
+                            onClick={() => setNewB6Comment(prev => ({ ...prev, 'b6-completed': "" }))}
+                            data-testid="button-b6-completed-comment"
+                          >
+                            <MessageSquare className="h-4 w-4 text-gray-400" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Interview details when Yes is selected */}
+                      {formData.b6InterviewCompleted === 'yes' && (
+                        <div className="ml-4 mb-4 space-y-3">
+                          {formData.b6Interviews.map((interview, index) => (
+                            <div key={interview.id} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div>
+                                <Input
+                                  type="date"
+                                  placeholder="Date"
+                                  className="text-sm"
+                                  value={interview.date}
+                                  onChange={(e) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b6Interviews: prev.b6Interviews.map(int => 
+                                        int.id === interview.id 
+                                          ? { ...int, date: e.target.value }
+                                          : int
+                                      )
+                                    }));
+                                  }}
+                                  data-testid={`input-b6-interview-date-${index}`}
+                                />
+                              </div>
+                              <div>
+                                <Select
+                                  value={interview.interviewer}
+                                  onValueChange={(value) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b6Interviews: prev.b6Interviews.map(int => 
+                                        int.id === interview.id 
+                                          ? { ...int, interviewer: value }
+                                          : int
+                                      )
+                                    }));
+                                  }}
+                                >
+                                  <SelectTrigger className="text-sm" data-testid={`select-b6-interview-interviewer-${index}`}>
+                                    <SelectValue placeholder="Interviewer" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {isLoadingUsers ? (
+                                      <SelectItem value="_loading" disabled>Loading interviewers...</SelectItem>
+                                    ) : approverMasterData.length === 0 ? (
+                                      <SelectItem value="_empty" disabled>No office users found</SelectItem>
+                                    ) : (
+                                      approverMasterData.map((interviewer: string) => (
+                                        <SelectItem key={interviewer} value={interviewer}>
+                                          {interviewer}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Select
+                                  value={interview.status}
+                                  onValueChange={(value) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b6Interviews: prev.b6Interviews.map(int => 
+                                        int.id === interview.id 
+                                          ? { ...int, status: value }
+                                          : int
+                                      )
+                                    }));
+                                  }}
+                                >
+                                  <SelectTrigger className="text-sm" data-testid={`select-b6-interview-status-${index}`}>
+                                    <SelectValue placeholder="Status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex gap-2">
+                                <Select
+                                  value={interview.result}
+                                  onValueChange={(value) => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b6Interviews: prev.b6Interviews.map(int => 
+                                        int.id === interview.id 
+                                          ? { ...int, result: value }
+                                          : int
+                                      )
+                                    }));
+                                  }}
+                                >
+                                  <SelectTrigger className="text-sm flex-1" data-testid={`select-b6-interview-result-${index}`}>
+                                    <SelectValue placeholder="Result" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="recommended">Recommended</SelectItem>
+                                    <SelectItem value="not-recommended">Not Recommended</SelectItem>
+                                    <SelectItem value="assess-further">Assess Further</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                {index === formData.b6Interviews.length - 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10 w-10 p-0 border-gray-300"
+                                    onClick={() => {
+                                      const newId = String(Date.now());
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b6Interviews: [...prev.b6Interviews, { 
+                                          id: newId, 
+                                          date: '', 
+                                          interviewer: '',
+                                          status: '',
+                                          result: '',
+                                          comments: '' 
+                                        }]
+                                      }));
+                                    }}
+                                    data-testid="button-add-b6-interview"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {formData.b6Interviews.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-10 w-10 p-0"
+                                    onClick={() => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b6Interviews: prev.b6Interviews.filter(int => int.id !== interview.id)
+                                      }));
+                                    }}
+                                    data-testid={`button-remove-b6-interview-${index}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {formData.b6Interviews.length === 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-10 w-10 p-0"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Comments for B6.1 */}
+                      {(formData.b6Comments['b6-completed']?.length > 0 || newB6Comment['b6-completed'] !== undefined) && (
+                        <div className="ml-4 mb-4 space-y-2">
+                          {formData.b6Comments['b6-completed']?.map((comment) => (
+                            <div key={comment.id} className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                                {editingB6Comment === comment.id ? (
+                                  <Textarea
+                                    value={comment.text}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        b6Comments: {
+                                          ...prev.b6Comments,
+                                          'b6-completed': prev.b6Comments['b6-completed']?.map(c => 
+                                            c.id === comment.id ? { ...c, text: e.target.value } : c
+                                          ) || []
+                                        }
+                                      }));
+                                    }}
+                                    onBlur={() => setEditingB6Comment(null)}
+                                    autoFocus
+                                    className="min-h-[80px] w-full"
+                                  />
+                                ) : (
+                                  <div 
+                                    className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                                    onClick={() => setEditingB6Comment(comment.id)}
+                                  >
+                                    {comment.text}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-2">
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setFormData(prev => ({ ...prev, b6Interviews: prev.b6Interviews.filter((_, i) => i !== idx) }))}
-                                  data-testid={`button-remove-b6-interview-${idx}`}
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b6Comments: {
+                                        ...prev.b6Comments,
+                                        'b6-completed': prev.b6Comments['b6-completed']?.filter(c => c.id !== comment.id) || []
+                                      }
+                                    }));
+                                    if (editingB6Comment === comment.id) {
+                                      setEditingB6Comment(null);
+                                    }
+                                  }}
                                 >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({
-                        ...prev,
-                        b6Interviews: [...prev.b6Interviews, { id: String(Date.now()), date: '', interviewer: '', status: '', result: '', comments: '' }]
-                      }))}
-                      data-testid="button-add-b6-interview"
-                    >
-                      <Plus className="h-4 w-4 mr-1" /> Add Interview
-                    </Button>
-                    
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {newB6Comment['b6-completed'] !== undefined && (
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                              <Textarea
+                                value={newB6Comment['b6-completed']}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                  setNewB6Comment(prev => ({ ...prev, 'b6-completed': e.target.value }));
+                                }}
+                                onBlur={() => {
+                                  if (newB6Comment['b6-completed']?.trim()) {
+                                    const commentId = Date.now().toString();
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b6Comments: {
+                                        ...prev.b6Comments,
+                                        'b6-completed': [
+                                          ...(prev.b6Comments['b6-completed'] || []),
+                                          { id: commentId, user: currentUserDisplay, text: newB6Comment['b6-completed'] }
+                                        ]
+                                      }
+                                    }));
+                                  }
+                                  setNewB6Comment(prev => {
+                                    const newState = { ...prev };
+                                    delete newState['b6-completed'];
+                                    return newState;
+                                  });
+                                }}
+                                placeholder="Comment: Add your observations here..."
+                                className="text-blue-600 italic border-blue-200 text-[13px]"
+                                rows={2}
+                                autoFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Attachment button */}
-                    <div className="flex justify-start mt-6">
+                    <div className="flex justify-start">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         className="text-gray-600 border-gray-300 hover:bg-gray-50"
-                        onClick={() => openAttachmentDialog('b6', 'b6', 'B6. Interviews')}
+                        onClick={() => openAttachmentDialog('b6', 'b6', 'B6. Interview(s)')}
                         data-testid="button-b6-attachments"
                       >
                         <Paperclip className="h-4 w-4 mr-2" />
