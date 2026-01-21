@@ -69,8 +69,38 @@ export const suitabilityController = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await suitabilityService.upsertSuitability(recCanUuid, req.body);
-      res.json(result);
+      const { vesselTypes, fleetGroups, ...suitabilityData } = req.body;
+      
+      // Upsert the main suitability record
+      const result = await suitabilityService.upsertSuitability(recCanUuid, suitabilityData);
+      
+      // Handle vessel types if provided
+      if (vesselTypes && Array.isArray(vesselTypes) && result.suitUuid) {
+        // Clear existing vessel types
+        await suitabilityService.clearVesselTypes(result.suitUuid);
+        // Add new vessel types
+        for (const vt of vesselTypes) {
+          if (vt.vesselTypeUuid) {
+            await suitabilityService.addVesselType(result.suitUuid, vt.vesselTypeUuid);
+          }
+        }
+      }
+      
+      // Handle fleet groups if provided
+      if (fleetGroups && Array.isArray(fleetGroups) && result.suitUuid) {
+        // Clear existing fleet groups
+        await suitabilityService.clearFleetGroups(result.suitUuid);
+        // Add new fleet groups
+        for (const fg of fleetGroups) {
+          if (fg.fleetGroupUuid) {
+            await suitabilityService.addFleetGroup(result.suitUuid, fg.fleetGroupUuid);
+          }
+        }
+      }
+      
+      // Return the suitability with vessel types and fleet groups
+      const finalResult = await suitabilityService.getSuitabilityWithRelations(recCanUuid);
+      res.json(finalResult || result);
     } catch (error) {
       console.error("Error upserting suitability:", error);
       res.status(500).json({ error: "Failed to upsert suitability" });
@@ -139,8 +169,26 @@ export const recruitmentDecisionController = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await recruitmentDecisionService.upsertDecision(recCanUuid, req.body);
-      res.json(result);
+      const { assignedGroups, ...decisionData } = req.body;
+      
+      // Upsert the main decision record
+      const result = await recruitmentDecisionService.upsertDecision(recCanUuid, decisionData);
+      
+      // Handle assigned groups if provided
+      if (assignedGroups && Array.isArray(assignedGroups) && result.decisionUuid) {
+        // Clear existing assigned groups
+        await recruitmentDecisionService.clearAssignedGroups(result.decisionUuid);
+        // Add new assigned groups
+        for (const ag of assignedGroups) {
+          if (ag.groupUuid) {
+            await recruitmentDecisionService.addAssignedGroup(result.decisionUuid, ag.groupUuid);
+          }
+        }
+      }
+      
+      // Return the decision with assigned groups
+      const finalResult = await recruitmentDecisionService.getDecisionWithRelations(recCanUuid);
+      res.json(finalResult || result);
     } catch (error) {
       console.error("Error upserting decision:", error);
       res.status(500).json({ error: "Failed to upsert decision" });

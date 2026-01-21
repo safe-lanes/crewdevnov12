@@ -42,6 +42,20 @@ export class SuitabilityService {
     return suitabilityRepository.findByCandidateUuid(recCanUuid);
   }
 
+  async getSuitabilityWithRelations(recCanUuid: string): Promise<{ suitUuid: string; vesselTypes: any[]; fleetGroups: any[] } | undefined> {
+    const suitability = await suitabilityRepository.findByCandidateUuid(recCanUuid);
+    if (!suitability) return undefined;
+    
+    const vesselTypes = await suitabilityRepository.findVesselTypes(suitability.suitUuid);
+    const fleetGroups = await suitabilityRepository.findFleetGroups(suitability.suitUuid);
+    
+    return {
+      ...suitability,
+      vesselTypes,
+      fleetGroups,
+    };
+  }
+
   async upsertSuitability(recCanUuid: string, data: Partial<InsertSuitability>, userUuid?: string): Promise<CandSuitability> {
     return suitabilityRepository.upsert(recCanUuid, {
       suitUuid: uuidv4(),
@@ -91,6 +105,18 @@ export class SuitabilityService {
 export class RecruitmentDecisionService {
   async getDecision(recCanUuid: string): Promise<CandRecruitmentDecision | undefined> {
     return recruitmentDecisionRepository.findByCandidateUuid(recCanUuid);
+  }
+
+  async getDecisionWithRelations(recCanUuid: string): Promise<{ decisionUuid: string; recruitmentStatus?: string; assignedGroups: any[] } | undefined> {
+    const decision = await recruitmentDecisionRepository.findByCandidateUuid(recCanUuid);
+    if (!decision) return undefined;
+    
+    const assignedGroups = await recruitmentDecisionRepository.findAssignedGroups(decision.decisionUuid);
+    
+    return {
+      ...decision,
+      assignedGroups,
+    };
   }
 
   async upsertDecision(recCanUuid: string, data: Partial<InsertRecruitmentDecision>, userUuid?: string): Promise<CandRecruitmentDecision> {
