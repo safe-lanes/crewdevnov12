@@ -459,8 +459,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [editingB8Comment, setEditingB8Comment] = useState<string | null>(null);
   const [newB8Comment, setNewB8Comment] = useState<{[key: string]: string}>({});
   
-  // Current user for comments
-  const currentUserDisplay = 'Current User'; // TODO: Get from auth context
+  // Current user for comments - get from sessionStorage like legacy
+  const currentUser = useMemo(() => {
+    const name = sessionStorage.getItem('crewUserName') || 'Unknown User';
+    const position = sessionStorage.getItem('crewDesignation') || 'Unknown Position';
+    return { name, position };
+  }, []);
+  const currentUserDisplay = `${currentUser.name}, ${currentUser.position}`;
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
