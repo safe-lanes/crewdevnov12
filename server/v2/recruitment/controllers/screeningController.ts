@@ -144,6 +144,28 @@ export const screeningB2Controller = {
       res.status(500).json({ error: "Failed to create B2 comment" });
     }
   },
+
+  async getAttachments(req: Request, res: Response) {
+    try {
+      const { b2Uuid } = req.params;
+      const result = await screeningB2Service.getAttachments(b2Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B2 attachments:", error);
+      res.status(500).json({ error: "Failed to get B2 attachments" });
+    }
+  },
+
+  async createAttachment(req: Request, res: Response) {
+    try {
+      const { b2Uuid } = req.params;
+      const result = await screeningB2Service.createAttachment(b2Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B2 attachment:", error);
+      res.status(500).json({ error: "Failed to create B2 attachment" });
+    }
+  },
 };
 
 export const screeningB3Controller = {
@@ -221,6 +243,28 @@ export const screeningB3Controller = {
     } catch (error) {
       console.error("Error updating B3 authority:", error);
       res.status(500).json({ error: "Failed to update B3 authority" });
+    }
+  },
+
+  async getAttachments(req: Request, res: Response) {
+    try {
+      const { b3Uuid } = req.params;
+      const result = await screeningB3Service.getAttachments(b3Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B3 attachments:", error);
+      res.status(500).json({ error: "Failed to get B3 attachments" });
+    }
+  },
+
+  async createAttachment(req: Request, res: Response) {
+    try {
+      const { b3Uuid } = req.params;
+      const result = await screeningB3Service.createAttachment(b3Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B3 attachment:", error);
+      res.status(500).json({ error: "Failed to create B3 attachment" });
     }
   },
 };
@@ -302,6 +346,28 @@ export const screeningB4Controller = {
       res.status(500).json({ error: "Failed to update B4 cert item" });
     }
   },
+
+  async getAttachments(req: Request, res: Response) {
+    try {
+      const { b4Uuid } = req.params;
+      const result = await screeningB4Service.getAttachments(b4Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B4 attachments:", error);
+      res.status(500).json({ error: "Failed to get B4 attachments" });
+    }
+  },
+
+  async createAttachment(req: Request, res: Response) {
+    try {
+      const { b4Uuid } = req.params;
+      const result = await screeningB4Service.createAttachment(b4Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B4 attachment:", error);
+      res.status(500).json({ error: "Failed to create B4 attachment" });
+    }
+  },
 };
 
 export const screeningB5Controller = {
@@ -381,6 +447,28 @@ export const screeningB5Controller = {
       res.status(500).json({ error: "Failed to update B5 test item" });
     }
   },
+
+  async getAttachments(req: Request, res: Response) {
+    try {
+      const { b5Uuid } = req.params;
+      const result = await screeningB5Service.getAttachments(b5Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B5 attachments:", error);
+      res.status(500).json({ error: "Failed to get B5 attachments" });
+    }
+  },
+
+  async createAttachment(req: Request, res: Response) {
+    try {
+      const { b5Uuid } = req.params;
+      const result = await screeningB5Service.createAttachment(b5Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B5 attachment:", error);
+      res.status(500).json({ error: "Failed to create B5 attachment" });
+    }
+  },
 };
 
 export const screeningB6Controller = {
@@ -458,6 +546,28 @@ export const screeningB6Controller = {
     } catch (error) {
       console.error("Error updating B6 interview item:", error);
       res.status(500).json({ error: "Failed to update B6 interview item" });
+    }
+  },
+
+  async getAttachments(req: Request, res: Response) {
+    try {
+      const { b6Uuid } = req.params;
+      const result = await screeningB6Service.getAttachments(b6Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B6 attachments:", error);
+      res.status(500).json({ error: "Failed to get B6 attachments" });
+    }
+  },
+
+  async createAttachment(req: Request, res: Response) {
+    try {
+      const { b6Uuid } = req.params;
+      const result = await screeningB6Service.createAttachment(b6Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B6 attachment:", error);
+      res.status(500).json({ error: "Failed to create B6 attachment" });
     }
   },
 };
@@ -586,6 +696,28 @@ export const screeningB8Controller = {
     } catch (error) {
       console.error("Error creating B8 comment:", error);
       res.status(500).json({ error: "Failed to create B8 comment" });
+    }
+  },
+
+  async getAttachments(req: Request, res: Response) {
+    try {
+      const { b8Uuid } = req.params;
+      const result = await screeningB8Service.getAttachments(b8Uuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting B8 attachments:", error);
+      res.status(500).json({ error: "Failed to get B8 attachments" });
+    }
+  },
+
+  async createAttachment(req: Request, res: Response) {
+    try {
+      const { b8Uuid } = req.params;
+      const result = await screeningB8Service.createAttachment(b8Uuid, req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating B8 attachment:", error);
+      res.status(500).json({ error: "Failed to create B8 attachment" });
     }
   },
 };
