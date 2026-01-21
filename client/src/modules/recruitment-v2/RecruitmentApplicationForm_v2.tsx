@@ -3910,84 +3910,109 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     
                     {/* Reference check entry fields - only show when B2.1 is Yes */}
                     {formData.b2ReferencesCompleted === 'yes' && (
-                    <>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-[13px]">Date</TableHead>
-                          <TableHead className="text-[13px]">Name & Designation</TableHead>
-                          <TableHead className="text-[13px]">Contact Info</TableHead>
-                          <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {formData.b2References.map((ref, idx) => (
-                          <TableRow key={ref.id}>
-                            <TableCell>
+                      <div className="ml-4 mb-4 space-y-3">
+                        {formData.b2References.map((reference, index) => (
+                          <div key={reference.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
                               <Input
                                 type="date"
-                                value={ref.date}
+                                placeholder="dd-mm-yyyy"
+                                className="text-sm"
+                                value={reference.date}
                                 onChange={(e) => {
-                                  const updated = [...formData.b2References];
-                                  updated[idx] = { ...updated[idx], date: e.target.value };
-                                  setFormData(prev => ({ ...prev, b2References: updated }));
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b2References: prev.b2References.map(ref => 
+                                      ref.id === reference.id 
+                                        ? { ...ref, date: e.target.value }
+                                        : ref
+                                    )
+                                  }));
                                 }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b2-ref-date-${idx}`}
+                                data-testid={`input-b2-ref-date-${index}`}
                               />
-                            </TableCell>
-                            <TableCell>
+                            </div>
+                            <div>
                               <Input
-                                value={ref.nameDesignation}
+                                type="text"
+                                placeholder="Name & Designation"
+                                className="text-sm"
+                                value={reference.nameDesignation}
                                 onChange={(e) => {
-                                  const updated = [...formData.b2References];
-                                  updated[idx] = { ...updated[idx], nameDesignation: e.target.value };
-                                  setFormData(prev => ({ ...prev, b2References: updated }));
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b2References: prev.b2References.map(ref => 
+                                      ref.id === reference.id 
+                                        ? { ...ref, nameDesignation: e.target.value }
+                                        : ref
+                                    )
+                                  }));
                                 }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b2-ref-name-${idx}`}
+                                data-testid={`input-b2-ref-name-${index}`}
                               />
-                            </TableCell>
-                            <TableCell>
+                            </div>
+                            <div className="flex gap-2">
                               <Input
-                                value={ref.contactInfo}
+                                type="text"
+                                placeholder="Contact Info"
+                                className="text-sm flex-1"
+                                value={reference.contactInfo}
                                 onChange={(e) => {
-                                  const updated = [...formData.b2References];
-                                  updated[idx] = { ...updated[idx], contactInfo: e.target.value };
-                                  setFormData(prev => ({ ...prev, b2References: updated }));
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b2References: prev.b2References.map(ref => 
+                                      ref.id === reference.id 
+                                        ? { ...ref, contactInfo: e.target.value }
+                                        : ref
+                                    )
+                                  }));
                                 }}
-                                className="h-8 text-xs"
-                                data-testid={`input-b2-ref-contact-${idx}`}
+                                data-testid={`input-b2-ref-contact-${index}`}
                               />
-                            </TableCell>
-                            <TableCell>
-                              {formData.b2References.length > 1 && (
+                              {index === formData.b2References.length - 1 && (
                                 <Button
-                                  variant="ghost"
+                                  type="button"
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => setFormData(prev => ({ ...prev, b2References: prev.b2References.filter((_, i) => i !== idx) }))}
-                                  data-testid={`button-remove-b2-ref-${idx}`}
+                                  className="h-10 w-10 p-0 border-gray-300"
+                                  onClick={() => {
+                                    const newId = String(Date.now());
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b2References: [...prev.b2References, { 
+                                        id: newId, 
+                                        date: '', 
+                                        nameDesignation: '', 
+                                        contactInfo: '' 
+                                      }]
+                                    }));
+                                  }}
+                                  data-testid="button-add-b2-reference"
                                 >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                  <Plus className="h-4 w-4" />
                                 </Button>
                               )}
-                            </TableCell>
-                          </TableRow>
+                              {formData.b2References.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-10 w-10 p-0"
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      b2References: prev.b2References.filter(ref => ref.id !== reference.id)
+                                    }));
+                                  }}
+                                  data-testid={`button-remove-b2-ref-${index}`}
+                                >
+                                  <Edit className="h-4 w-4 text-gray-400" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         ))}
-                      </TableBody>
-                    </Table>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({
-                        ...prev,
-                        b2References: [...prev.b2References, { id: String(Date.now()), date: '', nameDesignation: '', contactInfo: '' }]
-                      }))}
-                      data-testid="button-add-b2-reference"
-                    >
-                      <Plus className="h-4 w-4 mr-1" /> Add Reference
-                    </Button>
-                    </>
+                      </div>
                     )}
                     
                     {/* Attachment button */}
