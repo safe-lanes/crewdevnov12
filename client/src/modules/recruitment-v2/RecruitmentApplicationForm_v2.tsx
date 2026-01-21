@@ -1596,9 +1596,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFormData(prev => ({
         ...prev,
         c1Approvers: approvalsData.map(approval => ({
-          id: approval.appUuid,
+          id: approval.approvalUuid,
           serverId: approval.id,
-          appUuid: approval.appUuid,
+          appUuid: approval.approvalUuid,
           date: approval.approvalDate || '',
           approver: approval.approverUuid || '',
           status: approval.status || '',
@@ -3145,7 +3145,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
 
       // Part C - Save approvals (C1)
-      const serverApprovalMap = new Map((approvalsData || []).map(a => [a.appUuid, a.id]));
+      const serverApprovalMap = new Map((approvalsData || []).map(a => [a.approvalUuid, a.id]));
       for (const approver of formData.c1Approvers) {
         const existingServerId = approver.serverId || (approver.appUuid ? serverApprovalMap.get(approver.appUuid) : undefined);
         if (existingServerId) {
@@ -3175,7 +3175,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             setFormData(prev => ({
               ...prev,
               c1Approvers: prev.c1Approvers.map(a => 
-                a.id === approver.id ? { ...a, serverId: newApproval.id, appUuid: newApproval.appUuid } : a
+                a.id === approver.id ? { ...a, serverId: newApproval.id, appUuid: newApproval.approvalUuid } : a
               ),
             }));
           }

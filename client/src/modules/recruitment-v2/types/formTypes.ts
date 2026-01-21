@@ -386,7 +386,7 @@ export interface ScreeningComment {
 
 export interface CandidateApproval {
   id?: number;
-  appUuid: string;
+  approvalUuid: string;
   recCanUuid: string;
   approvalDate: string;
   approverUuid: string;
