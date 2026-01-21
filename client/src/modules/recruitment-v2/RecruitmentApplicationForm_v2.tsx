@@ -3173,6 +3173,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             assignedGroups: formData.c3AssignedGroups.map(g => ({ groupUuid: g })),
           } as any,
         });
+        
+        // Update candidate status based on C3 recruitment decision for sidebar filtering
+        const statusMapping: Record<string, string> = {
+          'Yes': 'recruited',
+          'Waitlist': 'waitlist',
+          'Rejected': 'rejected',
+        };
+        const newStatus = statusMapping[formData.c3RecruitmentStatus];
+        if (newStatus) {
+          await updateCandidateMutation.mutateAsync({
+            recCanUuid,
+            data: { status: newStatus },
+          });
+        }
       }
 
       // Batch invalidate all V2 queries for this candidate at once for faster refresh
@@ -3189,6 +3203,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
            query.queryKey.includes(currentB7Uuid) ||
            query.queryKey.includes(currentB8Uuid))
       });
+      
+      // Also invalidate candidates list to refresh sidebar filtering
+      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
 
       toast({
         title: "Success",
