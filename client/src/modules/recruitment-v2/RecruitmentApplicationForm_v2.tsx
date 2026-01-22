@@ -2260,19 +2260,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }),
       ]);
       
-      if (formData.children.length > 0) {
-        await saveChildrenMutation.mutateAsync({
-          recCanUuid: currentUuid,
-          data: formData.children.map((child, index) => ({
-            firstName: child.firstName,
-            middleName: child.middleName || undefined,
-            familyName: child.familyName || undefined,
-            dob: child.dateOfBirth || undefined,
-            gender: child.gender || undefined,
-            sortOrder: index,
-          })) as any,
-        });
-      }
+      // Always save children (even empty array triggers soft-delete of removed children)
+      await saveChildrenMutation.mutateAsync({
+        recCanUuid: currentUuid,
+        data: formData.children.map((child, index) => ({
+          childUuid: child.id.startsWith('CHILD-') || child.id.startsWith('new-') ? undefined : child.id,
+          firstName: child.firstName,
+          middleName: child.middleName || undefined,
+          familyName: child.familyName || undefined,
+          dob: child.dateOfBirth || undefined,
+          gender: child.gender || undefined,
+          sortOrder: index,
+        })) as any,
+      });
       
       if (formData.vesselType.length > 0) {
         await saveVesselTypesMutation.mutateAsync({

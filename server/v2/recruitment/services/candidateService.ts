@@ -976,26 +976,64 @@ export class CandidateService {
     // Use explicit param or extract from first child's auditUserUuid
     const auditUser = createdByUuid || auditUserUuidFromBody || (children[0] as any)?.auditUserUuid || null;
 
-    await childrenRepository.deleteByCandidateUuid(recCanUuid);
+    // Get existing children for this candidate
+    const existingChildren = await childrenRepository.findByCandidateUuid(recCanUuid);
+    const existingUuidMap = new Map(
+      existingChildren.map(c => [c.childUuid, c])
+    );
+
+    // Build set of incoming childUuids (only those that have one)
+    const incomingUuids = new Set<string>();
+    
     const results: CandChild[] = [];
+    
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
       delete (child as any).auditUserUuid;
+      
+      // Skip empty rows
       if (!child.firstName?.trim()) continue;
-      const created = await childrenRepository.create({
-        childUuid: uuidv4(),
-        recCanUuid,
-        firstName: child.firstName,
-        middleName: child.middleName,
-        familyName: child.familyName,
-        dob: child.dob,
-        gender: child.gender,
-        sortOrder: i,
-        createdByUuid: auditUser,
-        updatedByUuid: auditUser,
-      } as InsertChild);
-      results.push(created);
+      
+      const childUuid = (child as any).childUuid;
+      
+      if (childUuid && existingUuidMap.has(childUuid)) {
+        // UPDATE existing child
+        incomingUuids.add(childUuid);
+        const updated = await childrenRepository.updateByUuid(childUuid, {
+          firstName: child.firstName,
+          middleName: child.middleName,
+          familyName: child.familyName,
+          dob: child.dob,
+          gender: child.gender,
+          sortOrder: i,
+          updatedByUuid: auditUser,
+        });
+        if (updated) results.push(updated);
+      } else {
+        // INSERT new child
+        const created = await childrenRepository.create({
+          childUuid: uuidv4(),
+          recCanUuid,
+          firstName: child.firstName,
+          middleName: child.middleName,
+          familyName: child.familyName,
+          dob: child.dob,
+          gender: child.gender,
+          sortOrder: i,
+          createdByUuid: auditUser,
+          updatedByUuid: auditUser,
+        } as InsertChild);
+        results.push(created);
+      }
     }
+    
+    // Soft-delete children that were removed from UI
+    for (const existing of existingChildren) {
+      if (existing.childUuid && !incomingUuids.has(existing.childUuid)) {
+        await childrenRepository.softDeleteByUuid(existing.childUuid);
+      }
+    }
+    
     return results;
   }
 
