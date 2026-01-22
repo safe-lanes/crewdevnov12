@@ -947,7 +947,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         familyName: candidateData.familyName || '',
         gender: candidateData.gender || '',
         dateOfBirth: candidateData.dob || '',
-        nationality: candidateData.nationalityUuid || '',
+        nationality: (candidateData as any).nationalityName || candidateData.nationalityUuid || '',
         presentRank: candidateData.presentRank || '',
         rankAppliedFor: candidateData.rankAppliedFor || '',
         fileNo: candidateData.fileNo || '',
@@ -962,10 +962,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFormData(prev => ({
         ...prev,
         placeOfBirthCity: personalDetails.placeOfBirthCity || '',
-        placeOfBirthCountry: personalDetails.placeOfBirthCountryUuid || '',
+        placeOfBirthCountry: (personalDetails as any).placeOfBirthCountryName || personalDetails.placeOfBirthCountryUuid || '',
         heightCm: personalDetails.heightCm || '',
         weightKg: personalDetails.weightKg || '',
-        nativeLanguage: personalDetails.nativeLanguageUuid || '',
+        nativeLanguage: (personalDetails as any).nativeLanguageName || personalDetails.nativeLanguageUuid || '',
         foreignLanguages: personalDetails.foreignLanguages || '',
         englishProficiency: personalDetails.englishProficiency || '',
         manningAgent: personalDetails.manningAgent || '',
@@ -977,7 +977,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     if (addressData) {
       setFormData(prev => ({
         ...prev,
-        countryOfResidence: addressData.countryOfResidenceUuid || '',
+        countryOfResidence: (addressData as any).countryOfResidenceName || addressData.countryOfResidenceUuid || '',
         nearestAirport: addressData.nearestAirport || '',
         residentialAddressLine1: addressData.addressLine1 || '',
         residentialAddressLine2: addressData.addressLine2 || '',
@@ -1039,7 +1039,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     if (vesselTypesData && vesselTypesData.length > 0) {
       setFormData(prev => ({
         ...prev,
-        vesselType: vesselTypesData.map(vt => vt.vesselTypeUuid),
+        vesselType: vesselTypesData.map(vt => (vt as any).vesselTypeName || vt.vesselTypeUuid).filter(Boolean),
       }));
     }
   }, [vesselTypesData]);

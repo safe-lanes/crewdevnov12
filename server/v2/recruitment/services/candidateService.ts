@@ -13,6 +13,8 @@ import {
 import {
   recruitmentCandidatesV2,
   candVesselTypesApplied,
+  candPersonalDetails,
+  candAddresses,
 } from "../../../../shared/v2/recruitment/schema";
 import {
   masterNationalities,
@@ -358,8 +360,47 @@ export class CandidateService {
     return candidateRepository.findById(id);
   }
 
-  async getCandidateByUuid(recCanUuid: string): Promise<RecruitmentCandidate | undefined> {
-    return candidateRepository.findByUuid(recCanUuid);
+  async getCandidateByUuid(recCanUuid: string): Promise<(RecruitmentCandidate & { nationalityName?: string }) | undefined> {
+    const db = getDb();
+    
+    const result = await db
+      .select({
+        id: recruitmentCandidatesV2.id,
+        recCanUuid: recruitmentCandidatesV2.recCanUuid,
+        firstName: recruitmentCandidatesV2.firstName,
+        middleName: recruitmentCandidatesV2.middleName,
+        familyName: recruitmentCandidatesV2.familyName,
+        gender: recruitmentCandidatesV2.gender,
+        dob: recruitmentCandidatesV2.dob,
+        nationalityUuid: recruitmentCandidatesV2.nationalityUuid,
+        presentRank: recruitmentCandidatesV2.presentRank,
+        rankAppliedFor: recruitmentCandidatesV2.rankAppliedFor,
+        fileNo: recruitmentCandidatesV2.fileNo,
+        status: recruitmentCandidatesV2.status,
+        uploadedPhoto: recruitmentCandidatesV2.uploadedPhoto,
+        createdAt: recruitmentCandidatesV2.createdAt,
+        updatedAt: recruitmentCandidatesV2.updatedAt,
+        createdByUuid: recruitmentCandidatesV2.createdByUuid,
+        updatedByUuid: recruitmentCandidatesV2.updatedByUuid,
+        isDeleted: recruitmentCandidatesV2.isDeleted,
+        isSync: recruitmentCandidatesV2.isSync,
+        nationalityName: masterNationalities.nationality,
+      })
+      .from(recruitmentCandidatesV2)
+      .leftJoin(
+        masterNationalities,
+        eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid)
+      )
+      .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid))
+      .limit(1);
+
+    if (result.length === 0) return undefined;
+
+    const { nationalityName, ...candidateData } = result[0];
+    return {
+      ...candidateData,
+      nationalityName: nationalityName || undefined,
+    };
   }
 
   // ============================================================================
@@ -471,8 +512,49 @@ export class CandidateService {
   // VESSEL TYPES (with UUID resolution)
   // ============================================================================
 
-  async getVesselTypesApplied(recCanUuid: string): Promise<CandVesselTypeApplied[]> {
-    return vesselTypesAppliedRepository.findByCandidateUuid(recCanUuid);
+  async getVesselTypesApplied(recCanUuid: string): Promise<(CandVesselTypeApplied & { vesselTypeName?: string })[]> {
+    const db = getDb();
+    
+    const result = await db
+      .select({
+        id: candVesselTypesApplied.id,
+        cvtaUuid: candVesselTypesApplied.cvtaUuid,
+        recCanUuid: candVesselTypesApplied.recCanUuid,
+        vesselTypeUuid: candVesselTypesApplied.vesselTypeUuid,
+        sortOrder: candVesselTypesApplied.sortOrder,
+        isDeleted: candVesselTypesApplied.isDeleted,
+        createdAt: candVesselTypesApplied.createdAt,
+        updatedAt: candVesselTypesApplied.updatedAt,
+        createdByUuid: candVesselTypesApplied.createdByUuid,
+        updatedByUuid: candVesselTypesApplied.updatedByUuid,
+        vesselTypeName: masterVesselTypes.vesselType,
+      })
+      .from(candVesselTypesApplied)
+      .leftJoin(
+        masterVesselTypes,
+        eq(candVesselTypesApplied.vesselTypeUuid, masterVesselTypes.vtUuid)
+      )
+      .where(
+        and(
+          eq(candVesselTypesApplied.recCanUuid, recCanUuid),
+          eq(candVesselTypesApplied.isDeleted, false)
+        )
+      )
+      .orderBy(asc(candVesselTypesApplied.sortOrder));
+
+    return result.map((row) => ({
+      id: row.id,
+      cvtaUuid: row.cvtaUuid,
+      recCanUuid: row.recCanUuid,
+      vesselTypeUuid: row.vesselTypeUuid,
+      sortOrder: row.sortOrder,
+      isDeleted: row.isDeleted,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      createdByUuid: row.createdByUuid,
+      updatedByUuid: row.updatedByUuid,
+      vesselTypeName: row.vesselTypeName || undefined,
+    }));
   }
 
   async addVesselTypeApplied(
@@ -554,8 +636,69 @@ export class CandidateService {
   // PERSONAL DETAILS (with UUID resolution)
   // ============================================================================
 
-  async getPersonalDetails(recCanUuid: string): Promise<CandPersonalDetails | undefined> {
-    return personalDetailsRepository.findByCandidateUuid(recCanUuid);
+  async getPersonalDetails(recCanUuid: string): Promise<(CandPersonalDetails & { placeOfBirthCountryName?: string; nativeLanguageName?: string }) | undefined> {
+    const db = getDb();
+    
+    const result = await db
+      .select({
+        id: candPersonalDetails.id,
+        cpdUuid: candPersonalDetails.cpdUuid,
+        recCanUuid: candPersonalDetails.recCanUuid,
+        heightCm: candPersonalDetails.heightCm,
+        weightKg: candPersonalDetails.weightKg,
+        placeOfBirthCity: candPersonalDetails.placeOfBirthCity,
+        placeOfBirthCountryUuid: candPersonalDetails.placeOfBirthCountryUuid,
+        ageInYears: candPersonalDetails.ageInYears,
+        nativeLanguageUuid: candPersonalDetails.nativeLanguageUuid,
+        foreignLanguages: candPersonalDetails.foreignLanguages,
+        englishProficiency: candPersonalDetails.englishProficiency,
+        manningAgent: candPersonalDetails.manningAgent,
+        isDeleted: candPersonalDetails.isDeleted,
+        isSync: candPersonalDetails.isSync,
+        createdAt: candPersonalDetails.createdAt,
+        updatedAt: candPersonalDetails.updatedAt,
+        createdByUuid: candPersonalDetails.createdByUuid,
+        updatedByUuid: candPersonalDetails.updatedByUuid,
+        placeOfBirthCountryName: masterCountries.countryName,
+        nativeLanguageName: masterLanguages.languageName,
+      })
+      .from(candPersonalDetails)
+      .leftJoin(
+        masterCountries,
+        eq(candPersonalDetails.placeOfBirthCountryUuid, masterCountries.countryUuid)
+      )
+      .leftJoin(
+        masterLanguages,
+        eq(candPersonalDetails.nativeLanguageUuid, masterLanguages.langUuid)
+      )
+      .where(eq(candPersonalDetails.recCanUuid, recCanUuid))
+      .limit(1);
+
+    if (result.length === 0) return undefined;
+
+    const row = result[0];
+    return {
+      id: row.id,
+      cpdUuid: row.cpdUuid,
+      recCanUuid: row.recCanUuid,
+      heightCm: row.heightCm,
+      weightKg: row.weightKg,
+      placeOfBirthCity: row.placeOfBirthCity,
+      placeOfBirthCountryUuid: row.placeOfBirthCountryUuid,
+      ageInYears: row.ageInYears,
+      nativeLanguageUuid: row.nativeLanguageUuid,
+      foreignLanguages: row.foreignLanguages,
+      englishProficiency: row.englishProficiency,
+      manningAgent: row.manningAgent,
+      isDeleted: row.isDeleted,
+      isSync: row.isSync,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      createdByUuid: row.createdByUuid,
+      updatedByUuid: row.updatedByUuid,
+      placeOfBirthCountryName: row.placeOfBirthCountryName || undefined,
+      nativeLanguageName: row.nativeLanguageName || undefined,
+    };
   }
 
   async upsertPersonalDetails(
@@ -601,8 +744,59 @@ export class CandidateService {
   // ADDRESS (with UUID resolution)
   // ============================================================================
 
-  async getAddress(recCanUuid: string): Promise<CandAddress | undefined> {
-    return addressRepository.findByCandidateUuid(recCanUuid);
+  async getAddress(recCanUuid: string): Promise<(CandAddress & { countryOfResidenceName?: string }) | undefined> {
+    const db = getDb();
+    
+    const result = await db
+      .select({
+        id: candAddresses.id,
+        addrUuid: candAddresses.addrUuid,
+        recCanUuid: candAddresses.recCanUuid,
+        countryOfResidenceUuid: candAddresses.countryOfResidenceUuid,
+        nearestAirport: candAddresses.nearestAirport,
+        addressLine1: candAddresses.addressLine1,
+        addressLine2: candAddresses.addressLine2,
+        contactLandline: candAddresses.contactLandline,
+        mobile: candAddresses.mobile,
+        email: candAddresses.email,
+        isDeleted: candAddresses.isDeleted,
+        isSync: candAddresses.isSync,
+        createdAt: candAddresses.createdAt,
+        updatedAt: candAddresses.updatedAt,
+        createdByUuid: candAddresses.createdByUuid,
+        updatedByUuid: candAddresses.updatedByUuid,
+        countryOfResidenceName: masterCountries.countryName,
+      })
+      .from(candAddresses)
+      .leftJoin(
+        masterCountries,
+        eq(candAddresses.countryOfResidenceUuid, masterCountries.countryUuid)
+      )
+      .where(eq(candAddresses.recCanUuid, recCanUuid))
+      .limit(1);
+
+    if (result.length === 0) return undefined;
+
+    const row = result[0];
+    return {
+      id: row.id,
+      addrUuid: row.addrUuid,
+      recCanUuid: row.recCanUuid,
+      countryOfResidenceUuid: row.countryOfResidenceUuid,
+      nearestAirport: row.nearestAirport,
+      addressLine1: row.addressLine1,
+      addressLine2: row.addressLine2,
+      contactLandline: row.contactLandline,
+      mobile: row.mobile,
+      email: row.email,
+      isDeleted: row.isDeleted,
+      isSync: row.isSync,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      createdByUuid: row.createdByUuid,
+      updatedByUuid: row.updatedByUuid,
+      countryOfResidenceName: row.countryOfResidenceName || undefined,
+    };
   }
 
   async upsertAddress(
