@@ -47,12 +47,27 @@ export async function createCandidate(req: Request, res: Response) {
   try {
     const parsed = createCandidateRequestSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
+      return res.status(400).json({
+        error: "Validation failed",
+        details: parsed.error.errors
+      });
     }
     const candidate = await candidateService.createCandidate(parsed.data);
     res.status(201).json(candidate);
   } catch (error) {
     console.error("Error creating candidate:", error);
+
+    if (error instanceof Error && error.message.includes('Invalid')) {
+      return res.status(400).json({
+        error: error.message,
+        hint: "Ensure the value exists in the corresponding master data table",
+        examples: {
+          nationality: "Indian, British, Filipino (or UUID)",
+          vesselType: "Container, Bulk Carrier, Tanker (or UUID)"
+        }
+      });
+    }
+
     res.status(500).json({ error: "Failed to create candidate" });
   }
 }
@@ -84,6 +99,11 @@ export async function updateCandidateByUuid(req: Request, res: Response) {
     res.json(candidate);
   } catch (error) {
     console.error("Error updating candidate:", error);
+
+    if (error instanceof Error && error.message.includes('Invalid')) {
+      return res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: "Failed to update candidate" });
   }
 }
@@ -127,11 +147,25 @@ export async function getVesselTypesApplied(req: Request, res: Response) {
 export async function addVesselTypeApplied(req: Request, res: Response) {
   try {
     const { recCanUuid } = req.params;
-    const { vesselTypeUuid } = req.body;
-    const vesselType = await candidateService.addVesselTypeApplied(recCanUuid, vesselTypeUuid);
-    res.status(201).json(vesselType);
+    const { vesselTypeUuid, vesselType } = req.body;
+
+    const input = vesselTypeUuid || vesselType;
+
+    if (!input) {
+      return res.status(400).json({
+        error: "Either vesselTypeUuid or vesselType is required"
+      });
+    }
+
+    const vesselTypeRecord = await candidateService.addVesselTypeApplied(recCanUuid, input);
+    res.status(201).json(vesselTypeRecord);
   } catch (error) {
     console.error("Error adding vessel type:", error);
+
+    if (error instanceof Error && error.message.includes('Invalid')) {
+      return res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: "Failed to add vessel type" });
   }
 }
@@ -157,11 +191,16 @@ export async function replaceVesselTypes(req: Request, res: Response) {
     if (!Array.isArray(vesselTypes)) {
       return res.status(400).json({ error: "Expected array of vessel types" });
     }
-    const vesselTypeUuids = vesselTypes.map((vt: any) => vt.vesselTypeUuid);
-    const results = await candidateService.replaceVesselTypes(recCanUuid, vesselTypeUuids);
+    const vesselTypeInputs = vesselTypes.map((vt: any) => vt.vesselTypeUuid || vt.vesselType || vt);
+    const results = await candidateService.replaceVesselTypes(recCanUuid, vesselTypeInputs);
     res.json(results);
   } catch (error) {
     console.error("Error replacing vessel types:", error);
+
+    if (error instanceof Error && error.message.includes('Invalid')) {
+      return res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: "Failed to replace vessel types" });
   }
 }
@@ -184,6 +223,11 @@ export async function upsertPersonalDetails(req: Request, res: Response) {
     res.json(details);
   } catch (error) {
     console.error("Error upserting personal details:", error);
+
+    if (error instanceof Error && error.message.includes('Invalid')) {
+      return res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: "Failed to upsert personal details" });
   }
 }
@@ -206,6 +250,11 @@ export async function upsertAddress(req: Request, res: Response) {
     res.json(address);
   } catch (error) {
     console.error("Error upserting address:", error);
+
+    if (error instanceof Error && error.message.includes('Invalid')) {
+      return res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: "Failed to upsert address" });
   }
 }
