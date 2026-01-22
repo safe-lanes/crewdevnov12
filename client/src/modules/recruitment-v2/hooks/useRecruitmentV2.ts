@@ -48,11 +48,27 @@ function getCrewUserId(): string | null {
 }
 
 // Inject audit user UUID into request data
-function withAuditUser<T extends object>(data: T): T & { auditUserUuid: string | null } {
-  return {
-    ...data,
-    auditUserUuid: getCrewUserId(),
-  };
+function withAuditUser<T>(data: T): T {
+  const auditUserUuid = getCrewUserId();
+  
+  // Handle arrays - add auditUserUuid to each item
+  if (Array.isArray(data)) {
+    return data.map(item => 
+      typeof item === 'object' && item !== null 
+        ? { ...item, auditUserUuid } 
+        : item
+    ) as T;
+  }
+  
+  // Handle objects
+  if (typeof data === 'object' && data !== null) {
+    return {
+      ...data,
+      auditUserUuid,
+    };
+  }
+  
+  return data;
 }
 
 async function fetchApi<T>(endpoint: string): Promise<T> {
@@ -64,11 +80,10 @@ async function fetchApi<T>(endpoint: string): Promise<T> {
 }
 
 async function postApi<T>(endpoint: string, data: unknown): Promise<T> {
-  const dataWithAudit = typeof data === 'object' && data !== null ? withAuditUser(data as object) : data;
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(dataWithAudit),
+    body: JSON.stringify(withAuditUser(data)),
   });
   if (!response.ok) {
     throw new Error(`API Error: ${response.status}`);
@@ -77,11 +92,10 @@ async function postApi<T>(endpoint: string, data: unknown): Promise<T> {
 }
 
 async function putApi<T>(endpoint: string, data: unknown): Promise<T> {
-  const dataWithAudit = typeof data === 'object' && data !== null ? withAuditUser(data as object) : data;
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(dataWithAudit),
+    body: JSON.stringify(withAuditUser(data)),
   });
   if (!response.ok) {
     throw new Error(`API Error: ${response.status}`);
@@ -90,11 +104,10 @@ async function putApi<T>(endpoint: string, data: unknown): Promise<T> {
 }
 
 async function patchApi<T>(endpoint: string, data: unknown): Promise<T> {
-  const dataWithAudit = typeof data === 'object' && data !== null ? withAuditUser(data as object) : data;
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(dataWithAudit),
+    body: JSON.stringify(withAuditUser(data)),
   });
   if (!response.ok) {
     throw new Error(`API Error: ${response.status}`);
