@@ -8168,7 +8168,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     <StandardFormPopup
       isOpen={true}
       onClose={onClose}
-      title={candidate ? `Recruitment Application V2 - ${candidate.firstName} ${candidate.familyName}` : 'New Candidate Application'}
+      title=""
       className="max-w-none 2xl:max-w-[95vw]"
     >
       <div className="flex flex-col h-full overflow-hidden">
@@ -8178,7 +8178,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">
-              <span className="hidden sm:inline">Recruitment Application V2 - </span>
+              <span className="hidden sm:inline">Recruitment Application - </span>
               {candidate ? `${candidate.firstName} ${candidate.familyName}` : 'New Candidate'}
             </h1>
           </div>
