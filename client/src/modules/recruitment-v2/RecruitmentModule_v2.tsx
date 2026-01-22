@@ -257,16 +257,9 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         resizable: true,
         enableRowGroup: false,
         valueFormatter: (params: any) => {
-          const statusMap: Record<string, string> = {
-            'draft': 'Draft',
-            'submitted': 'Submitted',
-            'screening': 'Screening',
-            'recruited': 'Recruited',
-            'waitlist': 'Waitlisted',
-            'rejected': 'Rejected',
-            'in_progress': 'In Progress',
-          };
-          return statusMap[params.value] || params.value;
+          // Return value as-is since status is now stored with proper capitalization
+          // matching legacy: Draft, Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
+          return params.value || '';
         }
       },
       {

@@ -2202,7 +2202,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           nationalityUuid: formData.nationality || '',
           presentRank: formData.presentRank || '',
           rankAppliedFor: formData.rankAppliedFor || '',
-          status: 'draft',
+          status: 'Draft',
           uploadedPhoto: formData.uploadedPhoto || '',
         });
         currentUuid = newCandidate.recCanUuid;
@@ -2697,7 +2697,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         await updateCandidateMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            status: 'submitted',
+            status: 'Applied',
           },
         });
         
@@ -3222,9 +3222,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         
         // Update candidate status based on C3 recruitment decision for sidebar filtering
         const statusMapping: Record<string, string> = {
-          'Yes': 'recruited',
-          'Waitlist': 'waitlist',
-          'Rejected': 'rejected',
+          'Yes': 'Recruited',
+          'Waitlist': 'Waitlisted',
+          'Rejected': 'Rejected',
         };
         const newStatus = statusMapping[formData.c3RecruitmentStatus];
         if (newStatus) {
