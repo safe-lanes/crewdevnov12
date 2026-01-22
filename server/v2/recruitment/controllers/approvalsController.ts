@@ -1,9 +1,60 @@
 import { Request, Response } from "express";
+import { eq } from "drizzle-orm";
+import { getDb } from "../../db";
+import { masterVesselTypes, masterFleetGroups } from "../../../../shared/schema";
 import {
   approvalsService,
   suitabilityService,
   recruitmentDecisionService,
 } from "../services/approvalsService";
+
+// Resolve vessel type name/UUID to the actual vtUuid from master_vessel_types
+async function resolveVesselTypeUuid(value: string): Promise<string | null> {
+  if (!value) return null;
+  
+  const db = getDb();
+  // First check if it's already a UUID (from master_vessel_types.vt_uuid)
+  const byUuid = await db.select().from(masterVesselTypes)
+    .where(eq(masterVesselTypes.vtUuid, value))
+    .limit(1);
+  if (byUuid.length > 0 && byUuid[0].vtUuid) {
+    return byUuid[0].vtUuid;
+  }
+  
+  // Otherwise try to match by vessel type name
+  const byName = await db.select().from(masterVesselTypes)
+    .where(eq(masterVesselTypes.vesselType, value))
+    .limit(1);
+  if (byName.length > 0 && byName[0].vtUuid) {
+    return byName[0].vtUuid;
+  }
+  
+  return null;
+}
+
+// Resolve fleet group name/UUID to the actual fgUuid from master_fleet_groups
+async function resolveFleetGroupUuid(value: string): Promise<string | null> {
+  if (!value) return null;
+  
+  const db = getDb();
+  // First check if it's already a UUID (from master_fleet_groups.fg_uuid)
+  const byUuid = await db.select().from(masterFleetGroups)
+    .where(eq(masterFleetGroups.fgUuid, value))
+    .limit(1);
+  if (byUuid.length > 0 && byUuid[0].fgUuid) {
+    return byUuid[0].fgUuid;
+  }
+  
+  // Otherwise try to match by name
+  const byName = await db.select().from(masterFleetGroups)
+    .where(eq(masterFleetGroups.name, value))
+    .limit(1);
+  if (byName.length > 0 && byName[0].fgUuid) {
+    return byName[0].fgUuid;
+  }
+  
+  return null;
+}
 
 export const approvalsController = {
   async getApprovals(req: Request, res: Response) {
@@ -79,10 +130,16 @@ export const suitabilityController = {
       if (vesselTypes && Array.isArray(vesselTypes) && result.suitUuid) {
         // Clear existing vessel types
         await suitabilityService.clearVesselTypes(result.suitUuid);
-        // Add new vessel types
+        // Add new vessel types with UUID resolution
         for (const vt of vesselTypes) {
           if (vt.vesselTypeUuid) {
-            await suitabilityService.addVesselType(result.suitUuid, vt.vesselTypeUuid);
+            // Resolve the value (could be name like "Ore Carrier" or UUID) to actual vtUuid
+            const resolvedUuid = await resolveVesselTypeUuid(vt.vesselTypeUuid);
+            if (resolvedUuid) {
+              await suitabilityService.addVesselType(result.suitUuid, resolvedUuid);
+            } else {
+              console.warn(`Could not resolve vessel type: ${vt.vesselTypeUuid}`);
+            }
           }
         }
       }
@@ -91,10 +148,16 @@ export const suitabilityController = {
       if (fleetGroups && Array.isArray(fleetGroups) && result.suitUuid) {
         // Clear existing fleet groups
         await suitabilityService.clearFleetGroups(result.suitUuid);
-        // Add new fleet groups
+        // Add new fleet groups with UUID resolution
         for (const fg of fleetGroups) {
           if (fg.fleetGroupUuid) {
-            await suitabilityService.addFleetGroup(result.suitUuid, fg.fleetGroupUuid);
+            // Resolve the value (could be name like "TS MOH" or UUID) to actual fgUuid
+            const resolvedUuid = await resolveFleetGroupUuid(fg.fleetGroupUuid);
+            if (resolvedUuid) {
+              await suitabilityService.addFleetGroup(result.suitUuid, resolvedUuid);
+            } else {
+              console.warn(`Could not resolve fleet group: ${fg.fleetGroupUuid}`);
+            }
           }
         }
       }
@@ -123,7 +186,12 @@ export const suitabilityController = {
     try {
       const { suitUuid } = req.params;
       const { vesselTypeUuid } = req.body;
-      const result = await suitabilityService.addVesselType(suitUuid, vesselTypeUuid);
+      // Resolve the value to actual vtUuid from master_vessel_types
+      const resolvedUuid = await resolveVesselTypeUuid(vesselTypeUuid);
+      if (!resolvedUuid) {
+        return res.status(400).json({ error: `Could not resolve vessel type: ${vesselTypeUuid}` });
+      }
+      const result = await suitabilityService.addVesselType(suitUuid, resolvedUuid);
       res.status(201).json(result);
     } catch (error) {
       console.error("Error adding vessel type:", error);
@@ -146,7 +214,12 @@ export const suitabilityController = {
     try {
       const { suitUuid } = req.params;
       const { fleetGroupUuid } = req.body;
-      const result = await suitabilityService.addFleetGroup(suitUuid, fleetGroupUuid);
+      // Resolve the value to actual fgUuid from master_fleet_groups
+      const resolvedUuid = await resolveFleetGroupUuid(fleetGroupUuid);
+      if (!resolvedUuid) {
+        return res.status(400).json({ error: `Could not resolve fleet group: ${fleetGroupUuid}` });
+      }
+      const result = await suitabilityService.addFleetGroup(suitUuid, resolvedUuid);
       res.status(201).json(result);
     } catch (error) {
       console.error("Error adding fleet group:", error);
