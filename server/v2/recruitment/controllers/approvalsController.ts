@@ -126,39 +126,67 @@ export const suitabilityController = {
       // Upsert the main suitability record
       const result = await suitabilityService.upsertSuitability(recCanUuid, suitabilityData);
       
-      // Handle vessel types if provided
+      // Handle vessel types if provided - use reconciliation pattern
       if (vesselTypes && Array.isArray(vesselTypes) && result.suitUuid) {
-        // Clear existing vessel types
-        await suitabilityService.clearVesselTypes(result.suitUuid);
-        // Add new vessel types with UUID resolution
+        // Resolve all incoming vessel type UUIDs
+        const resolvedIncoming: string[] = [];
         for (const vt of vesselTypes) {
           if (vt.vesselTypeUuid) {
-            // Resolve the value (could be name like "Ore Carrier" or UUID) to actual vtUuid
             const resolvedUuid = await resolveVesselTypeUuid(vt.vesselTypeUuid);
             if (resolvedUuid) {
-              await suitabilityService.addVesselType(result.suitUuid, resolvedUuid);
-            } else {
-              console.warn(`Could not resolve vessel type: ${vt.vesselTypeUuid}`);
+              resolvedIncoming.push(resolvedUuid);
             }
           }
         }
+        
+        // Get existing vessel types
+        const existingVesselTypes = await suitabilityService.getVesselTypes(result.suitUuid);
+        const existingUuids = existingVesselTypes.map(vt => vt.vesselTypeUuid).filter((u): u is string => !!u);
+        
+        // Calculate diff: what to add and what to remove
+        const toAdd = resolvedIncoming.filter(uuid => !existingUuids.includes(uuid));
+        const toRemove = existingVesselTypes.filter(vt => vt.vesselTypeUuid && !resolvedIncoming.includes(vt.vesselTypeUuid));
+        
+        // Remove obsolete vessel types
+        for (const vt of toRemove) {
+          await suitabilityService.softDeleteVesselType(vt.svtUuid);
+        }
+        
+        // Add new vessel types
+        for (const uuid of toAdd) {
+          await suitabilityService.addVesselType(result.suitUuid, uuid);
+        }
       }
       
-      // Handle fleet groups if provided
+      // Handle fleet groups if provided - use reconciliation pattern
       if (fleetGroups && Array.isArray(fleetGroups) && result.suitUuid) {
-        // Clear existing fleet groups
-        await suitabilityService.clearFleetGroups(result.suitUuid);
-        // Add new fleet groups with UUID resolution
+        // Resolve all incoming fleet group UUIDs
+        const resolvedIncoming: string[] = [];
         for (const fg of fleetGroups) {
           if (fg.fleetGroupUuid) {
-            // Resolve the value (could be name like "TS MOH" or UUID) to actual fgUuid
             const resolvedUuid = await resolveFleetGroupUuid(fg.fleetGroupUuid);
             if (resolvedUuid) {
-              await suitabilityService.addFleetGroup(result.suitUuid, resolvedUuid);
-            } else {
-              console.warn(`Could not resolve fleet group: ${fg.fleetGroupUuid}`);
+              resolvedIncoming.push(resolvedUuid);
             }
           }
+        }
+        
+        // Get existing fleet groups
+        const existingFleetGroups = await suitabilityService.getFleetGroups(result.suitUuid);
+        const existingUuids = existingFleetGroups.map(fg => fg.fleetGroupUuid).filter((u): u is string => !!u);
+        
+        // Calculate diff: what to add and what to remove
+        const toAdd = resolvedIncoming.filter(uuid => !existingUuids.includes(uuid));
+        const toRemove = existingFleetGroups.filter(fg => fg.fleetGroupUuid && !resolvedIncoming.includes(fg.fleetGroupUuid));
+        
+        // Remove obsolete fleet groups
+        for (const fg of toRemove) {
+          await suitabilityService.softDeleteFleetGroup(fg.sfgUuid);
+        }
+        
+        // Add new fleet groups
+        for (const uuid of toAdd) {
+          await suitabilityService.addFleetGroup(result.suitUuid, uuid);
         }
       }
       

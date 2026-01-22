@@ -591,15 +591,16 @@ export class CandidateService {
     vesselTypeInputs: string[],
     createdByUuid?: string
   ): Promise<CandVesselTypeApplied[]> {
-    // First validate all inputs before deleting existing records
+    // First validate all inputs before making any changes
     const invalidInputs: string[] = [];
-    const resolvedUuids: (string | null)[] = [];
+    const resolvedUuids: string[] = [];
     
     for (const input of vesselTypeInputs) {
       const vesselTypeUuid = await this.resolveMasterDataUuid(input, 'vesselType');
-      resolvedUuids.push(vesselTypeUuid);
       if (!vesselTypeUuid) {
         invalidInputs.push(input);
+      } else {
+        resolvedUuids.push(vesselTypeUuid);
       }
     }
     
@@ -611,25 +612,39 @@ export class CandidateService {
       );
     }
 
-    // All inputs validated, now delete and recreate
-    await vesselTypesAppliedRepository.deleteByCandidateUuid(recCanUuid);
-    const results: CandVesselTypeApplied[] = [];
+    // Get existing vessel types for this candidate
+    const existingRecords = await this.getVesselTypesApplied(recCanUuid);
+    const existingUuids = existingRecords
+      .filter(r => !r.isDeleted)
+      .map(r => r.vesselTypeUuid)
+      .filter((uuid): uuid is string => uuid !== null);
     
-    for (let i = 0; i < resolvedUuids.length; i++) {
-      const vesselTypeUuid = resolvedUuids[i];
-      if (!vesselTypeUuid) continue;
-
-      const vt = await vesselTypesAppliedRepository.create({
+    // Calculate what needs to be added and removed
+    const toAdd = resolvedUuids.filter(uuid => !existingUuids.includes(uuid));
+    const toRemove = existingRecords.filter(
+      r => !r.isDeleted && r.vesselTypeUuid && !resolvedUuids.includes(r.vesselTypeUuid)
+    );
+    
+    // Delete removed vessel types
+    for (const record of toRemove) {
+      await vesselTypesAppliedRepository.softDelete(record.id);
+    }
+    
+    // Add new vessel types
+    const maxSortOrder = existingRecords.reduce((max, r) => Math.max(max, r.sortOrder || 0), 0);
+    for (let i = 0; i < toAdd.length; i++) {
+      await vesselTypesAppliedRepository.create({
         cvtaUuid: uuidv4(),
         recCanUuid,
-        vesselTypeUuid,
-        sortOrder: i,
+        vesselTypeUuid: toAdd[i],
+        sortOrder: maxSortOrder + i + 1,
         createdByUuid,
         updatedByUuid: createdByUuid,
       });
-      results.push(vt);
     }
-    return results;
+    
+    // Return updated list
+    return this.getVesselTypesApplied(recCanUuid);
   }
 
   // ============================================================================
@@ -730,6 +745,46 @@ export class CandidateService {
 
       data.nativeLanguageUuid = langUuid;
       delete (data as any).nativeLanguage;
+    }
+
+    // Calculate age from candidate's DOB
+    const db = getDb();
+    const candidate = await db.select({ dob: recruitmentCandidatesV2.dob })
+      .from(recruitmentCandidatesV2)
+      .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid))
+      .limit(1);
+    
+    if (candidate.length > 0 && candidate[0].dob) {
+      const dobStr = candidate[0].dob;
+      let dobDate: Date;
+      
+      // Handle different date formats: DD-MM-YYYY, YYYY-MM-DD, etc.
+      if (dobStr.includes('-')) {
+        const parts = dobStr.split('-');
+        if (parts[0].length === 4) {
+          // YYYY-MM-DD format
+          dobDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        } else if (parts[2].length === 4) {
+          // DD-MM-YYYY format
+          dobDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        } else {
+          dobDate = new Date(dobStr);
+        }
+      } else {
+        dobDate = new Date(dobStr);
+      }
+      
+      if (!isNaN(dobDate.getTime())) {
+        const today = new Date();
+        let age = today.getFullYear() - dobDate.getFullYear();
+        const monthDiff = today.getMonth() - dobDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
+          age--;
+        }
+        if (age >= 0) {
+          data.ageInYears = age.toString();
+        }
+      }
     }
 
     return personalDetailsRepository.upsert(recCanUuid, {

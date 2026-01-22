@@ -125,6 +125,12 @@ export class SuitabilityRepository {
     return results.length > 0;
   }
 
+  async softDeleteVesselType(svtUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(candSuitabilityVesselTypes).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candSuitabilityVesselTypes.svtUuid, svtUuid)).returning();
+    return results.length > 0;
+  }
+
   async findFleetGroups(suitUuid: string): Promise<(CandSuitabilityFleetGroup & { fleetGroupName?: string | null })[]> {
     const db = getDb();
     const results = await db
@@ -159,6 +165,12 @@ export class SuitabilityRepository {
   async deleteFleetGroups(suitUuid: string): Promise<boolean> {
     const db = getDb();
     const results = await db.update(candSuitabilityFleetGroups).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candSuitabilityFleetGroups.suitUuid, suitUuid)).returning();
+    return results.length > 0;
+  }
+
+  async softDeleteFleetGroup(sfgUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(candSuitabilityFleetGroups).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candSuitabilityFleetGroups.sfgUuid, sfgUuid)).returning();
     return results.length > 0;
   }
 }

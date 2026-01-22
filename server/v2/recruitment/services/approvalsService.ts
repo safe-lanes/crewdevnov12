@@ -83,6 +83,10 @@ export class SuitabilityService {
     return suitabilityRepository.deleteVesselTypes(suitUuid);
   }
 
+  async softDeleteVesselType(svtUuid: string) {
+    return suitabilityRepository.softDeleteVesselType(svtUuid);
+  }
+
   async getFleetGroups(suitUuid: string) {
     return suitabilityRepository.findFleetGroups(suitUuid);
   }
@@ -95,6 +99,10 @@ export class SuitabilityService {
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
     });
+  }
+
+  async softDeleteFleetGroup(sfgUuid: string) {
+    return suitabilityRepository.softDeleteFleetGroup(sfgUuid);
   }
 
   async clearFleetGroups(suitUuid: string) {
