@@ -2,6 +2,11 @@ import { Request, Response } from "express";
 import { candidateService } from "../services";
 import { createCandidateRequestSchema } from "../../../../shared/v2/recruitment/types";
 
+// Extract audit user UUID from request body
+function getAuditUserUuid(body: any): string | null {
+  return body?.auditUserUuid || null;
+}
+
 export async function getAllCandidates(req: Request, res: Response) {
   try {
     const candidates = await candidateService.getAllCandidates();
@@ -45,6 +50,7 @@ export async function getCandidateByUuid(req: Request, res: Response) {
 
 export async function createCandidate(req: Request, res: Response) {
   try {
+    const auditUserUuid = getAuditUserUuid(req.body);
     const parsed = createCandidateRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -52,7 +58,7 @@ export async function createCandidate(req: Request, res: Response) {
         details: parsed.error.errors
       });
     }
-    const candidate = await candidateService.createCandidate(parsed.data);
+    const candidate = await candidateService.createCandidate(parsed.data, auditUserUuid || undefined);
     res.status(201).json(candidate);
   } catch (error) {
     console.error("Error creating candidate:", error);
@@ -74,11 +80,12 @@ export async function createCandidate(req: Request, res: Response) {
 
 export async function updateCandidate(req: Request, res: Response) {
   try {
+    const auditUserUuid = getAuditUserUuid(req.body);
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
       return res.status(400).json({ error: "Invalid candidate ID" });
     }
-    const candidate = await candidateService.updateCandidate(id, req.body);
+    const candidate = await candidateService.updateCandidate(id, req.body, auditUserUuid || undefined);
     if (!candidate) {
       return res.status(404).json({ error: "Candidate not found" });
     }
@@ -91,8 +98,9 @@ export async function updateCandidate(req: Request, res: Response) {
 
 export async function updateCandidateByUuid(req: Request, res: Response) {
   try {
+    const auditUserUuid = getAuditUserUuid(req.body);
     const { recCanUuid } = req.params;
-    const candidate = await candidateService.updateCandidateByUuid(recCanUuid, req.body);
+    const candidate = await candidateService.updateCandidateByUuid(recCanUuid, req.body, auditUserUuid || undefined);
     if (!candidate) {
       return res.status(404).json({ error: "Candidate not found" });
     }

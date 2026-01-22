@@ -45,6 +45,14 @@ import type {
 // Standard UUID v4 regex pattern
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Helper to apply audit user fields to data
+function applyAuditUser<T extends object>(data: T): T & { createdByUuid: string | null; updatedByUuid: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid };
+  delete (result as any).auditUserUuid;
+  return result;
+}
+
 export interface CandidateListItem extends RecruitmentCandidate {
   nationality: string;
   vesselType: string;
@@ -721,6 +729,10 @@ export class CandidateService {
     data: Partial<InsertPersonalDetails>,
     userUuid?: string
   ): Promise<CandPersonalDetails> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = userUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     // Resolve country if provided
     const countryInput = data.placeOfBirthCountryUuid || (data as any).placeOfBirthCountry;
     if (countryInput) {
@@ -790,8 +802,8 @@ export class CandidateService {
     return personalDetailsRepository.upsert(recCanUuid, {
       cpdUuid: uuidv4(),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -859,6 +871,10 @@ export class CandidateService {
     data: Partial<InsertAddress>,
     userUuid?: string
   ): Promise<CandAddress> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = userUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     // Resolve country if provided
     const countryInput = data.countryOfResidenceUuid || (data as any).countryOfResidence;
     if (countryInput) {
@@ -875,8 +891,8 @@ export class CandidateService {
     return addressRepository.upsert(recCanUuid, {
       addrUuid: uuidv4(),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -893,11 +909,15 @@ export class CandidateService {
     data: Partial<InsertFamilyInfo>,
     userUuid?: string
   ): Promise<CandFamilyInfo> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = userUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     return familyInfoRepository.upsert(recCanUuid, {
       famUuid: uuidv4(),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -914,12 +934,16 @@ export class CandidateService {
     data: Partial<InsertChild>,
     createdByUuid?: string
   ): Promise<CandChild> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = createdByUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     return childrenRepository.create({
       childUuid: uuidv4(),
       recCanUuid,
       ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as InsertChild);
   }
 
@@ -928,9 +952,14 @@ export class CandidateService {
     data: Partial<InsertChild>,
     updatedByUuid?: string
   ): Promise<CandChild | undefined> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = updatedByUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     return childrenRepository.update(id, {
       ...data,
-      updatedByUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -941,12 +970,17 @@ export class CandidateService {
   async replaceChildren(
     recCanUuid: string,
     children: Partial<InsertChild>[],
-    createdByUuid?: string
+    createdByUuid?: string,
+    auditUserUuidFromBody?: string | null
   ): Promise<CandChild[]> {
+    // Use explicit param or extract from first child's auditUserUuid
+    const auditUser = createdByUuid || auditUserUuidFromBody || (children[0] as any)?.auditUserUuid || null;
+
     await childrenRepository.deleteByCandidateUuid(recCanUuid);
     const results: CandChild[] = [];
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
+      delete (child as any).auditUserUuid;
       if (!child.firstName?.trim()) continue;
       const created = await childrenRepository.create({
         childUuid: uuidv4(),
@@ -957,8 +991,8 @@ export class CandidateService {
         dob: child.dob,
         gender: child.gender,
         sortOrder: i,
-        createdByUuid,
-        updatedByUuid: createdByUuid,
+        createdByUuid: auditUser,
+        updatedByUuid: auditUser,
       } as InsertChild);
       results.push(created);
     }
@@ -978,11 +1012,15 @@ export class CandidateService {
     data: Partial<InsertNextOfKin>,
     userUuid?: string
   ): Promise<CandNextOfKin> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = userUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     return nextOfKinRepository.upsert(recCanUuid, {
       nokUuid: uuidv4(),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
