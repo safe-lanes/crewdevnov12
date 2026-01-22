@@ -5034,7 +5034,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }));
                                 }}
                                 onBlur={() => {
-                                  if (newB1Comment[question.id]?.trim() && b1Uuid) {
+                                  if (newB1Comment[question.id]?.trim()) {
                                     const commentId = Date.now().toString();
                                     const commentText = newB1Comment[question.id];
                                     setFormData(prev => ({
@@ -5051,14 +5051,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         ]
                                       }
                                     }));
-                                    createB1CommentMutation.mutate({
-                                      b1Uuid,
-                                      data: {
-                                        fieldKey: question.id,
-                                        userUuid: currentUserDisplay,
-                                        commentText: commentText
-                                      }
-                                    });
                                   }
                                   setNewB1Comment(prev => {
                                     const newState = { ...prev };
@@ -5369,7 +5361,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 setNewB2Comment(prev => ({ ...prev, 'b2-completed': e.target.value }));
                               }}
                               onBlur={() => {
-                                if (newB2Comment['b2-completed']?.trim() && b2Uuid) {
+                                if (newB2Comment['b2-completed']?.trim()) {
                                   const commentId = Date.now().toString();
                                   const commentText = newB2Comment['b2-completed'];
                                   setFormData(prev => ({
@@ -5382,10 +5374,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                       ]
                                     }
                                   }));
-                                  createB2CommentMutation.mutate({
-                                    b2Uuid,
-                                    data: { fieldKey: 'b2-completed', userUuid: currentUserDisplay, commentText }
-                                  });
                                 }
                                 setNewB2Comment(prev => {
                                   const newState = { ...prev };
@@ -5523,7 +5511,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 setNewB2Comment(prev => ({ ...prev, 'b2-results': e.target.value }));
                               }}
                               onBlur={() => {
-                                if (newB2Comment['b2-results']?.trim() && b2Uuid) {
+                                if (newB2Comment['b2-results']?.trim()) {
                                   const commentId = Date.now().toString();
                                   const commentText = newB2Comment['b2-results'];
                                   setFormData(prev => ({
@@ -5536,10 +5524,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                       ]
                                     }
                                   }));
-                                  createB2CommentMutation.mutate({
-                                    b2Uuid,
-                                    data: { fieldKey: 'b2-results', userUuid: currentUserDisplay, commentText }
-                                  });
                                 }
                                 setNewB2Comment(prev => {
                                   const newState = { ...prev };
@@ -5834,7 +5818,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   setNewB3Comment(prev => ({ ...prev, 'b3-completed': e.target.value }));
                                 }}
                                 onBlur={() => {
-                                  if (newB3Comment['b3-completed']?.trim() && b3Uuid) {
+                                  if (newB3Comment['b3-completed']?.trim()) {
                                     const commentId = Date.now().toString();
                                     const commentText = newB3Comment['b3-completed'];
                                     setFormData(prev => ({
@@ -5847,10 +5831,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         ]
                                       }
                                     }));
-                                    createB3CommentMutation.mutate({
-                                      b3Uuid,
-                                      data: { fieldKey: 'b3-completed', userUuid: currentUserDisplay, commentText }
-                                    });
                                   }
                                   setNewB3Comment(prev => {
                                     const newState = { ...prev };
@@ -5988,7 +5968,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   setNewB3Comment(prev => ({ ...prev, 'b3-results': e.target.value }));
                                 }}
                                 onBlur={() => {
-                                  if (newB3Comment['b3-results']?.trim() && b3Uuid) {
+                                  if (newB3Comment['b3-results']?.trim()) {
                                     const commentId = Date.now().toString();
                                     const commentText = newB3Comment['b3-results'];
                                     setFormData(prev => ({
@@ -6001,10 +5981,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         ]
                                       }
                                     }));
-                                    createB3CommentMutation.mutate({
-                                      b3Uuid,
-                                      data: { fieldKey: 'b3-results', userUuid: currentUserDisplay, commentText }
-                                    });
                                   }
                                   setNewB3Comment(prev => {
                                     const newState = { ...prev };
@@ -6320,7 +6296,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   setNewB4Comment(prev => ({ ...prev, 'b4-authenticated': e.target.value }));
                                 }}
                                 onBlur={() => {
-                                  if (newB4Comment['b4-authenticated']?.trim() && b4Uuid) {
+                                  if (newB4Comment['b4-authenticated']?.trim()) {
                                     const commentId = Date.now().toString();
                                     const commentText = newB4Comment['b4-authenticated'];
                                     setFormData(prev => ({
@@ -6333,10 +6309,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         ]
                                       }
                                     }));
-                                    createB4CommentMutation.mutate({
-                                      b4Uuid,
-                                      data: { fieldKey: 'b4-authenticated', userUuid: currentUserDisplay, commentText }
-                                    });
                                   }
                                   setNewB4Comment(prev => {
                                     const newState = { ...prev };
@@ -6474,7 +6446,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   setNewB4Comment(prev => ({ ...prev, 'b4-results': e.target.value }));
                                 }}
                                 onBlur={() => {
-                                  if (newB4Comment['b4-results']?.trim() && b4Uuid) {
+                                  if (newB4Comment['b4-results']?.trim()) {
                                     const commentId = Date.now().toString();
                                     const commentText = newB4Comment['b4-results'];
                                     setFormData(prev => ({
@@ -6487,10 +6459,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         ]
                                       }
                                     }));
-                                    createB4CommentMutation.mutate({
-                                      b4Uuid,
-                                      data: { fieldKey: 'b4-results', userUuid: currentUserDisplay, commentText }
-                                    });
                                   }
                                   setNewB4Comment(prev => {
                                     const newState = { ...prev };
@@ -6836,7 +6804,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   setNewB5Comment(prev => ({ ...prev, 'b5-completed': e.target.value }));
                                 }}
                                 onBlur={() => {
-                                  if (newB5Comment['b5-completed']?.trim() && b5Uuid) {
+                                  if (newB5Comment['b5-completed']?.trim()) {
                                     const commentId = Date.now().toString();
                                     const commentText = newB5Comment['b5-completed'];
                                     setFormData(prev => ({
@@ -6849,10 +6817,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         ]
                                       }
                                     }));
-                                    createB5CommentMutation.mutate({
-                                      b5Uuid,
-                                      data: { fieldKey: 'b5-completed', userUuid: currentUserDisplay, commentText }
-                                    });
                                   }
                                   setNewB5Comment(prev => {
                                     const newState = { ...prev };
@@ -7259,7 +7223,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   setNewB6Comment(prev => ({ ...prev, 'b6-completed': e.target.value }));
                                 }}
                                 onBlur={() => {
-                                  if (newB6Comment['b6-completed']?.trim() && b6Uuid) {
+                                  if (newB6Comment['b6-completed']?.trim()) {
                                     const commentId = Date.now().toString();
                                     const commentText = newB6Comment['b6-completed'];
                                     setFormData(prev => ({
@@ -7272,10 +7236,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         ]
                                       }
                                     }));
-                                    createB6CommentMutation.mutate({
-                                      b6Uuid,
-                                      data: { fieldKey: 'b6-completed', userUuid: currentUserDisplay, commentText }
-                                    });
                                   }
                                   setNewB6Comment(prev => {
                                     const newState = { ...prev };
@@ -7673,7 +7633,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   setNewB8Comment(prev => ({ ...prev, 'b8-shortlisted': e.target.value }));
                                 }}
                                 onBlur={() => {
-                                  if (newB8Comment['b8-shortlisted']?.trim() && b8Uuid) {
+                                  if (newB8Comment['b8-shortlisted']?.trim()) {
                                     const commentId = Date.now().toString();
                                     const commentText = newB8Comment['b8-shortlisted'];
                                     setFormData(prev => ({
@@ -7686,10 +7646,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         ]
                                       }
                                     }));
-                                    createB8CommentMutation.mutate({
-                                      b8Uuid,
-                                      data: { fieldKey: 'b8-shortlisted', userUuid: currentUserDisplay, commentText }
-                                    });
                                   }
                                   setNewB8Comment(prev => {
                                     const newState = { ...prev };
