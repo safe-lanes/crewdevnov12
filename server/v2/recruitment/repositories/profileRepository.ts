@@ -170,6 +170,26 @@ export class ChildrenRepository {
     return results[0];
   }
 
+  async updateByUuid(childUuid: string, data: Partial<InsertChild>): Promise<CandChild | undefined> {
+    const db = getDb();
+    const results = await db
+      .update(candChildren)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(candChildren.childUuid, childUuid))
+      .returning();
+    return results[0];
+  }
+
+  async softDeleteByUuid(childUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db
+      .update(candChildren)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(candChildren.childUuid, childUuid))
+      .returning();
+    return results.length > 0;
+  }
+
   async softDelete(id: number): Promise<boolean> {
     const db = getDb();
     const results = await db
