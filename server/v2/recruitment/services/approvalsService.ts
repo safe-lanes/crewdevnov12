@@ -129,7 +129,7 @@ export class RecruitmentDecisionService {
     return recruitmentDecisionRepository.findByCandidateUuid(recCanUuid);
   }
 
-  async getDecisionWithRelations(recCanUuid: string): Promise<{ decisionUuid: string; recruitmentStatus?: string; assignedGroups: any[] } | undefined> {
+  async getDecisionWithRelations(recCanUuid: string): Promise<{ decisionUuid: string; recruitmentStatus?: string | null; assignedGroups: any[] } | undefined> {
     const decision = await recruitmentDecisionRepository.findByCandidateUuid(recCanUuid);
     if (!decision) return undefined;
     
