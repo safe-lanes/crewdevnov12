@@ -66,6 +66,17 @@ export const screeningB1Controller = {
     }
   },
 
+  async deleteComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB1Service.deleteComment(commentUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B1 comment:", error);
+      res.status(500).json({ error: "Failed to delete B1 comment" });
+    }
+  },
+
   async getAttachments(req: Request, res: Response) {
     try {
       const { b1Uuid } = req.params;
@@ -178,6 +189,17 @@ export const screeningB2Controller = {
     }
   },
 
+  async deleteComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB2Service.deleteComment(commentUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B2 comment:", error);
+      res.status(500).json({ error: "Failed to delete B2 comment" });
+    }
+  },
+
   async getAttachments(req: Request, res: Response) {
     try {
       const { b2Uuid } = req.params;
@@ -276,6 +298,17 @@ export const screeningB3Controller = {
     } catch (error) {
       console.error("Error updating B3 comment:", error);
       res.status(500).json({ error: "Failed to update B3 comment" });
+    }
+  },
+
+  async deleteComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB3Service.deleteComment(commentUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B3 comment:", error);
+      res.status(500).json({ error: "Failed to delete B3 comment" });
     }
   },
 
@@ -391,6 +424,17 @@ export const screeningB4Controller = {
     }
   },
 
+  async deleteComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB4Service.deleteComment(commentUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B4 comment:", error);
+      res.status(500).json({ error: "Failed to delete B4 comment" });
+    }
+  },
+
   async updateCertItem(req: Request, res: Response) {
     try {
       const { certUuid } = req.params;
@@ -503,6 +547,17 @@ export const screeningB5Controller = {
     }
   },
 
+  async deleteComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB5Service.deleteComment(commentUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B5 comment:", error);
+      res.status(500).json({ error: "Failed to delete B5 comment" });
+    }
+  },
+
   async updateTestItem(req: Request, res: Response) {
     try {
       const { testUuid } = req.params;
@@ -612,6 +667,17 @@ export const screeningB6Controller = {
     } catch (error) {
       console.error("Error updating B6 comment:", error);
       res.status(500).json({ error: "Failed to update B6 comment" });
+    }
+  },
+
+  async deleteComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB6Service.deleteComment(commentUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B6 comment:", error);
+      res.status(500).json({ error: "Failed to delete B6 comment" });
     }
   },
 
@@ -784,6 +850,17 @@ export const screeningB8Controller = {
     } catch (error) {
       console.error("Error updating B8 comment:", error);
       res.status(500).json({ error: "Failed to update B8 comment" });
+    }
+  },
+
+  async deleteComment(req: Request, res: Response) {
+    try {
+      const { commentUuid } = req.params;
+      const result = await screeningB8Service.deleteComment(commentUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B8 comment:", error);
+      res.status(500).json({ error: "Failed to delete B8 comment" });
     }
   },
 

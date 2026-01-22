@@ -118,24 +118,31 @@ import {
   useV2ScreeningB1Comments,
   useV2CreateScreeningB1Comment,
   useV2UpdateScreeningB1Comment,
+  useV2DeleteScreeningB1Comment,
   useV2ScreeningB2Comments,
   useV2CreateScreeningB2Comment,
   useV2UpdateScreeningB2Comment,
+  useV2DeleteScreeningB2Comment,
   useV2ScreeningB3Comments,
   useV2CreateScreeningB3Comment,
   useV2UpdateScreeningB3Comment,
+  useV2DeleteScreeningB3Comment,
   useV2ScreeningB4Comments,
   useV2CreateScreeningB4Comment,
   useV2UpdateScreeningB4Comment,
+  useV2DeleteScreeningB4Comment,
   useV2ScreeningB5Comments,
   useV2CreateScreeningB5Comment,
   useV2UpdateScreeningB5Comment,
+  useV2DeleteScreeningB5Comment,
   useV2ScreeningB6Comments,
   useV2CreateScreeningB6Comment,
   useV2UpdateScreeningB6Comment,
+  useV2DeleteScreeningB6Comment,
   useV2ScreeningB8Comments,
   useV2CreateScreeningB8Comment,
   useV2UpdateScreeningB8Comment,
+  useV2DeleteScreeningB8Comment,
   useV2ScreeningB1Attachments,
   useV2ScreeningB2Attachments,
   useV2ScreeningB3Attachments,
@@ -734,6 +741,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const updateB5CommentMutation = useV2UpdateScreeningB5Comment();
   const updateB6CommentMutation = useV2UpdateScreeningB6Comment();
   const updateB8CommentMutation = useV2UpdateScreeningB8Comment();
+
+  const deleteB1CommentMutation = useV2DeleteScreeningB1Comment();
+  const deleteB2CommentMutation = useV2DeleteScreeningB2Comment();
+  const deleteB3CommentMutation = useV2DeleteScreeningB3Comment();
+  const deleteB4CommentMutation = useV2DeleteScreeningB4Comment();
+  const deleteB5CommentMutation = useV2DeleteScreeningB5Comment();
+  const deleteB6CommentMutation = useV2DeleteScreeningB6Comment();
+  const deleteB8CommentMutation = useV2DeleteScreeningB8Comment();
 
   // Part C - Approval mutations
   const saveApprovalMutation = useV2SaveApproval();
@@ -3032,8 +3047,93 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
-      // Save B1-B8 section attachments and merge server responses back to form state
+      // Save B1-B8 section comments using reconciliation pattern
       const currentB1Uuid = b1Result?.b1Uuid || b1Uuid;
+      
+      // Helper function to reconcile comments for a screening section
+      const reconcileComments = async (
+        sectionUuid: string | null,
+        sectionKey: 'b1Comments' | 'b2Comments' | 'b3Comments' | 'b4Comments' | 'b5Comments' | 'b6Comments' | 'b8Comments',
+        serverComments: any[],
+        createMutation: any,
+        updateMutation: any,
+        deleteMutation: any,
+        uuidFieldName: string
+      ) => {
+        if (!sectionUuid) return;
+        
+        const formComments = (formData as any)[sectionKey] || {};
+        const serverCommentMap = new Map((serverComments || []).map((c: any) => [c.commentUuid, c]));
+        const formCommentIds = new Set<string>();
+        
+        // Flatten all form comments across all fields
+        for (const fieldKey of Object.keys(formComments)) {
+          const fieldComments = formComments[fieldKey] || [];
+          for (const comment of fieldComments) {
+            formCommentIds.add(comment.id);
+            const serverComment = serverCommentMap.get(comment.id);
+            
+            if (serverComment) {
+              // Update if text changed
+              if (serverComment.commentText !== comment.text || serverComment.commentBy !== comment.user) {
+                await updateMutation.mutateAsync({
+                  commentUuid: comment.id,
+                  data: {
+                    commentText: comment.text,
+                    commentBy: comment.user,
+                    fieldKey: fieldKey,
+                  },
+                });
+              }
+            } else if (comment.text) {
+              // Create new comment
+              const newComment = await createMutation.mutateAsync({
+                [uuidFieldName]: sectionUuid,
+                data: {
+                  commentText: comment.text,
+                  commentBy: comment.user,
+                  fieldKey: fieldKey,
+                },
+              });
+              // Update form state with new comment UUID
+              if (newComment?.commentUuid) {
+                setFormData(prev => ({
+                  ...prev,
+                  [sectionKey]: {
+                    ...(prev as any)[sectionKey],
+                    [fieldKey]: (prev as any)[sectionKey][fieldKey]?.map((c: any) => 
+                      c.id === comment.id ? { ...c, id: newComment.commentUuid } : c
+                    ) || [],
+                  },
+                }));
+              }
+            }
+          }
+        }
+        
+        // Delete comments that exist on server but not in form
+        for (const serverComment of serverComments || []) {
+          if (!formCommentIds.has(serverComment.commentUuid)) {
+            await deleteMutation.mutateAsync({
+              commentUuid: serverComment.commentUuid,
+              [uuidFieldName]: sectionUuid,
+            });
+          }
+        }
+      };
+      
+      // Reconcile B1-B8 comments
+      await Promise.all([
+        reconcileComments(currentB1Uuid, 'b1Comments', screeningB1Comments || [], createB1CommentMutation, updateB1CommentMutation, deleteB1CommentMutation, 'b1Uuid'),
+        reconcileComments(currentB2Uuid, 'b2Comments', screeningB2Comments || [], createB2CommentMutation, updateB2CommentMutation, deleteB2CommentMutation, 'b2Uuid'),
+        reconcileComments(currentB3Uuid, 'b3Comments', screeningB3Comments || [], createB3CommentMutation, updateB3CommentMutation, deleteB3CommentMutation, 'b3Uuid'),
+        reconcileComments(currentB4Uuid, 'b4Comments', screeningB4Comments || [], createB4CommentMutation, updateB4CommentMutation, deleteB4CommentMutation, 'b4Uuid'),
+        reconcileComments(currentB5Uuid, 'b5Comments', screeningB5Comments || [], createB5CommentMutation, updateB5CommentMutation, deleteB5CommentMutation, 'b5Uuid'),
+        reconcileComments(currentB6Uuid, 'b6Comments', screeningB6Comments || [], createB6CommentMutation, updateB6CommentMutation, deleteB6CommentMutation, 'b6Uuid'),
+        reconcileComments(currentB8Uuid, 'b8Comments', screeningB8Comments || [], createB8CommentMutation, updateB8CommentMutation, deleteB8CommentMutation, 'b8Uuid'),
+      ]);
+
+      // Save B1-B8 section attachments and merge server responses back to form state
       
       // Helper function to update form data with saved attachment UUIDs
       const updateScreeningAttachments = (sectionKey: string, savedAttachments: any[]) => {

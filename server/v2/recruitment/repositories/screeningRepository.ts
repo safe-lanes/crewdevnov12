@@ -143,6 +143,15 @@ export class ScreeningB1Repository {
     return results[0] || null;
   }
 
+  async deleteComment(commentUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB1Comments)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB1Comments.commentUuid, commentUuid))
+      .returning();
+    return results.length > 0;
+  }
+
   async findAttachments(b1Uuid: string): Promise<ScreeningB1Attachment[]> {
     const db = getDb();
     return db.select().from(screeningB1Attachments).where(
@@ -225,6 +234,15 @@ export class ScreeningB2Repository {
       .where(eq(screeningB2Comments.commentUuid, commentUuid))
       .returning();
     return results[0] || null;
+  }
+
+  async deleteComment(commentUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB2Comments)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB2Comments.commentUuid, commentUuid))
+      .returning();
+    return results.length > 0;
   }
 
   async findAttachments(b2Uuid: string): Promise<ScreeningB2Attachment[]> {
@@ -311,6 +329,15 @@ export class ScreeningB3Repository {
     return results[0] || null;
   }
 
+  async deleteComment(commentUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB3Comments)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB3Comments.commentUuid, commentUuid))
+      .returning();
+    return results.length > 0;
+  }
+
   async findAttachments(b3Uuid: string): Promise<ScreeningB3Attachment[]> {
     const db = getDb();
     return db.select().from(screeningB3Attachments).where(
@@ -393,6 +420,15 @@ export class ScreeningB4Repository {
       .where(eq(screeningB4Comments.commentUuid, commentUuid))
       .returning();
     return results[0] || null;
+  }
+
+  async deleteComment(commentUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB4Comments)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB4Comments.commentUuid, commentUuid))
+      .returning();
+    return results.length > 0;
   }
 
   async findAttachments(b4Uuid: string): Promise<ScreeningB4Attachment[]> {
@@ -479,6 +515,15 @@ export class ScreeningB5Repository {
     return results[0] || null;
   }
 
+  async deleteComment(commentUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB5Comments)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB5Comments.commentUuid, commentUuid))
+      .returning();
+    return results.length > 0;
+  }
+
   async findAttachments(b5Uuid: string): Promise<ScreeningB5Attachment[]> {
     const db = getDb();
     return db.select().from(screeningB5Attachments).where(
@@ -561,6 +606,15 @@ export class ScreeningB6Repository {
       .where(eq(screeningB6Comments.commentUuid, commentUuid))
       .returning();
     return results[0] || null;
+  }
+
+  async deleteComment(commentUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB6Comments)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB6Comments.commentUuid, commentUuid))
+      .returning();
+    return results.length > 0;
   }
 
   async findAttachments(b6Uuid: string): Promise<ScreeningB6Attachment[]> {
@@ -691,6 +745,15 @@ export class ScreeningB8Repository {
       .where(eq(screeningB8Comments.commentUuid, commentUuid))
       .returning();
     return results[0] || null;
+  }
+
+  async deleteComment(commentUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB8Comments)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB8Comments.commentUuid, commentUuid))
+      .returning();
+    return results.length > 0;
   }
 
   async findAttachments(b8Uuid: string): Promise<ScreeningB8Attachment[]> {
