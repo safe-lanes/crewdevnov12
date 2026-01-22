@@ -38,6 +38,23 @@ const API_BASE = "/api/v2/recruitment";
 const QUERY_STALE_TIME = 1 * 60 * 1000; // 1 minutes
 const QUERY_GC_TIME = 1 * 60 * 1000; // 1 minutes
 
+// Helper to get crewUserId from localStorage with null fallback
+function getCrewUserId(): string | null {
+  try {
+    return localStorage.getItem("crewUserId") || null;
+  } catch {
+    return null;
+  }
+}
+
+// Inject audit user UUID into request data
+function withAuditUser<T extends object>(data: T): T & { auditUserUuid: string | null } {
+  return {
+    ...data,
+    auditUserUuid: getCrewUserId(),
+  };
+}
+
 async function fetchApi<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`);
   if (!response.ok) {
@@ -47,10 +64,11 @@ async function fetchApi<T>(endpoint: string): Promise<T> {
 }
 
 async function postApi<T>(endpoint: string, data: unknown): Promise<T> {
+  const dataWithAudit = typeof data === 'object' && data !== null ? withAuditUser(data as object) : data;
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify(dataWithAudit),
   });
   if (!response.ok) {
     throw new Error(`API Error: ${response.status}`);
@@ -59,10 +77,11 @@ async function postApi<T>(endpoint: string, data: unknown): Promise<T> {
 }
 
 async function putApi<T>(endpoint: string, data: unknown): Promise<T> {
+  const dataWithAudit = typeof data === 'object' && data !== null ? withAuditUser(data as object) : data;
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify(dataWithAudit),
   });
   if (!response.ok) {
     throw new Error(`API Error: ${response.status}`);
@@ -71,10 +90,11 @@ async function putApi<T>(endpoint: string, data: unknown): Promise<T> {
 }
 
 async function patchApi<T>(endpoint: string, data: unknown): Promise<T> {
+  const dataWithAudit = typeof data === 'object' && data !== null ? withAuditUser(data as object) : data;
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify(dataWithAudit),
   });
   if (!response.ok) {
     throw new Error(`API Error: ${response.status}`);
