@@ -391,6 +391,28 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     return rowSelection === 'single' ? 'single' as const : 'multiple' as const;
   }, [rowSelection]);
 
+  // Context menu configuration with export options
+  const getContextMenuItems = useCallback((): (string | 'separator')[] => {
+    const baseItems: (string | 'separator')[] = [
+      'copy',
+      'copyWithHeaders',
+      'copyWithGroupHeaders',
+      'separator',
+      'paste',
+    ];
+    
+    if (enableExport) {
+      return [
+        ...baseItems,
+        'separator',
+        'csvExport',
+        'excelExport',
+      ];
+    }
+    
+    return baseItems;
+  }, [enableExport]) as () => any;
+
   // Default grid options with responsive features
   const defaultGridOptions: Partial<GridOptions> = useMemo(() => ({
     theme: 'legacy', // Use legacy theme to avoid theming API conflicts
@@ -422,7 +444,8 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     // Prevent auto-sizing on mobile to maintain fixed column widths
     suppressAutoSize: viewportConfig.isTabletOrPhone,
     suppressColumnVirtualisation: false,
-    debug: false
+    debug: false,
+    getContextMenuItems: enableExport ? getContextMenuItems : undefined,
   }), [
     defaultColDef,
     rowSelectionConfig,
@@ -431,7 +454,9 @@ export const AgGridTable: React.FC<AgGridTableProps> = ({
     statusBar,
     enableRowGrouping,
     enablePivoting,
-    viewportConfig
+    viewportConfig,
+    enableExport,
+    getContextMenuItems,
   ]);
 
   // Helper to parse height values (handles px, calc, and numbers)
