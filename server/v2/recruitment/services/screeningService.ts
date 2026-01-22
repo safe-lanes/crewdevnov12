@@ -31,6 +31,16 @@ import type {
   InsertScreeningB8Shortlisting,
 } from "../../../../shared/v2/recruitment/types";
 
+function extractAuditUser(userUuid?: string, data?: Record<string, unknown>): string | null {
+  if (userUuid) return userUuid;
+  if (data && 'auditUserUuid' in data) {
+    const val = data.auditUserUuid as string | null;
+    delete data.auditUserUuid;
+    return val;
+  }
+  return null;
+}
+
 async function resolveUserUuid(value: string): Promise<string | null> {
   if (!value) return null;
   
@@ -74,12 +84,16 @@ export class ScreeningB1Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB1Initial>, userUuid?: string): Promise<ScreeningB1Initial> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = userUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     const existing = await screeningB1Repository.findByCandidateUuid(recCanUuid);
     return screeningB1Repository.upsert(recCanUuid, {
       ...(existing ? {} : { b1Uuid: uuidv4() }),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -88,19 +102,24 @@ export class ScreeningB1Service {
   }
 
   async createComment(b1Uuid: string, data: { fieldKey?: string; userUuid?: string; commentText?: string }, userUuid?: string) {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = userUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     return screeningB1Repository.createComment({
       commentUuid: uuidv4(),
       b1Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
   async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB1Repository.updateComment(commentUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -113,12 +132,13 @@ export class ScreeningB1Service {
   }
 
   async createAttachment(b1Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB1Repository.createAttachment({
       attUuid: uuidv4(),
       b1Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 }
@@ -129,12 +149,13 @@ export class ScreeningB2Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB2References>, userUuid?: string): Promise<ScreeningB2References> {
+    const auditUser = extractAuditUser(userUuid, data as Record<string, unknown>);
     const existing = await screeningB2Repository.findByCandidateUuid(recCanUuid);
     return screeningB2Repository.upsert(recCanUuid, {
       ...(existing ? {} : { b2Uuid: uuidv4() }),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -143,19 +164,21 @@ export class ScreeningB2Service {
   }
 
   async createItem(b2Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB2Repository.createItem({
       refUuid: uuidv4(),
       b2Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateItem(refUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB2Repository.updateItem(refUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -164,19 +187,21 @@ export class ScreeningB2Service {
   }
 
   async createComment(b2Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB2Repository.createComment({
       commentUuid: uuidv4(),
       b2Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB2Repository.updateComment(commentUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -189,12 +214,13 @@ export class ScreeningB2Service {
   }
 
   async createAttachment(b2Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB2Repository.createAttachment({
       attUuid: uuidv4(),
       b2Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 }
@@ -205,12 +231,13 @@ export class ScreeningB3Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB3Security>, userUuid?: string): Promise<ScreeningB3Security> {
+    const auditUser = extractAuditUser(userUuid, data as Record<string, unknown>);
     const existing = await screeningB3Repository.findByCandidateUuid(recCanUuid);
     return screeningB3Repository.upsert(recCanUuid, {
       ...(existing ? {} : { b3Uuid: uuidv4() }),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -219,19 +246,21 @@ export class ScreeningB3Service {
   }
 
   async createAuthority(b3Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB3Repository.createAuthority({
       authUuid: uuidv4(),
       b3Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateAuthority(authUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB3Repository.updateAuthority(authUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -240,19 +269,21 @@ export class ScreeningB3Service {
   }
 
   async createComment(b3Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB3Repository.createComment({
       commentUuid: uuidv4(),
       b3Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB3Repository.updateComment(commentUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -265,12 +296,13 @@ export class ScreeningB3Service {
   }
 
   async createAttachment(b3Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB3Repository.createAttachment({
       attUuid: uuidv4(),
       b3Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 }
@@ -281,12 +313,13 @@ export class ScreeningB4Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB4Certificates>, userUuid?: string): Promise<ScreeningB4Certificates> {
+    const auditUser = extractAuditUser(userUuid, data as Record<string, unknown>);
     const existing = await screeningB4Repository.findByCandidateUuid(recCanUuid);
     return screeningB4Repository.upsert(recCanUuid, {
       ...(existing ? {} : { b4Uuid: uuidv4() }),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -295,19 +328,21 @@ export class ScreeningB4Service {
   }
 
   async createCertItem(b4Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB4Repository.createCertItem({
       certUuid: uuidv4(),
       b4Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateCertItem(certUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB4Repository.updateCertItem(certUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -316,19 +351,21 @@ export class ScreeningB4Service {
   }
 
   async createComment(b4Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB4Repository.createComment({
       commentUuid: uuidv4(),
       b4Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB4Repository.updateComment(commentUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -341,12 +378,13 @@ export class ScreeningB4Service {
   }
 
   async createAttachment(b4Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB4Repository.createAttachment({
       attUuid: uuidv4(),
       b4Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 }
@@ -357,12 +395,13 @@ export class ScreeningB5Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB5Tests>, userUuid?: string): Promise<ScreeningB5Tests> {
+    const auditUser = extractAuditUser(userUuid, data as Record<string, unknown>);
     const existing = await screeningB5Repository.findByCandidateUuid(recCanUuid);
     return screeningB5Repository.upsert(recCanUuid, {
       ...(existing ? {} : { b5Uuid: uuidv4() }),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -371,19 +410,21 @@ export class ScreeningB5Service {
   }
 
   async createTestItem(b5Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB5Repository.createTestItem({
       testUuid: uuidv4(),
       b5Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateTestItem(testUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB5Repository.updateTestItem(testUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -392,19 +433,21 @@ export class ScreeningB5Service {
   }
 
   async createComment(b5Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB5Repository.createComment({
       commentUuid: uuidv4(),
       b5Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB5Repository.updateComment(commentUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -417,12 +460,13 @@ export class ScreeningB5Service {
   }
 
   async createAttachment(b5Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB5Repository.createAttachment({
       attUuid: uuidv4(),
       b5Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 }
@@ -433,12 +477,13 @@ export class ScreeningB6Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB6Interviews>, userUuid?: string): Promise<ScreeningB6Interviews> {
+    const auditUser = extractAuditUser(userUuid, data as Record<string, unknown>);
     const existing = await screeningB6Repository.findByCandidateUuid(recCanUuid);
     return screeningB6Repository.upsert(recCanUuid, {
       ...(existing ? {} : { b6Uuid: uuidv4() }),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -447,6 +492,7 @@ export class ScreeningB6Service {
   }
 
   async createInterviewItem(b6Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     const resolvedData = { ...data };
     if (data.interviewerUuid && typeof data.interviewerUuid === 'string') {
       const resolvedUuid = await resolveUserUuid(data.interviewerUuid);
@@ -458,12 +504,13 @@ export class ScreeningB6Service {
       intUuid: uuidv4(),
       b6Uuid,
       ...resolvedData,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateInterviewItem(intUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     const resolvedData = { ...data };
     if (data.interviewerUuid && typeof data.interviewerUuid === 'string') {
       const resolvedUuid = await resolveUserUuid(data.interviewerUuid);
@@ -473,7 +520,7 @@ export class ScreeningB6Service {
     }
     return screeningB6Repository.updateInterviewItem(intUuid, {
       ...resolvedData,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -482,19 +529,21 @@ export class ScreeningB6Service {
   }
 
   async createComment(b6Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB6Repository.createComment({
       commentUuid: uuidv4(),
       b6Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB6Repository.updateComment(commentUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -507,12 +556,13 @@ export class ScreeningB6Service {
   }
 
   async createAttachment(b6Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB6Repository.createAttachment({
       attUuid: uuidv4(),
       b6Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 }
@@ -523,12 +573,13 @@ export class ScreeningB7Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB7Training>, userUuid?: string): Promise<ScreeningB7Training> {
+    const auditUser = extractAuditUser(userUuid, data as Record<string, unknown>);
     const existing = await screeningB7Repository.findByCandidateUuid(recCanUuid);
     return screeningB7Repository.upsert(recCanUuid, {
       ...(existing ? {} : { b7Uuid: uuidv4() }),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -537,6 +588,7 @@ export class ScreeningB7Service {
   }
 
   async createTrainingItem(b7Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     const resolvedData = { ...data };
     if (data.identifiedByUuid && typeof data.identifiedByUuid === 'string') {
       const resolvedUuid = await resolveUserUuid(data.identifiedByUuid);
@@ -548,12 +600,13 @@ export class ScreeningB7Service {
       trainItemUuid: uuidv4(),
       b7Uuid,
       ...resolvedData,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateTrainingItem(trainItemUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     const resolvedData = { ...data };
     if (data.identifiedByUuid && typeof data.identifiedByUuid === 'string') {
       const resolvedUuid = await resolveUserUuid(data.identifiedByUuid);
@@ -563,7 +616,7 @@ export class ScreeningB7Service {
     }
     return screeningB7Repository.updateTrainingItem(trainItemUuid, {
       ...resolvedData,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 }
@@ -574,12 +627,13 @@ export class ScreeningB8Service {
   }
 
   async upsert(recCanUuid: string, data: Partial<InsertScreeningB8Shortlisting>, userUuid?: string): Promise<ScreeningB8Shortlisting> {
+    const auditUser = extractAuditUser(userUuid, data as Record<string, unknown>);
     const existing = await screeningB8Repository.findByCandidateUuid(recCanUuid);
     return screeningB8Repository.upsert(recCanUuid, {
       ...(existing ? {} : { b8Uuid: uuidv4() }),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -588,12 +642,13 @@ export class ScreeningB8Service {
   }
 
   async createApprover(b8Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB8Repository.createApprover({
       approverUuid: uuidv4(),
       b8Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -602,19 +657,21 @@ export class ScreeningB8Service {
   }
 
   async createComment(b8Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB8Repository.createComment({
       commentUuid: uuidv4(),
       b8Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 
   async updateComment(commentUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB8Repository.updateComment(commentUuid, {
       ...data,
-      updatedByUuid: userUuid,
+      updatedByUuid: auditUser,
     } as any);
   }
 
@@ -627,12 +684,13 @@ export class ScreeningB8Service {
   }
 
   async createAttachment(b8Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const auditUser = extractAuditUser(userUuid, data);
     return screeningB8Repository.createAttachment({
       attUuid: uuidv4(),
       b8Uuid,
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as any);
   }
 }

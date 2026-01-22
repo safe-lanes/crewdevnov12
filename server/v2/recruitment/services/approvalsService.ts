@@ -19,17 +19,25 @@ export class ApprovalsService {
   }
 
   async createApproval(recCanUuid: string, data: Partial<InsertApproval>, createdByUuid?: string): Promise<CandApproval> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = createdByUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     return approvalsRepository.create({
       approvalUuid: uuidv4(),
       recCanUuid,
       ...data,
-      createdByUuid,
-      updatedByUuid: createdByUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     } as InsertApproval);
   }
 
   async updateApproval(id: number, data: Partial<InsertApproval>, updatedByUuid?: string): Promise<CandApproval | undefined> {
-    return approvalsRepository.update(id, { ...data, updatedByUuid });
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = updatedByUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
+    return approvalsRepository.update(id, { ...data, updatedByUuid: auditUser });
   }
 
   async deleteApproval(id: number): Promise<boolean> {
@@ -57,11 +65,15 @@ export class SuitabilityService {
   }
 
   async upsertSuitability(recCanUuid: string, data: Partial<InsertSuitability>, userUuid?: string): Promise<CandSuitability> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = userUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     return suitabilityRepository.upsert(recCanUuid, {
       suitUuid: uuidv4(),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -69,13 +81,14 @@ export class SuitabilityService {
     return suitabilityRepository.findVesselTypes(suitUuid);
   }
 
-  async addVesselType(suitUuid: string, vesselTypeUuid: string, userUuid?: string) {
+  async addVesselType(suitUuid: string, vesselTypeUuid: string, userUuid?: string, auditUserUuidFromBody?: string | null) {
+    const auditUser = userUuid || auditUserUuidFromBody || null;
     return suitabilityRepository.createVesselType({
       svtUuid: uuidv4(),
       suitUuid,
       vesselTypeUuid,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -91,13 +104,14 @@ export class SuitabilityService {
     return suitabilityRepository.findFleetGroups(suitUuid);
   }
 
-  async addFleetGroup(suitUuid: string, fleetGroupUuid: string, userUuid?: string) {
+  async addFleetGroup(suitUuid: string, fleetGroupUuid: string, userUuid?: string, auditUserUuidFromBody?: string | null) {
+    const auditUser = userUuid || auditUserUuidFromBody || null;
     return suitabilityRepository.createFleetGroup({
       sfgUuid: uuidv4(),
       suitUuid,
       fleetGroupUuid,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -128,11 +142,15 @@ export class RecruitmentDecisionService {
   }
 
   async upsertDecision(recCanUuid: string, data: Partial<InsertRecruitmentDecision>, userUuid?: string): Promise<CandRecruitmentDecision> {
+    // Auto-extract auditUserUuid from data if not provided
+    const auditUser = userUuid || (data as any).auditUserUuid || null;
+    delete (data as any).auditUserUuid;
+
     return recruitmentDecisionRepository.upsert(recCanUuid, {
       decisionUuid: uuidv4(),
       ...data,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
@@ -140,13 +158,14 @@ export class RecruitmentDecisionService {
     return recruitmentDecisionRepository.findAssignedGroups(decisionUuid);
   }
 
-  async addAssignedGroup(decisionUuid: string, groupUuid: string, userUuid?: string) {
+  async addAssignedGroup(decisionUuid: string, groupUuid: string, userUuid?: string, auditUserUuidFromBody?: string | null) {
+    const auditUser = userUuid || auditUserUuidFromBody || null;
     return recruitmentDecisionRepository.createAssignedGroup({
       cagUuid: uuidv4(),
       decisionUuid,
       groupUuid,
-      createdByUuid: userUuid,
-      updatedByUuid: userUuid,
+      createdByUuid: auditUser,
+      updatedByUuid: auditUser,
     });
   }
 
