@@ -8,6 +8,7 @@ import {
   candRecruitmentDecision,
   candAssignedGroups,
 } from "../../../../shared/v2/recruitment/schema";
+import { masterVesselTypes, masterFleetGroups } from "../../../../shared/schema";
 import type {
   CandApproval,
   InsertApproval,
@@ -87,11 +88,29 @@ export class SuitabilityRepository {
     return this.create({ ...data, recCanUuid } as InsertSuitability);
   }
 
-  async findVesselTypes(suitUuid: string): Promise<CandSuitabilityVesselType[]> {
+  async findVesselTypes(suitUuid: string): Promise<(CandSuitabilityVesselType & { vesselTypeName?: string | null })[]> {
     const db = getDb();
-    return db.select().from(candSuitabilityVesselTypes).where(
-      and(eq(candSuitabilityVesselTypes.suitUuid, suitUuid), eq(candSuitabilityVesselTypes.isDeleted, false))
-    );
+    const results = await db
+      .select({
+        svt: candSuitabilityVesselTypes,
+        vesselTypeName: masterVesselTypes.vesselType,
+      })
+      .from(candSuitabilityVesselTypes)
+      .leftJoin(
+        masterVesselTypes,
+        eq(candSuitabilityVesselTypes.vesselTypeUuid, masterVesselTypes.vtUuid)
+      )
+      .where(
+        and(
+          eq(candSuitabilityVesselTypes.suitUuid, suitUuid),
+          eq(candSuitabilityVesselTypes.isDeleted, false)
+        )
+      );
+    
+    return results.map(r => ({
+      ...r.svt,
+      vesselTypeName: r.vesselTypeName,
+    }));
   }
 
   async createVesselType(data: InsertSuitabilityVesselType): Promise<CandSuitabilityVesselType> {
@@ -106,11 +125,29 @@ export class SuitabilityRepository {
     return results.length > 0;
   }
 
-  async findFleetGroups(suitUuid: string): Promise<CandSuitabilityFleetGroup[]> {
+  async findFleetGroups(suitUuid: string): Promise<(CandSuitabilityFleetGroup & { fleetGroupName?: string | null })[]> {
     const db = getDb();
-    return db.select().from(candSuitabilityFleetGroups).where(
-      and(eq(candSuitabilityFleetGroups.suitUuid, suitUuid), eq(candSuitabilityFleetGroups.isDeleted, false))
-    );
+    const results = await db
+      .select({
+        sfg: candSuitabilityFleetGroups,
+        fleetGroupName: masterFleetGroups.name,
+      })
+      .from(candSuitabilityFleetGroups)
+      .leftJoin(
+        masterFleetGroups,
+        eq(candSuitabilityFleetGroups.fleetGroupUuid, masterFleetGroups.fgUuid)
+      )
+      .where(
+        and(
+          eq(candSuitabilityFleetGroups.suitUuid, suitUuid),
+          eq(candSuitabilityFleetGroups.isDeleted, false)
+        )
+      );
+    
+    return results.map(r => ({
+      ...r.sfg,
+      fleetGroupName: r.fleetGroupName,
+    }));
   }
 
   async createFleetGroup(data: InsertSuitabilityFleetGroup): Promise<CandSuitabilityFleetGroup> {
