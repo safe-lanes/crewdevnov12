@@ -1,5 +1,6 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { getDb } from "../../db";
+import { masterUsers } from "../../../../shared/schema";
 import {
   screeningB1Initial,
   screeningB1Comments,
@@ -567,11 +568,31 @@ export class ScreeningB6Repository {
     return this.create({ ...data, recCanUuid } as InsertScreeningB6Interviews);
   }
 
-  async findInterviewItems(b6Uuid: string): Promise<ScreeningB6InterviewItem[]> {
+  async findInterviewItems(b6Uuid: string): Promise<(ScreeningB6InterviewItem & { interviewerName?: string })[]> {
     const db = getDb();
-    return db.select().from(screeningB6InterviewItems).where(
+    const results = await db.select({
+      id: screeningB6InterviewItems.id,
+      intUuid: screeningB6InterviewItems.intUuid,
+      b6Uuid: screeningB6InterviewItems.b6Uuid,
+      interviewDate: screeningB6InterviewItems.interviewDate,
+      interviewerUuid: screeningB6InterviewItems.interviewerUuid,
+      status: screeningB6InterviewItems.status,
+      result: screeningB6InterviewItems.result,
+      comments: screeningB6InterviewItems.comments,
+      sortOrder: screeningB6InterviewItems.sortOrder,
+      isDeleted: screeningB6InterviewItems.isDeleted,
+      createdAt: screeningB6InterviewItems.createdAt,
+      updatedAt: screeningB6InterviewItems.updatedAt,
+      createdByUuid: screeningB6InterviewItems.createdByUuid,
+      updatedByUuid: screeningB6InterviewItems.updatedByUuid,
+      interviewerName: sql<string>`CASE WHEN ${masterUsers.fullname} IS NOT NULL AND ${masterUsers.designation} IS NOT NULL THEN CONCAT(${masterUsers.fullname}, ' ,', ${masterUsers.designation}) WHEN ${masterUsers.fullname} IS NOT NULL THEN ${masterUsers.fullname} ELSE NULL END`,
+    })
+    .from(screeningB6InterviewItems)
+    .leftJoin(masterUsers, eq(screeningB6InterviewItems.interviewerUuid, masterUsers.userUuid))
+    .where(
       and(eq(screeningB6InterviewItems.b6Uuid, b6Uuid), eq(screeningB6InterviewItems.isDeleted, false))
     );
+    return results;
   }
 
   async createInterviewItem(data: InsertScreeningB6InterviewItem): Promise<ScreeningB6InterviewItem> {
@@ -660,11 +681,31 @@ export class ScreeningB7Repository {
     return this.create({ ...data, recCanUuid } as InsertScreeningB7Training);
   }
 
-  async findTrainingItems(b7Uuid: string): Promise<ScreeningB7TrainingItem[]> {
+  async findTrainingItems(b7Uuid: string): Promise<(ScreeningB7TrainingItem & { identifiedByName?: string })[]> {
     const db = getDb();
-    return db.select().from(screeningB7TrainingItems).where(
+    const results = await db.select({
+      id: screeningB7TrainingItems.id,
+      trainItemUuid: screeningB7TrainingItems.trainItemUuid,
+      b7Uuid: screeningB7TrainingItems.b7Uuid,
+      training: screeningB7TrainingItems.training,
+      identifiedByUuid: screeningB7TrainingItems.identifiedByUuid,
+      category: screeningB7TrainingItems.category,
+      dueDate: screeningB7TrainingItems.dueDate,
+      comments: screeningB7TrainingItems.comments,
+      sortOrder: screeningB7TrainingItems.sortOrder,
+      isDeleted: screeningB7TrainingItems.isDeleted,
+      createdAt: screeningB7TrainingItems.createdAt,
+      updatedAt: screeningB7TrainingItems.updatedAt,
+      createdByUuid: screeningB7TrainingItems.createdByUuid,
+      updatedByUuid: screeningB7TrainingItems.updatedByUuid,
+      identifiedByName: sql<string>`CASE WHEN ${masterUsers.fullname} IS NOT NULL AND ${masterUsers.designation} IS NOT NULL THEN CONCAT(${masterUsers.fullname}, ' ,', ${masterUsers.designation}) WHEN ${masterUsers.fullname} IS NOT NULL THEN ${masterUsers.fullname} ELSE NULL END`,
+    })
+    .from(screeningB7TrainingItems)
+    .leftJoin(masterUsers, eq(screeningB7TrainingItems.identifiedByUuid, masterUsers.userUuid))
+    .where(
       and(eq(screeningB7TrainingItems.b7Uuid, b7Uuid), eq(screeningB7TrainingItems.isDeleted, false))
     );
+    return results;
   }
 
   async createTrainingItem(data: InsertScreeningB7TrainingItem): Promise<ScreeningB7TrainingItem> {

@@ -1589,7 +1589,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: interview.intUuid,
           serverId: interview.id,
           date: interview.interviewDate || '',
-          interviewer: interview.interviewerUuid || '',
+          interviewer: interview.interviewerName || interview.interviewerUuid || '',
           status: interview.status || '',
           result: interview.result || '',
           comments: interview.comments || '',
@@ -1603,11 +1603,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Map API fields (DB column names) to UI form fields  
       setFormData(prev => ({
         ...prev,
-        b7TrainingNeeds: screeningB7TrainingItems.map(training => ({
+        b7TrainingNeeds: screeningB7TrainingItems.map((training: any) => ({
           id: training.trainItemUuid,
           serverId: training.id,
           training: training.training || '',
-          identifiedBy: training.identifiedByUuid || '',
+          identifiedBy: training.identifiedByName || training.identifiedByUuid || '',
           category: training.category || '',
           dueDate: training.dueDate || '',
           comments: training.comments || '',

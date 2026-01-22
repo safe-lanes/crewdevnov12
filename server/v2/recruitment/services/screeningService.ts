@@ -1,4 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
+import { eq } from "drizzle-orm";
+import { getDb } from "../../db";
+import { masterUsers } from "../../../../shared/schema";
 import {
   screeningB1Repository,
   screeningB2Repository,
@@ -27,6 +30,43 @@ import type {
   ScreeningB8Shortlisting,
   InsertScreeningB8Shortlisting,
 } from "../../../../shared/v2/recruitment/types";
+
+async function resolveUserUuid(value: string): Promise<string | null> {
+  if (!value) return null;
+  
+  const db = getDb();
+  const byUuid = await db.select().from(masterUsers)
+    .where(eq(masterUsers.userUuid, value))
+    .limit(1);
+  if (byUuid.length > 0 && byUuid[0].userUuid) {
+    return byUuid[0].userUuid;
+  }
+  
+  const displayNameParts = value.split(' ,');
+  if (displayNameParts.length === 2) {
+    const fullname = displayNameParts[0].trim();
+    const designation = displayNameParts[1].trim();
+    const results = await db.select().from(masterUsers)
+      .where(eq(masterUsers.fullname, fullname))
+      .limit(10);
+    const exactMatch = results.find((u: { designation?: string | null; userUuid?: string | null }) => u.designation === designation);
+    if (exactMatch && exactMatch.userUuid) {
+      return exactMatch.userUuid;
+    }
+    if (results.length > 0 && results[0].userUuid) {
+      return results[0].userUuid;
+    }
+  }
+  
+  const byFullname = await db.select().from(masterUsers)
+    .where(eq(masterUsers.fullname, value))
+    .limit(1);
+  if (byFullname.length > 0 && byFullname[0].userUuid) {
+    return byFullname[0].userUuid;
+  }
+  
+  return null;
+}
 
 export class ScreeningB1Service {
   async getByCandidate(recCanUuid: string): Promise<ScreeningB1Initial | undefined> {
@@ -407,18 +447,32 @@ export class ScreeningB6Service {
   }
 
   async createInterviewItem(b6Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const resolvedData = { ...data };
+    if (data.interviewerUuid && typeof data.interviewerUuid === 'string') {
+      const resolvedUuid = await resolveUserUuid(data.interviewerUuid);
+      if (resolvedUuid) {
+        resolvedData.interviewerUuid = resolvedUuid;
+      }
+    }
     return screeningB6Repository.createInterviewItem({
       intUuid: uuidv4(),
       b6Uuid,
-      ...data,
+      ...resolvedData,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
     } as any);
   }
 
   async updateInterviewItem(intUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const resolvedData = { ...data };
+    if (data.interviewerUuid && typeof data.interviewerUuid === 'string') {
+      const resolvedUuid = await resolveUserUuid(data.interviewerUuid);
+      if (resolvedUuid) {
+        resolvedData.interviewerUuid = resolvedUuid;
+      }
+    }
     return screeningB6Repository.updateInterviewItem(intUuid, {
-      ...data,
+      ...resolvedData,
       updatedByUuid: userUuid,
     } as any);
   }
@@ -483,18 +537,32 @@ export class ScreeningB7Service {
   }
 
   async createTrainingItem(b7Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const resolvedData = { ...data };
+    if (data.identifiedByUuid && typeof data.identifiedByUuid === 'string') {
+      const resolvedUuid = await resolveUserUuid(data.identifiedByUuid);
+      if (resolvedUuid) {
+        resolvedData.identifiedByUuid = resolvedUuid;
+      }
+    }
     return screeningB7Repository.createTrainingItem({
       trainItemUuid: uuidv4(),
       b7Uuid,
-      ...data,
+      ...resolvedData,
       createdByUuid: userUuid,
       updatedByUuid: userUuid,
     } as any);
   }
 
   async updateTrainingItem(trainItemUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    const resolvedData = { ...data };
+    if (data.identifiedByUuid && typeof data.identifiedByUuid === 'string') {
+      const resolvedUuid = await resolveUserUuid(data.identifiedByUuid);
+      if (resolvedUuid) {
+        resolvedData.identifiedByUuid = resolvedUuid;
+      }
+    }
     return screeningB7Repository.updateTrainingItem(trainItemUuid, {
-      ...data,
+      ...resolvedData,
       updatedByUuid: userUuid,
     } as any);
   }
