@@ -255,7 +255,19 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         filter: 'agSetColumnFilter',
         sortable: true,
         resizable: true,
-        enableRowGroup: false
+        enableRowGroup: false,
+        valueFormatter: (params: any) => {
+          const statusMap: Record<string, string> = {
+            'draft': 'Draft',
+            'submitted': 'Submitted',
+            'screening': 'Screening',
+            'recruited': 'Recruited',
+            'waitlist': 'Waitlisted',
+            'rejected': 'Rejected',
+            'in_progress': 'In Progress',
+          };
+          return statusMap[params.value] || params.value;
+        }
       },
       {
         headerName: 'Actions',
