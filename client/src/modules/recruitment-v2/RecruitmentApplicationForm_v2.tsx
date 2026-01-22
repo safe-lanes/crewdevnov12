@@ -2741,13 +2741,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         // Only generate new file number if candidate doesn't have one (first time submitting for screening)
         const needsNewFileNo = !fileNo || !fileNo.startsWith('R-');
         if (needsNewFileNo) {
-          const fileNoResponse = await fetch('/api/recruitment-candidates/next-file-number');
+          const fileNoResponse = await fetch('/api/v2/recruitment/candidates/next-file-number');
           if (!fileNoResponse.ok) {
             throw new Error('Failed to generate file number');
           }
           const fileNoData = await fileNoResponse.json();
           fileNo = fileNoData.fileNo;
-          console.log('📋 Generated File No:', fileNo);
+          console.log('📋 V2 Generated File No:', fileNo);
         }
         
         const newStatus = getStatusForSection('A5', true);

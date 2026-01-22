@@ -930,6 +930,47 @@ export class CandidateService {
       updatedByUuid: userUuid,
     });
   }
+
+  // ============================================================================
+  // FILE NUMBER GENERATION
+  // ============================================================================
+
+  async getNextFileNumber(): Promise<string> {
+    const db = getDb();
+    const currentYear = new Date().getFullYear();
+    const yearPrefix = `R-${currentYear}-`;
+    const yearPattern = new RegExp(`^R-${currentYear}-(\\d+)$`);
+
+    // Get ALL candidates including soft-deleted to ensure we don't reuse file numbers
+    const allCandidates = await db
+      .select({
+        fileNo: recruitmentCandidatesV2.fileNo,
+      })
+      .from(recruitmentCandidatesV2);
+
+    // Filter candidates with file numbers matching R-YYYY-XXXX pattern for current year ONLY
+    const currentYearFileNos = allCandidates
+      .filter((c: { fileNo: string | null }) => c.fileNo && yearPattern.test(c.fileNo))
+      .map((c: { fileNo: string | null }) => {
+        const match = c.fileNo!.match(yearPattern);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((num: number) => !isNaN(num) && num > 0);
+
+    // Find the maximum number, default to 0 if none exist
+    const maxNumber =
+      currentYearFileNos.length > 0 ? Math.max(...currentYearFileNos) : 0;
+    const nextNumber = maxNumber + 1;
+
+    // Format as R-YYYY-0001 (4-digit padded number)
+    const nextFileNo = `${yearPrefix}${String(nextNumber).padStart(4, "0")}`;
+
+    console.log(
+      `📋 V2 Generated File No: ${nextFileNo} (max was ${maxNumber} from ${currentYearFileNos.length} candidates this year, total candidates checked: ${allCandidates.length})`
+    );
+
+    return nextFileNo;
+  }
 }
 
 export const candidateService = new CandidateService();

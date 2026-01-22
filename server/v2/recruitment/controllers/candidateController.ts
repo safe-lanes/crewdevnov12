@@ -370,3 +370,13 @@ export async function upsertNextOfKin(req: Request, res: Response) {
     res.status(500).json({ error: "Failed to upsert next of kin" });
   }
 }
+
+export async function getNextFileNumber(req: Request, res: Response) {
+  try {
+    const fileNo = await candidateService.getNextFileNumber();
+    res.json({ fileNo });
+  } catch (error) {
+    console.error("Error generating next file number:", error);
+    res.status(500).json({ error: "Failed to generate next file number" });
+  }
+}

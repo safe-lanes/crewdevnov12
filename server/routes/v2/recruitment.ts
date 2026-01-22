@@ -25,6 +25,7 @@ import {
   replaceChildren,
   getNextOfKin,
   upsertNextOfKin,
+  getNextFileNumber,
 } from "../../v2/recruitment/controllers/candidateController";
 
 import {
@@ -93,6 +94,7 @@ const router = Router();
 
 router.get("/candidates", getAllCandidates);
 router.post("/candidates", createCandidate);
+router.get("/candidates/next-file-number", getNextFileNumber);
 router.get("/candidates/:recCanUuid", getCandidateByUuid);
 router.patch("/candidates/:recCanUuid", updateCandidateByUuid);
 router.delete("/candidates/:recCanUuid", deleteCandidateByUuid);
