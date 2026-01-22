@@ -2686,6 +2686,31 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     await handleSaveAndContinue();
   };
 
+  // Helper function to determine status based on section (matching legacy logic)
+  const getStatusForSection = (section: string, isMainSubmit: boolean = false): string => {
+    // If already at final status, don't change
+    if (candidate?.status && ['Recruited', 'Waitlisted', 'Rejected'].includes(candidate.status)) {
+      return candidate.status;
+    }
+
+    if (section === 'A5' && isMainSubmit) {
+      return 'Applied'; // A5 Submit for Screening
+    }
+    if (section.startsWith('B') && !isMainSubmit) {
+      return 'Screening'; // Any Part B section submit
+    }
+    if (section === 'B' && isMainSubmit) {
+      return 'For Approval'; // Part B main Submit for Approval
+    }
+    if (section === 'C' && isMainSubmit) {
+      // C3 decisions will be handled separately
+      return candidate?.status || 'For Approval';
+    }
+    
+    // Default: keep current status or Draft
+    return candidate?.status || 'Draft';
+  };
+
   const handleA5SubmitForScreening = async () => {
     try {
       // Always save all form data first (including additional info)
@@ -2694,10 +2719,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const currentUuid = recCanUuid;
       
       if (currentUuid) {
+        const newStatus = getStatusForSection('A5', true);
         await updateCandidateMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            status: 'Applied',
+            status: newStatus,
           },
         });
         
@@ -3228,6 +3254,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         };
         const newStatus = statusMapping[formData.c3RecruitmentStatus];
         if (newStatus) {
+          await updateCandidateMutation.mutateAsync({
+            recCanUuid,
+            data: { status: newStatus },
+          });
+        }
+      } else {
+        // If no C3 decision yet, update status to Screening when saving Part B sections
+        const currentStatus = candidate?.status;
+        if (currentStatus && !['Recruited', 'Waitlisted', 'Rejected', 'For Approval'].includes(currentStatus)) {
+          const newStatus = getStatusForSection('B1', false); // 'Screening'
           await updateCandidateMutation.mutateAsync({
             recCanUuid,
             data: { status: newStatus },
