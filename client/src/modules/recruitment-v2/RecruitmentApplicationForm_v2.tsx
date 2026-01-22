@@ -28,6 +28,7 @@ import { useExternalLanguages } from '@/hooks/useExternalLanguages';
 import { useExternalUsers } from '@/hooks/useExternalUsers';
 import { useExternalVessels } from '@/hooks/useExternalVessels';
 import { useExternalFleetGroups } from '@/hooks/useExternalFleetGroups';
+import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 import {
   useV2Candidate,
   useV2CreateCandidate,
@@ -2699,6 +2700,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const handleSaveOnly = async () => {
     await handleSaveAndContinue();
+  };
+
+  // Handle export to PDF (matching legacy functionality)
+  const handleExport = async () => {
+    try {
+      const candidateName = `${formData.firstName || 'Unknown'} ${formData.familyName || 'Candidate'}`;
+      await generateRecruitmentPDF(formData as any, candidateName);
+      toast({
+        title: "Export Successful",
+        description: `Recruitment form exported as PDF for ${candidateName}`,
+      });
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Helper function to determine status based on section (matching legacy logic)
@@ -8205,6 +8225,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               size="sm"
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 h-8 rounded-md px-3 text-xs hidden sm:flex"
               data-testid="button-export"
+              onClick={handleExport}
             >
               <FileText className="h-4 w-4 mr-2" />
               Export
