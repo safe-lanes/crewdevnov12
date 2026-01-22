@@ -1656,13 +1656,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
   }, [approvalsData]);
 
-  // Part C - Load suitability data
+  // Part C - Load suitability data (use resolved names for display, fallback to UUID if name not available)
   useEffect(() => {
     if (suitabilityData) {
       setFormData(prev => ({
         ...prev,
-        c2VesselTypes: suitabilityData.vesselTypes?.map(vt => vt.vesselTypeUuid) || [],
-        c2FleetGroups: suitabilityData.fleetGroups?.map(fg => fg.fleetGroupUuid) || [],
+        c2VesselTypes: suitabilityData.vesselTypes?.map(vt => (vt as any).vesselTypeName || vt.vesselTypeUuid).filter(Boolean) || [],
+        c2FleetGroups: suitabilityData.fleetGroups?.map(fg => (fg as any).fleetGroupName || fg.fleetGroupUuid).filter(Boolean) || [],
       }));
     }
   }, [suitabilityData]);
