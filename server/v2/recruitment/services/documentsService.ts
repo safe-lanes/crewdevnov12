@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
+import { eq, and, asc } from "drizzle-orm";
+import { getDb } from "../../db";
 import {
   documentsRepository,
   documentAttachmentsRepository,
@@ -15,6 +17,22 @@ import {
   additionalInfoRepository,
   additionalInfoAttachmentsRepository,
 } from "../repositories";
+import {
+  candDocuments,
+  candDocumentsAttachments,
+  candVisas,
+  candVisasAttachments,
+  candEducation,
+  candEducationAttachments,
+  candLicenses,
+  candLicensesAttachments,
+  candTrainingCourses,
+  candTrainingAttachments,
+  candSeaService,
+  candSeaServiceAttachments,
+  candAdditionalInfo,
+  candAdditionalInfoAttachments,
+} from "../../../../shared/v2/recruitment/schema";
 import type {
   CandDocument,
   CandDocumentAttachment,
@@ -47,15 +65,43 @@ import type {
 } from "../../../../shared/v2/recruitment/types";
 
 export class DocumentsService {
+  // Optimized: Single JOIN query instead of N+1
   async getDocuments(recCanUuid: string): Promise<(CandDocument & { attachments: CandDocumentAttachment[] })[]> {
-    const docs = await documentsRepository.findByCandidateUuid(recCanUuid);
-    const docsWithAttachments = await Promise.all(
-      docs.map(async (doc) => {
-        const attachments = await documentAttachmentsRepository.findByDocUuid(doc.docUuid);
-        return { ...doc, attachments };
+    const db = getDb();
+    
+    const rows = await db
+      .select({
+        doc: candDocuments,
+        att: candDocumentsAttachments,
       })
-    );
-    return docsWithAttachments;
+      .from(candDocuments)
+      .leftJoin(
+        candDocumentsAttachments,
+        and(
+          eq(candDocuments.docUuid, candDocumentsAttachments.docUuid),
+          eq(candDocumentsAttachments.isDeleted, false)
+        )
+      )
+      .where(
+        and(
+          eq(candDocuments.recCanUuid, recCanUuid),
+          eq(candDocuments.isDeleted, false)
+        )
+      )
+      .orderBy(asc(candDocuments.sortOrder), asc(candDocumentsAttachments.sortOrder));
+
+    // Group by document UUID
+    const docMap = new Map<string, CandDocument & { attachments: CandDocumentAttachment[] }>();
+    for (const row of rows) {
+      if (!docMap.has(row.doc.docUuid)) {
+        docMap.set(row.doc.docUuid, { ...row.doc, attachments: [] });
+      }
+      if (row.att?.attUuid) {
+        docMap.get(row.doc.docUuid)!.attachments.push(row.att);
+      }
+    }
+
+    return Array.from(docMap.values());
   }
 
   async createDocument(recCanUuid: string, data: Partial<InsertDocument>, createdByUuid?: string): Promise<CandDocument> {
@@ -90,15 +136,42 @@ export class DocumentsService {
     } as InsertDocumentAttachment);
   }
 
+  // Optimized: Single JOIN query instead of N+1
   async getVisas(recCanUuid: string): Promise<(CandVisa & { attachments: CandVisaAttachment[] })[]> {
-    const visas = await visasRepository.findByCandidateUuid(recCanUuid);
-    const visasWithAttachments = await Promise.all(
-      visas.map(async (visa) => {
-        const attachments = await visaAttachmentsRepository.findByVisaUuid(visa.visaUuid);
-        return { ...visa, attachments };
+    const db = getDb();
+    
+    const rows = await db
+      .select({
+        visa: candVisas,
+        att: candVisasAttachments,
       })
-    );
-    return visasWithAttachments;
+      .from(candVisas)
+      .leftJoin(
+        candVisasAttachments,
+        and(
+          eq(candVisas.visaUuid, candVisasAttachments.visaUuid),
+          eq(candVisasAttachments.isDeleted, false)
+        )
+      )
+      .where(
+        and(
+          eq(candVisas.recCanUuid, recCanUuid),
+          eq(candVisas.isDeleted, false)
+        )
+      )
+      .orderBy(asc(candVisas.sortOrder), asc(candVisasAttachments.sortOrder));
+
+    const visaMap = new Map<string, CandVisa & { attachments: CandVisaAttachment[] }>();
+    for (const row of rows) {
+      if (!visaMap.has(row.visa.visaUuid)) {
+        visaMap.set(row.visa.visaUuid, { ...row.visa, attachments: [] });
+      }
+      if (row.att?.attUuid) {
+        visaMap.get(row.visa.visaUuid)!.attachments.push(row.att);
+      }
+    }
+
+    return Array.from(visaMap.values());
   }
 
   async createVisa(recCanUuid: string, data: Partial<InsertVisa>, createdByUuid?: string): Promise<CandVisa> {
@@ -133,15 +206,42 @@ export class DocumentsService {
     } as InsertVisaAttachment);
   }
 
+  // Optimized: Single JOIN query instead of N+1
   async getEducation(recCanUuid: string): Promise<(CandEducation & { attachments: CandEducationAttachment[] })[]> {
-    const education = await educationRepository.findByCandidateUuid(recCanUuid);
-    const educationWithAttachments = await Promise.all(
-      education.map(async (edu) => {
-        const attachments = await educationAttachmentsRepository.findByEduUuid(edu.eduUuid);
-        return { ...edu, attachments };
+    const db = getDb();
+    
+    const rows = await db
+      .select({
+        edu: candEducation,
+        att: candEducationAttachments,
       })
-    );
-    return educationWithAttachments;
+      .from(candEducation)
+      .leftJoin(
+        candEducationAttachments,
+        and(
+          eq(candEducation.eduUuid, candEducationAttachments.eduUuid),
+          eq(candEducationAttachments.isDeleted, false)
+        )
+      )
+      .where(
+        and(
+          eq(candEducation.recCanUuid, recCanUuid),
+          eq(candEducation.isDeleted, false)
+        )
+      )
+      .orderBy(asc(candEducation.sortOrder), asc(candEducationAttachments.sortOrder));
+
+    const eduMap = new Map<string, CandEducation & { attachments: CandEducationAttachment[] }>();
+    for (const row of rows) {
+      if (!eduMap.has(row.edu.eduUuid)) {
+        eduMap.set(row.edu.eduUuid, { ...row.edu, attachments: [] });
+      }
+      if (row.att?.attUuid) {
+        eduMap.get(row.edu.eduUuid)!.attachments.push(row.att);
+      }
+    }
+
+    return Array.from(eduMap.values());
   }
 
   async createEducation(recCanUuid: string, data: Partial<InsertEducation>, createdByUuid?: string): Promise<CandEducation> {
@@ -176,15 +276,42 @@ export class DocumentsService {
     } as InsertEducationAttachment);
   }
 
+  // Optimized: Single JOIN query instead of N+1
   async getLicenses(recCanUuid: string): Promise<(CandLicense & { attachments: CandLicenseAttachment[] })[]> {
-    const licenses = await licensesRepository.findByCandidateUuid(recCanUuid);
-    const licensesWithAttachments = await Promise.all(
-      licenses.map(async (lic) => {
-        const attachments = await licenseAttachmentsRepository.findByLicUuid(lic.licUuid);
-        return { ...lic, attachments };
+    const db = getDb();
+    
+    const rows = await db
+      .select({
+        lic: candLicenses,
+        att: candLicensesAttachments,
       })
-    );
-    return licensesWithAttachments;
+      .from(candLicenses)
+      .leftJoin(
+        candLicensesAttachments,
+        and(
+          eq(candLicenses.licUuid, candLicensesAttachments.licUuid),
+          eq(candLicensesAttachments.isDeleted, false)
+        )
+      )
+      .where(
+        and(
+          eq(candLicenses.recCanUuid, recCanUuid),
+          eq(candLicenses.isDeleted, false)
+        )
+      )
+      .orderBy(asc(candLicenses.sortOrder), asc(candLicensesAttachments.sortOrder));
+
+    const licMap = new Map<string, CandLicense & { attachments: CandLicenseAttachment[] }>();
+    for (const row of rows) {
+      if (!licMap.has(row.lic.licUuid)) {
+        licMap.set(row.lic.licUuid, { ...row.lic, attachments: [] });
+      }
+      if (row.att?.attUuid) {
+        licMap.get(row.lic.licUuid)!.attachments.push(row.att);
+      }
+    }
+
+    return Array.from(licMap.values());
   }
 
   async createLicense(recCanUuid: string, data: Partial<InsertLicense>, createdByUuid?: string): Promise<CandLicense> {
@@ -219,15 +346,42 @@ export class DocumentsService {
     } as InsertLicenseAttachment);
   }
 
+  // Optimized: Single JOIN query instead of N+1
   async getTrainingCourses(recCanUuid: string): Promise<(CandTrainingCourse & { attachments: CandTrainingAttachment[] })[]> {
-    const training = await trainingCoursesRepository.findByCandidateUuid(recCanUuid);
-    const trainingWithAttachments = await Promise.all(
-      training.map(async (course) => {
-        const attachments = await trainingAttachmentsRepository.findByTrainUuid(course.trainUuid);
-        return { ...course, attachments };
+    const db = getDb();
+    
+    const rows = await db
+      .select({
+        train: candTrainingCourses,
+        att: candTrainingAttachments,
       })
-    );
-    return trainingWithAttachments;
+      .from(candTrainingCourses)
+      .leftJoin(
+        candTrainingAttachments,
+        and(
+          eq(candTrainingCourses.trainUuid, candTrainingAttachments.trainUuid),
+          eq(candTrainingAttachments.isDeleted, false)
+        )
+      )
+      .where(
+        and(
+          eq(candTrainingCourses.recCanUuid, recCanUuid),
+          eq(candTrainingCourses.isDeleted, false)
+        )
+      )
+      .orderBy(asc(candTrainingCourses.sortOrder), asc(candTrainingAttachments.sortOrder));
+
+    const trainMap = new Map<string, CandTrainingCourse & { attachments: CandTrainingAttachment[] }>();
+    for (const row of rows) {
+      if (!trainMap.has(row.train.trainUuid)) {
+        trainMap.set(row.train.trainUuid, { ...row.train, attachments: [] });
+      }
+      if (row.att?.attUuid) {
+        trainMap.get(row.train.trainUuid)!.attachments.push(row.att);
+      }
+    }
+
+    return Array.from(trainMap.values());
   }
 
   async createTrainingCourse(recCanUuid: string, data: Partial<InsertTrainingCourse>, createdByUuid?: string): Promise<CandTrainingCourse> {
@@ -262,15 +416,42 @@ export class DocumentsService {
     } as InsertTrainingAttachment);
   }
 
+  // Optimized: Single JOIN query instead of N+1
   async getSeaService(recCanUuid: string): Promise<(CandSeaService & { attachments: CandSeaServiceAttachment[] })[]> {
-    const seaService = await seaServiceRepository.findByCandidateUuid(recCanUuid);
-    const seaServiceWithAttachments = await Promise.all(
-      seaService.map(async (sea) => {
-        const attachments = await seaServiceAttachmentsRepository.findBySeaUuid(sea.seaUuid);
-        return { ...sea, attachments };
+    const db = getDb();
+    
+    const rows = await db
+      .select({
+        sea: candSeaService,
+        att: candSeaServiceAttachments,
       })
-    );
-    return seaServiceWithAttachments;
+      .from(candSeaService)
+      .leftJoin(
+        candSeaServiceAttachments,
+        and(
+          eq(candSeaService.seaUuid, candSeaServiceAttachments.seaUuid),
+          eq(candSeaServiceAttachments.isDeleted, false)
+        )
+      )
+      .where(
+        and(
+          eq(candSeaService.recCanUuid, recCanUuid),
+          eq(candSeaService.isDeleted, false)
+        )
+      )
+      .orderBy(asc(candSeaService.sortOrder), asc(candSeaServiceAttachments.sortOrder));
+
+    const seaMap = new Map<string, CandSeaService & { attachments: CandSeaServiceAttachment[] }>();
+    for (const row of rows) {
+      if (!seaMap.has(row.sea.seaUuid)) {
+        seaMap.set(row.sea.seaUuid, { ...row.sea, attachments: [] });
+      }
+      if (row.att?.attUuid) {
+        seaMap.get(row.sea.seaUuid)!.attachments.push(row.att);
+      }
+    }
+
+    return Array.from(seaMap.values());
   }
 
   async createSeaService(recCanUuid: string, data: Partial<InsertSeaService>, createdByUuid?: string): Promise<CandSeaService> {
@@ -305,15 +486,42 @@ export class DocumentsService {
     } as InsertSeaServiceAttachment);
   }
 
+  // Optimized: Single JOIN query instead of N+1
   async getAdditionalInfo(recCanUuid: string): Promise<(CandAdditionalInfo & { attachments: CandAdditionalInfoAttachment[] })[]> {
-    const additionalInfo = await additionalInfoRepository.findByCandidateUuid(recCanUuid);
-    const additionalInfoWithAttachments = await Promise.all(
-      additionalInfo.map(async (info) => {
-        const attachments = await additionalInfoAttachmentsRepository.findByInfoUuid(info.infoUuid);
-        return { ...info, attachments };
+    const db = getDb();
+    
+    const rows = await db
+      .select({
+        info: candAdditionalInfo,
+        att: candAdditionalInfoAttachments,
       })
-    );
-    return additionalInfoWithAttachments;
+      .from(candAdditionalInfo)
+      .leftJoin(
+        candAdditionalInfoAttachments,
+        and(
+          eq(candAdditionalInfo.infoUuid, candAdditionalInfoAttachments.infoUuid),
+          eq(candAdditionalInfoAttachments.isDeleted, false)
+        )
+      )
+      .where(
+        and(
+          eq(candAdditionalInfo.recCanUuid, recCanUuid),
+          eq(candAdditionalInfo.isDeleted, false)
+        )
+      )
+      .orderBy(asc(candAdditionalInfo.sortOrder), asc(candAdditionalInfoAttachments.sortOrder));
+
+    const infoMap = new Map<string, CandAdditionalInfo & { attachments: CandAdditionalInfoAttachment[] }>();
+    for (const row of rows) {
+      if (!infoMap.has(row.info.infoUuid)) {
+        infoMap.set(row.info.infoUuid, { ...row.info, attachments: [] });
+      }
+      if (row.att?.attUuid) {
+        infoMap.get(row.info.infoUuid)!.attachments.push(row.att);
+      }
+    }
+
+    return Array.from(infoMap.values());
   }
 
   async createAdditionalInfo(recCanUuid: string, data: Partial<InsertAdditionalInfo>, createdByUuid?: string): Promise<CandAdditionalInfo> {
