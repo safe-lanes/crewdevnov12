@@ -37,9 +37,11 @@ import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { TimelineCard } from '../components/TimelineCard';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewInfoPDF';
+import { useCreateCrewV2, useUpdateCrewV2 } from './hooks/useCrewPoolV2';
 
 interface CrewMember {
   id: string;
+  crewUuid?: string; // V2 uses crewUuid as primary identifier
   empNo: string;
   employeeId: string; // Added for crew ID display
   firstName: string;
@@ -4992,104 +4994,68 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   const queryClient = useQueryClient();
 
-  // Create crew member mutation
-  const createCrewMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const mappedData = toStorageCrew(data);
-      const response = await apiRequest('POST', '/api/crew-members', mappedData);
-      
-      // Check if the response was successful
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      // Handle different response types
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json();
-      } else if (response.status === 204) {
-        return null; // No content response
-      } else {
-        return { success: true };
-      }
-    },
-    onSuccess: (responseData: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
-      // Handle both direct response and potentially nested structure
-      const crewData = responseData?.crewMember || responseData;
-      const newId = crewData?.id || crewData?.employeeId;
-      
-      console.log('Create crew response - extracted ID:', newId);
-      
-      if (newId) {
-        // Store the ID for subsequent saves in this session
-        setCreatedCrewId(newId);
-        // Invalidate dashboard data for the new crew member
-        queryClient.invalidateQueries({ queryKey: [`/api/crew-members/${newId}/dashboard`] });
-        // Notify parent about the new crew member so it can update its state
-        // This ensures the header, dashboard queries, and other dependent features work correctly
-        if (onCrewMemberChange && crewData) {
-          onCrewMemberChange(crewData);
-        }
-      }
-      toast({
-        title: "Saved",
-        description: "Crew member created successfully. You can continue editing.",
-        duration: 3000,
-      });
-      // Keep form open to allow continued editing
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: `Failed to create crew member: ${error.message}`,
-        variant: "destructive",
-        duration: 5000,
+  // V2 Create crew member mutation
+  const createCrewMutationV2 = useCreateCrewV2();
+  
+  // V2 Update crew member mutation  
+  const updateCrewMutationV2 = useUpdateCrewV2();
+  
+  // Wrapper for create mutation with UI feedback
+  const createCrewMutation = {
+    mutate: (data: any) => {
+      createCrewMutationV2.mutate(data, {
+        onSuccess: (responseData: any) => {
+          const crewUuid = responseData?.crewUuid;
+          console.log('V2 Create crew response - crewUuid:', crewUuid);
+          
+          if (crewUuid) {
+            setCreatedCrewId(crewUuid);
+            if (onCrewMemberChange && responseData) {
+              onCrewMemberChange(responseData);
+            }
+          }
+          toast({
+            title: "Saved",
+            description: "Crew member created successfully. You can continue editing.",
+            duration: 3000,
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Error",
+            description: `Failed to create crew member: ${error.message}`,
+            variant: "destructive",
+            duration: 5000,
+          });
+        },
       });
     },
-  });
+    isPending: createCrewMutationV2.isPending,
+  };
 
-  // Update crew member mutation
-  const updateCrewMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const mappedData = toStorageCrew(data);
-      const response = await apiRequest('PATCH', `/api/crew-members/${id}`, mappedData);
-      
-      // Check if the response was successful
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      // Handle different response types
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json();
-      } else if (response.status === 204) {
-        return null; // No content response
-      } else {
-        return { success: true };
-      }
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
-      // Also invalidate dashboard data for the updated crew member
-      queryClient.invalidateQueries({ queryKey: [`/api/crew-members/${variables.id}/dashboard`] });
-      toast({
-        title: "Saved", 
-        description: "Crew member updated successfully. You can continue editing.",
-        duration: 3000,
-      });
-      // Keep form open to allow continued editing
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: `Failed to update crew member: ${error.message}`,
-        variant: "destructive",
-        duration: 5000,
+  // Wrapper for update mutation with UI feedback
+  const updateCrewMutation = {
+    mutate: ({ id, data }: { id: string; data: any }) => {
+      updateCrewMutationV2.mutate({ crewUuid: id, data }, {
+        onSuccess: () => {
+          toast({
+            title: "Saved", 
+            description: "Crew member updated successfully. You can continue editing.",
+            duration: 3000,
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Error",
+            description: `Failed to update crew member: ${error.message}`,
+            variant: "destructive",
+            duration: 5000,
+          });
+        },
       });
     },
-  });
+    isPending: updateCrewMutationV2.isPending,
+  };
 
   // Status update mutation (for isActive toggle and nextAvailability)
   const statusUpdateMutation = useMutation({
@@ -5143,22 +5109,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const handleSave = () => {
-    console.log('Saving crew info:', formData);
+    console.log('Saving crew info (V2):', formData);
     
     // Include the uploaded photo in the data to be saved
     const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
     
-    // Check for existing ID from prop or from local state (after creation)
-    const existingId = crewMember?.id || createdCrewId;
+    // V2 uses crewUuid, fallback to id for compatibility
+    const existingUuid = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     
-    if (existingId) {
-      // Update existing crew member
-      updateCrewMutation.mutate({ id: existingId, data: dataWithPhoto });
+    if (existingUuid) {
+      // Update existing crew member via V2 API
+      updateCrewMutation.mutate({ id: existingUuid, data: dataWithPhoto });
     } else {
-      // Create new crew member - generate ID based on current date
-      const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
-      const formDataWithId = { ...dataWithPhoto, id: newId };
-      createCrewMutation.mutate(formDataWithId);
+      // Create new crew member via V2 API
+      createCrewMutation.mutate(dataWithPhoto);
     }
   };
 
