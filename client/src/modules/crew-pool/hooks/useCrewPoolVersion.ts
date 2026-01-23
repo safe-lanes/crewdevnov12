@@ -4,15 +4,13 @@ const STORAGE_KEY = 'crew_pool_version';
 
 export type CrewPoolVersion = 'legacy' | 'v2';
 
-export function useCrewPoolVersion() {
-  const [version, setVersionState] = useState<CrewPoolVersion>('legacy');
+function getStoredVersion(): CrewPoolVersion {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored === 'v2' ? 'v2' : 'legacy';
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'v2' || stored === 'legacy') {
-      setVersionState(stored);
-    }
-  }, []);
+export function useCrewPoolVersion() {
+  const [version, setVersionState] = useState<CrewPoolVersion>(getStoredVersion);
 
   const setVersion = useCallback((newVersion: CrewPoolVersion) => {
     localStorage.setItem(STORAGE_KEY, newVersion);
@@ -20,9 +18,11 @@ export function useCrewPoolVersion() {
   }, []);
 
   const toggleVersion = useCallback(() => {
-    const newVersion = version === 'legacy' ? 'v2' : 'legacy';
-    setVersion(newVersion);
-  }, [version, setVersion]);
+    const currentVersion = getStoredVersion();
+    const newVersion = currentVersion === 'legacy' ? 'v2' : 'legacy';
+    localStorage.setItem(STORAGE_KEY, newVersion);
+    setVersionState(newVersion);
+  }, []);
 
   return {
     version,
