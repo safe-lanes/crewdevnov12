@@ -10,7 +10,7 @@ import HeaderComponent from "./components/Navbar/HeaderComponent";
 const AdminModule = lazy(() => import("./modules/admin/AdminModule").then(m => ({ default: m.AdminModule })));
 const ElementCrewAppraisals = lazy(() => import("./modules/crewing/ElementCrewAppraisals").then(m => ({ default: m.ElementCrewAppraisals })));
 const RecruitmentWrapper = lazy(() => import("./modules/recruitment/RecruitmentWrapper").then(m => ({ default: m.RecruitmentWrapper })));
-const CrewPoolModule = lazy(() => import("./modules/crew-pool/CrewPoolModule").then(m => ({ default: m.CrewPoolModule })));
+const CrewPoolModuleRouter = lazy(() => import("./modules/crew-pool").then(m => ({ default: m.CrewPoolModuleRouter })));
 const VesselModule = lazy(() => import("./modules/vessel/VesselModule").then(m => ({ default: m.VesselModule })));
 const RotationModule = lazy(() => import("./modules/rotation/RotationModule").then(m => ({ default: m.RotationModule })));
 const PromotionsModule = lazy(() => import("./modules/promotions/PromotionsModule").then(m => ({ default: m.PromotionsModule })));
@@ -42,7 +42,7 @@ function App() {
                 <Route path="/" component={ElementCrewAppraisals} />
                 <Route path="/dashboard" component={DashboardPage} />
                 <Route path="/recruitment" component={RecruitmentWrapper} />
-                <Route path="/crew-pool" component={CrewPoolModule} />
+                <Route path="/crew-pool" component={CrewPoolModuleRouter} />
                 <Route path="/vessel" component={VesselModule} />
                 <Route path="/rotation" component={RotationModule} />
                 <Route path="/promotions" component={PromotionsModule} />
