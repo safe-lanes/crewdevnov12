@@ -1,0 +1,10 @@
+export { crewMembersService } from "./crewMembersService";
+export { crewAssignmentsService } from "./crewAssignmentsService";
+export { crewProfileService } from "./crewProfileService";
+export { crewDocumentsService } from "./crewDocumentsService";
+export { crewVisasService } from "./crewVisasService";
+export { crewEducationService } from "./crewEducationService";
+export { crewCertificatesService } from "./crewCertificatesService";
+export { crewSeaServiceService } from "./crewSeaServiceService";
+export { crewMedicalService } from "./crewMedicalService";
+export { crewTransferService } from "./crewTransferService";
