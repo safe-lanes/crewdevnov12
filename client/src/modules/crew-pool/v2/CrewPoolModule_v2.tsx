@@ -1,16 +1,17 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FilterIcon, PlusIcon, EditIcon, ToggleLeft } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { FilterIcon, PlusIcon, EditIcon, ToggleLeft, ToggleRight } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { format, parseISO, isValid } from 'date-fns';
-import CrewPoolSideBar from './CrewPoolSideBar';
-import MainLayout from '../../components/main/MainLayout';
+import CrewPoolSideBar from '../CrewPoolSideBar';
+import MainLayout from '../../../components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -18,14 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import CrewInfoForm from './CrewInfoForm';
+import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { NATIONALITIES } from '@/utils/data/nationalities';
 import { useExternalNationalities } from '@/hooks/useExternalNationalities';
 import { useExternalVessels } from '@/hooks/useExternalVessels';
-import { useCrewPoolVersion } from './hooks/useCrewPoolVersion';
+import { useCrewListV2, useDeleteCrewV2 } from './hooks/useCrewPoolV2';
+import { useCrewPoolVersion } from '../hooks/useCrewPoolVersion';
 
 const formatCompactDate = (value: any): string => {
     if (!value) return '';
@@ -60,7 +62,7 @@ const formatContractPeriod = (value: any): string => {
     return value;
 };
 
-export const CrewPoolModule = (): JSX.Element => {
+export const CrewPoolModule_v2 = (): JSX.Element => {
     const [selectedCrewPoolPage, setSelectedCrewPoolPage] = useState("crew-database");
     const [showFilters, setShowFilters] = useState(true);
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
@@ -134,17 +136,8 @@ export const CrewPoolModule = (): JSX.Element => {
         },
     });
 
-    // Fetch crew members from API
-    const { data: rawCrewData = [], isLoading: isCrewLoading, error: crewError } = useQuery({
-        queryKey: ['/api/crew-members'],
-        queryFn: async () => {
-            const response = await fetch('/api/crew-members');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        },
-    });
+    // Fetch crew members from V2 API (returns legacy-formatted data via mapper)
+    const { data: rawCrewData = [], isLoading: isCrewLoading, error: crewError } = useCrewListV2();
 
     // Normalize and filter crew data for AG Grid
     // - Converts positions (e.g., "OS_1") to actual ranks (e.g., "OS")
@@ -981,12 +974,13 @@ export const CrewPoolModule = (): JSX.Element => {
                             variant="ghost"
                             size="sm"
                             onClick={toggleVersion}
-                            className="h-7 px-2 text-xs text-gray-500"
+                            className="h-7 px-2 text-xs text-blue-600"
                             data-testid="button-version-toggle"
                         >
-                            <ToggleLeft className="h-4 w-4 mr-1" />
-                            Legacy
+                            <ToggleRight className="h-4 w-4 mr-1" />
+                            V2
                         </Button>
+                        <Badge variant="secondary" className="text-xs">V2</Badge>
                         <Button
                             variant="outline"
                             className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
@@ -1013,8 +1007,8 @@ export const CrewPoolModule = (): JSX.Element => {
                 {renderContent()}
             </MainLayout>
             
-            {/* Crew Info Form Dialog */}
-            <CrewInfoForm
+            {/* Crew Info Form Dialog - V2 */}
+            <CrewInfoForm_v2
                 isOpen={isCrewInfoFormOpen}
                 onClose={handleCloseCrewInfoForm}
                 crewMember={selectedCrewMember}
