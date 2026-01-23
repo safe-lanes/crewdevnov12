@@ -1,0 +1,584 @@
+---
+config:
+  layout: elk
+---
+erDiagram
+    master_nationalities {
+        serial id PK
+        text nat_uuid UK
+        text name
+    }
+    
+    master_countries {
+        serial id PK
+        text country_uuid UK
+        text name
+        text code
+    }
+    
+    master_vessel_types {
+        serial id PK
+        text vt_uuid UK
+        text name
+        text code
+
+    }
+    
+    master_vessels {
+        serial id PK
+        text vessel_uuid UK
+        text name
+        text vessel_type_uuid FK
+        text imo
+        text flag
+        text deadweight
+    }
+    
+    master_ports {
+        serial id PK
+        text port_uuid UK
+        text name
+        text country_uuid FK
+    }
+    
+    master_users {
+        serial id PK
+        text user_uuid UK
+        text name
+        text email
+        text position
+    }
+    
+    master_languages {
+        serial id PK
+        text lang_uuid UK
+        text name
+        text code
+    }
+    
+    master_ranks {
+        serial id PK
+        text rank_uuid UK
+        text name
+        text code
+        text category
+
+    }
+    
+    master_fleet_groups {
+        serial id PK
+        text fg_uuid UK
+        text name
+
+    }
+    crew_members_v2 {
+        serial id PK
+        text crew_uuid UK
+        text emp_no UK
+        text employee_id UK
+        text first_name
+        text middle_name
+        text family_name
+        text gender
+        text dob
+        text nationality_uuid FK
+        text present_rank
+        text rank_applied_for
+        text status
+        text reason
+        boolean is_active
+        text uploaded_photo
+        text source_rec_can_uuid FK
+        timestamp archived_at
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    crew_assignments {
+        serial id PK
+        text assign_uuid UK
+        text crew_uuid FK
+        text vessel_uuid FK
+        boolean is_current
+        text sign_on_date
+        text sign_off_date
+        text contract_period
+        text relief_due
+        text port_of_joining_uuid FK
+        text port_of_leaving_uuid FK
+        text assignment_type
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    crew_vessel_types_applied {
+        serial id PK
+        text cvta_uuid UK
+        text crew_uuid FK
+        text vessel_type_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_personal_details {
+        serial id PK
+        text cpd_uuid UK
+        text crew_uuid FK
+        text height_cm
+        text weight_kg
+        text bmi
+        text age_in_years
+        text place_of_birth_city
+        text place_of_birth_country_uuid FK
+        text native_language_uuid FK
+        text foreign_languages
+        text english_proficiency
+        text manning_agent
+        text crew_pool
+        text availability
+        text next_availability
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_addresses {
+        serial id PK
+        text addr_uuid UK
+        text crew_uuid FK
+        text country_of_residence_uuid FK
+        text nearest_airport
+        text address_line1
+        text address_line2
+        text contact_landline
+        text mobile
+        text email
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_family_info {
+        serial id PK
+        text fam_uuid UK
+        text crew_uuid FK
+        text marital_status
+        text num_dependent_children
+        text father_name
+        text mother_name
+        text spouse_first_name
+        text spouse_middle_name
+        text spouse_family_name
+        text spouse_dob
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_children {
+        serial id PK
+        text child_uuid UK
+        text crew_uuid FK
+        text first_name
+        text middle_name
+        text family_name
+        text dob
+        text gender
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_next_of_kin {
+        serial id PK
+        text nok_uuid UK
+        text crew_uuid FK
+        text first_name
+        text middle_name
+        text family_name
+        text telephone
+        text email
+        text address
+        text relationship
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    crew_documents {
+        serial id PK
+        text doc_uuid UK
+        text crew_uuid FK
+        text document_id
+        text document_name
+        text number
+        text issued
+        text expiry
+        text issuing_authority
+        text issuing_country_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_documents_attachments {
+        serial id PK
+        text att_uuid UK
+        text doc_uuid FK
+        text file_name
+        text file_type
+        text file_size
+        text file_path
+        text file_data
+        text uploaded_by_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_visas {
+        serial id PK
+        text visa_uuid UK
+        text crew_uuid FK
+        text country_uuid FK
+        text serial_no
+        text issued
+        text expiry
+        text visa_type
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_visas_attachments {
+        serial id PK
+        text att_uuid UK
+        text visa_uuid FK
+        text file_name
+        text file_type
+        text file_size
+        text file_path
+        text file_data
+        text uploaded_by_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_education {
+        serial id PK
+        text edu_uuid UK
+        text crew_uuid FK
+        text date_of_completion
+        text institution
+        text subjects_field
+        text qualifications
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_education_attachments {
+        serial id PK
+        text att_uuid UK
+        text edu_uuid FK
+        text file_name
+        text file_type
+        text file_size
+        text file_path
+        text file_data
+        text uploaded_by_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_licenses {
+        serial id PK
+        text lic_uuid UK
+        text crew_uuid FK
+        text license_id
+        text certificate_document
+        text abbr
+        text requirement
+        text certificate_no
+        text issuing_authority
+        text issuing_country_uuid FK
+        text issued
+        text expiry
+        timestamp archived_at
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_licenses_attachments {
+        serial id PK
+        text att_uuid UK
+        text lic_uuid FK
+        text file_name
+        text file_type
+        text file_size
+        text file_path
+        text file_data
+        text uploaded_by_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_training_courses {
+        serial id PK
+        text train_uuid UK
+        text crew_uuid FK
+        text course_id
+        text training_course
+        text abbr
+        text requirement
+        text certificate_no
+        text issuing_authority
+        text issuing_country_uuid FK
+        text issued
+        text expiry
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_training_attachments {
+        serial id PK
+        text att_uuid UK
+        text train_uuid FK
+        text file_name
+        text file_type
+        text file_size
+        text file_path
+        text file_data
+        text uploaded_by_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    crew_sea_service {
+        serial id PK
+        text sea_uuid UK
+        text crew_uuid FK
+        text service_type
+        text vessel_name
+        text vessel_uuid FK
+        text vessel_type_uuid FK
+        text deadweight
+        text engine_type_power
+        text owner_operator
+        text rank
+        text from_date
+        text to_date
+        text period_months
+        text[] experience_categories
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_sea_service_attachments {
+        serial id PK
+        text att_uuid UK
+        text sea_uuid FK
+        text file_name
+        text file_type
+        text file_size
+        text file_path
+        text file_data
+        text uploaded_by_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    crew_pre_joining_medicals {
+        serial id PK
+        text med_uuid UK
+        text crew_uuid FK
+        text vessel_uuid FK
+        text examination_date
+        text clinic_hospital
+        text fit_for_duty
+        text expiry_date
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_medical_attachments {
+        serial id PK
+        text att_uuid UK
+        text med_uuid FK
+        text file_name
+        text file_type
+        text file_size
+        text file_path
+        text file_data
+        text uploaded_by_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_doctor_visits {
+        serial id PK
+        text visit_uuid UK
+        text crew_uuid FK
+        text visit_date
+        text doctor_name
+        text clinic_hospital
+        text reason
+        text diagnosis
+        text treatment
+        text follow_up_date
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    
+    crew_doctor_visits_attachments {
+        serial id PK
+        text att_uuid UK
+        text visit_uuid FK
+        text file_name
+        text file_type
+        text file_size
+        text file_path
+        text file_data
+        text uploaded_by_uuid FK
+        int sort_order
+        timestamp created_at
+        timestamp updated_at
+        text created_by_uuid FK
+        text updated_by_uuid FK
+        boolean is_deleted
+        boolean is_sync
+    }
+    master_nationalities ||--o{ crew_members : "nationality"
+    master_users ||--o{ crew_members : "created_by/updated_by"
+    crew_members ||--o{ crew_assignments : has
+    crew_members ||--o{ crew_vessel_types_applied : has
+    crew_members ||--o| crew_personal_details : has
+    crew_members ||--o| crew_addresses : has
+    crew_members ||--o| crew_family_info : has
+    crew_members ||--o{ crew_children : has
+    crew_members ||--o| crew_next_of_kin : has
+    crew_members ||--o{ crew_documents : has
+    crew_members ||--o{ crew_visas : has
+    crew_members ||--o{ crew_education : has
+    crew_members ||--o{ crew_licenses : has
+    crew_members ||--o{ crew_training_courses : has
+    crew_members ||--o{ crew_sea_service : has
+    crew_members ||--o{ crew_pre_joining_medicals : has
+    crew_members ||--o{ crew_doctor_visits : has
+    crew_assignments }o--|| master_vessels : "vessel"
+    crew_assignments }o--|| master_ports : "joining_port"
+    crew_assignments }o--|| master_ports : "leaving_port"
+    master_vessel_types ||--o{ crew_vessel_types_applied : "vessel_type"
+    master_countries ||--o{ crew_personal_details : "birth_country"
+    master_languages ||--o{ crew_personal_details : "native_lang"
+    master_countries ||--o{ crew_addresses : "residence"
+    master_countries ||--o{ crew_documents : "issuing_country"
+    master_countries ||--o{ crew_visas : "country"
+    master_countries ||--o{ crew_licenses : "issuing_country"
+    master_countries ||--o{ crew_training_courses : "issuing_country"
+    master_vessels ||--o{ crew_sea_service : "vessel"
+    master_vessel_types ||--o{ crew_sea_service : "vessel_type"
+    master_vessels ||--o{ crew_pre_joining_medicals : "vessel"
+    crew_documents ||--o{ crew_documents_attachments : has
+    crew_visas ||--o{ crew_visas_attachments : has
+    crew_education ||--o{ crew_education_attachments : has
+    crew_licenses ||--o{ crew_licenses_attachments : has
+    crew_training_courses ||--o{ crew_training_attachments : has
+    crew_sea_service ||--o{ crew_sea_service_attachments : has
+    crew_pre_joining_medicals ||--o{ crew_medical_attachments : has
+    crew_doctor_visits ||--o{ crew_doctor_visits_attachments : has
