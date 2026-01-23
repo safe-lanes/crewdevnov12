@@ -118,8 +118,8 @@ export const crewMembers = pgTable("crew_members", {
   employeeId: text("employee_id"), // From form
   
   // Vessel Information
-  presentVessel: text("present_vessel").notNull(), // Changed from vessel
-  vesselType: text("vessel_type").notNull(),
+  presentVessel: text("present_vessel"), // Optional - not all crew are assigned to a vessel
+  vesselType: text("vessel_type"),
   lastVessel: text("last_vessel"),
   
   // Contract and Status
