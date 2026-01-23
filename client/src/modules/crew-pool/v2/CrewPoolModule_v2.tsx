@@ -975,15 +975,18 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             <MainLayout hasSidebar={true}>
                 <SectionTitleComponents title={getTitle()}>
                     <div className="flex items-center gap-2">
+                        <Badge variant="outline" data-testid="badge-version-indicator">
+                            V2
+                        </Badge>
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={handleVersionToggle}
-                            className="h-7 px-2 text-xs border-blue-500 text-blue-600 bg-blue-50 hover:bg-blue-100"
+                            className="h-7 text-xs"
                             data-testid="button-version-toggle"
                         >
                             <ToggleRight className="h-4 w-4 mr-1" />
-                            V2 Mode - Switch to Legacy
+                            Switch to Legacy
                         </Button>
                         <Button
                             variant="outline"

@@ -11,6 +11,7 @@ import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -982,15 +983,18 @@ export const CrewPoolModule = (): JSX.Element => {
             <MainLayout hasSidebar={true}>
                 <SectionTitleComponents title={getTitle()}>
                     <div className="flex items-center gap-2">
+                        <Badge variant="default" className="bg-gray-500" data-testid="badge-version-indicator">
+                            Legacy
+                        </Badge>
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={handleVersionToggle}
-                            className="h-7 px-2 text-xs border-amber-500 text-amber-600 bg-amber-50 hover:bg-amber-100"
+                            className="h-7 text-xs"
                             data-testid="button-version-toggle"
                         >
                             <ToggleLeft className="h-4 w-4 mr-1" />
-                            Legacy Mode - Switch to V2
+                            Switch to V2
                         </Button>
                         <Button
                             variant="outline"
