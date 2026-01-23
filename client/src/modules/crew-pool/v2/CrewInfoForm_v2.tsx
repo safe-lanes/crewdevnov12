@@ -320,10 +320,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     issues: Array<{ name: string; expiry: string; status: 'expired' | 'expiring' }>;
   }>({ category: '', issues: [] });
   
-  // Check if crew member has a legacy ID (not a V2 UUID format)
-  const isLegacyCrewMember = !!(crewMember?.id && !crewMember.id.includes('-'));
-  
-  // Dashboard data query - only for legacy crew members
+  // Dashboard data query
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
     queryKey: ['/api/crew-members', crewMember?.id, 'dashboard'],
     queryFn: async () => {
@@ -333,8 +330,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       }
       return response.json();
     },
-    // Only enable for legacy crew members with non-UUID IDs
-    enabled: !!crewMember?.id && isOpen && isLegacyCrewMember,
+    enabled: !!crewMember?.id && isOpen,
   });
 
   // All crew members query for dropdown
@@ -1757,15 +1753,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Dashboard render function
   const renderDashboard = () => {
-    // For V2 crew members, show a placeholder since legacy dashboard endpoint doesn't apply
-    if (!isLegacyCrewMember && crewMember?.id) {
-      return (
-        <div className="text-center py-8 text-gray-500">
-          Dashboard data is not yet available for new crew members. Fill in the form sections to build their profile.
-        </div>
-      );
-    }
-    
     if (dashboardError) {
       return <div className="text-center py-8 text-red-600">Error loading dashboard data</div>;
     }
