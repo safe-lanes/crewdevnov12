@@ -64,8 +64,13 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
 }
 
 export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember>): any {
+  // V2 schema only accepts these core crew fields
+  // Vessel assignment fields (presentVessel, signOnDate, reliefDue, etc.) 
+  // are managed via crew_assignments table, not on the crew record
+  const empNo = legacy.empNo || legacy.employeeId || undefined;
+  
   return {
-    empNo: legacy.empNo || undefined,
+    empNo,
     employeeId: legacy.employeeId || undefined,
     firstName: legacy.firstName || undefined,
     middleName: legacy.middleName || undefined,
@@ -75,15 +80,10 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember>): any {
     nationalityUuid: legacy.nationality || undefined,
     presentRank: legacy.presentRank || undefined,
     rankAppliedFor: legacy.rankAppliedFor || undefined,
-    status: legacy.status || undefined,
+    status: legacy.status || 'active',
     reason: legacy.reason || undefined,
-    isActive: legacy.isActive,
+    isActive: legacy.isActive ?? true,
     uploadedPhoto: legacy.uploadedPhoto || undefined,
-    presentVessel: legacy.presentVessel || undefined,
-    signOnDate: legacy.signOnDate || undefined,
-    reliefDue: legacy.reliefDue || undefined,
-    nextAvailability: legacy.nextAvailability || undefined,
-    contractPeriodMonths: legacy.contractPeriodMonths || undefined,
   };
 }
 
