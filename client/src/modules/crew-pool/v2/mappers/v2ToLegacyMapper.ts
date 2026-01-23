@@ -7,7 +7,8 @@ export interface LegacyCrewMember {
   middleName: string;
   familyName: string;
   gender: string;
-  dateOfBirth: string;
+  dob: string;
+  age: string;
   nationality: string;
   presentRank: string;
   rankAppliedFor: string;
@@ -22,7 +23,20 @@ export interface LegacyCrewMember {
   contractPeriodMonths: string;
 }
 
+function calculateAge(dob: string): string {
+  if (!dob) return '';
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age.toString();
+}
+
 export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
+  const dob = v2Crew.dob || '';
   return {
     id: v2Crew.id?.toString() || v2Crew.crewUuid,
     crewUuid: v2Crew.crewUuid,
@@ -32,8 +46,9 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     middleName: v2Crew.middleName || '',
     familyName: v2Crew.familyName || '',
     gender: v2Crew.gender || '',
-    dateOfBirth: v2Crew.dob || '',
-    nationality: v2Crew.nationalityUuid || '',
+    dob,
+    age: calculateAge(dob),
+    nationality: v2Crew.nationalityUuid || v2Crew.nationality || '',
     presentRank: v2Crew.presentRank || '',
     rankAppliedFor: v2Crew.rankAppliedFor || '',
     status: v2Crew.status || 'active',
@@ -56,7 +71,7 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember>): any {
     middleName: legacy.middleName || undefined,
     familyName: legacy.familyName || undefined,
     gender: legacy.gender || undefined,
-    dob: legacy.dateOfBirth || undefined,
+    dob: legacy.dob || undefined,
     nationalityUuid: legacy.nationality || undefined,
     presentRank: legacy.presentRank || undefined,
     rankAppliedFor: legacy.rankAppliedFor || undefined,
