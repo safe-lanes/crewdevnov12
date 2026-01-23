@@ -84,18 +84,42 @@ export const crewMembersService = {
     if (!data.firstName || !data.familyName) {
       throw new Error("First name and family name are required");
     }
-    if (!data.empNo) {
-      throw new Error("Employee number is required");
+    
+    // Auto-generate empNo if not provided
+    let empNo = data.empNo;
+    if (!empNo) {
+      empNo = await this.generateEmpNo();
     }
 
-    const existing = await crewMembersRepository.findByEmpNo(data.empNo);
+    const existing = await crewMembersRepository.findByEmpNo(empNo);
     if (existing) {
       throw new Error(
-        `Crew member with employee number ${data.empNo} already exists`
+        `Crew member with employee number ${empNo} already exists`
       );
     }
 
-    return crewMembersRepository.create(data);
+    return crewMembersRepository.create({ ...data, empNo });
+  },
+  
+  async generateEmpNo(): Promise<string> {
+    const db = getDb();
+    // Get the highest empNo that starts with 'V2-' and increment
+    const result = await db
+      .select({ empNo: crewMembersV2.empNo })
+      .from(crewMembersV2)
+      .where(ilike(crewMembersV2.empNo, 'V2-%'))
+      .orderBy(desc(crewMembersV2.empNo))
+      .limit(1);
+    
+    let nextNum = 1;
+    if (result.length > 0 && result[0].empNo) {
+      const match = result[0].empNo.match(/V2-(\d+)/);
+      if (match) {
+        nextNum = parseInt(match[1], 10) + 1;
+      }
+    }
+    
+    return `V2-${nextNum.toString().padStart(6, '0')}`;
   },
 
   async update(
