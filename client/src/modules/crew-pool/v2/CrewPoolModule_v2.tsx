@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FilterIcon, PlusIcon, EditIcon, ToggleLeft, ToggleRight } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
@@ -72,6 +72,11 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const viewportConfig = getViewportConfig(viewport);
     
     const { toggleVersion } = useCrewPoolVersion();
+    
+    const handleVersionToggle = () => {
+        toggleVersion();
+        window.location.reload();
+    };
     
     // Vessel lookup hook for ID to name translation
     const { getVesselName } = useVesselLookup();
@@ -971,16 +976,15 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 <SectionTitleComponents title={getTitle()}>
                     <div className="flex items-center gap-2">
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={toggleVersion}
-                            className="h-7 px-2 text-xs text-blue-600"
+                            onClick={handleVersionToggle}
+                            className="h-7 px-2 text-xs border-blue-500 text-blue-600 bg-blue-50 hover:bg-blue-100"
                             data-testid="button-version-toggle"
                         >
                             <ToggleRight className="h-4 w-4 mr-1" />
-                            V2
+                            V2 Mode - Switch to Legacy
                         </Button>
-                        <Badge variant="secondary" className="text-xs">V2</Badge>
                         <Button
                             variant="outline"
                             className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"

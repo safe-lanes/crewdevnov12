@@ -71,6 +71,11 @@ export const CrewPoolModule = (): JSX.Element => {
     
     const { toggleVersion } = useCrewPoolVersion();
     
+    const handleVersionToggle = () => {
+        toggleVersion();
+        window.location.reload();
+    };
+    
     // Vessel lookup hook for ID to name translation
     const { getVesselName } = useVesselLookup();
     
@@ -978,14 +983,14 @@ export const CrewPoolModule = (): JSX.Element => {
                 <SectionTitleComponents title={getTitle()}>
                     <div className="flex items-center gap-2">
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={toggleVersion}
-                            className="h-7 px-2 text-xs text-gray-500"
+                            onClick={handleVersionToggle}
+                            className="h-7 px-2 text-xs border-amber-500 text-amber-600 bg-amber-50 hover:bg-amber-100"
                             data-testid="button-version-toggle"
                         >
                             <ToggleLeft className="h-4 w-4 mr-1" />
-                            Legacy
+                            Legacy Mode - Switch to V2
                         </Button>
                         <Button
                             variant="outline"
