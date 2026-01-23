@@ -1,10 +1,49 @@
+import { eq, and, desc, or, ilike, sql, isNull } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+import { getDb } from "../../db";
 import { CrewMembersRepository } from "../repositories";
+import {
+  crewMembersV2,
+  crewAssignments,
+  crewPersonalDetails,
+  crewAddresses,
+  crewFamilyInfo,
+  crewChildren,
+  crewNextOfKin,
+} from "../../../../shared/v2/crew-pool/schema";
 import type {
   InsertCrewMemberV2,
   CrewMemberV2,
+  InsertCrewPersonalDetails,
+  InsertCrewAddress,
+  InsertCrewFamilyInfo,
+  InsertCrewChild,
+  InsertCrewNextOfKin,
+  CrewPersonalDetails,
+  CrewAddress,
+  CrewFamilyInfo,
+  CrewChild,
+  CrewNextOfKin,
 } from "../../../../shared/v2/crew-pool/types";
 
 const crewMembersRepository = new CrewMembersRepository();
+
+interface PaginationMeta {
+  total: number;
+  limit: number;
+  offset: number;
+  pages: number;
+  currentPage: number;
+}
+
+interface CrewFullProfile {
+  crew: CrewMemberV2;
+  personalDetails: CrewPersonalDetails | null;
+  address: CrewAddress | null;
+  familyInfo: CrewFamilyInfo | null;
+  children: CrewChild[];
+  nextOfKin: CrewNextOfKin | null;
+}
 
 export const crewMembersService = {
   async getAll(filters?: {
@@ -135,5 +174,364 @@ export const crewMembersService = {
 
   async removePhoto(crewUuid: string): Promise<CrewMemberV2> {
     return this.update(crewUuid, { uploadedPhoto: null });
+  },
+
+  /**
+   * Get all crew with filters, pagination, and joined assignment data
+   * MIGRATED FROM: server/routes.ts legacy crew pool logic
+   */
+  async getAllWithDetails(filters?: {
+    rank?: string;
+    nationality?: string;
+    status?: string;
+    search?: string;
+    vesselUuid?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ data: any[]; pagination: PaginationMeta }> {
+    const db = getDb();
+    const limit = Math.min(filters?.limit || 50, 100);
+    const offset = filters?.offset || 0;
+
+    const conditions: any[] = [
+      eq(crewMembersV2.isDeleted, false),
+      isNull(crewMembersV2.archivedAt),
+    ];
+
+    if (filters?.rank) {
+      conditions.push(eq(crewMembersV2.presentRank, filters.rank));
+    }
+
+    if (filters?.nationality) {
+      conditions.push(eq(crewMembersV2.nationalityUuid, filters.nationality));
+    }
+
+    if (filters?.status) {
+      conditions.push(eq(crewMembersV2.status, filters.status));
+    }
+
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          ilike(crewMembersV2.firstName, searchTerm),
+          ilike(crewMembersV2.familyName, searchTerm),
+          ilike(crewMembersV2.empNo, searchTerm),
+          ilike(crewMembersV2.employeeId, searchTerm)
+        )
+      );
+    }
+
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(crewMembersV2)
+      .where(and(...conditions));
+
+    const total = countResult?.count || 0;
+
+    const results = await db
+      .select({
+        crew: crewMembersV2,
+        currentVessel: crewAssignments.vesselUuid,
+        signOnDate: crewAssignments.signOnDate,
+        reliefDue: crewAssignments.reliefDue,
+        contractPeriod: crewAssignments.contractPeriod,
+      })
+      .from(crewMembersV2)
+      .leftJoin(
+        crewAssignments,
+        and(
+          eq(crewAssignments.crewUuid, crewMembersV2.crewUuid),
+          eq(crewAssignments.isCurrent, true),
+          eq(crewAssignments.isDeleted, false)
+        )
+      )
+      .where(and(...conditions))
+      .orderBy(desc(crewMembersV2.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const data = results.map((r) => ({
+      ...r.crew,
+      presentVessel: r.currentVessel,
+      signOnDate: r.signOnDate,
+      reliefDue: r.reliefDue,
+      contractPeriod: r.contractPeriod,
+      status: this.calculateCrewStatus(r.crew.isActive !== false, !!r.currentVessel),
+      timeOnBoardMonths: this.calculateTimeOnBoard(r.signOnDate),
+    }));
+
+    return {
+      data,
+      pagination: {
+        total,
+        limit,
+        offset,
+        pages: Math.ceil(total / limit),
+        currentPage: Math.floor(offset / limit) + 1,
+      },
+    };
+  },
+
+  /**
+   * Calculate crew status based on active flag and vessel assignment
+   * Rules:
+   * - isActive=false → "Inactive"
+   * - isActive=true + vessel assignment → "On Board"
+   * - isActive=true + no vessel → "On Leave"
+   */
+  calculateCrewStatus(isActive: boolean, hasVesselAssignment: boolean): string {
+    if (!isActive) return "Inactive";
+    return hasVesselAssignment ? "On Board" : "On Leave";
+  },
+
+  /**
+   * Calculate time on board in months from sign-on date
+   */
+  calculateTimeOnBoard(signOnDate: Date | string | null): number | null {
+    if (!signOnDate) return null;
+    try {
+      const signOn = new Date(signOnDate);
+      const today = new Date();
+      const diffTime = today.getTime() - signOn.getTime();
+      const diffMonths = diffTime / (1000 * 60 * 60 * 24 * 30.44);
+      return Math.round(diffMonths * 10) / 10;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Create new crew member with all related data in a transaction
+   */
+  async createWithRelatedData(data: {
+    crew: Omit<InsertCrewMemberV2, "crewUuid">;
+    personalDetails?: Omit<InsertCrewPersonalDetails, "cpdUuid" | "crewUuid">;
+    address?: Omit<InsertCrewAddress, "addrUuid" | "crewUuid">;
+    familyInfo?: Omit<InsertCrewFamilyInfo, "famUuid" | "crewUuid">;
+    children?: Omit<InsertCrewChild, "childUuid" | "crewUuid">[];
+    nextOfKin?: Omit<InsertCrewNextOfKin, "nokUuid" | "crewUuid">;
+  }): Promise<CrewMemberV2> {
+    const db = getDb();
+
+    if (!data.crew.empNo) {
+      throw new Error("Employee number is required");
+    }
+    const existing = await crewMembersRepository.findByEmpNo(data.crew.empNo);
+    if (existing) {
+      throw new Error(
+        `Crew member with employee number ${data.crew.empNo} already exists`
+      );
+    }
+
+    return db.transaction(async (tx) => {
+      const crewUuid = uuidv4();
+      const now = new Date();
+
+      const [crew] = await tx
+        .insert(crewMembersV2)
+        .values({
+          ...data.crew,
+          crewUuid,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      if (data.personalDetails) {
+        await tx.insert(crewPersonalDetails).values({
+          ...data.personalDetails,
+          cpdUuid: uuidv4(),
+          crewUuid,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      if (data.address) {
+        await tx.insert(crewAddresses).values({
+          ...data.address,
+          addrUuid: uuidv4(),
+          crewUuid,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      if (data.familyInfo) {
+        await tx.insert(crewFamilyInfo).values({
+          ...data.familyInfo,
+          famUuid: uuidv4(),
+          crewUuid,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      if (data.children && data.children.length > 0) {
+        await tx.insert(crewChildren).values(
+          data.children.map((child, index) => ({
+            ...child,
+            childUuid: uuidv4(),
+            crewUuid,
+            sortOrder: index,
+            createdAt: now,
+            updatedAt: now,
+          }))
+        );
+      }
+
+      if (data.nextOfKin) {
+        await tx.insert(crewNextOfKin).values({
+          ...data.nextOfKin,
+          nokUuid: uuidv4(),
+          crewUuid,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      return crew;
+    });
+  },
+
+  /**
+   * Update crew member - protect vessel assignment fields from accidental clearing
+   * Prevents form submissions from accidentally clearing data when fields aren't included
+   */
+  async updateWithProtection(
+    crewUuid: string,
+    data: Partial<InsertCrewMemberV2>,
+    options?: { allowVesselClear?: boolean }
+  ): Promise<CrewMemberV2> {
+    const db = getDb();
+
+    const [existing] = await db
+      .select()
+      .from(crewMembersV2)
+      .where(eq(crewMembersV2.crewUuid, crewUuid))
+      .limit(1);
+
+    if (!existing) {
+      throw new Error(`Crew member not found: ${crewUuid}`);
+    }
+
+    if (data.empNo && data.empNo !== existing.empNo) {
+      const empNoCheck = await crewMembersRepository.findByEmpNo(data.empNo);
+      if (empNoCheck && empNoCheck.crewUuid !== crewUuid) {
+        throw new Error(
+          `Employee number ${data.empNo} is already in use by another crew member`
+        );
+      }
+    }
+
+    const updateData: any = { ...data, updatedAt: new Date() };
+
+    if (!options?.allowVesselClear) {
+      const protectedFields = [
+        "presentRank",
+        "status",
+      ] as const;
+
+      for (const field of protectedFields) {
+        if (
+          (updateData[field] === null || updateData[field] === undefined) &&
+          existing[field] !== null &&
+          existing[field] !== undefined
+        ) {
+          delete updateData[field];
+        }
+      }
+    }
+
+    const [updated] = await db
+      .update(crewMembersV2)
+      .set(updateData)
+      .where(eq(crewMembersV2.crewUuid, crewUuid))
+      .returning();
+
+    return updated;
+  },
+
+  /**
+   * Get complete crew profile with all related data
+   */
+  async getFullProfile(crewUuid: string): Promise<CrewFullProfile | null> {
+    const db = getDb();
+
+    const [crew] = await db
+      .select()
+      .from(crewMembersV2)
+      .where(
+        and(
+          eq(crewMembersV2.crewUuid, crewUuid),
+          eq(crewMembersV2.isDeleted, false)
+        )
+      )
+      .limit(1);
+
+    if (!crew) return null;
+
+    const [personalDetails, address, familyInfo, children, nextOfKin] =
+      await Promise.all([
+        db
+          .select()
+          .from(crewPersonalDetails)
+          .where(
+            and(
+              eq(crewPersonalDetails.crewUuid, crewUuid),
+              eq(crewPersonalDetails.isDeleted, false)
+            )
+          )
+          .limit(1),
+        db
+          .select()
+          .from(crewAddresses)
+          .where(
+            and(
+              eq(crewAddresses.crewUuid, crewUuid),
+              eq(crewAddresses.isDeleted, false)
+            )
+          )
+          .limit(1),
+        db
+          .select()
+          .from(crewFamilyInfo)
+          .where(
+            and(
+              eq(crewFamilyInfo.crewUuid, crewUuid),
+              eq(crewFamilyInfo.isDeleted, false)
+            )
+          )
+          .limit(1),
+        db
+          .select()
+          .from(crewChildren)
+          .where(
+            and(
+              eq(crewChildren.crewUuid, crewUuid),
+              eq(crewChildren.isDeleted, false)
+            )
+          ),
+        db
+          .select()
+          .from(crewNextOfKin)
+          .where(
+            and(
+              eq(crewNextOfKin.crewUuid, crewUuid),
+              eq(crewNextOfKin.isDeleted, false)
+            )
+          )
+          .limit(1),
+      ]);
+
+    return {
+      crew,
+      personalDetails: personalDetails[0] || null,
+      address: address[0] || null,
+      familyInfo: familyInfo[0] || null,
+      children,
+      nextOfKin: nextOfKin[0] || null,
+    };
   },
 };

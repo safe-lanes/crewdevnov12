@@ -19,6 +19,25 @@ export const crewMembersController = {
     }
   },
 
+  async getAllWithDetails(req: Request, res: Response) {
+    try {
+      const { rank, nationality, status, search, vesselUuid, limit, offset } = req.query;
+      const result = await crewMembersService.getAllWithDetails({
+        rank: rank as string | undefined,
+        nationality: nationality as string | undefined,
+        status: status as string | undefined,
+        search: search as string | undefined,
+        vesselUuid: vesselUuid as string | undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching crew with details:", error);
+      res.status(500).json({ error: "Failed to fetch crew members with details" });
+    }
+  },
+
   async getByUuid(req: Request, res: Response) {
     try {
       const { crewUuid } = req.params;
@@ -30,6 +49,20 @@ export const crewMembersController = {
       }
       console.error("Error fetching crew:", error);
       res.status(500).json({ error: "Failed to fetch crew member" });
+    }
+  },
+
+  async getFullProfile(req: Request, res: Response) {
+    try {
+      const { crewUuid } = req.params;
+      const profile = await crewMembersService.getFullProfile(crewUuid);
+      if (!profile) {
+        return res.status(404).json({ error: `Crew member not found: ${crewUuid}` });
+      }
+      res.json(profile);
+    } catch (error: any) {
+      console.error("Error fetching full profile:", error);
+      res.status(500).json({ error: "Failed to fetch crew profile" });
     }
   },
 
@@ -47,6 +80,22 @@ export const crewMembersController = {
           .json({ error: "Validation failed", details: error.errors });
       }
       console.error("Error creating crew:", error);
+      res.status(500).json({ error: "Failed to create crew member" });
+    }
+  },
+
+  async createWithRelatedData(req: Request, res: Response) {
+    try {
+      const crew = await crewMembersService.createWithRelatedData(req.body);
+      res.status(201).json(crew);
+    } catch (error: any) {
+      if (error.message?.includes("already exists")) {
+        return res.status(409).json({ error: error.message });
+      }
+      if (error.message?.includes("required")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error creating crew with related data:", error);
       res.status(500).json({ error: "Failed to create crew member" });
     }
   },
@@ -71,6 +120,28 @@ export const crewMembersController = {
     }
   },
 
+  async updateWithProtection(req: Request, res: Response) {
+    try {
+      const { crewUuid } = req.params;
+      const { allowVesselClear, ...data } = req.body;
+      const crew = await crewMembersService.updateWithProtection(
+        crewUuid,
+        data,
+        { allowVesselClear: allowVesselClear === true }
+      );
+      res.json(crew);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      if (error.message?.includes("already in use")) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("Error updating crew with protection:", error);
+      res.status(500).json({ error: "Failed to update crew member" });
+    }
+  },
+
   async delete(req: Request, res: Response) {
     try {
       const { crewUuid } = req.params;
@@ -82,6 +153,20 @@ export const crewMembersController = {
       }
       console.error("Error deleting crew:", error);
       res.status(500).json({ error: "Failed to delete crew member" });
+    }
+  },
+
+  async unarchive(req: Request, res: Response) {
+    try {
+      const { crewUuid } = req.params;
+      await crewMembersService.unarchive(crewUuid);
+      res.status(204).send();
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error unarchiving crew:", error);
+      res.status(500).json({ error: "Failed to unarchive crew member" });
     }
   },
 };

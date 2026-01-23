@@ -1,8 +1,15 @@
+import { eq, and, inArray } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+import { getDb } from "../../db";
 import {
   CrewVisasRepository,
   type CrewVisaWithAttachments,
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
+import {
+  crewVisas,
+  crewVisasAttachments,
+} from "../../../../shared/v2/crew-pool/schema";
 import type {
   InsertCrewVisa,
   CrewVisa,
@@ -96,6 +103,86 @@ export const crewVisasService = {
       if (!visa.expiry) return false;
       const expiryDate = new Date(visa.expiry);
       return expiryDate <= futureDate && expiryDate >= now;
+    });
+  },
+
+  /**
+   * Reconcile visas with attachments - handles add/update/delete in one transaction
+   */
+  async reconcileWithAttachments(
+    crewUuid: string,
+    items: Array<{
+      visaUuid?: string;
+      isDeleted?: boolean;
+      data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid">;
+      attachments?: Array<{
+        attUuid?: string;
+        isNew?: boolean;
+        fileName: string;
+        filePath?: string;
+        fileData?: string;
+      }>;
+    }>
+  ): Promise<CrewVisa[]> {
+    const db = getDb();
+    await crewMembersService.getByUuid(crewUuid);
+
+    return db.transaction(async (tx: any) => {
+      const results: CrewVisa[] = [];
+      const now = new Date();
+
+      for (const item of items) {
+        if (item.isDeleted && item.visaUuid) {
+          await tx
+            .update(crewVisas)
+            .set({ isDeleted: true, updatedAt: now })
+            .where(eq(crewVisas.visaUuid, item.visaUuid));
+          continue;
+        }
+
+        let visaUuid: string;
+
+        if (item.visaUuid) {
+          const [updated] = await tx
+            .update(crewVisas)
+            .set({ ...item.data, updatedAt: now })
+            .where(eq(crewVisas.visaUuid, item.visaUuid))
+            .returning();
+          visaUuid = item.visaUuid;
+          results.push(updated);
+        } else {
+          visaUuid = uuidv4();
+          const [created] = await tx
+            .insert(crewVisas)
+            .values({
+              ...item.data,
+              visaUuid,
+              crewUuid,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          results.push(created);
+        }
+
+        if (item.attachments) {
+          for (const att of item.attachments) {
+            if (att.isNew && (att.filePath || att.fileData)) {
+              await tx.insert(crewVisasAttachments).values({
+                attUuid: uuidv4(),
+                visaUuid,
+                fileName: att.fileName,
+                filePath: att.filePath || null,
+                fileData: att.fileData || null,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+
+      return results;
     });
   },
 };

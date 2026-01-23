@@ -1,3 +1,6 @@
+import { eq, and } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+import { getDb } from "../../db";
 import {
   CrewLicensesRepository,
   CrewTrainingRepository,
@@ -5,6 +8,12 @@ import {
   type CrewTrainingCourseWithAttachments,
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
+import {
+  crewLicenses,
+  crewLicensesAttachments,
+  crewTrainingCourses,
+  crewTrainingAttachments,
+} from "../../../../shared/v2/crew-pool/schema";
 import type {
   InsertCrewLicense,
   CrewLicense,
@@ -103,6 +112,86 @@ export const crewCertificatesService = {
     }
   },
 
+  /**
+   * Reconcile licenses with attachments - handles add/update/delete in one transaction
+   */
+  async reconcileLicensesWithAttachments(
+    crewUuid: string,
+    items: Array<{
+      licUuid?: string;
+      isDeleted?: boolean;
+      data: Omit<InsertCrewLicense, "licUuid" | "crewUuid">;
+      attachments?: Array<{
+        attUuid?: string;
+        isNew?: boolean;
+        fileName: string;
+        filePath?: string;
+        fileData?: string;
+      }>;
+    }>
+  ): Promise<CrewLicense[]> {
+    const db = getDb();
+    await crewMembersService.getByUuid(crewUuid);
+
+    return db.transaction(async (tx: any) => {
+      const results: CrewLicense[] = [];
+      const now = new Date();
+
+      for (const item of items) {
+        if (item.isDeleted && item.licUuid) {
+          await tx
+            .update(crewLicenses)
+            .set({ isDeleted: true, updatedAt: now })
+            .where(eq(crewLicenses.licUuid, item.licUuid));
+          continue;
+        }
+
+        let licUuid: string;
+
+        if (item.licUuid) {
+          const [updated] = await tx
+            .update(crewLicenses)
+            .set({ ...item.data, updatedAt: now })
+            .where(eq(crewLicenses.licUuid, item.licUuid))
+            .returning();
+          licUuid = item.licUuid;
+          results.push(updated);
+        } else {
+          licUuid = uuidv4();
+          const [created] = await tx
+            .insert(crewLicenses)
+            .values({
+              ...item.data,
+              licUuid,
+              crewUuid,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          results.push(created);
+        }
+
+        if (item.attachments) {
+          for (const att of item.attachments) {
+            if (att.isNew && (att.filePath || att.fileData)) {
+              await tx.insert(crewLicensesAttachments).values({
+                attUuid: uuidv4(),
+                licUuid,
+                fileName: att.fileName,
+                filePath: att.filePath || null,
+                fileData: att.fileData || null,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+
+      return results;
+    });
+  },
+
   // ============ Training ============
   async getTraining(
     crewUuid: string
@@ -171,6 +260,86 @@ export const crewCertificatesService = {
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+  },
+
+  /**
+   * Reconcile training with attachments - handles add/update/delete in one transaction
+   */
+  async reconcileTrainingWithAttachments(
+    crewUuid: string,
+    items: Array<{
+      trainUuid?: string;
+      isDeleted?: boolean;
+      data: Omit<InsertCrewTrainingCourse, "trainUuid" | "crewUuid">;
+      attachments?: Array<{
+        attUuid?: string;
+        isNew?: boolean;
+        fileName: string;
+        filePath?: string;
+        fileData?: string;
+      }>;
+    }>
+  ): Promise<CrewTrainingCourse[]> {
+    const db = getDb();
+    await crewMembersService.getByUuid(crewUuid);
+
+    return db.transaction(async (tx: any) => {
+      const results: CrewTrainingCourse[] = [];
+      const now = new Date();
+
+      for (const item of items) {
+        if (item.isDeleted && item.trainUuid) {
+          await tx
+            .update(crewTrainingCourses)
+            .set({ isDeleted: true, updatedAt: now })
+            .where(eq(crewTrainingCourses.trainUuid, item.trainUuid));
+          continue;
+        }
+
+        let trainUuid: string;
+
+        if (item.trainUuid) {
+          const [updated] = await tx
+            .update(crewTrainingCourses)
+            .set({ ...item.data, updatedAt: now })
+            .where(eq(crewTrainingCourses.trainUuid, item.trainUuid))
+            .returning();
+          trainUuid = item.trainUuid;
+          results.push(updated);
+        } else {
+          trainUuid = uuidv4();
+          const [created] = await tx
+            .insert(crewTrainingCourses)
+            .values({
+              ...item.data,
+              trainUuid,
+              crewUuid,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          results.push(created);
+        }
+
+        if (item.attachments) {
+          for (const att of item.attachments) {
+            if (att.isNew && (att.filePath || att.fileData)) {
+              await tx.insert(crewTrainingAttachments).values({
+                attUuid: uuidv4(),
+                trainUuid,
+                fileName: att.fileName,
+                filePath: att.filePath || null,
+                fileData: att.fileData || null,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+
+      return results;
+    });
   },
 
   // ============ Expiry Checks ============

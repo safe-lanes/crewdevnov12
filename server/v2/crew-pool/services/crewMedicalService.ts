@@ -1,9 +1,18 @@
+import { eq } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+import { getDb } from "../../db";
 import {
   CrewMedicalRepository,
   type CrewPreJoiningMedicalWithAttachments,
   type CrewDoctorVisitWithAttachments,
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
+import {
+  crewPreJoiningMedicals,
+  crewMedicalAttachments,
+  crewDoctorVisits,
+  crewDoctorVisitsAttachments,
+} from "../../../../shared/v2/crew-pool/schema";
 import type {
   InsertCrewPreJoiningMedical,
   CrewPreJoiningMedical,
@@ -200,5 +209,165 @@ export const crewMedicalService = {
   async getAllMedicalData(crewUuid: string) {
     await crewMembersService.getByUuid(crewUuid);
     return crewMedicalRepository.findAllMedicalDataByCrewUuid(crewUuid);
+  },
+
+  /**
+   * Reconcile medicals with attachments - handles add/update/delete in one transaction
+   */
+  async reconcileMedicalsWithAttachments(
+    crewUuid: string,
+    items: Array<{
+      medUuid?: string;
+      isDeleted?: boolean;
+      data: Omit<InsertCrewPreJoiningMedical, "medUuid" | "crewUuid">;
+      attachments?: Array<{
+        attUuid?: string;
+        isNew?: boolean;
+        fileName: string;
+        filePath?: string;
+        fileData?: string;
+      }>;
+    }>
+  ): Promise<CrewPreJoiningMedical[]> {
+    const db = getDb();
+    await crewMembersService.getByUuid(crewUuid);
+
+    return db.transaction(async (tx: any) => {
+      const results: CrewPreJoiningMedical[] = [];
+      const now = new Date();
+
+      for (const item of items) {
+        if (item.isDeleted && item.medUuid) {
+          await tx
+            .update(crewPreJoiningMedicals)
+            .set({ isDeleted: true, updatedAt: now })
+            .where(eq(crewPreJoiningMedicals.medUuid, item.medUuid));
+          continue;
+        }
+
+        let medUuid: string;
+
+        if (item.medUuid) {
+          const [updated] = await tx
+            .update(crewPreJoiningMedicals)
+            .set({ ...item.data, updatedAt: now })
+            .where(eq(crewPreJoiningMedicals.medUuid, item.medUuid))
+            .returning();
+          medUuid = item.medUuid;
+          results.push(updated);
+        } else {
+          medUuid = uuidv4();
+          const [created] = await tx
+            .insert(crewPreJoiningMedicals)
+            .values({
+              ...item.data,
+              medUuid,
+              crewUuid,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          results.push(created);
+        }
+
+        if (item.attachments) {
+          for (const att of item.attachments) {
+            if (att.isNew && (att.filePath || att.fileData)) {
+              await tx.insert(crewMedicalAttachments).values({
+                attUuid: uuidv4(),
+                medUuid,
+                fileName: att.fileName,
+                filePath: att.filePath || null,
+                fileData: att.fileData || null,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+
+      return results;
+    });
+  },
+
+  /**
+   * Reconcile doctor visits with attachments - handles add/update/delete in one transaction
+   */
+  async reconcileVisitsWithAttachments(
+    crewUuid: string,
+    items: Array<{
+      visitUuid?: string;
+      isDeleted?: boolean;
+      data: Omit<InsertCrewDoctorVisit, "visitUuid" | "crewUuid">;
+      attachments?: Array<{
+        attUuid?: string;
+        isNew?: boolean;
+        fileName: string;
+        filePath?: string;
+        fileData?: string;
+      }>;
+    }>
+  ): Promise<CrewDoctorVisit[]> {
+    const db = getDb();
+    await crewMembersService.getByUuid(crewUuid);
+
+    return db.transaction(async (tx: any) => {
+      const results: CrewDoctorVisit[] = [];
+      const now = new Date();
+
+      for (const item of items) {
+        if (item.isDeleted && item.visitUuid) {
+          await tx
+            .update(crewDoctorVisits)
+            .set({ isDeleted: true, updatedAt: now })
+            .where(eq(crewDoctorVisits.visitUuid, item.visitUuid));
+          continue;
+        }
+
+        let visitUuid: string;
+
+        if (item.visitUuid) {
+          const [updated] = await tx
+            .update(crewDoctorVisits)
+            .set({ ...item.data, updatedAt: now })
+            .where(eq(crewDoctorVisits.visitUuid, item.visitUuid))
+            .returning();
+          visitUuid = item.visitUuid;
+          results.push(updated);
+        } else {
+          visitUuid = uuidv4();
+          const [created] = await tx
+            .insert(crewDoctorVisits)
+            .values({
+              ...item.data,
+              visitUuid,
+              crewUuid,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          results.push(created);
+        }
+
+        if (item.attachments) {
+          for (const att of item.attachments) {
+            if (att.isNew && (att.filePath || att.fileData)) {
+              await tx.insert(crewDoctorVisitsAttachments).values({
+                attUuid: uuidv4(),
+                visitUuid,
+                fileName: att.fileName,
+                filePath: att.filePath || null,
+                fileData: att.fileData || null,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+
+      return results;
+    });
   },
 };

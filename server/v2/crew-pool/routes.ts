@@ -21,19 +21,32 @@ const router = Router();
 // CREW MEMBERS
 // ============================================
 router.get("/crew", crewMembersController.getAll);
+router.get("/crew/details", crewMembersController.getAllWithDetails);
 router.post("/crew", crewMembersController.create);
+router.post("/crew/with-data", crewMembersController.createWithRelatedData);
 router.get("/crew/:crewUuid", crewMembersController.getByUuid);
+router.get("/crew/:crewUuid/profile", crewMembersController.getFullProfile);
 router.patch("/crew/:crewUuid", crewMembersController.update);
+router.patch("/crew/:crewUuid/protected", crewMembersController.updateWithProtection);
 router.delete("/crew/:crewUuid", crewMembersController.delete);
+router.post("/crew/:crewUuid/unarchive", crewMembersController.unarchive);
 
 // ============================================
 // ASSIGNMENTS
 // ============================================
 router.get("/crew/:crewUuid/assignments", crewAssignmentsController.getAll);
 router.get("/crew/:crewUuid/assignments/current", crewAssignmentsController.getCurrent);
+router.get("/crew/:crewUuid/assignments/history", crewAssignmentsController.getHistory);
 router.post("/crew/:crewUuid/assignments", crewAssignmentsController.create);
+router.post("/crew/:crewUuid/assign", crewAssignmentsController.assignToVessel);
+router.post("/crew/:crewUuid/sign-off", crewAssignmentsController.signOff);
 router.patch("/crew/:crewUuid/assignments/:assignUuid", crewAssignmentsController.update);
 router.delete("/crew/:crewUuid/assignments/:assignUuid", crewAssignmentsController.delete);
+
+// ============================================
+// VESSEL CREW (cross-reference)
+// ============================================
+router.get("/vessels/:vesselUuid/crew", crewAssignmentsController.getVesselCrew);
 
 // ============================================
 // VESSEL TYPES APPLIED

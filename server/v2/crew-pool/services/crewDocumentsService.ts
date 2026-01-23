@@ -1,8 +1,15 @@
+import { eq, and, inArray } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+import { getDb } from "../../db";
 import {
   CrewDocumentsRepository,
   type CrewDocumentWithAttachments,
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
+import {
+  crewDocuments,
+  crewDocumentsAttachments,
+} from "../../../../shared/v2/crew-pool/schema";
 import type {
   InsertCrewDocument,
   CrewDocument,
@@ -83,5 +90,133 @@ export const crewDocumentsService = {
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+  },
+
+  /**
+   * Reconcile documents with attachments - handles add/update/delete in one transaction
+   * Frontend sends array of items with:
+   * - docUuid?: string - Existing document UUID (empty = new)
+   * - isDeleted?: boolean - Mark for soft deletion
+   * - data: DocumentData - Document field values
+   * - attachments?: Array - Attachment changes
+   */
+  async reconcileWithAttachments(
+    crewUuid: string,
+    items: Array<{
+      docUuid?: string;
+      isDeleted?: boolean;
+      data: Omit<InsertCrewDocument, "docUuid" | "crewUuid">;
+      attachments?: Array<{
+        attUuid?: string;
+        isNew?: boolean;
+        fileName: string;
+        filePath?: string;
+        fileData?: string;
+      }>;
+    }>
+  ): Promise<CrewDocument[]> {
+    const db = getDb();
+    await crewMembersService.getByUuid(crewUuid);
+
+    return db.transaction(async (tx: any) => {
+      const results: CrewDocument[] = [];
+      const now = new Date();
+
+      for (const item of items) {
+        if (item.isDeleted && item.docUuid) {
+          await tx
+            .update(crewDocuments)
+            .set({ isDeleted: true, updatedAt: now })
+            .where(eq(crewDocuments.docUuid, item.docUuid));
+          continue;
+        }
+
+        let docUuid: string;
+
+        if (item.docUuid) {
+          const [updated] = await tx
+            .update(crewDocuments)
+            .set({ ...item.data, updatedAt: now })
+            .where(eq(crewDocuments.docUuid, item.docUuid))
+            .returning();
+          docUuid = item.docUuid;
+          results.push(updated);
+        } else {
+          docUuid = uuidv4();
+          const [created] = await tx
+            .insert(crewDocuments)
+            .values({
+              ...item.data,
+              docUuid,
+              crewUuid,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          results.push(created);
+        }
+
+        if (item.attachments) {
+          for (const att of item.attachments) {
+            if (att.isNew && (att.filePath || att.fileData)) {
+              await tx.insert(crewDocumentsAttachments).values({
+                attUuid: uuidv4(),
+                docUuid,
+                fileName: att.fileName,
+                filePath: att.filePath || null,
+                fileData: att.fileData || null,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+
+      return results;
+    });
+  },
+
+  /**
+   * Get all documents with nested attachments for a crew member
+   */
+  async getAllWithAttachments(crewUuid: string): Promise<CrewDocumentWithAttachments[]> {
+    const db = getDb();
+    await crewMembersService.getByUuid(crewUuid);
+
+    const documents = await db
+      .select()
+      .from(crewDocuments)
+      .where(
+        and(
+          eq(crewDocuments.crewUuid, crewUuid),
+          eq(crewDocuments.isDeleted, false)
+        )
+      );
+
+    if (documents.length === 0) return [];
+
+    const docUuids = documents.map((d) => d.docUuid);
+    const allAttachments = await db
+      .select()
+      .from(crewDocumentsAttachments)
+      .where(
+        and(
+          inArray(crewDocumentsAttachments.docUuid, docUuids),
+          eq(crewDocumentsAttachments.isDeleted, false)
+        )
+      );
+
+    const attachmentMap = new Map<string, CrewDocumentAttachment[]>();
+    for (const att of allAttachments) {
+      const existing = attachmentMap.get(att.docUuid) || [];
+      existing.push(att);
+      attachmentMap.set(att.docUuid, existing);
+    }
+
+    return documents.map((doc) => ({
+      ...doc,
+      attachments: attachmentMap.get(doc.docUuid) || [],
+    }));
   },
 };

@@ -1,16 +1,31 @@
+import { eq } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+import { getDb } from "../../db";
 import {
   CrewSeaServiceRepository,
   type CrewSeaServiceWithAttachments,
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
+import {
+  crewSeaService,
+  crewSeaServiceAttachments,
+} from "../../../../shared/v2/crew-pool/schema";
 import type {
   InsertCrewSeaService,
-  CrewSeaService,
+  CrewSeaService as CrewSeaServiceType,
   InsertCrewSeaServiceAttachment,
   CrewSeaServiceAttachment,
 } from "../../../../shared/v2/crew-pool/types";
 
 const crewSeaServiceRepository = new CrewSeaServiceRepository();
+
+export interface ExperienceMetrics {
+  totalSeaTimeMonths: number;
+  companySeaTimeMonths: number;
+  externalSeaTimeMonths: number;
+  rankExperienceMonths: number;
+  vesselTypeExperience: Record<string, number>;
+}
 
 export const crewSeaServiceService = {
   async getAll(crewUuid: string): Promise<CrewSeaServiceWithAttachments[]> {
@@ -21,7 +36,7 @@ export const crewSeaServiceService = {
   async getByType(
     crewUuid: string,
     serviceType: string
-  ): Promise<CrewSeaService[]> {
+  ): Promise<CrewSeaServiceType[]> {
     await crewMembersService.getByUuid(crewUuid);
     return crewSeaServiceRepository.findByCrewUuidAndType(
       crewUuid,
@@ -29,7 +44,7 @@ export const crewSeaServiceService = {
     );
   },
 
-  async getByUuid(seaUuid: string): Promise<CrewSeaService> {
+  async getByUuid(seaUuid: string): Promise<CrewSeaServiceType> {
     const service = await crewSeaServiceRepository.findByUuid(seaUuid);
     if (!service) {
       throw new Error(`Sea service record not found: ${seaUuid}`);
@@ -40,7 +55,7 @@ export const crewSeaServiceService = {
   async create(
     crewUuid: string,
     data: Omit<InsertCrewSeaService, "seaUuid" | "crewUuid">
-  ): Promise<CrewSeaService> {
+  ): Promise<CrewSeaServiceType> {
     await crewMembersService.getByUuid(crewUuid);
 
     if (data.fromDate && data.toDate) {
@@ -57,7 +72,7 @@ export const crewSeaServiceService = {
   async update(
     seaUuid: string,
     data: Partial<InsertCrewSeaService>
-  ): Promise<CrewSeaService> {
+  ): Promise<CrewSeaServiceType> {
     await this.getByUuid(seaUuid);
 
     if (data.fromDate && data.toDate) {
@@ -152,5 +167,160 @@ export const crewSeaServiceService = {
       totalYears: Math.floor(totalDays / 365),
       serviceCount: services.length,
     };
+  },
+
+  /**
+   * Calculate experience metrics from sea service records
+   * Used by: Officer Matrix, Oil Major Compliance Engine
+   */
+  calculateExperienceMetrics(
+    seaServiceRecords: CrewSeaServiceType[],
+    currentRank: string
+  ): ExperienceMetrics {
+    let companySeaTimeMonths = 0;
+    let externalSeaTimeMonths = 0;
+    let rankExperienceMonths = 0;
+    const vesselTypeExperience: Record<string, number> = {};
+
+    for (const service of seaServiceRecords) {
+      const months = this.calculatePeriodMonths(service.fromDate, service.toDate);
+
+      const isCompanyService = service.serviceType === "company";
+      if (isCompanyService) {
+        companySeaTimeMonths += months;
+      } else {
+        externalSeaTimeMonths += months;
+      }
+
+      if (service.rank === currentRank) {
+        rankExperienceMonths += months;
+      }
+
+      if (service.vesselTypeUuid) {
+        vesselTypeExperience[service.vesselTypeUuid] =
+          (vesselTypeExperience[service.vesselTypeUuid] || 0) + months;
+      }
+    }
+
+    return {
+      totalSeaTimeMonths: companySeaTimeMonths + externalSeaTimeMonths,
+      companySeaTimeMonths,
+      externalSeaTimeMonths,
+      rankExperienceMonths,
+      vesselTypeExperience,
+    };
+  },
+
+  /**
+   * Calculate period in months between two dates
+   */
+  calculatePeriodMonths(
+    fromDate: string | Date | null | undefined,
+    toDate: string | Date | null | undefined
+  ): number {
+    if (!fromDate || !toDate) return 0;
+    try {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      const diffTime = to.getTime() - from.getTime();
+      return Math.max(0, diffTime / (1000 * 60 * 60 * 24 * 30.44));
+    } catch {
+      return 0;
+    }
+  },
+
+  /**
+   * Get all sea service for a crew member with experience metrics
+   */
+  async getAllWithMetrics(
+    crewUuid: string,
+    currentRank: string
+  ): Promise<{
+    records: CrewSeaServiceWithAttachments[];
+    metrics: ExperienceMetrics;
+  }> {
+    const records = await this.getAll(crewUuid);
+    const metrics = this.calculateExperienceMetrics(records, currentRank);
+    return { records, metrics };
+  },
+
+  /**
+   * Reconcile sea service with attachments - handles add/update/delete in one transaction
+   */
+  async reconcileWithAttachments(
+    crewUuid: string,
+    items: Array<{
+      seaUuid?: string;
+      isDeleted?: boolean;
+      data: Omit<InsertCrewSeaService, "seaUuid" | "crewUuid">;
+      attachments?: Array<{
+        attUuid?: string;
+        isNew?: boolean;
+        fileName: string;
+        filePath?: string;
+        fileData?: string;
+      }>;
+    }>
+  ): Promise<CrewSeaServiceType[]> {
+    const db = getDb();
+    await crewMembersService.getByUuid(crewUuid);
+
+    return db.transaction(async (tx: any) => {
+      const results: CrewSeaServiceType[] = [];
+      const now = new Date();
+
+      for (const item of items) {
+        if (item.isDeleted && item.seaUuid) {
+          await tx
+            .update(crewSeaService)
+            .set({ isDeleted: true, updatedAt: now })
+            .where(eq(crewSeaService.seaUuid, item.seaUuid));
+          continue;
+        }
+
+        let seaUuid: string;
+
+        if (item.seaUuid) {
+          const [updated] = await tx
+            .update(crewSeaService)
+            .set({ ...item.data, updatedAt: now })
+            .where(eq(crewSeaService.seaUuid, item.seaUuid))
+            .returning();
+          seaUuid = item.seaUuid;
+          results.push(updated);
+        } else {
+          seaUuid = uuidv4();
+          const [created] = await tx
+            .insert(crewSeaService)
+            .values({
+              ...item.data,
+              seaUuid,
+              crewUuid,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          results.push(created);
+        }
+
+        if (item.attachments) {
+          for (const att of item.attachments) {
+            if (att.isNew && (att.filePath || att.fileData)) {
+              await tx.insert(crewSeaServiceAttachments).values({
+                attUuid: uuidv4(),
+                seaUuid,
+                fileName: att.fileName,
+                filePath: att.filePath || null,
+                fileData: att.fileData || null,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+
+      return results;
+    });
   },
 };
