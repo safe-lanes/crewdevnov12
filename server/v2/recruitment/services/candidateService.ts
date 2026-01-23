@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { eq, or, inArray, asc, and } from "drizzle-orm";
+import { eq, or, inArray, asc, and, sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   candidateRepository,
@@ -550,7 +550,7 @@ export class CandidateService {
       )
       .orderBy(asc(candVesselTypesApplied.sortOrder));
 
-    return result.map((row) => ({
+    return result.map((row: typeof result[number]) => ({
       id: row.id,
       cvtaUuid: row.cvtaUuid,
       recCanUuid: row.recCanUuid,
@@ -1070,34 +1070,28 @@ export class CandidateService {
     const db = getDb();
     const currentYear = new Date().getFullYear();
     const yearPrefix = `R-${currentYear}-`;
-    const yearPattern = new RegExp(`^R-${currentYear}-(\\d+)$`);
 
-    // Get ALL candidates including soft-deleted to ensure we don't reuse file numbers
-    const allCandidates = await db
+    // Use SQL MAX() with LIKE pattern - efficient single query instead of loading all rows
+    // Uses Drizzle's sql template for schema safety (Postgres-specific SUBSTRING regex)
+    // Note: sql.raw() used for regex pattern to ensure Postgres receives a regex literal
+    const yearPattern = `R-${currentYear}-%`;
+    
+    const result = await db
       .select({
-        fileNo: recruitmentCandidatesV2.fileNo,
+        maxNum: sql<number>`MAX(CAST(SUBSTRING(${recruitmentCandidatesV2.fileNo} FROM ${sql.raw(`'R-${currentYear}-([0-9]+)'`)}) AS INTEGER))`,
       })
-      .from(recruitmentCandidatesV2);
+      .from(recruitmentCandidatesV2)
+      .where(sql`${recruitmentCandidatesV2.fileNo} LIKE ${yearPattern}`);
 
-    // Filter candidates with file numbers matching R-YYYY-XXXX pattern for current year ONLY
-    const currentYearFileNos = allCandidates
-      .filter((c: { fileNo: string | null }) => c.fileNo && yearPattern.test(c.fileNo))
-      .map((c: { fileNo: string | null }) => {
-        const match = c.fileNo!.match(yearPattern);
-        return match ? parseInt(match[1], 10) : 0;
-      })
-      .filter((num: number) => !isNaN(num) && num > 0);
-
-    // Find the maximum number, default to 0 if none exist
-    const maxNumber =
-      currentYearFileNos.length > 0 ? Math.max(...currentYearFileNos) : 0;
-    const nextNumber = maxNumber + 1;
+    // Extract max number from result, default to 0 if no matches
+    const maxNumber = result[0]?.maxNum ?? 0;
+    const nextNumber = (isNaN(maxNumber) ? 0 : maxNumber) + 1;
 
     // Format as R-YYYY-0001 (4-digit padded number)
     const nextFileNo = `${yearPrefix}${String(nextNumber).padStart(4, "0")}`;
 
     console.log(
-      `📋 V2 Generated File No: ${nextFileNo} (max was ${maxNumber} from ${currentYearFileNos.length} candidates this year, total candidates checked: ${allCandidates.length})`
+      `📋 V2 Generated File No: ${nextFileNo} (max was ${maxNumber})`
     );
 
     return nextFileNo;
