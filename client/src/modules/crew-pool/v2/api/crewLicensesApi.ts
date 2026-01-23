@@ -59,6 +59,15 @@ export const crewLicensesApi = {
     await apiRequest('DELETE', `${BASE_URL}/crew/${crewUuid}/licenses/${licUuid}`);
   },
 
+  archive: async (crewUuid: string, licUuid: string): Promise<CrewLicense> => {
+    const response = await apiRequest(
+      'PATCH',
+      `${BASE_URL}/crew/${crewUuid}/licenses/${licUuid}/archive`,
+      {}
+    );
+    return response.json();
+  },
+
   addAttachment: async (
     crewUuid: string,
     licUuid: string,

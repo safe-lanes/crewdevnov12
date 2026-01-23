@@ -123,4 +123,32 @@ export const crewLicensesController = {
       res.status(500).json({ error: "Failed to remove attachment" });
     }
   },
+
+  async archive(req: Request, res: Response) {
+    try {
+      const { licUuid } = req.params;
+      const success = await crewCertificatesService.archiveLicense(licUuid);
+      if (success) {
+        res.json({ message: "License archived successfully" });
+      } else {
+        res.status(404).json({ error: "License not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to archive license" });
+    }
+  },
+
+  async unarchive(req: Request, res: Response) {
+    try {
+      const { licUuid } = req.params;
+      const success = await crewCertificatesService.unarchiveLicense(licUuid);
+      if (success) {
+        res.json({ message: "License unarchived successfully" });
+      } else {
+        res.status(404).json({ error: "License not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to unarchive license" });
+    }
+  },
 };

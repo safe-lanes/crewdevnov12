@@ -113,6 +113,8 @@ router.get("/crew/:crewUuid/licenses/expiring", crewLicensesController.getExpiri
 router.post("/crew/:crewUuid/licenses", crewLicensesController.create);
 router.patch("/crew/:crewUuid/licenses/:licUuid", crewLicensesController.update);
 router.delete("/crew/:crewUuid/licenses/:licUuid", crewLicensesController.delete);
+router.patch("/crew/:crewUuid/licenses/:licUuid/archive", crewLicensesController.archive);
+router.patch("/crew/:crewUuid/licenses/:licUuid/unarchive", crewLicensesController.unarchive);
 router.post("/crew/:crewUuid/licenses/:licUuid/attachments", crewLicensesController.addAttachment);
 router.delete("/crew/:crewUuid/licenses/:licUuid/attachments/:attUuid", crewLicensesController.removeAttachment);
 
