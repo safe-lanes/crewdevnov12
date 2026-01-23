@@ -38,15 +38,30 @@ export const crewPoolApiV2 = {
   },
 
   async createCrew(data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew`, data);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Failed to create crew member');
+    }
+    return response.json();
   },
 
   async updateCrew(crewUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}`, data);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Failed to update crew member');
+    }
+    return response.json();
   },
 
   async deleteCrew(crewUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Failed to delete crew member');
+    }
+    return response.json();
   },
 
   async getPersonalDetails(crewUuid: string) {
