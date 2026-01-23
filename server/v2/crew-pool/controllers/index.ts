@@ -1,0 +1,13 @@
+export { crewMembersController } from "./crewMembersController";
+export { crewAssignmentsController } from "./crewAssignmentsController";
+export { crewPersonalController } from "./crewPersonalController";
+export { crewVesselTypesController } from "./crewVesselTypesController";
+export { crewFamilyController } from "./crewFamilyController";
+export { crewDocumentsController } from "./crewDocumentsController";
+export { crewVisasController } from "./crewVisasController";
+export { crewEducationController } from "./crewEducationController";
+export { crewLicensesController } from "./crewLicensesController";
+export { crewTrainingController } from "./crewTrainingController";
+export { crewSeaServiceController } from "./crewSeaServiceController";
+export { crewMedicalController } from "./crewMedicalController";
+export { crewTransferController } from "./crewTransferController";

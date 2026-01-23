@@ -5,6 +5,10 @@ import {
   CrewFamilyRepository,
   CrewVesselTypesRepository,
 } from "../repositories";
+import type {
+  InsertCrewChild,
+  CrewChild,
+} from "../../../../shared/v2/crew-pool/types";
 
 const crewPersonalRepository = new CrewPersonalRepository();
 const crewFamilyRepository = new CrewFamilyRepository();
@@ -51,9 +55,24 @@ export const crewProfileService = {
     return crewPersonalRepository.findFullProfileByCrewUuid(crewUuid);
   },
 
+  async getAddress(crewUuid: string) {
+    await crewMembersService.getByUuid(crewUuid);
+    return crewPersonalRepository.findAddressByCrewUuid(crewUuid);
+  },
+
   async getFamilyInfo(crewUuid: string) {
     await crewMembersService.getByUuid(crewUuid);
     return crewFamilyRepository.findFullFamilyByCrewUuid(crewUuid);
+  },
+
+  async getChildren(crewUuid: string): Promise<CrewChild[]> {
+    await crewMembersService.getByUuid(crewUuid);
+    return crewFamilyRepository.findChildrenByCrewUuid(crewUuid);
+  },
+
+  async getNextOfKin(crewUuid: string) {
+    await crewMembersService.getByUuid(crewUuid);
+    return crewFamilyRepository.findNextOfKinByCrewUuid(crewUuid);
   },
 
   async getVesselTypes(crewUuid: string) {
@@ -99,6 +118,32 @@ export const crewProfileService = {
   ) {
     await crewMembersService.getByUuid(crewUuid);
     return crewFamilyRepository.syncChildren(crewUuid, children);
+  },
+
+  async createChild(
+    crewUuid: string,
+    data: Omit<InsertCrewChild, "childUuid" | "crewUuid">
+  ): Promise<CrewChild> {
+    await crewMembersService.getByUuid(crewUuid);
+    return crewFamilyRepository.createChild({ ...data, crewUuid });
+  },
+
+  async updateChild(
+    childUuid: string,
+    data: Partial<InsertCrewChild>
+  ): Promise<CrewChild> {
+    const updated = await crewFamilyRepository.updateChild(childUuid, data);
+    if (!updated) {
+      throw new Error(`Child not found: ${childUuid}`);
+    }
+    return updated;
+  },
+
+  async deleteChild(childUuid: string): Promise<void> {
+    const success = await crewFamilyRepository.softDeleteChild(childUuid);
+    if (!success) {
+      throw new Error(`Failed to delete child: ${childUuid}`);
+    }
   },
 
   async syncVesselTypes(crewUuid: string, vesselTypeUuids: string[]) {
