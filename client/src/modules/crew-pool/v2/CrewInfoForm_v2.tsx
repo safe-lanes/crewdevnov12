@@ -5122,6 +5122,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       updateCrewMutation.mutate({ id: existingUuid, data: dataWithPhoto });
     } else {
       // Create new crew member via V2 API
+      console.log('Creating new crew with V2 API:', dataWithPhoto);
       createCrewMutation.mutate(dataWithPhoto);
     }
   };

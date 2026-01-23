@@ -91,10 +91,17 @@ export function useCreateCrewV2() {
   return useMutation({
     mutationFn: async (legacyData: Partial<LegacyCrewMember>) => {
       const v2Data = mapLegacyCrewToV2(legacyData);
-      return crewPoolApiV2.createCrew(v2Data);
+      console.log('[V2] Creating crew with data:', v2Data);
+      const result = await crewPoolApiV2.createCrew(v2Data);
+      console.log('[V2] Create crew result:', result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[V2] Crew created successfully:', data);
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+    },
+    onError: (error) => {
+      console.error('[V2] Failed to create crew:', error);
     },
   });
 }
