@@ -14,7 +14,6 @@ export interface LegacyCrewMember {
   presentRank: string;
   rankAppliedFor: string;
   status: string;
-  reason: string;
   availability: string;
   nextAvailability: string;
   isActive: boolean;
@@ -24,6 +23,7 @@ export interface LegacyCrewMember {
   signOnDate: string;
   reliefDue: string;
   contractPeriodMonths: string;
+  assignmentReason: string;
 }
 
 function calculateAge(dob: string): string {
@@ -56,7 +56,6 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     presentRank: v2Crew.presentRank || '',
     rankAppliedFor: v2Crew.rankAppliedFor || '',
     status: v2Crew.status || 'active',
-    reason: v2Crew.reason || '',
     availability: v2Crew.availability || '',
     nextAvailability: v2Crew.nextAvailability || '',
     isActive: v2Crew.isActive ?? true,
@@ -66,6 +65,7 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     signOnDate: v2Crew.signOnDate || '',
     reliefDue: v2Crew.reliefDue || '',
     contractPeriodMonths: v2Crew.contractPeriodMonths || '',
+    assignmentReason: v2Crew.assignmentReason || '',
   };
 }
 
@@ -88,7 +88,6 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember> & { dateOfBi
     presentRank: legacy.presentRank || undefined,
     rankAppliedFor: legacy.rankAppliedFor || undefined,
     status: legacy.status || 'active',
-    reason: legacy.reason || undefined,
     availability: legacy.availability || undefined,
     nextAvailability: legacy.nextAvailability || undefined,
     isActive: legacy.isActive ?? true,
