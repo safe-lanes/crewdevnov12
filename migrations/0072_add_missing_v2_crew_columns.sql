@@ -43,3 +43,15 @@ ADD COLUMN IF NOT EXISTS weight TEXT;
 
 ALTER TABLE crew_pre_joining_medicals 
 ADD COLUMN IF NOT EXISTS any_medication_prescribed TEXT;
+
+-- ============================================
+-- crew_doctor_visits: Add missing columns
+-- ============================================
+ALTER TABLE crew_doctor_visits 
+ADD COLUMN IF NOT EXISTS vessel TEXT;
+
+ALTER TABLE crew_doctor_visits 
+ADD COLUMN IF NOT EXISTS port TEXT;
+
+ALTER TABLE crew_doctor_visits 
+ADD COLUMN IF NOT EXISTS doctor_comments TEXT;
