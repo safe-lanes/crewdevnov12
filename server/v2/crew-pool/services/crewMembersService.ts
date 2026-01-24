@@ -661,28 +661,69 @@ export const crewMembersService = {
       vesselType: crewResult.vesselType,
     };
 
-    const [personalDetails, address, familyInfo, children, nextOfKin, documents, visas, education, licenses, trainingCourses, seaService, medicals, doctorVisits] =
+    // Personal details with country resolution for placeOfBirthCountry
+    const personalDetailsResults = await db
+      .select({
+        personalDetails: crewPersonalDetails,
+        placeOfBirthCountry: masterCountries.countryName,
+      })
+      .from(crewPersonalDetails)
+      .leftJoin(
+        masterCountries,
+        eq(crewPersonalDetails.placeOfBirthCountryUuid, masterCountries.countryUuid)
+      )
+      .where(
+        and(
+          eq(crewPersonalDetails.crewUuid, crewUuid),
+          eq(crewPersonalDetails.isDeleted, false)
+        )
+      )
+      .limit(1);
+
+    // Addresses with country resolution for countryOfResidence
+    const addressResults = await db
+      .select({
+        address: crewAddresses,
+        countryOfResidence: masterCountries.countryName,
+      })
+      .from(crewAddresses)
+      .leftJoin(
+        masterCountries,
+        eq(crewAddresses.countryOfResidenceUuid, masterCountries.countryUuid)
+      )
+      .where(
+        and(
+          eq(crewAddresses.crewUuid, crewUuid),
+          eq(crewAddresses.isDeleted, false)
+        )
+      )
+      .limit(1);
+
+    // Sea service with vessel and vessel type resolution
+    const seaServiceResults = await db
+      .select({
+        seaService: crewSeaService,
+        resolvedVesselName: masterVessels.vessel,
+        resolvedVesselTypeName: masterVesselTypes.vesselType,
+      })
+      .from(crewSeaService)
+      .leftJoin(
+        masterVessels,
+        eq(crewSeaService.vesselUuid, masterVessels.vesselUuid)
+      )
+      .leftJoin(
+        masterVesselTypes,
+        eq(crewSeaService.vesselTypeUuid, masterVesselTypes.vtUuid)
+      )
+      .where(
+        and(
+          eq(crewSeaService.crewUuid, crewUuid),
+          eq(crewSeaService.isDeleted, false)
+        )
+      );
+
+    const [familyInfo, children, nextOfKin, documents, visas, education, licenses, trainingCourses, medicals, doctorVisits] =
       await Promise.all([
-        db
-          .select()
-          .from(crewPersonalDetails)
-          .where(
-            and(
-              eq(crewPersonalDetails.crewUuid, crewUuid),
-              eq(crewPersonalDetails.isDeleted, false)
-            )
-          )
-          .limit(1),
-        db
-          .select()
-          .from(crewAddresses)
-          .where(
-            and(
-              eq(crewAddresses.crewUuid, crewUuid),
-              eq(crewAddresses.isDeleted, false)
-            )
-          )
-          .limit(1),
         db
           .select()
           .from(crewFamilyInfo)
@@ -762,16 +803,6 @@ export const crewMembersService = {
               eq(crewTrainingCourses.isDeleted, false)
             )
           ),
-        // Sea Service
-        db
-          .select()
-          .from(crewSeaService)
-          .where(
-            and(
-              eq(crewSeaService.crewUuid, crewUuid),
-              eq(crewSeaService.isDeleted, false)
-            )
-          ),
         // Pre-Joining Medicals
         db
           .select()
@@ -793,6 +824,26 @@ export const crewMembersService = {
             )
           ),
       ]);
+
+    // Extract and merge resolved names
+    const personalDetailsRow = personalDetailsResults[0];
+    const personalDetails = personalDetailsRow ? [{
+      ...personalDetailsRow.personalDetails,
+      placeOfBirthCountry: personalDetailsRow.placeOfBirthCountry,
+    }] : [];
+
+    const addressRow = addressResults[0];
+    const address = addressRow ? [{
+      ...addressRow.address,
+      countryOfResidence: addressRow.countryOfResidence,
+    }] : [];
+
+    // Merge resolved vessel and vessel type names into sea service
+    const seaService = seaServiceResults.map((row: { seaService: any; resolvedVesselName: string | null; resolvedVesselTypeName: string | null }) => ({
+      ...row.seaService,
+      resolvedVesselName: row.resolvedVesselName,
+      resolvedVesselTypeName: row.resolvedVesselTypeName,
+    }));
 
     // Get attachments for documents
     const docUuids = documents.map((d: any) => d.docUuid);

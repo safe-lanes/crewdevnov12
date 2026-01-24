@@ -51,8 +51,9 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     gender: v2Crew.gender || '',
     dob,
     age: calculateAge(dob),
-    nationality: v2Crew.nationalityUuid || v2Crew.nationality || '',
-    vesselType: v2Crew.vesselTypeUuid || v2Crew.vesselType || '',
+    // Use resolved name if available, otherwise fall back to UUID
+    nationality: v2Crew.nationality || v2Crew.nationalityUuid || '',
+    vesselType: v2Crew.vesselType || v2Crew.vesselTypeUuid || '',
     presentRank: v2Crew.presentRank || '',
     rankAppliedFor: v2Crew.rankAppliedFor || '',
     status: v2Crew.status || 'active',
@@ -120,8 +121,9 @@ export function mapV2PersonalDetailsToLegacy(v2: any): LegacyPersonalDetails {
     bmi: v2?.bmi || '',
     ageInYears: v2?.ageInYears || '',
     placeOfBirthCity: v2?.placeOfBirthCity || '',
-    placeOfBirthCountry: v2?.placeOfBirthCountryUuid || v2?.placeOfBirthCountry || '',
-    nativeLanguage: v2?.nativeLanguageUuid || v2?.nativeLanguage || '',
+    // Use resolved country name if available, otherwise fall back to UUID
+    placeOfBirthCountry: v2?.placeOfBirthCountry || v2?.placeOfBirthCountryUuid || '',
+    nativeLanguage: v2?.nativeLanguage || v2?.nativeLanguageUuid || '',
     foreignLanguages: v2?.foreignLanguages || '',
     englishProficiency: v2?.englishProficiency || '',
     manningAgent: v2?.manningAgent || v2?.manningAgentUuid || '',
@@ -161,7 +163,8 @@ export interface LegacyAddress {
 
 export function mapV2AddressToLegacy(v2: any): LegacyAddress {
   return {
-    countryOfResidence: v2?.countryOfResidenceUuid || '',
+    // Use resolved country name if available, otherwise fall back to UUID
+    countryOfResidence: v2?.countryOfResidence || v2?.countryOfResidenceUuid || '',
     nearestAirport: v2?.nearestAirport || '',
     residentialAddressLine1: v2?.addressLine1 || '',
     residentialAddressLine2: v2?.addressLine2 || '',
@@ -614,9 +617,11 @@ export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
   return {
     seaUuid: v2?.seaUuid,
     isCompanyService: v2?.serviceType === 'company',
-    vesselName: v2?.vesselName || '',
+    // Use resolved vessel name if available, otherwise fall back to vesselName field
+    vesselName: v2?.resolvedVesselName || v2?.vesselName || '',
     vesselCode: v2?.vesselUuid || '',
-    vesselType: v2?.vesselTypeUuid || '',
+    // Use resolved vessel type name if available, otherwise fall back to UUID
+    vesselType: v2?.resolvedVesselTypeName || v2?.vesselTypeUuid || '',
     deadweight: v2?.deadweight || '',
     engineTypePower: v2?.engineTypePower || '',
     ownerOperator: v2?.ownerOperator || '',
