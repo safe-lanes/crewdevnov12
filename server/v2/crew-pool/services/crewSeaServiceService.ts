@@ -16,6 +16,7 @@ import type {
   InsertCrewSeaServiceAttachment,
   CrewSeaServiceAttachment,
 } from "../../../../shared/v2/crew-pool/types";
+import { resolveVesselUuid, resolveVesselTypeUuid } from "./masterDataResolver";
 
 const crewSeaServiceRepository = new CrewSeaServiceRepository();
 
@@ -54,7 +55,7 @@ export const crewSeaServiceService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewSeaService, "seaUuid" | "crewUuid">
+    data: Omit<InsertCrewSeaService, "seaUuid" | "crewUuid"> & { vessel?: string; vesselType?: string }
   ): Promise<CrewSeaServiceType> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -66,12 +67,15 @@ export const crewSeaServiceService = {
       }
     }
 
-    return crewSeaServiceRepository.create({ ...data, crewUuid });
+    // Resolve master data UUIDs
+    const resolvedData = await this.resolveMasterDataFields(data);
+
+    return crewSeaServiceRepository.create({ ...resolvedData, crewUuid });
   },
 
   async update(
     seaUuid: string,
-    data: Partial<InsertCrewSeaService>
+    data: Partial<InsertCrewSeaService> & { vessel?: string; vesselType?: string }
   ): Promise<CrewSeaServiceType> {
     await this.getByUuid(seaUuid);
 
@@ -83,11 +87,53 @@ export const crewSeaServiceService = {
       }
     }
 
-    const updated = await crewSeaServiceRepository.update(seaUuid, data);
+    // Resolve master data UUIDs
+    const resolvedData = await this.resolveMasterDataFields(data);
+
+    const updated = await crewSeaServiceRepository.update(seaUuid, resolvedData);
     if (!updated) {
       throw new Error(`Failed to update sea service record: ${seaUuid}`);
     }
     return updated;
+  },
+
+  /**
+   * Resolve vessel and vesselType to UUIDs
+   * - For company sea service (E1): resolve both vesselUuid and vesselTypeUuid
+   * - For external sea service (E2): resolve only vesselTypeUuid (vessel is free entry)
+   */
+  async resolveMasterDataFields<T extends Record<string, any>>(
+    data: T
+  ): Promise<Omit<T, 'vessel' | 'vesselType'>> {
+    const { vessel, vesselType, ...rest } = data;
+    const result = { ...rest } as any;
+
+    // For company sea service (E1), resolve vessel to UUID
+    // For external (E2), vessel is free entry so skip resolution
+    const isCompanyService = data.serviceType === 'company';
+    
+    if (isCompanyService) {
+      const vesselInput = data.vesselUuid || vessel;
+      if (vesselInput) {
+        const vesselUuid = await resolveVesselUuid(vesselInput);
+        if (!vesselUuid) {
+          throw new Error(`Invalid vessel: "${vesselInput}". Not found in master_vessels table.`);
+        }
+        result.vesselUuid = vesselUuid;
+      }
+    }
+
+    // Resolve vesselType for both E1 and E2
+    const vesselTypeInput = data.vesselTypeUuid || vesselType;
+    if (vesselTypeInput) {
+      const vesselTypeUuid = await resolveVesselTypeUuid(vesselTypeInput);
+      if (!vesselTypeUuid) {
+        throw new Error(`Invalid vessel type: "${vesselTypeInput}". Not found in master_vessel_types table.`);
+      }
+      result.vesselTypeUuid = vesselTypeUuid;
+    }
+
+    return result;
   },
 
   async delete(seaUuid: string): Promise<void> {
@@ -252,7 +298,7 @@ export const crewSeaServiceService = {
     items: Array<{
       seaUuid?: string;
       isDeleted?: boolean;
-      data: Omit<InsertCrewSeaService, "seaUuid" | "crewUuid">;
+      data: Omit<InsertCrewSeaService, "seaUuid" | "crewUuid"> & { vessel?: string; vesselType?: string };
       attachments?: Array<{
         attUuid?: string;
         isNew?: boolean;
@@ -265,11 +311,20 @@ export const crewSeaServiceService = {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
 
+    // Pre-resolve all vessel and vesselType UUIDs before transaction
+    const resolvedItems = await Promise.all(
+      items.map(async (item) => {
+        if (item.isDeleted) return item;
+        const resolvedData = await this.resolveMasterDataFields(item.data);
+        return { ...item, data: resolvedData };
+      })
+    );
+
     return db.transaction(async (tx: any) => {
       const results: CrewSeaServiceType[] = [];
       const now = new Date();
 
-      for (const item of items) {
+      for (const item of resolvedItems) {
         if (item.isDeleted && item.seaUuid) {
           await tx
             .update(crewSeaService)

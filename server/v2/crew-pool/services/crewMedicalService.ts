@@ -23,6 +23,7 @@ import type {
   InsertCrewDoctorVisitAttachment,
   CrewDoctorVisitAttachment,
 } from "../../../../shared/v2/crew-pool/types";
+import { resolveVesselUuid } from "./masterDataResolver";
 
 const crewMedicalRepository = new CrewMedicalRepository();
 
@@ -47,23 +48,52 @@ export const crewMedicalService = {
 
   async createMedical(
     crewUuid: string,
-    data: Omit<InsertCrewPreJoiningMedical, "medUuid" | "crewUuid">
+    data: Omit<InsertCrewPreJoiningMedical, "medUuid" | "crewUuid"> & { vessel?: string }
   ): Promise<CrewPreJoiningMedical> {
     await crewMembersService.getByUuid(crewUuid);
-    return crewMedicalRepository.createMedical({ ...data, crewUuid });
+    
+    // Resolve vessel to UUID for F1 Pre Joining Medicals
+    const resolvedData = await this.resolveMedicalMasterDataFields(data);
+    
+    return crewMedicalRepository.createMedical({ ...resolvedData, crewUuid });
   },
 
   async updateMedical(
     medUuid: string,
-    data: Partial<InsertCrewPreJoiningMedical>
+    data: Partial<InsertCrewPreJoiningMedical> & { vessel?: string }
   ): Promise<CrewPreJoiningMedical> {
     await this.getMedicalByUuid(medUuid);
 
-    const updated = await crewMedicalRepository.updateMedical(medUuid, data);
+    // Resolve vessel to UUID for F1 Pre Joining Medicals
+    const resolvedData = await this.resolveMedicalMasterDataFields(data);
+
+    const updated = await crewMedicalRepository.updateMedical(medUuid, resolvedData);
     if (!updated) {
       throw new Error(`Failed to update medical record: ${medUuid}`);
     }
     return updated;
+  },
+
+  /**
+   * Resolve vessel to UUID for F1 Pre Joining Medicals
+   * Note: F2 Doctor Visits has vessel as free entry (skip)
+   */
+  async resolveMedicalMasterDataFields<T extends Record<string, any>>(
+    data: T
+  ): Promise<Omit<T, 'vessel'>> {
+    const { vessel, ...rest } = data;
+    const result = { ...rest } as any;
+
+    const vesselInput = data.vesselUuid || vessel;
+    if (vesselInput) {
+      const vesselUuid = await resolveVesselUuid(vesselInput);
+      if (!vesselUuid) {
+        throw new Error(`Invalid vessel: "${vesselInput}". Not found in master_vessels table.`);
+      }
+      result.vesselUuid = vesselUuid;
+    }
+
+    return result;
   },
 
   async deleteMedical(medUuid: string): Promise<void> {
@@ -213,13 +243,14 @@ export const crewMedicalService = {
 
   /**
    * Reconcile medicals with attachments - handles add/update/delete in one transaction
+   * Note: F1 Pre Joining Medicals - vesselUuid is resolved from master
    */
   async reconcileMedicalsWithAttachments(
     crewUuid: string,
     items: Array<{
       medUuid?: string;
       isDeleted?: boolean;
-      data: Omit<InsertCrewPreJoiningMedical, "medUuid" | "crewUuid">;
+      data: Omit<InsertCrewPreJoiningMedical, "medUuid" | "crewUuid"> & { vessel?: string };
       attachments?: Array<{
         attUuid?: string;
         isNew?: boolean;
@@ -232,11 +263,20 @@ export const crewMedicalService = {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
 
+    // Pre-resolve all vessel UUIDs before transaction
+    const resolvedItems = await Promise.all(
+      items.map(async (item) => {
+        if (item.isDeleted) return item;
+        const resolvedData = await this.resolveMedicalMasterDataFields(item.data);
+        return { ...item, data: resolvedData };
+      })
+    );
+
     return db.transaction(async (tx: any) => {
       const results: CrewPreJoiningMedical[] = [];
       const now = new Date();
 
-      for (const item of items) {
+      for (const item of resolvedItems) {
         if (item.isDeleted && item.medUuid) {
           await tx
             .update(crewPreJoiningMedicals)
