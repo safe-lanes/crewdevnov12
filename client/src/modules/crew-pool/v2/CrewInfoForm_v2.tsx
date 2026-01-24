@@ -462,6 +462,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     itemName: ''
   });
   
+  // State for tracking if we're saving before opening attachment dialog
+  const [isSavingBeforeAttachment, setIsSavingBeforeAttachment] = useState(false);
+  
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
   // Sections for stepper navigation  
@@ -1831,6 +1834,330 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       itemId,
       itemName
     });
+  };
+
+  // Helper to get record UUID by section and local id
+  const getRecordUuid = (section: typeof attachmentDialog.section, itemId: string): string | undefined => {
+    switch (section) {
+      case 'document':
+        return (formData.documents.find(d => d.id === itemId) as any)?.docUuid;
+      case 'visa':
+        return (formData.visas.find(v => v.id === itemId) as any)?.visaUuid;
+      case 'education':
+        return (formData.education.find(e => e.id === itemId) as any)?.eduUuid;
+      case 'license':
+        return (formData.licenses.find(l => l.id === itemId) as any)?.licUuid;
+      case 'training':
+        return (formData.trainingCourses.find(t => t.id === itemId) as any)?.trainUuid;
+      case 'currentSeaService':
+        return (formData.currentCompanySeaService.find(s => s.id === itemId) as any)?.seaUuid;
+      case 'externalSeaService':
+        return (formData.externalSeaService.find(s => s.id === itemId) as any)?.seaUuid;
+      case 'preJoiningMedical':
+        return (formData.preJoiningMedicals.find(m => m.id === itemId) as any)?.medUuid;
+      case 'doctorVisit':
+        return (formData.doctorVisits.find(v => v.id === itemId) as any)?.visitUuid;
+      default:
+        return undefined;
+    }
+  };
+
+  // Save-before-attachment handler: saves record first if no UUID exists
+  const handleAttachmentClick = async (section: typeof attachmentDialog.section, itemId: string, itemName: string) => {
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    // Check if crew member exists - must save crew first
+    if (!crewIdentifier) {
+      toast({
+        title: 'Save Required',
+        description: 'Please save the crew member first before adding attachments.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Check if record has UUID (already saved)
+    const recordUuid = getRecordUuid(section, itemId);
+    
+    if (recordUuid) {
+      // Record already saved, open attachment dialog directly
+      openAttachmentDialog(section, itemId, itemName);
+      return;
+    }
+
+    // Record not saved - save it first
+    setIsSavingBeforeAttachment(true);
+    
+    try {
+      let savedUuid: string | undefined;
+      
+      switch (section) {
+        case 'document': {
+          const doc = formData.documents.find(d => d.id === itemId);
+          if (!doc) throw new Error('Document not found');
+          const result = await saveDocumentMutationV2.mutateAsync({
+            crewUuid: crewIdentifier,
+            data: {
+              documentId: doc.documentId || '',
+              documentName: doc.document || '',
+              number: doc.number || '',
+              issued: doc.issued || '',
+              expiry: doc.expiry || '',
+              issuingAuthority: doc.issuingAuthority || '',
+            }
+          });
+          savedUuid = result?.docUuid;
+          // Update local state with new UUID
+          setFormData(prev => ({
+            ...prev,
+            documents: prev.documents.map(d =>
+              d.id === itemId ? { ...d, docUuid: savedUuid } as any : d
+            )
+          }));
+          break;
+        }
+        
+        case 'visa': {
+          const visa = formData.visas.find(v => v.id === itemId);
+          if (!visa) throw new Error('Visa not found');
+          const result = await saveVisaMutationV2.mutateAsync({
+            crewUuid: crewIdentifier,
+            data: {
+              issuingCountry: visa.issuingCountry || '',
+              serialNo: visa.serialNo || '',
+              issued: visa.issued || '',
+              expiry: visa.expiry || '',
+              visaType: visa.visaType || '',
+            }
+          });
+          savedUuid = result?.visaUuid;
+          setFormData(prev => ({
+            ...prev,
+            visas: prev.visas.map(v =>
+              v.id === itemId ? { ...v, visaUuid: savedUuid } as any : v
+            )
+          }));
+          break;
+        }
+        
+        case 'education': {
+          const edu = formData.education.find(e => e.id === itemId);
+          if (!edu) throw new Error('Education not found');
+          const result = await saveEducationMutationV2.mutateAsync({
+            crewUuid: crewIdentifier,
+            data: {
+              id: edu.id,
+              dateOfCompletion: edu.dateOfCompletion || '',
+              schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
+              subjectsField: edu.subjectsField || '',
+              qualifications: edu.qualifications || '',
+            }
+          });
+          savedUuid = result?.eduUuid;
+          setFormData(prev => ({
+            ...prev,
+            education: prev.education.map(e =>
+              e.id === itemId ? { ...e, eduUuid: savedUuid } as any : e
+            )
+          }));
+          break;
+        }
+        
+        case 'license': {
+          const license = formData.licenses.find(l => l.id === itemId);
+          if (!license) throw new Error('License not found');
+          const result = await saveLicenseMutationV2.mutateAsync({
+            crewUuid: crewIdentifier,
+            data: {
+              id: license.id,
+              licenseId: license.licenseId || '',
+              certificateDocument: license.certificateDocument || '',
+              abbr: license.abbr || '',
+              requirement: license.requirement || '',
+              certificateNo: license.certificateNo || '',
+              issuingAuthority: license.issuingAuthority || '',
+              issued: license.issued || '',
+              expiry: license.expiry || '',
+            }
+          });
+          savedUuid = result?.licUuid;
+          setFormData(prev => ({
+            ...prev,
+            licenses: prev.licenses.map(l =>
+              l.id === itemId ? { ...l, licUuid: savedUuid } as any : l
+            )
+          }));
+          break;
+        }
+        
+        case 'training': {
+          const course = formData.trainingCourses.find(t => t.id === itemId);
+          if (!course) throw new Error('Training course not found');
+          const result = await saveTrainingCourseMutationV2.mutateAsync({
+            crewUuid: crewIdentifier,
+            data: {
+              id: course.id,
+              courseId: course.courseId || '',
+              trainingCourse: course.trainingCourse || '',
+              abbr: course.abbr || '',
+              requirement: course.requirement || '',
+              certificateNo: course.certificateNo || '',
+              issuingAuthority: course.issuingAuthority || '',
+              issued: course.issued || '',
+              expiry: course.expiry || '',
+            }
+          });
+          savedUuid = result?.trainUuid;
+          setFormData(prev => ({
+            ...prev,
+            trainingCourses: prev.trainingCourses.map(t =>
+              t.id === itemId ? { ...t, trainUuid: savedUuid } as any : t
+            )
+          }));
+          break;
+        }
+        
+        case 'currentSeaService': {
+          const service = formData.currentCompanySeaService.find(s => s.id === itemId);
+          if (!service) throw new Error('Sea service not found');
+          const result = await saveSeaServiceMutationV2.mutateAsync({
+            crewUuid: crewIdentifier,
+            data: {
+              isCompanyService: true,
+              vesselName: service.vesselName || '',
+              vesselCode: service.vesselCode || '',
+              vesselType: service.vesselType || '',
+              deadweight: service.deadweight || '',
+              engineTypePower: service.engineTypePower || '',
+              ownerOperator: service.ownerOperator || '',
+              rank: service.rank || '',
+              from: service.from || '',
+              to: service.to || '',
+              fromDate: service.from || '',
+              toDate: service.to || '',
+              periodMonths: service.periodMonths || '',
+              experienceCategories: service.experienceCategories || [],
+            }
+          });
+          savedUuid = result?.seaUuid;
+          setFormData(prev => ({
+            ...prev,
+            currentCompanySeaService: prev.currentCompanySeaService.map(s =>
+              s.id === itemId ? { ...s, seaUuid: savedUuid } as any : s
+            )
+          }));
+          break;
+        }
+        
+        case 'externalSeaService': {
+          const service = formData.externalSeaService.find(s => s.id === itemId);
+          if (!service) throw new Error('Sea service not found');
+          const result = await saveSeaServiceMutationV2.mutateAsync({
+            crewUuid: crewIdentifier,
+            data: {
+              isCompanyService: false,
+              vesselName: service.vesselName || '',
+              vesselCode: service.vesselCode || '',
+              vesselType: service.vesselType || '',
+              deadweight: service.deadweight || '',
+              engineTypePower: service.engineTypePower || '',
+              ownerOperator: service.ownerOperator || '',
+              rank: service.rank || '',
+              from: service.from || '',
+              to: service.to || '',
+              fromDate: service.from || '',
+              toDate: service.to || '',
+              periodMonths: service.periodMonths || '',
+              experienceCategories: service.experienceCategories || [],
+            }
+          });
+          savedUuid = result?.seaUuid;
+          setFormData(prev => ({
+            ...prev,
+            externalSeaService: prev.externalSeaService.map(s =>
+              s.id === itemId ? { ...s, seaUuid: savedUuid } as any : s
+            )
+          }));
+          break;
+        }
+        
+        case 'preJoiningMedical': {
+          const medical = formData.preJoiningMedicals.find(m => m.id === itemId);
+          if (!medical) throw new Error('Medical record not found');
+          const result = await saveMedicalMutationV2.mutateAsync({
+            crewUuid: crewIdentifier,
+            data: {
+              vesselCode: medical.vesselCode || '',
+              vesselName: medical.vessel || '',
+              vessel: medical.vessel || '',
+              dateOfMedical: medical.dateOfMedical || '',
+              bp: medical.bp || '',
+              weight: medical.weight || '',
+              anyMedicationPrescribed: medical.anyMedicationPrescribed || '',
+              clinicHospital: (medical as any).clinicHospital || '',
+              fitnessForDuty: medical.fitnessForDuty || '',
+              expiryDate: medical.expiry || '',
+              expiry: medical.expiry || '',
+            }
+          });
+          savedUuid = result?.medUuid;
+          setFormData(prev => ({
+            ...prev,
+            preJoiningMedicals: prev.preJoiningMedicals.map(m =>
+              m.id === itemId ? { ...m, medUuid: savedUuid } as any : m
+            )
+          }));
+          break;
+        }
+        
+        case 'doctorVisit': {
+          const visit = formData.doctorVisits.find(v => v.id === itemId);
+          if (!visit) throw new Error('Doctor visit not found');
+          const result = await saveDoctorVisitMutationV2.mutateAsync({
+            crewUuid: crewIdentifier,
+            data: {
+              vessel: visit.vessel || '',
+              port: visit.port || '',
+              date: visit.date || '',
+              visitDate: visit.date || '',
+              doctorName: (visit as any).doctorName || '',
+              clinicHospital: (visit as any).clinicHospital || '',
+              complaint: visit.complaint || '',
+              doctorComments: visit.doctorComments || '',
+              diagnosis: (visit as any).diagnosis || '',
+              treatment: (visit as any).treatment || '',
+              followUpDate: (visit as any).followUpDate || '',
+            }
+          });
+          savedUuid = result?.visitUuid;
+          setFormData(prev => ({
+            ...prev,
+            doctorVisits: prev.doctorVisits.map(v =>
+              v.id === itemId ? { ...v, visitUuid: savedUuid } as any : v
+            )
+          }));
+          break;
+        }
+      }
+      
+      toast({
+        title: 'Record Saved',
+        description: 'Record saved. You can now add attachments.',
+      });
+      
+      // Now open the attachment dialog
+      openAttachmentDialog(section, itemId, itemName);
+      
+    } catch (error) {
+      console.error('Error saving record before attachment:', error);
+      toast({
+        title: 'Save Failed',
+        description: 'Failed to save record. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSavingBeforeAttachment(false);
+    }
   };
 
   const getAttachmentsForItem = (): FileAttachment[] => {
@@ -3593,7 +3920,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       variant="ghost" 
                       size="icon" 
                       className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
-                      onClick={() => openAttachmentDialog('document', doc.id, doc.document || 'Document')}
+                      onClick={() => handleAttachmentClick('document', doc.id, doc.document || 'Document')}
                       data-testid={`button-attach-document-${doc.id}`}
                     >
                       <Paperclip className="h-3 w-3" />
@@ -3708,7 +4035,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       variant="ghost" 
                       size="icon" 
                       className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
-                      onClick={() => openAttachmentDialog('visa', visa.id, visa.issuingCountry || 'Visa')}
+                      onClick={() => handleAttachmentClick('visa', visa.id, visa.issuingCountry || 'Visa')}
                       data-testid={`button-attach-visa-${visa.id}`}
                     >
                       <Paperclip className="h-3 w-3" />
@@ -3802,7 +4129,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       variant="ghost" 
                       size="icon" 
                       className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
-                      onClick={() => openAttachmentDialog('education', edu.id, edu.qualifications || 'Education')}
+                      onClick={() => handleAttachmentClick('education', edu.id, edu.qualifications || 'Education')}
                       data-testid={`button-attach-education-${edu.id}`}
                     >
                       <Paperclip className="h-3 w-3" />
@@ -3957,7 +4284,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       variant="ghost" 
                       size="icon" 
                       className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
-                      onClick={() => openAttachmentDialog('license', license.id, license.certificateDocument || 'License')}
+                      onClick={() => handleAttachmentClick('license', license.id, license.certificateDocument || 'License')}
                       data-testid={`button-attach-license-${license.id}`}
                     >
                       <Paperclip className="h-3 w-3" />
@@ -4091,7 +4418,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       variant="ghost" 
                       size="icon" 
                       className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
-                      onClick={() => openAttachmentDialog('training', course.id, course.trainingCourse || 'Training')}
+                      onClick={() => handleAttachmentClick('training', course.id, course.trainingCourse || 'Training')}
                       data-testid={`button-attach-training-${course.id}`}
                     >
                       <Paperclip className="h-3 w-3" />
@@ -4415,7 +4742,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             variant="ghost" 
                             size="icon" 
                             className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
-                            onClick={() => openAttachmentDialog('currentSeaService', service.id, service.vesselName || 'Sea Service')}
+                            onClick={() => handleAttachmentClick('currentSeaService', service.id, service.vesselName || 'Sea Service')}
                             data-testid={`button-attach-current-service-${service.id}`}
                           >
                             <Paperclip className="h-3 w-3" />
@@ -4659,7 +4986,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             variant="ghost" 
                             size="icon" 
                             className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
-                            onClick={() => openAttachmentDialog('externalSeaService', service.id, service.vesselName || 'Sea Service')}
+                            onClick={() => handleAttachmentClick('externalSeaService', service.id, service.vesselName || 'Sea Service')}
                             data-testid={`button-attach-external-service-${service.id}`}
                           >
                             <Paperclip className="h-3 w-3" />
@@ -4822,7 +5149,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             variant="ghost" 
                             size="icon" 
                             className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
-                            onClick={() => openAttachmentDialog('preJoiningMedical', medical.id, medical.vessel || 'Medical')}
+                            onClick={() => handleAttachmentClick('preJoiningMedical', medical.id, medical.vessel || 'Medical')}
                             data-testid={`button-attach-medical-${medical.id}`}
                           >
                             <Paperclip className="h-3 w-3" />
@@ -4942,7 +5269,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             variant="ghost" 
                             size="icon" 
                             className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
-                            onClick={() => openAttachmentDialog('doctorVisit', visit.id, visit.vessel || 'Doctor Visit')}
+                            onClick={() => handleAttachmentClick('doctorVisit', visit.id, visit.vessel || 'Doctor Visit')}
                             data-testid={`button-attach-visit-${visit.id}`}
                           >
                             <Paperclip className="h-3 w-3" />
