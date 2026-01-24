@@ -10,6 +10,10 @@ import {
   crewFamilyInfo,
   crewChildren,
   crewNextOfKin,
+  crewDocuments,
+  crewDocumentsAttachments,
+  crewVisas,
+  crewVisasAttachments,
 } from "../../../../shared/v2/crew-pool/schema";
 import type {
   InsertCrewMemberV2,
@@ -43,6 +47,8 @@ interface CrewFullProfile {
   familyInfo: CrewFamilyInfo | null;
   children: CrewChild[];
   nextOfKin: CrewNextOfKin | null;
+  documents: any[];
+  visas: any[];
 }
 
 export const crewMembersService = {
@@ -496,7 +502,7 @@ export const crewMembersService = {
 
     if (!crew) return null;
 
-    const [personalDetails, address, familyInfo, children, nextOfKin] =
+    const [personalDetails, address, familyInfo, children, nextOfKin, documents, visas] =
       await Promise.all([
         db
           .select()
@@ -547,7 +553,61 @@ export const crewMembersService = {
             )
           )
           .limit(1),
+        // Documents with attachments
+        db
+          .select()
+          .from(crewDocuments)
+          .where(
+            and(
+              eq(crewDocuments.crewUuid, crewUuid),
+              eq(crewDocuments.isDeleted, false)
+            )
+          ),
+        // Visas with attachments
+        db
+          .select()
+          .from(crewVisas)
+          .where(
+            and(
+              eq(crewVisas.crewUuid, crewUuid),
+              eq(crewVisas.isDeleted, false)
+            )
+          ),
       ]);
+
+    // Get attachments for documents
+    const docUuids = documents.map((d: any) => d.docUuid);
+    const documentAttachments = docUuids.length > 0 
+      ? await db.select().from(crewDocumentsAttachments).where(
+          and(
+            sql`${crewDocumentsAttachments.docUuid} = ANY(ARRAY[${sql.raw(docUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+            eq(crewDocumentsAttachments.isDeleted, false)
+          )
+        )
+      : [];
+
+    // Get attachments for visas
+    const visaUuids = visas.map((v: any) => v.visaUuid);
+    const visaAttachments = visaUuids.length > 0
+      ? await db.select().from(crewVisasAttachments).where(
+          and(
+            sql`${crewVisasAttachments.visaUuid} = ANY(ARRAY[${sql.raw(visaUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+            eq(crewVisasAttachments.isDeleted, false)
+          )
+        )
+      : [];
+
+    // Map attachments to documents
+    const documentsWithAttachments = documents.map((doc: any) => ({
+      ...doc,
+      attachments: documentAttachments.filter((att: any) => att.docUuid === doc.docUuid)
+    }));
+
+    // Map attachments to visas
+    const visasWithAttachments = visas.map((visa: any) => ({
+      ...visa,
+      attachments: visaAttachments.filter((att: any) => att.visaUuid === visa.visaUuid)
+    }));
 
     return {
       crew,
@@ -556,6 +616,8 @@ export const crewMembersService = {
       familyInfo: familyInfo[0] || null,
       children,
       nextOfKin: nextOfKin[0] || null,
+      documents: documentsWithAttachments,
+      visas: visasWithAttachments,
     };
   },
 };
