@@ -241,7 +241,7 @@ export const crewDocumentsService = {
 
     if (documents.length === 0) return [];
 
-    const docUuids = documents.map((d) => d.docUuid);
+    const docUuids = documents.map((d: CrewDocument) => d.docUuid);
     const allAttachments = await db
       .select()
       .from(crewDocumentsAttachments)
@@ -259,7 +259,7 @@ export const crewDocumentsService = {
       attachmentMap.set(att.docUuid, existing);
     }
 
-    return documents.map((doc) => ({
+    return documents.map((doc: CrewDocument) => ({
       ...doc,
       attachments: attachmentMap.get(doc.docUuid) || [],
     }));

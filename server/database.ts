@@ -164,7 +164,11 @@ export class DatabaseStorage implements IStorage {
         rejectUnauthorized: false,
         checkServerIdentity: () => undefined
       } : false,
-      max: 10,
+      max: 20,                    // Maximum number of clients in the pool
+      min: 2,                     // Minimum number of clients to keep open
+      idleTimeoutMillis: 30000,   // Close idle clients after 30 seconds
+      connectionTimeoutMillis: 5000, // Return error after 5 seconds if no connection
+      allowExitOnIdle: true,      // Allow pool to close when idle (prevent connection leaks)
     });
     this.db = drizzle(this.pool);
     

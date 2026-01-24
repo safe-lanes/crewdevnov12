@@ -267,12 +267,39 @@ export function useSaveDocumentV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, docUuid }: { crewUuid: string; data: any; docUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, docUuid, attachments }: { 
+      crewUuid: string; 
+      data: any; 
+      docUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+    }) => {
       const v2Data = mapLegacyDocumentToV2(data);
+      let result: any;
+      let entityUuid: string;
+      
       if (docUuid) {
-        return crewPoolApiV2.updateDocument(crewUuid, docUuid, v2Data);
+        result = await crewPoolApiV2.updateDocument(crewUuid, docUuid, v2Data);
+        entityUuid = docUuid;
+      } else {
+        result = await crewPoolApiV2.createDocument(crewUuid, v2Data);
+        entityUuid = result?.docUuid || result?.doc_uuid;
       }
-      return crewPoolApiV2.createDocument(crewUuid, v2Data);
+      
+      // Save only NEW attachments (without attUuid or marked as isNew)
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData)) {
+            await crewPoolApiV2.addDocumentAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileData: att.fileData,
+            });
+          }
+        }
+      }
+      
+      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
@@ -309,12 +336,39 @@ export function useSaveVisaV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, visaUuid }: { crewUuid: string; data: any; visaUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, visaUuid, attachments }: { 
+      crewUuid: string; 
+      data: any; 
+      visaUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+    }) => {
       const v2Data = mapLegacyVisaToV2(data);
+      let result: any;
+      let entityUuid: string;
+      
       if (visaUuid) {
-        return crewPoolApiV2.updateVisa(crewUuid, visaUuid, v2Data);
+        result = await crewPoolApiV2.updateVisa(crewUuid, visaUuid, v2Data);
+        entityUuid = visaUuid;
+      } else {
+        result = await crewPoolApiV2.createVisa(crewUuid, v2Data);
+        entityUuid = result?.visaUuid || result?.visa_uuid;
       }
-      return crewPoolApiV2.createVisa(crewUuid, v2Data);
+      
+      // Save only NEW attachments
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData)) {
+            await crewPoolApiV2.addVisaAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileData: att.fileData,
+            });
+          }
+        }
+      }
+      
+      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
@@ -351,12 +405,39 @@ export function useSaveEducationV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, eduUuid }: { crewUuid: string; data: LegacyEducation; eduUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, eduUuid, attachments }: { 
+      crewUuid: string; 
+      data: LegacyEducation; 
+      eduUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+    }) => {
       const v2Data = mapLegacyEducationToV2(data);
+      let result: any;
+      let entityUuid: string;
+      
       if (eduUuid) {
-        return crewPoolApiV2.updateEducation(crewUuid, eduUuid, v2Data);
+        result = await crewPoolApiV2.updateEducation(crewUuid, eduUuid, v2Data);
+        entityUuid = eduUuid;
+      } else {
+        result = await crewPoolApiV2.createEducation(crewUuid, v2Data);
+        entityUuid = result?.eduUuid || result?.edu_uuid;
       }
-      return crewPoolApiV2.createEducation(crewUuid, v2Data);
+      
+      // Save only NEW attachments
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData)) {
+            await crewPoolApiV2.addEducationAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileData: att.fileData,
+            });
+          }
+        }
+      }
+      
+      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
@@ -393,12 +474,39 @@ export function useSaveLicenseV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, licUuid }: { crewUuid: string; data: LegacyLicense; licUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, licUuid, attachments }: { 
+      crewUuid: string; 
+      data: LegacyLicense; 
+      licUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+    }) => {
       const v2Data = mapLegacyLicenseToV2(data);
+      let result: any;
+      let entityUuid: string;
+      
       if (licUuid) {
-        return crewPoolApiV2.updateLicense(crewUuid, licUuid, v2Data);
+        result = await crewPoolApiV2.updateLicense(crewUuid, licUuid, v2Data);
+        entityUuid = licUuid;
+      } else {
+        result = await crewPoolApiV2.createLicense(crewUuid, v2Data);
+        entityUuid = result?.licUuid || result?.lic_uuid;
       }
-      return crewPoolApiV2.createLicense(crewUuid, v2Data);
+      
+      // Save only NEW attachments
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData)) {
+            await crewPoolApiV2.addLicenseAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileData: att.fileData,
+            });
+          }
+        }
+      }
+      
+      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
@@ -448,12 +556,39 @@ export function useSaveTrainingCourseV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, trainUuid }: { crewUuid: string; data: LegacyTrainingCourse; trainUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, trainUuid, attachments }: { 
+      crewUuid: string; 
+      data: LegacyTrainingCourse; 
+      trainUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+    }) => {
       const v2Data = mapLegacyTrainingCourseToV2(data);
+      let result: any;
+      let entityUuid: string;
+      
       if (trainUuid) {
-        return crewPoolApiV2.updateTrainingCourse(crewUuid, trainUuid, v2Data);
+        result = await crewPoolApiV2.updateTrainingCourse(crewUuid, trainUuid, v2Data);
+        entityUuid = trainUuid;
+      } else {
+        result = await crewPoolApiV2.createTrainingCourse(crewUuid, v2Data);
+        entityUuid = result?.trainUuid || result?.train_uuid;
       }
-      return crewPoolApiV2.createTrainingCourse(crewUuid, v2Data);
+      
+      // Save only NEW attachments
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData)) {
+            await crewPoolApiV2.addTrainingAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileData: att.fileData,
+            });
+          }
+        }
+      }
+      
+      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
@@ -490,12 +625,39 @@ export function useSaveSeaServiceV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, seaUuid }: { crewUuid: string; data: LegacySeaService; seaUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, seaUuid, attachments }: { 
+      crewUuid: string; 
+      data: LegacySeaService; 
+      seaUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+    }) => {
       const v2Data = mapLegacySeaServiceToV2(data);
+      let result: any;
+      let entityUuid: string;
+      
       if (seaUuid) {
-        return crewPoolApiV2.updateSeaService(crewUuid, seaUuid, v2Data);
+        result = await crewPoolApiV2.updateSeaService(crewUuid, seaUuid, v2Data);
+        entityUuid = seaUuid;
+      } else {
+        result = await crewPoolApiV2.createSeaService(crewUuid, v2Data);
+        entityUuid = result?.seaUuid || result?.sea_uuid;
       }
-      return crewPoolApiV2.createSeaService(crewUuid, v2Data);
+      
+      // Save only NEW attachments
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData)) {
+            await crewPoolApiV2.addSeaServiceAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileData: att.fileData,
+            });
+          }
+        }
+      }
+      
+      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
@@ -532,12 +694,39 @@ export function useSaveMedicalV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, medUuid }: { crewUuid: string; data: LegacyPreJoiningMedical; medUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, medUuid, attachments }: { 
+      crewUuid: string; 
+      data: LegacyPreJoiningMedical; 
+      medUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+    }) => {
       const v2Data = mapLegacyPreJoiningMedicalToV2(data);
+      let result: any;
+      let entityUuid: string;
+      
       if (medUuid) {
-        return crewPoolApiV2.updateMedical(crewUuid, medUuid, v2Data);
+        result = await crewPoolApiV2.updateMedical(crewUuid, medUuid, v2Data);
+        entityUuid = medUuid;
+      } else {
+        result = await crewPoolApiV2.createMedical(crewUuid, v2Data);
+        entityUuid = result?.medUuid || result?.med_uuid;
       }
-      return crewPoolApiV2.createMedical(crewUuid, v2Data);
+      
+      // Save only NEW attachments
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData)) {
+            await crewPoolApiV2.addMedicalAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileData: att.fileData,
+            });
+          }
+        }
+      }
+      
+      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
@@ -574,12 +763,39 @@ export function useSaveDoctorVisitV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, visitUuid }: { crewUuid: string; data: LegacyDoctorVisit; visitUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, visitUuid, attachments }: { 
+      crewUuid: string; 
+      data: LegacyDoctorVisit; 
+      visitUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+    }) => {
       const v2Data = mapLegacyDoctorVisitToV2(data);
+      let result: any;
+      let entityUuid: string;
+      
       if (visitUuid) {
-        return crewPoolApiV2.updateDoctorVisit(crewUuid, visitUuid, v2Data);
+        result = await crewPoolApiV2.updateDoctorVisit(crewUuid, visitUuid, v2Data);
+        entityUuid = visitUuid;
+      } else {
+        result = await crewPoolApiV2.createDoctorVisit(crewUuid, v2Data);
+        entityUuid = result?.visitUuid || result?.visit_uuid;
       }
-      return crewPoolApiV2.createDoctorVisit(crewUuid, v2Data);
+      
+      // Save only NEW attachments
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData)) {
+            await crewPoolApiV2.addDoctorVisitAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileData: att.fileData,
+            });
+          }
+        }
+      }
+      
+      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
