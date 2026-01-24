@@ -168,23 +168,24 @@ export const crewMembersService = {
   
   async generateEmpNo(): Promise<string> {
     const db = getDb();
-    // Get the highest empNo that starts with 'V2-' and increment
+    // Get the highest empNo that starts with 'A' and increment
+    // Format: A000001, A000002, etc.
     const result = await db
       .select({ empNo: crewMembersV2.empNo })
       .from(crewMembersV2)
-      .where(ilike(crewMembersV2.empNo, 'V2-%'))
+      .where(ilike(crewMembersV2.empNo, 'A%'))
       .orderBy(desc(crewMembersV2.empNo))
       .limit(1);
     
     let nextNum = 1;
     if (result.length > 0 && result[0].empNo) {
-      const match = result[0].empNo.match(/V2-(\d+)/);
+      const match = result[0].empNo.match(/A(\d+)/);
       if (match) {
         nextNum = parseInt(match[1], 10) + 1;
       }
     }
     
-    return `V2-${nextNum.toString().padStart(6, '0')}`;
+    return `A${nextNum.toString().padStart(6, '0')}`;
   },
 
   async update(
