@@ -57,6 +57,14 @@ import {
   useSaveSeaServiceV2,
   useSaveMedicalV2,
   useSaveDoctorVisitV2,
+  useDeleteDocumentV2,
+  useDeleteVisaV2,
+  useDeleteEducationV2,
+  useDeleteLicenseV2,
+  useDeleteTrainingCourseV2,
+  useDeleteSeaServiceV2,
+  useDeleteMedicalV2,
+  useDeleteDoctorVisitV2,
   useAddDocumentAttachmentV2,
   useRemoveDocumentAttachmentV2,
   useAddVisaAttachmentV2,
@@ -1180,10 +1188,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeDocument = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      documents: prev.documents.filter(doc => doc.id !== id)
-    }));
+    const doc = formData.documents.find(d => d.id === id);
+    const docUuid = (doc as any)?.docUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    if (docUuid && crewIdentifier) {
+      deleteDocumentMutationV2.mutate(
+        { crewUuid: crewIdentifier, docUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              documents: prev.documents.filter(d => d.id !== id)
+            }));
+          },
+          onError: (error) => {
+            console.error('Failed to delete document:', error);
+            toast({ title: 'Failed to delete document', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        documents: prev.documents.filter(d => d.id !== id)
+      }));
+    }
   };
 
   // Visa management
@@ -1212,10 +1242,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeVisa = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      visas: prev.visas.filter(visa => visa.id !== id)
-    }));
+    const visa = formData.visas.find(v => v.id === id);
+    const visaUuid = (visa as any)?.visaUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    if (visaUuid && crewIdentifier) {
+      deleteVisaMutationV2.mutate(
+        { crewUuid: crewIdentifier, visaUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              visas: prev.visas.filter(v => v.id !== id)
+            }));
+          },
+          onError: (error) => {
+            console.error('Failed to delete visa:', error);
+            toast({ title: 'Failed to delete visa', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        visas: prev.visas.filter(v => v.id !== id)
+      }));
+    }
   };
 
   // Education management
@@ -1242,10 +1294,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeEducation = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      education: prev.education.filter(edu => edu.id !== id)
-    }));
+    const edu = formData.education.find(e => e.id === id);
+    const eduUuid = (edu as any)?.eduUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    if (eduUuid && crewIdentifier) {
+      deleteEducationMutationV2.mutate(
+        { crewUuid: crewIdentifier, eduUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              education: prev.education.filter(e => e.id !== id)
+            }));
+          },
+          onError: (error) => {
+            console.error('Failed to delete education:', error);
+            toast({ title: 'Failed to delete education', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        education: prev.education.filter(e => e.id !== id)
+      }));
+    }
   };
 
   // License management
@@ -1386,10 +1460,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeLicense = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      licenses: prev.licenses.filter(license => license.id !== id)
-    }));
+    const license = formData.licenses.find(l => l.id === id);
+    const licUuid = (license as any)?.licUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    if (licUuid && crewIdentifier) {
+      deleteLicenseMutationV2.mutate(
+        { crewUuid: crewIdentifier, licUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              licenses: prev.licenses.filter(l => l.id !== id)
+            }));
+          },
+          onError: (error) => {
+            console.error('Failed to delete license:', error);
+            toast({ title: 'Failed to delete license', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        licenses: prev.licenses.filter(l => l.id !== id)
+      }));
+    }
   };
 
   // Training course management
@@ -1419,10 +1515,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeTrainingCourse = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      trainingCourses: prev.trainingCourses.filter(course => course.id !== id)
-    }));
+    const course = formData.trainingCourses.find(c => c.id === id);
+    const trainUuid = (course as any)?.trainUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    if (trainUuid && crewIdentifier) {
+      deleteTrainingCourseMutationV2.mutate(
+        { crewUuid: crewIdentifier, trainUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              trainingCourses: prev.trainingCourses.filter(c => c.id !== id)
+            }));
+          },
+          onError: (error) => {
+            console.error('Failed to delete training course:', error);
+            toast({ title: 'Failed to delete training course', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        trainingCourses: prev.trainingCourses.filter(c => c.id !== id)
+      }));
+    }
   };
 
   // Helper function to calculate period in months between two dates
@@ -1487,10 +1605,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeCurrentCompanySeaService = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      currentCompanySeaService: prev.currentCompanySeaService.filter(service => service.id !== id)
-    }));
+    const service = formData.currentCompanySeaService.find(s => s.id === id);
+    const seaUuid = (service as any)?.seaUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    if (seaUuid && crewIdentifier) {
+      deleteSeaServiceMutationV2.mutate(
+        { crewUuid: crewIdentifier, seaUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              currentCompanySeaService: prev.currentCompanySeaService.filter(s => s.id !== id)
+            }));
+          },
+          onError: (error) => {
+            console.error('Failed to delete sea service:', error);
+            toast({ title: 'Failed to delete sea service', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        currentCompanySeaService: prev.currentCompanySeaService.filter(s => s.id !== id)
+      }));
+    }
   };
 
   // Sea service management - External
@@ -1534,10 +1674,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeExternalSeaService = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      externalSeaService: prev.externalSeaService.filter(service => service.id !== id)
-    }));
+    const service = formData.externalSeaService.find(s => s.id === id);
+    const seaUuid = (service as any)?.seaUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    if (seaUuid && crewIdentifier) {
+      deleteSeaServiceMutationV2.mutate(
+        { crewUuid: crewIdentifier, seaUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              externalSeaService: prev.externalSeaService.filter(s => s.id !== id)
+            }));
+          },
+          onError: (error) => {
+            console.error('Failed to delete sea service:', error);
+            toast({ title: 'Failed to delete sea service', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        externalSeaService: prev.externalSeaService.filter(s => s.id !== id)
+      }));
+    }
   };
 
   // Pre-joining medical management
@@ -1568,10 +1730,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removePreJoiningMedical = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      preJoiningMedicals: prev.preJoiningMedicals.filter(medical => medical.id !== id)
-    }));
+    const medical = formData.preJoiningMedicals.find(m => m.id === id);
+    const medUuid = (medical as any)?.medUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    if (medUuid && crewIdentifier) {
+      deleteMedicalMutationV2.mutate(
+        { crewUuid: crewIdentifier, medUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              preJoiningMedicals: prev.preJoiningMedicals.filter(m => m.id !== id)
+            }));
+          },
+          onError: (error) => {
+            console.error('Failed to delete medical record:', error);
+            toast({ title: 'Failed to delete medical record', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        preJoiningMedicals: prev.preJoiningMedicals.filter(m => m.id !== id)
+      }));
+    }
   };
 
   // Doctor visit management
@@ -1599,10 +1783,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeDoctorVisit = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      doctorVisits: prev.doctorVisits.filter(visit => visit.id !== id)
-    }));
+    const visit = formData.doctorVisits.find(v => v.id === id);
+    const visitUuid = (visit as any)?.visitUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    
+    if (visitUuid && crewIdentifier) {
+      deleteDoctorVisitMutationV2.mutate(
+        { crewUuid: crewIdentifier, visitUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              doctorVisits: prev.doctorVisits.filter(v => v.id !== id)
+            }));
+          },
+          onError: (error) => {
+            console.error('Failed to delete doctor visit:', error);
+            toast({ title: 'Failed to delete doctor visit', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        doctorVisits: prev.doctorVisits.filter(v => v.id !== id)
+      }));
+    }
   };
 
   // File attachment management functions
@@ -5686,6 +5892,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const saveSeaServiceMutationV2 = useSaveSeaServiceV2();
   const saveMedicalMutationV2 = useSaveMedicalV2();
   const saveDoctorVisitMutationV2 = useSaveDoctorVisitV2();
+  const deleteDocumentMutationV2 = useDeleteDocumentV2();
+  const deleteVisaMutationV2 = useDeleteVisaV2();
+  const deleteEducationMutationV2 = useDeleteEducationV2();
+  const deleteLicenseMutationV2 = useDeleteLicenseV2();
+  const deleteTrainingCourseMutationV2 = useDeleteTrainingCourseV2();
+  const deleteSeaServiceMutationV2 = useDeleteSeaServiceV2();
+  const deleteMedicalMutationV2 = useDeleteMedicalV2();
+  const deleteDoctorVisitMutationV2 = useDeleteDoctorVisitV2();
   const addDocumentAttachmentV2 = useAddDocumentAttachmentV2();
   const removeDocumentAttachmentV2 = useRemoveDocumentAttachmentV2();
   const addVisaAttachmentV2 = useAddVisaAttachmentV2();

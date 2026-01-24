@@ -360,6 +360,7 @@ export function mapV2VisaToLegacy(v2: any): any {
   return {
     visaUuid: v2?.visaUuid,
     id: v2?.visaUuid || `VIS-${Date.now()}`,
+    country: v2?.countryUuid || '',
     countryId: v2?.countryUuid || '',
     issuingCountry: v2?.countryUuid || '',
     serialNo: v2?.serialNo || '',
