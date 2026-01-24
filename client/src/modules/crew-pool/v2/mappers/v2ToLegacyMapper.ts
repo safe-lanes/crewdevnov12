@@ -632,19 +632,10 @@ export function mapLegacySeaServiceToV2(legacy: LegacySeaService): any {
     engineTypePower: legacy.engineTypePower || undefined,
     ownerOperator: legacy.ownerOperator || undefined,
     rank: legacy.rank || undefined,
-    fromDate: legacy.fromDate || undefined,
-    toDate: legacy.toDate || undefined,
-    periodMonths: legacy.periodMonths ? parseInt(legacy.periodMonths) : undefined,
+    fromDate: legacy.fromDate || legacy.from || undefined,
+    toDate: legacy.toDate || legacy.to || undefined,
+    periodMonths: legacy.periodMonths ? String(legacy.periodMonths) : undefined,
     experienceCategories: legacy.experienceCategories?.length ? legacy.experienceCategories : undefined,
-    attachments: legacy.attachments
-      .filter(att => att.isNew || att.isDeleted)
-      .map(att => ({
-        attUuid: att.attUuid,
-        fileName: att.fileName,
-        fileData: att.fileData,
-        isNew: att.isNew,
-        isDeleted: att.isDeleted,
-      })),
   };
 }
 
@@ -687,15 +678,6 @@ export function mapLegacyPreJoiningMedicalToV2(legacy: LegacyPreJoiningMedical):
     clinicHospital: legacy.clinicHospital || undefined,
     fitForDuty: legacy.fitnessForDuty || undefined,
     expiryDate: legacy.expiryDate || undefined,
-    attachments: legacy.attachments
-      .filter(att => att.isNew || att.isDeleted)
-      .map(att => ({
-        attUuid: att.attUuid,
-        fileName: att.fileName,
-        fileData: att.fileData,
-        isNew: att.isNew,
-        isDeleted: att.isDeleted,
-      })),
   };
 }
 
@@ -742,15 +724,6 @@ export function mapLegacyDoctorVisitToV2(legacy: LegacyDoctorVisit): any {
     diagnosis: legacy.diagnosis || undefined,
     treatment: legacy.treatment || undefined,
     followUpDate: legacy.followUpDate || undefined,
-    attachments: legacy.attachments
-      .filter(att => att.isNew || att.isDeleted)
-      .map(att => ({
-        attUuid: att.attUuid,
-        fileName: att.fileName,
-        fileData: att.fileData,
-        isNew: att.isNew,
-        isDeleted: att.isDeleted,
-      })),
   };
 }
 
