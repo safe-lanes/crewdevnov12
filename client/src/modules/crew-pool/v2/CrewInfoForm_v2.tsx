@@ -1140,9 +1140,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // Helper function to get next unique ID based on prefix
-  const getNextId = (items: Array<{id: string}>, prefix: string): string => {
+  const getNextId = (items: Array<{id?: string}>, prefix: string): string => {
     const existingNums = items
       .map(item => {
+        if (!item.id) return 0;
         const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
         return match ? parseInt(match[1], 10) : 0;
       })
@@ -1152,9 +1153,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // Helper to get max ID number from items with a given prefix
-  const getMaxIdNum = (items: Array<{id: string}>, prefix: string): number => {
+  const getMaxIdNum = (items: Array<{id?: string}>, prefix: string): number => {
     const existingNums = items
       .map(item => {
+        if (!item.id) return 0;
         const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
         return match ? parseInt(match[1], 10) : 0;
       })
