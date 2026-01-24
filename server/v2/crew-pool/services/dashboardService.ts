@@ -8,7 +8,7 @@ import {
   crewLicenses,
   crewAssignments,
 } from "../../../../shared/v2/crew-pool/schema";
-import { masterVessels, masterDataEntries } from "../../../../shared/schema";
+import { masterVessels, masterNationalities, masterVesselTypes, masterCountries } from "../../../../shared/schema";
 import { crewSeaServiceService } from "./crewSeaServiceService";
 
 export interface CrewDashboardStatus {
@@ -205,12 +205,12 @@ export const dashboardService = {
         presentRank: crewMembersV2.presentRank,
         isActive: crewMembersV2.isActive,
         status: crewMembersV2.status,
-        nationalityName: masterDataEntries.name,
+        nationalityName: masterNationalities.nationality,
       })
       .from(crewMembersV2)
       .leftJoin(
-        masterDataEntries,
-        eq(crewMembersV2.nationalityUuid, masterDataEntries.entryId)
+        masterNationalities,
+        eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid)
       )
       .where(eq(crewMembersV2.crewUuid, crewUuid))
       .limit(1);
@@ -258,11 +258,11 @@ export const dashboardService = {
         serviceType: crewSeaService.serviceType,
         vesselName: crewSeaService.vesselName,
         vesselTypeUuid: crewSeaService.vesselTypeUuid,
-        vesselTypeName: masterDataEntries.name,
-        isTanker: masterDataEntries.tanker,
-        isOilTanker: masterDataEntries.oilTanker,
-        isGasTanker: masterDataEntries.gasTanker,
-        isChemicalTanker: masterDataEntries.chemicalTanker,
+        vesselTypeName: masterVesselTypes.vesselType,
+        isTanker: masterVesselTypes.tanker,
+        isOilTanker: masterVesselTypes.oilTanker,
+        isGasTanker: masterVesselTypes.gasTanker,
+        isChemicalTanker: masterVesselTypes.chemicalTanker,
         rank: crewSeaService.rank,
         fromDate: crewSeaService.fromDate,
         toDate: crewSeaService.toDate,
@@ -270,8 +270,8 @@ export const dashboardService = {
       })
       .from(crewSeaService)
       .leftJoin(
-        masterDataEntries,
-        eq(crewSeaService.vesselTypeUuid, masterDataEntries.entryId)
+        masterVesselTypes,
+        eq(crewSeaService.vesselTypeUuid, masterVesselTypes.vtUuid)
       )
       .where(
         and(
@@ -293,12 +293,12 @@ export const dashboardService = {
         certificateDocument: crewLicenses.certificateDocument,
         abbr: crewLicenses.abbr,
         expiry: crewLicenses.expiry,
-        issuingCountryName: masterDataEntries.name,
+        issuingCountryName: masterCountries.countryName,
       })
       .from(crewLicenses)
       .leftJoin(
-        masterDataEntries,
-        eq(crewLicenses.issuingCountryUuid, masterDataEntries.entryId)
+        masterCountries,
+        eq(crewLicenses.issuingCountryUuid, masterCountries.countryUuid)
       )
       .where(
         and(
