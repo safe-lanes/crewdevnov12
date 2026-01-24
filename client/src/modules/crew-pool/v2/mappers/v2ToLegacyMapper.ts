@@ -404,7 +404,7 @@ export interface LegacyEducation {
   schoolCollegeUniversity: string;
   subjectsField: string;
   qualifications: string;
-  attachments: LegacyAttachment[];
+  attachments?: LegacyAttachment[];
 }
 
 export function mapV2EducationToLegacy(v2: any): LegacyEducation {
@@ -433,7 +433,7 @@ export function mapLegacyEducationToV2(legacy: LegacyEducation): any {
     institution: legacy.schoolCollegeUniversity || undefined,
     subjectsField: legacy.subjectsField || undefined,
     qualifications: legacy.qualifications || undefined,
-    attachments: legacy.attachments
+    attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
       .map(att => ({
         attUuid: att.attUuid,
@@ -458,7 +458,7 @@ export interface LegacyLicense {
   issued: string;
   expiry: string;
   archivedAt?: string;
-  attachments: LegacyAttachment[];
+  attachments?: LegacyAttachment[];
 }
 
 export function mapV2LicenseToLegacy(v2: any): LegacyLicense {
@@ -499,7 +499,7 @@ export function mapLegacyLicenseToV2(legacy: LegacyLicense): any {
     issued: legacy.issued || undefined,
     expiry: legacy.expiry || undefined,
     archivedAt: legacy.archivedAt || undefined,
-    attachments: legacy.attachments
+    attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
       .map(att => ({
         attUuid: att.attUuid,
@@ -523,7 +523,7 @@ export interface LegacyTrainingCourse {
   issuingCountry?: string;
   issued: string;
   expiry: string;
-  attachments: LegacyAttachment[];
+  attachments?: LegacyAttachment[];
 }
 
 export function mapV2TrainingCourseToLegacy(v2: any): LegacyTrainingCourse {
@@ -562,7 +562,7 @@ export function mapLegacyTrainingCourseToV2(legacy: LegacyTrainingCourse): any {
     issuingCountryUuid: legacy.issuingCountry || undefined,
     issued: legacy.issued || undefined,
     expiry: legacy.expiry || undefined,
-    attachments: legacy.attachments
+    attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
       .map(att => ({
         attUuid: att.attUuid,
@@ -590,7 +590,7 @@ export interface LegacySeaService {
   toDate: string;
   periodMonths: string;
   experienceCategories: string[];
-  attachments: LegacyAttachment[];
+  attachments?: LegacyAttachment[];
 }
 
 export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
@@ -652,7 +652,7 @@ export interface LegacyPreJoiningMedical {
   fitnessForDuty: string;
   expiryDate: string;
   expiry: string;
-  attachments: LegacyAttachment[];
+  attachments?: LegacyAttachment[];
 }
 
 export function mapV2PreJoiningMedicalToLegacy(v2: any): LegacyPreJoiningMedical {
@@ -708,7 +708,7 @@ export interface LegacyDoctorVisit {
   diagnosis: string;
   treatment: string;
   followUpDate: string;
-  attachments: LegacyAttachment[];
+  attachments?: LegacyAttachment[];
 }
 
 export function mapV2DoctorVisitToLegacy(v2: any): LegacyDoctorVisit {

@@ -146,6 +146,14 @@ export const crewPoolApiV2 = {
     return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}`);
   },
 
+  async addDocumentAttachment(crewUuid: string, docUuid: string, data: any) {
+    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}/attachments`, data);
+  },
+
+  async removeDocumentAttachment(crewUuid: string, docUuid: string, attUuid: string) {
+    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}/attachments/${attUuid}`);
+  },
+
   async getVisas(crewUuid: string) {
     const response = await fetch(`${V2_BASE}/crew/${crewUuid}/visas`);
     if (!response.ok) throw new Error('Failed to fetch visas');
@@ -164,6 +172,14 @@ export const crewPoolApiV2 = {
     return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}`);
   },
 
+  async addVisaAttachment(crewUuid: string, visaUuid: string, data: any) {
+    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}/attachments`, data);
+  },
+
+  async removeVisaAttachment(crewUuid: string, visaUuid: string, attUuid: string) {
+    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}/attachments/${attUuid}`);
+  },
+
   async getEducation(crewUuid: string) {
     const response = await fetch(`${V2_BASE}/crew/${crewUuid}/education`);
     if (!response.ok) throw new Error('Failed to fetch education');
@@ -180,6 +196,14 @@ export const crewPoolApiV2 = {
 
   async deleteEducation(crewUuid: string, eduUuid: string) {
     return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}`);
+  },
+
+  async addEducationAttachment(crewUuid: string, eduUuid: string, data: any) {
+    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}/attachments`, data);
+  },
+
+  async removeEducationAttachment(crewUuid: string, eduUuid: string, attUuid: string) {
+    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}/attachments/${attUuid}`);
   },
 
   async getLicenses(crewUuid: string) {
@@ -204,6 +228,14 @@ export const crewPoolApiV2 = {
     return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}/archive`, {});
   },
 
+  async addLicenseAttachment(crewUuid: string, licUuid: string, data: any) {
+    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}/attachments`, data);
+  },
+
+  async removeLicenseAttachment(crewUuid: string, licUuid: string, attUuid: string) {
+    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}/attachments/${attUuid}`);
+  },
+
   async getTrainingCourses(crewUuid: string) {
     const response = await fetch(`${V2_BASE}/crew/${crewUuid}/training`);
     if (!response.ok) throw new Error('Failed to fetch training courses');
@@ -220,6 +252,14 @@ export const crewPoolApiV2 = {
 
   async deleteTrainingCourse(crewUuid: string, trainUuid: string) {
     return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}`);
+  },
+
+  async addTrainingAttachment(crewUuid: string, trainUuid: string, data: any) {
+    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}/attachments`, data);
+  },
+
+  async removeTrainingAttachment(crewUuid: string, trainUuid: string, attUuid: string) {
+    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}/attachments/${attUuid}`);
   },
 
   async getSeaService(crewUuid: string) {
@@ -240,6 +280,14 @@ export const crewPoolApiV2 = {
     return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}`);
   },
 
+  async addSeaServiceAttachment(crewUuid: string, seaUuid: string, data: any) {
+    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}/attachments`, data);
+  },
+
+  async removeSeaServiceAttachment(crewUuid: string, seaUuid: string, attUuid: string) {
+    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}/attachments/${attUuid}`);
+  },
+
   async getMedicals(crewUuid: string) {
     const response = await fetch(`${V2_BASE}/crew/${crewUuid}/medicals`);
     if (!response.ok) throw new Error('Failed to fetch medicals');
@@ -258,6 +306,14 @@ export const crewPoolApiV2 = {
     return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}`);
   },
 
+  async addMedicalAttachment(crewUuid: string, medUuid: string, data: any) {
+    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}/attachments`, data);
+  },
+
+  async removeMedicalAttachment(crewUuid: string, medUuid: string, attUuid: string) {
+    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}/attachments/${attUuid}`);
+  },
+
   async getDoctorVisits(crewUuid: string) {
     const response = await fetch(`${V2_BASE}/crew/${crewUuid}/doctor-visits`);
     if (!response.ok) throw new Error('Failed to fetch doctor visits');
@@ -274,6 +330,14 @@ export const crewPoolApiV2 = {
 
   async deleteDoctorVisit(crewUuid: string, visitUuid: string) {
     return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}`);
+  },
+
+  async addDoctorVisitAttachment(crewUuid: string, visitUuid: string, data: any) {
+    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}/attachments`, data);
+  },
+
+  async removeDoctorVisitAttachment(crewUuid: string, visitUuid: string, attUuid: string) {
+    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}/attachments/${attUuid}`);
   },
 
   async getVesselTypesApplied(crewUuid: string) {

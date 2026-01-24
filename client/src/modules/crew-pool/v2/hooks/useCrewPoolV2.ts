@@ -632,3 +632,195 @@ export function useSignOffV2() {
     },
   });
 }
+
+export function useAddDocumentAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, docUuid, data }: { crewUuid: string; docUuid: string; data: any }) => {
+      return crewPoolApiV2.addDocumentAttachment(crewUuid, docUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveDocumentAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, docUuid, attUuid }: { crewUuid: string; docUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeDocumentAttachment(crewUuid, docUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useAddVisaAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, visaUuid, data }: { crewUuid: string; visaUuid: string; data: any }) => {
+      return crewPoolApiV2.addVisaAttachment(crewUuid, visaUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveVisaAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, visaUuid, attUuid }: { crewUuid: string; visaUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeVisaAttachment(crewUuid, visaUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useAddEducationAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, eduUuid, data }: { crewUuid: string; eduUuid: string; data: any }) => {
+      return crewPoolApiV2.addEducationAttachment(crewUuid, eduUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveEducationAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, eduUuid, attUuid }: { crewUuid: string; eduUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeEducationAttachment(crewUuid, eduUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useAddLicenseAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, licUuid, data }: { crewUuid: string; licUuid: string; data: any }) => {
+      return crewPoolApiV2.addLicenseAttachment(crewUuid, licUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveLicenseAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, licUuid, attUuid }: { crewUuid: string; licUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeLicenseAttachment(crewUuid, licUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useAddTrainingAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, trainUuid, data }: { crewUuid: string; trainUuid: string; data: any }) => {
+      return crewPoolApiV2.addTrainingAttachment(crewUuid, trainUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveTrainingAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, trainUuid, attUuid }: { crewUuid: string; trainUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeTrainingAttachment(crewUuid, trainUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useAddSeaServiceAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, seaUuid, data }: { crewUuid: string; seaUuid: string; data: any }) => {
+      return crewPoolApiV2.addSeaServiceAttachment(crewUuid, seaUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveSeaServiceAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, seaUuid, attUuid }: { crewUuid: string; seaUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeSeaServiceAttachment(crewUuid, seaUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useAddMedicalAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, medUuid, data }: { crewUuid: string; medUuid: string; data: any }) => {
+      return crewPoolApiV2.addMedicalAttachment(crewUuid, medUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveMedicalAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, medUuid, attUuid }: { crewUuid: string; medUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeMedicalAttachment(crewUuid, medUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useAddDoctorVisitAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, visitUuid, data }: { crewUuid: string; visitUuid: string; data: any }) => {
+      return crewPoolApiV2.addDoctorVisitAttachment(crewUuid, visitUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveDoctorVisitAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, visitUuid, attUuid }: { crewUuid: string; visitUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeDoctorVisitAttachment(crewUuid, visitUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}

@@ -56,7 +56,23 @@ import {
   useSaveTrainingCourseV2,
   useSaveSeaServiceV2,
   useSaveMedicalV2,
-  useSaveDoctorVisitV2
+  useSaveDoctorVisitV2,
+  useAddDocumentAttachmentV2,
+  useRemoveDocumentAttachmentV2,
+  useAddVisaAttachmentV2,
+  useRemoveVisaAttachmentV2,
+  useAddEducationAttachmentV2,
+  useRemoveEducationAttachmentV2,
+  useAddLicenseAttachmentV2,
+  useRemoveLicenseAttachmentV2,
+  useAddTrainingAttachmentV2,
+  useRemoveTrainingAttachmentV2,
+  useAddSeaServiceAttachmentV2,
+  useRemoveSeaServiceAttachmentV2,
+  useAddMedicalAttachmentV2,
+  useRemoveMedicalAttachmentV2,
+  useAddDoctorVisitAttachmentV2,
+  useRemoveDoctorVisitAttachmentV2
 } from './hooks/useCrewPoolV2';
 import type { LegacySeaService, LegacyPreJoiningMedical, LegacyDoctorVisit } from './mappers/v2ToLegacyMapper';
 
@@ -4835,7 +4851,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Documents (Part C - C1 Travel and Identification Docs)
       if (formData.documents && formData.documents.length > 0) {
         console.log('V2 Saving Documents:', { crewUuid: crewIdentifier, count: formData.documents.length });
-        formData.documents.forEach((doc: any) => {
+        formData.documents.forEach(async (doc: any) => {
+          const docAttachments = doc.attachments || [];
           const docData = {
             docUuid: doc.docUuid,
             documentId: doc.documentId || doc.document || '',
@@ -4845,13 +4862,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             expiry: doc.expiry || '',
             issuingAuthority: doc.issuingAuthority || '',
             issuingCountryUuid: doc.issuingCountry || '',
-            attachments: doc.attachments || [],
           };
           console.log('V2 Saving Document:', docData);
           saveDocumentMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: docData, 
             docUuid: doc.docUuid 
+          }, {
+            onSuccess: (response: any) => {
+              const savedDocUuid = response?.docUuid || doc.docUuid;
+              if (savedDocUuid && docAttachments.length > 0) {
+                const newAttachments = docAttachments.filter((att: any) => !att.attUuid || att.isNew);
+                newAttachments.forEach((att: any) => {
+                  addDocumentAttachmentV2.mutate({
+                    crewUuid: crewIdentifier,
+                    docUuid: savedDocUuid,
+                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                  });
+                });
+              }
+            }
           });
         });
       }
@@ -4859,7 +4889,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Visas (Part C - C2 Visas)
       if (formData.visas && formData.visas.length > 0) {
         console.log('V2 Saving Visas:', { crewUuid: crewIdentifier, count: formData.visas.length });
-        formData.visas.forEach((visa: any) => {
+        formData.visas.forEach(async (visa: any) => {
+          const visaAttachments = visa.attachments || [];
           const visaData = {
             visaUuid: visa.visaUuid,
             countryUuid: visa.countryId || visa.issuingCountry || '',
@@ -4867,13 +4898,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             issued: visa.issued || '',
             expiry: visa.expiry || '',
             visaType: visa.visaType || '',
-            attachments: visa.attachments || [],
           };
           console.log('V2 Saving Visa:', visaData);
           saveVisaMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: visaData, 
             visaUuid: visa.visaUuid 
+          }, {
+            onSuccess: (response: any) => {
+              const savedVisaUuid = response?.visaUuid || visa.visaUuid;
+              if (savedVisaUuid && visaAttachments.length > 0) {
+                const newAttachments = visaAttachments.filter((att: any) => !att.attUuid || att.isNew);
+                newAttachments.forEach((att: any) => {
+                  addVisaAttachmentV2.mutate({
+                    crewUuid: crewIdentifier,
+                    visaUuid: savedVisaUuid,
+                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                  });
+                });
+              }
+            }
           });
         });
       }
@@ -4881,7 +4925,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Education (Part D - D1)
       if (formData.education && formData.education.length > 0) {
         console.log('V2 Saving Education:', { crewUuid: crewIdentifier, count: formData.education.length });
-        formData.education.forEach((edu: any) => {
+        formData.education.forEach(async (edu: any) => {
+          const eduAttachments = edu.attachments || [];
           const eduData = {
             id: edu.id,
             eduUuid: edu.eduUuid,
@@ -4889,13 +4934,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
             subjectsField: edu.subjectsField || '',
             qualifications: edu.qualifications || '',
-            attachments: edu.attachments || [],
           };
           console.log('V2 Saving Education record:', eduData);
           saveEducationMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: eduData, 
             eduUuid: edu.eduUuid 
+          }, {
+            onSuccess: (response: any) => {
+              const savedEduUuid = response?.eduUuid || edu.eduUuid;
+              if (savedEduUuid && eduAttachments.length > 0) {
+                const newAttachments = eduAttachments.filter((att: any) => !att.attUuid || att.isNew);
+                newAttachments.forEach((att: any) => {
+                  addEducationAttachmentV2.mutate({
+                    crewUuid: crewIdentifier,
+                    eduUuid: savedEduUuid,
+                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                  });
+                });
+              }
+            }
           });
         });
       }
@@ -4903,7 +4961,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Licenses (Part D - D2)
       if (formData.licenses && formData.licenses.length > 0) {
         console.log('V2 Saving Licenses:', { crewUuid: crewIdentifier, count: formData.licenses.length });
-        formData.licenses.forEach((lic: any) => {
+        formData.licenses.forEach(async (lic: any) => {
+          const licAttachments = lic.attachments || [];
           const licData = {
             id: lic.id,
             licUuid: lic.licUuid,
@@ -4917,13 +4976,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             issued: lic.issued || '',
             expiry: lic.expiry || '',
             archivedAt: lic.archivedAt || '',
-            attachments: lic.attachments || [],
           };
           console.log('V2 Saving License record:', licData);
           saveLicenseMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: licData, 
             licUuid: lic.licUuid 
+          }, {
+            onSuccess: (response: any) => {
+              const savedLicUuid = response?.licUuid || lic.licUuid;
+              if (savedLicUuid && licAttachments.length > 0) {
+                const newAttachments = licAttachments.filter((att: any) => !att.attUuid || att.isNew);
+                newAttachments.forEach((att: any) => {
+                  addLicenseAttachmentV2.mutate({
+                    crewUuid: crewIdentifier,
+                    licUuid: savedLicUuid,
+                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                  });
+                });
+              }
+            }
           });
         });
       }
@@ -4931,7 +5003,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Training Courses (Part D - D3)
       if (formData.trainingCourses && formData.trainingCourses.length > 0) {
         console.log('V2 Saving Training Courses:', { crewUuid: crewIdentifier, count: formData.trainingCourses.length });
-        formData.trainingCourses.forEach((train: any) => {
+        formData.trainingCourses.forEach(async (train: any) => {
+          const trainAttachments = train.attachments || [];
           const trainData = {
             id: train.id,
             trainUuid: train.trainUuid,
@@ -4944,13 +5017,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             issuingCountry: train.issuingCountry || '',
             issued: train.issued || '',
             expiry: train.expiry || '',
-            attachments: train.attachments || [],
           };
           console.log('V2 Saving Training Course record:', trainData);
           saveTrainingCourseMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: trainData, 
             trainUuid: train.trainUuid 
+          }, {
+            onSuccess: (response: any) => {
+              const savedTrainUuid = response?.trainUuid || train.trainUuid;
+              if (savedTrainUuid && trainAttachments.length > 0) {
+                const newAttachments = trainAttachments.filter((att: any) => !att.attUuid || att.isNew);
+                newAttachments.forEach((att: any) => {
+                  addTrainingAttachmentV2.mutate({
+                    crewUuid: crewIdentifier,
+                    trainUuid: savedTrainUuid,
+                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                  });
+                });
+              }
+            }
           });
         });
       }
@@ -4958,7 +5044,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Sea Service - Company (Part E - E1)
       if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
         console.log('V2 Saving Company Sea Service:', { crewUuid: crewIdentifier, count: formData.currentCompanySeaService.length });
-        formData.currentCompanySeaService.forEach((sea: any) => {
+        formData.currentCompanySeaService.forEach(async (sea: any) => {
+          const seaAttachments = sea.attachments || [];
           const seaData: LegacySeaService = {
             seaUuid: sea.seaUuid,
             isCompanyService: true,
@@ -4975,13 +5062,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             toDate: sea.toDate || sea.to || '',
             periodMonths: sea.periodMonths || '',
             experienceCategories: sea.experienceCategories || [],
-            attachments: sea.attachments || [],
           };
           console.log('V2 Saving Company Sea Service record:', seaData);
           saveSeaServiceMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: seaData, 
             seaUuid: sea.seaUuid 
+          }, {
+            onSuccess: (response: any) => {
+              const savedSeaUuid = response?.seaUuid || sea.seaUuid;
+              if (savedSeaUuid && seaAttachments.length > 0) {
+                const newAttachments = seaAttachments.filter((att: any) => !att.attUuid || att.isNew);
+                newAttachments.forEach((att: any) => {
+                  addSeaServiceAttachmentV2.mutate({
+                    crewUuid: crewIdentifier,
+                    seaUuid: savedSeaUuid,
+                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                  });
+                });
+              }
+            }
           });
         });
       }
@@ -4989,7 +5089,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Sea Service - External (Part E - E2)
       if (formData.externalSeaService && formData.externalSeaService.length > 0) {
         console.log('V2 Saving External Sea Service:', { crewUuid: crewIdentifier, count: formData.externalSeaService.length });
-        formData.externalSeaService.forEach((sea: any) => {
+        formData.externalSeaService.forEach(async (sea: any) => {
+          const seaAttachments = sea.attachments || [];
           const seaData: LegacySeaService = {
             seaUuid: sea.seaUuid,
             isCompanyService: false,
@@ -5006,13 +5107,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             toDate: sea.toDate || sea.to || '',
             periodMonths: sea.periodMonths || '',
             experienceCategories: sea.experienceCategories || [],
-            attachments: sea.attachments || [],
           };
           console.log('V2 Saving External Sea Service record:', seaData);
           saveSeaServiceMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: seaData, 
             seaUuid: sea.seaUuid 
+          }, {
+            onSuccess: (response: any) => {
+              const savedSeaUuid = response?.seaUuid || sea.seaUuid;
+              if (savedSeaUuid && seaAttachments.length > 0) {
+                const newAttachments = seaAttachments.filter((att: any) => !att.attUuid || att.isNew);
+                newAttachments.forEach((att: any) => {
+                  addSeaServiceAttachmentV2.mutate({
+                    crewUuid: crewIdentifier,
+                    seaUuid: savedSeaUuid,
+                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                  });
+                });
+              }
+            }
           });
         });
       }
@@ -5020,7 +5134,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Pre-Joining Medicals (Part F - F1)
       if (formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
         console.log('V2 Saving Pre-Joining Medicals:', { crewUuid: crewIdentifier, count: formData.preJoiningMedicals.length });
-        formData.preJoiningMedicals.forEach((med: any) => {
+        formData.preJoiningMedicals.forEach(async (med: any) => {
+          const medAttachments = med.attachments || [];
           const medData: LegacyPreJoiningMedical = {
             medUuid: med.medUuid,
             vesselCode: med.vesselCode || '',
@@ -5034,13 +5149,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             fitnessForDuty: med.fitnessForDuty || '',
             expiryDate: med.expiry || '',
             expiry: med.expiry || '',
-            attachments: med.attachments || [],
           };
           console.log('V2 Saving Pre-Joining Medical record:', medData);
           saveMedicalMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: medData, 
             medUuid: med.medUuid 
+          }, {
+            onSuccess: (response: any) => {
+              const savedMedUuid = response?.medUuid || med.medUuid;
+              if (savedMedUuid && medAttachments.length > 0) {
+                const newAttachments = medAttachments.filter((att: any) => !att.attUuid || att.isNew);
+                newAttachments.forEach((att: any) => {
+                  addMedicalAttachmentV2.mutate({
+                    crewUuid: crewIdentifier,
+                    medUuid: savedMedUuid,
+                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                  });
+                });
+              }
+            }
           });
         });
       }
@@ -5048,7 +5176,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Doctor Visits (Part F - F2)
       if (formData.doctorVisits && formData.doctorVisits.length > 0) {
         console.log('V2 Saving Doctor Visits:', { crewUuid: crewIdentifier, count: formData.doctorVisits.length });
-        formData.doctorVisits.forEach((visit: any) => {
+        formData.doctorVisits.forEach(async (visit: any) => {
+          const visitAttachments = visit.attachments || [];
           const visitData: LegacyDoctorVisit = {
             visitUuid: visit.visitUuid,
             vessel: visit.vessel || '',
@@ -5062,13 +5191,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             diagnosis: visit.diagnosis || '',
             treatment: visit.treatment || '',
             followUpDate: visit.followUpDate || '',
-            attachments: visit.attachments || [],
           };
           console.log('V2 Saving Doctor Visit record:', visitData);
           saveDoctorVisitMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: visitData, 
             visitUuid: visit.visitUuid 
+          }, {
+            onSuccess: (response: any) => {
+              const savedVisitUuid = response?.visitUuid || visit.visitUuid;
+              if (savedVisitUuid && visitAttachments.length > 0) {
+                const newAttachments = visitAttachments.filter((att: any) => !att.attUuid || att.isNew);
+                newAttachments.forEach((att: any) => {
+                  addDoctorVisitAttachmentV2.mutate({
+                    crewUuid: crewIdentifier,
+                    visitUuid: savedVisitUuid,
+                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                  });
+                });
+              }
+            }
           });
         });
       }
@@ -5350,6 +5492,22 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const saveSeaServiceMutationV2 = useSaveSeaServiceV2();
   const saveMedicalMutationV2 = useSaveMedicalV2();
   const saveDoctorVisitMutationV2 = useSaveDoctorVisitV2();
+  const addDocumentAttachmentV2 = useAddDocumentAttachmentV2();
+  const removeDocumentAttachmentV2 = useRemoveDocumentAttachmentV2();
+  const addVisaAttachmentV2 = useAddVisaAttachmentV2();
+  const removeVisaAttachmentV2 = useRemoveVisaAttachmentV2();
+  const addEducationAttachmentV2 = useAddEducationAttachmentV2();
+  const removeEducationAttachmentV2 = useRemoveEducationAttachmentV2();
+  const addLicenseAttachmentV2 = useAddLicenseAttachmentV2();
+  const removeLicenseAttachmentV2 = useRemoveLicenseAttachmentV2();
+  const addTrainingAttachmentV2 = useAddTrainingAttachmentV2();
+  const removeTrainingAttachmentV2 = useRemoveTrainingAttachmentV2();
+  const addSeaServiceAttachmentV2 = useAddSeaServiceAttachmentV2();
+  const removeSeaServiceAttachmentV2 = useRemoveSeaServiceAttachmentV2();
+  const addMedicalAttachmentV2 = useAddMedicalAttachmentV2();
+  const removeMedicalAttachmentV2 = useRemoveMedicalAttachmentV2();
+  const addDoctorVisitAttachmentV2 = useAddDoctorVisitAttachmentV2();
+  const removeDoctorVisitAttachmentV2 = useRemoveDoctorVisitAttachmentV2();
   
   // Wrapper for create mutation with UI feedback
   const createCrewMutation = {
