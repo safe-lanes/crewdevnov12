@@ -5134,7 +5134,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           
           const visaData = {
             visaUuid: visa.visaUuid,
-            countryUuid: visa.countryId || visa.issuingCountry || '',
+            country: visa.issuingCountry || visa.country || '',
             serialNo: visa.serialNo || visa.serialNumber || '',
             issued: visa.issued || '',
             expiry: visa.expiry || '',
