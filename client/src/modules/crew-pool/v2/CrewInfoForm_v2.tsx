@@ -37,7 +37,16 @@ import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { TimelineCard } from '../components/TimelineCard';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewInfoPDF';
-import { useCreateCrewV2, useUpdateCrewV2, useCrewListV2, useCrewFullProfileV2, useCrewByIdV2 } from './hooks/useCrewPoolV2';
+import { 
+  useCreateCrewV2, 
+  useUpdateCrewV2, 
+  useCrewListV2, 
+  useCrewFullProfileV2, 
+  useCrewByIdV2,
+  useSavePersonalDetailsV2,
+  useSaveAddressV2,
+  useSaveFamilyInfoV2 
+} from './hooks/useCrewPoolV2';
 
 interface CrewMember {
   id: string;
@@ -4991,6 +5000,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // V2 Update crew member mutation  
   const updateCrewMutationV2 = useUpdateCrewV2();
   
+  // V2 Section save mutations
+  const savePersonalDetailsMutationV2 = useSavePersonalDetailsV2();
+  const saveAddressMutationV2 = useSaveAddressV2();
+  const saveFamilyInfoMutationV2 = useSaveFamilyInfoV2();
+  
   // Wrapper for create mutation with UI feedback
   const createCrewMutation = {
     mutate: (data: any) => {
@@ -5114,6 +5128,47 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (existingUuid) {
       // Update existing crew member via V2 API
       updateCrewMutation.mutate({ id: existingUuid, data: dataWithPhoto });
+      
+      // V2: Also save section data to their respective tables
+      // Personal Details (A1.1 fields like height, weight, DOB, languages, etc.)
+      const personalDetailsData = {
+        height: formData.heightCm,
+        weight: formData.weightKg,
+        bmi: formData.bmi,
+        placeOfBirthCity: formData.placeOfBirthCity,
+        placeOfBirthCountry: formData.placeOfBirthCountry,
+        nativeLanguage: formData.nativeLanguage,
+        foreignLanguages: formData.foreignLanguages,
+        englishProficiency: formData.englishProficiency,
+        manningAgent: formData.manningAgent,
+        crewPool: formData.crewPool,
+      };
+      savePersonalDetailsMutationV2.mutate({ crewUuid: existingUuid, data: personalDetailsData });
+      
+      // Address (A1.2 fields)
+      const addressData = {
+        countryOfResidence: formData.countryOfResidence,
+        nearestAirport: formData.nearestAirport,
+        residentialAddressLine1: formData.residentialAddressLine1,
+        residentialAddressLine2: formData.residentialAddressLine2,
+        contactLandline: formData.contactLandline,
+        mobile: formData.mobile,
+        email: formData.email,
+      };
+      saveAddressMutationV2.mutate({ crewUuid: existingUuid, data: addressData });
+      
+      // Family Info (A1.3 fields)
+      const familyInfoData = {
+        maritalStatus: formData.maritalStatus,
+        numberOfDependentChildren: formData.numberOfDependentChildren,
+        fatherName: formData.fatherName,
+        motherName: formData.motherName,
+        spouseFirstName: formData.spouseFirstName,
+        spouseMiddleName: formData.spouseMiddleName,
+        spouseFamilyName: formData.spouseFamilyName,
+        spouseDateOfBirth: formData.spouseDateOfBirth,
+      };
+      saveFamilyInfoMutationV2.mutate({ crewUuid: existingUuid, data: familyInfoData });
     } else {
       // Create new crew member via V2 API
       console.log('Creating new crew with V2 API:', dataWithPhoto);
@@ -5121,7 +5176,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
-  const isSaving = createCrewMutation.isPending || updateCrewMutation.isPending;
+  const isSaving = createCrewMutation.isPending || updateCrewMutation.isPending || 
+    savePersonalDetailsMutationV2.isPending || saveAddressMutationV2.isPending || saveFamilyInfoMutationV2.isPending;
 
   const handleCancel = () => {
     onClose();
