@@ -37,7 +37,7 @@ import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { TimelineCard } from '../components/TimelineCard';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewInfoPDF';
-import { useCreateCrewV2, useUpdateCrewV2 } from './hooks/useCrewPoolV2';
+import { useCreateCrewV2, useUpdateCrewV2, useCrewListV2, useCrewFullProfileV2, useCrewByIdV2 } from './hooks/useCrewPoolV2';
 
 interface CrewMember {
   id: string;
@@ -320,39 +320,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     issues: Array<{ name: string; expiry: string; status: 'expired' | 'expiring' }>;
   }>({ category: '', issues: [] });
   
-  // Dashboard data query
-  const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
-    queryKey: ['/api/crew-members', crewMember?.id, 'dashboard'],
-    queryFn: async () => {
-      const response = await fetch(`/api/crew-members/${crewMember?.id}/dashboard`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard summary');
-      }
-      return response.json();
-    },
-    enabled: !!crewMember?.id && isOpen,
-  });
-
-  // All crew members query for dropdown
-  const { data: allCrewMembersRaw = [] } = useQuery<CrewMember[]>({
-    queryKey: ['/api/crew-members'],
-    enabled: isOpen,
-  });
-
-  // Detailed crew member data query for form fields
-  const queryEnabled = !!crewMember?.id && isOpen;
+  // V2: Get crew UUID from crewMember (V2 uses crewUuid as primary identifier)
+  const crewUuid = crewMember?.crewUuid || crewMember?.id || null;
   
-  const { data: detailedCrewData, isLoading: isDetailedDataLoading } = useQuery<any>({
-    queryKey: ['/api/crew-members', crewMember?.id, 'details'], // Added 'details' to make unique
-    queryFn: async () => {
-      const response = await fetch(`/api/crew-members/${crewMember?.id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch crew member details');
-      }
-      return response.json();
-    },
-    enabled: queryEnabled, // Only fetch when editing existing crew member
-  });
+  // V2: Full profile query (replaces dashboard + detailed data)
+  const { data: v2FullProfile, isLoading: isV2ProfileLoading, error: v2ProfileError } = useCrewFullProfileV2(
+    isOpen && crewUuid ? crewUuid : null
+  );
+  
+  // V2: All crew members query for dropdown
+  const { data: allCrewMembersRaw = [], isLoading: isCrewListLoading } = useCrewListV2();
+  
+  // V2: Map full profile data for legacy form compatibility
+  const detailedCrewData = v2FullProfile || null;
+  const isDetailedDataLoading = isV2ProfileLoading;
+  
+  // V2: Dashboard data is computed from full profile (no separate endpoint in V2)
+  // For now, set dashboard data to undefined since V2 doesn't have a separate dashboard endpoint
+  const dashboardData: CrewDashboardSummary | undefined = undefined;
+  const isDashboardLoading = false;
+  const dashboardError: Error | null = null;
 
   // Crew ID will be auto-assigned by the API during creation
 
@@ -5057,10 +5044,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     isPending: updateCrewMutationV2.isPending,
   };
 
-  // Status update mutation (for isActive toggle and nextAvailability)
+  // V2: Status update mutation (for isActive toggle and nextAvailability)
   const statusUpdateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { isActive?: boolean; nextAvailability?: string } }) => {
-      const response = await apiRequest('PATCH', `/api/crew-members/${id}`, data);
+      const response = await apiRequest('PATCH', `/api/v2/crew-pool/crew/${id}`, data);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -5071,8 +5058,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       return { success: true };
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/crew-members', variables.id, 'dashboard'] });
+      // V2: Invalidate V2 query keys
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', variables.id] });
       toast({
         title: "Status Updated",
         description: "Crew member status has been updated.",
@@ -5091,7 +5079,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Handle toggling isActive status
   const handleToggleActiveStatus = (newIsActive: boolean) => {
-    const crewId = crewMember?.id || createdCrewId;
+    // V2: Use crewUuid as the primary identifier
+    const crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (crewId) {
       statusUpdateMutation.mutate({ id: crewId, data: { isActive: newIsActive } });
     }
@@ -5100,7 +5089,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Handle updating next availability date
   const handleUpdateNextAvailability = () => {
-    const crewId = crewMember?.id || createdCrewId;
+    // V2: Use crewUuid as the primary identifier
+    const crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (crewId && tempNextAvailability) {
       statusUpdateMutation.mutate({ id: crewId, data: { nextAvailability: tempNextAvailability } });
     }
