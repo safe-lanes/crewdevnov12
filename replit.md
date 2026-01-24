@@ -45,7 +45,7 @@ The application employs a modern web stack with a module-first architecture, pri
     - **Crew Archive System**: Manages historical crew records with sign-off workflow.
     - **Rotation Module**: Manages crew rotation planning with visual timelines.
     - **Crew Appraisals Module**: Manages appraisals through a 3-stage workflow.
-    - **Crew Pool Module (V1 & V2)**: Manages active crew database. V2 features a re-architected system with a Repository + Service + Controller pattern, UUID identifiers, soft deletes, and comprehensive forms. Includes a "Save-Before-Attachment" pattern and generates sequential 'A000001' format Crew IDs.
+    - **Crew Pool Module (V1 & V2)**: Manages active crew database. V2 features a re-architected system with a Repository + Service + Controller pattern, UUID identifiers, soft deletes, and comprehensive forms. Includes a "Save-Before-Attachment" pattern (uses direct API calls via `crewPoolApiV2` to preserve unsaved rows - mutations cause query invalidation which overwrites local form state) and generates sequential 'A000001' format Crew IDs.
     - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments.
 - **Forms & Configuration**:
     - **Forms Configuration**: Integrates company-specific rank labels for rank group creation and appraisal form matching. Features a Form Versioning System and allows admin configuration of hidden fields/sections via JSON.

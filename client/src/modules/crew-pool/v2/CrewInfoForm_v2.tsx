@@ -37,6 +37,7 @@ import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { TimelineCard } from '../components/TimelineCard';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewInfoPDF';
+import { crewPoolApiV2 } from './api/crewPoolApiV2';
 import { 
   useCreateCrewV2, 
   useUpdateCrewV2, 
@@ -1885,7 +1886,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       return;
     }
 
-    // Record not saved - save it first
+    // Record not saved - save it first using DIRECT API call (bypasses query invalidation)
+    // This preserves local form state (unsaved rows) while only updating the saved record's UUID
     setIsSavingBeforeAttachment(true);
     
     try {
@@ -1895,19 +1897,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         case 'document': {
           const doc = formData.documents.find(d => d.id === itemId);
           if (!doc) throw new Error('Document not found');
-          const result = await saveDocumentMutationV2.mutateAsync({
-            crewUuid: crewIdentifier,
-            data: {
-              documentId: doc.documentId || '',
-              documentName: doc.document || '',
-              number: doc.number || '',
-              issued: doc.issued || '',
-              expiry: doc.expiry || '',
-              issuingAuthority: doc.issuingAuthority || '',
-            }
+          // Use direct API call to avoid query invalidation that overwrites form state
+          const response = await crewPoolApiV2.createDocument(crewIdentifier, {
+            documentId: doc.documentId || '',
+            documentName: doc.document || '',
+            number: doc.number || '',
+            issued: doc.issued || '',
+            expiry: doc.expiry || '',
+            issuingAuthority: doc.issuingAuthority || '',
           });
+          const result = await response.json() as { docUuid?: string };
           savedUuid = result?.docUuid;
-          // Update local state with new UUID
+          // Update local state with new UUID - preserves other unsaved rows
           setFormData(prev => ({
             ...prev,
             documents: prev.documents.map(d =>
@@ -1920,16 +1921,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         case 'visa': {
           const visa = formData.visas.find(v => v.id === itemId);
           if (!visa) throw new Error('Visa not found');
-          const result = await saveVisaMutationV2.mutateAsync({
-            crewUuid: crewIdentifier,
-            data: {
-              issuingCountry: visa.issuingCountry || '',
-              serialNo: visa.serialNo || '',
-              issued: visa.issued || '',
-              expiry: visa.expiry || '',
-              visaType: visa.visaType || '',
-            }
+          const response = await crewPoolApiV2.createVisa(crewIdentifier, {
+            issuingCountry: visa.issuingCountry || '',
+            serialNo: visa.serialNo || '',
+            issued: visa.issued || '',
+            expiry: visa.expiry || '',
+            visaType: visa.visaType || '',
           });
+          const result = await response.json() as { visaUuid?: string };
           savedUuid = result?.visaUuid;
           setFormData(prev => ({
             ...prev,
@@ -1943,16 +1942,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         case 'education': {
           const edu = formData.education.find(e => e.id === itemId);
           if (!edu) throw new Error('Education not found');
-          const result = await saveEducationMutationV2.mutateAsync({
-            crewUuid: crewIdentifier,
-            data: {
-              id: edu.id,
-              dateOfCompletion: edu.dateOfCompletion || '',
-              schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
-              subjectsField: edu.subjectsField || '',
-              qualifications: edu.qualifications || '',
-            }
+          const response = await crewPoolApiV2.createEducation(crewIdentifier, {
+            dateOfCompletion: edu.dateOfCompletion || '',
+            schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
+            subjectsField: edu.subjectsField || '',
+            qualifications: edu.qualifications || '',
           });
+          const result = await response.json() as { eduUuid?: string };
           savedUuid = result?.eduUuid;
           setFormData(prev => ({
             ...prev,
@@ -1966,20 +1962,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         case 'license': {
           const license = formData.licenses.find(l => l.id === itemId);
           if (!license) throw new Error('License not found');
-          const result = await saveLicenseMutationV2.mutateAsync({
-            crewUuid: crewIdentifier,
-            data: {
-              id: license.id,
-              licenseId: license.licenseId || '',
-              certificateDocument: license.certificateDocument || '',
-              abbr: license.abbr || '',
-              requirement: license.requirement || '',
-              certificateNo: license.certificateNo || '',
-              issuingAuthority: license.issuingAuthority || '',
-              issued: license.issued || '',
-              expiry: license.expiry || '',
-            }
+          const response = await crewPoolApiV2.createLicense(crewIdentifier, {
+            licenseId: license.licenseId || '',
+            certificateDocument: license.certificateDocument || '',
+            abbr: license.abbr || '',
+            requirement: license.requirement || '',
+            certificateNo: license.certificateNo || '',
+            issuingAuthority: license.issuingAuthority || '',
+            issued: license.issued || '',
+            expiry: license.expiry || '',
           });
+          const result = await response.json() as { licUuid?: string };
           savedUuid = result?.licUuid;
           setFormData(prev => ({
             ...prev,
@@ -1993,20 +1986,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         case 'training': {
           const course = formData.trainingCourses.find(t => t.id === itemId);
           if (!course) throw new Error('Training course not found');
-          const result = await saveTrainingCourseMutationV2.mutateAsync({
-            crewUuid: crewIdentifier,
-            data: {
-              id: course.id,
-              courseId: course.courseId || '',
-              trainingCourse: course.trainingCourse || '',
-              abbr: course.abbr || '',
-              requirement: course.requirement || '',
-              certificateNo: course.certificateNo || '',
-              issuingAuthority: course.issuingAuthority || '',
-              issued: course.issued || '',
-              expiry: course.expiry || '',
-            }
+          const response = await crewPoolApiV2.createTrainingCourse(crewIdentifier, {
+            courseId: course.courseId || '',
+            trainingCourse: course.trainingCourse || '',
+            abbr: course.abbr || '',
+            requirement: course.requirement || '',
+            certificateNo: course.certificateNo || '',
+            issuingAuthority: course.issuingAuthority || '',
+            issued: course.issued || '',
+            expiry: course.expiry || '',
           });
+          const result = await response.json() as { trainUuid?: string };
           savedUuid = result?.trainUuid;
           setFormData(prev => ({
             ...prev,
@@ -2020,25 +2010,23 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         case 'currentSeaService': {
           const service = formData.currentCompanySeaService.find(s => s.id === itemId);
           if (!service) throw new Error('Sea service not found');
-          const result = await saveSeaServiceMutationV2.mutateAsync({
-            crewUuid: crewIdentifier,
-            data: {
-              isCompanyService: true,
-              vesselName: service.vesselName || '',
-              vesselCode: service.vesselCode || '',
-              vesselType: service.vesselType || '',
-              deadweight: service.deadweight || '',
-              engineTypePower: service.engineTypePower || '',
-              ownerOperator: service.ownerOperator || '',
-              rank: service.rank || '',
-              from: service.from || '',
-              to: service.to || '',
-              fromDate: service.from || '',
-              toDate: service.to || '',
-              periodMonths: service.periodMonths || '',
-              experienceCategories: service.experienceCategories || [],
-            }
+          const response = await crewPoolApiV2.createSeaService(crewIdentifier, {
+            isCompanyService: true,
+            vesselName: service.vesselName || '',
+            vesselCode: service.vesselCode || '',
+            vesselType: service.vesselType || '',
+            deadweight: service.deadweight || '',
+            engineTypePower: service.engineTypePower || '',
+            ownerOperator: service.ownerOperator || '',
+            rank: service.rank || '',
+            from: service.from || '',
+            to: service.to || '',
+            fromDate: service.from || '',
+            toDate: service.to || '',
+            periodMonths: service.periodMonths || '',
+            experienceCategories: service.experienceCategories || [],
           });
+          const result = await response.json() as { seaUuid?: string };
           savedUuid = result?.seaUuid;
           setFormData(prev => ({
             ...prev,
@@ -2052,25 +2040,23 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         case 'externalSeaService': {
           const service = formData.externalSeaService.find(s => s.id === itemId);
           if (!service) throw new Error('Sea service not found');
-          const result = await saveSeaServiceMutationV2.mutateAsync({
-            crewUuid: crewIdentifier,
-            data: {
-              isCompanyService: false,
-              vesselName: service.vesselName || '',
-              vesselCode: service.vesselCode || '',
-              vesselType: service.vesselType || '',
-              deadweight: service.deadweight || '',
-              engineTypePower: service.engineTypePower || '',
-              ownerOperator: service.ownerOperator || '',
-              rank: service.rank || '',
-              from: service.from || '',
-              to: service.to || '',
-              fromDate: service.from || '',
-              toDate: service.to || '',
-              periodMonths: service.periodMonths || '',
-              experienceCategories: service.experienceCategories || [],
-            }
+          const response = await crewPoolApiV2.createSeaService(crewIdentifier, {
+            isCompanyService: false,
+            vesselName: service.vesselName || '',
+            vesselCode: service.vesselCode || '',
+            vesselType: service.vesselType || '',
+            deadweight: service.deadweight || '',
+            engineTypePower: service.engineTypePower || '',
+            ownerOperator: service.ownerOperator || '',
+            rank: service.rank || '',
+            from: service.from || '',
+            to: service.to || '',
+            fromDate: service.from || '',
+            toDate: service.to || '',
+            periodMonths: service.periodMonths || '',
+            experienceCategories: service.experienceCategories || [],
           });
+          const result = await response.json() as { seaUuid?: string };
           savedUuid = result?.seaUuid;
           setFormData(prev => ({
             ...prev,
@@ -2084,22 +2070,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         case 'preJoiningMedical': {
           const medical = formData.preJoiningMedicals.find(m => m.id === itemId);
           if (!medical) throw new Error('Medical record not found');
-          const result = await saveMedicalMutationV2.mutateAsync({
-            crewUuid: crewIdentifier,
-            data: {
-              vesselCode: medical.vesselCode || '',
-              vesselName: medical.vessel || '',
-              vessel: medical.vessel || '',
-              dateOfMedical: medical.dateOfMedical || '',
-              bp: medical.bp || '',
-              weight: medical.weight || '',
-              anyMedicationPrescribed: medical.anyMedicationPrescribed || '',
-              clinicHospital: (medical as any).clinicHospital || '',
-              fitnessForDuty: medical.fitnessForDuty || '',
-              expiryDate: medical.expiry || '',
-              expiry: medical.expiry || '',
-            }
+          const response = await crewPoolApiV2.createMedical(crewIdentifier, {
+            vesselCode: medical.vesselCode || '',
+            vesselName: medical.vessel || '',
+            vessel: medical.vessel || '',
+            dateOfMedical: medical.dateOfMedical || '',
+            bp: medical.bp || '',
+            weight: medical.weight || '',
+            anyMedicationPrescribed: medical.anyMedicationPrescribed || '',
+            clinicHospital: (medical as any).clinicHospital || '',
+            fitnessForDuty: medical.fitnessForDuty || '',
+            expiryDate: medical.expiry || '',
+            expiry: medical.expiry || '',
           });
+          const result = await response.json() as { medUuid?: string };
           savedUuid = result?.medUuid;
           setFormData(prev => ({
             ...prev,
@@ -2113,22 +2097,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         case 'doctorVisit': {
           const visit = formData.doctorVisits.find(v => v.id === itemId);
           if (!visit) throw new Error('Doctor visit not found');
-          const result = await saveDoctorVisitMutationV2.mutateAsync({
-            crewUuid: crewIdentifier,
-            data: {
-              vessel: visit.vessel || '',
-              port: visit.port || '',
-              date: visit.date || '',
-              visitDate: visit.date || '',
-              doctorName: (visit as any).doctorName || '',
-              clinicHospital: (visit as any).clinicHospital || '',
-              complaint: visit.complaint || '',
-              doctorComments: visit.doctorComments || '',
-              diagnosis: (visit as any).diagnosis || '',
-              treatment: (visit as any).treatment || '',
-              followUpDate: (visit as any).followUpDate || '',
-            }
+          const response = await crewPoolApiV2.createDoctorVisit(crewIdentifier, {
+            vessel: visit.vessel || '',
+            port: visit.port || '',
+            date: visit.date || '',
+            visitDate: visit.date || '',
+            doctorName: (visit as any).doctorName || '',
+            clinicHospital: (visit as any).clinicHospital || '',
+            complaint: visit.complaint || '',
+            doctorComments: visit.doctorComments || '',
+            diagnosis: (visit as any).diagnosis || '',
+            treatment: (visit as any).treatment || '',
+            followUpDate: (visit as any).followUpDate || '',
           });
+          const result = await response.json() as { visitUuid?: string };
           savedUuid = result?.visitUuid;
           setFormData(prev => ({
             ...prev,
