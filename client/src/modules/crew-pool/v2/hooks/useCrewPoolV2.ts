@@ -41,6 +41,7 @@ import {
 } from '../mappers/v2ToLegacyMapper';
 
 const V2_QUERY_KEY = '/api/v2/crew-pool';
+const V2_STALE_TIME = 60 * 1000; // 1 minute
 
 export function useCrewListV2(params?: {
   search?: string;
@@ -58,6 +59,7 @@ export function useCrewListV2(params?: {
         ? response.map(mapV2CrewToLegacy)
         : (response.data || []).map(mapV2CrewToLegacy);
     },
+    staleTime: V2_STALE_TIME,
   });
 }
 
@@ -70,6 +72,7 @@ export function useCrewByIdV2(crewUuid: string | null) {
       return mapV2CrewToLegacy(response);
     },
     enabled: !!crewUuid,
+    staleTime: V2_STALE_TIME,
   });
 }
 
@@ -93,6 +96,7 @@ export function useCrewFullProfileV2(crewUuid: string | null) {
       return mapped;
     },
     enabled: !!crewUuid,
+    staleTime: V2_STALE_TIME,
   });
 }
 

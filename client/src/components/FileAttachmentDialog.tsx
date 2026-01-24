@@ -19,6 +19,9 @@ export interface FileAttachment {
   size: number;
   data: string;
   uploadedAt: string;
+  attUuid?: string;
+  isDeleted?: boolean;
+  isNew?: boolean;
 }
 
 interface FileAttachmentDialogProps {
@@ -98,9 +101,18 @@ export function FileAttachmentDialog({
 
   const handleRemoveAttachment = (id: string) => {
     const attachment = attachments.find((a) => a.id === id);
-    onAttachmentsChange(attachments.filter((a) => a.id !== id));
     
     if (attachment) {
+      if (attachment.attUuid) {
+        onAttachmentsChange(
+          attachments.map((a) => 
+            a.id === id ? { ...a, isDeleted: true } : a
+          )
+        );
+      } else {
+        onAttachmentsChange(attachments.filter((a) => a.id !== id));
+      }
+      
       toast({
         title: 'File Removed',
         description: `${attachment.name} has been removed.`,
@@ -233,10 +245,10 @@ export function FileAttachmentDialog({
               </div>
             </Button>
 
-            {attachments.length > 0 && (
+            {attachments.filter(a => !a.isDeleted).length > 0 && (
               <ScrollArea className="h-[200px] border rounded-md p-2">
                 <div className="space-y-2">
-                  {attachments.map((attachment) => (
+                  {attachments.filter(a => !a.isDeleted).map((attachment) => (
                     <div
                       key={attachment.id}
                       className="flex items-center gap-3 p-2 border rounded-md bg-gray-50 hover:bg-gray-100"

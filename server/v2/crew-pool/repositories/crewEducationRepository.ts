@@ -1,4 +1,4 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   crewEducation,
@@ -42,7 +42,8 @@ export class CrewEducationRepository {
           eq(crewEducation.crewUuid, crewUuid),
           eq(crewEducation.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(crewEducation.createdAt));
 
     if (eduRecords.length === 0) return [];
 
