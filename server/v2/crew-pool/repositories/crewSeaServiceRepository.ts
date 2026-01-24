@@ -4,6 +4,7 @@ import {
   crewSeaService,
   crewSeaServiceAttachments,
 } from "../../../../shared/v2/crew-pool/schema";
+import { masterVessels, masterVesselTypes } from "../../../../shared/schema";
 import type {
   CrewSeaService,
   InsertCrewSeaService,
@@ -51,9 +52,36 @@ export class CrewSeaServiceRepository {
     crewUuid: string
   ): Promise<CrewSeaServiceWithAttachments[]> {
     const db = getDb();
-    const services = await db
-      .select()
+    const servicesWithJoins = await db
+      .select({
+        id: crewSeaService.id,
+        seaUuid: crewSeaService.seaUuid,
+        crewUuid: crewSeaService.crewUuid,
+        vesselUuid: crewSeaService.vesselUuid,
+        resolvedVesselName: masterVessels.vessel,
+        vesselName: crewSeaService.vesselName,
+        vesselTypeUuid: crewSeaService.vesselTypeUuid,
+        resolvedVesselTypeName: masterVesselTypes.vesselType,
+        serviceType: crewSeaService.serviceType,
+        fromDate: crewSeaService.fromDate,
+        toDate: crewSeaService.toDate,
+        rank: crewSeaService.rank,
+        deadweight: crewSeaService.deadweight,
+        engineTypePower: crewSeaService.engineTypePower,
+        ownerOperator: crewSeaService.ownerOperator,
+        periodMonths: crewSeaService.periodMonths,
+        experienceCategories: crewSeaService.experienceCategories,
+        sortOrder: crewSeaService.sortOrder,
+        createdAt: crewSeaService.createdAt,
+        createdByUuid: crewSeaService.createdByUuid,
+        updatedAt: crewSeaService.updatedAt,
+        updatedByUuid: crewSeaService.updatedByUuid,
+        isDeleted: crewSeaService.isDeleted,
+        isSync: crewSeaService.isSync,
+      })
       .from(crewSeaService)
+      .leftJoin(masterVessels, eq(crewSeaService.vesselUuid, masterVessels.vesselUuid))
+      .leftJoin(masterVesselTypes, eq(crewSeaService.vesselTypeUuid, masterVesselTypes.vtUuid))
       .where(
         and(
           eq(crewSeaService.crewUuid, crewUuid),
@@ -62,9 +90,9 @@ export class CrewSeaServiceRepository {
       )
       .orderBy(asc(crewSeaService.sortOrder), asc(crewSeaService.createdAt));
 
-    if (services.length === 0) return [];
+    if (servicesWithJoins.length === 0) return [];
 
-    const seaUuids = services.map((s: CrewSeaService) => s.seaUuid);
+    const seaUuids = servicesWithJoins.map((s: { seaUuid: string }) => s.seaUuid);
     const attachments = await db
       .select()
       .from(crewSeaServiceAttachments)
@@ -82,7 +110,7 @@ export class CrewSeaServiceRepository {
       attMap.set(att.seaUuid, existing);
     });
 
-    return services.map((service: CrewSeaService) => ({
+    return servicesWithJoins.map((service: any) => ({
       ...service,
       attachments: attMap.get(service.seaUuid) || [],
     }));
