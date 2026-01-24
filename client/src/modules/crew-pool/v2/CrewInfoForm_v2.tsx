@@ -2752,11 +2752,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <SelectValue placeholder="Select manning agent" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
-                  {manningAgentOptions.map((agent: any) => (
-                    <SelectItem key={agent.id} value={agent.name} data-testid={`manning-agent-crew-option-${agent.id}`}>
-                      {agent.name}{agent.country ? ` (${agent.country})` : ''}
-                    </SelectItem>
-                  ))}
+                  {manningAgentOptions.map((agent: any) => {
+                    const displayValue = agent.country ? `${agent.name} (${agent.country})` : agent.name;
+                    return (
+                      <SelectItem key={agent.id} value={displayValue} data-testid={`manning-agent-crew-option-${agent.id}`}>
+                        {displayValue}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             ) : (

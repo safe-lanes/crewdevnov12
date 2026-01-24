@@ -63,7 +63,7 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
   };
 }
 
-export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember>): any {
+export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember> & { dateOfBirth?: string }): any {
   // V2 schema only accepts these core crew fields
   // Vessel assignment fields (presentVessel, signOnDate, reliefDue, etc.) 
   // are managed via crew_assignments table, not on the crew record
@@ -76,7 +76,7 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember>): any {
     middleName: legacy.middleName || undefined,
     familyName: legacy.familyName || undefined,
     gender: legacy.gender || undefined,
-    dob: legacy.dob || undefined,
+    dob: legacy.dob || legacy.dateOfBirth || undefined,
     nationalityUuid: legacy.nationality || undefined,
     presentRank: legacy.presentRank || undefined,
     rankAppliedFor: legacy.rankAppliedFor || undefined,
