@@ -9,3 +9,4 @@ export { crewSeaServiceService } from "./crewSeaServiceService";
 export { crewMedicalService } from "./crewMedicalService";
 export { crewTransferService } from "./crewTransferService";
 export { dashboardService } from "./dashboardService";
+export * from "./masterDataResolver";

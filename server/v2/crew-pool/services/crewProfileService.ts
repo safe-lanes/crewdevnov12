@@ -1,5 +1,6 @@
 import { crewMembersService } from "./crewMembersService";
 import { crewAssignmentsService } from "./crewAssignmentsService";
+import { resolveCountryUuid, resolveVesselTypeUuid } from "./masterDataResolver";
 import {
   CrewPersonalRepository,
   CrewFamilyRepository,
@@ -82,18 +83,50 @@ export const crewProfileService = {
 
   async upsertPersonalDetails(
     crewUuid: string,
-    data: Parameters<typeof crewPersonalRepository.upsertPersonalDetails>[1]
+    data: Parameters<typeof crewPersonalRepository.upsertPersonalDetails>[1] & {
+      placeOfBirthCountry?: string;
+    }
   ) {
     await crewMembersService.getByUuid(crewUuid);
-    return crewPersonalRepository.upsertPersonalDetails(crewUuid, data);
+
+    // Resolve country if provided (accept name or UUID)
+    const countryInput = data.placeOfBirthCountryUuid || (data as any).placeOfBirthCountry;
+    if (countryInput) {
+      const countryUuid = await resolveCountryUuid(countryInput);
+      if (!countryUuid) {
+        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+      }
+      data.placeOfBirthCountryUuid = countryUuid;
+    }
+
+    // Remove non-schema fields
+    const { placeOfBirthCountry, ...cleanData } = data as any;
+
+    return crewPersonalRepository.upsertPersonalDetails(crewUuid, cleanData);
   },
 
   async upsertAddress(
     crewUuid: string,
-    data: Parameters<typeof crewPersonalRepository.upsertAddress>[1]
+    data: Parameters<typeof crewPersonalRepository.upsertAddress>[1] & {
+      countryOfResidence?: string;
+    }
   ) {
     await crewMembersService.getByUuid(crewUuid);
-    return crewPersonalRepository.upsertAddress(crewUuid, data);
+
+    // Resolve country if provided (accept name or UUID)
+    const countryInput = data.countryOfResidenceUuid || (data as any).countryOfResidence;
+    if (countryInput) {
+      const countryUuid = await resolveCountryUuid(countryInput);
+      if (!countryUuid) {
+        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+      }
+      data.countryOfResidenceUuid = countryUuid;
+    }
+
+    // Remove non-schema fields
+    const { countryOfResidence, ...cleanData } = data as any;
+
+    return crewPersonalRepository.upsertAddress(crewUuid, cleanData);
   },
 
   async upsertFamilyInfo(

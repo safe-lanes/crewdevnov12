@@ -27,6 +27,12 @@ import {
   crewDoctorVisits,
   crewDoctorVisitsAttachments,
 } from "../../../../shared/v2/crew-pool/schema";
+import {
+  masterNationalities,
+  masterVesselTypes,
+  masterVessels,
+  masterCountries,
+} from "../../../../shared/schema";
 import type {
   InsertCrewMemberV2,
   CrewMemberV2,
@@ -69,6 +75,12 @@ interface CrewFullProfile {
   doctorVisits: any[];
 }
 
+import {
+  resolveMasterDataUuid,
+  resolveNationalityUuid,
+  resolveVesselTypeUuid,
+} from "./masterDataResolver";
+
 export const crewMembersService = {
   async getAll(filters?: {
     status?: string;
@@ -103,7 +115,7 @@ export const crewMembersService = {
   },
 
   async create(
-    data: Omit<InsertCrewMemberV2, "crewUuid">
+    data: Omit<InsertCrewMemberV2, "crewUuid"> & { nationality?: string; vesselType?: string }
   ): Promise<CrewMemberV2> {
     if (!data.firstName || !data.familyName) {
       throw new Error("First name and family name are required");
@@ -122,7 +134,35 @@ export const crewMembersService = {
       );
     }
 
-    return crewMembersRepository.create({ ...data, empNo });
+    // Resolve nationality: Accept "Indian" OR "nat-uuid-123"
+    const nationalityInput = data.nationalityUuid || data.nationality;
+    const nationalityUuid = await resolveMasterDataUuid(nationalityInput, 'nationality');
+    if (nationalityInput && !nationalityUuid) {
+      throw new Error(
+        `Invalid nationality: "${nationalityInput}". ` +
+        `Not found in master_nationalities table.`
+      );
+    }
+
+    // Resolve vessel type: Accept "Container" OR "vt-uuid-123"
+    const vesselTypeInput = data.vesselTypeUuid || data.vesselType;
+    const vesselTypeUuid = await resolveMasterDataUuid(vesselTypeInput, 'vesselType');
+    if (vesselTypeInput && !vesselTypeUuid) {
+      throw new Error(
+        `Invalid vessel type: "${vesselTypeInput}". ` +
+        `Not found in master_vessel_types table.`
+      );
+    }
+
+    // Remove non-schema fields and replace with resolved UUIDs
+    const { nationality, vesselType, ...cleanData } = data as any;
+
+    return crewMembersRepository.create({
+      ...cleanData,
+      empNo,
+      nationalityUuid,
+      vesselTypeUuid,
+    });
   },
   
   async generateEmpNo(): Promise<string> {
@@ -148,7 +188,7 @@ export const crewMembersService = {
 
   async update(
     crewUuid: string,
-    data: Partial<InsertCrewMemberV2>
+    data: Partial<InsertCrewMemberV2> & { nationality?: string; vesselType?: string }
   ): Promise<CrewMemberV2> {
     await this.getByUuid(crewUuid);
 
@@ -161,7 +201,34 @@ export const crewMembersService = {
       }
     }
 
-    const updated = await crewMembersRepository.update(crewUuid, data);
+    // Resolve nationality if provided
+    const nationalityInput = data.nationalityUuid || (data as any).nationality;
+    if (nationalityInput) {
+      const nationalityUuid = await resolveMasterDataUuid(nationalityInput, 'nationality');
+      if (!nationalityUuid) {
+        throw new Error(
+          `Invalid nationality: "${nationalityInput}". Not found in master_nationalities table.`
+        );
+      }
+      data.nationalityUuid = nationalityUuid;
+    }
+
+    // Resolve vessel type if provided
+    const vesselTypeInput = data.vesselTypeUuid || (data as any).vesselType;
+    if (vesselTypeInput) {
+      const vesselTypeUuid = await resolveMasterDataUuid(vesselTypeInput, 'vesselType');
+      if (!vesselTypeUuid) {
+        throw new Error(
+          `Invalid vessel type: "${vesselTypeInput}". Not found in master_vessel_types table.`
+        );
+      }
+      data.vesselTypeUuid = vesselTypeUuid;
+    }
+
+    // Remove non-schema fields
+    const { nationality, vesselType, ...cleanData } = data as any;
+
+    const updated = await crewMembersRepository.update(crewUuid, cleanData);
     if (!updated) {
       throw new Error(`Failed to update crew member: ${crewUuid}`);
     }
@@ -170,7 +237,7 @@ export const crewMembersService = {
 
   async updateById(
     id: number,
-    data: Partial<InsertCrewMemberV2>
+    data: Partial<InsertCrewMemberV2> & { nationality?: string; vesselType?: string }
   ): Promise<CrewMemberV2> {
     const existing = await this.getById(id);
 
@@ -183,7 +250,34 @@ export const crewMembersService = {
       }
     }
 
-    const updated = await crewMembersRepository.updateById(id, data);
+    // Resolve nationality if provided
+    const nationalityInput = data.nationalityUuid || (data as any).nationality;
+    if (nationalityInput) {
+      const nationalityUuid = await resolveMasterDataUuid(nationalityInput, 'nationality');
+      if (!nationalityUuid) {
+        throw new Error(
+          `Invalid nationality: "${nationalityInput}". Not found in master_nationalities table.`
+        );
+      }
+      data.nationalityUuid = nationalityUuid;
+    }
+
+    // Resolve vessel type if provided
+    const vesselTypeInput = data.vesselTypeUuid || (data as any).vesselType;
+    if (vesselTypeInput) {
+      const vesselTypeUuid = await resolveMasterDataUuid(vesselTypeInput, 'vesselType');
+      if (!vesselTypeUuid) {
+        throw new Error(
+          `Invalid vessel type: "${vesselTypeInput}". Not found in master_vessel_types table.`
+        );
+      }
+      data.vesselTypeUuid = vesselTypeUuid;
+    }
+
+    // Remove non-schema fields
+    const { nationality, vesselType, ...cleanData } = data as any;
+
+    const updated = await crewMembersRepository.updateById(id, cleanData);
     if (!updated) {
       throw new Error(`Failed to update crew member with id: ${id}`);
     }
@@ -286,6 +380,10 @@ export const crewMembersService = {
         reliefDue: crewAssignments.reliefDue,
         contractPeriod: crewAssignments.contractPeriod,
         assignmentReason: crewAssignments.reason,
+        // Resolved master data names
+        nationality: masterNationalities.nationality,
+        vesselType: masterVesselTypes.vesselType,
+        currentVesselName: masterVessels.vessel,
       })
       .from(crewMembersV2)
       .leftJoin(
@@ -296,6 +394,19 @@ export const crewMembersService = {
           eq(crewAssignments.isDeleted, false)
         )
       )
+      // JOIN master tables for name resolution
+      .leftJoin(
+        masterNationalities,
+        eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid)
+      )
+      .leftJoin(
+        masterVesselTypes,
+        eq(crewMembersV2.vesselTypeUuid, masterVesselTypes.vtUuid)
+      )
+      .leftJoin(
+        masterVessels,
+        eq(crewAssignments.vesselUuid, masterVessels.vesselUuid)
+      )
       .where(and(...conditions))
       .orderBy(desc(crewMembersV2.createdAt))
       .limit(limit)
@@ -303,7 +414,13 @@ export const crewMembersService = {
 
     const data = results.map((r: any) => ({
       ...r.crew,
+      // Return both UUID (for forms) and resolved name (for display)
+      nationalityUuid: r.crew.nationalityUuid,
+      nationality: r.nationality,
+      vesselTypeUuid: r.crew.vesselTypeUuid,
+      vesselType: r.vesselType,
       presentVessel: r.currentVessel,
+      presentVesselName: r.currentVesselName,
       lastVessel: r.lastVessel,
       signOnDate: r.signOnDate,
       reliefDue: r.reliefDue,
@@ -511,9 +628,22 @@ export const crewMembersService = {
   async getFullProfile(crewUuid: string): Promise<CrewFullProfile | null> {
     const db = getDb();
 
-    const [crew] = await db
-      .select()
+    // Get crew with JOINs to resolve master data names
+    const [crewResult] = await db
+      .select({
+        crew: crewMembersV2,
+        nationality: masterNationalities.nationality,
+        vesselType: masterVesselTypes.vesselType,
+      })
       .from(crewMembersV2)
+      .leftJoin(
+        masterNationalities,
+        eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid)
+      )
+      .leftJoin(
+        masterVesselTypes,
+        eq(crewMembersV2.vesselTypeUuid, masterVesselTypes.vtUuid)
+      )
       .where(
         and(
           eq(crewMembersV2.crewUuid, crewUuid),
@@ -522,7 +652,14 @@ export const crewMembersService = {
       )
       .limit(1);
 
-    if (!crew) return null;
+    if (!crewResult) return null;
+
+    // Merge resolved names into crew object
+    const crew = {
+      ...crewResult.crew,
+      nationality: crewResult.nationality,
+      vesselType: crewResult.vesselType,
+    };
 
     const [personalDetails, address, familyInfo, children, nextOfKin, documents, visas, education, licenses, trainingCourses, seaService, medicals, doctorVisits] =
       await Promise.all([

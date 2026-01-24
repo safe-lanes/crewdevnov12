@@ -6,6 +6,7 @@ import {
   type CrewDocumentWithAttachments,
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
+import { resolveCountryUuid } from "./masterDataResolver";
 import {
   crewDocuments,
   crewDocumentsAttachments,
@@ -35,7 +36,7 @@ export const crewDocumentsService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewDocument, "docUuid" | "crewUuid">
+    data: Omit<InsertCrewDocument, "docUuid" | "crewUuid"> & { issuingCountry?: string }
   ): Promise<CrewDocument> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -43,16 +44,42 @@ export const crewDocumentsService = {
       throw new Error("Document name or ID is required");
     }
 
-    return crewDocumentsRepository.create({ ...data, crewUuid });
+    // Resolve issuing country (accept name or UUID)
+    const countryInput = data.issuingCountryUuid || (data as any).issuingCountry;
+    if (countryInput) {
+      const countryUuid = await resolveCountryUuid(countryInput);
+      if (!countryUuid) {
+        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+      }
+      data.issuingCountryUuid = countryUuid;
+    }
+
+    // Remove non-schema fields
+    const { issuingCountry, ...cleanData } = data as any;
+
+    return crewDocumentsRepository.create({ ...cleanData, crewUuid });
   },
 
   async update(
     docUuid: string,
-    data: Partial<InsertCrewDocument>
+    data: Partial<InsertCrewDocument> & { issuingCountry?: string }
   ): Promise<CrewDocument> {
     await this.getByUuid(docUuid);
 
-    const updated = await crewDocumentsRepository.update(docUuid, data);
+    // Resolve issuing country (accept name or UUID)
+    const countryInput = data.issuingCountryUuid || (data as any).issuingCountry;
+    if (countryInput) {
+      const countryUuid = await resolveCountryUuid(countryInput);
+      if (!countryUuid) {
+        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+      }
+      data.issuingCountryUuid = countryUuid;
+    }
+
+    // Remove non-schema fields
+    const { issuingCountry, ...cleanData } = data as any;
+
+    const updated = await crewDocumentsRepository.update(docUuid, cleanData);
     if (!updated) {
       throw new Error(`Failed to update document: ${docUuid}`);
     }
@@ -105,7 +132,7 @@ export const crewDocumentsService = {
     items: Array<{
       docUuid?: string;
       isDeleted?: boolean;
-      data: Omit<InsertCrewDocument, "docUuid" | "crewUuid">;
+      data: Omit<InsertCrewDocument, "docUuid" | "crewUuid"> & { issuingCountry?: string };
       attachments?: Array<{
         attUuid?: string;
         isNew?: boolean;
@@ -118,11 +145,29 @@ export const crewDocumentsService = {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
 
+    // Pre-resolve all country UUIDs before transaction
+    const resolvedItems = await Promise.all(
+      items.map(async (item) => {
+        if (item.isDeleted) return item;
+
+        const countryInput = item.data.issuingCountryUuid || (item.data as any).issuingCountry;
+        if (countryInput) {
+          const countryUuid = await resolveCountryUuid(countryInput);
+          if (!countryUuid) {
+            throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+          }
+          const { issuingCountry, ...cleanData } = item.data as any;
+          return { ...item, data: { ...cleanData, issuingCountryUuid: countryUuid } };
+        }
+        return item;
+      })
+    );
+
     return db.transaction(async (tx: any) => {
       const results: CrewDocument[] = [];
       const now = new Date();
 
-      for (const item of items) {
+      for (const item of resolvedItems) {
         if (item.isDeleted && item.docUuid) {
           await tx
             .update(crewDocuments)

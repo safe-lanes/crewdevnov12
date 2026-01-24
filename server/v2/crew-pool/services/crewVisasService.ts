@@ -6,6 +6,7 @@ import {
   type CrewVisaWithAttachments,
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
+import { resolveCountryUuid } from "./masterDataResolver";
 import {
   crewVisas,
   crewVisasAttachments,
@@ -35,7 +36,7 @@ export const crewVisasService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid">
+    data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid"> & { country?: string }
   ): Promise<CrewVisa> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -43,16 +44,42 @@ export const crewVisasService = {
       throw new Error("Visa type is required");
     }
 
-    return crewVisasRepository.create({ ...data, crewUuid });
+    // Resolve country (accept name or UUID)
+    const countryInput = data.countryUuid || (data as any).country;
+    if (countryInput) {
+      const countryUuid = await resolveCountryUuid(countryInput);
+      if (!countryUuid) {
+        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+      }
+      data.countryUuid = countryUuid;
+    }
+
+    // Remove non-schema fields
+    const { country, ...cleanData } = data as any;
+
+    return crewVisasRepository.create({ ...cleanData, crewUuid });
   },
 
   async update(
     visaUuid: string,
-    data: Partial<InsertCrewVisa>
+    data: Partial<InsertCrewVisa> & { country?: string }
   ): Promise<CrewVisa> {
     await this.getByUuid(visaUuid);
 
-    const updated = await crewVisasRepository.update(visaUuid, data);
+    // Resolve country (accept name or UUID)
+    const countryInput = data.countryUuid || (data as any).country;
+    if (countryInput) {
+      const countryUuid = await resolveCountryUuid(countryInput);
+      if (!countryUuid) {
+        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+      }
+      data.countryUuid = countryUuid;
+    }
+
+    // Remove non-schema fields
+    const { country, ...cleanData } = data as any;
+
+    const updated = await crewVisasRepository.update(visaUuid, cleanData);
     if (!updated) {
       throw new Error(`Failed to update visa: ${visaUuid}`);
     }
@@ -114,7 +141,7 @@ export const crewVisasService = {
     items: Array<{
       visaUuid?: string;
       isDeleted?: boolean;
-      data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid">;
+      data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid"> & { country?: string };
       attachments?: Array<{
         attUuid?: string;
         isNew?: boolean;
@@ -127,11 +154,29 @@ export const crewVisasService = {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
 
+    // Pre-resolve all country UUIDs before transaction
+    const resolvedItems = await Promise.all(
+      items.map(async (item) => {
+        if (item.isDeleted) return item;
+
+        const countryInput = item.data.countryUuid || (item.data as any).country;
+        if (countryInput) {
+          const countryUuid = await resolveCountryUuid(countryInput);
+          if (!countryUuid) {
+            throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+          }
+          const { country, ...cleanData } = item.data as any;
+          return { ...item, data: { ...cleanData, countryUuid } };
+        }
+        return item;
+      })
+    );
+
     return db.transaction(async (tx: any) => {
       const results: CrewVisa[] = [];
       const now = new Date();
 
-      for (const item of items) {
+      for (const item of resolvedItems) {
         if (item.isDeleted && item.visaUuid) {
           await tx
             .update(crewVisas)
