@@ -5197,7 +5197,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         console.log('V2 Preparing Education for batch:', { crewUuid: crewIdentifier, count: formData.education.length });
         formData.education.forEach((edu: any, index: number) => {
           const eduAttachments = edu.attachments || [];
-          const capturedNewAttachments = [...eduAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+          const capturedNewAttachments = [...eduAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+            attUuid: att.attUuid,
+            isNew: att.isNew || !att.attUuid,
+            fileName: att.name || att.fileName || '',
+            fileData: att.data || att.fileData || '',
+          }));
           const capturedDeletedAttachments = [...eduAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
           
           const eduData = {
@@ -5211,27 +5216,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           
           batch2Operations.push(async () => {
+            // Delete attachments first (if any marked for deletion)
+            const savedEduUuid = edu.eduUuid;
+            if (savedEduUuid) {
+              for (const att of capturedDeletedAttachments) {
+                await removeEducationAttachmentV2.mutateAsync({
+                  crewUuid: crewIdentifier,
+                  eduUuid: savedEduUuid,
+                  attUuid: att.attUuid
+                });
+              }
+            }
+            
+            // Save record with attachments - hook handles attachment saves internally
             const savedEdu = await saveEducationMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: eduData, 
-              eduUuid: edu.eduUuid 
+              eduUuid: edu.eduUuid,
+              attachments: capturedNewAttachments
             });
-            const savedEduUuid = savedEdu?.eduUuid || edu.eduUuid;
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeEducationAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                eduUuid: savedEduUuid,
-                attUuid: att.attUuid
-              });
-            }
-            for (const att of capturedNewAttachments) {
-              await addEducationAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                eduUuid: savedEduUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-              });
-            }
             return savedEdu;
           });
         });
@@ -5242,7 +5245,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         console.log('V2 Preparing Licenses for batch:', { crewUuid: crewIdentifier, count: formData.licenses.length });
         formData.licenses.forEach((lic: any, index: number) => {
           const licAttachments = lic.attachments || [];
-          const capturedNewAttachments = [...licAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+          const capturedNewAttachments = [...licAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+            attUuid: att.attUuid,
+            isNew: att.isNew || !att.attUuid,
+            fileName: att.name || att.fileName || '',
+            fileData: att.data || att.fileData || '',
+          }));
           const capturedDeletedAttachments = [...licAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
           
           const licData = {
@@ -5262,27 +5270,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           
           batch2Operations.push(async () => {
+            // Delete attachments first (if any marked for deletion)
+            const savedLicUuid = lic.licUuid;
+            if (savedLicUuid) {
+              for (const att of capturedDeletedAttachments) {
+                await removeLicenseAttachmentV2.mutateAsync({
+                  crewUuid: crewIdentifier,
+                  licUuid: savedLicUuid,
+                  attUuid: att.attUuid
+                });
+              }
+            }
+            
+            // Save record with attachments - hook handles attachment saves internally
             const savedLic = await saveLicenseMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: licData, 
-              licUuid: lic.licUuid 
+              licUuid: lic.licUuid,
+              attachments: capturedNewAttachments
             });
-            const savedLicUuid = savedLic?.licUuid || lic.licUuid;
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeLicenseAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                licUuid: savedLicUuid,
-                attUuid: att.attUuid
-              });
-            }
-            for (const att of capturedNewAttachments) {
-              await addLicenseAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                licUuid: savedLicUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-              });
-            }
             return savedLic;
           });
         });
@@ -5293,7 +5299,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         console.log('V2 Preparing Training Courses for batch:', { crewUuid: crewIdentifier, count: formData.trainingCourses.length });
         formData.trainingCourses.forEach((train: any, index: number) => {
           const trainAttachments = train.attachments || [];
-          const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+          const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+            attUuid: att.attUuid,
+            isNew: att.isNew || !att.attUuid,
+            fileName: att.name || att.fileName || '',
+            fileData: att.data || att.fileData || '',
+          }));
           const capturedDeletedAttachments = [...trainAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
           
           const trainData = {
@@ -5312,27 +5323,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           
           batch3Operations.push(async () => {
+            // Delete attachments first (if any marked for deletion)
+            const savedTrainUuid = train.trainUuid;
+            if (savedTrainUuid) {
+              for (const att of capturedDeletedAttachments) {
+                await removeTrainingAttachmentV2.mutateAsync({
+                  crewUuid: crewIdentifier,
+                  trainUuid: savedTrainUuid,
+                  attUuid: att.attUuid
+                });
+              }
+            }
+            
+            // Save record with attachments - hook handles attachment saves internally
             const savedTrain = await saveTrainingCourseMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: trainData, 
-              trainUuid: train.trainUuid 
+              trainUuid: train.trainUuid,
+              attachments: capturedNewAttachments
             });
-            const savedTrainUuid = savedTrain?.trainUuid || train.trainUuid;
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeTrainingAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                trainUuid: savedTrainUuid,
-                attUuid: att.attUuid
-              });
-            }
-            for (const att of capturedNewAttachments) {
-              await addTrainingAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                trainUuid: savedTrainUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-              });
-            }
             return savedTrain;
           });
         });
@@ -5343,7 +5352,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.currentCompanySeaService.length });
         formData.currentCompanySeaService.forEach((sea: any, index: number) => {
           const seaAttachments = sea.attachments || [];
-          const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+          const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+            attUuid: att.attUuid,
+            isNew: att.isNew || !att.attUuid,
+            fileName: att.name || att.fileName || '',
+            fileData: att.data || att.fileData || '',
+          }));
           const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
           
           const seaData: LegacySeaService = {
@@ -5366,27 +5380,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           
           batch3Operations.push(async () => {
+            // Delete attachments first (if any marked for deletion)
+            const savedSeaUuid = sea.seaUuid;
+            if (savedSeaUuid) {
+              for (const att of capturedDeletedAttachments) {
+                await removeSeaServiceAttachmentV2.mutateAsync({
+                  crewUuid: crewIdentifier,
+                  seaUuid: savedSeaUuid,
+                  attUuid: att.attUuid
+                });
+              }
+            }
+            
+            // Save record with attachments - hook handles attachment saves internally
             const savedSea = await saveSeaServiceMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: seaData, 
-              seaUuid: sea.seaUuid 
+              seaUuid: sea.seaUuid,
+              attachments: capturedNewAttachments
             });
-            const savedSeaUuid = savedSea?.seaUuid || sea.seaUuid;
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeSeaServiceAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                seaUuid: savedSeaUuid,
-                attUuid: att.attUuid
-              });
-            }
-            for (const att of capturedNewAttachments) {
-              await addSeaServiceAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                seaUuid: savedSeaUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-              });
-            }
             return savedSea;
           });
         });
@@ -5397,7 +5409,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         console.log('V2 Preparing External Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.externalSeaService.length });
         formData.externalSeaService.forEach((sea: any, index: number) => {
           const seaAttachments = sea.attachments || [];
-          const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+          const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+            attUuid: att.attUuid,
+            isNew: att.isNew || !att.attUuid,
+            fileName: att.name || att.fileName || '',
+            fileData: att.data || att.fileData || '',
+          }));
           const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
           
           const seaData: LegacySeaService = {
@@ -5420,27 +5437,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           
           batch3Operations.push(async () => {
+            // Delete attachments first (if any marked for deletion)
+            const savedSeaUuid = sea.seaUuid;
+            if (savedSeaUuid) {
+              for (const att of capturedDeletedAttachments) {
+                await removeSeaServiceAttachmentV2.mutateAsync({
+                  crewUuid: crewIdentifier,
+                  seaUuid: savedSeaUuid,
+                  attUuid: att.attUuid
+                });
+              }
+            }
+            
+            // Save record with attachments - hook handles attachment saves internally
             const savedSea = await saveSeaServiceMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: seaData, 
-              seaUuid: sea.seaUuid 
+              seaUuid: sea.seaUuid,
+              attachments: capturedNewAttachments
             });
-            const savedSeaUuid = savedSea?.seaUuid || sea.seaUuid;
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeSeaServiceAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                seaUuid: savedSeaUuid,
-                attUuid: att.attUuid
-              });
-            }
-            for (const att of capturedNewAttachments) {
-              await addSeaServiceAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                seaUuid: savedSeaUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-              });
-            }
             return savedSea;
           });
         });
@@ -5451,7 +5466,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         console.log('V2 Preparing Pre-Joining Medicals for batch:', { crewUuid: crewIdentifier, count: formData.preJoiningMedicals.length });
         formData.preJoiningMedicals.forEach((med: any, index: number) => {
           const medAttachments = med.attachments || [];
-          const capturedNewAttachments = [...medAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+          const capturedNewAttachments = [...medAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+            attUuid: att.attUuid,
+            isNew: att.isNew || !att.attUuid,
+            fileName: att.name || att.fileName || '',
+            fileData: att.data || att.fileData || '',
+          }));
           const capturedDeletedAttachments = [...medAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
           
           const medData: LegacyPreJoiningMedical = {
@@ -5471,27 +5491,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           
           batch4Operations.push(async () => {
+            // Delete attachments first (if any marked for deletion)
+            const savedMedUuid = med.medUuid;
+            if (savedMedUuid) {
+              for (const att of capturedDeletedAttachments) {
+                await removeMedicalAttachmentV2.mutateAsync({
+                  crewUuid: crewIdentifier,
+                  medUuid: savedMedUuid,
+                  attUuid: att.attUuid
+                });
+              }
+            }
+            
+            // Save record with attachments - hook handles attachment saves internally
             const savedMed = await saveMedicalMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: medData, 
-              medUuid: med.medUuid 
+              medUuid: med.medUuid,
+              attachments: capturedNewAttachments
             });
-            const savedMedUuid = savedMed?.medUuid || med.medUuid;
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeMedicalAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                medUuid: savedMedUuid,
-                attUuid: att.attUuid
-              });
-            }
-            for (const att of capturedNewAttachments) {
-              await addMedicalAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                medUuid: savedMedUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-              });
-            }
             return savedMed;
           });
         });
@@ -5502,7 +5520,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         console.log('V2 Preparing Doctor Visits for batch:', { crewUuid: crewIdentifier, count: formData.doctorVisits.length });
         formData.doctorVisits.forEach((visit: any, index: number) => {
           const visitAttachments = visit.attachments || [];
-          const capturedNewAttachments = [...visitAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+          const capturedNewAttachments = [...visitAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+            attUuid: att.attUuid,
+            isNew: att.isNew || !att.attUuid,
+            fileName: att.name || att.fileName || '',
+            fileData: att.data || att.fileData || '',
+          }));
           const capturedDeletedAttachments = [...visitAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
           
           const visitData: LegacyDoctorVisit = {
@@ -5522,27 +5545,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           
           batch4Operations.push(async () => {
+            // Delete attachments first (if any marked for deletion)
+            const savedVisitUuid = visit.visitUuid;
+            if (savedVisitUuid) {
+              for (const att of capturedDeletedAttachments) {
+                await removeDoctorVisitAttachmentV2.mutateAsync({
+                  crewUuid: crewIdentifier,
+                  visitUuid: savedVisitUuid,
+                  attUuid: att.attUuid
+                });
+              }
+            }
+            
+            // Save record with attachments - hook handles attachment saves internally
             const savedVisit = await saveDoctorVisitMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: visitData, 
-              visitUuid: visit.visitUuid 
+              visitUuid: visit.visitUuid,
+              attachments: capturedNewAttachments
             });
-            const savedVisitUuid = savedVisit?.visitUuid || visit.visitUuid;
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeDoctorVisitAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                visitUuid: savedVisitUuid,
-                attUuid: att.attUuid
-              });
-            }
-            for (const att of capturedNewAttachments) {
-              await addDoctorVisitAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                visitUuid: savedVisitUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-              });
-            }
             return savedVisit;
           });
         });
