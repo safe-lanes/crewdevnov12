@@ -26,6 +26,7 @@ import {
   crewMedicalAttachments,
   crewDoctorVisits,
   crewDoctorVisitsAttachments,
+  crewVesselTypesApplied,
 } from "../../../../shared/v2/crew-pool/schema";
 import {
   masterNationalities,
@@ -722,7 +723,7 @@ export const crewMembersService = {
         )
       );
 
-    const [familyInfo, children, nextOfKin, documents, visas, education, licenses, trainingCourses, medicals, doctorVisits] =
+    const [familyInfo, children, nextOfKin, documents, visas, education, licenses, trainingCourses, medicals, doctorVisits, vesselTypesRaw] =
       await Promise.all([
         db
           .select()
@@ -821,6 +822,23 @@ export const crewMembersService = {
             and(
               eq(crewDoctorVisits.crewUuid, crewUuid),
               eq(crewDoctorVisits.isDeleted, false)
+            )
+          ),
+        // Vessel Types Applied - with resolved names
+        db
+          .select({
+            cvta: crewVesselTypesApplied,
+            resolvedVesselTypeName: masterVesselTypes.vesselType,
+          })
+          .from(crewVesselTypesApplied)
+          .leftJoin(
+            masterVesselTypes,
+            eq(crewVesselTypesApplied.vesselTypeUuid, masterVesselTypes.vtUuid)
+          )
+          .where(
+            and(
+              eq(crewVesselTypesApplied.crewUuid, crewUuid),
+              eq(crewVesselTypesApplied.isDeleted, false)
             )
           ),
       ]);
@@ -981,6 +999,12 @@ export const crewMembersService = {
       attachments: doctorVisitAttachments.filter((att: any) => att.visitUuid === visit.visitUuid)
     }));
 
+    // Process vessel types with resolved names
+    const vesselTypes = vesselTypesRaw.map((row: { cvta: any; resolvedVesselTypeName: string | null }) => ({
+      ...row.cvta,
+      resolvedVesselTypeName: row.resolvedVesselTypeName,
+    }));
+
     return {
       crew,
       personalDetails: personalDetails[0] || null,
@@ -996,6 +1020,7 @@ export const crewMembersService = {
       seaService: seaServiceWithAttachments,
       medicals: medicalsWithAttachments,
       doctorVisits: doctorVisitsWithAttachments,
+      vesselTypes,
     };
   },
 };

@@ -609,6 +609,7 @@ export function useSaveVesselTypesV2() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid, 'full-profile'] });
     },
   });
 }

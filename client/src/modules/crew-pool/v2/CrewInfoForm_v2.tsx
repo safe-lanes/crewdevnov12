@@ -49,6 +49,7 @@ import {
   useSaveChildV2,
   useSaveNextOfKinV2,
   useDeleteChildV2,
+  useSaveVesselTypesV2,
   useSaveDocumentV2,
   useSaveVisaV2,
   useSaveEducationV2,
@@ -5065,6 +5066,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         saveNextOfKinMutationV2.mutate({ crewUuid: crewIdentifier, data: nokData });
       }
       
+      // Vessel Types Applied (A5 - array of vessel type UUIDs)
+      // The form stores vesselType as an array of vessel type names/UUIDs
+      if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
+        console.log('V2 Saving Vessel Types:', { crewUuid: crewIdentifier, vesselTypes: formData.vesselType });
+        saveVesselTypesMutationV2.mutate({ crewUuid: crewIdentifier, vesselTypeUuids: formData.vesselType });
+      }
+      
       // Collect all save promises for proper async handling (Recruitment V2 pattern)
       const allSavePromises: Promise<any>[] = [];
       
@@ -5895,6 +5903,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const saveChildMutationV2 = useSaveChildV2();
   const saveNextOfKinMutationV2 = useSaveNextOfKinV2();
   const deleteChildMutationV2 = useDeleteChildV2();
+  const saveVesselTypesMutationV2 = useSaveVesselTypesV2();
   const saveDocumentMutationV2 = useSaveDocumentV2();
   const saveVisaMutationV2 = useSaveVisaV2();
   const saveEducationMutationV2 = useSaveEducationV2();
