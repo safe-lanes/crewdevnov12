@@ -1,4 +1,4 @@
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   crewPreJoiningMedicals,
@@ -77,7 +77,8 @@ export class CrewMedicalRepository {
           eq(crewPreJoiningMedicals.crewUuid, crewUuid),
           eq(crewPreJoiningMedicals.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(crewPreJoiningMedicals.sortOrder), asc(crewPreJoiningMedicals.createdAt));
 
     if (medicalsWithVessel.length === 0) return [];
 
@@ -242,7 +243,8 @@ export class CrewMedicalRepository {
           eq(crewDoctorVisits.crewUuid, crewUuid),
           eq(crewDoctorVisits.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(crewDoctorVisits.sortOrder), asc(crewDoctorVisits.createdAt));
 
     if (visits.length === 0) return [];
 

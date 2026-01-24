@@ -43,7 +43,7 @@ export class CrewDocumentsRepository {
           eq(crewDocuments.isDeleted, false)
         )
       )
-      .orderBy(asc(crewDocuments.createdAt));
+      .orderBy(asc(crewDocuments.sortOrder), asc(crewDocuments.createdAt));
 
     if (docs.length === 0) return [];
 

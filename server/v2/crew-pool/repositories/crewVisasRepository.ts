@@ -38,7 +38,7 @@ export class CrewVisasRepository {
       .where(
         and(eq(crewVisas.crewUuid, crewUuid), eq(crewVisas.isDeleted, false))
       )
-      .orderBy(asc(crewVisas.createdAt));
+      .orderBy(asc(crewVisas.sortOrder), asc(crewVisas.createdAt));
 
     if (visas.length === 0) return [];
 

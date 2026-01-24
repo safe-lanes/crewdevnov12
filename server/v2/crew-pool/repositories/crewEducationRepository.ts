@@ -43,7 +43,7 @@ export class CrewEducationRepository {
           eq(crewEducation.isDeleted, false)
         )
       )
-      .orderBy(asc(crewEducation.createdAt));
+      .orderBy(asc(crewEducation.sortOrder), asc(crewEducation.createdAt));
 
     if (eduRecords.length === 0) return [];
 

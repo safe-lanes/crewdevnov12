@@ -60,7 +60,7 @@ export class CrewSeaServiceRepository {
           eq(crewSeaService.isDeleted, false)
         )
       )
-      .orderBy(asc(crewSeaService.createdAt));
+      .orderBy(asc(crewSeaService.sortOrder), asc(crewSeaService.createdAt));
 
     if (services.length === 0) return [];
 

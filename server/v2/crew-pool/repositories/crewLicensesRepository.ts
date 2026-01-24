@@ -1,4 +1,4 @@
-import { eq, and, inArray, isNull } from "drizzle-orm";
+import { eq, and, inArray, isNull, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   crewLicenses,
@@ -56,7 +56,8 @@ export class CrewLicensesRepository {
           eq(crewLicenses.crewUuid, crewUuid),
           eq(crewLicenses.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(crewLicenses.sortOrder), asc(crewLicenses.createdAt));
 
     if (licenses.length === 0) return [];
 
