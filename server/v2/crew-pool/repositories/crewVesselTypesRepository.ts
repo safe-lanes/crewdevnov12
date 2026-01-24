@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewVesselTypesApplied } from "../../../../shared/v2/crew-pool/schema";
 import type {
@@ -8,17 +8,20 @@ import type {
 import { v4 as uuidv4 } from "uuid";
 
 export class CrewVesselTypesRepository {
-  async findByCrewUuid(crewUuid: string): Promise<CrewVesselTypesApplied[]> {
+  async findByCrewUuid(crewUuid: string): Promise<(CrewVesselTypesApplied & { resolvedVesselTypeName?: string })[]> {
     const db = getDb();
-    return db
-      .select()
-      .from(crewVesselTypesApplied)
-      .where(
-        and(
-          eq(crewVesselTypesApplied.crewUuid, crewUuid),
-          eq(crewVesselTypesApplied.isDeleted, false)
-        )
-      );
+    // JOIN with master_vessel_types to resolve UUID to name
+    const results = await db.execute(sql`
+      SELECT 
+        cvta.*,
+        mvt."vesselType" as "resolvedVesselTypeName"
+      FROM crew_vessel_types_applied cvta
+      LEFT JOIN master_vessel_types mvt ON cvta.vessel_type_uuid = mvt.vtuid
+      WHERE cvta.crew_uuid = ${crewUuid}
+        AND cvta.is_deleted = false
+      ORDER BY cvta.sort_order ASC
+    `);
+    return results.rows as (CrewVesselTypesApplied & { resolvedVesselTypeName?: string })[];
   }
 
   async create(

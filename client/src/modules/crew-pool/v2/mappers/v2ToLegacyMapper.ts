@@ -809,6 +809,7 @@ export function mapV2FullProfileToLegacy(v2Profile: any): any {
       .map(mapV2SeaServiceToLegacy),
     preJoiningMedicals: (v2Profile.medicals || []).map(mapV2PreJoiningMedicalToLegacy),
     doctorVisits: (v2Profile.doctorVisits || []).map(mapV2DoctorVisitToLegacy),
-    vesselTypesApplied: (v2Profile.vesselTypes || []).map((vt: any) => vt.vesselTypeUuid),
+    // Use resolved vessel type name if available, otherwise fall back to UUID
+    vesselTypesApplied: (v2Profile.vesselTypes || []).map((vt: any) => vt.resolvedVesselTypeName || vt.vesselTypeUuid),
   };
 }
