@@ -106,18 +106,20 @@ export const crewSeaServiceController = {
   async addAttachment(req: Request, res: Response) {
     try {
       const { seaUuid } = req.params;
-      const { fileName, filePath, fileType, fileSize } = req.body;
+      const { fileName, filePath, fileUrl, fileType, mimeType, fileSize } = req.body;
+      const resolvedFilePath = filePath || fileUrl || '';
+      const resolvedFileType = fileType || mimeType || "application/octet-stream";
 
-      if (!fileName || !filePath) {
+      if (!fileName || !resolvedFilePath) {
         return res
           .status(400)
-          .json({ error: "fileName and filePath are required" });
+          .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
       const attachment = await crewSeaServiceService.addAttachment(seaUuid, {
         fileName,
-        filePath,
-        fileType: fileType || "application/octet-stream",
+        filePath: resolvedFilePath,
+        fileType: resolvedFileType,
         fileSize: fileSize || "0",
       });
       res.status(201).json(attachment);

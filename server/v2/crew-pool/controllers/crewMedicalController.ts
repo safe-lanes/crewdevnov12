@@ -91,20 +91,22 @@ export const crewMedicalController = {
   async addMedicalAttachment(req: Request, res: Response) {
     try {
       const { medUuid } = req.params;
-      const { fileName, filePath, fileType, fileSize } = req.body;
+      const { fileName, filePath, fileUrl, fileType, mimeType, fileSize } = req.body;
+      const resolvedFilePath = filePath || fileUrl || '';
+      const resolvedFileType = fileType || mimeType || "application/octet-stream";
 
-      if (!fileName || !filePath) {
+      if (!fileName || !resolvedFilePath) {
         return res
           .status(400)
-          .json({ error: "fileName and filePath are required" });
+          .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
       const attachment = await crewMedicalService.addMedicalAttachment(
         medUuid,
         {
           fileName,
-          filePath,
-          fileType: fileType || "application/octet-stream",
+          filePath: resolvedFilePath,
+          fileType: resolvedFileType,
           fileSize: fileSize || "0",
         }
       );
@@ -195,20 +197,22 @@ export const crewMedicalController = {
   async addDoctorVisitAttachment(req: Request, res: Response) {
     try {
       const { visitUuid } = req.params;
-      const { fileName, filePath, fileType, fileSize } = req.body;
+      const { fileName, filePath, fileUrl, fileType, mimeType, fileSize } = req.body;
+      const resolvedFilePath = filePath || fileUrl || '';
+      const resolvedFileType = fileType || mimeType || "application/octet-stream";
 
-      if (!fileName || !filePath) {
+      if (!fileName || !resolvedFilePath) {
         return res
           .status(400)
-          .json({ error: "fileName and filePath are required" });
+          .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
       const attachment = await crewMedicalService.addVisitAttachment(
         visitUuid,
         {
           fileName,
-          filePath,
-          fileType: fileType || "application/octet-stream",
+          filePath: resolvedFilePath,
+          fileType: resolvedFileType,
           fileSize: fileSize || "0",
         }
       );

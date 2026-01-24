@@ -91,20 +91,22 @@ export const crewLicensesController = {
   async addAttachment(req: Request, res: Response) {
     try {
       const { licUuid } = req.params;
-      const { fileName, filePath, fileType, fileSize } = req.body;
+      const { fileName, filePath, fileUrl, fileType, mimeType, fileSize } = req.body;
+      const resolvedFilePath = filePath || fileUrl || '';
+      const resolvedFileType = fileType || mimeType || "application/octet-stream";
 
-      if (!fileName || !filePath) {
+      if (!fileName || !resolvedFilePath) {
         return res
           .status(400)
-          .json({ error: "fileName and filePath are required" });
+          .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
       const attachment = await crewCertificatesService.addLicenseAttachment(
         licUuid,
         {
           fileName,
-          filePath,
-          fileType: fileType || "application/octet-stream",
+          filePath: resolvedFilePath,
+          fileType: resolvedFileType,
           fileSize: fileSize || "0",
         }
       );
