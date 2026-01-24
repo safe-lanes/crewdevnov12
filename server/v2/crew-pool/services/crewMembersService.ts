@@ -14,6 +14,18 @@ import {
   crewDocumentsAttachments,
   crewVisas,
   crewVisasAttachments,
+  crewEducation,
+  crewEducationAttachments,
+  crewLicenses,
+  crewLicensesAttachments,
+  crewTrainingCourses,
+  crewTrainingAttachments,
+  crewSeaService,
+  crewSeaServiceAttachments,
+  crewPreJoiningMedicals,
+  crewMedicalAttachments,
+  crewDoctorVisits,
+  crewDoctorVisitsAttachments,
 } from "../../../../shared/v2/crew-pool/schema";
 import type {
   InsertCrewMemberV2,
@@ -49,6 +61,12 @@ interface CrewFullProfile {
   nextOfKin: CrewNextOfKin | null;
   documents: any[];
   visas: any[];
+  education: any[];
+  licenses: any[];
+  trainingCourses: any[];
+  seaService: any[];
+  medicals: any[];
+  doctorVisits: any[];
 }
 
 export const crewMembersService = {
@@ -502,7 +520,7 @@ export const crewMembersService = {
 
     if (!crew) return null;
 
-    const [personalDetails, address, familyInfo, children, nextOfKin, documents, visas] =
+    const [personalDetails, address, familyInfo, children, nextOfKin, documents, visas, education, licenses, trainingCourses, seaService, medicals, doctorVisits] =
       await Promise.all([
         db
           .select()
@@ -573,6 +591,66 @@ export const crewMembersService = {
               eq(crewVisas.isDeleted, false)
             )
           ),
+        // Education
+        db
+          .select()
+          .from(crewEducation)
+          .where(
+            and(
+              eq(crewEducation.crewUuid, crewUuid),
+              eq(crewEducation.isDeleted, false)
+            )
+          ),
+        // Licenses
+        db
+          .select()
+          .from(crewLicenses)
+          .where(
+            and(
+              eq(crewLicenses.crewUuid, crewUuid),
+              eq(crewLicenses.isDeleted, false)
+            )
+          ),
+        // Training Courses
+        db
+          .select()
+          .from(crewTrainingCourses)
+          .where(
+            and(
+              eq(crewTrainingCourses.crewUuid, crewUuid),
+              eq(crewTrainingCourses.isDeleted, false)
+            )
+          ),
+        // Sea Service
+        db
+          .select()
+          .from(crewSeaService)
+          .where(
+            and(
+              eq(crewSeaService.crewUuid, crewUuid),
+              eq(crewSeaService.isDeleted, false)
+            )
+          ),
+        // Pre-Joining Medicals
+        db
+          .select()
+          .from(crewPreJoiningMedicals)
+          .where(
+            and(
+              eq(crewPreJoiningMedicals.crewUuid, crewUuid),
+              eq(crewPreJoiningMedicals.isDeleted, false)
+            )
+          ),
+        // Doctor Visits
+        db
+          .select()
+          .from(crewDoctorVisits)
+          .where(
+            and(
+              eq(crewDoctorVisits.crewUuid, crewUuid),
+              eq(crewDoctorVisits.isDeleted, false)
+            )
+          ),
       ]);
 
     // Get attachments for documents
@@ -597,6 +675,72 @@ export const crewMembersService = {
         )
       : [];
 
+    // Get attachments for education
+    const eduUuids = education.map((e: any) => e.eduUuid);
+    const educationAttachments = eduUuids.length > 0
+      ? await db.select().from(crewEducationAttachments).where(
+          and(
+            sql`${crewEducationAttachments.eduUuid} = ANY(ARRAY[${sql.raw(eduUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+            eq(crewEducationAttachments.isDeleted, false)
+          )
+        )
+      : [];
+
+    // Get attachments for licenses
+    const licUuids = licenses.map((l: any) => l.licUuid);
+    const licenseAttachments = licUuids.length > 0
+      ? await db.select().from(crewLicensesAttachments).where(
+          and(
+            sql`${crewLicensesAttachments.licUuid} = ANY(ARRAY[${sql.raw(licUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+            eq(crewLicensesAttachments.isDeleted, false)
+          )
+        )
+      : [];
+
+    // Get attachments for training courses
+    const trainUuids = trainingCourses.map((t: any) => t.trainUuid);
+    const trainingAttachments = trainUuids.length > 0
+      ? await db.select().from(crewTrainingAttachments).where(
+          and(
+            sql`${crewTrainingAttachments.trainUuid} = ANY(ARRAY[${sql.raw(trainUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+            eq(crewTrainingAttachments.isDeleted, false)
+          )
+        )
+      : [];
+
+    // Get attachments for sea service
+    const seaUuids = seaService.map((s: any) => s.seaUuid);
+    const seaServiceAttachments = seaUuids.length > 0
+      ? await db.select().from(crewSeaServiceAttachments).where(
+          and(
+            sql`${crewSeaServiceAttachments.seaUuid} = ANY(ARRAY[${sql.raw(seaUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+            eq(crewSeaServiceAttachments.isDeleted, false)
+          )
+        )
+      : [];
+
+    // Get attachments for medicals
+    const medUuids = medicals.map((m: any) => m.medUuid);
+    const medicalAttachments = medUuids.length > 0
+      ? await db.select().from(crewMedicalAttachments).where(
+          and(
+            sql`${crewMedicalAttachments.medUuid} = ANY(ARRAY[${sql.raw(medUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+            eq(crewMedicalAttachments.isDeleted, false)
+          )
+        )
+      : [];
+
+    // Get attachments for doctor visits
+    const visitUuids = doctorVisits.map((d: any) => d.visitUuid);
+    const doctorVisitAttachments = visitUuids.length > 0
+      ? await db.select().from(crewDoctorVisitsAttachments).where(
+          and(
+            sql`${crewDoctorVisitsAttachments.visitUuid} = ANY(ARRAY[${sql.raw(visitUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+            eq(crewDoctorVisitsAttachments.isDeleted, false)
+          )
+        )
+      : [];
+
     // Map attachments to documents
     const documentsWithAttachments = documents.map((doc: any) => ({
       ...doc,
@@ -609,6 +753,42 @@ export const crewMembersService = {
       attachments: visaAttachments.filter((att: any) => att.visaUuid === visa.visaUuid)
     }));
 
+    // Map attachments to education
+    const educationWithAttachments = education.map((edu: any) => ({
+      ...edu,
+      attachments: educationAttachments.filter((att: any) => att.eduUuid === edu.eduUuid)
+    }));
+
+    // Map attachments to licenses
+    const licensesWithAttachments = licenses.map((lic: any) => ({
+      ...lic,
+      attachments: licenseAttachments.filter((att: any) => att.licUuid === lic.licUuid)
+    }));
+
+    // Map attachments to training courses
+    const trainingWithAttachments = trainingCourses.map((train: any) => ({
+      ...train,
+      attachments: trainingAttachments.filter((att: any) => att.trainUuid === train.trainUuid)
+    }));
+
+    // Map attachments to sea service
+    const seaServiceWithAttachments = seaService.map((sea: any) => ({
+      ...sea,
+      attachments: seaServiceAttachments.filter((att: any) => att.seaUuid === sea.seaUuid)
+    }));
+
+    // Map attachments to medicals
+    const medicalsWithAttachments = medicals.map((med: any) => ({
+      ...med,
+      attachments: medicalAttachments.filter((att: any) => att.medUuid === med.medUuid)
+    }));
+
+    // Map attachments to doctor visits
+    const doctorVisitsWithAttachments = doctorVisits.map((visit: any) => ({
+      ...visit,
+      attachments: doctorVisitAttachments.filter((att: any) => att.visitUuid === visit.visitUuid)
+    }));
+
     return {
       crew,
       personalDetails: personalDetails[0] || null,
@@ -618,6 +798,12 @@ export const crewMembersService = {
       nextOfKin: nextOfKin[0] || null,
       documents: documentsWithAttachments,
       visas: visasWithAttachments,
+      education: educationWithAttachments,
+      licenses: licensesWithAttachments,
+      trainingCourses: trainingWithAttachments,
+      seaService: seaServiceWithAttachments,
+      medicals: medicalsWithAttachments,
+      doctorVisits: doctorVisitsWithAttachments,
     };
   },
 };
