@@ -800,8 +800,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // Update form data when detailed crew data loads from API
+  // V2: Check both crewUuid and id for compatibility
   useEffect(() => {
-    if (detailedCrewData && crewMember?.id) {
+    if (detailedCrewData && (crewMember?.crewUuid || crewMember?.id)) {
       setFormData(prev => ({
         ...prev,
         // A1.1 General Particulars
@@ -934,14 +935,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Also load the uploaded photo from crew data (or reset if no photo)
       setUploadedPhoto(detailedCrewData.uploadedPhoto || null);
     }
-  }, [detailedCrewData, crewMember?.id]);
+  }, [detailedCrewData, crewMember?.crewUuid, crewMember?.id]);
   
   // Reset photo when crew member changes or form closes
+  // V2: Check both crewUuid and id
   useEffect(() => {
-    if (!isOpen || !crewMember?.id) {
+    if (!isOpen || !(crewMember?.crewUuid || crewMember?.id)) {
       setUploadedPhoto(null);
     }
-  }, [isOpen, crewMember?.id]);
+  }, [isOpen, crewMember?.crewUuid, crewMember?.id]);
 
   // Reset createdCrewId when:
   // 1. Dialog opens for a NEW crew member (crewMember is null/undefined at open)
