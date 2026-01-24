@@ -84,7 +84,9 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember> & { dateOfBi
     gender: legacy.gender || undefined,
     dob: legacy.dob || legacy.dateOfBirth || undefined,
     nationalityUuid: legacy.nationality || undefined,
-    vesselTypeUuid: legacy.vesselType || undefined,
+    // Note: vesselType from form is an array for vessel types applied (stored in crew_vessel_types_applied table)
+    // Only set vesselTypeUuid if it's a single string, not an array
+    vesselTypeUuid: (typeof legacy.vesselType === 'string' && legacy.vesselType) ? legacy.vesselType : undefined,
     presentRank: legacy.presentRank || undefined,
     rankAppliedFor: legacy.rankAppliedFor || undefined,
     status: legacy.status || 'active',
