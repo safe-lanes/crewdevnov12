@@ -4899,7 +4899,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   addDocumentAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     docUuid: savedDocUuid,
-                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
                   })
                 ));
               }
@@ -4955,7 +4955,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   addVisaAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     visaUuid: savedVisaUuid,
-                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
                   })
                 ));
               }
@@ -5011,7 +5011,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   addEducationAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     eduUuid: savedEduUuid,
-                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
                   })
                 ));
               }
@@ -5073,7 +5073,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   addLicenseAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     licUuid: savedLicUuid,
-                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
                   })
                 ));
               }
@@ -5134,7 +5134,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   addTrainingAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     trainUuid: savedTrainUuid,
-                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
                   })
                 ));
               }
@@ -5199,7 +5199,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   addSeaServiceAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     seaUuid: savedSeaUuid,
-                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
                   })
                 ));
               }
@@ -5264,7 +5264,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   addSeaServiceAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     seaUuid: savedSeaUuid,
-                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
                   })
                 ));
               }
@@ -5326,7 +5326,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   addMedicalAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     medUuid: savedMedUuid,
-                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
                   })
                 ));
               }
@@ -5388,7 +5388,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   addDoctorVisitAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     visitUuid: savedVisitUuid,
-                    data: { fileName: att.fileName, fileUrl: att.fileUrl, fileSize: att.fileSize, mimeType: att.mimeType }
+                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
                   })
                 ));
               }

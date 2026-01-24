@@ -313,12 +313,13 @@ export function mapV2DocumentToLegacy(v2: any): any {
     issuingAuthority: v2?.issuingAuthority || '',
     issuingCountry: v2?.issuingCountryUuid || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
-      fileName: att.fileName || '',
-      fileType: att.fileType || '',
-      fileSize: att.fileSize || '',
-      filePath: att.filePath || '',
-      fileData: att.fileData,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
     })),
   };
 }
@@ -367,12 +368,13 @@ export function mapV2VisaToLegacy(v2: any): any {
     expiry: v2?.expiry || v2?.expiryDate || '',
     visaType: v2?.visaType || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
-      fileName: att.fileName || '',
-      fileType: att.fileType || '',
-      fileSize: att.fileSize || '',
-      filePath: att.filePath || '',
-      fileData: att.fileData,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
     })),
   };
 }
@@ -416,12 +418,13 @@ export function mapV2EducationToLegacy(v2: any): LegacyEducation {
     subjectsField: v2?.subjectsField || '',
     qualifications: v2?.qualifications || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
-      fileName: att.fileName || '',
-      fileType: att.fileType || '',
-      fileSize: att.fileSize || '',
-      filePath: att.filePath || '',
-      fileData: att.fileData,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
     })),
   };
 }
@@ -476,12 +479,13 @@ export function mapV2LicenseToLegacy(v2: any): LegacyLicense {
     expiry: v2?.expiry || '',
     archivedAt: v2?.archivedAt || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
-      fileName: att.fileName || '',
-      fileType: att.fileType || '',
-      fileSize: att.fileSize || '',
-      filePath: att.filePath || '',
-      fileData: att.fileData,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
     })),
   };
 }
@@ -540,12 +544,13 @@ export function mapV2TrainingCourseToLegacy(v2: any): LegacyTrainingCourse {
     issued: v2?.issued || '',
     expiry: v2?.expiry || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
-      fileName: att.fileName || '',
-      fileType: att.fileType || '',
-      fileSize: att.fileSize || '',
-      filePath: att.filePath || '',
-      fileData: att.fileData,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
     })),
   };
 }
@@ -612,12 +617,13 @@ export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
     periodMonths: v2?.periodMonths?.toString() || '',
     experienceCategories: v2?.experienceCategories || [],
     attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
-      fileName: att.fileName || '',
-      fileType: att.fileType || '',
-      fileSize: att.fileSize || '',
-      filePath: att.filePath || '',
-      fileData: att.fileData,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
     })),
   };
 }
@@ -672,12 +678,13 @@ export function mapV2PreJoiningMedicalToLegacy(v2: any): LegacyPreJoiningMedical
     expiryDate: v2?.expiryDate || '',
     expiry: v2?.expiryDate || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
-      fileName: att.fileName || '',
-      fileType: att.fileType || '',
-      fileSize: att.fileSize || '',
-      filePath: att.filePath || '',
-      fileData: att.fileData,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
     })),
   };
 }
@@ -729,12 +736,13 @@ export function mapV2DoctorVisitToLegacy(v2: any): LegacyDoctorVisit {
     treatment: v2?.treatment || '',
     followUpDate: v2?.followUpDate || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
-      fileName: att.fileName || '',
-      fileType: att.fileType || '',
-      fileSize: att.fileSize || '',
-      filePath: att.filePath || '',
-      fileData: att.fileData,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
     })),
   };
 }
