@@ -8,3 +8,4 @@ export { crewCertificatesService } from "./crewCertificatesService";
 export { crewSeaServiceService } from "./crewSeaServiceService";
 export { crewMedicalService } from "./crewMedicalService";
 export { crewTransferService } from "./crewTransferService";
+export { dashboardService } from "./dashboardService";

@@ -11,3 +11,4 @@ export { crewTrainingController } from "./crewTrainingController";
 export { crewSeaServiceController } from "./crewSeaServiceController";
 export { crewMedicalController } from "./crewMedicalController";
 export { crewTransferController } from "./crewTransferController";
+export { dashboardController } from "./dashboardController";

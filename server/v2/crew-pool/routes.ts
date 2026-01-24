@@ -13,6 +13,7 @@ import {
   crewSeaServiceController,
   crewMedicalController,
   crewTransferController,
+  dashboardController,
 } from "./controllers";
 
 const router = Router();
@@ -26,6 +27,7 @@ router.post("/crew", crewMembersController.create);
 router.post("/crew/with-data", crewMembersController.createWithRelatedData);
 router.get("/crew/:crewUuid", crewMembersController.getByUuid);
 router.get("/crew/:crewUuid/profile", crewMembersController.getFullProfile);
+router.get("/crew/:crewUuid/dashboard", dashboardController.getDashboardSummary);
 router.patch("/crew/:crewUuid", crewMembersController.update);
 router.patch("/crew/:crewUuid/protected", crewMembersController.updateWithProtection);
 router.delete("/crew/:crewUuid", crewMembersController.delete);
