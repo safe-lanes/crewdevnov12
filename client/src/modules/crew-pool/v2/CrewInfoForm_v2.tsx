@@ -50,7 +50,10 @@ import {
   useSaveNextOfKinV2,
   useDeleteChildV2,
   useSaveDocumentV2,
-  useSaveVisaV2
+  useSaveVisaV2,
+  useSaveEducationV2,
+  useSaveLicenseV2,
+  useSaveTrainingCourseV2
 } from './hooks/useCrewPoolV2';
 
 interface CrewMember {
@@ -4870,6 +4873,83 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           });
         });
       }
+      
+      // Education (Part D - D1)
+      if (formData.education && formData.education.length > 0) {
+        console.log('V2 Saving Education:', { crewUuid: crewIdentifier, count: formData.education.length });
+        formData.education.forEach((edu: any) => {
+          const eduData = {
+            id: edu.id,
+            eduUuid: edu.eduUuid,
+            dateOfCompletion: edu.dateOfCompletion || '',
+            schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
+            subjectsField: edu.subjectsField || '',
+            qualifications: edu.qualifications || '',
+            attachments: edu.attachments || [],
+          };
+          console.log('V2 Saving Education record:', eduData);
+          saveEducationMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: eduData, 
+            eduUuid: edu.eduUuid 
+          });
+        });
+      }
+      
+      // Licenses (Part D - D2)
+      if (formData.licenses && formData.licenses.length > 0) {
+        console.log('V2 Saving Licenses:', { crewUuid: crewIdentifier, count: formData.licenses.length });
+        formData.licenses.forEach((lic: any) => {
+          const licData = {
+            id: lic.id,
+            licUuid: lic.licUuid,
+            licenseId: lic.licenseId || '',
+            certificateDocument: lic.certificateDocument || '',
+            abbr: lic.abbr || '',
+            requirement: lic.requirement || '',
+            certificateNo: lic.certificateNo || '',
+            issuingAuthority: lic.issuingAuthority || '',
+            issuingCountry: lic.issuingCountry || '',
+            issued: lic.issued || '',
+            expiry: lic.expiry || '',
+            archivedAt: lic.archivedAt || '',
+            attachments: lic.attachments || [],
+          };
+          console.log('V2 Saving License record:', licData);
+          saveLicenseMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: licData, 
+            licUuid: lic.licUuid 
+          });
+        });
+      }
+      
+      // Training Courses (Part D - D3)
+      if (formData.trainingCourses && formData.trainingCourses.length > 0) {
+        console.log('V2 Saving Training Courses:', { crewUuid: crewIdentifier, count: formData.trainingCourses.length });
+        formData.trainingCourses.forEach((train: any) => {
+          const trainData = {
+            id: train.id,
+            trainUuid: train.trainUuid,
+            courseId: train.courseId || '',
+            trainingCourse: train.trainingCourse || '',
+            abbr: train.abbr || '',
+            requirement: train.requirement || '',
+            certificateNo: train.certificateNo || '',
+            issuingAuthority: train.issuingAuthority || '',
+            issuingCountry: train.issuingCountry || '',
+            issued: train.issued || '',
+            expiry: train.expiry || '',
+            attachments: train.attachments || [],
+          };
+          console.log('V2 Saving Training Course record:', trainData);
+          saveTrainingCourseMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: trainData, 
+            trainUuid: train.trainUuid 
+          });
+        });
+      }
     } else {
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
@@ -5142,6 +5222,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const deleteChildMutationV2 = useDeleteChildV2();
   const saveDocumentMutationV2 = useSaveDocumentV2();
   const saveVisaMutationV2 = useSaveVisaV2();
+  const saveEducationMutationV2 = useSaveEducationV2();
+  const saveLicenseMutationV2 = useSaveLicenseV2();
+  const saveTrainingCourseMutationV2 = useSaveTrainingCourseV2();
   
   // Wrapper for create mutation with UI feedback
   const createCrewMutation = {
