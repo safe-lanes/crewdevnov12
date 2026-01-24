@@ -360,9 +360,9 @@ export function mapV2VisaToLegacy(v2: any): any {
   return {
     visaUuid: v2?.visaUuid,
     id: v2?.visaUuid || `VIS-${Date.now()}`,
-    country: v2?.countryName || v2?.countryUuid || '',
+    country: v2?.country || '',
     countryId: v2?.countryUuid || '',
-    issuingCountry: v2?.countryName || v2?.countryUuid || '',
+    issuingCountry: v2?.country || '',
     serialNo: v2?.serialNo || '',
     serialNumber: v2?.serialNo || '',
     issued: v2?.issued || v2?.issuedDate || '',
@@ -383,7 +383,7 @@ export function mapV2VisaToLegacy(v2: any): any {
 export function mapLegacyVisaToV2(legacy: any): any {
   return {
     visaUuid: legacy.visaUuid,
-    countryUuid: legacy.country || legacy.countryId || undefined,
+    country: legacy.country || legacy.issuingCountry || undefined,
     serialNo: legacy.serialNo || legacy.serialNumber || undefined,
     issued: legacy.issuedDate || legacy.issued || undefined,
     expiry: legacy.expiryDate || legacy.expiry || undefined,

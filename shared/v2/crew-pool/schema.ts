@@ -181,6 +181,7 @@ export const crewVisas = pgTable("crew_visas", {
   visaUuid: text("visa_uuid").notNull().unique(),
   crewUuid: text("crew_uuid").notNull(),
   countryUuid: text("country_uuid"),
+  country: text("country"),
   serialNo: text("serial_no"),
   issued: text("issued"),
   expiry: text("expiry"),
