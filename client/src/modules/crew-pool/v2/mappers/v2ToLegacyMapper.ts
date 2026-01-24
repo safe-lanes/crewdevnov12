@@ -44,7 +44,7 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     id: v2Crew.id?.toString() || v2Crew.crewUuid,
     crewUuid: v2Crew.crewUuid,
     empNo: v2Crew.empNo || '',
-    employeeId: v2Crew.employeeId || '',
+    employeeId: v2Crew.empNo || v2Crew.employeeId || '',
     firstName: v2Crew.firstName || '',
     middleName: v2Crew.middleName || '',
     familyName: v2Crew.familyName || '',
@@ -811,5 +811,7 @@ export function mapV2FullProfileToLegacy(v2Profile: any): any {
     doctorVisits: (v2Profile.doctorVisits || []).map(mapV2DoctorVisitToLegacy),
     // Use resolved vessel type name if available, otherwise fall back to UUID
     vesselTypesApplied: (v2Profile.vesselTypes || []).map((vt: any) => vt.resolvedVesselTypeName || vt.vesselTypeUuid),
+    // Also include as vesselTypes for form binding compatibility
+    vesselTypes: (v2Profile.vesselTypes || []).map((vt: any) => vt.resolvedVesselTypeName || vt.vesselTypeUuid),
   };
 }
