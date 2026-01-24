@@ -4721,9 +4721,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     // Include the uploaded photo in the data to be saved
     const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
     
-    if (crewMember && crewMember.id) {
-      // Update existing crew member
-      updateCrewMutation.mutate({ id: crewMember.id, data: dataWithPhoto });
+    // V2: Use crewUuid as primary identifier for updates
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    if (crewMember && crewIdentifier) {
+      // Update existing crew member using crewUuid
+      updateCrewMutation.mutate({ id: crewIdentifier, data: dataWithPhoto });
     } else {
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
