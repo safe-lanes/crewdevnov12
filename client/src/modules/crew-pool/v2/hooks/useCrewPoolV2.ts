@@ -271,7 +271,7 @@ export function useSaveDocumentV2() {
       crewUuid: string; 
       data: any; 
       docUuid?: string;
-      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
       const v2Data = mapLegacyDocumentToV2(data);
       let result: any;
@@ -340,7 +340,7 @@ export function useSaveVisaV2() {
       crewUuid: string; 
       data: any; 
       visaUuid?: string;
-      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
       const v2Data = mapLegacyVisaToV2(data);
       let result: any;
@@ -409,7 +409,7 @@ export function useSaveEducationV2() {
       crewUuid: string; 
       data: LegacyEducation; 
       eduUuid?: string;
-      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
       const v2Data = mapLegacyEducationToV2(data);
       let result: any;
@@ -427,11 +427,11 @@ export function useSaveEducationV2() {
       if (attachments && entityUuid) {
         const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
         for (const att of newAttachments) {
-          if (att.fileName && (att.filePath || att.fileData)) {
+          if (att.fileName && (att.filePath || att.fileData || att.fileUrl)) {
             await crewPoolApiV2.addEducationAttachment(crewUuid, entityUuid, {
               fileName: att.fileName,
               filePath: att.filePath,
-              fileData: att.fileData,
+              fileUrl: att.fileData || att.fileUrl,
             });
           }
         }
@@ -478,7 +478,7 @@ export function useSaveLicenseV2() {
       crewUuid: string; 
       data: LegacyLicense; 
       licUuid?: string;
-      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
       const v2Data = mapLegacyLicenseToV2(data);
       let result: any;
@@ -496,11 +496,11 @@ export function useSaveLicenseV2() {
       if (attachments && entityUuid) {
         const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
         for (const att of newAttachments) {
-          if (att.fileName && (att.filePath || att.fileData)) {
+          if (att.fileName && (att.filePath || att.fileData || att.fileUrl)) {
             await crewPoolApiV2.addLicenseAttachment(crewUuid, entityUuid, {
               fileName: att.fileName,
               filePath: att.filePath,
-              fileData: att.fileData,
+              fileUrl: att.fileData || att.fileUrl,
             });
           }
         }
@@ -560,7 +560,7 @@ export function useSaveTrainingCourseV2() {
       crewUuid: string; 
       data: LegacyTrainingCourse; 
       trainUuid?: string;
-      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
       const v2Data = mapLegacyTrainingCourseToV2(data);
       let result: any;
@@ -578,11 +578,11 @@ export function useSaveTrainingCourseV2() {
       if (attachments && entityUuid) {
         const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
         for (const att of newAttachments) {
-          if (att.fileName && (att.filePath || att.fileData)) {
+          if (att.fileName && (att.filePath || att.fileData || att.fileUrl)) {
             await crewPoolApiV2.addTrainingAttachment(crewUuid, entityUuid, {
               fileName: att.fileName,
               filePath: att.filePath,
-              fileData: att.fileData,
+              fileUrl: att.fileData || att.fileUrl,
             });
           }
         }
@@ -629,7 +629,7 @@ export function useSaveSeaServiceV2() {
       crewUuid: string; 
       data: LegacySeaService; 
       seaUuid?: string;
-      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
       const v2Data = mapLegacySeaServiceToV2(data);
       let result: any;
@@ -647,11 +647,11 @@ export function useSaveSeaServiceV2() {
       if (attachments && entityUuid) {
         const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
         for (const att of newAttachments) {
-          if (att.fileName && (att.filePath || att.fileData)) {
+          if (att.fileName && (att.filePath || att.fileData || att.fileUrl)) {
             await crewPoolApiV2.addSeaServiceAttachment(crewUuid, entityUuid, {
               fileName: att.fileName,
               filePath: att.filePath,
-              fileData: att.fileData,
+              fileUrl: att.fileData || att.fileUrl,
             });
           }
         }
@@ -698,7 +698,7 @@ export function useSaveMedicalV2() {
       crewUuid: string; 
       data: LegacyPreJoiningMedical; 
       medUuid?: string;
-      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
       const v2Data = mapLegacyPreJoiningMedicalToV2(data);
       let result: any;
@@ -716,11 +716,11 @@ export function useSaveMedicalV2() {
       if (attachments && entityUuid) {
         const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
         for (const att of newAttachments) {
-          if (att.fileName && (att.filePath || att.fileData)) {
+          if (att.fileName && (att.filePath || att.fileData || att.fileUrl)) {
             await crewPoolApiV2.addMedicalAttachment(crewUuid, entityUuid, {
               fileName: att.fileName,
               filePath: att.filePath,
-              fileData: att.fileData,
+              fileUrl: att.fileData || att.fileUrl,
             });
           }
         }
@@ -767,7 +767,7 @@ export function useSaveDoctorVisitV2() {
       crewUuid: string; 
       data: LegacyDoctorVisit; 
       visitUuid?: string;
-      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string }>;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
       const v2Data = mapLegacyDoctorVisitToV2(data);
       let result: any;
@@ -785,11 +785,11 @@ export function useSaveDoctorVisitV2() {
       if (attachments && entityUuid) {
         const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
         for (const att of newAttachments) {
-          if (att.fileName && (att.filePath || att.fileData)) {
+          if (att.fileName && (att.filePath || att.fileData || att.fileUrl)) {
             await crewPoolApiV2.addDoctorVisitAttachment(crewUuid, entityUuid, {
               fileName: att.fileName,
               filePath: att.filePath,
-              fileData: att.fileData,
+              fileUrl: att.fileData || att.fileUrl,
             });
           }
         }
