@@ -398,20 +398,22 @@ export function mapLegacyVisaToV2(legacy: any): any {
 }
 
 export interface LegacyEducation {
+  id: string;
   eduUuid?: string;
   dateOfCompletion: string;
-  institution: string;
-  subjects: string;
+  schoolCollegeUniversity: string;
+  subjectsField: string;
   qualifications: string;
   attachments: LegacyAttachment[];
 }
 
 export function mapV2EducationToLegacy(v2: any): LegacyEducation {
   return {
+    id: v2?.eduUuid || `EDU-${Date.now()}`,
     eduUuid: v2?.eduUuid,
     dateOfCompletion: v2?.dateOfCompletion || '',
-    institution: v2?.institution || '',
-    subjects: v2?.subjectsField || '',
+    schoolCollegeUniversity: v2?.institution || '',
+    subjectsField: v2?.subjectsField || '',
     qualifications: v2?.qualifications || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
       attUuid: att.attUuid,
@@ -428,8 +430,8 @@ export function mapLegacyEducationToV2(legacy: LegacyEducation): any {
   return {
     eduUuid: legacy.eduUuid,
     dateOfCompletion: legacy.dateOfCompletion || undefined,
-    institution: legacy.institution || undefined,
-    subjectsField: legacy.subjects || undefined,
+    institution: legacy.schoolCollegeUniversity || undefined,
+    subjectsField: legacy.subjectsField || undefined,
     qualifications: legacy.qualifications || undefined,
     attachments: legacy.attachments
       .filter(att => att.isNew || att.isDeleted)
@@ -444,32 +446,34 @@ export function mapLegacyEducationToV2(legacy: LegacyEducation): any {
 }
 
 export interface LegacyLicense {
+  id: string;
   licUuid?: string;
   licenseId: string;
-  certificateName: string;
+  certificateDocument: string;
   abbr: string;
   requirement: string;
   certificateNo: string;
   issuingAuthority: string;
-  issuingCountry: string;
-  issuedDate: string;
-  expiryDate: string;
-  archivedAt: string;
+  issuingCountry?: string;
+  issued: string;
+  expiry: string;
+  archivedAt?: string;
   attachments: LegacyAttachment[];
 }
 
 export function mapV2LicenseToLegacy(v2: any): LegacyLicense {
   return {
+    id: v2?.licUuid || `LIC-${Date.now()}`,
     licUuid: v2?.licUuid,
     licenseId: v2?.licenseId || '',
-    certificateName: v2?.certificateDocument || '',
+    certificateDocument: v2?.certificateDocument || '',
     abbr: v2?.abbr || '',
     requirement: v2?.requirement || '',
     certificateNo: v2?.certificateNo || '',
     issuingAuthority: v2?.issuingAuthority || '',
     issuingCountry: v2?.issuingCountryUuid || '',
-    issuedDate: v2?.issued || '',
-    expiryDate: v2?.expiry || '',
+    issued: v2?.issued || '',
+    expiry: v2?.expiry || '',
     archivedAt: v2?.archivedAt || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
       attUuid: att.attUuid,
@@ -486,14 +490,14 @@ export function mapLegacyLicenseToV2(legacy: LegacyLicense): any {
   return {
     licUuid: legacy.licUuid,
     licenseId: legacy.licenseId || undefined,
-    certificateDocument: legacy.certificateName || undefined,
+    certificateDocument: legacy.certificateDocument || undefined,
     abbr: legacy.abbr || undefined,
     requirement: legacy.requirement || undefined,
     certificateNo: legacy.certificateNo || undefined,
     issuingAuthority: legacy.issuingAuthority || undefined,
     issuingCountryUuid: legacy.issuingCountry || undefined,
-    issued: legacy.issuedDate || undefined,
-    expiry: legacy.expiryDate || undefined,
+    issued: legacy.issued || undefined,
+    expiry: legacy.expiry || undefined,
     archivedAt: legacy.archivedAt || undefined,
     attachments: legacy.attachments
       .filter(att => att.isNew || att.isDeleted)
@@ -508,31 +512,33 @@ export function mapLegacyLicenseToV2(legacy: LegacyLicense): any {
 }
 
 export interface LegacyTrainingCourse {
+  id: string;
   trainUuid?: string;
-  courseId: string;
-  courseName: string;
+  courseId?: string;
+  trainingCourse: string;
   abbr: string;
   requirement: string;
   certificateNo: string;
   issuingAuthority: string;
-  issuingCountry: string;
-  issuedDate: string;
-  expiryDate: string;
+  issuingCountry?: string;
+  issued: string;
+  expiry: string;
   attachments: LegacyAttachment[];
 }
 
 export function mapV2TrainingCourseToLegacy(v2: any): LegacyTrainingCourse {
   return {
+    id: v2?.trainUuid || `TRN-${Date.now()}`,
     trainUuid: v2?.trainUuid,
     courseId: v2?.courseId || '',
-    courseName: v2?.trainingCourse || '',
+    trainingCourse: v2?.trainingCourse || '',
     abbr: v2?.abbr || '',
     requirement: v2?.requirement || '',
     certificateNo: v2?.certificateNo || '',
     issuingAuthority: v2?.issuingAuthority || '',
     issuingCountry: v2?.issuingCountryUuid || '',
-    issuedDate: v2?.issued || '',
-    expiryDate: v2?.expiry || '',
+    issued: v2?.issued || '',
+    expiry: v2?.expiry || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
       attUuid: att.attUuid,
       fileName: att.fileName || '',
@@ -548,14 +554,14 @@ export function mapLegacyTrainingCourseToV2(legacy: LegacyTrainingCourse): any {
   return {
     trainUuid: legacy.trainUuid,
     courseId: legacy.courseId || undefined,
-    trainingCourse: legacy.courseName || undefined,
+    trainingCourse: legacy.trainingCourse || undefined,
     abbr: legacy.abbr || undefined,
     requirement: legacy.requirement || undefined,
     certificateNo: legacy.certificateNo || undefined,
     issuingAuthority: legacy.issuingAuthority || undefined,
     issuingCountryUuid: legacy.issuingCountry || undefined,
-    issued: legacy.issuedDate || undefined,
-    expiry: legacy.expiryDate || undefined,
+    issued: legacy.issued || undefined,
+    expiry: legacy.expiry || undefined,
     attachments: legacy.attachments
       .filter(att => att.isNew || att.isDeleted)
       .map(att => ({
