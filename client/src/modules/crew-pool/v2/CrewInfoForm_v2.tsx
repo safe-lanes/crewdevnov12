@@ -5084,6 +5084,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const deletedAttachments = docAttachments.filter((att: any) => att.isDeleted && att.attUuid);
           const newAttachments = docAttachments.filter((att: any) => !att.attUuid || att.isNew);
           
+          console.log(`V2 Document[${index}] attachments:`, {
+            total: docAttachments.length,
+            deleted: deletedAttachments.length,
+            new: newAttachments.length,
+            newAttachmentDetails: newAttachments.map((a: any) => ({ name: a.name, hasData: !!a.data, isNew: a.isNew }))
+          });
+          
           const docData = {
             docUuid: doc.docUuid,
             documentId: doc.documentId || doc.document || '',
@@ -5097,6 +5104,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           console.log('V2 Saving Document:', docData);
           
+          // Capture closure variables
+          const capturedNewAttachments = [...newAttachments];
+          const capturedDeletedAttachments = [...deletedAttachments];
+          
           const saveDocPromise = saveDocumentMutationV2.mutateAsync({ 
             crewUuid: crewIdentifier, 
             data: docData, 
@@ -5106,10 +5117,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           allSavePromises.push(
             saveDocPromise.then(async (savedDoc: any) => {
               const savedDocUuid = savedDoc?.docUuid || doc.docUuid;
+              console.log(`V2 Document saved, UUID: ${savedDocUuid}, processing ${capturedNewAttachments.length} new attachments`);
               
               // Delete removed attachments
-              if (deletedAttachments.length > 0) {
-                await Promise.all(deletedAttachments.map((att: any) =>
+              if (capturedDeletedAttachments.length > 0) {
+                await Promise.all(capturedDeletedAttachments.map((att: any) =>
                   removeDocumentAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     docUuid: savedDocUuid,
@@ -5118,17 +5130,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 ));
               }
               
-              // Add new attachments
-              if (savedDocUuid && newAttachments.length > 0) {
-                await Promise.all(newAttachments.map((att: any) =>
-                  addDocumentAttachmentV2.mutateAsync({
-                    crewUuid: crewIdentifier,
-                    docUuid: savedDocUuid,
-                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-                  })
-                ));
+              // Add new attachments sequentially
+              if (savedDocUuid && capturedNewAttachments.length > 0) {
+                for (const att of capturedNewAttachments) {
+                  try {
+                    await addDocumentAttachmentV2.mutateAsync({
+                      crewUuid: crewIdentifier,
+                      docUuid: savedDocUuid,
+                      data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+                    });
+                    console.log(`V2 Added document attachment: ${att.name}`);
+                  } catch (error) {
+                    console.error(`V2 Failed to add document attachment: ${att.name}`, error);
+                  }
+                }
               }
               return savedDoc;
+            }).catch((error: any) => {
+              console.error(`V2 Failed to save document:`, error);
+              throw error;
             })
           );
         });
@@ -5142,6 +5162,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const deletedAttachments = visaAttachments.filter((att: any) => att.isDeleted && att.attUuid);
           const newAttachments = visaAttachments.filter((att: any) => !att.attUuid || att.isNew);
           
+          console.log(`V2 Visa[${index}] attachments:`, {
+            total: visaAttachments.length,
+            deleted: deletedAttachments.length,
+            new: newAttachments.length,
+            newAttachmentDetails: newAttachments.map((a: any) => ({ name: a.name, hasData: !!a.data, isNew: a.isNew }))
+          });
+          
           const visaData = {
             visaUuid: visa.visaUuid,
             country: visa.issuingCountry || visa.country || '',
@@ -5153,6 +5180,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           console.log('V2 Saving Visa:', visaData);
           
+          // Capture closure variables
+          const capturedNewAttachments = [...newAttachments];
+          const capturedDeletedAttachments = [...deletedAttachments];
+          
           const saveVisaPromise = saveVisaMutationV2.mutateAsync({ 
             crewUuid: crewIdentifier, 
             data: visaData, 
@@ -5162,10 +5193,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           allSavePromises.push(
             saveVisaPromise.then(async (savedVisa: any) => {
               const savedVisaUuid = savedVisa?.visaUuid || visa.visaUuid;
+              console.log(`V2 Visa saved, UUID: ${savedVisaUuid}, processing ${capturedNewAttachments.length} new attachments`);
               
               // Delete removed attachments
-              if (deletedAttachments.length > 0) {
-                await Promise.all(deletedAttachments.map((att: any) =>
+              if (capturedDeletedAttachments.length > 0) {
+                await Promise.all(capturedDeletedAttachments.map((att: any) =>
                   removeVisaAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     visaUuid: savedVisaUuid,
@@ -5174,17 +5206,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 ));
               }
               
-              // Add new attachments
-              if (savedVisaUuid && newAttachments.length > 0) {
-                await Promise.all(newAttachments.map((att: any) =>
-                  addVisaAttachmentV2.mutateAsync({
-                    crewUuid: crewIdentifier,
-                    visaUuid: savedVisaUuid,
-                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-                  })
-                ));
+              // Add new attachments sequentially
+              if (savedVisaUuid && capturedNewAttachments.length > 0) {
+                for (const att of capturedNewAttachments) {
+                  try {
+                    await addVisaAttachmentV2.mutateAsync({
+                      crewUuid: crewIdentifier,
+                      visaUuid: savedVisaUuid,
+                      data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+                    });
+                    console.log(`V2 Added visa attachment: ${att.name}`);
+                  } catch (error) {
+                    console.error(`V2 Failed to add visa attachment: ${att.name}`, error);
+                  }
+                }
               }
               return savedVisa;
+            }).catch((error: any) => {
+              console.error(`V2 Failed to save visa:`, error);
+              throw error;
             })
           );
         });
@@ -5198,6 +5238,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const deletedAttachments = eduAttachments.filter((att: any) => att.isDeleted && att.attUuid);
           const newAttachments = eduAttachments.filter((att: any) => !att.attUuid || att.isNew);
           
+          console.log(`V2 Education[${index}] attachments:`, {
+            total: eduAttachments.length,
+            deleted: deletedAttachments.length,
+            new: newAttachments.length,
+            newAttachmentDetails: newAttachments.map((a: any) => ({ name: a.name, hasData: !!a.data, isNew: a.isNew, attUuid: a.attUuid }))
+          });
+          
           const eduData = {
             id: edu.id,
             eduUuid: edu.eduUuid,
@@ -5209,6 +5256,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           console.log('V2 Saving Education record:', eduData);
           
+          // Capture closure variables for this specific education record
+          const capturedNewAttachments = [...newAttachments];
+          const capturedDeletedAttachments = [...deletedAttachments];
+          
           const saveEduPromise = saveEducationMutationV2.mutateAsync({ 
             crewUuid: crewIdentifier, 
             data: eduData, 
@@ -5218,10 +5269,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           allSavePromises.push(
             saveEduPromise.then(async (savedEdu: any) => {
               const savedEduUuid = savedEdu?.eduUuid || edu.eduUuid;
+              console.log(`V2 Education saved, UUID: ${savedEduUuid}, processing ${capturedNewAttachments.length} new attachments`);
               
               // Delete removed attachments
-              if (deletedAttachments.length > 0) {
-                await Promise.all(deletedAttachments.map((att: any) =>
+              if (capturedDeletedAttachments.length > 0) {
+                console.log(`V2 Deleting ${capturedDeletedAttachments.length} attachments for education ${savedEduUuid}`);
+                await Promise.all(capturedDeletedAttachments.map((att: any) =>
                   removeEducationAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     eduUuid: savedEduUuid,
@@ -5230,17 +5283,27 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 ));
               }
               
-              // Add new attachments
-              if (savedEduUuid && newAttachments.length > 0) {
-                await Promise.all(newAttachments.map((att: any) =>
-                  addEducationAttachmentV2.mutateAsync({
-                    crewUuid: crewIdentifier,
-                    eduUuid: savedEduUuid,
-                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-                  })
-                ));
+              // Add new attachments - process sequentially to avoid race conditions
+              if (savedEduUuid && capturedNewAttachments.length > 0) {
+                console.log(`V2 Adding ${capturedNewAttachments.length} new attachments for education ${savedEduUuid}`);
+                for (const att of capturedNewAttachments) {
+                  try {
+                    console.log(`V2 Adding attachment: ${att.name} to education ${savedEduUuid}`);
+                    await addEducationAttachmentV2.mutateAsync({
+                      crewUuid: crewIdentifier,
+                      eduUuid: savedEduUuid,
+                      data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+                    });
+                    console.log(`V2 Successfully added attachment: ${att.name}`);
+                  } catch (error) {
+                    console.error(`V2 Failed to add attachment: ${att.name}`, error);
+                  }
+                }
               }
               return savedEdu;
+            }).catch((error: any) => {
+              console.error(`V2 Failed to save education record:`, error);
+              throw error;
             })
           );
         });
@@ -5253,6 +5316,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const licAttachments = lic.attachments || [];
           const deletedAttachments = licAttachments.filter((att: any) => att.isDeleted && att.attUuid);
           const newAttachments = licAttachments.filter((att: any) => !att.attUuid || att.isNew);
+          
+          console.log(`V2 License[${index}] attachments:`, {
+            total: licAttachments.length,
+            deleted: deletedAttachments.length,
+            new: newAttachments.length
+          });
           
           const licData = {
             id: lic.id,
@@ -5271,6 +5340,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           console.log('V2 Saving License record:', licData);
           
+          // Capture closure variables
+          const capturedNewAttachments = [...newAttachments];
+          const capturedDeletedAttachments = [...deletedAttachments];
+          
           const saveLicPromise = saveLicenseMutationV2.mutateAsync({ 
             crewUuid: crewIdentifier, 
             data: licData, 
@@ -5280,10 +5353,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           allSavePromises.push(
             saveLicPromise.then(async (savedLic: any) => {
               const savedLicUuid = savedLic?.licUuid || lic.licUuid;
+              console.log(`V2 License saved, UUID: ${savedLicUuid}, processing ${capturedNewAttachments.length} new attachments`);
               
               // Delete removed attachments
-              if (deletedAttachments.length > 0) {
-                await Promise.all(deletedAttachments.map((att: any) =>
+              if (capturedDeletedAttachments.length > 0) {
+                await Promise.all(capturedDeletedAttachments.map((att: any) =>
                   removeLicenseAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     licUuid: savedLicUuid,
@@ -5292,17 +5366,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 ));
               }
               
-              // Add new attachments
-              if (savedLicUuid && newAttachments.length > 0) {
-                await Promise.all(newAttachments.map((att: any) =>
-                  addLicenseAttachmentV2.mutateAsync({
-                    crewUuid: crewIdentifier,
-                    licUuid: savedLicUuid,
-                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-                  })
-                ));
+              // Add new attachments sequentially
+              if (savedLicUuid && capturedNewAttachments.length > 0) {
+                for (const att of capturedNewAttachments) {
+                  try {
+                    await addLicenseAttachmentV2.mutateAsync({
+                      crewUuid: crewIdentifier,
+                      licUuid: savedLicUuid,
+                      data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+                    });
+                    console.log(`V2 Added license attachment: ${att.name}`);
+                  } catch (error) {
+                    console.error(`V2 Failed to add license attachment: ${att.name}`, error);
+                  }
+                }
               }
               return savedLic;
+            }).catch((error: any) => {
+              console.error(`V2 Failed to save license:`, error);
+              throw error;
             })
           );
         });
@@ -5315,6 +5397,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const trainAttachments = train.attachments || [];
           const deletedAttachments = trainAttachments.filter((att: any) => att.isDeleted && att.attUuid);
           const newAttachments = trainAttachments.filter((att: any) => !att.attUuid || att.isNew);
+          
+          console.log(`V2 Training[${index}] attachments:`, {
+            total: trainAttachments.length,
+            deleted: deletedAttachments.length,
+            new: newAttachments.length
+          });
           
           const trainData = {
             id: train.id,
@@ -5332,6 +5420,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           console.log('V2 Saving Training Course record:', trainData);
           
+          // Capture closure variables
+          const capturedNewAttachments = [...newAttachments];
+          const capturedDeletedAttachments = [...deletedAttachments];
+          
           const saveTrainPromise = saveTrainingCourseMutationV2.mutateAsync({ 
             crewUuid: crewIdentifier, 
             data: trainData, 
@@ -5341,10 +5433,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           allSavePromises.push(
             saveTrainPromise.then(async (savedTrain: any) => {
               const savedTrainUuid = savedTrain?.trainUuid || train.trainUuid;
+              console.log(`V2 Training saved, UUID: ${savedTrainUuid}, processing ${capturedNewAttachments.length} new attachments`);
               
               // Delete removed attachments
-              if (deletedAttachments.length > 0) {
-                await Promise.all(deletedAttachments.map((att: any) =>
+              if (capturedDeletedAttachments.length > 0) {
+                await Promise.all(capturedDeletedAttachments.map((att: any) =>
                   removeTrainingAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     trainUuid: savedTrainUuid,
@@ -5353,17 +5446,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 ));
               }
               
-              // Add new attachments
-              if (savedTrainUuid && newAttachments.length > 0) {
-                await Promise.all(newAttachments.map((att: any) =>
-                  addTrainingAttachmentV2.mutateAsync({
-                    crewUuid: crewIdentifier,
-                    trainUuid: savedTrainUuid,
-                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-                  })
-                ));
+              // Add new attachments sequentially
+              if (savedTrainUuid && capturedNewAttachments.length > 0) {
+                for (const att of capturedNewAttachments) {
+                  try {
+                    await addTrainingAttachmentV2.mutateAsync({
+                      crewUuid: crewIdentifier,
+                      trainUuid: savedTrainUuid,
+                      data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+                    });
+                    console.log(`V2 Added training attachment: ${att.name}`);
+                  } catch (error) {
+                    console.error(`V2 Failed to add training attachment: ${att.name}`, error);
+                  }
+                }
               }
               return savedTrain;
+            }).catch((error: any) => {
+              console.error(`V2 Failed to save training:`, error);
+              throw error;
             })
           );
         });
@@ -5376,6 +5477,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const seaAttachments = sea.attachments || [];
           const deletedAttachments = seaAttachments.filter((att: any) => att.isDeleted && att.attUuid);
           const newAttachments = seaAttachments.filter((att: any) => !att.attUuid || att.isNew);
+          
+          console.log(`V2 Sea Service E1[${index}] attachments:`, {
+            total: seaAttachments.length,
+            deleted: deletedAttachments.length,
+            new: newAttachments.length
+          });
           
           const seaData: LegacySeaService = {
             seaUuid: sea.seaUuid,
@@ -5397,6 +5504,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           console.log('V2 Saving Company Sea Service record:', seaData);
           
+          // Capture closure variables
+          const capturedNewAttachments = [...newAttachments];
+          const capturedDeletedAttachments = [...deletedAttachments];
+          
           const saveSeaPromise = saveSeaServiceMutationV2.mutateAsync({ 
             crewUuid: crewIdentifier, 
             data: seaData, 
@@ -5406,10 +5517,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           allSavePromises.push(
             saveSeaPromise.then(async (savedSea: any) => {
               const savedSeaUuid = savedSea?.seaUuid || sea.seaUuid;
+              console.log(`V2 Sea Service E1 saved, UUID: ${savedSeaUuid}, processing ${capturedNewAttachments.length} new attachments`);
               
               // Delete removed attachments
-              if (deletedAttachments.length > 0) {
-                await Promise.all(deletedAttachments.map((att: any) =>
+              if (capturedDeletedAttachments.length > 0) {
+                await Promise.all(capturedDeletedAttachments.map((att: any) =>
                   removeSeaServiceAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     seaUuid: savedSeaUuid,
@@ -5418,17 +5530,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 ));
               }
               
-              // Add new attachments
-              if (savedSeaUuid && newAttachments.length > 0) {
-                await Promise.all(newAttachments.map((att: any) =>
-                  addSeaServiceAttachmentV2.mutateAsync({
-                    crewUuid: crewIdentifier,
-                    seaUuid: savedSeaUuid,
-                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-                  })
-                ));
+              // Add new attachments sequentially
+              if (savedSeaUuid && capturedNewAttachments.length > 0) {
+                for (const att of capturedNewAttachments) {
+                  try {
+                    await addSeaServiceAttachmentV2.mutateAsync({
+                      crewUuid: crewIdentifier,
+                      seaUuid: savedSeaUuid,
+                      data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+                    });
+                    console.log(`V2 Added sea service E1 attachment: ${att.name}`);
+                  } catch (error) {
+                    console.error(`V2 Failed to add sea service E1 attachment: ${att.name}`, error);
+                  }
+                }
               }
               return savedSea;
+            }).catch((error: any) => {
+              console.error(`V2 Failed to save sea service E1:`, error);
+              throw error;
             })
           );
         });
@@ -5441,6 +5561,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const seaAttachments = sea.attachments || [];
           const deletedAttachments = seaAttachments.filter((att: any) => att.isDeleted && att.attUuid);
           const newAttachments = seaAttachments.filter((att: any) => !att.attUuid || att.isNew);
+          
+          console.log(`V2 Sea Service E2[${index}] attachments:`, {
+            total: seaAttachments.length,
+            deleted: deletedAttachments.length,
+            new: newAttachments.length
+          });
           
           const seaData: LegacySeaService = {
             seaUuid: sea.seaUuid,
@@ -5462,6 +5588,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           console.log('V2 Saving External Sea Service record:', seaData);
           
+          // Capture closure variables
+          const capturedNewAttachments = [...newAttachments];
+          const capturedDeletedAttachments = [...deletedAttachments];
+          
           const saveSeaPromise = saveSeaServiceMutationV2.mutateAsync({ 
             crewUuid: crewIdentifier, 
             data: seaData, 
@@ -5471,10 +5601,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           allSavePromises.push(
             saveSeaPromise.then(async (savedSea: any) => {
               const savedSeaUuid = savedSea?.seaUuid || sea.seaUuid;
+              console.log(`V2 Sea Service E2 saved, UUID: ${savedSeaUuid}, processing ${capturedNewAttachments.length} new attachments`);
               
               // Delete removed attachments
-              if (deletedAttachments.length > 0) {
-                await Promise.all(deletedAttachments.map((att: any) =>
+              if (capturedDeletedAttachments.length > 0) {
+                await Promise.all(capturedDeletedAttachments.map((att: any) =>
                   removeSeaServiceAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     seaUuid: savedSeaUuid,
@@ -5483,17 +5614,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 ));
               }
               
-              // Add new attachments
-              if (savedSeaUuid && newAttachments.length > 0) {
-                await Promise.all(newAttachments.map((att: any) =>
-                  addSeaServiceAttachmentV2.mutateAsync({
-                    crewUuid: crewIdentifier,
-                    seaUuid: savedSeaUuid,
-                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-                  })
-                ));
+              // Add new attachments sequentially
+              if (savedSeaUuid && capturedNewAttachments.length > 0) {
+                for (const att of capturedNewAttachments) {
+                  try {
+                    await addSeaServiceAttachmentV2.mutateAsync({
+                      crewUuid: crewIdentifier,
+                      seaUuid: savedSeaUuid,
+                      data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+                    });
+                    console.log(`V2 Added sea service E2 attachment: ${att.name}`);
+                  } catch (error) {
+                    console.error(`V2 Failed to add sea service E2 attachment: ${att.name}`, error);
+                  }
+                }
               }
               return savedSea;
+            }).catch((error: any) => {
+              console.error(`V2 Failed to save sea service E2:`, error);
+              throw error;
             })
           );
         });
@@ -5506,6 +5645,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const medAttachments = med.attachments || [];
           const deletedAttachments = medAttachments.filter((att: any) => att.isDeleted && att.attUuid);
           const newAttachments = medAttachments.filter((att: any) => !att.attUuid || att.isNew);
+          
+          console.log(`V2 Medical F1[${index}] attachments:`, {
+            total: medAttachments.length,
+            deleted: deletedAttachments.length,
+            new: newAttachments.length
+          });
           
           const medData: LegacyPreJoiningMedical = {
             medUuid: med.medUuid,
@@ -5524,6 +5669,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           console.log('V2 Saving Pre-Joining Medical record:', medData);
           
+          // Capture closure variables
+          const capturedNewAttachments = [...newAttachments];
+          const capturedDeletedAttachments = [...deletedAttachments];
+          
           const saveMedPromise = saveMedicalMutationV2.mutateAsync({ 
             crewUuid: crewIdentifier, 
             data: medData, 
@@ -5533,10 +5682,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           allSavePromises.push(
             saveMedPromise.then(async (savedMed: any) => {
               const savedMedUuid = savedMed?.medUuid || med.medUuid;
+              console.log(`V2 Medical F1 saved, UUID: ${savedMedUuid}, processing ${capturedNewAttachments.length} new attachments`);
               
               // Delete removed attachments
-              if (deletedAttachments.length > 0) {
-                await Promise.all(deletedAttachments.map((att: any) =>
+              if (capturedDeletedAttachments.length > 0) {
+                await Promise.all(capturedDeletedAttachments.map((att: any) =>
                   removeMedicalAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     medUuid: savedMedUuid,
@@ -5545,17 +5695,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 ));
               }
               
-              // Add new attachments
-              if (savedMedUuid && newAttachments.length > 0) {
-                await Promise.all(newAttachments.map((att: any) =>
-                  addMedicalAttachmentV2.mutateAsync({
-                    crewUuid: crewIdentifier,
-                    medUuid: savedMedUuid,
-                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-                  })
-                ));
+              // Add new attachments sequentially
+              if (savedMedUuid && capturedNewAttachments.length > 0) {
+                for (const att of capturedNewAttachments) {
+                  try {
+                    await addMedicalAttachmentV2.mutateAsync({
+                      crewUuid: crewIdentifier,
+                      medUuid: savedMedUuid,
+                      data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+                    });
+                    console.log(`V2 Added medical F1 attachment: ${att.name}`);
+                  } catch (error) {
+                    console.error(`V2 Failed to add medical F1 attachment: ${att.name}`, error);
+                  }
+                }
               }
               return savedMed;
+            }).catch((error: any) => {
+              console.error(`V2 Failed to save medical F1:`, error);
+              throw error;
             })
           );
         });
@@ -5568,6 +5726,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const visitAttachments = visit.attachments || [];
           const deletedAttachments = visitAttachments.filter((att: any) => att.isDeleted && att.attUuid);
           const newAttachments = visitAttachments.filter((att: any) => !att.attUuid || att.isNew);
+          
+          console.log(`V2 Doctor Visit F2[${index}] attachments:`, {
+            total: visitAttachments.length,
+            deleted: deletedAttachments.length,
+            new: newAttachments.length
+          });
           
           const visitData: LegacyDoctorVisit = {
             visitUuid: visit.visitUuid,
@@ -5586,6 +5750,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           };
           console.log('V2 Saving Doctor Visit record:', visitData);
           
+          // Capture closure variables
+          const capturedNewAttachments = [...newAttachments];
+          const capturedDeletedAttachments = [...deletedAttachments];
+          
           const saveVisitPromise = saveDoctorVisitMutationV2.mutateAsync({ 
             crewUuid: crewIdentifier, 
             data: visitData, 
@@ -5595,10 +5763,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           allSavePromises.push(
             saveVisitPromise.then(async (savedVisit: any) => {
               const savedVisitUuid = savedVisit?.visitUuid || visit.visitUuid;
+              console.log(`V2 Doctor Visit F2 saved, UUID: ${savedVisitUuid}, processing ${capturedNewAttachments.length} new attachments`);
               
               // Delete removed attachments
-              if (deletedAttachments.length > 0) {
-                await Promise.all(deletedAttachments.map((att: any) =>
+              if (capturedDeletedAttachments.length > 0) {
+                await Promise.all(capturedDeletedAttachments.map((att: any) =>
                   removeDoctorVisitAttachmentV2.mutateAsync({
                     crewUuid: crewIdentifier,
                     visitUuid: savedVisitUuid,
@@ -5607,17 +5776,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 ));
               }
               
-              // Add new attachments
-              if (savedVisitUuid && newAttachments.length > 0) {
-                await Promise.all(newAttachments.map((att: any) =>
-                  addDoctorVisitAttachmentV2.mutateAsync({
-                    crewUuid: crewIdentifier,
-                    visitUuid: savedVisitUuid,
-                    data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-                  })
-                ));
+              // Add new attachments sequentially
+              if (savedVisitUuid && capturedNewAttachments.length > 0) {
+                for (const att of capturedNewAttachments) {
+                  try {
+                    await addDoctorVisitAttachmentV2.mutateAsync({
+                      crewUuid: crewIdentifier,
+                      visitUuid: savedVisitUuid,
+                      data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+                    });
+                    console.log(`V2 Added doctor visit F2 attachment: ${att.name}`);
+                  } catch (error) {
+                    console.error(`V2 Failed to add doctor visit F2 attachment: ${att.name}`, error);
+                  }
+                }
               }
               return savedVisit;
+            }).catch((error: any) => {
+              console.error(`V2 Failed to save doctor visit F2:`, error);
+              throw error;
             })
           );
         });

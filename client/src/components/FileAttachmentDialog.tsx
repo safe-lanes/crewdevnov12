@@ -74,6 +74,7 @@ export function FileAttachmentDialog({
           size: file.size,
           data: e.target?.result as string,
           uploadedAt: new Date().toISOString(),
+          isNew: true, // Mark as new attachment for save logic
         };
         
         onAttachmentsChange([...attachments, attachment]);
