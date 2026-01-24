@@ -4727,7 +4727,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Save Draft functionality
   const handleSaveDraft = () => {
-    console.log('Saving crew info:', formData);
+    console.log('Saving crew info (V2):', formData);
     
     // Include the uploaded photo in the data to be saved
     const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
@@ -4737,6 +4737,50 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (crewMember && crewIdentifier) {
       // Update existing crew member using crewUuid
       updateCrewMutation.mutate({ id: crewIdentifier, data: dataWithPhoto });
+      
+      // V2: Also save section data to their respective tables
+      // Personal Details (A1.1 fields like height, weight, DOB, languages, etc.)
+      const personalDetailsData = {
+        height: formData.heightCm,
+        weight: formData.weightKg,
+        bmi: formData.bmi,
+        placeOfBirthCity: formData.placeOfBirthCity,
+        placeOfBirthCountry: formData.placeOfBirthCountry,
+        nativeLanguage: formData.nativeLanguage,
+        foreignLanguages: formData.foreignLanguages,
+        englishProficiency: formData.englishProficiency,
+        manningAgent: formData.manningAgent,
+        crewPool: formData.crewPool,
+      };
+      console.log('V2 Saving Personal Details:', { crewUuid: crewIdentifier, data: personalDetailsData });
+      savePersonalDetailsMutationV2.mutate({ crewUuid: crewIdentifier, data: personalDetailsData });
+      
+      // Address (A1.2 fields)
+      const addressData = {
+        countryOfResidence: formData.countryOfResidence,
+        nearestAirport: formData.nearestAirport,
+        residentialAddressLine1: formData.residentialAddressLine1,
+        residentialAddressLine2: formData.residentialAddressLine2,
+        contactLandline: formData.contactLandline,
+        mobile: formData.mobile,
+        email: formData.email,
+      };
+      console.log('V2 Saving Address:', { crewUuid: crewIdentifier, data: addressData });
+      saveAddressMutationV2.mutate({ crewUuid: crewIdentifier, data: addressData });
+      
+      // Family Info (A1.3 fields)
+      const familyInfoData = {
+        maritalStatus: formData.maritalStatus,
+        numberOfDependentChildren: formData.numberOfDependentChildren,
+        fatherName: formData.fatherName,
+        motherName: formData.motherName,
+        spouseFirstName: formData.spouseFirstName,
+        spouseMiddleName: formData.spouseMiddleName,
+        spouseFamilyName: formData.spouseFamilyName,
+        spouseDateOfBirth: formData.spouseDateOfBirth,
+      };
+      console.log('V2 Saving Family Info:', { crewUuid: crewIdentifier, data: familyInfoData });
+      saveFamilyInfoMutationV2.mutate({ crewUuid: crewIdentifier, data: familyInfoData });
     } else {
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
@@ -5143,7 +5187,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         manningAgent: formData.manningAgent,
         crewPool: formData.crewPool,
       };
-      savePersonalDetailsMutationV2.mutate({ crewUuid: existingUuid, data: personalDetailsData });
+      console.log('V2 Personal Details Save:', { crewUuid: existingUuid, data: personalDetailsData });
+      savePersonalDetailsMutationV2.mutate({ crewUuid: existingUuid, data: personalDetailsData }, {
+        onError: (err) => console.error('Personal Details Save Error:', err),
+        onSuccess: (res) => console.log('Personal Details Saved:', res),
+      });
       
       // Address (A1.2 fields)
       const addressData = {
