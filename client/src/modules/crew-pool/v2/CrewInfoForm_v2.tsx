@@ -48,7 +48,9 @@ import {
   useSaveFamilyInfoV2,
   useSaveChildV2,
   useSaveNextOfKinV2,
-  useDeleteChildV2
+  useDeleteChildV2,
+  useSaveDocumentV2,
+  useSaveVisaV2
 } from './hooks/useCrewPoolV2';
 
 interface CrewMember {
@@ -4822,6 +4824,50 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         console.log('V2 Saving Next of Kin:', { crewUuid: crewIdentifier, data: nokData });
         saveNextOfKinMutationV2.mutate({ crewUuid: crewIdentifier, data: nokData });
       }
+      
+      // Documents (Part C - C1 Travel and Identification Docs)
+      if (formData.documents && formData.documents.length > 0) {
+        console.log('V2 Saving Documents:', { crewUuid: crewIdentifier, count: formData.documents.length });
+        formData.documents.forEach((doc: any) => {
+          const docData = {
+            docUuid: doc.docUuid,
+            documentId: doc.documentId || '',
+            documentName: doc.documentName || doc.documentId || '',
+            documentNumber: doc.number || '',
+            issuedDate: doc.issued || '',
+            expiryDate: doc.expiry || '',
+            issuingAuthority: doc.issuingAuthority || '',
+            issuingCountry: doc.issuingCountry || '',
+            attachments: doc.attachments || [],
+          };
+          saveDocumentMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: docData, 
+            docUuid: doc.docUuid 
+          });
+        });
+      }
+      
+      // Visas (Part C - C2 Visas)
+      if (formData.visas && formData.visas.length > 0) {
+        console.log('V2 Saving Visas:', { crewUuid: crewIdentifier, count: formData.visas.length });
+        formData.visas.forEach((visa: any) => {
+          const visaData = {
+            visaUuid: visa.visaUuid,
+            country: visa.countryId || '',
+            serialNo: visa.serialNumber || '',
+            issuedDate: visa.issued || '',
+            expiryDate: visa.expiry || '',
+            visaType: visa.visaType || '',
+            attachments: visa.attachments || [],
+          };
+          saveVisaMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: visaData, 
+            visaUuid: visa.visaUuid 
+          });
+        });
+      }
     } else {
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
@@ -5092,6 +5138,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const saveChildMutationV2 = useSaveChildV2();
   const saveNextOfKinMutationV2 = useSaveNextOfKinV2();
   const deleteChildMutationV2 = useDeleteChildV2();
+  const saveDocumentMutationV2 = useSaveDocumentV2();
+  const saveVisaMutationV2 = useSaveVisaV2();
   
   // Wrapper for create mutation with UI feedback
   const createCrewMutation = {

@@ -301,14 +301,15 @@ export interface LegacyDocument {
   attachments: LegacyAttachment[];
 }
 
-export function mapV2DocumentToLegacy(v2: any): LegacyDocument {
+export function mapV2DocumentToLegacy(v2: any): any {
   return {
     docUuid: v2?.docUuid,
+    id: v2?.docUuid || `DOC-${Date.now()}`,
     documentId: v2?.documentId || '',
-    documentName: v2?.documentName || '',
-    documentNumber: v2?.number || '',
-    issuedDate: v2?.issued || '',
-    expiryDate: v2?.expiry || '',
+    document: v2?.documentName || v2?.documentId || '',
+    number: v2?.number || v2?.documentNumber || '',
+    issued: v2?.issued || v2?.issuedDate || '',
+    expiry: v2?.expiry || v2?.expiryDate || '',
     issuingAuthority: v2?.issuingAuthority || '',
     issuingCountry: v2?.issuingCountryUuid || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
@@ -322,19 +323,19 @@ export function mapV2DocumentToLegacy(v2: any): LegacyDocument {
   };
 }
 
-export function mapLegacyDocumentToV2(legacy: LegacyDocument): any {
+export function mapLegacyDocumentToV2(legacy: any): any {
   return {
     docUuid: legacy.docUuid,
     documentId: legacy.documentId || undefined,
-    documentName: legacy.documentName || undefined,
-    number: legacy.documentNumber || undefined,
-    issued: legacy.issuedDate || undefined,
-    expiry: legacy.expiryDate || undefined,
+    documentName: legacy.documentName || legacy.document || undefined,
+    number: legacy.documentNumber || legacy.number || undefined,
+    issued: legacy.issuedDate || legacy.issued || undefined,
+    expiry: legacy.expiryDate || legacy.expiry || undefined,
     issuingAuthority: legacy.issuingAuthority || undefined,
     issuingCountryUuid: legacy.issuingCountry || undefined,
-    attachments: legacy.attachments
-      .filter(att => att.isNew || att.isDeleted)
-      .map(att => ({
+    attachments: (legacy.attachments || [])
+      .filter((att: any) => att.isNew || att.isDeleted)
+      .map((att: any) => ({
         attUuid: att.attUuid,
         fileName: att.fileName,
         fileData: att.fileData,
@@ -354,13 +355,16 @@ export interface LegacyVisa {
   attachments: LegacyAttachment[];
 }
 
-export function mapV2VisaToLegacy(v2: any): LegacyVisa {
+export function mapV2VisaToLegacy(v2: any): any {
   return {
     visaUuid: v2?.visaUuid,
-    country: v2?.countryUuid || '',
+    id: v2?.visaUuid || `VIS-${Date.now()}`,
+    countryId: v2?.countryUuid || '',
+    issuingCountry: v2?.countryUuid || '',
     serialNo: v2?.serialNo || '',
-    issuedDate: v2?.issued || '',
-    expiryDate: v2?.expiry || '',
+    serialNumber: v2?.serialNo || '',
+    issued: v2?.issued || v2?.issuedDate || '',
+    expiry: v2?.expiry || v2?.expiryDate || '',
     visaType: v2?.visaType || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
       attUuid: att.attUuid,
@@ -373,17 +377,17 @@ export function mapV2VisaToLegacy(v2: any): LegacyVisa {
   };
 }
 
-export function mapLegacyVisaToV2(legacy: LegacyVisa): any {
+export function mapLegacyVisaToV2(legacy: any): any {
   return {
     visaUuid: legacy.visaUuid,
-    countryUuid: legacy.country || undefined,
-    serialNo: legacy.serialNo || undefined,
-    issued: legacy.issuedDate || undefined,
-    expiry: legacy.expiryDate || undefined,
+    countryUuid: legacy.country || legacy.countryId || undefined,
+    serialNo: legacy.serialNo || legacy.serialNumber || undefined,
+    issued: legacy.issuedDate || legacy.issued || undefined,
+    expiry: legacy.expiryDate || legacy.expiry || undefined,
     visaType: legacy.visaType || undefined,
-    attachments: legacy.attachments
-      .filter(att => att.isNew || att.isDeleted)
-      .map(att => ({
+    attachments: (legacy.attachments || [])
+      .filter((att: any) => att.isNew || att.isDeleted)
+      .map((att: any) => ({
         attUuid: att.attUuid,
         fileName: att.fileName,
         fileData: att.fileData,
