@@ -591,6 +591,7 @@ export interface LegacySeaService {
   periodMonths: string;
   experienceCategories: string[];
   attachments?: LegacyAttachment[];
+  sortOrder?: number;
 }
 
 export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
@@ -653,6 +654,7 @@ export interface LegacyPreJoiningMedical {
   expiryDate: string;
   expiry: string;
   attachments?: LegacyAttachment[];
+  sortOrder?: number;
 }
 
 export function mapV2PreJoiningMedicalToLegacy(v2: any): LegacyPreJoiningMedical {
@@ -709,6 +711,7 @@ export interface LegacyDoctorVisit {
   treatment: string;
   followUpDate: string;
   attachments?: LegacyAttachment[];
+  sortOrder?: number;
 }
 
 export function mapV2DoctorVisitToLegacy(v2: any): LegacyDoctorVisit {
