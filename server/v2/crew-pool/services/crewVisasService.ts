@@ -6,7 +6,6 @@ import {
   type CrewVisaWithAttachments,
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
-import { resolveCountryUuid } from "./masterDataResolver";
 import {
   crewVisas,
   crewVisasAttachments,
@@ -36,7 +35,7 @@ export const crewVisasService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid"> & { country?: string }
+    data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid"> & { country?: string | null }
   ): Promise<CrewVisa> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -44,40 +43,33 @@ export const crewVisasService = {
       throw new Error("Visa type is required");
     }
 
-    // Resolve country (accept name or UUID)
-    const countryInput = data.countryUuid || (data as any).country;
+    // C2 Visas: "Issuing Country" is a free entry field, store as-is without UUID resolution
+    // Store the country name directly in the "country" column
+    const countryInput = (data as any).country || data.countryUuid;
+    const cleanData: any = { ...data };
     if (countryInput) {
-      const countryUuid = await resolveCountryUuid(countryInput);
-      if (!countryUuid) {
-        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
-      }
-      data.countryUuid = countryUuid;
+      cleanData.country = countryInput;
+      // Clear countryUuid since we're storing free text
+      cleanData.countryUuid = null;
     }
-
-    // Remove non-schema fields
-    const { country, ...cleanData } = data as any;
 
     return crewVisasRepository.create({ ...cleanData, crewUuid });
   },
 
   async update(
     visaUuid: string,
-    data: Partial<InsertCrewVisa> & { country?: string }
+    data: Partial<InsertCrewVisa> & { country?: string | null }
   ): Promise<CrewVisa> {
     await this.getByUuid(visaUuid);
 
-    // Resolve country (accept name or UUID)
-    const countryInput = data.countryUuid || (data as any).country;
+    // C2 Visas: "Issuing Country" is a free entry field, store as-is without UUID resolution
+    const countryInput = (data as any).country || data.countryUuid;
+    const cleanData: any = { ...data };
     if (countryInput) {
-      const countryUuid = await resolveCountryUuid(countryInput);
-      if (!countryUuid) {
-        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
-      }
-      data.countryUuid = countryUuid;
+      cleanData.country = countryInput;
+      // Clear countryUuid since we're storing free text
+      cleanData.countryUuid = null;
     }
-
-    // Remove non-schema fields
-    const { country, ...cleanData } = data as any;
 
     const updated = await crewVisasRepository.update(visaUuid, cleanData);
     if (!updated) {
@@ -154,23 +146,20 @@ export const crewVisasService = {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
 
-    // Pre-resolve all country UUIDs before transaction
-    const resolvedItems = await Promise.all(
-      items.map(async (item) => {
-        if (item.isDeleted) return item;
+    // C2 Visas: "Issuing Country" is a free entry field - no UUID resolution
+    // Store the country name directly in the "country" column
+    const resolvedItems = items.map((item) => {
+      if (item.isDeleted) return item;
 
-        const countryInput = item.data.countryUuid || (item.data as any).country;
-        if (countryInput) {
-          const countryUuid = await resolveCountryUuid(countryInput);
-          if (!countryUuid) {
-            throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
-          }
-          const { country, ...cleanData } = item.data as any;
-          return { ...item, data: { ...cleanData, countryUuid } };
-        }
-        return item;
-      })
-    );
+      const countryInput = (item.data as any).country || item.data.countryUuid;
+      if (countryInput) {
+        const cleanData: any = { ...item.data };
+        cleanData.country = countryInput;
+        cleanData.countryUuid = null;
+        return { ...item, data: cleanData };
+      }
+      return item;
+    });
 
     return db.transaction(async (tx: any) => {
       const results: CrewVisa[] = [];
