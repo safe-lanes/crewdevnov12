@@ -346,7 +346,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   // V2: Dashboard data is computed from full profile (no separate endpoint in V2)
   // For now, set dashboard data to undefined since V2 doesn't have a separate dashboard endpoint
-  const dashboardData: CrewDashboardSummary | undefined = undefined;
+  const dashboardData = undefined as CrewDashboardSummary | undefined;
   const isDashboardLoading = false;
   const dashboardError: Error | null = null;
 
