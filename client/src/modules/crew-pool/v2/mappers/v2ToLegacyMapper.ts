@@ -200,7 +200,7 @@ export function mapV2FamilyInfoToLegacy(v2: any): LegacyFamilyInfo {
 export function mapLegacyFamilyInfoToV2(legacy: Partial<LegacyFamilyInfo>): any {
   return {
     maritalStatus: legacy.maritalStatus || undefined,
-    numDependentChildren: legacy.numberOfDependentChildren ? parseInt(legacy.numberOfDependentChildren) : undefined,
+    numDependentChildren: legacy.numberOfDependentChildren || undefined,
     fatherName: legacy.fatherName || undefined,
     motherName: legacy.motherName || undefined,
     spouseFirstName: legacy.spouseFirstName || undefined,
