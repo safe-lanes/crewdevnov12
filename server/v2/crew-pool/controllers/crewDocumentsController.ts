@@ -20,21 +20,27 @@ export const crewDocumentsController = {
   async create(req: Request, res: Response) {
     try {
       const { crewUuid } = req.params;
+      console.log('[V2 Documents] Creating document for crew:', crewUuid);
+      console.log('[V2 Documents] Request body:', JSON.stringify(req.body, null, 2));
       const validatedData = insertCrewDocumentSchema
         .omit({ docUuid: true, crewUuid: true })
         .parse(req.body);
+      console.log('[V2 Documents] Validated data:', JSON.stringify(validatedData, null, 2));
       const document = await crewDocumentsService.create(
         crewUuid,
         validatedData
       );
+      console.log('[V2 Documents] Created document:', JSON.stringify(document, null, 2));
       res.status(201).json(document);
     } catch (error: any) {
+      console.error('[V2 Documents] Create error:', error.message);
       if (error instanceof z.ZodError) {
+        console.error('[V2 Documents] Validation errors:', JSON.stringify(error.errors, null, 2));
         return res
           .status(400)
           .json({ error: "Validation failed", details: error.errors });
       }
-      res.status(500).json({ error: "Failed to create document" });
+      res.status(500).json({ error: "Failed to create document", message: error.message });
     }
   },
 
