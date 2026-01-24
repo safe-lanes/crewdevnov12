@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
 import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@shared/dateUtils';
@@ -1201,6 +1201,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               documents: prev.documents.filter(d => d.id !== id)
             }));
+            queryClient.invalidateQueries({ queryKey: ['v2', 'crew-pool', 'crew', crewIdentifier] });
           },
           onError: (error) => {
             console.error('Failed to delete document:', error);
@@ -1255,6 +1256,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               visas: prev.visas.filter(v => v.id !== id)
             }));
+            queryClient.invalidateQueries({ queryKey: ['v2', 'crew-pool', 'crew', crewIdentifier] });
           },
           onError: (error) => {
             console.error('Failed to delete visa:', error);
@@ -1307,6 +1309,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               education: prev.education.filter(e => e.id !== id)
             }));
+            queryClient.invalidateQueries({ queryKey: ['v2', 'crew-pool', 'crew', crewIdentifier] });
           },
           onError: (error) => {
             console.error('Failed to delete education:', error);
@@ -1473,6 +1476,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               licenses: prev.licenses.filter(l => l.id !== id)
             }));
+            queryClient.invalidateQueries({ queryKey: ['v2', 'crew-pool', 'crew', crewIdentifier] });
           },
           onError: (error) => {
             console.error('Failed to delete license:', error);
@@ -1528,6 +1532,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               trainingCourses: prev.trainingCourses.filter(c => c.id !== id)
             }));
+            queryClient.invalidateQueries({ queryKey: ['v2', 'crew-pool', 'crew', crewIdentifier] });
           },
           onError: (error) => {
             console.error('Failed to delete training course:', error);
@@ -1618,6 +1623,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               currentCompanySeaService: prev.currentCompanySeaService.filter(s => s.id !== id)
             }));
+            queryClient.invalidateQueries({ queryKey: ['v2', 'crew-pool', 'crew', crewIdentifier] });
           },
           onError: (error) => {
             console.error('Failed to delete sea service:', error);
@@ -1687,6 +1693,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               externalSeaService: prev.externalSeaService.filter(s => s.id !== id)
             }));
+            queryClient.invalidateQueries({ queryKey: ['v2', 'crew-pool', 'crew', crewIdentifier] });
           },
           onError: (error) => {
             console.error('Failed to delete sea service:', error);
@@ -1743,6 +1750,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               preJoiningMedicals: prev.preJoiningMedicals.filter(m => m.id !== id)
             }));
+            queryClient.invalidateQueries({ queryKey: ['v2', 'crew-pool', 'crew', crewIdentifier] });
           },
           onError: (error) => {
             console.error('Failed to delete medical record:', error);
@@ -1796,6 +1804,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               doctorVisits: prev.doctorVisits.filter(v => v.id !== id)
             }));
+            queryClient.invalidateQueries({ queryKey: ['v2', 'crew-pool', 'crew', crewIdentifier] });
           },
           onError: (error) => {
             console.error('Failed to delete doctor visit:', error);
