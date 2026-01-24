@@ -1463,13 +1463,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Health check endpoint for database connectivity
   app.get("/api/health", async (req, res) => {
+    // Get connection manager metrics if available
+    let connectionMetrics = null;
+    try {
+      if (storage && typeof (storage as any).getConnectionManager === 'function') {
+        const cm = (storage as any).getConnectionManager();
+        if (cm && typeof cm.getMetrics === 'function') {
+          connectionMetrics = cm.getMetrics();
+        }
+      }
+    } catch (e) {
+      // Ignore - metrics not available
+    }
+
     const healthStatus = {
       server: "running",
       database: isConnected ? "connected" : "disconnected",
       // Gate sensitive information behind development environment check
       ...(process.env.NODE_ENV === 'development' && {
         rds_instance: "ls-d153072fe29fcd7dc7c484a33fd3130e29abae1b.cxock8yskd1i.ap-southeast-1.rds.amazonaws.com:3306",
-        database_name: "crew_database"
+        database_name: "crew_database",
+        connectionMetrics,
       }),
       connection_error: connectionError?.message || null,
       timestamp: new Date().toISOString()

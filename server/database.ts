@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { addMonths } from "date-fns";
+import { DatabaseConnectionManager, createConnectionManager } from "./utils/dbConnectionManager";
 // import 'dotenv/config';
 import { 
   getReportingDate, 
@@ -143,6 +144,7 @@ import { type IStorage } from "./storage";
 export class DatabaseStorage implements IStorage {
   private db: ReturnType<typeof drizzle>;
   private pool: Pool;
+  private connectionManager: DatabaseConnectionManager;
   private columnCache: Map<string, Set<string>> = new Map(); // Cache existing column names per table
 
   constructor() {
@@ -164,13 +166,24 @@ export class DatabaseStorage implements IStorage {
         rejectUnauthorized: false,
         checkServerIdentity: () => undefined
       } : false,
-      max: 20,                    // Maximum number of clients in the pool
+      max: 15,                    // Reduced from 20 for better local PostgreSQL compatibility
       min: 2,                     // Minimum number of clients to keep open
       idleTimeoutMillis: 30000,   // Close idle clients after 30 seconds
       connectionTimeoutMillis: 5000, // Return error after 5 seconds if no connection
       allowExitOnIdle: true,      // Allow pool to close when idle (prevent connection leaks)
     });
     this.db = drizzle(this.pool);
+    
+    // Initialize connection manager with retry logic and request queuing
+    this.connectionManager = createConnectionManager(this.pool, {
+      maxConcurrent: 8,           // Limit concurrent operations to prevent pool exhaustion
+      maxRetries: 3,              // Retry failed operations up to 3 times
+      baseDelayMs: 100,           // Start with 100ms delay for retries
+      maxDelayMs: 5000,           // Max 5 second delay between retries
+      queueTimeoutMs: 30000,      // 30 second timeout for queued operations
+    });
+    
+    console.log('🛡️ Database Connection Manager initialized with resilience features');
     
     // Ensure enhanced master data entries schema exists on startup (async, non-blocking)
     this.ensureMasterDataEntriesSchema().catch(err => 
@@ -187,6 +200,11 @@ export class DatabaseStorage implements IStorage {
     return this.db;
   }
 
+  // Public accessor for connection manager (for health checks and metrics)
+  getConnectionManager(): DatabaseConnectionManager {
+    return this.connectionManager;
+  }
+
   // Column Allow-List Filter Methods
   private async getExistingColumns(tableName: string): Promise<Set<string>> {
     if (this.columnCache.has(tableName)) {
@@ -194,7 +212,8 @@ export class DatabaseStorage implements IStorage {
     }
 
     try {
-      const result = await this.pool.query(
+      // Use connection manager with retry logic for resilient column fetching
+      const result = await this.connectionManager.query<{ rows: { column_name: string }[] }>(
         "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1",
         [tableName]
       );
