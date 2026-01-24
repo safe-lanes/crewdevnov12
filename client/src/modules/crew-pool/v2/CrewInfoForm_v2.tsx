@@ -58,6 +58,7 @@ import {
   useSaveMedicalV2,
   useSaveDoctorVisitV2
 } from './hooks/useCrewPoolV2';
+import type { LegacySeaService, LegacyPreJoiningMedical, LegacyDoctorVisit } from './mappers/v2ToLegacyMapper';
 
 interface CrewMember {
   id: string;
@@ -4958,7 +4959,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
         console.log('V2 Saving Company Sea Service:', { crewUuid: crewIdentifier, count: formData.currentCompanySeaService.length });
         formData.currentCompanySeaService.forEach((sea: any) => {
-          const seaData = {
+          const seaData: LegacySeaService = {
             seaUuid: sea.seaUuid,
             isCompanyService: true,
             vesselName: sea.vesselName || '',
@@ -4968,8 +4969,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             engineTypePower: sea.engineTypePower || '',
             ownerOperator: sea.ownerOperator || '',
             rank: sea.rank || '',
-            fromDate: sea.from || '',
-            toDate: sea.to || '',
+            from: sea.from || sea.fromDate || '',
+            to: sea.to || sea.toDate || '',
+            fromDate: sea.fromDate || sea.from || '',
+            toDate: sea.toDate || sea.to || '',
             periodMonths: sea.periodMonths || '',
             experienceCategories: sea.experienceCategories || [],
             attachments: sea.attachments || [],
@@ -4987,7 +4990,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       if (formData.externalSeaService && formData.externalSeaService.length > 0) {
         console.log('V2 Saving External Sea Service:', { crewUuid: crewIdentifier, count: formData.externalSeaService.length });
         formData.externalSeaService.forEach((sea: any) => {
-          const seaData = {
+          const seaData: LegacySeaService = {
             seaUuid: sea.seaUuid,
             isCompanyService: false,
             vesselName: sea.vesselName || '',
@@ -4997,8 +5000,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             engineTypePower: sea.engineTypePower || '',
             ownerOperator: sea.ownerOperator || '',
             rank: sea.rank || '',
-            fromDate: sea.from || '',
-            toDate: sea.to || '',
+            from: sea.from || sea.fromDate || '',
+            to: sea.to || sea.toDate || '',
+            fromDate: sea.fromDate || sea.from || '',
+            toDate: sea.toDate || sea.to || '',
             periodMonths: sea.periodMonths || '',
             experienceCategories: sea.experienceCategories || [],
             attachments: sea.attachments || [],

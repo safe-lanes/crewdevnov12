@@ -584,6 +584,8 @@ export interface LegacySeaService {
   engineTypePower: string;
   ownerOperator: string;
   rank: string;
+  from: string;
+  to: string;
   fromDate: string;
   toDate: string;
   periodMonths: string;
@@ -602,6 +604,8 @@ export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
     engineTypePower: v2?.engineTypePower || '',
     ownerOperator: v2?.ownerOperator || '',
     rank: v2?.rank || '',
+    from: v2?.fromDate || '',
+    to: v2?.toDate || '',
     fromDate: v2?.fromDate || '',
     toDate: v2?.toDate || '',
     periodMonths: v2?.periodMonths?.toString() || '',
@@ -772,7 +776,7 @@ export function mapV2FullProfileToLegacy(v2Profile: any): any {
     education: (v2Profile.education || []).map(mapV2EducationToLegacy),
     licenses: (v2Profile.licenses || []).map(mapV2LicenseToLegacy),
     trainingCourses: (v2Profile.trainingCourses || []).map(mapV2TrainingCourseToLegacy),
-    companySeaService: (v2Profile.seaService || [])
+    currentCompanySeaService: (v2Profile.seaService || [])
       .filter((s: any) => s.serviceType === 'company')
       .map(mapV2SeaServiceToLegacy),
     externalSeaService: (v2Profile.seaService || [])
