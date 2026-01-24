@@ -299,7 +299,7 @@ export const crewMembersService = {
       .limit(limit)
       .offset(offset);
 
-    const data = results.map((r) => ({
+    const data = results.map((r: any) => ({
       ...r.crew,
       presentVessel: r.currentVessel,
       signOnDate: r.signOnDate,
@@ -372,7 +372,7 @@ export const crewMembersService = {
       );
     }
 
-    return db.transaction(async (tx) => {
+    return db.transaction(async (tx: any) => {
       const crewUuid = uuidv4();
       const now = new Date();
 
