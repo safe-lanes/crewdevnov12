@@ -45,7 +45,10 @@ import {
   useCrewByIdV2,
   useSavePersonalDetailsV2,
   useSaveAddressV2,
-  useSaveFamilyInfoV2 
+  useSaveFamilyInfoV2,
+  useSaveChildV2,
+  useSaveNextOfKinV2,
+  useDeleteChildV2
 } from './hooks/useCrewPoolV2';
 
 interface CrewMember {
@@ -4784,6 +4787,41 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       };
       console.log('V2 Saving Family Info:', { crewUuid: crewIdentifier, data: familyInfoData });
       saveFamilyInfoMutationV2.mutate({ crewUuid: crewIdentifier, data: familyInfoData });
+      
+      // Children (A1.3 - array of child records)
+      if (formData.children && formData.children.length > 0) {
+        console.log('V2 Saving Children:', { crewUuid: crewIdentifier, count: formData.children.length });
+        formData.children.forEach((child: any) => {
+          const childData = {
+            firstName: child.firstName,
+            middleName: child.middleName,
+            familyName: child.familyName,
+            dateOfBirth: child.dateOfBirth,
+            gender: child.gender,
+          };
+          saveChildMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: childData, 
+            childUuid: child.childUuid 
+          });
+        });
+      }
+      
+      // Next of Kin (NOK) - single record
+      const nokData = {
+        firstName: formData.nokFirstName,
+        middleName: formData.nokMiddleName,
+        familyName: formData.nokFamilyName,
+        relationship: formData.nokRelationship,
+        telephone: formData.nokTelephone,
+        email: formData.nokEmail,
+        address: formData.nokAddress,
+      };
+      // Only save if any NOK field has a value
+      if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
+        console.log('V2 Saving Next of Kin:', { crewUuid: crewIdentifier, data: nokData });
+        saveNextOfKinMutationV2.mutate({ crewUuid: crewIdentifier, data: nokData });
+      }
     } else {
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
@@ -5051,6 +5089,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const savePersonalDetailsMutationV2 = useSavePersonalDetailsV2();
   const saveAddressMutationV2 = useSaveAddressV2();
   const saveFamilyInfoMutationV2 = useSaveFamilyInfoV2();
+  const saveChildMutationV2 = useSaveChildV2();
+  const saveNextOfKinMutationV2 = useSaveNextOfKinV2();
+  const deleteChildMutationV2 = useDeleteChildV2();
   
   // Wrapper for create mutation with UI feedback
   const createCrewMutation = {

@@ -742,13 +742,21 @@ export function mapLegacyDoctorVisitToV2(legacy: LegacyDoctorVisit): any {
 
 export function mapV2FullProfileToLegacy(v2Profile: any): any {
   const crew = v2Profile.crew || v2Profile;
+  const nok = v2Profile.nextOfKin ? mapV2NextOfKinToLegacy(v2Profile.nextOfKin) : null;
   return {
     ...mapV2CrewToLegacy(crew),
     ...mapV2PersonalDetailsToLegacy(v2Profile.personalDetails),
     ...mapV2AddressToLegacy(v2Profile.address),
     ...mapV2FamilyInfoToLegacy(v2Profile.familyInfo),
     children: (v2Profile.children || []).map(mapV2ChildToLegacy),
-    nextOfKin: v2Profile.nextOfKin ? mapV2NextOfKinToLegacy(v2Profile.nextOfKin) : null,
+    nextOfKin: nok,
+    nokFirstName: nok?.firstName || '',
+    nokMiddleName: nok?.middleName || '',
+    nokFamilyName: nok?.familyName || '',
+    nokTelephone: nok?.telephone || '',
+    nokEmail: nok?.email || '',
+    nokAddress: nok?.address || '',
+    nokRelationship: nok?.relationship || '',
     documents: (v2Profile.documents || []).map(mapV2DocumentToLegacy),
     visas: (v2Profile.visas || []).map(mapV2VisaToLegacy),
     education: (v2Profile.education || []).map(mapV2EducationToLegacy),
