@@ -723,125 +723,125 @@ export const crewMembersService = {
         )
       );
 
-    const [familyInfo, children, nextOfKin, documents, visas, education, licenses, trainingCourses, medicals, doctorVisits, vesselTypesRaw] =
-      await Promise.all([
-        db
-          .select()
-          .from(crewFamilyInfo)
-          .where(
-            and(
-              eq(crewFamilyInfo.crewUuid, crewUuid),
-              eq(crewFamilyInfo.isDeleted, false)
-            )
+    // Batch 1: Family-related queries (4 queries)
+    const [familyInfo, children, nextOfKin, documents] = await Promise.all([
+      db
+        .select()
+        .from(crewFamilyInfo)
+        .where(
+          and(
+            eq(crewFamilyInfo.crewUuid, crewUuid),
+            eq(crewFamilyInfo.isDeleted, false)
           )
-          .limit(1),
-        db
-          .select()
-          .from(crewChildren)
-          .where(
-            and(
-              eq(crewChildren.crewUuid, crewUuid),
-              eq(crewChildren.isDeleted, false)
-            )
-          ),
-        db
-          .select()
-          .from(crewNextOfKin)
-          .where(
-            and(
-              eq(crewNextOfKin.crewUuid, crewUuid),
-              eq(crewNextOfKin.isDeleted, false)
-            )
+        )
+        .limit(1),
+      db
+        .select()
+        .from(crewChildren)
+        .where(
+          and(
+            eq(crewChildren.crewUuid, crewUuid),
+            eq(crewChildren.isDeleted, false)
           )
-          .limit(1),
-        // Documents with attachments
-        db
-          .select()
-          .from(crewDocuments)
-          .where(
-            and(
-              eq(crewDocuments.crewUuid, crewUuid),
-              eq(crewDocuments.isDeleted, false)
-            )
-          ),
-        // Visas with attachments
-        db
-          .select()
-          .from(crewVisas)
-          .where(
-            and(
-              eq(crewVisas.crewUuid, crewUuid),
-              eq(crewVisas.isDeleted, false)
-            )
-          ),
-        // Education
-        db
-          .select()
-          .from(crewEducation)
-          .where(
-            and(
-              eq(crewEducation.crewUuid, crewUuid),
-              eq(crewEducation.isDeleted, false)
-            )
-          ),
-        // Licenses
-        db
-          .select()
-          .from(crewLicenses)
-          .where(
-            and(
-              eq(crewLicenses.crewUuid, crewUuid),
-              eq(crewLicenses.isDeleted, false)
-            )
-          ),
-        // Training Courses
-        db
-          .select()
-          .from(crewTrainingCourses)
-          .where(
-            and(
-              eq(crewTrainingCourses.crewUuid, crewUuid),
-              eq(crewTrainingCourses.isDeleted, false)
-            )
-          ),
-        // Pre-Joining Medicals
-        db
-          .select()
-          .from(crewPreJoiningMedicals)
-          .where(
-            and(
-              eq(crewPreJoiningMedicals.crewUuid, crewUuid),
-              eq(crewPreJoiningMedicals.isDeleted, false)
-            )
-          ),
-        // Doctor Visits
-        db
-          .select()
-          .from(crewDoctorVisits)
-          .where(
-            and(
-              eq(crewDoctorVisits.crewUuid, crewUuid),
-              eq(crewDoctorVisits.isDeleted, false)
-            )
-          ),
-        // Vessel Types Applied - with resolved names
-        db
-          .select({
-            cvta: crewVesselTypesApplied,
-            resolvedVesselTypeName: masterVesselTypes.vesselType,
-          })
-          .from(crewVesselTypesApplied)
-          .leftJoin(
-            masterVesselTypes,
-            eq(crewVesselTypesApplied.vesselTypeUuid, masterVesselTypes.vtUuid)
+        ),
+      db
+        .select()
+        .from(crewNextOfKin)
+        .where(
+          and(
+            eq(crewNextOfKin.crewUuid, crewUuid),
+            eq(crewNextOfKin.isDeleted, false)
           )
-          .where(
-            and(
-              eq(crewVesselTypesApplied.crewUuid, crewUuid),
-              eq(crewVesselTypesApplied.isDeleted, false)
-            )
-          ),
-      ]);
+        )
+        .limit(1),
+      db
+        .select()
+        .from(crewDocuments)
+        .where(
+          and(
+            eq(crewDocuments.crewUuid, crewUuid),
+            eq(crewDocuments.isDeleted, false)
+          )
+        ),
+    ]);
+
+    // Batch 2: Credentials queries (4 queries)
+    const [visas, education, licenses, trainingCourses] = await Promise.all([
+      db
+        .select()
+        .from(crewVisas)
+        .where(
+          and(
+            eq(crewVisas.crewUuid, crewUuid),
+            eq(crewVisas.isDeleted, false)
+          )
+        ),
+      db
+        .select()
+        .from(crewEducation)
+        .where(
+          and(
+            eq(crewEducation.crewUuid, crewUuid),
+            eq(crewEducation.isDeleted, false)
+          )
+        ),
+      db
+        .select()
+        .from(crewLicenses)
+        .where(
+          and(
+            eq(crewLicenses.crewUuid, crewUuid),
+            eq(crewLicenses.isDeleted, false)
+          )
+        ),
+      db
+        .select()
+        .from(crewTrainingCourses)
+        .where(
+          and(
+            eq(crewTrainingCourses.crewUuid, crewUuid),
+            eq(crewTrainingCourses.isDeleted, false)
+          )
+        ),
+    ]);
+
+    // Batch 3: Medical and vessel types queries (3 queries)
+    const [medicals, doctorVisits, vesselTypesRaw] = await Promise.all([
+      db
+        .select()
+        .from(crewPreJoiningMedicals)
+        .where(
+          and(
+            eq(crewPreJoiningMedicals.crewUuid, crewUuid),
+            eq(crewPreJoiningMedicals.isDeleted, false)
+          )
+        ),
+      db
+        .select()
+        .from(crewDoctorVisits)
+        .where(
+          and(
+            eq(crewDoctorVisits.crewUuid, crewUuid),
+            eq(crewDoctorVisits.isDeleted, false)
+          )
+        ),
+      db
+        .select({
+          cvta: crewVesselTypesApplied,
+          resolvedVesselTypeName: masterVesselTypes.vesselType,
+        })
+        .from(crewVesselTypesApplied)
+        .leftJoin(
+          masterVesselTypes,
+          eq(crewVesselTypesApplied.vesselTypeUuid, masterVesselTypes.vtUuid)
+        )
+        .where(
+          and(
+            eq(crewVesselTypesApplied.crewUuid, crewUuid),
+            eq(crewVesselTypesApplied.isDeleted, false)
+          )
+        ),
+    ]);
 
     // Extract and merge resolved names
     const personalDetailsRow = personalDetailsResults[0];
@@ -863,93 +863,87 @@ export const crewMembersService = {
       resolvedVesselTypeName: row.resolvedVesselTypeName,
     }));
 
-    // Get attachments for documents
+    // Collect UUIDs for attachment queries
     const docUuids = documents.map((d: any) => d.docUuid);
-    const documentAttachments = docUuids.length > 0 
-      ? await db.select().from(crewDocumentsAttachments).where(
-          and(
-            sql`${crewDocumentsAttachments.docUuid} = ANY(ARRAY[${sql.raw(docUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
-            eq(crewDocumentsAttachments.isDeleted, false)
-          )
-        )
-      : [];
-
-    // Get attachments for visas
     const visaUuids = visas.map((v: any) => v.visaUuid);
-    const visaAttachments = visaUuids.length > 0
-      ? await db.select().from(crewVisasAttachments).where(
-          and(
-            sql`${crewVisasAttachments.visaUuid} = ANY(ARRAY[${sql.raw(visaUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
-            eq(crewVisasAttachments.isDeleted, false)
-          )
-        )
-      : [];
-
-    // Get attachments for education
     const eduUuids = education.map((e: any) => e.eduUuid);
-    const educationAttachments = eduUuids.length > 0
-      ? await db.select().from(crewEducationAttachments).where(
-          and(
-            sql`${crewEducationAttachments.eduUuid} = ANY(ARRAY[${sql.raw(eduUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
-            eq(crewEducationAttachments.isDeleted, false)
-          )
-        )
-      : [];
-
-    // Get attachments for licenses
     const licUuids = licenses.map((l: any) => l.licUuid);
-    const licenseAttachments = licUuids.length > 0
-      ? await db.select().from(crewLicensesAttachments).where(
-          and(
-            sql`${crewLicensesAttachments.licUuid} = ANY(ARRAY[${sql.raw(licUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
-            eq(crewLicensesAttachments.isDeleted, false)
-          )
-        )
-      : [];
-
-    // Get attachments for training courses
     const trainUuids = trainingCourses.map((t: any) => t.trainUuid);
-    const trainingAttachments = trainUuids.length > 0
-      ? await db.select().from(crewTrainingAttachments).where(
-          and(
-            sql`${crewTrainingAttachments.trainUuid} = ANY(ARRAY[${sql.raw(trainUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
-            eq(crewTrainingAttachments.isDeleted, false)
-          )
-        )
-      : [];
-
-    // Get attachments for sea service
     const seaUuids = seaService.map((s: any) => s.seaUuid);
-    const seaServiceAttachments = seaUuids.length > 0
-      ? await db.select().from(crewSeaServiceAttachments).where(
-          and(
-            sql`${crewSeaServiceAttachments.seaUuid} = ANY(ARRAY[${sql.raw(seaUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
-            eq(crewSeaServiceAttachments.isDeleted, false)
-          )
-        )
-      : [];
-
-    // Get attachments for medicals
     const medUuids = medicals.map((m: any) => m.medUuid);
-    const medicalAttachments = medUuids.length > 0
-      ? await db.select().from(crewMedicalAttachments).where(
-          and(
-            sql`${crewMedicalAttachments.medUuid} = ANY(ARRAY[${sql.raw(medUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
-            eq(crewMedicalAttachments.isDeleted, false)
-          )
-        )
-      : [];
-
-    // Get attachments for doctor visits
     const visitUuids = doctorVisits.map((d: any) => d.visitUuid);
-    const doctorVisitAttachments = visitUuids.length > 0
-      ? await db.select().from(crewDoctorVisitsAttachments).where(
-          and(
-            sql`${crewDoctorVisitsAttachments.visitUuid} = ANY(ARRAY[${sql.raw(visitUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
-            eq(crewDoctorVisitsAttachments.isDeleted, false)
+
+    // Batch 4: Attachment queries for documents, visas, education, licenses (4 queries)
+    const [documentAttachments, visaAttachments, educationAttachments, licenseAttachments] = await Promise.all([
+      docUuids.length > 0 
+        ? db.select().from(crewDocumentsAttachments).where(
+            and(
+              sql`${crewDocumentsAttachments.docUuid} = ANY(ARRAY[${sql.raw(docUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewDocumentsAttachments.isDeleted, false)
+            )
           )
-        )
-      : [];
+        : Promise.resolve([]),
+      visaUuids.length > 0
+        ? db.select().from(crewVisasAttachments).where(
+            and(
+              sql`${crewVisasAttachments.visaUuid} = ANY(ARRAY[${sql.raw(visaUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewVisasAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+      eduUuids.length > 0
+        ? db.select().from(crewEducationAttachments).where(
+            and(
+              sql`${crewEducationAttachments.eduUuid} = ANY(ARRAY[${sql.raw(eduUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewEducationAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+      licUuids.length > 0
+        ? db.select().from(crewLicensesAttachments).where(
+            and(
+              sql`${crewLicensesAttachments.licUuid} = ANY(ARRAY[${sql.raw(licUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewLicensesAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+    ]);
+
+    // Batch 5: Attachment queries for training, sea service, medicals, doctor visits (4 queries)
+    const [trainingAttachments, seaServiceAttachments, medicalAttachments, doctorVisitAttachments] = await Promise.all([
+      trainUuids.length > 0
+        ? db.select().from(crewTrainingAttachments).where(
+            and(
+              sql`${crewTrainingAttachments.trainUuid} = ANY(ARRAY[${sql.raw(trainUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewTrainingAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+      seaUuids.length > 0
+        ? db.select().from(crewSeaServiceAttachments).where(
+            and(
+              sql`${crewSeaServiceAttachments.seaUuid} = ANY(ARRAY[${sql.raw(seaUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewSeaServiceAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+      medUuids.length > 0
+        ? db.select().from(crewMedicalAttachments).where(
+            and(
+              sql`${crewMedicalAttachments.medUuid} = ANY(ARRAY[${sql.raw(medUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewMedicalAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+      visitUuids.length > 0
+        ? db.select().from(crewDoctorVisitsAttachments).where(
+            and(
+              sql`${crewDoctorVisitsAttachments.visitUuid} = ANY(ARRAY[${sql.raw(visitUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewDoctorVisitsAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+    ]);
 
     // Map attachments to documents
     const documentsWithAttachments = documents.map((doc: any) => ({
