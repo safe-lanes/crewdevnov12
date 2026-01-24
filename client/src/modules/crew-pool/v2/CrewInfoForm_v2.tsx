@@ -53,7 +53,10 @@ import {
   useSaveVisaV2,
   useSaveEducationV2,
   useSaveLicenseV2,
-  useSaveTrainingCourseV2
+  useSaveTrainingCourseV2,
+  useSaveSeaServiceV2,
+  useSaveMedicalV2,
+  useSaveDoctorVisitV2
 } from './hooks/useCrewPoolV2';
 
 interface CrewMember {
@@ -4950,6 +4953,111 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           });
         });
       }
+      
+      // Sea Service - Company (Part E - E1)
+      if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
+        console.log('V2 Saving Company Sea Service:', { crewUuid: crewIdentifier, count: formData.currentCompanySeaService.length });
+        formData.currentCompanySeaService.forEach((sea: any) => {
+          const seaData = {
+            seaUuid: sea.seaUuid,
+            isCompanyService: true,
+            vesselName: sea.vesselName || '',
+            vesselCode: sea.vesselCode || '',
+            vesselType: sea.vesselType || '',
+            deadweight: sea.deadweight || '',
+            engineTypePower: sea.engineTypePower || '',
+            ownerOperator: sea.ownerOperator || '',
+            rank: sea.rank || '',
+            fromDate: sea.from || '',
+            toDate: sea.to || '',
+            periodMonths: sea.periodMonths || '',
+            experienceCategories: sea.experienceCategories || [],
+            attachments: sea.attachments || [],
+          };
+          console.log('V2 Saving Company Sea Service record:', seaData);
+          saveSeaServiceMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: seaData, 
+            seaUuid: sea.seaUuid 
+          });
+        });
+      }
+      
+      // Sea Service - External (Part E - E2)
+      if (formData.externalSeaService && formData.externalSeaService.length > 0) {
+        console.log('V2 Saving External Sea Service:', { crewUuid: crewIdentifier, count: formData.externalSeaService.length });
+        formData.externalSeaService.forEach((sea: any) => {
+          const seaData = {
+            seaUuid: sea.seaUuid,
+            isCompanyService: false,
+            vesselName: sea.vesselName || '',
+            vesselCode: sea.vesselCode || '',
+            vesselType: sea.vesselType || '',
+            deadweight: sea.deadweight || '',
+            engineTypePower: sea.engineTypePower || '',
+            ownerOperator: sea.ownerOperator || '',
+            rank: sea.rank || '',
+            fromDate: sea.from || '',
+            toDate: sea.to || '',
+            periodMonths: sea.periodMonths || '',
+            experienceCategories: sea.experienceCategories || [],
+            attachments: sea.attachments || [],
+          };
+          console.log('V2 Saving External Sea Service record:', seaData);
+          saveSeaServiceMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: seaData, 
+            seaUuid: sea.seaUuid 
+          });
+        });
+      }
+      
+      // Pre-Joining Medicals (Part F - F1)
+      if (formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
+        console.log('V2 Saving Pre-Joining Medicals:', { crewUuid: crewIdentifier, count: formData.preJoiningMedicals.length });
+        formData.preJoiningMedicals.forEach((med: any) => {
+          const medData = {
+            medUuid: med.medUuid,
+            vesselCode: med.vesselCode || '',
+            vesselName: med.vessel || '',
+            dateOfMedical: med.dateOfMedical || '',
+            clinicHospital: med.clinicHospital || '',
+            fitnessForDuty: med.fitnessForDuty || '',
+            expiryDate: med.expiry || '',
+            attachments: med.attachments || [],
+          };
+          console.log('V2 Saving Pre-Joining Medical record:', medData);
+          saveMedicalMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: medData, 
+            medUuid: med.medUuid 
+          });
+        });
+      }
+      
+      // Doctor Visits (Part F - F2)
+      if (formData.doctorVisits && formData.doctorVisits.length > 0) {
+        console.log('V2 Saving Doctor Visits:', { crewUuid: crewIdentifier, count: formData.doctorVisits.length });
+        formData.doctorVisits.forEach((visit: any) => {
+          const visitData = {
+            visitUuid: visit.visitUuid,
+            visitDate: visit.date || '',
+            doctorName: visit.doctorName || '',
+            clinicHospital: visit.clinicHospital || '',
+            complaint: visit.complaint || '',
+            diagnosis: visit.diagnosis || '',
+            treatment: visit.treatment || '',
+            followUpDate: visit.followUpDate || '',
+            attachments: visit.attachments || [],
+          };
+          console.log('V2 Saving Doctor Visit record:', visitData);
+          saveDoctorVisitMutationV2.mutate({ 
+            crewUuid: crewIdentifier, 
+            data: visitData, 
+            visitUuid: visit.visitUuid 
+          });
+        });
+      }
     } else {
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
@@ -5225,6 +5333,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const saveEducationMutationV2 = useSaveEducationV2();
   const saveLicenseMutationV2 = useSaveLicenseV2();
   const saveTrainingCourseMutationV2 = useSaveTrainingCourseV2();
+  const saveSeaServiceMutationV2 = useSaveSeaServiceV2();
+  const saveMedicalMutationV2 = useSaveMedicalV2();
+  const saveDoctorVisitMutationV2 = useSaveDoctorVisitV2();
   
   // Wrapper for create mutation with UI feedback
   const createCrewMutation = {
