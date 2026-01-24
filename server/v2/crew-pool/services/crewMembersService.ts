@@ -281,9 +281,11 @@ export const crewMembersService = {
       .select({
         crew: crewMembersV2,
         currentVessel: crewAssignments.vesselUuid,
+        lastVessel: crewAssignments.lastVesselUuid,
         signOnDate: crewAssignments.signOnDate,
         reliefDue: crewAssignments.reliefDue,
         contractPeriod: crewAssignments.contractPeriod,
+        assignmentReason: crewAssignments.reason,
       })
       .from(crewMembersV2)
       .leftJoin(
@@ -302,9 +304,11 @@ export const crewMembersService = {
     const data = results.map((r: any) => ({
       ...r.crew,
       presentVessel: r.currentVessel,
+      lastVessel: r.lastVessel,
       signOnDate: r.signOnDate,
       reliefDue: r.reliefDue,
       contractPeriod: r.contractPeriod,
+      assignmentReason: r.assignmentReason,
       status: this.calculateCrewStatus(r.crew.isActive !== false, !!r.currentVessel),
       timeOnBoardMonths: this.calculateTimeOnBoard(r.signOnDate),
     }));

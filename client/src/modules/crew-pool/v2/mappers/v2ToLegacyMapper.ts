@@ -10,16 +10,19 @@ export interface LegacyCrewMember {
   dob: string;
   age: string;
   nationality: string;
+  vesselType: string;
   presentRank: string;
   rankAppliedFor: string;
   status: string;
   reason: string;
+  availability: string;
+  nextAvailability: string;
   isActive: boolean;
   uploadedPhoto: string;
   presentVessel: string;
+  lastVessel: string;
   signOnDate: string;
   reliefDue: string;
-  nextAvailability: string;
   contractPeriodMonths: string;
 }
 
@@ -49,16 +52,19 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     dob,
     age: calculateAge(dob),
     nationality: v2Crew.nationalityUuid || v2Crew.nationality || '',
+    vesselType: v2Crew.vesselTypeUuid || v2Crew.vesselType || '',
     presentRank: v2Crew.presentRank || '',
     rankAppliedFor: v2Crew.rankAppliedFor || '',
     status: v2Crew.status || 'active',
     reason: v2Crew.reason || '',
+    availability: v2Crew.availability || '',
+    nextAvailability: v2Crew.nextAvailability || '',
     isActive: v2Crew.isActive ?? true,
     uploadedPhoto: v2Crew.uploadedPhoto || '',
     presentVessel: v2Crew.presentVessel || '',
+    lastVessel: v2Crew.lastVessel || '',
     signOnDate: v2Crew.signOnDate || '',
     reliefDue: v2Crew.reliefDue || '',
-    nextAvailability: v2Crew.nextAvailability || '',
     contractPeriodMonths: v2Crew.contractPeriodMonths || '',
   };
 }
@@ -78,10 +84,13 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember> & { dateOfBi
     gender: legacy.gender || undefined,
     dob: legacy.dob || legacy.dateOfBirth || undefined,
     nationalityUuid: legacy.nationality || undefined,
+    vesselTypeUuid: legacy.vesselType || undefined,
     presentRank: legacy.presentRank || undefined,
     rankAppliedFor: legacy.rankAppliedFor || undefined,
     status: legacy.status || 'active',
     reason: legacy.reason || undefined,
+    availability: legacy.availability || undefined,
+    nextAvailability: legacy.nextAvailability || undefined,
     isActive: legacy.isActive ?? true,
     uploadedPhoto: legacy.uploadedPhoto || undefined,
   };
