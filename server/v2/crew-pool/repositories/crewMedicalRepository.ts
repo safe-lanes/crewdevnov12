@@ -1,4 +1,4 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   crewPreJoiningMedicals,
@@ -6,6 +6,7 @@ import {
   crewDoctorVisits,
   crewDoctorVisitsAttachments,
 } from "../../../../shared/v2/crew-pool/schema";
+import { masterVessels } from "../../../../shared/schema";
 import type {
   CrewPreJoiningMedical,
   InsertCrewPreJoiningMedical,
@@ -47,9 +48,30 @@ export class CrewMedicalRepository {
     crewUuid: string
   ): Promise<CrewPreJoiningMedicalWithAttachments[]> {
     const db = getDb();
-    const medicals = await db
-      .select()
+    const medicalsWithVessel = await db
+      .select({
+        id: crewPreJoiningMedicals.id,
+        medUuid: crewPreJoiningMedicals.medUuid,
+        crewUuid: crewPreJoiningMedicals.crewUuid,
+        vesselUuid: crewPreJoiningMedicals.vesselUuid,
+        vesselName: masterVessels.vessel,
+        examinationDate: crewPreJoiningMedicals.examinationDate,
+        bp: crewPreJoiningMedicals.bp,
+        weight: crewPreJoiningMedicals.weight,
+        anyMedicationPrescribed: crewPreJoiningMedicals.anyMedicationPrescribed,
+        clinicHospital: crewPreJoiningMedicals.clinicHospital,
+        fitForDuty: crewPreJoiningMedicals.fitForDuty,
+        expiryDate: crewPreJoiningMedicals.expiryDate,
+        sortOrder: crewPreJoiningMedicals.sortOrder,
+        createdAt: crewPreJoiningMedicals.createdAt,
+        createdByUuid: crewPreJoiningMedicals.createdByUuid,
+        updatedAt: crewPreJoiningMedicals.updatedAt,
+        updatedByUuid: crewPreJoiningMedicals.updatedByUuid,
+        isDeleted: crewPreJoiningMedicals.isDeleted,
+        isSync: crewPreJoiningMedicals.isSync,
+      })
       .from(crewPreJoiningMedicals)
+      .leftJoin(masterVessels, eq(crewPreJoiningMedicals.vesselUuid, masterVessels.vesselUuid))
       .where(
         and(
           eq(crewPreJoiningMedicals.crewUuid, crewUuid),
@@ -57,9 +79,9 @@ export class CrewMedicalRepository {
         )
       );
 
-    if (medicals.length === 0) return [];
+    if (medicalsWithVessel.length === 0) return [];
 
-    const medUuids = medicals.map((m: CrewPreJoiningMedical) => m.medUuid);
+    const medUuids = medicalsWithVessel.map((m: { medUuid: string }) => m.medUuid);
     const attachments = await db
       .select()
       .from(crewMedicalAttachments)
@@ -77,7 +99,7 @@ export class CrewMedicalRepository {
       attMap.set(att.medUuid, existing);
     });
 
-    return medicals.map((medical: CrewPreJoiningMedical) => ({
+    return medicalsWithVessel.map((medical: { medUuid: string; vesselName: string | null; [key: string]: any }) => ({
       ...medical,
       attachments: attMap.get(medical.medUuid) || [],
     }));
