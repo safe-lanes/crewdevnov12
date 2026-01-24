@@ -34,68 +34,37 @@ The application employs a modern web stack with a module-first architecture, pri
 - Date Display Format: DD-MMM-YYYY.
 
 ### Technical Implementations
-- **Module-First Architecture**: For clear separation of concerns.
+- **Module-First Architecture**: Emphasizes clear separation of concerns.
 - **Vessel ID/Name Translation**: Backend uses IDs, UI displays names.
 - **Canonical Vessel Code Enforcement**: All storage backends enforce VSL-XXX format.
 - **Master Data System**: Centralized reference data storage.
 - **Vessel Revision System**: Manages vessel rank assignments with draft/submission workflows.
-- **Rank Designation Synchronization**: Supports company and vessel-specific rank designations.
-- **Vessel Database Module**: Displays vessel data, Officer Matrix, Planning, and Training Matrix. Includes calculation of "Time o/b (months)" from `crew_members.sign_on_date`.
-- **Crew Handover Workflow**: Manages crew transitions with primary/secondary status.
-- **Crew Archive System**: Manages historical crew records with sign-off workflow.
-- **Rotation Module**: Manages crew rotation planning with "Due" and "Plan" sections and visual timelines.
-- **Promotion Hierarchy System**: Configurable promotion paths integrated with a Promotions module. Promotion Review Forms dynamically load criteria based on the target rank.
-- **Forms Configuration**: Integrates company-specific rank labels for rank group creation and appraisal form matching. Includes rank group uniqueness validation, appraisal form rank validation, and archive/unarchive workflow for rank groups. Utilizes a Form Versioning System with draft/released versions and independent version history per rank group. Rank group configuration allows admins to hide specific fields and sections via a JSON column.
-- **Training Matrix Module**: Manages training certifications and requirements, including Training Master, Company Training configurations, and Company Training Groups (A-J). Supports a Training Requirement Matrix for per-rank requirements (Mandatory/Recommended).
-- **Vessel Type Hierarchy System**: Centralized 3-level classification from Master Data 004.
-- **Crew Appraisals Module**: Manages appraisals through a 3-stage workflow (Draft → Preliminary → Submitted → Reviewed).
-- **Drugs & Alcohol Testing Module**: Tracks six test types with filtering, AG Grid tables, and Summary View.
-- **Recruitment Module**: Manages candidate applications with AG Grid display and soft delete.
-- **Recruitment V2 Module**: Complete restructure using Repository + Service + Controller pattern with complete isolation in v2 folder structure. Uses serial IDs with UUID soft foreign keys (rec_can_uuid as text) instead of database-level FK constraints. Original `recruitment_candidates` table preserved unchanged for legacy system.
-  - **Database Schema**: 54 normalized tables across 4 phases:
-    - Phase 1 (7 tables): Candidate Core + Profile (recruitment_candidates_v2, cand_personal_details, cand_addresses, cand_family_info, cand_children, cand_next_of_kin, cand_vessel_types_applied)
-    - Phase 2 (14 tables): Documents & Attachments (cand_documents, cand_documents_attachments, cand_visas, cand_visas_attachments, cand_education, cand_education_attachments, cand_licenses, cand_licenses_attachments, cand_training_courses, cand_training_attachments, cand_sea_service, cand_sea_service_attachments, cand_additional_info, cand_additional_info_attachments)
-    - Phase 3 (27 tables): Screening B1-B8 (B1: Initial Screening - 3 tables, B2: References - 4 tables, B3: Security - 4 tables, B4: Certificates - 4 tables, B5: Tests - 4 tables, B6: Interviews - 4 tables, B7: Training - 2 tables, B8: Shortlisting - 4 tables)
-    - Phase 4 (6 tables): Approvals & Decisions (cand_approvals, cand_suitability, cand_suitability_vessel_types, cand_suitability_fleet_groups, cand_recruitment_decision, cand_assigned_groups)
-  - **API Endpoints**: Follow `/api/v2/recruitment/` pattern with numeric ID or recCanUuid in URL paths
-  - **Feature Flag System**: Version toggle (`useRecruitmentVersion` hook) allows switching between Legacy and V2 modules at runtime via localStorage (`recruitment_version` key). Toggle visible in top-right corner of Recruitment module.
-  - **Frontend Structure** (client/src/modules/recruitment-v2/):
-    - `RecruitmentModule_v2.tsx`: Main module with AG Grid list view, sidebar navigation, filters
-    - `RecruitmentApplicationForm_v2.tsx`: Multi-step application form with stepper navigation
-    - `RecruitmentSideBar_v2.tsx`: Sidebar with status-based navigation (In Progress, Recruited, Waitlist, Rejected)
-    - `hooks/useRecruitmentV2.ts`: React Query hooks for all 54 tables (95+ endpoints)
-    - `hooks/useRecruitmentVersion.ts`: Feature flag hook for version switching
-    - `types/formTypes.ts`: TypeScript types for all V2 form data structures
-    - `index.ts`: Module exports
-  - **Phase 1 Status (Complete)**: Full UI implementation complete with all 10 sections matching legacy (A1.1-A5, B1-B8 placeholders). Core candidate data persistence working (candidate create/update, personal details, address, family info, next of kin, children, vessel types). Form properly loads existing data when editing candidates.
-  - **Phase 2 Status (Complete)**: Section-level CRUD for documents, visas, education, licenses, training, sea service implemented with reconciliation logic for add/update/delete operations.
-  - **Attachment Persistence System**: Attachments are saved in a chained pattern - entity save → capture UUID → save new attachments. Backend service methods (getDocuments, getVisas, getEducation, getLicenses, getTrainingCourses, getSeaService, getAdditionalInfo) return entities with nested attachments array. Frontend filters attachments by `!attUuid || isNew` to prevent duplicate saves. Save buttons are disabled during all mutation operations to prevent race conditions.
-- **Crew Pool V2 Module**: Complete restructure following Recruitment V2 patterns with Repository + Service + Controller architecture.
-  - **Database Schema** (`shared/v2/crew-pool/schema.ts`): 24 normalized tables with UUID identifiers, soft deletes, and 6 standard audit columns (createdAt, createdBy, updatedAt, updatedBy, deletedAt, archivedAt)
-  - **Backend Structure** (`server/v2/crew-pool/`): 12 repositories, 10 services, 13 controllers, 80+ routes at `/api/v2/crew-pool`
-  - **Frontend API Layer** (`client/src/modules/crew-pool/v2/api/`): 13 API files with typed methods for all CRUD operations and attachments
-  - **Frontend Mappers** (`client/src/modules/crew-pool/v2/mappers/`): 9 mapper files converting between API responses and form state
-  - **Frontend Hooks** (`client/src/modules/crew-pool/v2/hooks/`): 14 React Query hook files with TanStack Query v5 patterns
-    - Query key hierarchy: `['v2', 'crew-pool', 'crew'] → [..., 'detail', crewUuid] → [..., 'section', 'list']`
-    - Consolidated hook pattern for sections (returns query data + all mutations + isMutating flag)
-    - `useCrewPoolVersion.ts`: Feature flag hook for version switching via localStorage (`crew_pool_version` key)
-  - **License Archive System**: Archive/unarchive endpoints for crew licenses with soft delete support
-  - **Master Data UUID Resolution** (`server/v2/crew-pool/services/masterDataResolver.ts`): Shared utility for resolving master data values to UUIDs. Uses strict UUID v4 regex validation. Pattern: Accept name OR UUID on WRITE operations, always store UUIDs, use JOINs on READ operations to return both UUID and resolved name. Applied to nationality, vesselType, country, and vessel fields across crew members, documents, visas, profile services, sea service (E1/E2), and medical records (F1/F2).
-    - **E1 Company Sea Service**: Resolves both vesselUuid (from master_vessels) and vesselTypeUuid (from master_vessel_types)
-    - **E2 External Sea Service**: Resolves vesselTypeUuid only (vessel is free entry)
-    - **F1 Pre Joining Medicals**: Resolves vesselUuid from master_vessels
-    - **F2 Doctor Visits**: Vessel is free entry (no resolution needed)
-  - **Database Connection Resilience** (`server/utils/dbConnectionManager.ts`): Production-critical connection pool management with retry logic, exponential backoff, and request queuing (max 8 concurrent operations). Pool size reduced to 15 connections. Health endpoint exposes connection metrics. Frontend batched save pattern processes operations in 4 sequential batches (Docs+Visas → Edu+Licenses → Training+SeaService → Medicals+DoctorVisits) with sub-batches of 3 operations each to prevent "too many clients" errors.
-- **Crew Pool Module**: Manages active crew database with comprehensive crew information forms. Includes PDF export functionality for Crew Info Form (Parts A-F) using pdf-lib with A4 format. PDF header displays crew photo in top-right corner with name and rank on the left.
-- **Rest Hours Module**: Manages seafarer work and rest hours compliance with Dashboard, Record, and Plan sections. Includes a "Majority-Day Violation Assignment" logic for violation display. PDF export generates landscape A4 "Rest_Hour_Record_Extract.pdf" with redesigned header (Name Of Ship, IMO Number, Flag, Seafarer FullName in Rank-FileNo-NAME format, Position/Rank, Month-Year, Watchkeeper checkboxes), 48 half-hour work/rest grid, and mandatory second page with MLC 2006/STCW footnotes, national laws section, and signature lines for Master and Seafarer.
-- **Oil Major Compliance Engine**: Validates crew officer experience against various oil major requirements across 7 categories, supporting rank pair logic and CSV import of rules.
-- **Rank Ordering System**: All crew-displaying modules use a centralized `useRankOrdering` hook to sort crew by rank based on vessel revision ranks from the backend, ensuring consistent ordering across the system.
-- **Performance Optimization**: Achieved through route-level code splitting using `React.lazy()`, memoization of components and calculations (`React.memo`, `useMemo`), and dual schema validation (lenient for drafts, strict for submissions) in complex forms like AppraisalForm.
+- **Crew Modules**:
+    - **Vessel Database Module**: Displays vessel data, Officer Matrix, Planning, and Training Matrix, including "Time o/b (months)" calculation.
+    - **Crew Handover Workflow**: Manages crew transitions with primary/secondary status.
+    - **Crew Archive System**: Manages historical crew records with sign-off workflow.
+    - **Rotation Module**: Manages crew rotation planning with visual timelines.
+    - **Crew Appraisals Module**: Manages appraisals through a 3-stage workflow.
+    - **Crew Pool Module (V1 & V2)**: Manages active crew database. V2 features a re-architected system with a Repository + Service + Controller pattern, UUID identifiers, soft deletes, and comprehensive forms. Includes a "Save-Before-Attachment" pattern and generates sequential 'A000001' format Crew IDs.
+    - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments.
+- **Forms & Configuration**:
+    - **Forms Configuration**: Integrates company-specific rank labels for rank group creation and appraisal form matching. Features a Form Versioning System and allows admin configuration of hidden fields/sections via JSON.
+    - **Promotion Hierarchy System**: Configurable promotion paths integrated with a Promotions module, with dynamic criteria loading for review forms.
+- **Compliance & Training**:
+    - **Drugs & Alcohol Testing Module**: Tracks six test types with filtering and summary views.
+    - **Training Matrix Module**: Manages certifications and requirements, including Company Training configurations and a per-rank Training Requirement Matrix.
+    - **Oil Major Compliance Engine**: Validates crew officer experience against various oil major requirements.
+    - **Rest Hours Module**: Manages seafarer work and rest hours compliance with Dashboard, Record, and Plan sections, including "Majority-Day Violation Assignment" logic and PDF export.
+- **Recruitment Module (V1 & V2)**: Manages candidate applications. V2 is a complete restructure using Repository + Service + Controller pattern, serial IDs with UUID soft foreign keys, and 54 normalized tables across 4 phases (Candidate Core, Documents, Screening, Approvals). Features API endpoints following `/api/v2/recruitment/` and a feature flag system for version toggling.
+- **Core Utilities**:
+    - **Rank Designation Synchronization**: Supports company and vessel-specific rank designations.
+    - **Vessel Type Hierarchy System**: Centralized 3-level classification from Master Data 004.
+    - **Rank Ordering System**: Centralized `useRankOrdering` hook for consistent crew sorting.
+    - **Database Connection Resilience**: Production-critical connection pool management with retry logic, exponential backoff, and request queuing.
+    - **Master Data UUID Resolution**: Utility for resolving master data values to UUIDs, storing UUIDs, and using JOINs for read operations.
+- **Performance Optimization**: Achieved through route-level code splitting, memoization, and dual schema validation.
 - **Data Storage**: `PersistentFileStorage` for development, PostgreSQL/Drizzle ORM for production.
-- **Crew Member Update Protection**: Protects vessel assignment fields from accidental clearing.
-- **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments.
-- **Sign On Date Consolidation**: Unified `sign_on_date` terminology and implementation across the codebase.
-- **Position Display Normalization**: API-level `displayRole` field provides correct display names for vessel positions. Single-slot ranks show base label (e.g., "Fitter"), multi-slot ranks show suffixed positions (e.g., "Fitter_1", "Fitter_2"). Applied consistently across Vessel Crew List, Planning, Officer Matrix, Training Matrix, and Rotation modules.
+- **Position Display Normalization**: API-level `displayRole` field provides correct display names for vessel positions.
 
 ## External Dependencies
 - React 18
