@@ -4,6 +4,7 @@ import {
   crewVisas,
   crewVisasAttachments,
 } from "../../../../shared/v2/crew-pool/schema";
+import { masterCountries } from "../../../../shared/schema";
 import type {
   CrewVisa,
   InsertCrewVisa,
@@ -14,6 +15,7 @@ import { v4 as uuidv4 } from "uuid";
 
 export type CrewVisaWithAttachments = CrewVisa & {
   attachments: CrewVisaAttachment[];
+  countryName?: string;
 };
 
 export class CrewVisasRepository {
@@ -31,17 +33,22 @@ export class CrewVisasRepository {
     crewUuid: string
   ): Promise<CrewVisaWithAttachments[]> {
     const db = getDb();
-    const visas = await db
-      .select()
+    
+    const visasWithCountry = await db
+      .select({
+        visa: crewVisas,
+        countryName: masterCountries.countryName,
+      })
       .from(crewVisas)
+      .leftJoin(masterCountries, eq(crewVisas.countryUuid, masterCountries.countryUuid))
       .where(
         and(eq(crewVisas.crewUuid, crewUuid), eq(crewVisas.isDeleted, false))
       )
       .orderBy(asc(crewVisas.createdAt));
 
-    if (visas.length === 0) return [];
+    if (visasWithCountry.length === 0) return [];
 
-    const visaUuids = visas.map((v: CrewVisa) => v.visaUuid);
+    const visaUuids = visasWithCountry.map((v: { visa: CrewVisa; countryName: string | null }) => v.visa.visaUuid);
     const attachments = await db
       .select()
       .from(crewVisasAttachments)
@@ -59,9 +66,10 @@ export class CrewVisasRepository {
       attMap.set(att.visaUuid, existing);
     });
 
-    return visas.map((visa: CrewVisa) => ({
-      ...visa,
-      attachments: attMap.get(visa.visaUuid) || [],
+    return visasWithCountry.map((row: { visa: CrewVisa; countryName: string | null }) => ({
+      ...row.visa,
+      countryName: row.countryName || undefined,
+      attachments: attMap.get(row.visa.visaUuid) || [],
     }));
   }
 
