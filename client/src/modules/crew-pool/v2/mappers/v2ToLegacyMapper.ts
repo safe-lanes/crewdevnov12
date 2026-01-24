@@ -643,10 +643,15 @@ export interface LegacyPreJoiningMedical {
   medUuid?: string;
   vesselCode: string;
   vesselName: string;
+  vessel: string;
   dateOfMedical: string;
+  bp: string;
+  weight: string;
+  anyMedicationPrescribed: string;
   clinicHospital: string;
   fitnessForDuty: string;
   expiryDate: string;
+  expiry: string;
   attachments: LegacyAttachment[];
 }
 
@@ -654,11 +659,16 @@ export function mapV2PreJoiningMedicalToLegacy(v2: any): LegacyPreJoiningMedical
   return {
     medUuid: v2?.medUuid,
     vesselCode: v2?.vesselUuid || '',
-    vesselName: '',
+    vesselName: v2?.vesselName || '',
+    vessel: v2?.vesselName || '',
     dateOfMedical: v2?.examinationDate || '',
+    bp: v2?.bp || '',
+    weight: v2?.weight || '',
+    anyMedicationPrescribed: v2?.anyMedicationPrescribed || '',
     clinicHospital: v2?.clinicHospital || '',
     fitnessForDuty: v2?.fitForDuty || '',
     expiryDate: v2?.expiryDate || '',
+    expiry: v2?.expiryDate || '',
     attachments: (v2?.attachments || []).map((att: any) => ({
       attUuid: att.attUuid,
       fileName: att.fileName || '',
@@ -674,19 +684,27 @@ export function mapLegacyPreJoiningMedicalToV2(legacy: LegacyPreJoiningMedical):
   return {
     medUuid: legacy.medUuid,
     vesselUuid: legacy.vesselCode || undefined,
+    vesselName: legacy.vessel || legacy.vesselName || undefined,
     examinationDate: legacy.dateOfMedical || undefined,
+    bp: legacy.bp || undefined,
+    weight: legacy.weight || undefined,
+    anyMedicationPrescribed: legacy.anyMedicationPrescribed || undefined,
     clinicHospital: legacy.clinicHospital || undefined,
     fitForDuty: legacy.fitnessForDuty || undefined,
-    expiryDate: legacy.expiryDate || undefined,
+    expiryDate: legacy.expiryDate || legacy.expiry || undefined,
   };
 }
 
 export interface LegacyDoctorVisit {
   visitUuid?: string;
+  vessel: string;
+  port: string;
+  date: string;
   visitDate: string;
   doctorName: string;
   clinicHospital: string;
   complaint: string;
+  doctorComments: string;
   diagnosis: string;
   treatment: string;
   followUpDate: string;
@@ -696,10 +714,14 @@ export interface LegacyDoctorVisit {
 export function mapV2DoctorVisitToLegacy(v2: any): LegacyDoctorVisit {
   return {
     visitUuid: v2?.visitUuid,
+    vessel: v2?.vessel || '',
+    port: v2?.port || '',
+    date: v2?.visitDate || '',
     visitDate: v2?.visitDate || '',
     doctorName: v2?.doctorName || '',
     clinicHospital: v2?.clinicHospital || '',
     complaint: v2?.reason || '',
+    doctorComments: v2?.doctorComments || '',
     diagnosis: v2?.diagnosis || '',
     treatment: v2?.treatment || '',
     followUpDate: v2?.followUpDate || '',
@@ -717,10 +739,13 @@ export function mapV2DoctorVisitToLegacy(v2: any): LegacyDoctorVisit {
 export function mapLegacyDoctorVisitToV2(legacy: LegacyDoctorVisit): any {
   return {
     visitUuid: legacy.visitUuid,
-    visitDate: legacy.visitDate || undefined,
+    vessel: legacy.vessel || undefined,
+    port: legacy.port || undefined,
+    visitDate: legacy.visitDate || legacy.date || undefined,
     doctorName: legacy.doctorName || undefined,
     clinicHospital: legacy.clinicHospital || undefined,
     reason: legacy.complaint || undefined,
+    doctorComments: legacy.doctorComments || undefined,
     diagnosis: legacy.diagnosis || undefined,
     treatment: legacy.treatment || undefined,
     followUpDate: legacy.followUpDate || undefined,

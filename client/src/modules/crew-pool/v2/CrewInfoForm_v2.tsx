@@ -5021,14 +5021,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       if (formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
         console.log('V2 Saving Pre-Joining Medicals:', { crewUuid: crewIdentifier, count: formData.preJoiningMedicals.length });
         formData.preJoiningMedicals.forEach((med: any) => {
-          const medData = {
+          const medData: LegacyPreJoiningMedical = {
             medUuid: med.medUuid,
             vesselCode: med.vesselCode || '',
             vesselName: med.vessel || '',
+            vessel: med.vessel || '',
             dateOfMedical: med.dateOfMedical || '',
+            bp: med.bp || '',
+            weight: med.weight || '',
+            anyMedicationPrescribed: med.anyMedicationPrescribed || '',
             clinicHospital: med.clinicHospital || '',
             fitnessForDuty: med.fitnessForDuty || '',
             expiryDate: med.expiry || '',
+            expiry: med.expiry || '',
             attachments: med.attachments || [],
           };
           console.log('V2 Saving Pre-Joining Medical record:', medData);
@@ -5044,12 +5049,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       if (formData.doctorVisits && formData.doctorVisits.length > 0) {
         console.log('V2 Saving Doctor Visits:', { crewUuid: crewIdentifier, count: formData.doctorVisits.length });
         formData.doctorVisits.forEach((visit: any) => {
-          const visitData = {
+          const visitData: LegacyDoctorVisit = {
             visitUuid: visit.visitUuid,
+            vessel: visit.vessel || '',
+            port: visit.port || '',
+            date: visit.date || '',
             visitDate: visit.date || '',
             doctorName: visit.doctorName || '',
             clinicHospital: visit.clinicHospital || '',
             complaint: visit.complaint || '',
+            doctorComments: visit.doctorComments || '',
             diagnosis: visit.diagnosis || '',
             treatment: visit.treatment || '',
             followUpDate: visit.followUpDate || '',
