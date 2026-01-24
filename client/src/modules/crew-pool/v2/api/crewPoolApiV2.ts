@@ -71,7 +71,9 @@ export const crewPoolApiV2 = {
   },
 
   async savePersonalDetails(crewUuid: string, data: any) {
-    return apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/personal`, data);
+    const response = await apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/personal`, data);
+    if (!response.ok) throw new Error('Failed to save personal details');
+    return response.json();
   },
 
   async getAddress(crewUuid: string) {
@@ -81,7 +83,9 @@ export const crewPoolApiV2 = {
   },
 
   async saveAddress(crewUuid: string, data: any) {
-    return apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/address`, data);
+    const response = await apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/address`, data);
+    if (!response.ok) throw new Error('Failed to save address');
+    return response.json();
   },
 
   async getFamilyInfo(crewUuid: string) {
@@ -91,7 +95,9 @@ export const crewPoolApiV2 = {
   },
 
   async saveFamilyInfo(crewUuid: string, data: any) {
-    return apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/family`, data);
+    const response = await apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/family`, data);
+    if (!response.ok) throw new Error('Failed to save family info');
+    return response.json();
   },
 
   async getChildren(crewUuid: string) {
