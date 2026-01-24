@@ -248,7 +248,7 @@ export function useSaveDocumentV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, docUuid }: { crewUuid: string; data: LegacyDocument; docUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, docUuid }: { crewUuid: string; data: any; docUuid?: string }) => {
       const v2Data = mapLegacyDocumentToV2(data);
       if (docUuid) {
         return crewPoolApiV2.updateDocument(crewUuid, docUuid, v2Data);
@@ -290,7 +290,7 @@ export function useSaveVisaV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ crewUuid, data, visaUuid }: { crewUuid: string; data: LegacyVisa; visaUuid?: string }) => {
+    mutationFn: async ({ crewUuid, data, visaUuid }: { crewUuid: string; data: any; visaUuid?: string }) => {
       const v2Data = mapLegacyVisaToV2(data);
       if (visaUuid) {
         return crewPoolApiV2.updateVisa(crewUuid, visaUuid, v2Data);

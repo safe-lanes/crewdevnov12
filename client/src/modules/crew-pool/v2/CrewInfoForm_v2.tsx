@@ -4831,15 +4831,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         formData.documents.forEach((doc: any) => {
           const docData = {
             docUuid: doc.docUuid,
-            documentId: doc.documentId || '',
-            documentName: doc.documentName || doc.documentId || '',
-            documentNumber: doc.number || '',
-            issuedDate: doc.issued || '',
-            expiryDate: doc.expiry || '',
+            documentId: doc.documentId || doc.document || '',
+            documentName: doc.document || doc.documentId || '',
+            number: doc.number || '',
+            issued: doc.issued || '',
+            expiry: doc.expiry || '',
             issuingAuthority: doc.issuingAuthority || '',
-            issuingCountry: doc.issuingCountry || '',
+            issuingCountryUuid: doc.issuingCountry || '',
             attachments: doc.attachments || [],
           };
+          console.log('V2 Saving Document:', docData);
           saveDocumentMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: docData, 
@@ -4854,13 +4855,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         formData.visas.forEach((visa: any) => {
           const visaData = {
             visaUuid: visa.visaUuid,
-            country: visa.countryId || '',
-            serialNo: visa.serialNumber || '',
-            issuedDate: visa.issued || '',
-            expiryDate: visa.expiry || '',
+            countryUuid: visa.countryId || visa.issuingCountry || '',
+            serialNo: visa.serialNo || visa.serialNumber || '',
+            issued: visa.issued || '',
+            expiry: visa.expiry || '',
             visaType: visa.visaType || '',
             attachments: visa.attachments || [],
           };
+          console.log('V2 Saving Visa:', visaData);
           saveVisaMutationV2.mutate({ 
             crewUuid: crewIdentifier, 
             data: visaData, 
