@@ -1,5 +1,38 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { crewPoolApiV2 } from '../api/crewPoolApiV2';
+
+// Helper to get crewUserId from localStorage with null fallback
+function getCrewUserId(): string | null {
+  try {
+    return localStorage.getItem("crewUserId") || null;
+  } catch {
+    return null;
+  }
+}
+
+// Inject audit user UUID into request data
+function withAuditUser<T>(data: T): T {
+  const auditUserUuid = getCrewUserId();
+  
+  // Handle arrays - add auditUserUuid to each item
+  if (Array.isArray(data)) {
+    return data.map(item => 
+      typeof item === 'object' && item !== null 
+        ? { ...item, auditUserUuid } 
+        : item
+    ) as T;
+  }
+  
+  // Handle objects
+  if (typeof data === 'object' && data !== null) {
+    return {
+      ...data,
+      auditUserUuid,
+    };
+  }
+  
+  return data;
+}
 import { 
   mapV2CrewToLegacy,
   mapV2FullProfileToLegacy,
@@ -105,7 +138,7 @@ export function useCreateCrewV2() {
   
   return useMutation({
     mutationFn: async (legacyData: Partial<LegacyCrewMember>) => {
-      const v2Data = mapLegacyCrewToV2(legacyData);
+      const v2Data = withAuditUser(mapLegacyCrewToV2(legacyData));
       console.log('[V2] Creating crew with data:', v2Data);
       const result = await crewPoolApiV2.createCrew(v2Data);
       console.log('[V2] Create crew result:', result);
@@ -126,7 +159,7 @@ export function useUpdateCrewV2() {
   
   return useMutation({
     mutationFn: async ({ crewUuid, data }: { crewUuid: string; data: Partial<LegacyCrewMember> }) => {
-      const v2Data = mapLegacyCrewToV2(data);
+      const v2Data = withAuditUser(mapLegacyCrewToV2(data));
       return crewPoolApiV2.updateCrew(crewUuid, v2Data);
     },
     onSuccess: (_, variables) => {
@@ -155,7 +188,7 @@ export function useSavePersonalDetailsV2() {
   
   return useMutation({
     mutationFn: async ({ crewUuid, data }: { crewUuid: string; data: any }) => {
-      const v2Data = mapLegacyPersonalDetailsToV2(data);
+      const v2Data = withAuditUser(mapLegacyPersonalDetailsToV2(data));
       return crewPoolApiV2.savePersonalDetails(crewUuid, v2Data);
     },
     onSuccess: (_, variables) => {
@@ -170,7 +203,7 @@ export function useSaveAddressV2() {
   
   return useMutation({
     mutationFn: async ({ crewUuid, data }: { crewUuid: string; data: any }) => {
-      const v2Data = mapLegacyAddressToV2(data);
+      const v2Data = withAuditUser(mapLegacyAddressToV2(data));
       return crewPoolApiV2.saveAddress(crewUuid, v2Data);
     },
     onSuccess: (_, variables) => {
@@ -185,7 +218,7 @@ export function useSaveFamilyInfoV2() {
   
   return useMutation({
     mutationFn: async ({ crewUuid, data }: { crewUuid: string; data: any }) => {
-      const v2Data = mapLegacyFamilyInfoToV2(data);
+      const v2Data = withAuditUser(mapLegacyFamilyInfoToV2(data));
       return crewPoolApiV2.saveFamilyInfo(crewUuid, v2Data);
     },
     onSuccess: (_, variables) => {
@@ -212,7 +245,7 @@ export function useSaveChildV2() {
   
   return useMutation({
     mutationFn: async ({ crewUuid, data, childUuid }: { crewUuid: string; data: LegacyChild; childUuid?: string }) => {
-      const v2Data = mapLegacyChildToV2(data);
+      const v2Data = withAuditUser(mapLegacyChildToV2(data));
       if (childUuid) {
         return crewPoolApiV2.updateChild(crewUuid, childUuid, v2Data);
       }
@@ -242,7 +275,7 @@ export function useSaveNextOfKinV2() {
   
   return useMutation({
     mutationFn: async ({ crewUuid, data }: { crewUuid: string; data: LegacyNextOfKin }) => {
-      const v2Data = mapLegacyNextOfKinToV2(data);
+      const v2Data = withAuditUser(mapLegacyNextOfKinToV2(data));
       return crewPoolApiV2.saveNextOfKin(crewUuid, v2Data);
     },
     onSuccess: (_, variables) => {
@@ -273,7 +306,7 @@ export function useSaveDocumentV2() {
       docUuid?: string;
       attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
-      const v2Data = mapLegacyDocumentToV2(data);
+      const v2Data = withAuditUser(mapLegacyDocumentToV2(data));
       let result: any;
       let entityUuid: string;
       
@@ -342,7 +375,7 @@ export function useSaveVisaV2() {
       visaUuid?: string;
       attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
-      const v2Data = mapLegacyVisaToV2(data);
+      const v2Data = withAuditUser(mapLegacyVisaToV2(data));
       let result: any;
       let entityUuid: string;
       
@@ -411,7 +444,7 @@ export function useSaveEducationV2() {
       eduUuid?: string;
       attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
-      const v2Data = mapLegacyEducationToV2(data);
+      const v2Data = withAuditUser(mapLegacyEducationToV2(data));
       let result: any;
       let entityUuid: string;
       
@@ -480,7 +513,7 @@ export function useSaveLicenseV2() {
       licUuid?: string;
       attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
-      const v2Data = mapLegacyLicenseToV2(data);
+      const v2Data = withAuditUser(mapLegacyLicenseToV2(data));
       let result: any;
       let entityUuid: string;
       
@@ -562,7 +595,7 @@ export function useSaveTrainingCourseV2() {
       trainUuid?: string;
       attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
-      const v2Data = mapLegacyTrainingCourseToV2(data);
+      const v2Data = withAuditUser(mapLegacyTrainingCourseToV2(data));
       let result: any;
       let entityUuid: string;
       
@@ -631,7 +664,7 @@ export function useSaveSeaServiceV2() {
       seaUuid?: string;
       attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
-      const v2Data = mapLegacySeaServiceToV2(data);
+      const v2Data = withAuditUser(mapLegacySeaServiceToV2(data));
       let result: any;
       let entityUuid: string;
       
@@ -700,7 +733,7 @@ export function useSaveMedicalV2() {
       medUuid?: string;
       attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
-      const v2Data = mapLegacyPreJoiningMedicalToV2(data);
+      const v2Data = withAuditUser(mapLegacyPreJoiningMedicalToV2(data));
       let result: any;
       let entityUuid: string;
       
@@ -769,7 +802,7 @@ export function useSaveDoctorVisitV2() {
       visitUuid?: string;
       attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
-      const v2Data = mapLegacyDoctorVisitToV2(data);
+      const v2Data = withAuditUser(mapLegacyDoctorVisitToV2(data));
       let result: any;
       let entityUuid: string;
       
