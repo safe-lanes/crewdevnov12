@@ -5893,10 +5893,82 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         }
       })();
     } else {
-      // Create new crew member - generate ID based on current date
-      const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
-      const formDataWithId = { ...dataWithPhoto, id: newId };
-      createCrewMutation.mutate(formDataWithId);
+      // Create new crew member via V2 API
+      console.log('Creating new crew with V2 API:', dataWithPhoto);
+      
+      // After crew is created, save section data with the returned crewUuid
+      createCrewMutationV2.mutate(dataWithPhoto, {
+        onSuccess: (responseData: any) => {
+          const crewUuid = responseData?.crewUuid;
+          console.log('V2 Create crew response - crewUuid:', crewUuid);
+          
+          if (crewUuid) {
+            setCreatedCrewId(crewUuid);
+            if (onCrewMemberChange && responseData) {
+              onCrewMemberChange(responseData);
+            }
+            
+            // V2: Save section data to their respective tables using the new crewUuid
+            // Personal Details (B1 fields like height, weight, DOB, languages, etc.)
+            const personalDetailsData = {
+              height: formData.heightCm,
+              weight: formData.weightKg,
+              bmi: formData.bmi,
+              placeOfBirthCity: formData.placeOfBirthCity,
+              placeOfBirthCountry: formData.placeOfBirthCountry,
+              nativeLanguage: formData.nativeLanguage,
+              foreignLanguages: formData.foreignLanguages,
+              englishProficiency: formData.englishProficiency,
+              manningAgent: formData.manningAgent,
+              crewPool: formData.crewPool,
+            };
+            console.log('V2 Personal Details Save (new crew):', { crewUuid, data: personalDetailsData });
+            savePersonalDetailsMutationV2.mutate({ crewUuid, data: personalDetailsData }, {
+              onError: (err) => console.error('Personal Details Save Error:', err),
+              onSuccess: (res) => console.log('Personal Details Saved:', res),
+            });
+            
+            // Address (A1.2 fields)
+            const addressData = {
+              countryOfResidence: formData.countryOfResidence,
+              nearestAirport: formData.nearestAirport,
+              residentialAddressLine1: formData.residentialAddressLine1,
+              residentialAddressLine2: formData.residentialAddressLine2,
+              contactLandline: formData.contactLandline,
+              mobile: formData.mobile,
+              email: formData.email,
+            };
+            saveAddressMutationV2.mutate({ crewUuid, data: addressData });
+            
+            // Family Info (A1.3 fields)
+            const familyInfoData = {
+              maritalStatus: formData.maritalStatus,
+              numberOfDependentChildren: formData.numberOfDependentChildren,
+              fatherName: formData.fatherName,
+              motherName: formData.motherName,
+              spouseFirstName: formData.spouseFirstName,
+              spouseMiddleName: formData.spouseMiddleName,
+              spouseFamilyName: formData.spouseFamilyName,
+              spouseDateOfBirth: formData.spouseDateOfBirth,
+            };
+            saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData });
+          }
+          
+          toast({
+            title: "Saved",
+            description: "Crew member created successfully. You can continue editing.",
+            duration: 3000,
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Error",
+            description: `Failed to create crew member: ${error.message}`,
+            variant: "destructive",
+            duration: 5000,
+          });
+        },
+      });
     }
   };
 
@@ -6196,39 +6268,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const addDoctorVisitAttachmentV2 = useAddDoctorVisitAttachmentV2();
   const removeDoctorVisitAttachmentV2 = useRemoveDoctorVisitAttachmentV2();
   
-  // Wrapper for create mutation with UI feedback
-  const createCrewMutation = {
-    mutate: (data: any) => {
-      createCrewMutationV2.mutate(data, {
-        onSuccess: (responseData: any) => {
-          const crewUuid = responseData?.crewUuid;
-          console.log('V2 Create crew response - crewUuid:', crewUuid);
-          
-          if (crewUuid) {
-            setCreatedCrewId(crewUuid);
-            if (onCrewMemberChange && responseData) {
-              onCrewMemberChange(responseData);
-            }
-          }
-          toast({
-            title: "Saved",
-            description: "Crew member created successfully. You can continue editing.",
-            duration: 3000,
-          });
-        },
-        onError: (error: any) => {
-          toast({
-            title: "Error",
-            description: `Failed to create crew member: ${error.message}`,
-            variant: "destructive",
-            duration: 5000,
-          });
-        },
-      });
-    },
-    isPending: createCrewMutationV2.isPending,
-  };
-
   // Wrapper for update mutation with UI feedback
   const updateCrewMutation = {
     mutate: ({ id, data }: { id: string; data: any }) => {
@@ -6367,11 +6406,84 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     } else {
       // Create new crew member via V2 API
       console.log('Creating new crew with V2 API:', dataWithPhoto);
-      createCrewMutation.mutate(dataWithPhoto);
+      
+      // After crew is created, save section data with the returned crewUuid
+      createCrewMutationV2.mutate(dataWithPhoto, {
+        onSuccess: (responseData: any) => {
+          const crewUuid = responseData?.crewUuid;
+          console.log('V2 Create crew response - crewUuid:', crewUuid);
+          
+          if (crewUuid) {
+            setCreatedCrewId(crewUuid);
+            if (onCrewMemberChange && responseData) {
+              onCrewMemberChange(responseData);
+            }
+            
+            // V2: Save section data to their respective tables using the new crewUuid
+            // Personal Details (B1 fields like height, weight, DOB, languages, etc.)
+            const personalDetailsData = {
+              height: formData.heightCm,
+              weight: formData.weightKg,
+              bmi: formData.bmi,
+              placeOfBirthCity: formData.placeOfBirthCity,
+              placeOfBirthCountry: formData.placeOfBirthCountry,
+              nativeLanguage: formData.nativeLanguage,
+              foreignLanguages: formData.foreignLanguages,
+              englishProficiency: formData.englishProficiency,
+              manningAgent: formData.manningAgent,
+              crewPool: formData.crewPool,
+            };
+            console.log('V2 Personal Details Save (new crew):', { crewUuid, data: personalDetailsData });
+            savePersonalDetailsMutationV2.mutate({ crewUuid, data: personalDetailsData }, {
+              onError: (err) => console.error('Personal Details Save Error:', err),
+              onSuccess: (res) => console.log('Personal Details Saved:', res),
+            });
+            
+            // Address (A1.2 fields)
+            const addressData = {
+              countryOfResidence: formData.countryOfResidence,
+              nearestAirport: formData.nearestAirport,
+              residentialAddressLine1: formData.residentialAddressLine1,
+              residentialAddressLine2: formData.residentialAddressLine2,
+              contactLandline: formData.contactLandline,
+              mobile: formData.mobile,
+              email: formData.email,
+            };
+            saveAddressMutationV2.mutate({ crewUuid, data: addressData });
+            
+            // Family Info (A1.3 fields)
+            const familyInfoData = {
+              maritalStatus: formData.maritalStatus,
+              numberOfDependentChildren: formData.numberOfDependentChildren,
+              fatherName: formData.fatherName,
+              motherName: formData.motherName,
+              spouseFirstName: formData.spouseFirstName,
+              spouseMiddleName: formData.spouseMiddleName,
+              spouseFamilyName: formData.spouseFamilyName,
+              spouseDateOfBirth: formData.spouseDateOfBirth,
+            };
+            saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData });
+          }
+          
+          toast({
+            title: "Saved",
+            description: "Crew member created successfully. You can continue editing.",
+            duration: 3000,
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Error",
+            description: `Failed to create crew member: ${error.message}`,
+            variant: "destructive",
+            duration: 5000,
+          });
+        },
+      });
     }
   };
 
-  const isSaving = createCrewMutation.isPending || updateCrewMutation.isPending || 
+  const isSaving = createCrewMutationV2.isPending || updateCrewMutation.isPending || 
     savePersonalDetailsMutationV2.isPending || saveAddressMutationV2.isPending || saveFamilyInfoMutationV2.isPending;
 
   const handleCancel = () => {
