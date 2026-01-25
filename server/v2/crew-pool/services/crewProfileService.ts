@@ -1,6 +1,6 @@
 import { crewMembersService } from "./crewMembersService";
 import { crewAssignmentsService } from "./crewAssignmentsService";
-import { resolveCountryUuid, resolveVesselTypeUuid, resolveLanguageUuid } from "./masterDataResolver";
+import { resolveCountryUuid, resolveVesselTypeUuid } from "./masterDataResolver";
 import {
   CrewPersonalRepository,
   CrewFamilyRepository,
@@ -85,7 +85,6 @@ export const crewProfileService = {
     crewUuid: string,
     data: Parameters<typeof crewPersonalRepository.upsertPersonalDetails>[1] & {
       placeOfBirthCountry?: string;
-      nativeLanguage?: string;
     }
   ) {
     await crewMembersService.getByUuid(crewUuid);
@@ -100,18 +99,8 @@ export const crewProfileService = {
       data.placeOfBirthCountryUuid = countryUuid;
     }
 
-    // Resolve native language if provided (accept name or UUID)
-    const languageInput = (data as any).nativeLanguageUuid || (data as any).nativeLanguage;
-    if (languageInput) {
-      const languageUuid = await resolveLanguageUuid(languageInput);
-      if (languageUuid) {
-        (data as any).nativeLanguageUuid = languageUuid;
-      }
-      // Note: Don't throw error for language - it's optional and may not exist in master table
-    }
-
     // Remove non-schema fields
-    const { placeOfBirthCountry, nativeLanguage, ...cleanData } = data as any;
+    const { placeOfBirthCountry, ...cleanData } = data as any;
 
     return crewPersonalRepository.upsertPersonalDetails(crewUuid, cleanData);
   },

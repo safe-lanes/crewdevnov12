@@ -2,7 +2,6 @@ import { eq, and, desc, or, ilike, sql, isNull } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { CrewMembersRepository } from "../repositories";
-import { crewMembers as legacyCrewMembers } from "../../../../shared/schema";
 import {
   crewMembersV2,
   crewAssignments,
@@ -169,30 +168,23 @@ export const crewMembersService = {
   
   async generateEmpNo(): Promise<string> {
     const db = getDb();
-    // Get the highest numeric empNo that starts with 'A' from BOTH V2 and legacy tables
+    // Get the highest empNo that starts with 'A' and increment
     // Format: A000001, A000002, etc.
-    // Use SQL to extract numeric portion for proper ordering (not string-based)
+    const result = await db
+      .select({ empNo: crewMembersV2.empNo })
+      .from(crewMembersV2)
+      .where(ilike(crewMembersV2.empNo, 'A%'))
+      .orderBy(desc(crewMembersV2.empNo))
+      .limit(1);
     
-    // Query to extract max numeric value from V2 table
-    const v2Result = await db.execute(sql`
-      SELECT MAX(CAST(SUBSTRING(emp_no FROM 2) AS INTEGER)) as max_num
-      FROM crew_members_v2
-      WHERE emp_no LIKE 'A%' AND emp_no ~ '^A[0-9]+$'
-    `);
+    let nextNum = 1;
+    if (result.length > 0 && result[0].empNo) {
+      const match = result[0].empNo.match(/A(\d+)/);
+      if (match) {
+        nextNum = parseInt(match[1], 10) + 1;
+      }
+    }
     
-    // Query to extract max numeric value from legacy table
-    const legacyResult = await db.execute(sql`
-      SELECT MAX(CAST(SUBSTRING(emp_no FROM 2) AS INTEGER)) as max_num
-      FROM crew_members
-      WHERE emp_no LIKE 'A%' AND emp_no ~ '^A[0-9]+$'
-    `);
-    
-    // Get max from both tables
-    const v2Max = (v2Result.rows?.[0] as any)?.max_num ?? 0;
-    const legacyMax = (legacyResult.rows?.[0] as any)?.max_num ?? 0;
-    const maxNum = Math.max(v2Max || 0, legacyMax || 0);
-    
-    const nextNum = maxNum + 1;
     return `A${nextNum.toString().padStart(6, '0')}`;
   },
 

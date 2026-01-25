@@ -5,10 +5,9 @@ import {
   masterVesselTypes,
   masterVessels,
   masterCountries,
-  masterLanguages,
 } from "../../../../shared/schema";
 
-type MasterTableType = 'nationality' | 'vesselType' | 'country' | 'vessel' | 'language';
+type MasterTableType = 'nationality' | 'vesselType' | 'country' | 'vessel';
 
 // Standard UUID v4 regex pattern
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -91,15 +90,6 @@ export async function resolveMasterDataUuid(
         return result[0]?.uuid || null;
       }
 
-      case 'language': {
-        const result = await db
-          .select({ uuid: masterLanguages.langUuid })
-          .from(masterLanguages)
-          .where(eq(masterLanguages.languageName, value))
-          .limit(1);
-        return result[0]?.uuid || null;
-      }
-
       default:
         return null;
     }
@@ -147,14 +137,4 @@ export async function resolveVesselUuid(
   value: string | null | undefined
 ): Promise<string | null> {
   return resolveMasterDataUuid(value, 'vessel');
-}
-
-/**
- * Resolve language value/name to UUID
- * Accepts language name (e.g., "English", "Hindi") or UUID
- */
-export async function resolveLanguageUuid(
-  value: string | null | undefined
-): Promise<string | null> {
-  return resolveMasterDataUuid(value, 'language');
 }
