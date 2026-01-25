@@ -85,6 +85,12 @@ import {
   useRemoveDoctorVisitAttachmentV2
 } from './hooks/useCrewPoolV2';
 import type { LegacySeaService, LegacyPreJoiningMedical, LegacyDoctorVisit } from './mappers/v2ToLegacyMapper';
+import { 
+  mapLegacyCrewToV2, 
+  mapLegacyPersonalDetailsToV2, 
+  mapLegacyAddressToV2, 
+  mapLegacyFamilyInfoToV2 
+} from './mappers/v2ToLegacyMapper';
 
 interface CrewMember {
   id: string;
@@ -441,6 +447,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   // Track newly created crew member ID for subsequent saves
   const [createdCrewId, setCreatedCrewId] = useState<string | null>(null);
+  // Track when we're auto-creating a crew record before edit
+  const [isCreatingCrew, setIsCreatingCrew] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [isStatusEditOpen, setIsStatusEditOpen] = useState(false);
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
@@ -6133,8 +6141,143 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     });
   };
 
-  // Toggle edit section with auto-save
-  const toggleEditSection = (sectionId: 'B1' | 'B2' | 'B3') => {
+  // Get effective crew UUID (either from existing crew or newly created)
+  const getEffectiveCrewUuid = (): string | null => {
+    return crewMember?.crewUuid || crewMember?.id || createdCrewId || null;
+  };
+
+  // Ensure crew record exists before allowing section edits
+  // This implements the "save-before-edit" pattern for new crew records
+  const ensureCrewExists = async (): Promise<string | null> => {
+    const existingUuid = getEffectiveCrewUuid();
+    if (existingUuid) {
+      return existingUuid;
+    }
+
+    // Race condition guard - prevent duplicate creation on rapid clicks
+    if (isCreatingCrew) {
+      console.log('[V2] Crew creation already in progress, waiting...');
+      return null; // Already creating, don't proceed
+    }
+
+    // No crew UUID exists - need to create parent record first
+    setIsCreatingCrew(true);
+    try {
+      // Create crew record with current form data using V2 mapping pipeline
+      const legacyCrewData = {
+        firstName: formData.firstName || '',
+        familyName: formData.familyName || '',
+        middleName: formData.middleName || '',
+        gender: formData.gender || '',
+        nationality: formData.nationality || '',
+        presentRank: formData.presentRank || '',
+        dateOfBirth: formData.dateOfBirth || '',
+      };
+      
+      // Use the same V2 mapping pipeline as the createCrewMutationV2 hook
+      const v2Data = mapLegacyCrewToV2(legacyCrewData);
+      
+      console.log('[V2] Auto-creating crew record before edit:', { legacyCrewData, v2Data });
+      const result = await crewPoolApiV2.createCrew(v2Data);
+      const newCrewUuid = result?.crewUuid;
+      
+      if (newCrewUuid) {
+        console.log('[V2] Crew record created with UUID:', newCrewUuid);
+        setCreatedCrewId(newCrewUuid);
+        
+        // Invalidate query cache to reflect new crew
+        queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
+        
+        // Chain save of child tables with the new crewUuid (same as Save button path)
+        // This ensures B1/address/family data is persisted immediately
+        const personalDetailsData = {
+          height: formData.heightCm,
+          weight: formData.weightKg,
+          bmi: formData.bmi,
+          placeOfBirthCity: formData.placeOfBirthCity,
+          placeOfBirthCountry: formData.placeOfBirthCountry,
+          nativeLanguage: formData.nativeLanguage,
+          foreignLanguages: formData.foreignLanguages,
+          englishProficiency: formData.englishProficiency,
+          manningAgent: formData.manningAgent,
+          crewPool: formData.crewPool,
+        };
+        console.log('[V2] Chaining Personal Details save after auto-create:', { crewUuid: newCrewUuid, data: personalDetailsData });
+        crewPoolApiV2.savePersonalDetails(newCrewUuid, mapLegacyPersonalDetailsToV2(personalDetailsData)).catch(
+          (err) => console.error('[V2] Personal Details auto-save error:', err)
+        );
+        
+        const addressData = {
+          countryOfResidence: formData.countryOfResidence,
+          nearestAirport: formData.nearestAirport,
+          residentialAddressLine1: formData.residentialAddressLine1,
+          residentialAddressLine2: formData.residentialAddressLine2,
+          contactLandline: formData.contactLandline,
+          mobile: formData.mobile,
+          email: formData.email,
+        };
+        console.log('[V2] Chaining Address save after auto-create:', { crewUuid: newCrewUuid, data: addressData });
+        crewPoolApiV2.saveAddress(newCrewUuid, mapLegacyAddressToV2(addressData)).catch(
+          (err) => console.error('[V2] Address auto-save error:', err)
+        );
+        
+        const familyInfoData = {
+          maritalStatus: formData.maritalStatus,
+          numberOfDependentChildren: formData.numberOfDependentChildren,
+          fatherName: formData.fatherName,
+          motherName: formData.motherName,
+          spouseFirstName: formData.spouseFirstName,
+          spouseMiddleName: formData.spouseMiddleName,
+          spouseFamilyName: formData.spouseFamilyName,
+          spouseDateOfBirth: formData.spouseDateOfBirth,
+        };
+        console.log('[V2] Chaining Family Info save after auto-create:', { crewUuid: newCrewUuid, data: familyInfoData });
+        crewPoolApiV2.saveFamilyInfo(newCrewUuid, mapLegacyFamilyInfoToV2(familyInfoData)).catch(
+          (err) => console.error('[V2] Family Info auto-save error:', err)
+        );
+        
+        // Notify parent component if needed
+        if (onCrewMemberChange && result) {
+          onCrewMemberChange(result);
+        }
+        
+        toast({
+          title: "Record Created",
+          description: "Crew record saved. You can now edit sections.",
+          duration: 2000,
+        });
+        
+        return newCrewUuid;
+      }
+      
+      throw new Error('No crewUuid returned from create');
+    } catch (error: any) {
+      console.error('[V2] Failed to auto-create crew:', error);
+      toast({
+        title: "Error",
+        description: `Failed to create crew record: ${error.message}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+      return null;
+    } finally {
+      setIsCreatingCrew(false);
+    }
+  };
+
+  // Toggle edit section with auto-save and ensure crew exists
+  const toggleEditSection = async (sectionId: 'B1' | 'B2' | 'B3') => {
+    const isCurrentlyEditing = editingSections[sectionId];
+    
+    // If entering edit mode (not currently editing), ensure crew exists first
+    if (!isCurrentlyEditing) {
+      const crewUuidResult = await ensureCrewExists();
+      if (!crewUuidResult) {
+        // Failed to create crew - don't enter edit mode
+        return;
+      }
+    }
+    
     // If turning off edit mode and another section is being edited, auto-save
     const currentlyEditing = Object.keys(editingSections).find(key => editingSections[key]);
     if (currentlyEditing && currentlyEditing !== sectionId && editingSections[currentlyEditing]) {
@@ -6197,6 +6340,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const removeDoctorVisitAttachmentV2 = useRemoveDoctorVisitAttachmentV2();
   
   // Wrapper for create mutation with UI feedback
+  // After parent record is created, chain saves for personal details, address, and family
   const createCrewMutation = {
     mutate: (data: any) => {
       createCrewMutationV2.mutate(data, {
@@ -6209,6 +6353,59 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             if (onCrewMemberChange && responseData) {
               onCrewMemberChange(responseData);
             }
+            
+            // Chain save of child tables with the new crewUuid
+            // Personal Details (B1 fields)
+            const personalDetailsData = {
+              height: data.heightCm || formData.heightCm,
+              weight: data.weightKg || formData.weightKg,
+              bmi: data.bmi || formData.bmi,
+              placeOfBirthCity: data.placeOfBirthCity || formData.placeOfBirthCity,
+              placeOfBirthCountry: data.placeOfBirthCountry || formData.placeOfBirthCountry,
+              nativeLanguage: data.nativeLanguage || formData.nativeLanguage,
+              foreignLanguages: data.foreignLanguages || formData.foreignLanguages,
+              englishProficiency: data.englishProficiency || formData.englishProficiency,
+              manningAgent: data.manningAgent || formData.manningAgent,
+              crewPool: data.crewPool || formData.crewPool,
+            };
+            console.log('[V2] Chaining Personal Details save after create:', { crewUuid, data: personalDetailsData });
+            savePersonalDetailsMutationV2.mutate({ crewUuid, data: personalDetailsData }, {
+              onError: (err) => console.error('[V2] Personal Details chain save error:', err),
+              onSuccess: () => console.log('[V2] Personal Details chain save success'),
+            });
+            
+            // Address (A1.2 fields)
+            const addressData = {
+              countryOfResidence: data.countryOfResidence || formData.countryOfResidence,
+              nearestAirport: data.nearestAirport || formData.nearestAirport,
+              residentialAddressLine1: data.residentialAddressLine1 || formData.residentialAddressLine1,
+              residentialAddressLine2: data.residentialAddressLine2 || formData.residentialAddressLine2,
+              contactLandline: data.contactLandline || formData.contactLandline,
+              mobile: data.mobile || formData.mobile,
+              email: data.email || formData.email,
+            };
+            console.log('[V2] Chaining Address save after create:', { crewUuid, data: addressData });
+            saveAddressMutationV2.mutate({ crewUuid, data: addressData }, {
+              onError: (err) => console.error('[V2] Address chain save error:', err),
+              onSuccess: () => console.log('[V2] Address chain save success'),
+            });
+            
+            // Family Info (A1.3 fields)
+            const familyInfoData = {
+              maritalStatus: data.maritalStatus || formData.maritalStatus,
+              numberOfDependentChildren: data.numberOfDependentChildren || formData.numberOfDependentChildren,
+              fatherName: data.fatherName || formData.fatherName,
+              motherName: data.motherName || formData.motherName,
+              spouseFirstName: data.spouseFirstName || formData.spouseFirstName,
+              spouseMiddleName: data.spouseMiddleName || formData.spouseMiddleName,
+              spouseFamilyName: data.spouseFamilyName || formData.spouseFamilyName,
+              spouseDateOfBirth: data.spouseDateOfBirth || formData.spouseDateOfBirth,
+            };
+            console.log('[V2] Chaining Family Info save after create:', { crewUuid, data: familyInfoData });
+            saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData }, {
+              onError: (err) => console.error('[V2] Family Info chain save error:', err),
+              onSuccess: () => console.log('[V2] Family Info chain save success'),
+            });
           }
           toast({
             title: "Saved",
@@ -6371,7 +6568,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
-  const isSaving = createCrewMutation.isPending || updateCrewMutation.isPending || 
+  const isSaving = isCreatingCrew || createCrewMutation.isPending || updateCrewMutation.isPending || 
     savePersonalDetailsMutationV2.isPending || saveAddressMutationV2.isPending || saveFamilyInfoMutationV2.isPending;
 
   const handleCancel = () => {
