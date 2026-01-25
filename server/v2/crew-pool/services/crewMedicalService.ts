@@ -27,6 +27,16 @@ import { resolveVesselUuid } from "./masterDataResolver";
 
 const crewMedicalRepository = new CrewMedicalRepository();
 
+// Helper to extract and apply audit user fields
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  if (isCreate) result.createdByUuid = auditUserUuid;
+  result.updatedByUuid = auditUserUuid;
+  return result;
+}
+
 export const crewMedicalService = {
   // ============ Pre-Joining Medicals ============
   async getMedicals(
@@ -54,8 +64,9 @@ export const crewMedicalService = {
     
     // Resolve vessel to UUID for F1 Pre Joining Medicals
     const resolvedData = await this.resolveMedicalMasterDataFields(data);
+    const dataWithAudit = applyAuditUser(resolvedData, true);
     
-    return crewMedicalRepository.createMedical({ ...resolvedData, crewUuid });
+    return crewMedicalRepository.createMedical({ ...dataWithAudit, crewUuid });
   },
 
   async updateMedical(
@@ -66,8 +77,9 @@ export const crewMedicalService = {
 
     // Resolve vessel to UUID for F1 Pre Joining Medicals
     const resolvedData = await this.resolveMedicalMasterDataFields(data);
+    const dataWithAudit = applyAuditUser(resolvedData, false);
 
-    const updated = await crewMedicalRepository.updateMedical(medUuid, resolvedData);
+    const updated = await crewMedicalRepository.updateMedical(medUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update medical record: ${medUuid}`);
     }
@@ -146,7 +158,8 @@ export const crewMedicalService = {
     data: Omit<InsertCrewDoctorVisit, "visitUuid" | "crewUuid">
   ): Promise<CrewDoctorVisit> {
     await crewMembersService.getByUuid(crewUuid);
-    return crewMedicalRepository.createVisit({ ...data, crewUuid });
+    const dataWithAudit = applyAuditUser(data, true);
+    return crewMedicalRepository.createVisit({ ...dataWithAudit, crewUuid });
   },
 
   async updateVisit(
@@ -154,8 +167,9 @@ export const crewMedicalService = {
     data: Partial<InsertCrewDoctorVisit>
   ): Promise<CrewDoctorVisit> {
     await this.getVisitByUuid(visitUuid);
+    const dataWithAudit = applyAuditUser(data, false);
 
-    const updated = await crewMedicalRepository.updateVisit(visitUuid, data);
+    const updated = await crewMedicalRepository.updateVisit(visitUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update doctor visit: ${visitUuid}`);
     }

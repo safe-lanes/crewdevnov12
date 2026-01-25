@@ -20,6 +20,16 @@ import { resolveVesselUuid, resolveVesselTypeUuid } from "./masterDataResolver";
 
 const crewSeaServiceRepository = new CrewSeaServiceRepository();
 
+// Helper to extract and apply audit user fields
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  if (isCreate) result.createdByUuid = auditUserUuid;
+  result.updatedByUuid = auditUserUuid;
+  return result;
+}
+
 export interface ExperienceMetrics {
   totalSeaTimeMonths: number;
   companySeaTimeMonths: number;
@@ -67,10 +77,11 @@ export const crewSeaServiceService = {
       }
     }
 
-    // Resolve master data UUIDs
+    // Resolve master data UUIDs and apply audit user
     const resolvedData = await this.resolveMasterDataFields(data);
+    const dataWithAudit = applyAuditUser(resolvedData, true);
 
-    return crewSeaServiceRepository.create({ ...resolvedData, crewUuid });
+    return crewSeaServiceRepository.create({ ...dataWithAudit, crewUuid });
   },
 
   async update(
@@ -87,10 +98,11 @@ export const crewSeaServiceService = {
       }
     }
 
-    // Resolve master data UUIDs
+    // Resolve master data UUIDs and apply audit user
     const resolvedData = await this.resolveMasterDataFields(data);
+    const dataWithAudit = applyAuditUser(resolvedData, false);
 
-    const updated = await crewSeaServiceRepository.update(seaUuid, resolvedData);
+    const updated = await crewSeaServiceRepository.update(seaUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update sea service record: ${seaUuid}`);
     }

@@ -28,6 +28,16 @@ import type {
 const crewLicensesRepository = new CrewLicensesRepository();
 const crewTrainingRepository = new CrewTrainingRepository();
 
+// Helper to extract and apply audit user fields
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  if (isCreate) result.createdByUuid = auditUserUuid;
+  result.updatedByUuid = auditUserUuid;
+  return result;
+}
+
 export const crewCertificatesService = {
   // ============ Licenses ============
   async getLicenses(crewUuid: string): Promise<CrewLicenseWithAttachments[]> {
@@ -57,8 +67,9 @@ export const crewCertificatesService = {
     if (!data.certificateDocument && !data.licenseId) {
       throw new Error("Certificate document or license ID is required");
     }
+    const dataWithAudit = applyAuditUser(data, true);
 
-    return crewLicensesRepository.create({ ...data, crewUuid });
+    return crewLicensesRepository.create({ ...dataWithAudit, crewUuid });
   },
 
   async updateLicense(
@@ -66,8 +77,9 @@ export const crewCertificatesService = {
     data: Partial<InsertCrewLicense>
   ): Promise<CrewLicense> {
     await this.getLicenseByUuid(licUuid);
+    const dataWithAudit = applyAuditUser(data, false);
 
-    const updated = await crewLicensesRepository.update(licUuid, data);
+    const updated = await crewLicensesRepository.update(licUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update license: ${licUuid}`);
     }
@@ -217,8 +229,9 @@ export const crewCertificatesService = {
     if (!data.trainingCourse && !data.courseId) {
       throw new Error("Training course or course ID is required");
     }
+    const dataWithAudit = applyAuditUser(data, true);
 
-    return crewTrainingRepository.create({ ...data, crewUuid });
+    return crewTrainingRepository.create({ ...dataWithAudit, crewUuid });
   },
 
   async updateTraining(
@@ -226,8 +239,9 @@ export const crewCertificatesService = {
     data: Partial<InsertCrewTrainingCourse>
   ): Promise<CrewTrainingCourse> {
     await this.getTrainingByUuid(trainUuid);
+    const dataWithAudit = applyAuditUser(data, false);
 
-    const updated = await crewTrainingRepository.update(trainUuid, data);
+    const updated = await crewTrainingRepository.update(trainUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update training: ${trainUuid}`);
     }

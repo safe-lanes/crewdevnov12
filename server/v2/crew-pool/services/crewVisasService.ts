@@ -19,6 +19,16 @@ import type {
 
 const crewVisasRepository = new CrewVisasRepository();
 
+// Helper to extract and apply audit user fields
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  if (isCreate) result.createdByUuid = auditUserUuid;
+  result.updatedByUuid = auditUserUuid;
+  return result;
+}
+
 export const crewVisasService = {
   async getAll(crewUuid: string): Promise<CrewVisaWithAttachments[]> {
     await crewMembersService.getByUuid(crewUuid);
@@ -53,7 +63,8 @@ export const crewVisasService = {
       cleanData.countryUuid = null;
     }
 
-    return crewVisasRepository.create({ ...cleanData, crewUuid });
+    const dataWithAudit = applyAuditUser(cleanData, true);
+    return crewVisasRepository.create({ ...dataWithAudit, crewUuid });
   },
 
   async update(
@@ -71,7 +82,8 @@ export const crewVisasService = {
       cleanData.countryUuid = null;
     }
 
-    const updated = await crewVisasRepository.update(visaUuid, cleanData);
+    const dataWithAudit = applyAuditUser(cleanData, false);
+    const updated = await crewVisasRepository.update(visaUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update visa: ${visaUuid}`);
     }

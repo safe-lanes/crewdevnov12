@@ -20,6 +20,16 @@ import type {
 
 const crewDocumentsRepository = new CrewDocumentsRepository();
 
+// Helper to extract and apply audit user fields
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  if (isCreate) result.createdByUuid = auditUserUuid;
+  result.updatedByUuid = auditUserUuid;
+  return result;
+}
+
 export const crewDocumentsService = {
   async getAll(crewUuid: string): Promise<CrewDocumentWithAttachments[]> {
     await crewMembersService.getByUuid(crewUuid);
@@ -54,10 +64,11 @@ export const crewDocumentsService = {
       data.issuingCountryUuid = countryUuid;
     }
 
-    // Remove non-schema fields
+    // Remove non-schema fields and apply audit user
     const { issuingCountry, ...cleanData } = data as any;
+    const dataWithAudit = applyAuditUser(cleanData, true);
 
-    return crewDocumentsRepository.create({ ...cleanData, crewUuid });
+    return crewDocumentsRepository.create({ ...dataWithAudit, crewUuid });
   },
 
   async update(
@@ -76,10 +87,11 @@ export const crewDocumentsService = {
       data.issuingCountryUuid = countryUuid;
     }
 
-    // Remove non-schema fields
+    // Remove non-schema fields and apply audit user
     const { issuingCountry, ...cleanData } = data as any;
+    const dataWithAudit = applyAuditUser(cleanData, false);
 
-    const updated = await crewDocumentsRepository.update(docUuid, cleanData);
+    const updated = await crewDocumentsRepository.update(docUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update document: ${docUuid}`);
     }

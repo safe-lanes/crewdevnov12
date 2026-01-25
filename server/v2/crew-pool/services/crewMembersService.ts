@@ -82,6 +82,20 @@ import {
   resolveVesselTypeUuid,
 } from "./masterDataResolver";
 
+// Helper to extract and apply audit user fields
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  
+  if (isCreate) {
+    result.createdByUuid = auditUserUuid;
+  }
+  result.updatedByUuid = auditUserUuid;
+  
+  return result;
+}
+
 export const crewMembersService = {
   async getAll(filters?: {
     status?: string;
@@ -157,9 +171,12 @@ export const crewMembersService = {
 
     // Remove non-schema fields and replace with resolved UUIDs
     const { nationality, vesselType, ...cleanData } = data as any;
+    
+    // Apply audit user fields
+    const dataWithAudit = applyAuditUser(cleanData, true);
 
     return crewMembersRepository.create({
-      ...cleanData,
+      ...dataWithAudit,
       empNo,
       nationalityUuid,
       vesselTypeUuid,
@@ -233,10 +250,11 @@ export const crewMembersService = {
       data.vesselTypeUuid = vesselTypeUuid;
     }
 
-    // Remove non-schema fields
+    // Remove non-schema fields and apply audit user
     const { nationality, vesselType, ...cleanData } = data as any;
+    const dataWithAudit = applyAuditUser(cleanData, false);
 
-    const updated = await crewMembersRepository.update(crewUuid, cleanData);
+    const updated = await crewMembersRepository.update(crewUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update crew member: ${crewUuid}`);
     }
@@ -282,10 +300,11 @@ export const crewMembersService = {
       data.vesselTypeUuid = vesselTypeUuid;
     }
 
-    // Remove non-schema fields
+    // Remove non-schema fields and apply audit user
     const { nationality, vesselType, ...cleanData } = data as any;
+    const dataWithAudit = applyAuditUser(cleanData, false);
 
-    const updated = await crewMembersRepository.updateById(id, cleanData);
+    const updated = await crewMembersRepository.updateById(id, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update crew member with id: ${id}`);
     }

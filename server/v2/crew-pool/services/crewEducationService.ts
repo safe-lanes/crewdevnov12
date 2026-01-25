@@ -12,6 +12,16 @@ import type {
 
 const crewEducationRepository = new CrewEducationRepository();
 
+// Helper to extract and apply audit user fields
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  if (isCreate) result.createdByUuid = auditUserUuid;
+  result.updatedByUuid = auditUserUuid;
+  return result;
+}
+
 export const crewEducationService = {
   async getAll(crewUuid: string): Promise<CrewEducationWithAttachments[]> {
     await crewMembersService.getByUuid(crewUuid);
@@ -31,7 +41,8 @@ export const crewEducationService = {
     data: Omit<InsertCrewEducation, "eduUuid" | "crewUuid">
   ): Promise<CrewEducation> {
     await crewMembersService.getByUuid(crewUuid);
-    return crewEducationRepository.create({ ...data, crewUuid });
+    const dataWithAudit = applyAuditUser(data, true);
+    return crewEducationRepository.create({ ...dataWithAudit, crewUuid });
   },
 
   async update(
@@ -39,8 +50,9 @@ export const crewEducationService = {
     data: Partial<InsertCrewEducation>
   ): Promise<CrewEducation> {
     await this.getByUuid(eduUuid);
+    const dataWithAudit = applyAuditUser(data, false);
 
-    const updated = await crewEducationRepository.update(eduUuid, data);
+    const updated = await crewEducationRepository.update(eduUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update education record: ${eduUuid}`);
     }

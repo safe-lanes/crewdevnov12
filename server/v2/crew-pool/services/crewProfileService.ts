@@ -15,6 +15,20 @@ const crewPersonalRepository = new CrewPersonalRepository();
 const crewFamilyRepository = new CrewFamilyRepository();
 const crewVesselTypesRepository = new CrewVesselTypesRepository();
 
+// Helper to extract and apply audit user fields
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  
+  if (isCreate) {
+    result.createdByUuid = auditUserUuid;
+  }
+  result.updatedByUuid = auditUserUuid;
+  
+  return result;
+}
+
 export const crewProfileService = {
   async getFullProfile(crewUuid: string) {
     const [
@@ -99,10 +113,11 @@ export const crewProfileService = {
       data.placeOfBirthCountryUuid = countryUuid;
     }
 
-    // Remove non-schema fields
+    // Remove non-schema fields and apply audit user
     const { placeOfBirthCountry, ...cleanData } = data as any;
+    const dataWithAudit = applyAuditUser(cleanData, false);
 
-    return crewPersonalRepository.upsertPersonalDetails(crewUuid, cleanData);
+    return crewPersonalRepository.upsertPersonalDetails(crewUuid, dataWithAudit);
   },
 
   async upsertAddress(
@@ -123,10 +138,11 @@ export const crewProfileService = {
       data.countryOfResidenceUuid = countryUuid;
     }
 
-    // Remove non-schema fields
+    // Remove non-schema fields and apply audit user
     const { countryOfResidence, ...cleanData } = data as any;
+    const dataWithAudit = applyAuditUser(cleanData, false);
 
-    return crewPersonalRepository.upsertAddress(crewUuid, cleanData);
+    return crewPersonalRepository.upsertAddress(crewUuid, dataWithAudit);
   },
 
   async upsertFamilyInfo(
@@ -134,7 +150,8 @@ export const crewProfileService = {
     data: Parameters<typeof crewFamilyRepository.upsertFamilyInfo>[1]
   ) {
     await crewMembersService.getByUuid(crewUuid);
-    return crewFamilyRepository.upsertFamilyInfo(crewUuid, data);
+    const dataWithAudit = applyAuditUser(data, false);
+    return crewFamilyRepository.upsertFamilyInfo(crewUuid, dataWithAudit);
   },
 
   async upsertNextOfKin(
@@ -142,7 +159,8 @@ export const crewProfileService = {
     data: Parameters<typeof crewFamilyRepository.upsertNextOfKin>[1]
   ) {
     await crewMembersService.getByUuid(crewUuid);
-    return crewFamilyRepository.upsertNextOfKin(crewUuid, data);
+    const dataWithAudit = applyAuditUser(data, false);
+    return crewFamilyRepository.upsertNextOfKin(crewUuid, dataWithAudit);
   },
 
   async syncChildren(
@@ -150,7 +168,9 @@ export const crewProfileService = {
     children: Parameters<typeof crewFamilyRepository.syncChildren>[1]
   ) {
     await crewMembersService.getByUuid(crewUuid);
-    return crewFamilyRepository.syncChildren(crewUuid, children);
+    // Apply audit user to each child
+    const childrenWithAudit = children.map(child => applyAuditUser(child, true));
+    return crewFamilyRepository.syncChildren(crewUuid, childrenWithAudit);
   },
 
   async createChild(
@@ -158,14 +178,16 @@ export const crewProfileService = {
     data: Omit<InsertCrewChild, "childUuid" | "crewUuid">
   ): Promise<CrewChild> {
     await crewMembersService.getByUuid(crewUuid);
-    return crewFamilyRepository.createChild({ ...data, crewUuid });
+    const dataWithAudit = applyAuditUser(data, true);
+    return crewFamilyRepository.createChild({ ...dataWithAudit, crewUuid });
   },
 
   async updateChild(
     childUuid: string,
     data: Partial<InsertCrewChild>
   ): Promise<CrewChild> {
-    const updated = await crewFamilyRepository.updateChild(childUuid, data);
+    const dataWithAudit = applyAuditUser(data, false);
+    const updated = await crewFamilyRepository.updateChild(childUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Child not found: ${childUuid}`);
     }
