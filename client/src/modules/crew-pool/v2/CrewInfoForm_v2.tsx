@@ -6265,12 +6265,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
-  // Toggle edit section with auto-save and ensure crew exists
+  // Toggle edit section with auto-save and ensure crew exists (B2/B3 only)
   const toggleEditSection = async (sectionId: 'B1' | 'B2' | 'B3') => {
     const isCurrentlyEditing = editingSections[sectionId];
     
-    // If entering edit mode (not currently editing), ensure crew exists first
-    if (!isCurrentlyEditing) {
+    // For B2 and B3, ensure crew exists before entering edit mode
+    // B1 is the primary data entry section - no auto-save needed
+    if (!isCurrentlyEditing && sectionId !== 'B1') {
       const crewUuidResult = await ensureCrewExists();
       if (!crewUuidResult) {
         // Failed to create crew - don't enter edit mode
