@@ -2,7 +2,6 @@ import { eq, and, desc, or, ilike, sql, isNull } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { CrewMembersRepository } from "../repositories";
-import { crewMembers } from "@shared/schema";
 import {
   crewMembersV2,
   crewAssignments,
@@ -169,41 +168,19 @@ export const crewMembersService = {
   
   async generateEmpNo(): Promise<string> {
     const db = getDb();
-    // Get ALL empNo values from BOTH V2 and legacy tables to avoid conflicts
+    // Get ALL empNo values from V2 table only (legacy will be deprecated)
     // This handles mixed formats like A0029 (4 digits) and A000030 (6 digits)
     // String comparison fails here, so we must compare numerically
     
-    // Query V2 table
-    const v2Results = await db
+    const results = await db
       .select({ empNo: crewMembersV2.empNo })
       .from(crewMembersV2)
       .where(ilike(crewMembersV2.empNo, 'A%'));
     
-    // Query legacy crew_members table to avoid conflicts
-    const legacyResults = await db
-      .select({ id: crewMembers.id })
-      .from(crewMembers)
-      .where(ilike(crewMembers.id, 'A%'));
-    
     let maxNum = 0;
-    
-    // Check V2 table
-    for (const row of v2Results) {
+    for (const row of results) {
       if (row.empNo) {
         const match = row.empNo.match(/A(\d+)/i);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNum) {
-            maxNum = num;
-          }
-        }
-      }
-    }
-    
-    // Check legacy table
-    for (const row of legacyResults) {
-      if (row.id) {
-        const match = row.id.match(/A(\d+)/i);
         if (match) {
           const num = parseInt(match[1], 10);
           if (num > maxNum) {
