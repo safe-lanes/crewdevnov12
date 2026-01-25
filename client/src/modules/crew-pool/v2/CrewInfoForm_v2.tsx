@@ -1022,6 +1022,138 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     setCreatedCrewId(null);
   }, [crewMember?.id]);
 
+  // Reset form data when opening for a NEW crew member (crewMember is null)
+  // This ensures the form starts with empty values instead of stale data from previous selection
+  useEffect(() => {
+    if (isOpen && !crewMember) {
+      console.log('[V2] Resetting form data for new crew member');
+      setFormData({
+        // A1.1 General Particulars
+        firstName: '',
+        middleName: '',
+        familyName: '',
+        gender: 'Male',
+        nationality: '',
+        presentRank: '',
+        dateOfBirth: '',
+        ageInYears: '',
+        placeOfBirthCity: '',
+        placeOfBirthCountry: '',
+        heightCm: '',
+        weightKg: '',
+        bmi: '',
+        nativeLanguage: '',
+        foreignLanguages: '',
+        englishProficiency: '',
+        rankAppliedFor: '',
+        vesselType: [],
+        manningAgent: '',
+        crewPool: '',
+        employeeId: '',
+        nextAvailability: '',
+        
+        // A1.2 Address & Contact Info
+        countryOfResidence: '',
+        nearestAirport: '',
+        residentialAddressLine1: '',
+        residentialAddressLine2: '',
+        contactLandline: '',
+        mobile: '',
+        email: '',
+        
+        // A1.3 Family and NOK
+        maritalStatus: '',
+        numberOfDependentChildren: '',
+        fatherName: '',
+        motherName: '',
+        spouseFirstName: '',
+        spouseMiddleName: '',
+        spouseFamilyName: '',
+        spouseDateOfBirth: '',
+        children: [],
+        nokFirstName: '',
+        nokMiddleName: '',
+        nokFamilyName: '',
+        nokTelephone: '',
+        nokEmail: '',
+        nokAddress: '',
+        nokRelationship: '',
+        
+        // A2.1 Travel and Identification Documents
+        documents: [{
+          id: '1',
+          documentId: '',
+          document: '',
+          number: '',
+          issued: '',
+          expiry: '',
+          issuingAuthority: ''
+        }],
+        
+        // A2.2 Visas
+        visas: [{
+          id: '1',
+          countryId: '',
+          issuingCountry: '',
+          serialNo: '',
+          issued: '',
+          expiry: '',
+          visaType: ''
+        }],
+        
+        // A3.1 Education
+        education: [{
+          id: '1',
+          dateOfCompletion: '',
+          schoolCollegeUniversity: '',
+          subjectsField: '',
+          qualifications: '',
+          attachments: []
+        }],
+        
+        // A3.2 License
+        licenses: [{
+          id: '1',
+          licenseId: '',
+          certificateDocument: '',
+          abbr: '',
+          requirement: '',
+          certificateNo: '',
+          issuingAuthority: '',
+          issued: '',
+          expiry: '',
+          attachments: []
+        }],
+        
+        // A3.3 Training Courses
+        trainingCourses: [{
+          id: '1',
+          courseId: '',
+          companyId: '',
+          trainingCourse: '',
+          abbr: '',
+          requirement: '',
+          certificateNo: '',
+          issuingAuthority: '',
+          issued: '',
+          expiry: '',
+          attachments: []
+        }],
+        
+        // A4.1 Sea Service
+        currentCompanySeaService: [],
+        externalSeaService: [],
+        
+        // F1. Pre-Joining Medical
+        preJoiningMedicals: [],
+        
+        // F2. Doctor Visits
+        doctorVisits: [],
+      });
+      setUploadedPhoto(null);
+    }
+  }, [isOpen, crewMember]);
+
   // Helper function to calculate BMI
   const calculateBMI = (height: string, weight: string) => {
     const heightInM = parseFloat(height) / 100; // Convert cm to meters
