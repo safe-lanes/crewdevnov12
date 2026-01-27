@@ -2136,12 +2136,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             issued: course.issued || '',
             expiry: course.expiry || '',
           });
-          const result = await response.json() as { trainUuid?: string; courseId?: string };
+          const result = await response.json() as { trainUuid?: string };
           savedUuid = result?.trainUuid;
           setFormData(prev => ({
             ...prev,
             trainingCourses: prev.trainingCourses.map(t =>
-              t.id === itemId ? { ...t, trainUuid: savedUuid, courseId: result?.courseId || t.courseId } as any : t
+              t.id === itemId ? { ...t, trainUuid: savedUuid } as any : t
             )
           }));
           break;
@@ -4481,7 +4481,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {formData.trainingCourses.map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <div className="text-[#4f5863] text-[13px] font-mono">{course.courseId || '-'}</div>
+                  <div className="text-[#4f5863] text-[13px] font-mono">{course.companyId || '-'}</div>
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
