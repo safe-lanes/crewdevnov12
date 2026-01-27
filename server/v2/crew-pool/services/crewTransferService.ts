@@ -608,13 +608,8 @@ export const crewTransferService = {
         }
       }
 
-      await tx
-        .update(recruitmentCandidatesV2)
-        .set({
-          status: "Transferred",
-          updatedByUuid: auditUserUuid,
-        })
-        .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid));
+      // Note: Candidate status remains as "Recruited" so data is visible in both
+      // Recruitment and Crew Pool modules
 
       return {
         success: true,
