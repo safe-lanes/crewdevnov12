@@ -83,7 +83,6 @@ export const crewPersonalDetails = pgTable("crew_personal_details", {
   placeOfBirthCity: text("place_of_birth_city"),
   placeOfBirthCountryUuid: text("place_of_birth_country_uuid"),
   nativeLanguageUuid: text("native_language_uuid"),
-  nativeLanguage: text("native_language"),
   foreignLanguages: text("foreign_languages"),
   englishProficiency: text("english_proficiency"),
   manningAgent: text("manning_agent"),

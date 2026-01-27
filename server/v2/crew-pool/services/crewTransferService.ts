@@ -287,7 +287,6 @@ export const crewTransferService = {
           placeOfBirthCity: candPersonal.placeOfBirthCity,
           placeOfBirthCountryUuid: candPersonal.placeOfBirthCountryUuid,
           nativeLanguageUuid: candPersonal.nativeLanguageUuid,
-          nativeLanguage: candPersonal.nativeLanguageUuid,
           foreignLanguages: candPersonal.foreignLanguages,
           englishProficiency: candPersonal.englishProficiency,
           manningAgent: candPersonal.manningAgent,

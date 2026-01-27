@@ -33,6 +33,7 @@ import {
   masterVesselTypes,
   masterVessels,
   masterCountries,
+  masterLanguages,
 } from "../../../../shared/schema";
 import type {
   InsertCrewMemberV2,
@@ -688,16 +689,21 @@ export const crewMembersService = {
       vesselType: crewResult.vesselType,
     };
 
-    // Personal details with country resolution for placeOfBirthCountry
+    // Personal details with country and language resolution
     const personalDetailsResults = await db
       .select({
         personalDetails: crewPersonalDetails,
         placeOfBirthCountry: masterCountries.countryName,
+        resolvedNativeLanguage: masterLanguages.languageName,
       })
       .from(crewPersonalDetails)
       .leftJoin(
         masterCountries,
         eq(crewPersonalDetails.placeOfBirthCountryUuid, masterCountries.countryUuid)
+      )
+      .leftJoin(
+        masterLanguages,
+        eq(crewPersonalDetails.nativeLanguageUuid, masterLanguages.langUuid)
       )
       .where(
         and(
@@ -874,6 +880,8 @@ export const crewMembersService = {
     const personalDetails = personalDetailsRow ? [{
       ...personalDetailsRow.personalDetails,
       placeOfBirthCountry: personalDetailsRow.placeOfBirthCountry,
+      // If UUID resolved to language name, use it; otherwise use original value (might be text name already)
+      nativeLanguage: personalDetailsRow.resolvedNativeLanguage || personalDetailsRow.personalDetails.nativeLanguageUuid,
     }] : [];
 
     const addressRow = addressResults[0];
