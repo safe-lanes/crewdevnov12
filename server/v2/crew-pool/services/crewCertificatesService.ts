@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import {
@@ -38,6 +38,58 @@ function applyAuditUser<T extends object>(data: T, isCreate = false): T & { crea
   return result;
 }
 
+// Generate next license ID in format LIC001, LIC002, etc.
+async function generateNextLicenseId(): Promise<string> {
+  const db = getDb();
+  const result = await db
+    .select({ licenseId: crewLicenses.licenseId })
+    .from(crewLicenses)
+    .where(
+      and(
+        sql`${crewLicenses.licenseId} ~ '^LIC[0-9]+$'`,
+        eq(crewLicenses.isDeleted, false)
+      )
+    )
+    .orderBy(desc(sql`CAST(SUBSTRING(${crewLicenses.licenseId} FROM 4) AS INTEGER)`))
+    .limit(1);
+
+  let nextNum = 1;
+  if (result.length > 0 && result[0].licenseId) {
+    const currentId = result[0].licenseId;
+    const numPart = parseInt(currentId.substring(3), 10);
+    if (!isNaN(numPart)) {
+      nextNum = numPart + 1;
+    }
+  }
+  return `LIC${String(nextNum).padStart(3, '0')}`;
+}
+
+// Generate next course ID in format SC001, SC002, etc.
+async function generateNextCourseId(): Promise<string> {
+  const db = getDb();
+  const result = await db
+    .select({ courseId: crewTrainingCourses.courseId })
+    .from(crewTrainingCourses)
+    .where(
+      and(
+        sql`${crewTrainingCourses.courseId} ~ '^SC[0-9]+$'`,
+        eq(crewTrainingCourses.isDeleted, false)
+      )
+    )
+    .orderBy(desc(sql`CAST(SUBSTRING(${crewTrainingCourses.courseId} FROM 3) AS INTEGER)`))
+    .limit(1);
+
+  let nextNum = 1;
+  if (result.length > 0 && result[0].courseId) {
+    const currentId = result[0].courseId;
+    const numPart = parseInt(currentId.substring(2), 10);
+    if (!isNaN(numPart)) {
+      nextNum = numPart + 1;
+    }
+  }
+  return `SC${String(nextNum).padStart(3, '0')}`;
+}
+
 export const crewCertificatesService = {
   // ============ Licenses ============
   async getLicenses(crewUuid: string): Promise<CrewLicenseWithAttachments[]> {
@@ -64,12 +116,11 @@ export const crewCertificatesService = {
   ): Promise<CrewLicense> {
     await crewMembersService.getByUuid(crewUuid);
 
-    if (!data.certificateDocument && !data.licenseId) {
-      throw new Error("Certificate document or license ID is required");
-    }
+    // Auto-generate license ID (LIC001, LIC002, etc.)
+    const licenseId = await generateNextLicenseId();
     const dataWithAudit = applyAuditUser(data, true);
 
-    return crewLicensesRepository.create({ ...dataWithAudit, crewUuid });
+    return crewLicensesRepository.create({ ...dataWithAudit, licenseId, crewUuid });
   },
 
   async updateLicense(
@@ -226,12 +277,11 @@ export const crewCertificatesService = {
   ): Promise<CrewTrainingCourse> {
     await crewMembersService.getByUuid(crewUuid);
 
-    if (!data.trainingCourse && !data.courseId) {
-      throw new Error("Training course or course ID is required");
-    }
+    // Auto-generate course ID (SC001, SC002, etc.)
+    const courseId = await generateNextCourseId();
     const dataWithAudit = applyAuditUser(data, true);
 
-    return crewTrainingRepository.create({ ...dataWithAudit, crewUuid });
+    return crewTrainingRepository.create({ ...dataWithAudit, courseId, crewUuid });
   },
 
   async updateTraining(
