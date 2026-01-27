@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { eq, and, ilike } from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import { getDb } from "../../db";
 import { CrewMembersRepository } from "../repositories";
 import {
@@ -24,6 +26,7 @@ import {
   crewSeaServiceAttachments,
 } from "../../../../shared/v2/crew-pool/schema";
 import type { InsertCrewMemberV2 } from "../../../../shared/v2/crew-pool/types";
+import { recruitmentCandidatesV2 } from "../../../../shared/v2/recruitment/schema";
 
 import {
   candidateRepository,
@@ -235,377 +238,392 @@ export const crewTransferService = {
       seaServiceRepository.findByCandidateUuid(recCanUuid),
     ]);
 
-    await db.insert(crewMembersV2).values({
-      crewUuid,
-      empNo,
-      firstName: candidate.firstName,
-      middleName: candidate.middleName,
-      familyName: candidate.familyName,
-      gender: candidate.gender,
-      dob: candidate.dob,
-      nationalityUuid: candidate.nationalityUuid,
-      vesselTypeUuid: candVesselTypes[0]?.vesselTypeUuid || null,
-      presentRank: candidate.presentRank,
-      rankAppliedFor: candidate.rankAppliedFor,
-      status: options.status || "Active",
-      availability: options.availability || null,
-      nextAvailability: null,
-      isActive: true,
-      uploadedPhoto: candidate.uploadedPhoto,
-      sourceRecCanUuid: recCanUuid,
-      createdByUuid: auditUserUuid,
-      updatedByUuid: auditUserUuid,
-    });
-
-    if (candVesselTypes.length > 0) {
-      for (const vt of candVesselTypes) {
-        await db.insert(crewVesselTypesApplied).values({
-          cvtaUuid: uuidv4(),
-          crewUuid,
-          vesselTypeUuid: vt.vesselTypeUuid,
-          sortOrder: vt.sortOrder || 0,
-          createdByUuid: auditUserUuid,
-          updatedByUuid: auditUserUuid,
-        });
-        counts.vesselTypes++;
-      }
-    }
-
-    if (candPersonal) {
-      await db.insert(crewPersonalDetails).values({
-        cpdUuid: uuidv4(),
+    return await db.transaction(async (tx: typeof db) => {
+      await tx.insert(crewMembersV2).values({
         crewUuid,
-        heightCm: candPersonal.heightCm,
-        weightKg: candPersonal.weightKg,
-        bmi: null,
-        ageInYears: candPersonal.ageInYears,
-        placeOfBirthCity: candPersonal.placeOfBirthCity,
-        placeOfBirthCountryUuid: candPersonal.placeOfBirthCountryUuid,
-        nativeLanguageUuid: candPersonal.nativeLanguageUuid,
-        foreignLanguages: candPersonal.foreignLanguages,
-        englishProficiency: candPersonal.englishProficiency,
-        manningAgent: candPersonal.manningAgent,
-        crewPool: options.crewPool || "Recruitment Transfer",
+        empNo,
+        firstName: candidate.firstName,
+        middleName: candidate.middleName,
+        familyName: candidate.familyName,
+        gender: candidate.gender,
+        dob: candidate.dob,
+        nationalityUuid: candidate.nationalityUuid,
+        vesselTypeUuid: candVesselTypes[0]?.vesselTypeUuid || null,
+        presentRank: candidate.presentRank,
+        rankAppliedFor: candidate.rankAppliedFor,
+        status: options.status || "Active",
         availability: options.availability || null,
         nextAvailability: null,
+        isActive: true,
+        uploadedPhoto: candidate.uploadedPhoto,
+        sourceRecCanUuid: recCanUuid,
         createdByUuid: auditUserUuid,
         updatedByUuid: auditUserUuid,
       });
-    }
 
-    if (candAddress) {
-      await db.insert(crewAddresses).values({
-        addrUuid: uuidv4(),
-        crewUuid,
-        countryOfResidenceUuid: candAddress.countryOfResidenceUuid,
-        nearestAirport: candAddress.nearestAirport,
-        addressLine1: candAddress.addressLine1,
-        addressLine2: candAddress.addressLine2,
-        contactLandline: candAddress.contactLandline,
-        mobile: candAddress.mobile,
-        email: candAddress.email,
-        createdByUuid: auditUserUuid,
-        updatedByUuid: auditUserUuid,
-      });
-    }
+      if (candVesselTypes.length > 0) {
+        for (const vt of candVesselTypes) {
+          await tx.insert(crewVesselTypesApplied).values({
+            cvtaUuid: uuidv4(),
+            crewUuid,
+            vesselTypeUuid: vt.vesselTypeUuid,
+            sortOrder: vt.sortOrder || 0,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
+          });
+          counts.vesselTypes++;
+        }
+      }
 
-    if (candFamily) {
-      await db.insert(crewFamilyInfo).values({
-        famUuid: uuidv4(),
-        crewUuid,
-        maritalStatus: candFamily.maritalStatus,
-        numDependentChildren: candFamily.numDependentChildren,
-        fatherName: candFamily.fatherName,
-        motherName: candFamily.motherName,
-        spouseFirstName: candFamily.spouseFirstName,
-        spouseMiddleName: candFamily.spouseMiddleName,
-        spouseFamilyName: candFamily.spouseFamilyName,
-        spouseDob: candFamily.spouseDob,
-        createdByUuid: auditUserUuid,
-        updatedByUuid: auditUserUuid,
-      });
-    }
-
-    if (candChildrenData.length > 0) {
-      for (const child of candChildrenData) {
-        await db.insert(crewChildren).values({
-          childUuid: uuidv4(),
+      if (candPersonal) {
+        await tx.insert(crewPersonalDetails).values({
+          cpdUuid: uuidv4(),
           crewUuid,
-          firstName: child.firstName,
-          middleName: child.middleName,
-          familyName: child.familyName,
-          dob: child.dob,
-          gender: child.gender,
-          sortOrder: child.sortOrder || 0,
+          heightCm: candPersonal.heightCm,
+          weightKg: candPersonal.weightKg,
+          bmi: null,
+          ageInYears: candPersonal.ageInYears,
+          placeOfBirthCity: candPersonal.placeOfBirthCity,
+          placeOfBirthCountryUuid: candPersonal.placeOfBirthCountryUuid,
+          nativeLanguageUuid: candPersonal.nativeLanguageUuid,
+          foreignLanguages: candPersonal.foreignLanguages,
+          englishProficiency: candPersonal.englishProficiency,
+          manningAgent: candPersonal.manningAgent,
+          crewPool: options.crewPool || "Recruitment Transfer",
+          availability: options.availability || null,
+          nextAvailability: null,
+          createdByUuid: auditUserUuid,
+          updatedByUuid: auditUserUuid,
+        });
+      } else {
+        await tx.insert(crewPersonalDetails).values({
+          cpdUuid: uuidv4(),
+          crewUuid,
+          crewPool: options.crewPool || "Recruitment Transfer",
+          availability: options.availability || null,
+          nextAvailability: null,
           createdByUuid: auditUserUuid,
           updatedByUuid: auditUserUuid,
         });
       }
-    }
 
-    if (candNok) {
-      await db.insert(crewNextOfKin).values({
-        nokUuid: uuidv4(),
-        crewUuid,
-        firstName: candNok.firstName,
-        middleName: candNok.middleName,
-        familyName: candNok.familyName,
-        telephone: candNok.telephone,
-        email: candNok.email,
-        address: candNok.address,
-        relationship: candNok.relationship,
-        createdByUuid: auditUserUuid,
-        updatedByUuid: auditUserUuid,
-      });
-    }
+      if (candAddress) {
+        await tx.insert(crewAddresses).values({
+          addrUuid: uuidv4(),
+          crewUuid,
+          countryOfResidenceUuid: candAddress.countryOfResidenceUuid,
+          nearestAirport: candAddress.nearestAirport,
+          addressLine1: candAddress.addressLine1,
+          addressLine2: candAddress.addressLine2,
+          contactLandline: candAddress.contactLandline,
+          mobile: candAddress.mobile,
+          email: candAddress.email,
+          createdByUuid: auditUserUuid,
+          updatedByUuid: auditUserUuid,
+        });
+      }
 
-    for (const doc of candDocs) {
-      const newDocUuid = uuidv4();
-      await db.insert(crewDocuments).values({
-        docUuid: newDocUuid,
-        crewUuid,
-        documentId: doc.documentId,
-        documentName: doc.documentName,
-        number: doc.number,
-        issued: doc.issued,
-        expiry: doc.expiry,
-        issuingAuthority: doc.issuingAuthority,
-        issuingCountryUuid: doc.issuingCountryUuid,
-        sortOrder: doc.sortOrder || 0,
-        createdByUuid: auditUserUuid,
-        updatedByUuid: auditUserUuid,
-      });
-      counts.documents++;
+      if (candFamily) {
+        await tx.insert(crewFamilyInfo).values({
+          famUuid: uuidv4(),
+          crewUuid,
+          maritalStatus: candFamily.maritalStatus,
+          numDependentChildren: candFamily.numDependentChildren,
+          fatherName: candFamily.fatherName,
+          motherName: candFamily.motherName,
+          spouseFirstName: candFamily.spouseFirstName,
+          spouseMiddleName: candFamily.spouseMiddleName,
+          spouseFamilyName: candFamily.spouseFamilyName,
+          spouseDob: candFamily.spouseDob,
+          createdByUuid: auditUserUuid,
+          updatedByUuid: auditUserUuid,
+        });
+      }
 
-      const docAtts = await documentAttachmentsRepository.findByDocUuid(
-        doc.docUuid
-      );
-      for (const att of docAtts) {
-        await db.insert(crewDocumentsAttachments).values({
-          attUuid: uuidv4(),
+      if (candChildrenData.length > 0) {
+        for (const child of candChildrenData) {
+          await tx.insert(crewChildren).values({
+            childUuid: uuidv4(),
+            crewUuid,
+            firstName: child.firstName,
+            middleName: child.middleName,
+            familyName: child.familyName,
+            dob: child.dob,
+            gender: child.gender,
+            sortOrder: child.sortOrder || 0,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
+          });
+        }
+      }
+
+      if (candNok) {
+        await tx.insert(crewNextOfKin).values({
+          nokUuid: uuidv4(),
+          crewUuid,
+          firstName: candNok.firstName,
+          middleName: candNok.middleName,
+          familyName: candNok.familyName,
+          telephone: candNok.telephone,
+          email: candNok.email,
+          address: candNok.address,
+          relationship: candNok.relationship,
+          createdByUuid: auditUserUuid,
+          updatedByUuid: auditUserUuid,
+        });
+      }
+
+      for (const doc of candDocs) {
+        const newDocUuid = uuidv4();
+        await tx.insert(crewDocuments).values({
           docUuid: newDocUuid,
-          fileName: att.fileName,
-          fileType: att.fileType,
-          fileSize: att.fileSize,
-          filePath: att.filePath,
-          fileData: att.fileData || null,
-          uploadedByUuid: att.uploadedByUuid || auditUserUuid,
-          sortOrder: att.sortOrder || 0,
+          crewUuid,
+          documentId: doc.documentId,
+          documentName: doc.documentName,
+          number: doc.number,
+          issued: doc.issued,
+          expiry: doc.expiry,
+          issuingAuthority: doc.issuingAuthority,
+          issuingCountryUuid: doc.issuingCountryUuid,
+          sortOrder: doc.sortOrder || 0,
           createdByUuid: auditUserUuid,
           updatedByUuid: auditUserUuid,
         });
+        counts.documents++;
+
+        const docAtts = await documentAttachmentsRepository.findByDocUuid(
+          doc.docUuid
+        );
+        for (const att of docAtts) {
+          await tx.insert(crewDocumentsAttachments).values({
+            attUuid: uuidv4(),
+            docUuid: newDocUuid,
+            fileName: att.fileName,
+            fileType: att.fileType,
+            fileSize: att.fileSize,
+            filePath: att.filePath,
+            fileData: att.fileData || null,
+            uploadedByUuid: att.uploadedByUuid || auditUserUuid,
+            sortOrder: att.sortOrder || 0,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
+          });
+        }
       }
-    }
 
-    for (const visa of candVisasData) {
-      const newVisaUuid = uuidv4();
-      await db.insert(crewVisas).values({
-        visaUuid: newVisaUuid,
-        crewUuid,
-        countryUuid: visa.countryUuid,
-        serialNo: visa.serialNo,
-        issued: visa.issued,
-        expiry: visa.expiry,
-        visaType: visa.visaType,
-        sortOrder: visa.sortOrder || 0,
-        createdByUuid: auditUserUuid,
-        updatedByUuid: auditUserUuid,
-      });
-      counts.visas++;
-
-      const visaAtts = await visaAttachmentsRepository.findByVisaUuid(
-        visa.visaUuid
-      );
-      for (const att of visaAtts) {
-        await db.insert(crewVisasAttachments).values({
-          attUuid: uuidv4(),
+      for (const visa of candVisasData) {
+        const newVisaUuid = uuidv4();
+        await tx.insert(crewVisas).values({
           visaUuid: newVisaUuid,
-          fileName: att.fileName,
-          fileType: att.fileType,
-          fileSize: att.fileSize,
-          filePath: att.filePath,
-          fileData: att.fileData || null,
-          uploadedByUuid: att.uploadedByUuid || auditUserUuid,
-          sortOrder: att.sortOrder || 0,
+          crewUuid,
+          countryUuid: visa.countryUuid,
+          serialNo: visa.serialNo,
+          issued: visa.issued,
+          expiry: visa.expiry,
+          visaType: visa.visaType,
+          sortOrder: visa.sortOrder || 0,
           createdByUuid: auditUserUuid,
           updatedByUuid: auditUserUuid,
         });
+        counts.visas++;
+
+        const visaAtts = await visaAttachmentsRepository.findByVisaUuid(
+          visa.visaUuid
+        );
+        for (const att of visaAtts) {
+          await tx.insert(crewVisasAttachments).values({
+            attUuid: uuidv4(),
+            visaUuid: newVisaUuid,
+            fileName: att.fileName,
+            fileType: att.fileType,
+            fileSize: att.fileSize,
+            filePath: att.filePath,
+            fileData: att.fileData || null,
+            uploadedByUuid: att.uploadedByUuid || auditUserUuid,
+            sortOrder: att.sortOrder || 0,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
+          });
+        }
       }
-    }
 
-    for (const edu of candEdu) {
-      const newEduUuid = uuidv4();
-      await db.insert(crewEducation).values({
-        eduUuid: newEduUuid,
-        crewUuid,
-        dateOfCompletion: edu.dateOfCompletion,
-        institution: edu.institution,
-        subjectsField: edu.subjectsField,
-        qualifications: edu.qualifications,
-        sortOrder: edu.sortOrder || 0,
-        createdByUuid: auditUserUuid,
-        updatedByUuid: auditUserUuid,
-      });
-      counts.education++;
-
-      const eduAtts = await educationAttachmentsRepository.findByEduUuid(
-        edu.eduUuid
-      );
-      for (const att of eduAtts) {
-        await db.insert(crewEducationAttachments).values({
-          attUuid: uuidv4(),
+      for (const edu of candEdu) {
+        const newEduUuid = uuidv4();
+        await tx.insert(crewEducation).values({
           eduUuid: newEduUuid,
-          fileName: att.fileName,
-          fileType: att.fileType,
-          fileSize: att.fileSize,
-          filePath: att.filePath,
-          fileData: att.fileData || null,
-          uploadedByUuid: att.uploadedByUuid || auditUserUuid,
-          sortOrder: att.sortOrder || 0,
+          crewUuid,
+          dateOfCompletion: edu.dateOfCompletion,
+          institution: edu.institution,
+          subjectsField: edu.subjectsField,
+          qualifications: edu.qualifications,
+          sortOrder: edu.sortOrder || 0,
           createdByUuid: auditUserUuid,
           updatedByUuid: auditUserUuid,
         });
+        counts.education++;
+
+        const eduAtts = await educationAttachmentsRepository.findByEduUuid(
+          edu.eduUuid
+        );
+        for (const att of eduAtts) {
+          await tx.insert(crewEducationAttachments).values({
+            attUuid: uuidv4(),
+            eduUuid: newEduUuid,
+            fileName: att.fileName,
+            fileType: att.fileType,
+            fileSize: att.fileSize,
+            filePath: att.filePath,
+            fileData: att.fileData || null,
+            uploadedByUuid: att.uploadedByUuid || auditUserUuid,
+            sortOrder: att.sortOrder || 0,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
+          });
+        }
       }
-    }
 
-    for (const lic of candLic) {
-      const newLicUuid = uuidv4();
-      const licenseId = lic.licenseId || (await generateLicenseId());
-      await db.insert(crewLicenses).values({
-        licUuid: newLicUuid,
-        crewUuid,
-        licenseId,
-        certificateDocument: lic.certificateDocument,
-        abbr: lic.abbr,
-        requirement: lic.requirement,
-        certificateNo: lic.certificateNo,
-        issuingAuthority: lic.issuingAuthority,
-        issuingCountryUuid: lic.issuingCountryUuid,
-        issued: lic.issued,
-        expiry: lic.expiry,
-        sortOrder: lic.sortOrder || 0,
-        createdByUuid: auditUserUuid,
-        updatedByUuid: auditUserUuid,
-      });
-      counts.licenses++;
-
-      const licAtts = await licenseAttachmentsRepository.findByLicUuid(
-        lic.licUuid
-      );
-      for (const att of licAtts) {
-        await db.insert(crewLicensesAttachments).values({
-          attUuid: uuidv4(),
+      for (const lic of candLic) {
+        const newLicUuid = uuidv4();
+        const licenseId = lic.licenseId || (await generateLicenseId());
+        await tx.insert(crewLicenses).values({
           licUuid: newLicUuid,
-          fileName: att.fileName,
-          fileType: att.fileType,
-          fileSize: att.fileSize,
-          filePath: att.filePath,
-          fileData: att.fileData || null,
-          uploadedByUuid: att.uploadedByUuid || auditUserUuid,
-          sortOrder: att.sortOrder || 0,
+          crewUuid,
+          licenseId,
+          certificateDocument: lic.certificateDocument,
+          abbr: lic.abbr,
+          requirement: lic.requirement,
+          certificateNo: lic.certificateNo,
+          issuingAuthority: lic.issuingAuthority,
+          issuingCountryUuid: lic.issuingCountryUuid,
+          issued: lic.issued,
+          expiry: lic.expiry,
+          sortOrder: lic.sortOrder || 0,
           createdByUuid: auditUserUuid,
           updatedByUuid: auditUserUuid,
         });
+        counts.licenses++;
+
+        const licAtts = await licenseAttachmentsRepository.findByLicUuid(
+          lic.licUuid
+        );
+        for (const att of licAtts) {
+          await tx.insert(crewLicensesAttachments).values({
+            attUuid: uuidv4(),
+            licUuid: newLicUuid,
+            fileName: att.fileName,
+            fileType: att.fileType,
+            fileSize: att.fileSize,
+            filePath: att.filePath,
+            fileData: att.fileData || null,
+            uploadedByUuid: att.uploadedByUuid || auditUserUuid,
+            sortOrder: att.sortOrder || 0,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
+          });
+        }
       }
-    }
 
-    for (const train of candTrain) {
-      const newTrainUuid = uuidv4();
-      const courseId = train.courseId || (await generateCourseId());
-      await db.insert(crewTrainingCourses).values({
-        trainUuid: newTrainUuid,
-        crewUuid,
-        courseId,
-        trainingCourse: train.trainingCourse,
-        abbr: train.abbr,
-        requirement: train.requirement,
-        certificateNo: train.certificateNo,
-        issuingAuthority: train.issuingAuthority,
-        issuingCountryUuid: train.issuingCountryUuid,
-        issued: train.issued,
-        expiry: train.expiry,
-        sortOrder: train.sortOrder || 0,
-        createdByUuid: auditUserUuid,
-        updatedByUuid: auditUserUuid,
-      });
-      counts.trainingCourses++;
-
-      const trainAtts = await trainingAttachmentsRepository.findByTrainUuid(
-        train.trainUuid
-      );
-      for (const att of trainAtts) {
-        await db.insert(crewTrainingAttachments).values({
-          attUuid: uuidv4(),
+      for (const train of candTrain) {
+        const newTrainUuid = uuidv4();
+        const courseId = train.courseId || (await generateCourseId());
+        await tx.insert(crewTrainingCourses).values({
           trainUuid: newTrainUuid,
-          fileName: att.fileName,
-          fileType: att.fileType,
-          fileSize: att.fileSize,
-          filePath: att.filePath,
-          fileData: att.fileData || null,
-          uploadedByUuid: att.uploadedByUuid || auditUserUuid,
-          sortOrder: att.sortOrder || 0,
+          crewUuid,
+          courseId,
+          trainingCourse: train.trainingCourse,
+          abbr: train.abbr,
+          requirement: train.requirement,
+          certificateNo: train.certificateNo,
+          issuingAuthority: train.issuingAuthority,
+          issuingCountryUuid: train.issuingCountryUuid,
+          issued: train.issued,
+          expiry: train.expiry,
+          sortOrder: train.sortOrder || 0,
           createdByUuid: auditUserUuid,
           updatedByUuid: auditUserUuid,
         });
+        counts.trainingCourses++;
+
+        const trainAtts = await trainingAttachmentsRepository.findByTrainUuid(
+          train.trainUuid
+        );
+        for (const att of trainAtts) {
+          await tx.insert(crewTrainingAttachments).values({
+            attUuid: uuidv4(),
+            trainUuid: newTrainUuid,
+            fileName: att.fileName,
+            fileType: att.fileType,
+            fileSize: att.fileSize,
+            filePath: att.filePath,
+            fileData: att.fileData || null,
+            uploadedByUuid: att.uploadedByUuid || auditUserUuid,
+            sortOrder: att.sortOrder || 0,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
+          });
+        }
       }
-    }
 
-    for (const sea of candSea) {
-      const newSeaUuid = uuidv4();
-      await db.insert(crewSeaService).values({
-        seaUuid: newSeaUuid,
-        crewUuid,
-        serviceType: "external",
-        vesselName: sea.vesselName,
-        vesselUuid: sea.vesselUuid,
-        vesselTypeUuid: sea.vesselTypeUuid,
-        deadweight: sea.deadweight,
-        engineTypePower: sea.engineTypePower,
-        ownerOperator: sea.ownerOperator,
-        rank: sea.rank,
-        fromDate: sea.fromDate,
-        toDate: sea.toDate,
-        periodMonths: sea.periodMonths,
-        experienceCategories: [],
-        sortOrder: sea.sortOrder || 0,
-        createdByUuid: auditUserUuid,
-        updatedByUuid: auditUserUuid,
-      });
-      counts.seaService++;
-
-      const seaAtts = await seaServiceAttachmentsRepository.findBySeaUuid(
-        sea.seaUuid
-      );
-      for (const att of seaAtts) {
-        await db.insert(crewSeaServiceAttachments).values({
-          attUuid: uuidv4(),
+      for (const sea of candSea) {
+        const newSeaUuid = uuidv4();
+        await tx.insert(crewSeaService).values({
           seaUuid: newSeaUuid,
-          fileName: att.fileName,
-          fileType: att.fileType,
-          fileSize: att.fileSize,
-          filePath: att.filePath,
-          fileData: att.fileData || null,
-          uploadedByUuid: att.uploadedByUuid || auditUserUuid,
-          sortOrder: att.sortOrder || 0,
+          crewUuid,
+          serviceType: "external",
+          vesselName: sea.vesselName,
+          vesselUuid: sea.vesselUuid,
+          vesselTypeUuid: sea.vesselTypeUuid,
+          deadweight: sea.deadweight,
+          engineTypePower: sea.engineTypePower,
+          ownerOperator: sea.ownerOperator,
+          rank: sea.rank,
+          fromDate: sea.fromDate,
+          toDate: sea.toDate,
+          periodMonths: sea.periodMonths,
+          experienceCategories: [],
+          sortOrder: sea.sortOrder || 0,
           createdByUuid: auditUserUuid,
           updatedByUuid: auditUserUuid,
         });
+        counts.seaService++;
+
+        const seaAtts = await seaServiceAttachmentsRepository.findBySeaUuid(
+          sea.seaUuid
+        );
+        for (const att of seaAtts) {
+          await tx.insert(crewSeaServiceAttachments).values({
+            attUuid: uuidv4(),
+            seaUuid: newSeaUuid,
+            fileName: att.fileName,
+            fileType: att.fileType,
+            fileSize: att.fileSize,
+            filePath: att.filePath,
+            fileData: att.fileData || null,
+            uploadedByUuid: att.uploadedByUuid || auditUserUuid,
+            sortOrder: att.sortOrder || 0,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
+          });
+        }
       }
-    }
 
-    await candidateRepository.updateByUuid(recCanUuid, {
-      status: "Transferred",
-      updatedByUuid: auditUserUuid,
+      await tx
+        .update(recruitmentCandidatesV2)
+        .set({
+          status: "Transferred",
+          updatedByUuid: auditUserUuid,
+        })
+        .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid));
+
+      return {
+        success: true,
+        crewUuid,
+        empNo,
+        status: options.status || "Active",
+        transferredAt: now.toISOString(),
+        counts,
+      };
     });
-
-    return {
-      success: true,
-      crewUuid,
-      empNo,
-      status: options.status || "Active",
-      transferredAt: now.toISOString(),
-      counts,
-    };
   },
 
   async transferFromLegacyCrewPool(legacyCrewId: number) {
