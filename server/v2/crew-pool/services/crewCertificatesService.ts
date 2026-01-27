@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import {
@@ -38,6 +38,52 @@ function applyAuditUser<T extends object>(data: T, isCreate = false): T & { crea
   return result;
 }
 
+/**
+ * Generate next License ID in format LIC001, LIC002, etc.
+ * Queries max existing license_id from crew_licenses_v2 table
+ */
+async function generateNextLicenseId(): Promise<string> {
+  const db = getDb();
+  const result = await db
+    .select({ licenseId: crewLicenses.licenseId })
+    .from(crewLicenses)
+    .where(sql`${crewLicenses.licenseId} ~ '^LIC[0-9]+$'`)
+    .orderBy(desc(sql`CAST(SUBSTRING(${crewLicenses.licenseId} FROM 4) AS INTEGER)`))
+    .limit(1);
+
+  let nextNum = 1;
+  if (result.length > 0 && result[0].licenseId) {
+    const match = result[0].licenseId.match(/^LIC(\d+)$/);
+    if (match) {
+      nextNum = parseInt(match[1], 10) + 1;
+    }
+  }
+  return `LIC${nextNum.toString().padStart(3, '0')}`;
+}
+
+/**
+ * Generate next Course ID in format SC001, SC002, etc.
+ * Queries max existing course_id from crew_training_courses_v2 table
+ */
+async function generateNextCourseId(): Promise<string> {
+  const db = getDb();
+  const result = await db
+    .select({ courseId: crewTrainingCourses.courseId })
+    .from(crewTrainingCourses)
+    .where(sql`${crewTrainingCourses.courseId} ~ '^SC[0-9]+$'`)
+    .orderBy(desc(sql`CAST(SUBSTRING(${crewTrainingCourses.courseId} FROM 3) AS INTEGER)`))
+    .limit(1);
+
+  let nextNum = 1;
+  if (result.length > 0 && result[0].courseId) {
+    const match = result[0].courseId.match(/^SC(\d+)$/);
+    if (match) {
+      nextNum = parseInt(match[1], 10) + 1;
+    }
+  }
+  return `SC${nextNum.toString().padStart(3, '0')}`;
+}
+
 export const crewCertificatesService = {
   // ============ Licenses ============
   async getLicenses(crewUuid: string): Promise<CrewLicenseWithAttachments[]> {
@@ -67,7 +113,10 @@ export const crewCertificatesService = {
     if (!data.certificateDocument && !data.licenseId) {
       throw new Error("Certificate document or license ID is required");
     }
-    const dataWithAudit = applyAuditUser(data, true);
+    
+    // Auto-generate licenseId if not provided
+    const licenseId = data.licenseId || await generateNextLicenseId();
+    const dataWithAudit = applyAuditUser({ ...data, licenseId }, true);
 
     return crewLicensesRepository.create({ ...dataWithAudit, crewUuid });
   },
@@ -170,10 +219,13 @@ export const crewCertificatesService = {
           results.push(updated);
         } else {
           licUuid = uuidv4();
+          // Auto-generate licenseId if not provided
+          const licenseId = item.data.licenseId || await generateNextLicenseId();
           const [created] = await tx
             .insert(crewLicenses)
             .values({
               ...item.data,
+              licenseId,
               licUuid,
               crewUuid,
               createdAt: now,
@@ -229,7 +281,10 @@ export const crewCertificatesService = {
     if (!data.trainingCourse && !data.courseId) {
       throw new Error("Training course or course ID is required");
     }
-    const dataWithAudit = applyAuditUser(data, true);
+    
+    // Auto-generate courseId if not provided
+    const courseId = data.courseId || await generateNextCourseId();
+    const dataWithAudit = applyAuditUser({ ...data, courseId }, true);
 
     return crewTrainingRepository.create({ ...dataWithAudit, crewUuid });
   },
@@ -322,10 +377,13 @@ export const crewCertificatesService = {
           results.push(updated);
         } else {
           trainUuid = uuidv4();
+          // Auto-generate courseId if not provided
+          const courseId = item.data.courseId || await generateNextCourseId();
           const [created] = await tx
             .insert(crewTrainingCourses)
             .values({
               ...item.data,
+              courseId,
               trainUuid,
               crewUuid,
               createdAt: now,
