@@ -168,6 +168,8 @@ router.delete("/crew/:crewUuid/doctor-visits/:visitUuid/attachments/:attUuid", c
 // ============================================
 // TRANSFER FROM RECRUITMENT
 // ============================================
-router.post("/transfer-from-recruitment", crewTransferController.transferFromRecruitment);
+router.post("/transfer/recruitment", crewTransferController.transferFromRecruitment);
+router.get("/transfer/recruitment/:recCanUuid/check-duplicate", crewTransferController.checkDuplicate);
+router.post("/transfer/validate", crewTransferController.validateTransfer);
 
 export default router;
