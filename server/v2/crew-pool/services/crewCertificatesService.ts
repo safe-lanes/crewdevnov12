@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import {
@@ -38,104 +38,6 @@ function applyAuditUser<T extends object>(data: T, isCreate = false): T & { crea
   return result;
 }
 
-/**
- * Generate next License ID in format LIC001, LIC002, etc.
- * Queries max existing license_id from crew_licenses_v2 table.
- * Uses retry logic to handle race conditions with unique constraint.
- * @param retryOffset - Offset to add for retry attempts (default 0)
- */
-async function generateNextLicenseId(retryOffset = 0): Promise<string> {
-  const db = getDb();
-  const result = await db
-    .select({ licenseId: crewLicenses.licenseId })
-    .from(crewLicenses)
-    .where(sql`${crewLicenses.licenseId} ~ '^LIC[0-9]+$'`)
-    .orderBy(desc(sql`CAST(SUBSTRING(${crewLicenses.licenseId} FROM 4) AS INTEGER)`))
-    .limit(1);
-
-  let nextNum = 1;
-  if (result.length > 0 && result[0].licenseId) {
-    const match = result[0].licenseId.match(/^LIC(\d+)$/);
-    if (match) {
-      nextNum = parseInt(match[1], 10) + 1;
-    }
-  }
-  return `LIC${(nextNum + retryOffset).toString().padStart(3, '0')}`;
-}
-
-/**
- * Generate next Course ID in format SC001, SC002, etc.
- * Queries max existing course_id from crew_training_courses_v2 table.
- * Uses retry logic to handle race conditions with unique constraint.
- * @param retryOffset - Offset to add for retry attempts (default 0)
- */
-async function generateNextCourseId(retryOffset = 0): Promise<string> {
-  const db = getDb();
-  const result = await db
-    .select({ courseId: crewTrainingCourses.courseId })
-    .from(crewTrainingCourses)
-    .where(sql`${crewTrainingCourses.courseId} ~ '^SC[0-9]+$'`)
-    .orderBy(desc(sql`CAST(SUBSTRING(${crewTrainingCourses.courseId} FROM 3) AS INTEGER)`))
-    .limit(1);
-
-  let nextNum = 1;
-  if (result.length > 0 && result[0].courseId) {
-    const match = result[0].courseId.match(/^SC(\d+)$/);
-    if (match) {
-      nextNum = parseInt(match[1], 10) + 1;
-    }
-  }
-  return `SC${(nextNum + retryOffset).toString().padStart(3, '0')}`;
-}
-
-/**
- * Create license with retry logic for ID conflicts.
- * Retries up to 3 times with incremented ID on unique constraint violation.
- */
-async function createLicenseWithRetry(
-  repository: typeof crewLicensesRepository,
-  data: any,
-  maxRetries = 3
-): Promise<CrewLicense> {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const licenseId = data.licenseId || await generateNextLicenseId(attempt);
-      return await repository.create({ ...data, licenseId });
-    } catch (error: any) {
-      const isUniqueViolation = error?.code === '23505' && error?.constraint?.includes('license_id');
-      if (!isUniqueViolation || attempt === maxRetries - 1) {
-        throw error;
-      }
-      // Retry with next ID
-    }
-  }
-  throw new Error('Failed to generate unique license ID after retries');
-}
-
-/**
- * Create training course with retry logic for ID conflicts.
- * Retries up to 3 times with incremented ID on unique constraint violation.
- */
-async function createTrainingWithRetry(
-  repository: typeof crewTrainingRepository,
-  data: any,
-  maxRetries = 3
-): Promise<CrewTrainingCourse> {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const courseId = data.courseId || await generateNextCourseId(attempt);
-      return await repository.create({ ...data, courseId });
-    } catch (error: any) {
-      const isUniqueViolation = error?.code === '23505' && error?.constraint?.includes('course_id');
-      if (!isUniqueViolation || attempt === maxRetries - 1) {
-        throw error;
-      }
-      // Retry with next ID
-    }
-  }
-  throw new Error('Failed to generate unique course ID after retries');
-}
-
 export const crewCertificatesService = {
   // ============ Licenses ============
   async getLicenses(crewUuid: string): Promise<CrewLicenseWithAttachments[]> {
@@ -165,10 +67,9 @@ export const crewCertificatesService = {
     if (!data.certificateDocument && !data.licenseId) {
       throw new Error("Certificate document or license ID is required");
     }
-    
-    // Apply audit user and create with retry logic for ID conflicts
     const dataWithAudit = applyAuditUser(data, true);
-    return createLicenseWithRetry(crewLicensesRepository, { ...dataWithAudit, crewUuid });
+
+    return crewLicensesRepository.create({ ...dataWithAudit, crewUuid });
   },
 
   async updateLicense(
@@ -269,13 +170,10 @@ export const crewCertificatesService = {
           results.push(updated);
         } else {
           licUuid = uuidv4();
-          // Auto-generate licenseId if not provided
-          const licenseId = item.data.licenseId || await generateNextLicenseId();
           const [created] = await tx
             .insert(crewLicenses)
             .values({
               ...item.data,
-              licenseId,
               licUuid,
               crewUuid,
               createdAt: now,
@@ -331,10 +229,9 @@ export const crewCertificatesService = {
     if (!data.trainingCourse && !data.courseId) {
       throw new Error("Training course or course ID is required");
     }
-    
-    // Apply audit user and create with retry logic for ID conflicts
     const dataWithAudit = applyAuditUser(data, true);
-    return createTrainingWithRetry(crewTrainingRepository, { ...dataWithAudit, crewUuid });
+
+    return crewTrainingRepository.create({ ...dataWithAudit, crewUuid });
   },
 
   async updateTraining(
@@ -425,13 +322,10 @@ export const crewCertificatesService = {
           results.push(updated);
         } else {
           trainUuid = uuidv4();
-          // Auto-generate courseId if not provided
-          const courseId = item.data.courseId || await generateNextCourseId();
           const [created] = await tx
             .insert(crewTrainingCourses)
             .values({
               ...item.data,
-              courseId,
               trainUuid,
               crewUuid,
               createdAt: now,

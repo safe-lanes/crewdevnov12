@@ -4481,7 +4481,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {formData.trainingCourses.map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <div className="text-[#4f5863] text-[13px] font-mono">{course.courseId || '-'}</div>
+                  <div className="text-[#4f5863] text-[13px] font-mono">{course.companyId || '-'}</div>
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
