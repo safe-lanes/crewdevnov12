@@ -2112,12 +2112,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             issued: license.issued || '',
             expiry: license.expiry || '',
           });
-          const result = await response.json() as { licUuid?: string; licenseId?: string };
+          const result = await response.json() as { licUuid?: string };
           savedUuid = result?.licUuid;
           setFormData(prev => ({
             ...prev,
             licenses: prev.licenses.map(l =>
-              l.id === itemId ? { ...l, licUuid: savedUuid, licenseId: result?.licenseId || l.licenseId } as any : l
+              l.id === itemId ? { ...l, licUuid: savedUuid } as any : l
             )
           }));
           break;
