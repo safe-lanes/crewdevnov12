@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, ilike } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import {
@@ -38,6 +38,56 @@ function applyAuditUser<T extends object>(data: T, isCreate = false): T & { crea
   return result;
 }
 
+// Generate next license ID in format LIC001, LIC002, etc.
+async function generateLicenseId(): Promise<string> {
+  const db = getDb();
+  const results = await db
+    .select({ licenseId: crewLicenses.licenseId })
+    .from(crewLicenses)
+    .where(ilike(crewLicenses.licenseId, 'LIC%'));
+  
+  let maxNum = 0;
+  for (const row of results) {
+    if (row.licenseId) {
+      const match = row.licenseId.match(/LIC(\d+)/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  const nextNum = maxNum + 1;
+  return `LIC${nextNum.toString().padStart(3, '0')}`;
+}
+
+// Generate next course ID in format SC001, SC002, etc.
+async function generateCourseId(): Promise<string> {
+  const db = getDb();
+  const results = await db
+    .select({ courseId: crewTrainingCourses.courseId })
+    .from(crewTrainingCourses)
+    .where(ilike(crewTrainingCourses.courseId, 'SC%'));
+  
+  let maxNum = 0;
+  for (const row of results) {
+    if (row.courseId) {
+      const match = row.courseId.match(/SC(\d+)/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  const nextNum = maxNum + 1;
+  return `SC${nextNum.toString().padStart(3, '0')}`;
+}
+
 export const crewCertificatesService = {
   // ============ Licenses ============
   async getLicenses(crewUuid: string): Promise<CrewLicenseWithAttachments[]> {
@@ -64,12 +114,20 @@ export const crewCertificatesService = {
   ): Promise<CrewLicense> {
     await crewMembersService.getByUuid(crewUuid);
 
-    if (!data.certificateDocument && !data.licenseId) {
-      throw new Error("Certificate document or license ID is required");
+    // Validate that certificateDocument is provided (required field)
+    if (!data.certificateDocument) {
+      throw new Error("Certificate document is required");
     }
+
+    // Auto-generate license ID if not provided
+    let licenseId = data.licenseId;
+    if (!licenseId) {
+      licenseId = await generateLicenseId();
+    }
+
     const dataWithAudit = applyAuditUser(data, true);
 
-    return crewLicensesRepository.create({ ...dataWithAudit, crewUuid });
+    return crewLicensesRepository.create({ ...dataWithAudit, crewUuid, licenseId });
   },
 
   async updateLicense(
@@ -226,12 +284,20 @@ export const crewCertificatesService = {
   ): Promise<CrewTrainingCourse> {
     await crewMembersService.getByUuid(crewUuid);
 
-    if (!data.trainingCourse && !data.courseId) {
-      throw new Error("Training course or course ID is required");
+    // Validate that trainingCourse is provided (required field)
+    if (!data.trainingCourse) {
+      throw new Error("Training course is required");
     }
+
+    // Auto-generate course ID if not provided
+    let courseId = data.courseId;
+    if (!courseId) {
+      courseId = await generateCourseId();
+    }
+
     const dataWithAudit = applyAuditUser(data, true);
 
-    return crewTrainingRepository.create({ ...dataWithAudit, crewUuid });
+    return crewTrainingRepository.create({ ...dataWithAudit, crewUuid, courseId });
   },
 
   async updateTraining(
