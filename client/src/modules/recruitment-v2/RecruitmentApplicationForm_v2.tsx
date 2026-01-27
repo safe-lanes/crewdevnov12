@@ -3364,6 +3364,30 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             recCanUuid,
             data: { status: newStatus },
           });
+          
+          // Transfer to Crew Pool when recruitment is confirmed (Yes)
+          if (formData.c3RecruitmentStatus === 'Yes') {
+            try {
+              const transferResponse = await fetch('/api/v2/crew-pool/transfer/recruitment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ recCanUuid }),
+              });
+              const transferResult = await transferResponse.json();
+              if (transferResult.success) {
+                toast({
+                  title: "Crew Pool Transfer",
+                  description: `Candidate transferred to Crew Pool with Employee No: ${transferResult.data.empNo}`,
+                });
+              } else if (transferResult.error?.includes('already been transferred')) {
+                // Already transferred, no need to show error
+              } else if (transferResult.error) {
+                console.error('Transfer error:', transferResult.error);
+              }
+            } catch (transferError) {
+              console.error('Failed to transfer to crew pool:', transferError);
+            }
+          }
         }
       } else {
         // If no C3 decision yet, update status to Screening when saving Part B sections

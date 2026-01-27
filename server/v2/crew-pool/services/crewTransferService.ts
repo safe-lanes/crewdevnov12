@@ -166,12 +166,13 @@ export const crewTransferService = {
     }
 
     if (
+      candidate.status !== "Recruited" &&
       candidate.status !== "Hired" &&
       candidate.status !== "Approved" &&
       candidate.status !== "Ready"
     ) {
       throw new Error(
-        `Candidate status must be 'Hired', 'Approved', or 'Ready' for transfer. Current status: ${candidate.status}`
+        `Candidate status must be 'Recruited', 'Hired', 'Approved', or 'Ready' for transfer. Current status: ${candidate.status}`
       );
     }
 
