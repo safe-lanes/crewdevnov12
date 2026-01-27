@@ -29,6 +29,29 @@ function applyAuditUser<T extends object>(data: T, isCreate = false): T & { crea
   return result;
 }
 
+// Helper to calculate age from date of birth
+function calculateAge(dob: string | null | undefined): string | null {
+  if (!dob) return null;
+  
+  try {
+    const birthDate = new Date(dob);
+    if (isNaN(birthDate.getTime())) return null;
+    
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    // Adjust age if birthday hasn't occurred this year yet
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age >= 0 ? age.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export const crewProfileService = {
   async getFullProfile(crewUuid: string) {
     const [
@@ -99,6 +122,7 @@ export const crewProfileService = {
     crewUuid: string,
     data: Parameters<typeof crewPersonalRepository.upsertPersonalDetails>[1] & {
       placeOfBirthCountry?: string;
+      dob?: string | null;
     }
   ) {
     await crewMembersService.getByUuid(crewUuid);
@@ -113,8 +137,13 @@ export const crewProfileService = {
       data.placeOfBirthCountryUuid = countryUuid;
     }
 
+    // Calculate age from date of birth if dob is provided, or clear it if null
+    if (data.dob !== undefined) {
+      (data as any).ageInYears = data.dob ? calculateAge(data.dob) : null;
+    }
+
     // Remove non-schema fields and apply audit user
-    const { placeOfBirthCountry, ...cleanData } = data as any;
+    const { placeOfBirthCountry, dob, ...cleanData } = data as any;
     const dataWithAudit = applyAuditUser(cleanData, false);
 
     return crewPersonalRepository.upsertPersonalDetails(crewUuid, dataWithAudit);

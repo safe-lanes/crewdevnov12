@@ -8,6 +8,7 @@ import {
   type CrewTrainingCourseWithAttachments,
 } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
+import { resolveCountryUuid } from "./masterDataResolver";
 import {
   crewLicenses,
   crewLicensesAttachments,
@@ -110,7 +111,7 @@ export const crewCertificatesService = {
 
   async createLicense(
     crewUuid: string,
-    data: Omit<InsertCrewLicense, "licUuid" | "crewUuid">
+    data: Omit<InsertCrewLicense, "licUuid" | "crewUuid"> & { issuingCountry?: string }
   ): Promise<CrewLicense> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -119,23 +120,48 @@ export const crewCertificatesService = {
       throw new Error("Certificate document is required");
     }
 
+    // Resolve issuing country (accept name or UUID)
+    const countryInput = data.issuingCountryUuid || (data as any).issuingCountry;
+    if (countryInput) {
+      const countryUuid = await resolveCountryUuid(countryInput);
+      if (!countryUuid) {
+        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+      }
+      data.issuingCountryUuid = countryUuid;
+    }
+
     // Auto-generate license ID if not provided
     let licenseId = data.licenseId;
     if (!licenseId) {
       licenseId = await generateLicenseId();
     }
 
-    const dataWithAudit = applyAuditUser(data, true);
+    // Remove non-schema fields and apply audit user
+    const { issuingCountry, ...cleanData } = data as any;
+    const dataWithAudit = applyAuditUser(cleanData, true);
 
     return crewLicensesRepository.create({ ...dataWithAudit, crewUuid, licenseId });
   },
 
   async updateLicense(
     licUuid: string,
-    data: Partial<InsertCrewLicense>
+    data: Partial<InsertCrewLicense> & { issuingCountry?: string }
   ): Promise<CrewLicense> {
     await this.getLicenseByUuid(licUuid);
-    const dataWithAudit = applyAuditUser(data, false);
+
+    // Resolve issuing country (accept name or UUID)
+    const countryInput = data.issuingCountryUuid || (data as any).issuingCountry;
+    if (countryInput) {
+      const countryUuid = await resolveCountryUuid(countryInput);
+      if (!countryUuid) {
+        throw new Error(`Invalid country: "${countryInput}". Not found in master_countries table.`);
+      }
+      data.issuingCountryUuid = countryUuid;
+    }
+
+    // Remove non-schema fields and apply audit user
+    const { issuingCountry, ...cleanData } = data as any;
+    const dataWithAudit = applyAuditUser(cleanData, false);
 
     const updated = await crewLicensesRepository.update(licUuid, dataWithAudit);
     if (!updated) {

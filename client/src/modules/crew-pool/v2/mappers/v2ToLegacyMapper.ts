@@ -138,6 +138,7 @@ export function mapLegacyPersonalDetailsToV2(legacy: Partial<LegacyPersonalDetai
     heightCm: legacy.height || undefined,
     weightKg: legacy.weight || undefined,
     bmi: legacy.bmi || undefined,
+    dob: (legacy as any).dob || undefined,
     ageInYears: legacy.ageInYears || undefined,
     placeOfBirthCity: legacy.placeOfBirthCity || undefined,
     placeOfBirthCountryUuid: legacy.placeOfBirthCountry || undefined,
