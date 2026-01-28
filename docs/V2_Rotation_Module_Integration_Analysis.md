@@ -33,7 +33,33 @@ This document provides a complete technical analysis for integrating V2 Crew Poo
 
 **Schema Location**: `shared/schema.ts` (lines 495-604)
 
-### 1.3 Current V2 API Endpoints
+### 1.3 V1 Structural Issues (Why Migration to V2 is Necessary)
+
+| Issue | V1 Problem | V2 Solution |
+|-------|------------|-------------|
+| **JSON Fields** | Complex data stored as JSON strings (lines 184-193): `documents`, `visas`, `education`, `licenses`, `trainingCourses`, `currentCompanySeaService`, `externalSeaService`, `preJoiningMedicals`, `doctorVisits`, `children` | Normalized tables with proper columns: `crew_documents`, `crew_visas`, `crew_education`, `crew_licenses`, `crew_training`, `crew_sea_service`, `crew_medicals`, `crew_children` |
+| **No UUID Primary Keys** | V1 uses text `id` field (sometimes numeric string) | V2 uses `crewUuid` (UUID) as primary identifier + `empNo` (sequential A000001) |
+| **Missing Audit Columns** | V1 `crew_members` has only `createdAt`, no `updatedAt`, no `createdByUuid` | V2 has full audit trail: `createdAt`, `updatedAt`, `createdByUuid`, `isDeleted`, `deletedAt` |
+| **No Foreign Keys** | V1 stores vessel/rank as plain text, no referential integrity | V2 uses UUID foreign keys: `nationalityUuid`, `vesselUuid`, `rankUuid` with proper references |
+| **No Soft Deletes** | V1 has no delete tracking | V2 has `isDeleted` + `deletedAt` for all tables |
+| **Inconsistent Naming** | V1 mixes snake_case and camelCase | V2 uses consistent camelCase in TypeScript, snake_case in DB |
+
+**V1 JSON Fields Evidence** (from `shared/schema.ts` lines 181-193):
+```typescript
+vesselTypes: text("vessel_types"), // JSON array of vessel types
+documents: text("documents"), // JSON array of documents
+visas: text("visas"), // JSON array of visas
+education: text("education"), // JSON array of education records
+licenses: text("licenses"), // JSON array of licenses
+trainingCourses: text("training_courses"), // JSON array of training courses
+currentCompanySeaService: text("current_company_sea_service"), // JSON array
+externalSeaService: text("external_sea_service"), // JSON array
+preJoiningMedicals: text("pre_joining_medicals"), // JSON array
+doctorVisits: text("doctor_visits"), // JSON array
+children: text("children"), // JSON array of children information
+```
+
+### 1.4 Current V2 API Endpoints
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
@@ -45,6 +71,21 @@ This document provides a complete technical analysis for integrating V2 Crew Poo
 | `/api/v2/crew-pool/crew/:crewUuid/sign-off` | POST | Sign off from vessel |
 | `/api/v2/crew-pool/vessels/:vesselUuid/crew` | GET | Get crew on a vessel |
 | `/api/v2/crew-pool/transfer/recruitment` | POST | Transfer candidate to crew pool |
+
+### 1.5 Missing V2 Endpoints (Required for Rotation Integration)
+
+| Missing Endpoint | Method | Purpose | Priority |
+|------------------|--------|---------|----------|
+| `/api/v2/crew-pool/crew/by-rank/:rank` | GET | Get crew filtered by rank for rotation selection | **CRITICAL** |
+| `/api/v2/crew-pool/crew/available` | GET | Get crew filtered by availability status | Medium |
+| `/api/v2/crew-pool/crew/by-pool/:pool` | GET | Get crew filtered by crew pool | Medium |
+| `/api/v2/crew-pool/crew/rotation-candidates` | GET | Composite endpoint with rank, pool, availability filters | Optional (can use query params on getAll) |
+
+**Verification**: Search for `by-rank` or `byRank` in V2 routes returns: **"No by-rank endpoint found"**
+
+**Note**: The existing `GET /crew` and `GET /crew/details` endpoints support filtering via query params:
+- `status` filter exists in service (line 379: `if (filters?.status)`)
+- `presentRank` filter would need to be added to `crewMembersService.getAll()`
 
 ---
 
