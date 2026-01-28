@@ -307,7 +307,109 @@ Proceed with **Option A** for immediate needs. Option B should be considered as 
 
 ---
 
-### 2.6 Parallel Data Flows: Admin Revision vs Crew Rotation
+### 2.6 Complete V1 Working Flow Analysis
+
+This section traces the actual working V1 code from Admin → Vessel → Rotation to identify exactly where V2 integration is missing.
+
+---
+
+#### 2.6.1 Admin Module: Rank Administration (Working V1)
+
+**File**: `client/src/modules/admin/AdminModule.tsx`
+
+**Step 1: User Selects Vessel(s)**
+- User selects one or more vessels in the Admin UI
+- Ranks are displayed in an editable grid
+- Data stored in `vesselRankDataMap` (Map<vesselId, rankData[]>)
+
+**Step 2: User Saves Draft (Optional)**
+- **Button**: "Save Draft"
+- **API Call**: `POST /api/vessel-drafts/upsert` (lines 3036-3044)
+- **Table**: `vessel_drafts`
+```typescript
+// AdminModule.tsx lines 3036-3044
+const response = await fetch('/api/vessel-drafts/upsert', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    vesselId,
+    revision: "R1",
+    draftData  // JSON string of rank configuration
+  })
+});
+```
+
+**Step 3: User Submits Revision**
+- **Button**: "Submit"
+- **API Call**: `POST /api/vessel-revisions/submit` (lines 3128-3136)
+- **Tables**: Creates `vessel_revisions`, deletes `vessel_drafts`, auto-creates `vessel_planning`
+```typescript
+// AdminModule.tsx lines 3128-3136
+const response = await fetch('/api/vessel-revisions/submit', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    vesselId,
+    revisionDate: formattedDate,
+    revisionData  // JSON string of finalized ranks
+  })
+});
+```
+
+**Backend Submit Handler** (routes.ts lines 3333-3472):
+1. Validates request
+2. Auto-assigns next revision number (R0→R1→R2...)
+3. Creates `vessel_revisions` record
+4. Deletes corresponding `vessel_drafts`
+5. **Auto-syncs to vessel_planning** (lines 3397-3455)
+
+---
+
+#### 2.6.2 Vessel Module: Displays Revision Data (Working V1)
+
+**File**: `client/src/modules/vessel/VesselModule.tsx`
+
+**API Used**: `GET /api/vessel-revisions/ranks/:vesselId` (line 314-315)
+```typescript
+// VesselModule.tsx lines 314-315
+queryKey: ['/api/vessel-revisions/ranks', vesselId],
+queryFn: vesselId ? () => fetch(`/api/vessel-revisions/ranks/${vesselId}`).then(res => res.json()) : undefined,
+```
+
+This endpoint returns the submitted ranks from the latest revision, which are then displayed in the Officer Matrix, Planning tab, etc.
+
+---
+
+#### 2.6.3 Rotation Module: Crew Selection (V1 Only - THE PROBLEM)
+
+**File**: `client/src/modules/rotation/NewPlanDialog.tsx`
+
+**API Used**: `GET /api/crew-members/by-rank/:rank` (line 406)
+```typescript
+// NewPlanDialog.tsx lines 405-407
+const { data: crewMembers = [], isLoading } = useQuery<CrewMember[]>({
+  queryKey: [`/api/crew-members/by-rank/${normalizedRank}`],
+});
+```
+
+**Backend Handler** (routes.ts lines 6875-6954):
+```typescript
+// routes.ts line 6875-6878 - THE PROBLEM IS HERE
+app.get("/api/crew-members/by-rank/:rank", async (req, res) => {
+  try {
+    const { rank } = req.params;
+    const crewMembers = await storage.getCrewMembers();  // ❌ V1 ONLY!
+    // ... filters by rank and returns crew
+```
+
+**storage.getCrewMembers()** (storage.ts line 5808):
+- Queries ONLY `crew_members` table (V1)
+- Does NOT query `crew_members_v2` table
+- V2 crew transferred from recruitment are **INVISIBLE**
+
+---
+
+### 2.7 Parallel Data Flows: Admin Revision vs Crew Rotation
 
 The system has TWO parallel flows that follow the same pattern: **Admin Configuration → Vessel Planning → Operations**
 
@@ -421,9 +523,67 @@ When rotation deploys crew to vessel:
 
 ---
 
+### 2.8 Required Fix: Add V2 Crew to Rotation Query
+
+The exact fix needed to make V2 crew visible in rotation:
+
+**File to Modify**: `server/routes.ts` line 6878
+
+**Current Code (V1 Only)**:
+```typescript
+app.get("/api/crew-members/by-rank/:rank", async (req, res) => {
+  try {
+    const { rank } = req.params;
+    const crewMembers = await storage.getCrewMembers();  // ❌ V1 only
+    // ... rest of handler
+```
+
+**Required Fix (V1 + V2)**:
+```typescript
+app.get("/api/crew-members/by-rank/:rank", async (req, res) => {
+  try {
+    const { rank } = req.params;
+    
+    // Get V1 crew members
+    const v1CrewMembers = await storage.getCrewMembers();
+    
+    // Get V2 crew members with status 'Recruited' or 'Active'
+    const v2CrewMembers = await crewMembersService.getAll({
+      status: 'Recruited',  // Crew transferred from recruitment
+    });
+    
+    // Transform V2 to match V1 response format
+    const v2Transformed = v2CrewMembers.map(crew => ({
+      id: crew.uuid,
+      crewId: crew.crewId,  // A000001 format
+      name: `${crew.firstName} ${crew.lastName}`,
+      presentRank: crew.presentRank,
+      nationality: crew.nationality,
+      // ... map other fields as needed
+    }));
+    
+    // Combine both sources
+    const crewMembers = [...v1CrewMembers, ...v2Transformed];
+    // ... rest of handler (filter by rank, etc.)
+```
+
+**Alternative**: Create a new V2-only endpoint:
+```typescript
+// server/v2/crew-pool/routes.ts
+router.get('/by-rank/:rank', async (req, res) => {
+  const { rank } = req.params;
+  const crew = await crewMembersService.getByRank(rank);
+  res.json(crew);
+});
+```
+
+Then update the frontend to query both endpoints or switch to V2 endpoint based on feature flag.
+
+---
+
 ## Section 3: Gap Analysis
 
-### 2.1 Critical Gaps (Must Fix)
+### 3.1 Critical Gaps (Must Fix)
 
 #### 🔴 GAP #1: Rotation Queries V1 Tables Only
 
@@ -498,7 +658,7 @@ await this.db.update(vesselPlanning).set({
 
 ---
 
-### 2.2 Medium Gaps (Should Fix)
+### 3.2 Medium Gaps (Should Fix)
 
 #### 🟡 GAP #5: No V2 "by-rank" Endpoint
 
@@ -524,7 +684,7 @@ await this.db.update(vesselPlanning).set({
 
 ---
 
-### 2.3 Low Priority Gaps
+### 3.3 Low Priority Gaps
 
 #### 🟢 GAP #7: Master Data Dependency
 
@@ -537,7 +697,7 @@ await this.db.update(vesselPlanning).set({
 
 ## Section 4: Data Flow Diagrams
 
-### 3.1 Current Flow (Broken for V2)
+### 4.1 Current Flow (Broken for V2)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -579,7 +739,7 @@ Recruitment ──(Transfer)──► crew_members_v2 + crew_personal_details
           (V2 table - orphaned)
 ```
 
-### 3.2 Required Flow (V2 Integration)
+### 4.2 Required Flow (V2 Integration)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -786,7 +946,7 @@ if (v2Crew.length > 0) {
 
 ## Section 6: Database Schema Considerations
 
-### 5.1 No Schema Changes Required
+### 6.1 No Schema Changes Required
 
 All required tables and columns already exist:
 - `crew_members_v2` - has `presentRank`, `status`, `empNo`
@@ -794,7 +954,7 @@ All required tables and columns already exist:
 - `crew_assignments` - has `vesselUuid`, `isCurrent`, `signOnDate`, `reliefDue`
 - `vessel_planning` - has all deployment fields
 
-### 5.2 ID Mapping Strategy
+### 6.2 ID Mapping Strategy
 
 | V2 Field | V1 Equivalent | Mapping |
 |----------|---------------|---------|
@@ -806,7 +966,7 @@ All required tables and columns already exist:
 
 ## Section 7: Acceptance Criteria
 
-### 6.1 Crew Visibility in Rotation
+### 7.1 Crew Visibility in Rotation
 
 - [ ] V2 crew (transferred from Recruitment) appear in NewPlanDialog crew selection
 - [ ] V2 crew show REAL `crewPool` from `crew_personal_details.crew_pool`
@@ -815,7 +975,7 @@ All required tables and columns already exist:
 - [ ] Pool filter works on real data (not random)
 - [ ] Availability filter works on real data
 
-### 6.2 Rotation Deployment
+### 7.2 Rotation Deployment
 
 - [ ] Deploying V2 crew creates `vessel_planning` record (for Vessel Module)
 - [ ] Deploying V2 crew creates `crew_assignments` record (for V2 tracking)
@@ -823,13 +983,13 @@ All required tables and columns already exist:
 - [ ] Deployment archive entry is created in `rotation_archive`
 - [ ] Transaction atomicity maintained (all or nothing)
 
-### 6.3 Vessel Module Display
+### 7.3 Vessel Module Display
 
 - [ ] Deployed crew (V1 or V2) appear in Vessel Module
 - [ ] Crew data displays correctly (name, rank, sign-on date)
 - [ ] Reliever information displays correctly
 
-### 6.4 Backward Compatibility
+### 7.4 Backward Compatibility
 
 - [ ] V1 crew still work in rotation (no breaking changes)
 - [ ] Existing rotation plans still function
@@ -840,7 +1000,7 @@ All required tables and columns already exist:
 
 ## Section 8: Testing Checklist
 
-### 7.1 Manual Tests
+### 8.1 Manual Tests
 
 1. **Create V2 crew via transfer**:
    - Transfer candidate from Recruitment with `crewPool: "Deck Pool"`
@@ -867,7 +1027,7 @@ All required tables and columns already exist:
    - Select deployed vessel
    - Verify crew appears in crew list
 
-### 7.2 Database Verification Queries
+### 8.2 Database Verification Queries
 
 ```sql
 -- Check V2 crew with pool data
