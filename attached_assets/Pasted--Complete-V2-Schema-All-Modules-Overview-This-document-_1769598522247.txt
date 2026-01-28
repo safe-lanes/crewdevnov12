@@ -1,0 +1,609 @@
+# Complete V2 Schema: All Modules
+
+## Overview
+
+This document outlines the complete V2 architecture for Admin, Vessel, Crew Pool, and Rotation modules with proper foreign key relationships.
+
+**Design Principles:**
+- UUID identifiers with serial PKs
+- Soft deletes (`is_deleted`)
+- Audit columns (`created_at`, `updated_at`, `created_by_uuid`, `updated_by_uuid`)
+- Sync flag (`is_sync`)
+- Proper FK constraints to master tables
+- Minimal JSON (array columns allowed where normalization adds unnecessary complexity)
+
+---
+
+## Table Summary
+
+| # | Table | Columns | Module |
+|---|-------|---------|--------|
+| T1 | vessel_revisions_v2 | 11 | Admin |
+| T2 | vessel_revision_ranks_v2 | 37 | Admin |
+| T3 | vessel_planning_v2 | 37 | Vessel |
+| T4 | vessel_planning_attachments_v2 | 17 | Vessel |
+| T5 | rotation_drafts_v2 | 15 | Rotation |
+| T6 | rotation_draft_vessels_v2 | 11 | Rotation |
+| T7 | rotation_draft_ranks_v2 | 11 | Rotation |
+| T8 | rotation_entries_v2 | 30 | Rotation |
+| T9 | rotation_archive_v2 | 30 | Rotation |
+
+**Total: 9 tables, 199 columns**
+
+---
+
+## Master Tables (Reference)
+
+| Table | Key Column | Purpose |
+|-------|------------|---------|
+| master_vessels | vessel_uuid | All vessels |
+| master_ports | port_uuid | All ports |
+| master_users | user_uuid | All users |
+
+---
+
+## Crew Pool V2 Tables (Reference - Already Exist)
+
+| Table | Key Column | Purpose |
+|-------|------------|---------|
+| crew_members_v2 | crew_uuid | Crew member reference |
+| crew_assignments | assign_uuid | Assignment tracking |
+| crew_sea_service | sea_uuid | Sea service history |
+
+---
+
+## ADMIN MODULE (2 Tables, 48 Columns)
+
+---
+
+### T1: vessel_revisions_v2 (11 columns)
+
+**Purpose:** Manages vessel rank revision headers (R0, R1, R2, etc.)
+
+| # | Column | Type | Constraint | FK Reference |
+|---|--------|------|------------|--------------|
+| 1 | id | serial | PK | |
+| 2 | revision_uuid | text | UK, NOT NULL | |
+| 3 | vessel_uuid | text | FK, NOT NULL | → master_vessels |
+| 4 | revision | text | NOT NULL | R0, R1, R2 |
+| 5 | revision_date | text | NOT NULL | |
+| 6 | created_at | timestamp | DEFAULT NOW | |
+| 7 | updated_at | timestamp | DEFAULT NOW | |
+| 8 | created_by_uuid | text | FK | → master_users |
+| 9 | updated_by_uuid | text | FK | → master_users |
+| 10 | is_deleted | boolean | DEFAULT false | |
+| 11 | is_sync | boolean | DEFAULT false | |
+
+---
+
+### T2: vessel_revision_ranks_v2 (37 columns)
+
+**Purpose:** Normalized ranks per revision (replaces `revision_data` JSON)
+
+| # | Column | Type | Constraint | FK Reference |
+|---|--------|------|------------|--------------|
+| 1 | id | serial | PK | |
+| 2 | rank_uuid | text | UK, NOT NULL | |
+| 3 | revision_uuid | text | FK, NOT NULL | → T1.revision_uuid |
+| 4 | source_id | text | | Original JSON id |
+| 5 | rank_name | text | | Master, Chief Officer |
+| 6 | rank_id | text | | S1, S2 |
+| 7 | role | text | | 3rd Off_1 |
+| 8 | original_rank_id | text | | |
+| 9 | is_role_row | boolean | DEFAULT false | |
+| 10 | actual_manning | text[] | | Array of crew_uuids |
+| 11 | actual_manning_flag | boolean | DEFAULT false | |
+| 12 | safe_manning | boolean | DEFAULT false | |
+| 13 | optimum_manning | boolean | DEFAULT false | |
+| 14 | high_workload_manning | boolean | DEFAULT false | |
+| 15 | officer | boolean | DEFAULT false | |
+| 16 | rating | boolean | DEFAULT false | |
+| 17 | senior_officer | boolean | DEFAULT false | |
+| 18 | deck_officer | boolean | DEFAULT false | |
+| 19 | eng_officer | boolean | DEFAULT false | |
+| 20 | petty_officer | boolean | DEFAULT false | |
+| 21 | deck_rating | boolean | DEFAULT false | |
+| 22 | engine_rating | boolean | DEFAULT false | |
+| 23 | general_rating | boolean | DEFAULT false | |
+| 24 | catering_rating | boolean | DEFAULT false | |
+| 25 | safety_officer | boolean | DEFAULT false | |
+| 26 | sso | boolean | DEFAULT false | |
+| 27 | medical_officer | boolean | DEFAULT false | |
+| 28 | navigating_officer | boolean | DEFAULT false | |
+| 29 | emt_officer | boolean | DEFAULT false | |
+| 30 | has_multiple | boolean | DEFAULT false | |
+| 31 | sort_order | integer | DEFAULT 0 | |
+| 32 | created_at | timestamp | DEFAULT NOW | |
+| 33 | updated_at | timestamp | DEFAULT NOW | |
+| 34 | created_by_uuid | text | | |
+| 35 | updated_by_uuid | text | | |
+| 36 | is_deleted | boolean | DEFAULT false | |
+| 37 | is_sync | boolean | DEFAULT false | |
+
+**Legacy JSON Field Mapping (`revision_data`):**
+
+| JSON Field | V2 Column |
+|------------|-----------|
+| id | source_id |
+| rank | rank_name |
+| rankId | rank_id |
+| role | role |
+| originalRankId | original_rank_id |
+| isRoleRow | is_role_row |
+| actualManning | actual_manning (text[]) |
+| actualManningFlag | actual_manning_flag |
+| safeManning | safe_manning |
+| optimumManning | optimum_manning |
+| highWorkloadManning | high_workload_manning |
+| officer | officer |
+| rating | rating |
+| seniorOfficer | senior_officer |
+| deckOfficer | deck_officer |
+| engOfficer | eng_officer |
+| pettyOfficer | petty_officer |
+| deckRating | deck_rating |
+| engineRating | engine_rating |
+| generalRating | general_rating |
+| cateringRating | catering_rating |
+| safetyOfficer | safety_officer |
+| sso | sso |
+| medicalOfficer | medical_officer |
+| navigatingOfficer | navigating_officer |
+| emtOfficer | emt_officer |
+| hasMultiple | has_multiple |
+
+---
+
+## VESSEL MODULE (2 Tables, 54 Columns)
+
+---
+
+### T3: vessel_planning_v2 (37 columns)
+
+**Purpose:** Crew planning per vessel position
+
+| # | Column | Type | Constraint | FK Reference |
+|---|--------|------|------------|--------------|
+| 1 | id | serial | PK | |
+| 2 | plan_uuid | text | UK, NOT NULL | |
+| 3 | vessel_uuid | text | FK, NOT NULL | → master_vessels |
+| 4 | active_revision_uuid | text | FK | → T1.revision_uuid |
+| 5 | rank_id | text | NOT NULL | |
+| 6 | rank | text | NOT NULL | |
+| 7 | crew_uuid | text | FK | → crew_members_v2 |
+| 8 | crew_status | text | DEFAULT 'primary' | primary, secondary |
+| 9 | sign_on_date | text | | |
+| 10 | relief_due | text | | |
+| 11 | sign_off_date | text | | |
+| 12 | sign_off_port_uuid | text | FK | → master_ports |
+| 13 | sign_off_reason | text | | |
+| 14 | relief_status | text | | |
+| 15 | take_over_date | text | | |
+| 16 | take_over_confirmation | boolean | DEFAULT false | |
+| 17 | hand_over_date | text | | |
+| 18 | reliever_crew_uuid | text | FK | → crew_members_v2 |
+| 19 | reliever_sign_on_date | text | | |
+| 20 | joining_port_uuid | text | FK | → master_ports |
+| 21 | joining_status | text | | Proposed, Planned, Confirmed, In Transit, Signed On |
+| 22 | contract_period_months | integer | | |
+| 23 | contract_end_range_start_months | integer | | |
+| 24 | contract_end_range_end_months | integer | | |
+| 25 | reliever_contract_period_months | integer | | |
+| 26 | reliever_contract_end_range_start_months | integer | | |
+| 27 | reliever_contract_end_range_end_months | integer | | |
+| 28 | deployment_checklist_completed | boolean | | |
+| 29 | applicable_docs_checked | boolean | | |
+| 30 | is_archived | boolean | DEFAULT false | |
+| 31 | archived_date | text | | |
+| 32 | created_at | timestamp | DEFAULT NOW | |
+| 33 | updated_at | timestamp | DEFAULT NOW | |
+| 34 | created_by_uuid | text | | |
+| 35 | updated_by_uuid | text | | |
+| 36 | is_deleted | boolean | DEFAULT false | |
+| 37 | is_sync | boolean | DEFAULT false | |
+
+**Legacy Mapping:**
+- `vessel_planning.crew_member_id` → `crew_uuid`
+- `vessel_planning.reliever_crew_id` → `reliever_crew_uuid`
+- `vessel_planning.sign_off_port` → `sign_off_port_uuid`
+- `vessel_planning.joining_port` → `joining_port_uuid`
+- `vessel_planning.handover_attachments` (JSON) → T4
+
+---
+
+### T4: vessel_planning_attachments_v2 (17 columns)
+
+**Purpose:** Handover attachments (replaces `handover_attachments` JSON)
+
+| # | Column | Type | Constraint | FK Reference |
+|---|--------|------|------------|--------------|
+| 1 | id | serial | PK | |
+| 2 | att_uuid | text | UK, NOT NULL | |
+| 3 | plan_uuid | text | FK, NOT NULL | → T3.plan_uuid |
+| 4 | file_name | text | | |
+| 5 | file_type | text | | |
+| 6 | file_size | text | | |
+| 7 | file_path | text | | |
+| 8 | file_data | text | | Base64 encoded |
+| 9 | uploaded_by_uuid | text | FK | → master_users |
+| 10 | upload_date | text | | |
+| 11 | sort_order | integer | DEFAULT 0 | |
+| 12 | created_at | timestamp | DEFAULT NOW | |
+| 13 | updated_at | timestamp | DEFAULT NOW | |
+| 14 | created_by_uuid | text | | |
+| 15 | updated_by_uuid | text | | |
+| 16 | is_deleted | boolean | DEFAULT false | |
+| 17 | is_sync | boolean | DEFAULT false | |
+
+---
+
+## ROTATION MODULE (5 Tables, 97 Columns)
+
+---
+
+### T5: rotation_drafts_v2 (15 columns)
+
+**Purpose:** Rotation plan headers
+
+| # | Column | Type | Constraint | FK Reference |
+|---|--------|------|------------|--------------|
+| 1 | id | serial | PK | |
+| 2 | draft_uuid | text | UK, NOT NULL | |
+| 3 | draft_id | text | NOT NULL | ROT-0001 format |
+| 4 | last_edited | text | | |
+| 5 | plan_from_date | text | NOT NULL | |
+| 6 | plan_to_date | text | NOT NULL | |
+| 7 | created_by_uuid | text | FK, NOT NULL | → master_users |
+| 8 | plan_status | text | DEFAULT 'In Draft' | In Draft, Proposed, Partially Approved, Approved, Rejected, Archived |
+| 9 | proposed_by_uuid | text | FK | → master_users |
+| 10 | proposed_date | text | | |
+| 11 | created_at | timestamp | DEFAULT NOW | |
+| 12 | updated_at | timestamp | DEFAULT NOW | |
+| 13 | updated_by_uuid | text | | |
+| 14 | is_deleted | boolean | DEFAULT false | |
+| 15 | is_sync | boolean | DEFAULT false | |
+
+**Legacy Mapping:**
+- `rotation_plans.vessels` (JSON) → T6
+- `rotation_plans.crew` (CSV) → T7
+- `rotation_plans.assignments` (JSON) → T8
+
+---
+
+### T6: rotation_draft_vessels_v2 (11 columns)
+
+**Purpose:** Vessels in draft (replaces `vessels` JSON)
+
+| # | Column | Type | Constraint | FK Reference |
+|---|--------|------|------------|--------------|
+| 1 | id | serial | PK | |
+| 2 | rv_uuid | text | UK, NOT NULL | |
+| 3 | draft_uuid | text | FK, NOT NULL | → T5.draft_uuid |
+| 4 | vessel_uuid | text | FK, NOT NULL | → master_vessels |
+| 5 | sort_order | integer | DEFAULT 0 | |
+| 6 | created_at | timestamp | DEFAULT NOW | |
+| 7 | updated_at | timestamp | DEFAULT NOW | |
+| 8 | created_by_uuid | text | | |
+| 9 | updated_by_uuid | text | | |
+| 10 | is_deleted | boolean | DEFAULT false | |
+| 11 | is_sync | boolean | DEFAULT false | |
+
+---
+
+### T7: rotation_draft_ranks_v2 (11 columns)
+
+**Purpose:** Ranks in draft (replaces `crew` CSV)
+
+| # | Column | Type | Constraint | FK Reference |
+|---|--------|------|------------|--------------|
+| 1 | id | serial | PK | |
+| 2 | rr_uuid | text | UK, NOT NULL | |
+| 3 | draft_uuid | text | FK, NOT NULL | → T5.draft_uuid |
+| 4 | rank_name | text | NOT NULL | |
+| 5 | sort_order | integer | DEFAULT 0 | |
+| 6 | created_at | timestamp | DEFAULT NOW | |
+| 7 | updated_at | timestamp | DEFAULT NOW | |
+| 8 | created_by_uuid | text | | |
+| 9 | updated_by_uuid | text | | |
+| 10 | is_deleted | boolean | DEFAULT false | |
+| 11 | is_sync | boolean | DEFAULT false | |
+
+---
+
+### T8: rotation_entries_v2 (30 columns)
+
+**Purpose:** Individual crew assignments (replaces `assignments` JSON)
+
+| # | Column | Type | Constraint | FK Reference |
+|---|--------|------|------------|--------------|
+| 1 | id | serial | PK | |
+| 2 | entry_uuid | text | UK, NOT NULL | |
+| 3 | draft_uuid | text | FK, NOT NULL | → T5.draft_uuid |
+| 4 | vessel_uuid | text | FK, NOT NULL | → master_vessels |
+| 5 | active_revision_uuid | text | FK | → T1.revision_uuid |
+| 6 | rank_id | text | | |
+| 7 | rank | text | NOT NULL | |
+| 8 | crew_uuid | text | FK | → crew_members_v2 (proposed) |
+| 9 | sign_on_date | text | | |
+| 10 | joining_port_uuid | text | FK | → master_ports |
+| 11 | contract_period | integer | | |
+| 12 | sign_off_date | text | | |
+| 13 | proposal_status | text | DEFAULT 'Pending' | Pending, Approved, Rejected |
+| 14 | proposed_by_uuid | text | FK | → master_users |
+| 15 | proposed_date | text | | |
+| 16 | deployed_date | text | | |
+| 17 | deployed_by_uuid | text | FK | → master_users |
+| 18 | rejection_reason | text | | |
+| 19 | deployed_to_plan_uuid | text | FK | → T3.plan_uuid |
+| 20 | current_crew_uuid | text | FK | → crew_members_v2 (outgoing) |
+| 21 | current_crew_sign_on_date | text | | |
+| 22 | current_crew_contract_end | text | | |
+| 23 | current_crew_range_start | text | | |
+| 24 | current_crew_range_end | text | | |
+| 25 | created_at | timestamp | DEFAULT NOW | |
+| 26 | updated_at | timestamp | DEFAULT NOW | |
+| 27 | created_by_uuid | text | | |
+| 28 | updated_by_uuid | text | | |
+| 29 | is_deleted | boolean | DEFAULT false | |
+| 30 | is_sync | boolean | DEFAULT false | |
+
+**Legacy JSON Field Mapping (`assignments`):**
+
+| JSON Field | V2 Column |
+|------------|-----------|
+| vesselName | vessel_uuid |
+| rank | rank |
+| rankId | rank_id |
+| crewId | crew_uuid |
+| crewName | (join with crew_members_v2) |
+| signOnDate | sign_on_date |
+| contractPeriod | contract_period |
+| proposalStatus | proposal_status |
+| proposedBy | proposed_by_uuid |
+| proposedDate | proposed_date |
+| deployedDate | deployed_date |
+| deployedBy | deployed_by_uuid |
+
+---
+
+### T9: rotation_archive_v2 (30 columns)
+
+**Purpose:** Deployed/rejected rotation history
+
+| # | Column | Type | Constraint | FK Reference |
+|---|--------|------|------------|--------------|
+| 1 | id | serial | PK | |
+| 2 | archive_uuid | text | UK, NOT NULL | |
+| 3 | original_draft_uuid | text | FK | → T5.draft_uuid |
+| 4 | original_entry_uuid | text | FK | → T8.entry_uuid |
+| 5 | original_assignment_index | integer | | Index in original assignments |
+| 6 | vessel_uuid | text | FK | → master_vessels |
+| 7 | rank_id | text | | |
+| 8 | rank | text | NOT NULL | |
+| 9 | crew_uuid | text | FK, NOT NULL | → crew_members_v2 |
+| 10 | sign_on_date | text | NOT NULL | |
+| 11 | joining_port_uuid | text | FK | → master_ports |
+| 12 | contract_period | integer | | |
+| 13 | sign_off_date | text | | |
+| 14 | proposed_by_uuid | text | FK | → master_users |
+| 15 | proposed_date | text | | |
+| 16 | result | text | NOT NULL | Deployed, Rejected |
+| 17 | archived_date | text | NOT NULL | |
+| 18 | archived_by_uuid | text | FK | → master_users |
+| 19 | deployed_to_plan_uuid | text | FK | → T3.plan_uuid |
+| 20 | current_crew_uuid | text | FK | → crew_members_v2 |
+| 21 | current_crew_sign_on_date | text | | |
+| 22 | current_crew_contract_end | text | | |
+| 23 | current_crew_range_start | text | | |
+| 24 | current_crew_range_end | text | | |
+| 25 | created_at | timestamp | DEFAULT NOW | |
+| 26 | updated_at | timestamp | DEFAULT NOW | |
+| 27 | created_by_uuid | text | | |
+| 28 | updated_by_uuid | text | | |
+| 29 | is_deleted | boolean | DEFAULT false | |
+| 30 | is_sync | boolean | DEFAULT false | |
+
+**Legacy Mapping:**
+- `rotation_archive.original_plan_id` + `original_draft_id` → `original_draft_uuid`
+- `rotation_archive.crew_id` + `crew_member_id` → `crew_uuid`
+- `rotation_archive.joining_port` → `joining_port_uuid`
+- `rotation_archive.proposed_by` → `proposed_by_uuid`
+- `rotation_archive.archived_by` → `archived_by_uuid`
+- `rotation_archive.vessel_planning_id` → `deployed_to_plan_uuid`
+- `rotation_archive.current_crew_info` (JSON) → Expanded to individual columns
+- `rotation_archive.full_assignment_snapshot` → Removed (use FK chain for audit)
+
+---
+
+## FK Relationship Diagram
+
+```
+                          MASTER TABLES
+    ┌─────────────────────────────────────────────────┐
+    │  master_vessels   master_ports   master_users   │
+    └───────┬─────────────────┬─────────────┬─────────┘
+            │                 │             │
+    ┌───────┴─────────────────┴─────────────┴─────────┐
+    │                   CREW POOL V2                   │
+    │  ┌─────────────────────────────────────────┐    │
+    │  │ C1: crew_members_v2 (crew_uuid)         │    │
+    │  │      ↓                                  │    │
+    │  │ C2: crew_assignments (assign_uuid)      │    │
+    │  │      ↓                                  │    │
+    │  │ C3: crew_sea_service (sea_uuid)         │    │
+    │  └─────────────────────────────────────────┘    │
+    └─────────────────────┬───────────────────────────┘
+                          │
+    ┌─────────────────────┴───────────────────────────┐
+    │                   ADMIN MODULE                   │
+    │  ┌─────────────────────────────────────────┐    │
+    │  │ T1: vessel_revisions_v2                 │    │
+    │  │      ↓                                  │    │
+    │  │ T2: vessel_revision_ranks_v2            │    │
+    │  │      └── actual_manning: text[] ────────┼────┼──→ C1 (soft ref)
+    │  └─────────────────────────────────────────┘    │
+    └─────────────────────┬───────────────────────────┘
+                          │
+    ┌─────────────────────┴───────────────────────────┐
+    │                  VESSEL MODULE                   │
+    │  ┌─────────────────────────────────────────┐    │
+    │  │ T3: vessel_planning_v2 ─────────────────┼────┼──→ T1, C1
+    │  │      ↓                                  │    │
+    │  │ T4: vessel_planning_attachments_v2      │    │
+    │  └─────────────────────────────────────────┘    │
+    └─────────────────────┬───────────────────────────┘
+                          │
+    ┌─────────────────────┴───────────────────────────┐
+    │                 ROTATION MODULE                  │
+    │  ┌─────────────────────────────────────────┐    │
+    │  │ T5: rotation_drafts_v2                  │    │
+    │  │      ├──→ T6: rotation_draft_vessels_v2 │    │
+    │  │      ├──→ T7: rotation_draft_ranks_v2   │    │
+    │  │      └──→ T8: rotation_entries_v2 ──────┼────┼──→ T1, T3, C1
+    │  │                 ↓                       │    │
+    │  │           T9: rotation_archive_v2 ──────┼────┼──→ T3, C1
+    │  └─────────────────────────────────────────┘    │
+    └─────────────────────────────────────────────────┘
+```
+
+---
+
+## Complete FK Summary
+
+### Admin Module FKs
+
+| From Table | FK Column | To Table |
+|------------|-----------|----------|
+| T1 | vessel_uuid | master_vessels |
+| T1 | created_by_uuid | master_users |
+| T1 | updated_by_uuid | master_users |
+| T2 | revision_uuid | T1 |
+| T2 | actual_manning | crew_members_v2 (soft ref, array) |
+
+### Vessel Module FKs
+
+| From Table | FK Column | To Table |
+|------------|-----------|----------|
+| T3 | vessel_uuid | master_vessels |
+| T3 | active_revision_uuid | T1 |
+| T3 | crew_uuid | crew_members_v2 |
+| T3 | reliever_crew_uuid | crew_members_v2 |
+| T3 | sign_off_port_uuid | master_ports |
+| T3 | joining_port_uuid | master_ports |
+| T4 | plan_uuid | T3 |
+| T4 | uploaded_by_uuid | master_users |
+
+### Rotation Module FKs
+
+| From Table | FK Column | To Table |
+|------------|-----------|----------|
+| T5 | created_by_uuid | master_users |
+| T5 | proposed_by_uuid | master_users |
+| T6 | draft_uuid | T5 |
+| T6 | vessel_uuid | master_vessels |
+| T7 | draft_uuid | T5 |
+| T8 | draft_uuid | T5 |
+| T8 | vessel_uuid | master_vessels |
+| T8 | active_revision_uuid | T1 |
+| T8 | crew_uuid | crew_members_v2 |
+| T8 | current_crew_uuid | crew_members_v2 |
+| T8 | joining_port_uuid | master_ports |
+| T8 | proposed_by_uuid | master_users |
+| T8 | deployed_by_uuid | master_users |
+| T8 | deployed_to_plan_uuid | T3 |
+| T9 | original_draft_uuid | T5 |
+| T9 | original_entry_uuid | T8 |
+| T9 | vessel_uuid | master_vessels |
+| T9 | crew_uuid | crew_members_v2 |
+| T9 | current_crew_uuid | crew_members_v2 |
+| T9 | joining_port_uuid | master_ports |
+| T9 | proposed_by_uuid | master_users |
+| T9 | archived_by_uuid | master_users |
+| T9 | deployed_to_plan_uuid | T3 |
+
+---
+
+## Data Flow
+
+```
+STEP 1: Admin - Create Vessel Revision
+├── T1: vessel_revisions_v2 (CREATE revision header)
+└── T2: vessel_revision_ranks_v2 (DEFINE ranks for vessel)
+         └── actual_manning: text[] (crew_uuids)
+           │
+           ▼
+STEP 2: Vessel - Planning
+├── T3: vessel_planning_v2 (VIEW/MANAGE crew positions)
+│        ├── References T1.active_revision_uuid
+│        └── References C1.crew_uuid
+└── T4: vessel_planning_attachments_v2 (HANDOVER docs)
+           │
+           ▼
+STEP 3: Rotation - Create Plan
+├── T5: rotation_drafts_v2 (CREATE plan header)
+├── T6: rotation_draft_vessels_v2 (SELECT vessels)
+├── T7: rotation_draft_ranks_v2 (SELECT ranks)
+└── T8: rotation_entries_v2 (PROPOSE crew from C1)
+           │
+           ▼
+STEP 4: Rotation - Approval & Deploy
+├── T8: rotation_entries_v2 (UPDATE proposal_status)
+├── T3: vessel_planning_v2 (INSERT/UPDATE crew assignment)
+├── C2: crew_assignments (INSERT is_current = true)
+└── T9: rotation_archive_v2 (INSERT result = 'Deployed')
+           │
+           ▼
+STEP 5: Sign-Off (Later)
+├── T3: vessel_planning_v2 (UPDATE is_archived = true)
+├── C2: crew_assignments (UPDATE is_current = false)
+└── C3: crew_sea_service (INSERT historical record)
+```
+
+---
+
+## JSON Fields Eliminated
+
+| Original JSON | Normalized To |
+|---------------|---------------|
+| revision_data | T2 (columns) |
+| actualManning | T2.actual_manning (text[] array) |
+| handover_attachments | T4 (rows) |
+| vessels | T6 (rows) |
+| crew | T7 (rows) |
+| assignments | T8 (rows) |
+| current_crew_info | T8/T9 (columns) |
+| full_assignment_snapshot | Removed (use FK chain) |
+
+**Result: Zero JSON columns, one array column (actual_manning)**
+
+---
+
+## Implementation Order
+
+| Order | Table | Depends On |
+|-------|-------|------------|
+| 1 | T1: vessel_revisions_v2 | master_vessels, master_users |
+| 2 | T2: vessel_revision_ranks_v2 | T1 |
+| 3 | T3: vessel_planning_v2 | T1, crew_members_v2, master_ports |
+| 4 | T4: vessel_planning_attachments_v2 | T3 |
+| 5 | T5: rotation_drafts_v2 | master_users |
+| 6 | T6: rotation_draft_vessels_v2 | T5, master_vessels |
+| 7 | T7: rotation_draft_ranks_v2 | T5 |
+| 8 | T8: rotation_entries_v2 | T5, T1, T3, crew_members_v2 |
+| 9 | T9: rotation_archive_v2 | T5, T8, T3, crew_members_v2 |
+
+---
+
+## Summary
+
+| Module | Tables | Columns |
+|--------|--------|---------|
+| Admin | T1, T2 | 48 |
+| Vessel | T3, T4 | 54 |
+| Rotation | T5, T6, T7, T8, T9 | 97 |
+| **Total** | **9 tables** | **199 columns** |
+
+---
+
+*Document Version: 2.1*
+*Last Updated: January 2026*

@@ -1,0 +1,86 @@
+# TASK: Validate Analysis & Produce Final Implementation Plan (NO CODING YET)
+
+We have a detailed analysis document (V1 vs V2 rotation/vessel/admin integration + crew pool issues + proposed V2 upgrade plan).  
+**Your job in this phase is ONLY to analyze and validate, not implement.**
+
+## Phase Objective
+1) Verify whether the findings in the attached analysis are correct.
+2) Identify any incorrect assumptions or missing root causes.
+3) Produce a final, agreed implementation plan (phased), with clear scope and acceptance criteria.
+
+**Do NOT start writing code, migrations, or PRs in this phase.**
+
+---
+
+## Scope You Must Validate
+
+### A) Rotation → Deploy → Vessel Module Display (V1 behavior)
+- In V1, rotation deploy results appear in Vessel module against the correct vessel.
+- In V2, backend architecture changed and this behavior is broken.
+**Validate exactly where the flow breaks in V2.**
+
+### B) Crew Pool → Rotation Availability
+- In V1, crew from crew pool is available in rotation selection.
+- In V2, crew pool is stored differently (normalized tables) and rotation is likely still querying legacy tables.
+**Validate whether V2 rotation uses correct crew source and whether pool/filter logic is real or fake/random.**
+
+### C) Data Model & Source of Truth (Critical)
+Validate and recommend the correct V2 direction:
+- Short-term patch: keep V1 rotation tables/endpoints but fix V2 crew lookup + deploy sync
+- Long-term: full V2 upgrade (normalized tables + UUIDs + audit + V2 endpoints)
+
+The attached doc suggests both (short-term Option A + long-term V2 migration plan).  
+You must confirm which approach fits our current rollout stage and why.
+
+---
+
+## What You Must Deliver (Output Required)
+
+### 1) Validation Report (must be evidence-based)
+For each claimed root cause / gap:
+- Status: ✅ Correct / ⚠️ Partially correct / ❌ Incorrect
+- Evidence: exact file(s), function(s), query(s), route(s), schema tables
+- Impact: what breaks (rotation UI, deploy, vessel display, pool filter, etc.)
+
+Include a “Most Likely Root Cause” ranking (Top 3), with confidence.
+
+### 2) Final Implementation Plan (still NO coding)
+Write a plan that we can later convert into an execution ticket set:
+- Phase 0: Quick fixes to make V2 usable (if needed)
+- Phase 1: Backend changes (endpoints/services)
+- Phase 2: DB changes (migrations + data migration approach)
+- Phase 3: Frontend changes
+- Phase 4: Testing plan (unit + integration + regression)
+- Phase 5: Cutover strategy (feature flags, backward compatibility, rollback)
+
+Each phase must include:
+- Deliverables
+- Risks
+- Dependencies (e.g., Master 014 vessel mapping)
+- Acceptance criteria / Definition of Done
+
+### 3) Clarifying Questions (if any)
+List only the questions that are truly blocking to finalize the plan.
+(Prefer making reasonable assumptions and documenting them.)
+
+---
+
+## Rules / Constraints
+- NO implementation in this phase.
+- NO “random/fake data” is acceptable in production endpoints (pool/availability/etc.).
+- Maintain backward compatibility where required.
+- Multi-tenant scoping must be verified in all key queries.
+- Any changes that alter “source of truth” must be explicitly justified.
+
+---
+
+## Start Here
+1) Trace V1: rotation plan → propose → deploy → vessel_planning → vessel module display.
+2) Trace V2: same flow and identify exact breakpoints.
+3) Trace crew selection endpoint(s): where pool comes from and whether it is joined from normalized V2 tables.
+4) Produce the validation + final phased plan.
+
+Return:
+- VALIDATION REPORT
+- FINAL IMPLEMENTATION PLAN
+- OPEN QUESTIONS (if any)
