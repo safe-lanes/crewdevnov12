@@ -307,6 +307,120 @@ Proceed with **Option A** for immediate needs. Option B should be considered as 
 
 ---
 
+### 2.6 Parallel Data Flows: Admin Revision vs Crew Rotation
+
+The system has TWO parallel flows that follow the same pattern: **Admin Configuration → Vessel Planning → Operations**
+
+#### Flow 1: Rank Administration → Vessel Planning (Admin Revision Flow)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│          ADMIN REVISION → VESSEL PLANNING FLOW                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+STEP 1: Admin Creates Draft
+┌─────────────────┐
+│  vessel_drafts  │  ← Admin edits rank configuration in UI
+│  (staging)      │     POST /api/vessel-drafts
+└────────┬────────┘
+         │
+STEP 2: Admin Submits Revision
+         ▼
+┌─────────────────┐
+│vessel_revisions │  ← POST /api/vessel-revisions/submit
+│  (permanent)    │     - Auto-assigns next revision number (R0→R1→R2...)
+│                 │     - Deletes corresponding drafts
+└────────┬────────┘
+         │
+STEP 3: Auto-Sync to Vessel Planning (lines 3397-3455 in routes.ts)
+         ▼
+┌─────────────────┐
+│ vessel_planning │  ← For each rank with actualManningFlag=true:
+│  (operations)   │     Creates empty vessel_planning slot
+│                 │     (ready for crew assignment)
+└─────────────────┘
+```
+
+**Key Code Location**: `server/routes.ts` lines 3397-3455
+```typescript
+// Step 5: Auto-initialize vessel_planning records for new ranks
+for (const rank of ranks) {
+  if (!rankId || rank.isRoleRow || !rank.actualManningFlag) continue;
+  
+  if (!existingRankIds.has(rankId)) {
+    await storage.createVesselPlanning({
+      vesselId: vesselId,
+      rankId: rankId,
+      rank: rankName,
+      // ... empty crew assignment slots
+    });
+  }
+}
+```
+
+---
+
+#### Flow 2: Recruitment → Crew Pool → Rotation (Crew Deployment Flow)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│          RECRUITMENT → CREW POOL → ROTATION FLOW                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+STEP 1: Candidate in Recruitment (V2)
+┌───────────────────────────┐
+│  recruitment tables (V2)  │  ← 42 normalized tables
+│  rec_candidates_v2 etc.   │     Candidate goes through screening/approval
+└───────────┬───────────────┘
+            │
+STEP 2: Transfer to Crew Pool
+            ▼
+┌───────────────────────────┐
+│   crew_members_v2         │  ← POST /api/v2/crew-pool/transfer
+│   (24 normalized tables)  │     - Sets status: "Recruited"
+│                           │     - Generates sequential crewId (A000001)
+│                           │     - Maintains sourceRecCanUuid link
+└───────────┬───────────────┘
+            │
+STEP 3: Deploy via Rotation (CURRENT GAP)
+            ▼
+┌───────────────────────────┐
+│   vessel_planning         │  ← POST /api/rotation/proposals/deploy
+│   (operations)            │     ⚠️ PROBLEM: Only queries V1 crew_members
+│                           │     V2 crew are INVISIBLE to rotation!
+└───────────────────────────┘
+```
+
+---
+
+#### Comparison: Both Flows Share Same Pattern
+
+| Aspect | Admin Revision Flow | Crew Deployment Flow |
+|--------|---------------------|----------------------|
+| **Source** | Rank configuration (UI) | Recruitment candidates |
+| **Staging** | `vessel_drafts` | V2 recruitment tables |
+| **Permanent Record** | `vessel_revisions` | `crew_members_v2` |
+| **Operations Target** | `vessel_planning` (empty slots) | `vessel_planning` (filled slots) |
+| **Trigger** | Admin "Submit" button | Rotation "Deploy" action |
+| **Auto-Sync** | ✅ Yes (lines 3397-3455) | ⚠️ BROKEN (queries V1 only) |
+| **V2 Support** | N/A (tables are V1) | ❌ NOT IMPLEMENTED |
+
+---
+
+#### The Missing Link: V2 Crew → Rotation
+
+When admin submits a vessel revision:
+- **Automatically** creates `vessel_planning` slots for ranks ✅
+
+When rotation deploys crew to vessel:
+- **Should** fill those slots with crew from crew pool
+- **Currently** only queries V1 `crew_members` table ❌
+- V2 crew transferred from recruitment are **invisible** ❌
+
+**This is Gap #1 in Section 3 below.**
+
+---
+
 ## Section 3: Gap Analysis
 
 ### 2.1 Critical Gaps (Must Fix)
