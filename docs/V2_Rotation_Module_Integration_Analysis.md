@@ -89,7 +89,225 @@ children: text("children"), // JSON array of children information
 
 ---
 
-## Section 2: Gap Analysis
+## Section 2: V1 Rotation Control System (Complete Reference)
+
+This section documents how rotation is controlled in V1 - the tables, endpoints, and workflow that V2 currently lacks entirely.
+
+### 2.1 V1 Rotation Tables
+
+#### Table: `rotation_plans` (lines 556-571 in shared/schema.ts)
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `id` | serial | Primary key |
+| `draftId` | text | Unique draft identifier |
+| `lastEdited` | text | Last edit timestamp |
+| `vessels` | text | **JSON array** of vessel names |
+| `crew` | text | Comma-separated crew roles (e.g., "Master, Chief Officer") |
+| `planFromDate` | text | Plan start date |
+| `planToDate` | text | Plan end date |
+| `createdBy` | text | User who created plan |
+| `planStatus` | text | Status: "In Draft", "Proposed", "Partially Approved", "Approved", "Rejected", "Archived" |
+| `proposedBy` | text | User who proposed |
+| `proposedDate` | text | Proposal timestamp |
+| `assignments` | text | **JSON array**: `[{vesselName, rank, crewId, crewName, signOnDate, contractPeriod, proposalStatus, deployedDate, deployedBy}]` |
+| `createdAt` | timestamp | Creation timestamp |
+| `updatedAt` | timestamp | Update timestamp |
+
+**Issues**: Uses JSON for `vessels` and `assignments` - no referential integrity, no audit trail per assignment.
+
+---
+
+#### Table: `rotation_archive` (lines 573-604 in shared/schema.ts)
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `id` | serial | Primary key |
+| `originalPlanId` | integer | Reference to original plan (may be null) |
+| `originalDraftId` | text | Draft ID for reference |
+| `originalAssignmentIndex` | integer | Index in original plan's assignments array |
+| `vesselId` | text | Vessel code (VSL-XXX format) |
+| `rankId` | text | Rank ID |
+| `rank` | text | Rank name |
+| `crewId` | text | Crew identifier |
+| `crewName` | text | Crew display name |
+| `crewMemberId` | text | Database crew member ID |
+| `signOnDate` | text | Sign-on date |
+| `joiningPort` | text | Joining port |
+| `contractPeriod` | integer | Contract period in months |
+| `signOffDate` | text | Planned sign-off |
+| `proposedBy` | text | Proposer |
+| `proposedDate` | text | Proposal date |
+| `result` | text | "Deployed" or "Rejected" |
+| `archivedDate` | text | Archive timestamp |
+| `archivedBy` | text | User who archived |
+| `vesselPlanningId` | integer | ID of vessel_planning record |
+| `currentCrewInfo` | text | **JSON**: `{id, name, contractStartDate, contractEndDate, rangeStartDate, rangeEndDate}` |
+| `fullAssignmentSnapshot` | text | Complete **JSON snapshot** of original assignment |
+| `createdAt` | timestamp | Creation timestamp |
+
+**Issues**: No UUID, uses JSON for crew info snapshot, no FK to crew_members.
+
+---
+
+#### Table: `vessel_planning` (lines 495-554 in shared/schema.ts)
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `id` | serial | Primary key |
+| `vesselId` | text | Vessel code (VSL-XXX) |
+| `rankId` | text | Rank identifier |
+| `rank` | text | Rank name |
+| `crewMemberId` | text | FK to crew_members.id |
+| `crewStatus` | text | "primary" or "secondary" |
+| `onBoardCrewId` | text | DEPRECATED |
+| `onBoardCrewName` | text | DEPRECATED |
+| `signOnDate` | text | Actual sign-on date |
+| `reliefDue` | text | Relief due date |
+| `signOffDate` | text | Sign-off date |
+| `signOffPort` | text | Sign-off port |
+| `signOffReason` | text | Reason for sign-off |
+| `relieverCrewId` | text | Reliever crew ID |
+| `relieverCrewName` | text | DEPRECATED |
+| `relieverSignOnDate` | text | Reliever's planned sign-on |
+| `joiningPort` | text | Joining port |
+| `joiningStatus` | text | "Proposed", "Planned", "Confirmed", "In Transit", "Signed On" |
+| `contractPeriodMonths` | integer | Contract period |
+| `handoverAttachments` | text | **JSON array**: `[{filename, fileType, uploadDate, ...}]` |
+| `isArchived` | boolean | Archive status |
+| `createdAt` | timestamp | Creation timestamp |
+| `updatedAt` | timestamp | Update timestamp |
+
+**Issues**: Multiple deprecated columns, JSON for attachments, text FKs (no referential integrity).
+
+---
+
+### 2.2 V1 Rotation API Endpoints
+
+#### Rotation Plan CRUD
+
+| Endpoint | Method | Purpose | File:Line |
+|----------|--------|---------|-----------|
+| `/api/rotation-plans` | GET | List all rotation plans | routes.ts:4561 |
+| `/api/rotation-plans/:id` | GET | Get single plan | routes.ts:4571 |
+| `/api/rotation-plans` | POST | Create new plan | routes.ts:4588 |
+| `/api/rotation-plans/:id` | PATCH | Update plan | routes.ts:4602 |
+| `/api/rotation-plans/:id` | DELETE | Delete plan | routes.ts:4630 |
+
+#### Rotation Workflow
+
+| Endpoint | Method | Purpose | File:Line |
+|----------|--------|---------|-----------|
+| `/api/rotation-plans/:id/propose` | POST | Propose plan for approval | routes.ts:4648 |
+| `/api/rotation/proposals` | GET | Get pending proposals | routes.ts:4669 |
+| `/api/rotation/proposals/deploy` | POST | Deploy approved assignment | routes.ts:4885 |
+| `/api/rotation/proposals/reject` | POST | Reject assignment | routes.ts:4916 |
+| `/api/rotation/proposals/conflicts` | GET | Check for conflicts | routes.ts:4934 |
+
+#### Crew Selection for Rotation
+
+| Endpoint | Method | Purpose | File:Line |
+|----------|--------|---------|-----------|
+| `/api/rotation/due-crew` | GET | Get crew due for rotation | routes.ts:7738 |
+| `/api/crew-members/by-rank/:rank` | GET | Get crew by rank (V1 only) | routes.ts:6878 |
+
+#### Vessel Planning
+
+| Endpoint | Method | Purpose | File:Line |
+|----------|--------|---------|-----------|
+| `/api/vessel-planning` | GET | List all vessel planning | routes.ts:3778 |
+| `/api/vessel-planning/vessel/:vesselId` | GET | Get planning for vessel | routes.ts:3840 |
+| `/api/vessel-planning/:id` | GET | Get single record | routes.ts:3996 |
+| `/api/vessel-planning` | POST | Create planning record | routes.ts:4013 |
+| `/api/vessel-planning/:id` | PUT | Replace record | routes.ts:4038 |
+| `/api/vessel-planning/:id` | PATCH | Update record | routes.ts:4074 |
+| `/api/vessel-planning/:id` | DELETE | Delete record | routes.ts:4415 |
+| `/api/vessel-planning/:id/handover-attachments` | GET/POST/DELETE | Manage attachments | routes.ts:4433-4516 |
+
+---
+
+### 2.3 V1 Rotation Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   V1 ROTATION WORKFLOW                          │
+└─────────────────────────────────────────────────────────────────┘
+
+1. CREATE PLAN
+   └─► POST /api/rotation-plans
+       └─► Creates rotation_plans record (status: "In Draft")
+
+2. ADD ASSIGNMENTS
+   └─► PATCH /api/rotation-plans/:id
+       └─► Updates assignments JSON array in rotation_plans
+
+3. PROPOSE PLAN
+   └─► POST /api/rotation-plans/:id/propose
+       └─► Sets planStatus: "Proposed"
+       └─► Sets proposedBy, proposedDate
+
+4. REVIEW PROPOSALS
+   └─► GET /api/rotation/proposals
+       └─► Returns plans with status: "Proposed"
+
+5. CHECK CONFLICTS
+   └─► GET /api/rotation/proposals/conflicts
+       └─► Validates crew availability, overlapping assignments
+
+6. DEPLOY ASSIGNMENT
+   └─► POST /api/rotation/proposals/deploy
+       └─► Calls database.deployAssignment()
+           ├─► Updates/Creates vessel_planning record
+           ├─► Updates rotation_plans assignments JSON (status: "Deployed")
+           └─► Creates rotation_archive entry
+
+7. OR REJECT ASSIGNMENT
+   └─► POST /api/rotation/proposals/reject
+       └─► Updates assignment status in JSON
+       └─► Creates rotation_archive entry (result: "Rejected")
+```
+
+---
+
+### 2.4 What V2 is Missing (Rotation Infrastructure)
+
+**Search for "rotation" in V2 directories returns: NOTHING**
+
+| Component | V1 Has | V2 Has | Gap |
+|-----------|--------|--------|-----|
+| `rotation_plans` table | Yes | **NO** | Need V2 equivalent with proper UUIDs |
+| `rotation_archive` table | Yes | **NO** | Need V2 equivalent with FKs |
+| `vessel_planning` table | Yes | `crew_assignments` (partial) | V2 has assignments but no reliever workflow |
+| Rotation plan CRUD endpoints | 5 endpoints | **NONE** | Need all 5 |
+| Rotation workflow endpoints | 4 endpoints | **NONE** | Need propose/deploy/reject |
+| Crew by-rank endpoint | Yes (V1 only) | **NO** | Need V2 version |
+| Due-crew endpoint | Yes (V1 only) | **NO** | Need V2 version |
+| Conflict checking | Yes | **NO** | Need for V2 crew |
+
+---
+
+### 2.5 Integration Strategy Options
+
+#### Option A: Extend Existing V1 Rotation (Recommended Short-Term)
+- Keep V1 rotation tables and endpoints
+- Add V2 crew query to by-rank endpoint
+- Add V2 crew_assignments sync on deployment
+- **Effort**: Low (4 tasks in analysis document)
+- **Risk**: Low - no V1 breaking changes
+
+#### Option B: Create Full V2 Rotation System (Future)
+- New tables: `rotation_plans_v2`, `rotation_archive_v2`
+- New endpoints under `/api/v2/rotation/`
+- Migrate existing data
+- **Effort**: High (new module development)
+- **Risk**: Medium - parallel systems during migration
+
+#### Recommendation
+Proceed with **Option A** for immediate needs. Option B should be considered as a separate project when full V2 migration is planned.
+
+---
+
+## Section 3: Gap Analysis
 
 ### 2.1 Critical Gaps (Must Fix)
 
@@ -203,7 +421,7 @@ await this.db.update(vesselPlanning).set({
 
 ---
 
-## Section 3: Data Flow Diagrams
+## Section 4: Data Flow Diagrams
 
 ### 3.1 Current Flow (Broken for V2)
 
@@ -292,7 +510,7 @@ Recruitment ──(Transfer)──► crew_members_v2 + crew_personal_details
 
 ---
 
-## Section 4: Implementation Tasks
+## Section 5: Implementation Tasks
 
 ### Task 1: Create V2 Crew By-Rank Endpoint
 
@@ -452,7 +670,7 @@ if (v2Crew.length > 0) {
 
 ---
 
-## Section 5: Database Schema Considerations
+## Section 6: Database Schema Considerations
 
 ### 5.1 No Schema Changes Required
 
@@ -472,7 +690,7 @@ All required tables and columns already exist:
 
 ---
 
-## Section 6: Acceptance Criteria
+## Section 7: Acceptance Criteria
 
 ### 6.1 Crew Visibility in Rotation
 
@@ -506,7 +724,7 @@ All required tables and columns already exist:
 
 ---
 
-## Section 7: Testing Checklist
+## Section 8: Testing Checklist
 
 ### 7.1 Manual Tests
 
@@ -558,7 +776,7 @@ WHERE vp.vessel_id = '<deployed-vessel-id>';
 
 ---
 
-## Section 8: Risk Assessment
+## Section 9: Risk Assessment
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
@@ -570,7 +788,7 @@ WHERE vp.vessel_id = '<deployed-vessel-id>';
 
 ---
 
-## Section 9: Implementation Order
+## Section 10: Implementation Order
 
 **Phase 1: Foundation (Backend)**
 1. Task 1: Create V2 by-rank endpoint
@@ -589,7 +807,7 @@ WHERE vp.vessel_id = '<deployed-vessel-id>';
 
 ---
 
-## Section 10: Key File References
+## Section 11: Key File References
 
 | Component | File | Lines |
 |-----------|------|-------|
