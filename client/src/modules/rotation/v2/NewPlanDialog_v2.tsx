@@ -1809,9 +1809,10 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
           
           if (fullDraftData.entries && fullDraftData.entries.length > 0) {
             // Map V2 entries to Assignment format (entries are enriched with crewName/vesselName from API)
+            // IMPORTANT: vessel field must use vesselName (for timeline filtering) not vesselUuid
             loadedAssignments = fullDraftData.entries.map((entry: any) => ({
               id: entry.entryUuid || `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              vessel: entry.vesselUuid || '',
+              vessel: entry.vesselName || entry.vesselUuid || '', // Use vesselName for timeline matching
               vesselUuid: entry.vesselUuid,
               vesselName: entry.vesselName,
               rank: entry.rank || '',
