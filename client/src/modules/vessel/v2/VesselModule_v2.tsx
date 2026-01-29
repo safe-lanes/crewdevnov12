@@ -236,52 +236,23 @@ const analyzeDocumentExpiry = (crewData: any): DocExpiryAnalysis => {
 
 const useVessels = () => {
     return useQuery({
-        queryKey: ['/api/external/vessels'],
+        queryKey: ['/api/v2/vessel/list'],
         queryFn: async () => {
-            const domain = localStorage.getItem('domain') || 'rsms';
-            try {
-                const response = await fetch(
-                    `${API_BASE_URL}/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
-                    {
-                        method: 'GET',
-                        headers: { 'accept': '*/*' }
-                    }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.vessels && data.vessels.length > 0) {
-                        return { source: 'external', data: data.vessels };
-                    }
-                }
-            } catch (e) {
-                console.log('External vessels API unavailable, using local master data');
+            const response = await fetch('/api/v2/vessel/list');
+            if (!response.ok) {
+                throw new Error('Failed to fetch vessels from master_vessels');
             }
-            
-            const localResponse = await fetch('/api/masters/014/data');
-            if (!localResponse.ok) {
-                throw new Error('Failed to fetch vessels from local master data');
-            }
-            const localData = await localResponse.json();
-            return { source: 'local', data: localData };
+            return response.json();
         },
         staleTime: 5 * 60 * 1000,
         retry: 2,
-        select: (result: { source: string; data: any[] }) => {
-            if (result.source === 'external') {
-                return result.data.map((vessel: any) => ({
-                    id: vessel.id,
-                    vesselId: vessel.vuid,
-                    name: vessel.vessel || 'Unknown Vessel',
-                    vesselType: vessel.vesselType || 'Unknown Type',
-                }));
-            } else {
-                return result.data.map((vessel: any) => ({
-                    id: vessel.id,
-                    vesselId: vessel.entryId,
-                    name: vessel.name || 'Unknown Vessel',
-                    vesselType: vessel.vesselType || 'Unknown Type',
-                }));
-            }
+        select: (data: any[]) => {
+            return data.map((vessel: any) => ({
+                id: vessel.id,
+                vesselId: vessel.vesselUuid,
+                name: vessel.vessel || 'Unknown Vessel',
+                vesselType: vessel.vesselType || 'Unknown Type',
+            }));
         }
     });
 };
