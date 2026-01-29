@@ -117,18 +117,19 @@ export const rotationDeployService = {
           )
         );
 
-      // Create new current assignment for deployed crew
+      // Create assignment for deployed crew with isCurrent: false (crew is planned, not yet on board)
+      // isCurrent will be set to true when crew status changes from "Planned" to "Signed On"
       await db
         .insert(crewAssignments)
         .values({
           assignUuid: uuidv4(),
           crewUuid: entry.crewUuid,
           vesselUuid: entry.vesselUuid,
-          isCurrent: true,
+          isCurrent: false, // Crew is planned, not yet signed on
           signOnDate: entry.signOnDate,
           contractPeriod: entry.contractPeriod?.toString(),
           portOfJoiningUuid: entry.joiningPortUuid,
-          assignmentType: "Deployed",
+          assignmentType: "Planned", // Initially planned, will become "OnBoard" when signed on
         });
 
       return { 

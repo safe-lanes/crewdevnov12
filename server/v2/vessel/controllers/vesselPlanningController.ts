@@ -98,4 +98,71 @@ export const vesselPlanningController = {
       res.status(500).json({ error: "Failed to delete attachment" });
     }
   },
+
+  /**
+   * Sign on reliever: moves crew from Reliever Status to On Board Status
+   * This is triggered when joiningStatus changes from "Planned" to "Signed On"
+   */
+  async signOnReliever(req: Request, res: Response) {
+    try {
+      const { planUuid } = req.params;
+      const { signOnDate, signOnPort, contractPeriodMonths } = req.body;
+      
+      const planning = await vesselPlanningService.signOnReliever(planUuid, {
+        signOnDate,
+        signOnPort,
+        contractPeriodMonths,
+      });
+      
+      res.json(planning);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      if (error.message?.includes("No reliever")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error signing on reliever:", error);
+      res.status(500).json({ error: "Failed to sign on reliever" });
+    }
+  },
+
+  /**
+   * Update reliever status without signing on
+   * For status changes: Planned -> Confirmed -> In Transit
+   */
+  async updateRelieverStatus(req: Request, res: Response) {
+    try {
+      const { planUuid } = req.params;
+      const { joiningStatus, relieverSignOnDate, joiningPortUuid, relieverContractPeriodMonths } = req.body;
+      
+      if (!joiningStatus) {
+        return res.status(400).json({ error: "joiningStatus is required" });
+      }
+
+      // If status is "Signed On", use the sign-on endpoint instead
+      if (joiningStatus === "Signed On") {
+        const planning = await vesselPlanningService.signOnReliever(planUuid, {
+          signOnDate: relieverSignOnDate,
+          signOnPort: joiningPortUuid,
+          contractPeriodMonths: relieverContractPeriodMonths,
+        });
+        return res.json(planning);
+      }
+
+      const planning = await vesselPlanningService.updateRelieverStatus(planUuid, joiningStatus, {
+        relieverSignOnDate,
+        joiningPortUuid,
+        relieverContractPeriodMonths,
+      });
+      
+      res.json(planning);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error updating reliever status:", error);
+      res.status(500).json({ error: "Failed to update reliever status" });
+    }
+  },
 };

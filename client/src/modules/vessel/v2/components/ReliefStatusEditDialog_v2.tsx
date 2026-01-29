@@ -176,86 +176,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         try {
             const isSigningOn = data.signOnStatus === "Signed On";
             
-            if (isSigningOn && planningData?.relieverCrewId) {
-                const existingRecords = await vesselApiV2.getVesselPlanning(vesselUuid);
+            if (isSigningOn && planningData?.relieverCrewId && planningData?.planUuid) {
+                // Use the new sign-on API which properly updates crew_assignments.isCurrent
+                // and moves reliever to on-board crew
+                const signOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
+                const signOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
+                const contractPeriodMonths = data.relieverContractPeriodMonths ?? planningData.relieverContractPeriodMonths;
                 
-                const existingPrimary = existingRecords.find((p: any) => 
-                    (p.rankId === rankId || p.rank === rank) && 
-                    (p.crewStatus === 'primary' || !p.crewStatus) &&
-                    p.crewUuid
-                );
-                
-                const existingSecondary = existingRecords.find((p: any) => 
-                    (p.rankId === rankId || p.rank === rank) && p.crewStatus === 'secondary'
-                );
-                
-                if (!existingPrimary) {
-                    const newPrimarySignOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
-                    const newPrimarySignOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
-                    
-                    const relieverContractPeriod = data.relieverContractPeriodMonths ?? planningData.relieverContractPeriodMonths;
-                    const relieverContractRangeStart = data.relieverContractEndRangeStartMonths ?? planningData.relieverContractEndRangeStartMonths;
-                    const relieverContractRangeEnd = data.relieverContractEndRangeEndMonths ?? planningData.relieverContractEndRangeEndMonths;
-                    
-                    await updatePlanningV2.mutateAsync({
-                        planUuid: planningData.planUuid,
-                        data: {
-                            crewUuid: planningData.relieverCrewId,
-                            crewStatus: "primary",
-                            signOnDate: newPrimarySignOnDate,
-                            joiningPortUuid: newPrimarySignOnPort,
-                            contractPeriodMonths: relieverContractPeriod,
-                            contractEndRangeStartMonths: relieverContractRangeStart,
-                            contractEndRangeEndMonths: relieverContractRangeEnd,
-                            relieverCrewUuid: null,
-                            joiningStatus: null,
-                            deploymentChecklistCompleted: false,
-                            applicableDocsChecked: false,
-                            relieverContractPeriodMonths: null,
-                            relieverContractEndRangeStartMonths: null,
-                            relieverContractEndRangeEndMonths: null,
-                        }
-                    });
-                } else {
-                    if (existingSecondary) {
-                        throw new Error(`A secondary crew member is already assigned to ${rank}. Only one secondary crew is allowed per rank.`);
-                    }
-                    
-                    const secondarySignOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
-                    const secondarySignOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
-                    
-                    const canonicalRankId = existingPrimary.rankId || rankId;
-                    
-                    const secondaryContractPeriod = data.relieverContractPeriodMonths ?? planningData.relieverContractPeriodMonths;
-                    const secondaryContractRangeStart = data.relieverContractEndRangeStartMonths ?? planningData.relieverContractEndRangeStartMonths;
-                    const secondaryContractRangeEnd = data.relieverContractEndRangeEndMonths ?? planningData.relieverContractEndRangeEndMonths;
-                    
-                    await createPlanningV2.mutateAsync({
-                        vesselUuid,
-                        rankId: canonicalRankId,
-                        rank,
-                        crewUuid: planningData.relieverCrewId,
-                        crewStatus: "secondary",
-                        signOnDate: secondarySignOnDate,
-                        joiningPortUuid: secondarySignOnPort,
-                        contractPeriodMonths: secondaryContractPeriod,
-                        contractEndRangeStartMonths: secondaryContractRangeStart,
-                        contractEndRangeEndMonths: secondaryContractRangeEnd,
-                    });
-                    
-                    await updatePlanningV2.mutateAsync({
-                        planUuid: planningData.planUuid,
-                        data: {
-                            relieverCrewUuid: null,
-                            joiningStatus: null,
-                            relieverContractPeriodMonths: null,
-                            relieverContractEndRangeStartMonths: null,
-                            relieverContractEndRangeEndMonths: null,
-                            deploymentChecklistCompleted: false,
-                            applicableDocsChecked: false,
-                        }
-                    });
-                }
+                await vesselApiV2.signOnReliever(planningData.planUuid, {
+                    signOnDate,
+                    signOnPort,
+                    contractPeriodMonths,
+                });
             } else {
                 const payload = {
                     relieverContractPeriodMonths: data.relieverContractPeriodMonths,

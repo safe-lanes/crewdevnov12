@@ -17,4 +17,8 @@ router.post("/planning/:planUuid/archive", vesselPlanningController.archive);
 router.post("/planning/:planUuid/attachments", vesselPlanningController.addAttachment);
 router.delete("/planning/attachments/:attUuid", vesselPlanningController.deleteAttachment);
 
+// Reliever sign-on and status update endpoints
+router.post("/planning/:planUuid/sign-on", vesselPlanningController.signOnReliever);
+router.patch("/planning/:planUuid/reliever-status", vesselPlanningController.updateRelieverStatus);
+
 export default router;

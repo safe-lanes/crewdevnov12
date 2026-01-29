@@ -177,4 +177,39 @@ export const vesselApiV2 = {
       throw new Error(error.message || 'Failed to delete attachment');
     }
   },
+
+  /**
+   * Sign on reliever: moves crew from Reliever Status to On Board Status
+   * This updates crew_assignments.isCurrent to true and moves relieverCrewUuid to crewUuid
+   */
+  async signOnReliever(planUuid: string, data: {
+    signOnDate?: string;
+    signOnPort?: string;
+    contractPeriodMonths?: number;
+  }): Promise<VesselPlanningV2> {
+    const response = await apiRequest('POST', `${V2_BASE}/planning/${planUuid}/sign-on`, data);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Failed to sign on reliever');
+    }
+    return response.json();
+  },
+
+  /**
+   * Update reliever status without signing on
+   * For status changes: Planned -> Confirmed -> In Transit
+   */
+  async updateRelieverStatus(planUuid: string, data: {
+    joiningStatus: string;
+    relieverSignOnDate?: string;
+    joiningPortUuid?: string;
+    relieverContractPeriodMonths?: number;
+  }): Promise<VesselPlanningV2> {
+    const response = await apiRequest('PATCH', `${V2_BASE}/planning/${planUuid}/reliever-status`, data);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Failed to update reliever status');
+    }
+    return response.json();
+  },
 };
