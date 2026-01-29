@@ -25,6 +25,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { NewPlanDialog } from './NewPlanDialog';
+import { RotationVersionToggle } from './components/VersionToggle';
 import type { RotationPlan } from '@shared/schema';
 
 export function RotationPlanTable() {
@@ -94,13 +95,16 @@ export function RotationPlanTable() {
   return (
     <div className="flex flex-col h-full">
       <SectionTitleComponents title="Rotation Plan">
-        <Button
-          onClick={() => setNewPlanDialogOpen(true)}
-          className="bg-green-600 hover:bg-green-700 text-white h-8 px-4"
-          data-testid="button-new-plan"
-        >
-          + New Plan
-        </Button>
+        <div className="flex items-center gap-4">
+          <RotationVersionToggle />
+          <Button
+            onClick={() => setNewPlanDialogOpen(true)}
+            className="bg-green-600 hover:bg-green-700 text-white h-8 px-4"
+            data-testid="button-new-plan"
+          >
+            + New Plan
+          </Button>
+        </div>
       </SectionTitleComponents>
 
       <div className="border rounded-lg overflow-hidden">

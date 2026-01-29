@@ -17,6 +17,7 @@ import { DueCrewTable } from './DueCrewTable';
 import { RotationPlanTable } from './RotationPlanTable';
 import { ApprovalTable } from './ApprovalTable';
 import { VesselFleetGroupFilter, FilterMode } from '@/components/filters/vessel-fleet-group-filter';
+import { RotationVersionToggle } from './components/VersionToggle';
 
 // Hook to fetch vessels from external SAIL ERP API (same source as Vessel Database)
 const useVessels = () => {
@@ -116,7 +117,8 @@ function ApprovalScreen() {
     return (
         <div className="flex flex-col h-full">
             <SectionTitleComponents title="Rotation Approval">
-                <div className="flex gap-2">
+                <div className="flex items-center gap-4">
+                    <RotationVersionToggle />
                     <Button
                         variant="outline"
                         size="sm"
@@ -449,7 +451,8 @@ export function RotationModule() {
         return (
             <div className="flex flex-col h-full">
                 <SectionTitleComponents title="Crew Due/ Overdue">
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-4">
+                        <RotationVersionToggle />
                         <Button
                             variant="outline"
                             size="sm"
