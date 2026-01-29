@@ -37,13 +37,14 @@ The application employs a modern web stack with a module-first architecture, pri
 - **Module-First Architecture**: Emphasizes clear separation of concerns.
 - **Vessel ID/Name Translation**: Backend uses IDs, UI displays names.
 - **Canonical Vessel Code Enforcement**: All storage backends enforce VSL-XXX format.
+- **Vessel Planning V2**: V2 architecture for vessel planning with Repository + Service + Controller pattern. Uses UUID-based vessel_planning_v2 table with attachments support. API endpoints at `/api/v2/vessel/`.
 - **Master Data System**: Centralized reference data storage.
 - **Vessel Revision System**: Manages vessel rank assignments with draft/submission workflows.
 - **Crew Modules**:
     - **Vessel Database Module**: Displays vessel data, Officer Matrix, Planning, and Training Matrix, including "Time o/b (months)" calculation.
     - **Crew Handover Workflow**: Manages crew transitions with primary/secondary status.
     - **Crew Archive System**: Manages historical crew records with sign-off workflow.
-    - **Rotation Module**: Manages crew rotation planning with visual timelines.
+    - **Rotation Module (V1 & V2)**: Manages crew rotation planning with visual timelines. V2 features Repository + Service + Controller pattern with UUID identifiers, connecting to crew_members_v2 for crew visibility. Critical endpoint `/api/v2/rotation/crew/by-rank/:rank` enables V2 crew from Recruitment to be visible for vessel deployment. Deployments sync to both vessel_planning_v2 and crew_assignments tables.
     - **Crew Appraisals Module**: Manages appraisals through a 3-stage workflow.
     - **Crew Pool Module (V1 & V2)**: Manages active crew database. V2 features a re-architected system with a Repository + Service + Controller pattern, UUID identifiers, soft deletes, and comprehensive forms. Includes a "Save-Before-Attachment" pattern (uses direct API calls via `crewPoolApiV2` to preserve unsaved rows - mutations cause query invalidation which overwrites local form state) and generates sequential 'A000001' format Crew IDs.
     - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments.
