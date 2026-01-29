@@ -1,4 +1,4 @@
-import { eq, and, isNull, ilike, or, sql } from "drizzle-orm";
+import { eq, and, isNull, ilike, or, sql, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewMembersV2, crewAssignments, crewSeaService, crewPersonalDetails, crewLicenses } from "../../../../shared/v2/crew-pool/schema";
 
@@ -67,7 +67,7 @@ export const crewAvailabilityService = {
           eq(crewMembersV2.presentRank, rank),
           eq(crewMembersV2.isDeleted, false),
           isNull(crewMembersV2.archivedAt),
-          eq(crewMembersV2.status, "Active")
+          ilike(crewMembersV2.status, "active") // Case-insensitive status check
         )
       );
 
@@ -76,7 +76,7 @@ export const crewAvailabilityService = {
     const seaServiceByCrewPromise = crewUuids.length > 0 
       ? db.select().from(crewSeaService).where(
           and(
-            sql`${crewSeaService.crewUuid} = ANY(${crewUuids})`,
+            inArray(crewSeaService.crewUuid, crewUuids),
             eq(crewSeaService.isDeleted, false)
           )
         )
@@ -85,7 +85,7 @@ export const crewAvailabilityService = {
     const personalDetailsByCrewPromise = crewUuids.length > 0
       ? db.select().from(crewPersonalDetails).where(
           and(
-            sql`${crewPersonalDetails.crewUuid} = ANY(${crewUuids})`,
+            inArray(crewPersonalDetails.crewUuid, crewUuids),
             eq(crewPersonalDetails.isDeleted, false)
           )
         )
@@ -94,7 +94,7 @@ export const crewAvailabilityService = {
     const licensesByCrewPromise = crewUuids.length > 0
       ? db.select().from(crewLicenses).where(
           and(
-            sql`${crewLicenses.crewUuid} = ANY(${crewUuids})`,
+            inArray(crewLicenses.crewUuid, crewUuids),
             eq(crewLicenses.isDeleted, false),
             isNull(crewLicenses.archivedAt)
           )
