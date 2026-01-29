@@ -9,8 +9,50 @@ import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog';
-import { useRotationEntriesV2, useDeployEntryV2, useRejectEntryV2 } from './hooks/useRotationV2';
-import type { RotationEntryV2 } from './api/rotationApiV2';
+import { useDeployEntryV2, useRejectEntryV2 } from './hooks/useRotationV2';
+
+// Hook to fetch V2 proposals from drafts with Proposed/Partially Approved status
+const useProposalsV2 = (filters: {
+  selectedVessels?: string[];
+  selectedRanks?: string[];
+  draftIdFilter?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  showArchived?: boolean;
+}) => {
+  const { getVesselIds } = useVesselLookup();
+  const queryParams = new URLSearchParams();
+  
+  if (filters.selectedVessels && filters.selectedVessels.length > 0) {
+    const vesselIds = getVesselIds(filters.selectedVessels);
+    queryParams.append('vessels', JSON.stringify(vesselIds));
+  }
+  
+  if (filters.selectedRanks && filters.selectedRanks.length > 0) {
+    queryParams.append('ranks', JSON.stringify(filters.selectedRanks));
+  }
+  
+  if (filters.draftIdFilter) {
+    queryParams.append('draftId', filters.draftIdFilter);
+  }
+  
+  if (filters.dateFrom) {
+    queryParams.append('dateFrom', filters.dateFrom);
+  }
+  
+  if (filters.dateTo) {
+    queryParams.append('dateTo', filters.dateTo);
+  }
+  
+  if (filters.showArchived) {
+    queryParams.append('archived', 'true');
+  }
+  
+  return useQuery({
+    queryKey: ['/api/v2/rotation/proposals', queryParams.toString()],
+    queryFn: () => fetch(`/api/v2/rotation/proposals?${queryParams.toString()}`).then(res => res.json()),
+  });
+};
 
 interface ApprovalTableV2Props {
   selectedVessels: string[];
@@ -273,36 +315,38 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
   const { toast } = useToast();
   const { getVesselName } = useVesselLookup();
   
-  const { data: entries = [], isLoading } = useRotationEntriesV2();
+  // Use V2 proposals endpoint with filters
+  const { data: proposalsData = [], isLoading } = useProposalsV2({
+    selectedVessels,
+    selectedRanks,
+    draftIdFilter,
+    dateFrom,
+    dateTo,
+    showArchived,
+  });
   const deployMutation = useDeployEntryV2();
   const rejectMutation = useRejectEntryV2();
 
+  // Map the proposals response to the component's expected format
   const proposals: ProposalRowV2[] = useMemo(() => {
-    return entries
-      .filter((entry: RotationEntryV2) => entry.proposalStatus === 'proposed')
-      .map((entry: RotationEntryV2) => ({
-        entryUuid: entry.entryUuid,
-        draftUuid: entry.draftUuid,
-        vessel: entry.vesselName || getVesselName(entry.vesselUuid) || entry.vesselUuid,
-        vesselUuid: entry.vesselUuid,
-        rank: entry.rank,
-        crewName: entry.crewName || 'Unknown',
-        crewUuid: entry.crewUuid,
-        joiningDate: entry.signOnDate || '',
-        contractPeriod: entry.contractPeriod || 6,
-        draftId: entry.draftUuid.slice(0, 8),
-        proposedBy: entry.proposedByUuid || 'Unknown',
-        proposedDate: entry.proposedDate || '',
-        currentCrew: entry.currentCrewUuid ? {
-          id: entry.currentCrewUuid,
-          name: entry.currentCrewName || 'Current Crew',
-          contractStartDate: entry.currentCrewSignOnDate || '',
-          contractEndDate: entry.currentCrewContractEnd || '',
-          rangeStartDate: entry.currentCrewRangeStart || '',
-          rangeEndDate: entry.currentCrewRangeEnd || '',
-        } : null,
-      }));
-  }, [entries, getVesselName]);
+    if (!Array.isArray(proposalsData)) return [];
+    
+    return proposalsData.map((proposal: any) => ({
+      entryUuid: proposal.entryUuid || proposal.id?.toString() || '',
+      draftUuid: proposal.draftUuid || '',
+      vessel: proposal.vesselName || proposal.vessel || getVesselName(proposal.vesselUuid) || 'Unknown Vessel',
+      vesselUuid: proposal.vesselUuid || '',
+      rank: proposal.rank || '',
+      crewName: proposal.crewName || 'Unknown',
+      crewUuid: proposal.crewUuid || null,
+      joiningDate: proposal.signOnDate || proposal.joiningDate || '',
+      contractPeriod: proposal.contractPeriod || 6,
+      draftId: proposal.draftUuid ? proposal.draftUuid.slice(0, 8) : '',
+      proposedBy: proposal.proposedBy || 'Unknown',
+      proposedDate: proposal.proposedDate || '',
+      currentCrew: null, // V2 proposals don't include current crew data yet
+    }));
+  }, [proposalsData, getVesselName]);
 
   const handleDeploy = () => {
     if (selectedAssignments.size === 0) {
