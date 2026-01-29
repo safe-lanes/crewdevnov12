@@ -1,14 +1,18 @@
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import { vesselPlanningV2, vesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { masterPorts } from "../../../../shared/schema";
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { v4 as uuidv4 } from "uuid";
 
 export class VesselPlanningRepository {
   async findByVesselUuid(vesselUuid: string): Promise<any[]> {
     const db = getDb();
-    const relieverAlias = db.select().from(crewMembersV2).as("reliever");
+    const relieverCrew = alias(crewMembersV2, "reliever_crew");
+    const signOffPort = alias(masterPorts, "sign_off_port");
+    const joiningPort = alias(masterPorts, "joining_port");
     
     const results = await db
       .select({
@@ -16,9 +20,16 @@ export class VesselPlanningRepository {
         crewFirstName: crewMembersV2.firstName,
         crewFamilyName: crewMembersV2.familyName,
         crewEmpNo: crewMembersV2.empNo,
+        relieverFirstName: relieverCrew.firstName,
+        relieverFamilyName: relieverCrew.familyName,
+        signOffPortName: signOffPort.name,
+        joiningPortName: joiningPort.name,
       })
       .from(vesselPlanningV2)
       .leftJoin(crewMembersV2, eq(vesselPlanningV2.crewUuid, crewMembersV2.crewUuid))
+      .leftJoin(relieverCrew, eq(vesselPlanningV2.relieverCrewUuid, relieverCrew.crewUuid))
+      .leftJoin(signOffPort, eq(vesselPlanningV2.signOffPortUuid, signOffPort.portUuid))
+      .leftJoin(joiningPort, eq(vesselPlanningV2.joiningPortUuid, joiningPort.portUuid))
       .where(
         and(
           eq(vesselPlanningV2.vesselUuid, vesselUuid),
@@ -28,27 +39,63 @@ export class VesselPlanningRepository {
       )
       .orderBy(desc(vesselPlanningV2.createdAt));
 
-    return results.map((row: { planning: any; crewFirstName: string | null; crewFamilyName: string | null; crewEmpNo: string | null }) => ({
+    return results.map((row: any) => ({
       ...row.planning,
       crewMemberName: row.crewFirstName && row.crewFamilyName 
         ? `${row.crewFirstName} ${row.crewFamilyName}`
         : null,
       crewEmpNo: row.crewEmpNo,
+      relieverCrewName: row.relieverFirstName && row.relieverFamilyName
+        ? `${row.relieverFirstName} ${row.relieverFamilyName}`
+        : null,
+      signOffPortName: row.signOffPortName || null,
+      joiningPortName: row.joiningPortName || null,
     }));
   }
 
-  async findByPlanUuid(planUuid: string): Promise<VesselPlanningV2 | undefined> {
+  async findByPlanUuid(planUuid: string): Promise<any | undefined> {
     const db = getDb();
+    const relieverCrew = alias(crewMembersV2, "reliever_crew");
+    const signOffPort = alias(masterPorts, "sign_off_port");
+    const joiningPort = alias(masterPorts, "joining_port");
+    
     const results = await db
-      .select()
+      .select({
+        planning: vesselPlanningV2,
+        crewFirstName: crewMembersV2.firstName,
+        crewFamilyName: crewMembersV2.familyName,
+        crewEmpNo: crewMembersV2.empNo,
+        relieverFirstName: relieverCrew.firstName,
+        relieverFamilyName: relieverCrew.familyName,
+        signOffPortName: signOffPort.name,
+        joiningPortName: joiningPort.name,
+      })
       .from(vesselPlanningV2)
+      .leftJoin(crewMembersV2, eq(vesselPlanningV2.crewUuid, crewMembersV2.crewUuid))
+      .leftJoin(relieverCrew, eq(vesselPlanningV2.relieverCrewUuid, relieverCrew.crewUuid))
+      .leftJoin(signOffPort, eq(vesselPlanningV2.signOffPortUuid, signOffPort.portUuid))
+      .leftJoin(joiningPort, eq(vesselPlanningV2.joiningPortUuid, joiningPort.portUuid))
       .where(
         and(
           eq(vesselPlanningV2.planUuid, planUuid),
           eq(vesselPlanningV2.isDeleted, false)
         )
       );
-    return results[0];
+    
+    if (!results[0]) return undefined;
+    const row = results[0];
+    return {
+      ...row.planning,
+      crewMemberName: row.crewFirstName && row.crewFamilyName 
+        ? `${row.crewFirstName} ${row.crewFamilyName}`
+        : null,
+      crewEmpNo: row.crewEmpNo,
+      relieverCrewName: row.relieverFirstName && row.relieverFamilyName
+        ? `${row.relieverFirstName} ${row.relieverFamilyName}`
+        : null,
+      signOffPortName: row.signOffPortName || null,
+      joiningPortName: row.joiningPortName || null,
+    };
   }
 
   async findByVesselAndRank(vesselUuid: string, rankId: string): Promise<VesselPlanningV2 | undefined> {
