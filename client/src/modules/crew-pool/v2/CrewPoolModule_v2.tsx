@@ -63,6 +63,7 @@ const formatContractPeriod = (value: any): string => {
 };
 
 export const CrewPoolModule_v2 = (): JSX.Element => {
+    console.log('[V2 Crew Pool] Component rendering...');
     const [selectedCrewPoolPage, setSelectedCrewPoolPage] = useState("crew-database");
     const [showFilters, setShowFilters] = useState(true);
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
@@ -143,6 +144,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
 
     // Fetch crew members from V2 API (returns legacy-formatted data via mapper)
     const { data: rawCrewData = [], isLoading: isCrewLoading, error: crewError } = useCrewListV2();
+    
+    console.log('[V2 Crew Pool Component] isLoading:', isCrewLoading, 'error:', crewError, 'dataLength:', rawCrewData?.length);
 
     // Normalize and filter crew data for AG Grid
     // - Converts positions (e.g., "OS_1") to actual ranks (e.g., "OS")
