@@ -1,23 +1,23 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover as DatePopover, PopoverContent as DatePopoverContent, PopoverTrigger as DatePopoverTrigger } from "@/components/ui/popover";
 import { ChevronDown, Calendar as CalendarIcon, Filter } from 'lucide-react';
 import { addMonths, differenceInDays, startOfMonth, endOfMonth, format } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useCrewByRankV2, useCreateDraftV2, useUpdateDraftV2, useCreateEntryV2, mapV2CrewToLegacyFormat } from './hooks/useRotationV2';
-import type { RotationDraftV2, RotationCrewV2 } from './api/rotationApiV2';
 
+// Format date as DD-MMM-YY (e.g., "15 Dec 25")
 function formatAvailabilityDate(dateString: string | null | undefined): string {
   if (!dateString) return '—';
   try {
@@ -33,10 +33,44 @@ function formatAvailabilityDate(dateString: string | null | undefined): string {
   }
 }
 
-interface NewPlanDialogV2Props {
+interface RotationPlan {
+  draftUuid: string; // V2 uses UUID as primary identifier
+  lastEdited: string;
+  vessels: string; // JSON array
+  crew: string;
+  planFromDate: string;
+  planToDate: string;
+  createdByUuid?: string; // V2 uses UUID
+  planStatus: string;
+  assignments: string | null; // JSON array
+}
+
+interface NewPlanDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editPlan?: RotationDraftV2 | null;
+  editPlan?: RotationPlan | null; // Optional plan to edit
+}
+
+interface CrewMember {
+  crewUuid: string; // V2 uses crewUuid as primary identifier
+  name: string;
+  rank: string;
+  pool?: string;
+  crewPool?: string;
+  manningAgent?: string;
+  shipType?: string;
+  nationality?: string;
+  travelStatus?: string;
+  higherCert?: string;
+  performance?: string;
+  nextAvailability?: string | null;
+  experience: {
+    company: number;
+    rank: number;
+    tankers: number;
+    oow: number;
+    endorsements: string;
+  };
 }
 
 interface CrewFilters {
@@ -53,33 +87,42 @@ interface CrewFilters {
   availabilityDate: Date | null;
 }
 
-interface AssignmentV2 {
-  id?: string;
+interface ExistingCrew {
+  crewUuid: string; // V2 uses crewUuid
   vessel: string;
-  vesselUuid?: string;
+  rank: string;
+  name: string;
+  contractStartDate: string;
+  contractEndDate: string;
+  rangeEndDate: string;
+}
+
+// Deployed crew assignment from vessel_planning_v2 - used for global conflict detection
+interface DeployedCrewAssignment {
+  crewMemberId: string | null; // V2 uses crewUuid in API
+  relieverCrewId: string | null; // V2 uses relieverCrewUuid in API
+  vesselUuid: string; // V2 uses vesselUuid consistently
+  signOnDate: string | null;
+  reliefDue: string | null;
+  relieverSignOnDate: string | null;
+  contractPeriodMonths: number | null; // Used to calculate reliever's end date
+}
+
+interface Assignment {
+  id?: string; // Unique identifier for each assignment
+  vessel: string;
+  vesselUuid?: string; // V2 uses vesselUuid
   vesselName?: string;
   rank: string;
   rankId?: string;
-  crewUuid: string;
+  crewUuid: string; // V2 uses crewUuid
   crewName: string;
   joiningDate: string;
   contractPeriod: number;
 }
 
-interface AvailableFilterOptionsV2 {
-  pools: string[];
-  manningAgents: string[];
-  shipTypes: string[];
-  nationalities: string[];
-  timeInCompanyOptions: string[];
-  timeInRankOptions: string[];
-  timeInTankersOptions: string[];
-  travelStatuses: string[];
-  higherCerts: string[];
-  performances: string[];
-}
-
-function CrewFilterDialogV2({
+// Crew Filter Dialog Component
+function CrewFilterDialog({
   open,
   onOpenChange,
   rank,
@@ -92,7 +135,18 @@ function CrewFilterDialogV2({
   rank: string;
   filters: CrewFilters;
   onFiltersChange: (filters: CrewFilters) => void;
-  availableOptions: AvailableFilterOptionsV2;
+  availableOptions: {
+    pools: string[];
+    manningAgents: string[];
+    shipTypes: string[];
+    nationalities: string[];
+    timeInCompanyOptions: string[];
+    timeInRankOptions: string[];
+    timeInTankersOptions: string[];
+    travelStatuses: string[];
+    higherCerts: string[];
+    performances: string[];
+  };
 }) {
   const [localFilters, setLocalFilters] = useState<CrewFilters>(filters);
 
@@ -144,55 +198,55 @@ function CrewFilterDialogV2({
         : title;
     
     return (
-      <div className="mb-3">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-between relative",
-                hasSelection ? "text-foreground pt-5 h-auto min-h-9" : "text-gray-500"
-              )}
-              data-testid={`filter-v2-${category}`}
-            >
-              {hasSelection && (
-                <span className="absolute top-1 left-3 text-[10px] text-muted-foreground">
-                  {title}
-                </span>
-              )}
-              <span className={cn("truncate", hasSelection && "text-sm")}>{displayValue}</span>
-              <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-60 p-2" align="start">
-            <div className="max-h-48 overflow-y-auto">
-              {options.length === 0 ? (
-                <div className="text-sm text-gray-500 text-center py-2">No options available</div>
-              ) : (
-                options.map((option) => (
-                  <div
-                    key={option}
-                    className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+    <div className="mb-3">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-between relative",
+              hasSelection ? "text-foreground pt-5 h-auto min-h-9" : "text-gray-500"
+            )}
+            data-testid={`filter-${category}`}
+          >
+            {hasSelection && (
+              <span className="absolute top-1 left-3 text-[10px] text-muted-foreground">
+                {title}
+              </span>
+            )}
+            <span className={cn("truncate", hasSelection && "text-sm")}>{displayValue}</span>
+            <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-2" align="start">
+          <div className="max-h-48 overflow-y-auto">
+            {options.length === 0 ? (
+              <div className="text-sm text-gray-500 text-center py-2">No options available</div>
+            ) : (
+              options.map((option) => (
+                <div
+                  key={option}
+                  className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                >
+                  <Checkbox
+                    checked={localFilters[category].includes(option)}
+                    onCheckedChange={() => toggleFilter(category, option)}
+                    data-testid={`checkbox-filter-${category}-${option}`}
+                  />
+                  <label
+                    className="text-sm cursor-pointer flex-1"
+                    onClick={() => toggleFilter(category, option)}
                   >
-                    <Checkbox
-                      checked={localFilters[category].includes(option)}
-                      onCheckedChange={() => toggleFilter(category, option)}
-                      data-testid={`checkbox-filter-v2-${category}-${option}`}
-                    />
-                    <label
-                      className="text-sm cursor-pointer flex-1"
-                      onClick={() => toggleFilter(category, option)}
-                    >
-                      {option}
-                    </label>
-                  </div>
-                ))
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-    );
+                    {option}
+                  </label>
+                </div>
+              ))
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
   };
 
   return (
@@ -210,6 +264,11 @@ function CrewFilterDialogV2({
           <FilterSection title="Time in Company" options={availableOptions.timeInCompanyOptions} category="timeInCompany" />
           <FilterSection title="Time in Rank" options={availableOptions.timeInRankOptions} category="timeInRank" />
           <FilterSection title="Time in Tankers" options={availableOptions.timeInTankersOptions} category="timeInTankers" />
+          {/* Temporarily hidden filters
+          <FilterSection title="Travel Status" options={availableOptions.travelStatuses} category="travelStatus" />
+          <FilterSection title="Higher Cert." options={availableOptions.higherCerts} category="higherCert" />
+          <FilterSection title="Performance" options={availableOptions.performances} category="performance" />
+          */}
           
           <div className="mb-3">
             <Popover>
@@ -220,7 +279,7 @@ function CrewFilterDialogV2({
                     "w-full justify-between",
                     localFilters.availabilityDate ? "text-black dark:text-white" : "text-gray-500"
                   )}
-                  data-testid="filter-v2-availabilityDate"
+                  data-testid="filter-availabilityDate"
                 >
                   <span>
                     {localFilters.availabilityDate 
@@ -262,7 +321,7 @@ function CrewFilterDialogV2({
           <Button
             variant="outline"
             onClick={handleReset}
-            data-testid="button-reset-filters-v2"
+            data-testid="button-reset-filters"
           >
             Reset
           </Button>
@@ -270,14 +329,14 @@ function CrewFilterDialogV2({
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              data-testid="button-cancel-filters-v2"
+              data-testid="button-cancel-filters"
             >
               Cancel
             </Button>
             <Button
               onClick={handleApply}
               className="bg-blue-600 hover:bg-blue-700"
-              data-testid="button-apply-filters-v2"
+              data-testid="button-apply-filters"
             >
               Apply
             </Button>
@@ -288,20 +347,36 @@ function CrewFilterDialogV2({
   );
 }
 
-function CrewColumnV2({ 
+// Helper function to check if two date ranges overlap
+function dateRangesOverlap(
+  start1: Date, end1: Date | null,
+  start2: Date, end2: Date | null
+): boolean {
+  // If either end date is null, treat as far future (ongoing assignment)
+  const effectiveEnd1 = end1 || new Date('2100-12-31');
+  const effectiveEnd2 = end2 || new Date('2100-12-31');
+  
+  // Ranges overlap if one starts before the other ends and vice versa
+  return start1 <= effectiveEnd2 && start2 <= effectiveEnd1;
+}
+
+// Crew Column Component - displays available crew for a specific rank
+function CrewColumn({ 
   rank, 
   onCrewSelect, 
   assignments,
-  allDeployedCrewMap,
-  selectedVesselUuids,
+  currentlyDeployedCrewIds,
+  allDeployedAssignments,
   planDateRange,
+  selectedVesselIds
 }: { 
   rank: string; 
-  onCrewSelect: (crew: { id: string; name: string; rank: string }) => void;
-  assignments: AssignmentV2[];
-  allDeployedCrewMap: Map<string, { vesselUuid: string; vesselName: string; signOnDate: string; signOffDate: string | null; contractPeriod?: number }[]>;
-  selectedVesselUuids: Set<string>;
+  onCrewSelect: (crew: { crewUuid: string; name: string; rank: string }) => void; // V2 uses crewUuid
+  assignments: Assignment[];
+  currentlyDeployedCrewIds: Set<string>;
+  allDeployedAssignments: DeployedCrewAssignment[];
   planDateRange: { start: Date; end: Date };
+  selectedVesselIds: string[]; // V2 uses vessel UUIDs
 }) {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [filters, setFilters] = useState<CrewFilters>({
@@ -318,71 +393,103 @@ function CrewColumnV2({
     availabilityDate: null,
   });
 
+  // Get vessel lookup for translating vessel IDs to names
+  const { getVesselName } = useVesselLookup();
+
+  // Normalize rank to strip position suffix (e.g., "3rd Officer_2" -> "3rd Officer")
+  // This ensures we fetch all crew with that rank label, not just those assigned to a specific position
   const { normalizeRank } = useRankNormalization();
   const normalizedRank = normalizeRank(rank);
 
-  const { data: crewMembersV2 = [], isLoading } = useCrewByRankV2(normalizedRank);
+  const { data: crewMembers = [], isLoading } = useQuery<CrewMember[]>({
+    queryKey: [`/api/v2/rotation/crew/by-rank/${normalizedRank}`],
+  });
 
+  // Fetch Manning Agents from Master 021
   const { data: manningAgentsData } = useQuery<any[]>({
     queryKey: ['/api/masters/021/data'],
   });
 
+  // Fetch Crew Pools from Master 022
   const { data: crewPoolsData } = useQuery<any[]>({
     queryKey: ['/api/masters/022/data'],
   });
 
-  const crewMembers = useMemo(() => {
-    return crewMembersV2.map(mapV2CrewToLegacyFormat);
-  }, [crewMembersV2]);
-
-  const availableOptions: AvailableFilterOptionsV2 = useMemo(() => {
+  // Extract unique values for filter options
+  const availableOptions = useMemo(() => {
+    // Use Crew Pools from Master 022 instead of extracting from crew data
     const pools = (crewPoolsData || [])
       .filter((pool: any) => pool.name && !pool.isDeleted)
       .map((pool: any) => pool.name)
       .sort() as string[];
     
+    // Use Manning Agents from Master 021 instead of extracting from crew data
     const manningAgents = (manningAgentsData || [])
       .filter((agent: any) => agent.name && !agent.isDeleted)
       .map((agent: any) => agent.country ? `${agent.name} (${agent.country})` : agent.name)
       .sort() as string[];
     
-    const shipTypes = Array.from(new Set(crewMembersV2.map((c: any) => c.shipType).filter(Boolean))).sort() as string[];
-    const nationalities = Array.from(new Set(crewMembersV2.map((c: any) => c.nationality).filter(Boolean))).sort() as string[];
+    const shipTypes = Array.from(new Set(crewMembers.map(c => c.shipType).filter(Boolean))).sort() as string[];
+    const nationalities = Array.from(new Set(crewMembers.map(c => c.nationality).filter(Boolean))).sort() as string[];
+    const travelStatuses = Array.from(new Set(crewMembers.map(c => c.travelStatus).filter(Boolean))).sort() as string[];
+    const higherCerts = Array.from(new Set(crewMembers.map(c => c.higherCert).filter(Boolean))).sort() as string[];
+    const performances = Array.from(new Set(crewMembers.map(c => c.performance).filter(Boolean))).sort() as string[];
+    
+    // Create time range options
+    const timeInCompanyOptions = ['0-1 years', '1-3 years', '3-5 years', '5-10 years', '10+ years'];
+    const timeInRankOptions = ['0-1 years', '1-3 years', '3-5 years', '5+ years'];
+    const timeInTankersOptions = ['0-1 years', '1-3 years', '3-5 years', '5+ years'];
     
     return {
       pools,
       manningAgents,
       shipTypes,
       nationalities,
-      timeInCompanyOptions: ['0-1 years', '1-3 years', '3-5 years', '5-10 years', '10+ years'],
-      timeInRankOptions: ['0-1 years', '1-3 years', '3-5 years', '5+ years'],
-      timeInTankersOptions: ['0-1 years', '1-3 years', '3-5 years', '5+ years'],
-      travelStatuses: [],
-      higherCerts: [],
-      performances: [],
+      timeInCompanyOptions,
+      timeInRankOptions,
+      timeInTankersOptions,
+      travelStatuses,
+      higherCerts,
+      performances,
     };
-  }, [crewMembersV2, manningAgentsData, crewPoolsData]);
+  }, [crewMembers, manningAgentsData, crewPoolsData]);
 
-  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
-    if (key === 'availabilityDate') return value !== null;
-    return Array.isArray(value) && value.length > 0;
-  });
-
+  // Apply filters to crew members
   const filteredCrewMembers = useMemo(() => {
     return crewMembers.filter(crew => {
-      if (filters.pools.length > 0 && !filters.pools.includes(crew.pool || '')) return false;
-      if (filters.nationalities.length > 0 && !filters.nationalities.includes(crew.nationality || '')) return false;
+      // Pool filter - check both pool and crewPool fields for compatibility
+      if (filters.pools.length > 0 && !filters.pools.includes(crew.crewPool || crew.pool || '')) return false;
       
+      // Manning agent filter - compare agent names (filter options are "Name (Country)" format)
       if (filters.manningAgents.length > 0) {
         const crewAgent = crew.manningAgent || '';
+        // Check if any selected filter matches the crew's manning agent
+        // Filter format is "Name (Country)", crew data might just be the name
         const matches = filters.manningAgents.some(filterAgent => {
+          // Extract just the name from "Name (Country)" format if present
           const agentName = filterAgent.replace(/\s*\([^)]*\)$/, '');
           return crewAgent === filterAgent || crewAgent === agentName;
         });
         if (!matches) return false;
       }
       
-      if (filters.timeInCompany.length > 0 && crew.experience) {
+      // Ship type filter
+      if (filters.shipTypes.length > 0 && !filters.shipTypes.includes(crew.shipType || '')) return false;
+      
+      // Nationality filter
+      if (filters.nationalities.length > 0 && !filters.nationalities.includes(crew.nationality || '')) return false;
+      
+      // Travel status filter
+      if (filters.travelStatus.length > 0 && !filters.travelStatus.includes(crew.travelStatus || '')) return false;
+      
+      // Higher cert filter
+      if (filters.higherCert.length > 0 && !filters.higherCert.includes(crew.higherCert || '')) return false;
+      
+      // Performance filter
+      if (filters.performance.length > 0 && !filters.performance.includes(crew.performance || '')) return false;
+      
+      // Time in company filter
+      if (filters.timeInCompany.length > 0) {
         const timeInCompany = crew.experience.company;
         const matchesRange = filters.timeInCompany.some(range => {
           if (range === '0-1 years') return timeInCompany >= 0 && timeInCompany <= 1;
@@ -395,7 +502,8 @@ function CrewColumnV2({
         if (!matchesRange) return false;
       }
       
-      if (filters.timeInRank.length > 0 && crew.experience) {
+      // Time in rank filter
+      if (filters.timeInRank.length > 0) {
         const timeInRank = crew.experience.rank;
         const matchesRange = filters.timeInRank.some(range => {
           if (range === '0-1 years') return timeInRank >= 0 && timeInRank <= 1;
@@ -407,7 +515,8 @@ function CrewColumnV2({
         if (!matchesRange) return false;
       }
       
-      if (filters.timeInTankers.length > 0 && crew.experience) {
+      // Time in tankers filter
+      if (filters.timeInTankers.length > 0) {
         const timeInTankers = crew.experience.tankers;
         const matchesRange = filters.timeInTankers.some(range => {
           if (range === '0-1 years') return timeInTankers >= 0 && timeInTankers <= 1;
@@ -419,103 +528,171 @@ function CrewColumnV2({
         if (!matchesRange) return false;
       }
       
+      // Availability date filter - show crew available on or before selected date
       if (filters.availabilityDate) {
-        if (!crew.nextAvailability) return true;
+        // If crew has no nextAvailability date set, they are considered available immediately
+        if (!crew.nextAvailability) {
+          // Crew with no availability date set is treated as available now
+          return true;
+        }
+        
         try {
           const crewAvailabilityDate = new Date(crew.nextAvailability);
-          if (crewAvailabilityDate > filters.availabilityDate) return false;
+          const filterDate = filters.availabilityDate;
+          
+          // Only include crew whose availability date is on or before the filter date
+          if (crewAvailabilityDate > filterDate) {
+            return false;
+          }
         } catch {
-          // pass
+          // If date parsing fails, include the crew member
         }
-      }
-      
-      if (filters.shipTypes.length > 0) {
-        const crewShipType = crew.vesselType || crew.shipType || '';
-        const matchesShipType = filters.shipTypes.some(type => 
-          crewShipType.toLowerCase().includes(type.toLowerCase())
-        );
-        if (!matchesShipType) return false;
       }
       
       return true;
     });
   }, [crewMembers, filters]);
 
-  const getCrewAssignmentCount = (crewId: string) => {
+  // Get count of vessels crew is assigned to
+  const getCrewAssignmentCount = (crewUuid: string) => {
     const vesselCount = new Set(
       assignments
-        .filter(a => a.crewUuid === crewId)
+        .filter(a => a.crewUuid === crewUuid)
         .map(a => a.vessel)
     ).size;
     return vesselCount;
   };
-
-  const dateRangesOverlap = (
-    start1: Date, end1: Date | null,
-    start2: Date, end2: Date | null
-  ): boolean => {
-    const effectiveEnd1 = end1 || new Date('2100-12-31');
-    const effectiveEnd2 = end2 || new Date('2100-12-31');
-    return start1 <= effectiveEnd2 && start2 <= effectiveEnd1;
-  };
-
-  const hasGlobalDeploymentConflict = (crewId: string): { hasConflict: boolean; vesselName?: string } => {
-    const deployments = allDeployedCrewMap.get(crewId) || [];
-    
-    for (const deployment of deployments) {
-      if (selectedVesselUuids.has(deployment.vesselUuid)) continue;
+  
+  // Get color based on deployment status and assignment count
+  // Priority: Red (deployed on overlapping period) > Brown (2+ vessels) > Blue (1 vessel) > Default
+  const getCrewNameColor = (crewUuid: string) => {
+    // First priority: Check if crew has an overlapping deployment on ANY vessel
+    // This checks all vessels, not just the selected ones for planning
+    const hasOverlappingDeployment = allDeployedAssignments.some(assignment => {
+      // Check if this crew member is the primary crew or reliever
+      const isThisCrew = assignment.crewMemberId === crewUuid || assignment.relieverCrewId === crewUuid;
+      if (!isThisCrew) return false;
       
-      try {
-        const deployStart = new Date(deployment.signOnDate);
-        let deployEnd: Date | null = deployment.signOffDate ? new Date(deployment.signOffDate) : null;
-        
-        if (!deployEnd && deployment.contractPeriod && deployStart) {
-          deployEnd = new Date(deployStart);
-          deployEnd.setMonth(deployEnd.getMonth() + deployment.contractPeriod);
+      // Skip assignments on the currently selected vessels (we're replacing them)
+      if (selectedVesselIds.includes(assignment.vesselUuid)) return false;
+      
+      // Determine the assignment date range for this crew member
+      let assignmentStart: Date | null = null;
+      let assignmentEnd: Date | null = null;
+      
+      if (assignment.crewMemberId === crewUuid) {
+        // Primary crew - uses signOnDate and reliefDue
+        assignmentStart = assignment.signOnDate ? new Date(assignment.signOnDate) : null;
+        assignmentEnd = assignment.reliefDue ? new Date(assignment.reliefDue) : null;
+      } else if (assignment.relieverCrewId === crewUuid) {
+        // Reliever - uses relieverSignOnDate and calculates end date from contractPeriodMonths
+        assignmentStart = assignment.relieverSignOnDate ? new Date(assignment.relieverSignOnDate) : null;
+        // Calculate reliever end date using contractPeriodMonths (defaulting to 6 months only if not available)
+        if (assignmentStart) {
+          const contractMonths = assignment.contractPeriodMonths || 6; // Use actual contract period or 6-month default
+          assignmentEnd = new Date(assignmentStart);
+          assignmentEnd.setMonth(assignmentEnd.getMonth() + contractMonths);
         }
-        
-        if (dateRangesOverlap(planDateRange.start, planDateRange.end, deployStart, deployEnd)) {
-          return { hasConflict: true, vesselName: deployment.vesselName };
-        }
-      } catch {
-        continue;
       }
+      
+      // If we don't have a start date, we can't determine overlap - be conservative and show as available
+      if (!assignmentStart) return false;
+      
+      // Check if this assignment overlaps with the plan date range
+      return dateRangesOverlap(planDateRange.start, planDateRange.end, assignmentStart, assignmentEnd);
+    });
+    
+    if (hasOverlappingDeployment) {
+      return 'text-red-600'; // Red for crew with overlapping deployment on another vessel
     }
     
-    return { hasConflict: false };
+    // Second priority: Check if crew is deployed on the currently selected vessels
+    if (currentlyDeployedCrewIds.has(crewUuid)) {
+      return 'text-red-600'; // Red for currently deployed crew on selected vessels
+    }
+    
+    // Third priority: Check draft assignments
+    const count = getCrewAssignmentCount(crewUuid);
+    if (count >= 2) return 'text-[#814C02]'; // Brown for 2+ vessels in draft
+    if (count === 1) return 'text-blue-600'; // Blue for 1 vessel in draft
+    
+    return ''; // Default color for no assignments
   };
 
-  const getCrewNameColor = (crewId: string) => {
-    const globalConflict = hasGlobalDeploymentConflict(crewId);
-    if (globalConflict.hasConflict) return 'text-red-600';
-    
-    const count = getCrewAssignmentCount(crewId);
-    if (count >= 2) return 'text-[#814C02]';
-    if (count === 1) return 'text-blue-600';
-    return '';
-  };
+  // Get vessel name(s) for crew that are red (deployed) or blue (already planned)
+  // Returns the vessel names to display in tooltip on hover
+  const getCrewVesselInfo = (crewUuid: string): string | null => {
+    const vesselNames: string[] = [];
 
-  const getCrewVesselInfo = (crewId: string): string | null => {
-    const globalConflict = hasGlobalDeploymentConflict(crewId);
-    if (globalConflict.hasConflict && globalConflict.vesselName) {
-      return globalConflict.vesselName;
+    // Check for overlapping deployments on other vessels (red color reason)
+    allDeployedAssignments.forEach(assignment => {
+      const isThisCrew = assignment.crewMemberId === crewUuid || assignment.relieverCrewId === crewUuid;
+      if (!isThisCrew) return;
+      
+      // Skip assignments on currently selected vessels
+      if (selectedVesselIds.includes(assignment.vesselUuid)) return;
+      
+      // Check date overlap
+      let assignmentStart: Date | null = null;
+      let assignmentEnd: Date | null = null;
+      
+      if (assignment.crewMemberId === crewUuid) {
+        assignmentStart = assignment.signOnDate ? new Date(assignment.signOnDate) : null;
+        assignmentEnd = assignment.reliefDue ? new Date(assignment.reliefDue) : null;
+      } else if (assignment.relieverCrewId === crewUuid) {
+        assignmentStart = assignment.relieverSignOnDate ? new Date(assignment.relieverSignOnDate) : null;
+        if (assignmentStart) {
+          const contractMonths = assignment.contractPeriodMonths || 6;
+          assignmentEnd = new Date(assignmentStart);
+          assignmentEnd.setMonth(assignmentEnd.getMonth() + contractMonths);
+        }
+      }
+      
+      if (!assignmentStart) return;
+      
+      if (dateRangesOverlap(planDateRange.start, planDateRange.end, assignmentStart, assignmentEnd)) {
+        const vesselName = getVesselName(assignment.vesselUuid);
+        if (vesselName && !vesselNames.includes(vesselName)) {
+          vesselNames.push(vesselName);
+        }
+      }
+    });
+
+    // If we found overlapping deployments, return those vessels (red - currently deployed)
+    if (vesselNames.length > 0) {
+      return vesselNames.join(', ');
     }
+
+    // Check draft assignments (blue color reason)
+    const draftVessels = new Set(
+      assignments
+        .filter(a => a.crewUuid === crewUuid)
+        .map(a => a.vessel)
+    );
     
-    const crewAssignments = assignments.filter(a => a.crewUuid === crewId);
-    if (crewAssignments.length > 0) {
-      return crewAssignments.map(a => a.vessel).join(', ');
+    if (draftVessels.size > 0) {
+      return Array.from(draftVessels).join(', ');
     }
-    
+
     return null;
   };
+  
+  // Check if any filters are active
+  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
+    if (key === 'availabilityDate') {
+      return value !== null;
+    }
+    return Array.isArray(value) && value.length > 0;
+  });
 
   if (isLoading) {
     return (
-      <div className="w-64 flex-shrink-0">
-        <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-t font-semibold">
-          {rank}
+      <div className="w-64">
+        <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-t font-semibold flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-gray-400 rounded" />
+          <span>{rank}</span>
         </div>
-        <div className="p-4 text-center text-gray-500 text-sm">Loading crew...</div>
+        <div className="p-4 text-center text-gray-500">Loading...</div>
       </div>
     );
   }
@@ -524,12 +701,12 @@ function CrewColumnV2({
     <>
       <div className="w-64 flex-shrink-0">
         <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-t font-semibold flex items-center gap-2">
-          <Checkbox data-testid={`checkbox-select-all-v2-${rank}`} />
+          <Checkbox data-testid={`checkbox-select-all-${rank}`} />
           <span className="flex-1">{rank}</span>
           <button
             onClick={() => setFilterDialogOpen(true)}
             className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${hasActiveFilters ? 'text-blue-600' : 'text-gray-600'}`}
-            data-testid={`button-filter-v2-${rank}`}
+            data-testid={`button-filter-${rank}`}
           >
             <Filter className="h-4 w-4" />
           </button>
@@ -542,21 +719,22 @@ function CrewColumnV2({
           ) : (
             filteredCrewMembers.map((crew) => (
               <div
-                key={crew.id}
+                key={crew.crewUuid}
                 className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
-                onClick={() => onCrewSelect({ id: crew.id, name: crew.name, rank: crew.rank })}
+                onClick={() => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.name, rank: crew.rank })}
               >
                 <Checkbox 
-                  data-testid={`checkbox-crew-v2-${crew.id}`}
+                  data-testid={`checkbox-crew-${crew.crewUuid}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onCrewSelect({ id: crew.id, name: crew.name, rank: crew.rank });
+                    onCrewSelect({ crewUuid: crew.crewUuid, name: crew.name, rank: crew.rank });
                   }}
                 />
                 <div className="flex-1">
                   {(() => {
-                    const nameColor = getCrewNameColor(crew.id);
-                    const vesselInfo = getCrewVesselInfo(crew.id);
+                    const nameColor = getCrewNameColor(crew.crewUuid);
+                    const vesselInfo = getCrewVesselInfo(crew.crewUuid);
+                    // Show tooltip for red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
                     const hasColoredStatus = nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
                     const showVesselTooltip = vesselInfo && hasColoredStatus;
                     
@@ -589,16 +767,16 @@ function CrewColumnV2({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="text-xs text-gray-500 mt-1 cursor-help">
-                          {crew.experience?.company ?? 0} / {crew.experience?.rank ?? 0} / {crew.experience?.tankers ?? 0} / {crew.experience?.oow ?? 0} / {crew.experience?.endorsements || '—'}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
+                          {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs">
                         <div className="text-xs space-y-1">
-                          <div><span className="font-medium">Company (Yrs):</span> {crew.experience?.company ?? 0}</div>
-                          <div><span className="font-medium">Rank (Yrs):</span> {crew.experience?.rank ?? 0}</div>
-                          <div><span className="font-medium">Tankers (Yrs):</span> {crew.experience?.tankers ?? 0}</div>
-                          <div><span className="font-medium">OOW (Yrs):</span> {crew.experience?.oow ?? 0}</div>
-                          <div><span className="font-medium">Endorsements:</span> {crew.experience?.endorsements || '—'}</div>
+                          <div><span className="font-medium">Company (Yrs):</span> {crew.experience.company}</div>
+                          <div><span className="font-medium">Rank (Yrs):</span> {crew.experience.rank}</div>
+                          <div><span className="font-medium">Tankers (Yrs):</span> {crew.experience.tankers}</div>
+                          <div><span className="font-medium">OOW (Yrs):</span> {crew.experience.oow}</div>
+                          <div><span className="font-medium">Endorsements:</span> {crew.experience.endorsements || '—'}</div>
                           <div><span className="font-medium">Next Availability:</span> {crew.nextAvailability ? formatAvailabilityDate(crew.nextAvailability) : '—'}</div>
                         </div>
                       </TooltipContent>
@@ -611,7 +789,7 @@ function CrewColumnV2({
         </div>
       </div>
       
-      <CrewFilterDialogV2
+      <CrewFilterDialog
         open={filterDialogOpen}
         onOpenChange={setFilterDialogOpen}
         rank={rank}
@@ -623,13 +801,14 @@ function CrewColumnV2({
   );
 }
 
-function DatePeriodDialogV2({
+// Date Period Dialog - for selecting joining date and contract period
+function DatePeriodDialog({
   open,
   onOpenChange,
   onApply,
   onUnassign,
   crewName,
-  crewId,
+  crewUuid,
   vesselName,
   rank,
   assignments = [],
@@ -640,29 +819,32 @@ function DatePeriodDialogV2({
   onApply: (joiningDate: Date, contractPeriod: number) => void;
   onUnassign: () => void;
   crewName: string;
-  crewId: string;
+  crewUuid: string;
   vesselName: string;
   rank: string;
-  assignments?: AssignmentV2[];
+  assignments?: Assignment[];
   initialValues?: { joiningDate: string; contractPeriod: number };
 }) {
   const [joiningDate, setJoiningDate] = useState<Date>();
   const [contractPeriod, setContractPeriod] = useState<string>('');
   const [unassignChecked, setUnassignChecked] = useState(false);
 
+  // Check if crew is already assigned to this vessel and rank
   const isAlreadyAssigned = useMemo(() => {
     return assignments.some(a => 
-      a.crewUuid === crewId && 
+      a.crewUuid === crewUuid && 
       a.vessel === vesselName && 
       a.rank === rank
     );
-  }, [assignments, crewId, vesselName, rank]);
+  }, [assignments, crewUuid, vesselName, rank]);
 
+  // Pre-populate form when editing (initialValues provided)
   useEffect(() => {
     if (open && initialValues) {
       setJoiningDate(new Date(initialValues.joiningDate));
       setContractPeriod(initialValues.contractPeriod.toString());
     } else if (!open) {
+      // Reset form when dialog closes
       setJoiningDate(undefined);
       setContractPeriod('');
       setUnassignChecked(false);
@@ -670,20 +852,24 @@ function DatePeriodDialogV2({
   }, [open, initialValues]);
 
   const handleApply = () => {
+    // Priority: If unassign is checked, unassign regardless of other fields
     if (unassignChecked) {
       onUnassign();
       onOpenChange(false);
+      // Reset
       setJoiningDate(undefined);
       setContractPeriod('');
       setUnassignChecked(false);
       return;
     }
 
+    // Otherwise, validate and create assignment
     if (!joiningDate || !contractPeriod) {
       return;
     }
     onApply(joiningDate, parseInt(contractPeriod));
     onOpenChange(false);
+    // Reset
     setJoiningDate(undefined);
     setContractPeriod('');
     setUnassignChecked(false);
@@ -691,20 +877,20 @@ function DatePeriodDialogV2({
 
   const handleCancel = () => {
     onOpenChange(false);
+    // Reset
     setJoiningDate(undefined);
     setContractPeriod('');
     setUnassignChecked(false);
   };
 
-  const isEditMode = !!initialValues;
-  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" data-testid="dialog-date-period-v2">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? 'Edit Assignment' : 'Assign'} - {crewName}</DialogTitle>
+          <DialogTitle>Assign {crewName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {/* Joining Date */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Joining Date</label>
             <DatePopover>
@@ -715,7 +901,7 @@ function DatePeriodDialogV2({
                     "w-full justify-start text-left font-normal",
                     !joiningDate && "text-muted-foreground"
                   )}
-                  data-testid="button-joining-date-v2"
+                  data-testid="button-joining-date"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {joiningDate ? format(joiningDate, "PPP") : "Pick a date"}
@@ -727,16 +913,17 @@ function DatePeriodDialogV2({
                   selected={joiningDate}
                   onSelect={setJoiningDate}
                   initialFocus
-                  data-testid="calendar-joining-date-v2"
+                  data-testid="calendar-joining-date"
                 />
               </DatePopoverContent>
             </DatePopover>
           </div>
 
+          {/* Contract Period */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Contract Period (Months)</label>
             <Select value={contractPeriod} onValueChange={setContractPeriod}>
-              <SelectTrigger className="w-full" data-testid="select-contract-period-v2">
+              <SelectTrigger className="w-full" data-testid="select-contract-period">
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
               <SelectContent>
@@ -749,16 +936,17 @@ function DatePeriodDialogV2({
             </Select>
           </div>
 
+          {/* Unassign Checkbox */}
           <div className="flex items-center gap-2 pt-2">
             <Checkbox
-              id="unassign-checkbox-v2"
+              id="unassign-checkbox"
               checked={unassignChecked}
               onCheckedChange={(checked) => setUnassignChecked(checked as boolean)}
               disabled={!isAlreadyAssigned}
-              data-testid="checkbox-unassign-v2"
+              data-testid="checkbox-unassign"
             />
             <label
-              htmlFor="unassign-checkbox-v2"
+              htmlFor="unassign-checkbox"
               className={cn(
                 "text-sm font-medium cursor-pointer",
                 isAlreadyAssigned ? "text-red-600" : "text-gray-400"
@@ -773,7 +961,7 @@ function DatePeriodDialogV2({
           <Button
             variant="outline"
             onClick={handleCancel}
-            data-testid="button-cancel-assignment-v2"
+            data-testid="button-cancel-assignment"
           >
             Cancel
           </Button>
@@ -781,7 +969,7 @@ function DatePeriodDialogV2({
             onClick={handleApply}
             disabled={!unassignChecked && (!joiningDate || !contractPeriod)}
             className="bg-blue-600 hover:bg-blue-700"
-            data-testid="button-apply-assignment-v2"
+            data-testid="button-apply-assignment"
           >
             Apply
           </Button>
@@ -791,440 +979,1435 @@ function DatePeriodDialogV2({
   );
 }
 
-export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialogV2Props) {
-  const { toast } = useToast();
-  const { getVesselIds, getVesselId } = useVesselLookup();
+// Vessel Timeline Component - shows existing crew (top) and new assignments (bottom)
+function VesselTimelineView({ 
+  vessels, 
+  queryRanks,
+  displayRanks,
+  selectedVessel,
+  onVesselSelect,
+  onAssignmentClick,
+  dateRange,
+  assignments = []
+}: { 
+  vessels: string[]; 
+  queryRanks: string[];
+  displayRanks: string[];
+  selectedVessel: string;
+  onVesselSelect: (vessel: string) => void;
+  onAssignmentClick?: (assignment: Assignment) => void;
+  dateRange: { start: Date; end: Date };
+  assignments?: Assignment[];
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
-  const createDraftMutation = useCreateDraftV2();
-  const updateDraftMutation = useUpdateDraftV2();
-  const createEntryMutation = useCreateEntryV2();
+  // Use vessel lookup hook for translating vessel names to IDs
+  const { getVesselIds } = useVesselLookup();
+  
+  // Use custom date range from props
+  const today = useMemo(() => new Date(), []);
+  const startDate = dateRange.start;
+  const endDate = dateRange.end;
+  const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
+  
+  // Build query params for fetching existing crew - translate vessel names to IDs
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append('filterType', 'vessel');
+    const vesselIds = getVesselIds(vessels);
+    vesselIds.forEach(id => params.append('vessels', id));
+    queryRanks.forEach(r => params.append('rank', r));
+    return params;
+  }, [vessels, queryRanks, getVesselIds]);
+  
+  // Fetch existing crew for selected vessels and ALL ranks (including base ranks)
+  const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
+    queryKey: ['/api/rotation/due-crew', queryParams.toString()],
+    queryFn: () => fetch(`/api/rotation/due-crew?${queryParams.toString()}`).then(res => res.json()),
+    enabled: vessels.length > 0 && queryRanks.length > 0,
+  });
+  
+  // Build rank mapping: map base ranks to their variants for crew assignment
+  const rankMapping = useMemo(() => {
+    const mapping = new Map<string, string[]>();
+    
+    displayRanks.forEach(rank => {
+      if (rank.includes('_')) {
+        // This is a variant, extract base rank
+        const baseRank = rank.substring(0, rank.lastIndexOf('_'));
+        if (!mapping.has(baseRank)) {
+          mapping.set(baseRank, []);
+        }
+        mapping.get(baseRank)!.push(rank);
+      }
+    });
+    
+    return mapping;
+  }, [displayRanks]);
+  
+  // Group data by vessel and display rank (with smart mapping from base ranks to variants)
+  const groupedData = useMemo(() => {
+    const groups: { [key: string]: { [key: string]: { existing: ExistingCrew[], assignments: Assignment[] } } } = {};
+    
+    vessels.forEach(vessel => {
+      groups[vessel] = {};
+      displayRanks.forEach(rank => {
+        groups[vessel][rank] = {
+          existing: [],
+          assignments: assignments.filter(a => a.vessel === vessel && a.rank === rank),
+        };
+      });
+    });
+    
+    // Distribute existing crew to appropriate display ranks
+    existingCrew.forEach(crew => {
+      const vessel = crew.vessel;
+      const crewRank = crew.rank;
+      
+      // Check if this rank is in displayRanks
+      if (displayRanks.includes(crewRank)) {
+        // Direct match - add to this rank
+        if (groups[vessel]?.[crewRank]) {
+          groups[vessel][crewRank].existing.push(crew);
+        }
+      } else if (rankMapping.has(crewRank)) {
+        // This is a base rank that has variants - distribute to first variant
+        const variants = rankMapping.get(crewRank)!;
+        if (variants.length > 0 && groups[vessel]?.[variants[0]]) {
+          groups[vessel][variants[0]].existing.push(crew);
+        }
+      }
+    });
+    
+    return groups;
+  }, [vessels, displayRanks, existingCrew, assignments, rankMapping]);
+  
+  // Resize canvas to match container
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setCanvasSize({ width: rect.width, height: rect.height });
+      }
+    };
+    
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, []);
+  
+  // Generate month headers
+  const months = useMemo(() => {
+    const result = [];
+    let current = startOfMonth(startDate);
+    while (current <= endOfMonth(endDate)) {
+      result.push({
+        label: format(current, 'MMM'),
+        date: current,
+      });
+      current = addMonths(current, 1);
+    }
+    return result;
+  }, [startDate, endDate]);
+  
+  // Draw timeline
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Safety check: ensure vessels and displayRanks are defined arrays
+    if (!Array.isArray(vessels) || !Array.isArray(displayRanks)) return;
+    
+    const width = canvasSize.width;
+    const height = canvasSize.height;
+    const vesselHeaderHeight = 48;
+    const monthHeaderHeight = 32;
+    const rowHeight = 40;
+    const rankColumnWidth = 100; // Fixed width for rank column
+    const timelineStartX = rankColumnWidth; // Timeline starts after rank column
+    const timelineWidth = width - rankColumnWidth;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    let yOffset = 0;
+    
+    // Draw each vessel section
+    vessels.forEach((vessel, vesselIdx) => {
+      // Draw vessel header (full width)
+      ctx.fillStyle = '#52baf3';
+      ctx.fillRect(0, yOffset, width, vesselHeaderHeight);
+      
+      // Draw radio button (left side)
+      ctx.beginPath();
+      ctx.arc(20, yOffset + 24, 8, 0, 2 * Math.PI);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Draw vessel name (with adequate spacing after radio button)
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText(vessel, 50, yOffset + 30);
+      
+      if (selectedVessel === vessel) {
+        ctx.beginPath();
+        ctx.arc(20, yOffset + 24, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+      }
+      
+      yOffset += vesselHeaderHeight;
+      
+      // Draw header row (rank column + month headers)
+      // Rank column header
+      ctx.fillStyle = '#52baf3';
+      ctx.fillRect(0, yOffset, rankColumnWidth, monthHeaderHeight);
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Rank', rankColumnWidth / 2, yOffset + 20);
+      
+      // Month headers (in timeline area)
+      ctx.fillStyle = '#52baf3';
+      ctx.fillRect(timelineStartX, yOffset, timelineWidth, monthHeaderHeight);
+      
+      ctx.fillStyle = 'white';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      
+      months.forEach((month) => {
+        // Calculate X position based on actual day offset from startDate
+        const monthStart = month.date > startDate ? month.date : startDate;
+        const monthEnd = endOfMonth(month.date) < endDate ? endOfMonth(month.date) : endDate;
+        
+        // Skip months completely outside the visible range
+        if (monthEnd < startDate || monthStart > endDate) return;
+        
+        const monthStartX = timelineStartX + ((differenceInDays(monthStart, startDate) / totalDays) * timelineWidth);
+        const monthEndX = timelineStartX + ((differenceInDays(monthEnd, startDate) / totalDays) * timelineWidth);
+        const x = (monthStartX + monthEndX) / 2; // Center of month within visible range
+        
+        if (x >= timelineStartX && x <= width) {
+          ctx.fillText(month.label, x, yOffset + 20);
+        }
+      });
+      
+      yOffset += monthHeaderHeight;
+      
+      // Draw rank rows
+      displayRanks.forEach((rank, rankIdx) => {
+        const rowData = groupedData[vessel]?.[rank];
+        if (!rowData) return;
+        
+        const y = yOffset;
+        
+        // Draw row background (full width)
+        ctx.fillStyle = rankIdx % 2 === 0 ? '#ffffff' : '#f9fafb';
+        ctx.fillRect(0, y, width, rowHeight);
+        
+        // Draw rank column background with border
+        ctx.fillStyle = '#f3f4f6';
+        ctx.fillRect(0, y, rankColumnWidth, rowHeight);
+        
+        // Draw rank label (centered in rank column)
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(rank, rankColumnWidth / 2, y + 25);
+        
+        // Draw vertical separator line between rank and timeline
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(rankColumnWidth - 0.5, y);
+        ctx.lineTo(rankColumnWidth - 0.5, y + rowHeight);
+        ctx.stroke();
+        
+        // Draw existing crew bars (top half) - in timeline area only
+        const topBarY = y + 5;
+        const topBarHeight = 15;
+        
+        rowData.existing.forEach(crew => {
+          const contractStart = new Date(crew.contractStartDate);
+          const contractEnd = new Date(crew.contractEndDate);
+          const rangeEnd = new Date(crew.rangeEndDate);
+          
+          const greenStart = Math.max(timelineStartX, timelineStartX + ((differenceInDays(contractStart, startDate) / totalDays) * timelineWidth));
+          const greenEnd = Math.max(timelineStartX, timelineStartX + ((differenceInDays(contractEnd, startDate) / totalDays) * timelineWidth));
+          const yellowEnd = Math.max(timelineStartX, timelineStartX + ((differenceInDays(rangeEnd, startDate) / totalDays) * timelineWidth));
+          
+          // Draw green bar
+          if (greenEnd > greenStart) {
+            ctx.fillStyle = 'rgba(2, 169, 33, 0.5)';
+            ctx.fillRect(greenStart, topBarY, greenEnd - greenStart, topBarHeight);
+          }
+          
+          // Draw yellow bar
+          if (yellowEnd > greenEnd) {
+            ctx.fillStyle = 'rgba(241, 205, 29, 0.5)';
+            ctx.fillRect(greenEnd, topBarY, yellowEnd - greenEnd, topBarHeight);
+          }
+          
+          // Draw pink bar (overdue)
+          if (rangeEnd < today) {
+            const todayX = timelineStartX + ((differenceInDays(today, startDate) / totalDays) * timelineWidth);
+            const pinkStart = yellowEnd;
+            const pinkEnd = todayX;
+            if (pinkEnd > pinkStart) {
+              ctx.fillStyle = 'rgba(229, 78, 96, 0.5)';
+              ctx.fillRect(pinkStart, topBarY, pinkEnd - pinkStart, topBarHeight);
+            }
+          }
+          
+          // Draw crew name on the bar
+          ctx.fillStyle = '#1f2937';
+          ctx.font = '11px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(crew.name, greenStart + 4, topBarY + 11);
+        });
+        
+        // Draw new assignment bars (bottom half) - in timeline area only
+        const bottomBarY = y + 20;
+        const bottomBarHeight = 15;
+        
+        rowData.assignments.forEach(assignment => {
+          const joiningDate = new Date(assignment.joiningDate);
+          const contractEndDate = addMonths(joiningDate, assignment.contractPeriod);
+          
+          const blueStart = Math.max(timelineStartX, timelineStartX + ((differenceInDays(joiningDate, startDate) / totalDays) * timelineWidth));
+          const blueEnd = Math.max(timelineStartX, timelineStartX + ((differenceInDays(contractEndDate, startDate) / totalDays) * timelineWidth));
+          
+          if (blueEnd > blueStart) {
+            ctx.fillStyle = 'rgba(82, 186, 243, 0.7)';
+            ctx.fillRect(blueStart, bottomBarY, blueEnd - blueStart, bottomBarHeight);
+            
+            // Draw crew name on the bar
+            ctx.fillStyle = 'white';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(assignment.crewName, blueStart + 4, bottomBarY + 11);
+          }
+        });
+        
+        // Draw row divider
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, y + rowHeight - 0.5);
+        ctx.lineTo(width, y + rowHeight - 0.5);
+        ctx.stroke();
+        
+        yOffset += rowHeight;
+      });
+    });
+    
+    // Draw "today" vertical line (only in timeline area)
+    const todayX = timelineStartX + ((differenceInDays(today, startDate) / totalDays) * timelineWidth);
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(todayX, 0);
+    ctx.lineTo(todayX, yOffset);
+    ctx.stroke();
+    
+  }, [vessels, displayRanks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasSize]);
+  
+  // Handle canvas click for vessel selection and assignment editing
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const vesselHeaderHeight = 48;
+    const monthHeaderHeight = 32;
+    const rowHeight = 40;
+    const rankColumnWidth = 100;
+    const timelineStartX = rankColumnWidth;
+    const timelineWidth = canvasSize.width - rankColumnWidth;
+    
+    let yOffset = 0;
+    
+    // Check each vessel section
+    for (const vessel of vessels) {
+      const headerStart = yOffset;
+      const headerEnd = yOffset + vesselHeaderHeight;
+      
+      // Check if clicked on vessel header
+      if (y >= headerStart && y < headerEnd) {
+        onVesselSelect(vessel);
+        return;
+      }
+      
+      yOffset += vesselHeaderHeight + monthHeaderHeight;
+      
+      // Check if clicked on an assignment bar in any rank row
+      for (let rankIdx = 0; rankIdx < displayRanks.length; rankIdx++) {
+        const rank = displayRanks[rankIdx];
+        const rowY = yOffset + (rankIdx * rowHeight);
+        const bottomBarY = rowY + 20;
+        const bottomBarHeight = 15;
+        
+        // Check if click is within the assignment bar Y range
+        if (y >= bottomBarY && y <= bottomBarY + bottomBarHeight && x >= timelineStartX) {
+          // Find assignments for this vessel/rank
+          const rowData = groupedData[vessel]?.[rank];
+          if (rowData?.assignments) {
+            // Check each assignment to see if click is within its X range
+            for (const assignment of rowData.assignments) {
+              const joiningDate = new Date(assignment.joiningDate);
+              const contractEndDate = addMonths(joiningDate, assignment.contractPeriod);
+              
+              const blueStart = Math.max(timelineStartX, timelineStartX + ((differenceInDays(joiningDate, startDate) / totalDays) * timelineWidth));
+              const blueEnd = Math.max(timelineStartX, timelineStartX + ((differenceInDays(contractEndDate, startDate) / totalDays) * timelineWidth));
+              
+              if (x >= blueStart && x <= blueEnd) {
+                // Clicked on this assignment bar
+                if (onAssignmentClick) {
+                  onAssignmentClick(assignment);
+                }
+                return;
+              }
+            }
+          }
+        }
+      }
+      
+      yOffset += displayRanks.length * rowHeight;
+    }
+  };
+  
+  return (
+    <div ref={containerRef} className="w-full h-full">
+      <canvas
+        ref={canvasRef}
+        width={canvasSize.width}
+        height={canvasSize.height}
+        className="block cursor-pointer"
+        onClick={handleCanvasClick}
+        data-testid="canvas-vessel-timeline"
+      />
+    </div>
+  );
+}
 
+export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialogProps) {
+  const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
+  const [selectedRanks, setSelectedRanks] = useState<string[]>([]); // Base ranks selected in dropdown
+  const [selectedRoleVariantsState, setSelectedRoleVariantsState] = useState<string[]>([]); // Specific role variants selected
+  const [hasManualVariants, setHasManualVariants] = useState(false); // Track if user manually modified variants
+  const [selectedVessel, setSelectedVessel] = useState<string>('');
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [dateDialogOpen, setDateDialogOpen] = useState(false);
+  const [selectedCrew, setSelectedCrew] = useState<{ crewUuid: string; name: string; rank: string } | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+  const prevSelectedVesselsRef = useRef<string[]>([]);
+  const isInitialLoadRef = useRef(false);
+  
+  // Track saved plan ID for new plans - allows subsequent saves to use PATCH instead of POST
+  const [savedPlanId, setSavedPlanId] = useState<number | null>(null);
+  
+  // Reset savedPlanId when dialog closes to prevent stale state
+  useEffect(() => {
+    if (!open) {
+      setSavedPlanId(null);
+    }
+  }, [open]);
+  
+  // Date range state - default is Today - 2 months to Today + 5 months
   const today = useMemo(() => new Date(), []);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: addMonths(today, -2),
     end: addMonths(today, 5)
   });
+  const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
+  
+  const { toast } = useToast();
+  
+  // Vessel lookup hook for name↔ID translation
+  const { getVesselIds } = useVesselLookup();
 
-  const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
-  const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
-  const [selectedVessel, setSelectedVessel] = useState<string>('');
-  const [assignments, setAssignments] = useState<AssignmentV2[]>([]);
-
-  const [datePeriodDialogOpen, setDatePeriodDialogOpen] = useState(false);
-  const [selectedCrewForAssignment, setSelectedCrewForAssignment] = useState<{
-    crew: { id: string; name: string; rank: string };
-    vessel: string;
-    rank: string;
-    initialValues?: { joiningDate: string; contractPeriod: number };
-  } | null>(null);
-
-  const { data: vessels = [] } = useQuery({
-    queryKey: ['/api/external/vessels'],
+  // Fetch vessels from master data
+  const { data: vessels = [], isLoading: vesselsLoading } = useQuery<any[]>({
+    queryKey: ['/api/masters/014/data'],
   });
 
-  const { data: companyRanks = [] } = useQuery<any[]>({
+  // Fetch company ranks
+  const { data: companyRanks = [], isLoading: ranksLoading } = useQuery<any[]>({
     queryKey: ['/api/company-ranks'],
-    select: (data: any[]) => {
-      return data.filter((rank: any) => !rank.isRoleRow && !rank.is_role_row);
-    }
   });
 
-  const { data: allVesselPlanningV2 = [] } = useQuery<any[]>({
+  // Fetch vessel-specific ranks for selected vessels
+  // This is used to filter role variants to only show positions that exist on the selected vessel(s)
+  const selectedVesselIdsForRanks = useMemo(() => {
+    return getVesselIds(selectedVessels);
+  }, [selectedVessels, getVesselIds]);
+
+  // Fetch vessel ranks for ALL selected vessels and combine them
+  // Each rank entry includes vesselId for per-vessel slot counting
+  const { data: vesselSpecificRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/vessel-revisions/ranks', selectedVesselIdsForRanks],
+    queryFn: async () => {
+      if (selectedVesselIdsForRanks.length === 0) return [];
+      
+      // Fetch ranks for each selected vessel and combine, tagging each with vesselId
+      const allRanks: any[] = [];
+      for (const vesselId of selectedVesselIdsForRanks) {
+        try {
+          const response = await fetch(`/api/vessel-revisions/ranks/${vesselId}`);
+          if (response.ok) {
+            const ranks = await response.json();
+            // Tag each rank with its source vesselId for per-vessel slot counting
+            const taggedRanks = ranks.map((rank: any) => ({ ...rank, _vesselId: vesselId }));
+            allRanks.push(...taggedRanks);
+          }
+        } catch (error) {
+          console.error(`Failed to fetch ranks for vessel ${vesselId}:`, error);
+        }
+      }
+      return allRanks;
+    },
+    enabled: selectedVesselIdsForRanks.length > 0,
+  });
+
+  // Build position information from vessel-specific ranks
+  // API now provides displayRole which handles the per-vessel slot counting logic:
+  // - If a vessel has ONE slot for a rank: displayRole = base Rank Label (e.g., "Fitter")
+  // - If a vessel has MULTIPLE slots for a rank: displayRole = suffixed position (e.g., "Fitter_1", "Fitter_2")
+  const { vesselValidPositions, vesselBaseRanksWithDirectSlots } = useMemo(() => {
+    const validPositions = new Set<string>();
+    const baseRanksWithDirectSlots = new Set<string>();
+    
+    // Group ranks by vessel for processing
+    const ranksByVessel = new Map<string, any[]>();
+    vesselSpecificRanks.forEach((rank: any) => {
+      const vesselId = rank._vesselId || 'unknown';
+      if (!ranksByVessel.has(vesselId)) {
+        ranksByVessel.set(vesselId, []);
+      }
+      ranksByVessel.get(vesselId)!.push(rank);
+    });
+    
+    // Process each vessel independently, using the API-provided displayRole
+    ranksByVessel.forEach((vesselRanks, vesselId) => {
+      vesselRanks.forEach((rank: any) => {
+        // Use displayRole from API (already has per-vessel slot count logic applied)
+        const displayPosition = rank.displayRole || rank.role || rank.rank;
+        if (displayPosition) {
+          validPositions.add(displayPosition);
+          // Track base ranks that have direct slots (no suffix)
+          if (!displayPosition.includes('_')) {
+            baseRanksWithDirectSlots.add(displayPosition);
+          }
+        }
+      });
+    });
+    
+    return { 
+      vesselValidPositions: validPositions, 
+      vesselBaseRanksWithDirectSlots: baseRanksWithDirectSlots 
+    };
+  }, [vesselSpecificRanks]);
+
+  // Get deduplicated base ranks for dropdown display
+  const baseRanks = useMemo(() => {
+    const uniqueRanks = new Map<string, any>();
+    companyRanks.forEach((rank: any) => {
+      if (!uniqueRanks.has(rank.rank)) {
+        uniqueRanks.set(rank.rank, rank);
+      }
+    });
+    return Array.from(uniqueRanks.values());
+  }, [companyRanks]);
+
+  // Get all role variants for selected base ranks, filtered by vessel-specific positions
+  // Uses Rank Labels (rank field) as source of truth, with suffixed positions only for multi-slot ranks
+  const autoSelectedRoleVariants = useMemo(() => {
+    const variants: string[] = [];
+    const addedPositions = new Set<string>(); // Track what we've added to avoid duplicates
+    const selectedBaseRanks = new Set(selectedRanks);
+    
+    // If we have vessel-specific ranks loaded, use vesselValidPositions which already
+    // has the correct logic: base Rank Labels for single slots, suffixed roles for multi-slots
+    const hasVesselFilter = selectedVessels.length > 0 && vesselValidPositions.size > 0;
+    
+    // Add positions from vesselValidPositions that match our selected base ranks
+    selectedBaseRanks.forEach((baseRank: string) => {
+      if (hasVesselFilter) {
+        // Vessel filter active: use positions from vesselValidPositions
+        vesselValidPositions.forEach((position: string) => {
+          // Check if this position matches the base rank
+          // Either exact match (base rank) or starts with base rank + underscore (variant)
+          const isMatch = position === baseRank || 
+                         (position.startsWith(baseRank) && position.includes('_'));
+          
+          if (isMatch && !addedPositions.has(position)) {
+            variants.push(position);
+            addedPositions.add(position);
+          }
+        });
+      } else {
+        // No vessel filter: fall back to company ranks
+        // First check if this rank has role variants at company level
+        const hasCompanyVariants = companyRanks.some((rank: any) => 
+          rank.rank === baseRank && rank.role && rank.role !== rank.rank
+        );
+        
+        if (hasCompanyVariants) {
+          // Add all variants for this base rank
+          companyRanks.forEach((rank: any) => {
+            if (rank.rank === baseRank && rank.role && rank.role !== rank.rank) {
+              if (!addedPositions.has(rank.role)) {
+                variants.push(rank.role);
+                addedPositions.add(rank.role);
+              }
+            }
+          });
+        } else {
+          // No variants - add base rank
+          if (!addedPositions.has(baseRank)) {
+            variants.push(baseRank);
+            addedPositions.add(baseRank);
+          }
+        }
+      }
+    });
+    
+    return variants;
+  }, [companyRanks, selectedRanks, selectedVessels.length, vesselValidPositions]);
+
+  // Use manually managed state if user has modified it, otherwise use auto-computed variants
+  const selectedRoleVariants = hasManualVariants 
+    ? selectedRoleVariantsState 
+    : autoSelectedRoleVariants;
+
+  // Filter out base ranks when their role variants exist (for timeline display only)
+  const timelineRoleVariants = useMemo(() => {
+    // Find base ranks that have role variants
+    const baseRanksWithVariants = new Set<string>();
+    
+    selectedRoleVariants.forEach(roleVariant => {
+      // Check if this is a role variant (has underscore suffix like "3rd Officer_1")
+      if (roleVariant.includes('_')) {
+        const baseRank = roleVariant.substring(0, roleVariant.lastIndexOf('_'));
+        baseRanksWithVariants.add(baseRank);
+      }
+    });
+    
+    // Filter out base ranks that have variants
+    return selectedRoleVariants.filter(roleVariant => {
+      // Keep role variants (with underscore)
+      if (roleVariant.includes('_')) return true;
+      // Keep base ranks only if they don't have variants
+      return !baseRanksWithVariants.has(roleVariant);
+    });
+  }, [selectedRoleVariants]);
+
+  // Sync selectedRoleVariantsState with autoSelectedRoleVariants when base ranks change (unless manually modified)
+  useEffect(() => {
+    if (!isInitialLoadRef.current && !hasManualVariants) {
+      setSelectedRoleVariantsState(autoSelectedRoleVariants);
+    }
+  }, [autoSelectedRoleVariants, hasManualVariants]);
+
+  // Fetch existing crew data to identify currently deployed crew
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append('filterType', 'vessel');
+    // Translate vessel names to IDs for API call
+    const vesselIds = getVesselIds(selectedVessels);
+    vesselIds.forEach(id => params.append('vessels', id));
+    selectedRoleVariants.forEach(r => params.append('rank', r));
+    return params;
+  }, [selectedVessels, selectedRoleVariants, getVesselIds]);
+
+  const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
+    queryKey: ['/api/rotation/due-crew', queryParams.toString()],
+    queryFn: () => fetch(`/api/rotation/due-crew?${queryParams.toString()}`).then(res => res.json()),
+    enabled: selectedVessels.length > 0 && selectedRanks.length > 0,
+  });
+
+  // Fetch ALL vessel planning data to check for global assignment conflicts
+  // This checks crew assignments across ALL vessels, not just selected ones
+  const { data: allVesselPlanning = [] } = useQuery<DeployedCrewAssignment[]>({
     queryKey: ['/api/v2/vessel/planning'],
   });
 
-  const allDeployedCrewMap = useMemo(() => {
-    const map = new Map<string, { vesselUuid: string; vesselName: string; signOnDate: string; signOffDate: string | null; contractPeriod?: number }[]>();
-    
-    for (const planning of allVesselPlanningV2) {
-      if (planning.crewMemberUuid) {
-        const existing = map.get(planning.crewMemberUuid) || [];
-        existing.push({
-          vesselUuid: planning.vesselUuid,
-          vesselName: planning.vesselName || planning.vesselUuid,
-          signOnDate: planning.signOnDate,
-          signOffDate: planning.signOffDate,
-          contractPeriod: planning.contractPeriod,
-        });
-        map.set(planning.crewMemberUuid, existing);
-      }
-      if (planning.relieverCrewUuid) {
-        const existing = map.get(planning.relieverCrewUuid) || [];
-        existing.push({
-          vesselUuid: planning.vesselUuid,
-          vesselName: planning.vesselName || planning.vesselUuid,
-          signOnDate: planning.relieverSignOnDate || planning.signOnDate,
-          signOffDate: null,
-          contractPeriod: planning.relieverContractPeriod || 4,
-        });
-        map.set(planning.relieverCrewUuid, existing);
-      }
-    }
-    
-    return map;
-  }, [allVesselPlanningV2]);
+  // Create Set of currently deployed crew UUIDs for O(1) lookup
+  const currentlyDeployedCrewIds = useMemo(() => {
+    return new Set(existingCrew.map(crew => crew.crewUuid));
+  }, [existingCrew]);
 
-  const selectedVesselUuids = useMemo(() => {
-    return new Set(selectedVessels.map(v => getVesselId(v) || v));
-  }, [selectedVessels, getVesselId]);
+  // Get vessel IDs for the selected vessels (for conflict detection)
+  const selectedVesselIds = useMemo(() => {
+    return getVesselIds(selectedVessels);
+  }, [selectedVessels, getVesselIds]);
 
-  useEffect(() => {
-    if (editPlan) {
-      setDateRange({
-        start: new Date(editPlan.planFromDate),
-        end: new Date(editPlan.planToDate),
+  // Determine if we're updating an existing plan (either from prop or from previous save)
+  // V2 uses draftUuid instead of numeric id
+  const existingDraftUuid = editPlan?.draftUuid ?? savedPlanId;
+  
+  // Save rotation plan mutation (handles both create and update)
+  // Note: Dialog stays open after save - user can continue editing or close manually
+  // Returns parsed JSON so it can be used by both onSuccess and mutateAsync callers
+  const saveRotationPlanMutation = useMutation({
+    mutationFn: async (planData: any) => {
+      let response;
+      if (existingDraftUuid) {
+        // Update existing plan using PATCH - V2 endpoint
+        response = await apiRequest('PATCH', `/api/v2/rotation/drafts/${existingDraftUuid}`, planData);
+      } else {
+        // Create new plan using POST - V2 endpoint
+        response = await apiRequest('POST', '/api/v2/rotation/drafts', planData);
+      }
+      // Parse and return the JSON so it's not consumed twice
+      return await response.json();
+    },
+    onSuccess: (savedPlan) => {
+      // Invalidate and refetch rotation plans to update the table
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation/drafts'] });
+      
+      // Capture the plan UUID from new saves so subsequent saves use PATCH
+      if (!existingDraftUuid && savedPlan?.draftUuid) {
+        setSavedPlanId(savedPlan.draftUuid);
+      }
+      
+      toast({
+        title: "Success",
+        description: existingDraftUuid ? "Rotation plan updated successfully" : "Rotation plan saved as draft successfully",
       });
-    }
-  }, [editPlan]);
+      // Dialog stays open - do NOT close or reset form here
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || (existingDraftUuid ? "Failed to update rotation plan" : "Failed to save rotation plan"),
+        variant: "destructive",
+      });
+    },
+  });
 
-  const handleCrewSelect = (crew: { id: string; name: string; rank: string }) => {
+  // Propose rotation plan mutation - V2 endpoint
+  const proposePlanMutation = useMutation({
+    mutationFn: async (draftUuid: string) => {
+      return await apiRequest('POST', `/api/v2/rotation/drafts/${draftUuid}/propose`, {
+        proposedBy: 'Current User' // Backend will use this value for now
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation/drafts'] });
+      toast({
+        title: "Success",
+        description: "Rotation plan proposed for approval successfully",
+      });
+      onOpenChange(false);
+      setSelectedVessels([]);
+      setSelectedRanks([]);
+      setSelectedRoleVariantsState([]);
+      setHasManualVariants(false);
+      setSelectedVessel('');
+      setAssignments([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to propose rotation plan",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Pre-populate form when editing an existing plan
+  useEffect(() => {
+    if (open) {
+      isInitialLoadRef.current = true;
+      
+      if (editPlan) {
+        try {
+          // Parse vessels from JSON
+          const vessels = JSON.parse(editPlan.vessels);
+          setSelectedVessels(Array.isArray(vessels) ? vessels : []);
+          
+          // Parse role variants from crew field (comma-separated)
+          const roleVariants = editPlan.crew.split(',').map(r => r.trim());
+          
+          // Find which base ranks have variants in the saved data
+          const baseRanksWithVariants = new Set<string>();
+          roleVariants.forEach((variant: string) => {
+            if (variant.includes('_')) {
+              const baseRank = variant.substring(0, variant.lastIndexOf('_'));
+              baseRanksWithVariants.add(baseRank);
+            }
+          });
+          
+          // Filter out base ranks from roleVariants if their variants exist
+          const filteredRoleVariants = roleVariants.filter((variant: string) => {
+            // Keep if it's a variant (has underscore)
+            if (variant.includes('_')) return true;
+            // Keep base rank only if it has no variants
+            return !baseRanksWithVariants.has(variant);
+          });
+          
+          // Derive base ranks from filtered role variants by matching against companyRanks
+          const baseRanksSet = new Set<string>();
+          filteredRoleVariants.forEach((variant: string) => {
+            const matchingRank = companyRanks.find((r: any) => 
+              (r.role && r.role === variant) || r.rank === variant
+            );
+            if (matchingRank) {
+              baseRanksSet.add(matchingRank.rank);
+            }
+          });
+          
+          setSelectedRanks(Array.from(baseRanksSet));
+          setSelectedRoleVariantsState(filteredRoleVariants);
+          setHasManualVariants(true); // Mark as manually set from saved data
+          
+          // Parse assignments from JSON and ensure each has a unique ID
+          const savedAssignments = editPlan.assignments ? JSON.parse(editPlan.assignments) : [];
+          const assignmentsWithIds = savedAssignments.map((a: Assignment) => ({
+            ...a,
+            id: a.id || `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          }));
+          setAssignments(assignmentsWithIds);
+        } catch (error) {
+          console.error('Failed to parse edit plan data:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load plan data",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // Reset form when creating new plan
+        setSelectedVessels([]);
+        setSelectedRanks([]);
+        setSelectedRoleVariantsState([]);
+        setHasManualVariants(false);
+        setSelectedVessel('');
+        setAssignments([]);
+        setSavedPlanId(null); // Reset saved plan ID for new plans
+      }
+      
+      // Clear the flag after initial load
+      setTimeout(() => {
+        isInitialLoadRef.current = false;
+      }, 100);
+    }
+  }, [editPlan, open, toast, companyRanks]);
+
+  const toggleVessel = (vesselName: string) => {
+    setSelectedVessels(prev =>
+      prev.includes(vesselName)
+        ? prev.filter(v => v !== vesselName)
+        : [...prev, vesselName]
+    );
+  };
+
+  const toggleRank = (rank: string) => {
+    setSelectedRanks(prev =>
+      prev.includes(rank)
+        ? prev.filter(r => r !== rank)
+        : [...prev, rank]
+    );
+    // Reset manual override when toggling base ranks
+    setHasManualVariants(false);
+  };
+
+  // Auto-select first vessel when vessels are selected or reset if current vessel is deselected
+  useEffect(() => {
+    // Skip auto-selection during initial dialog load to preserve manual selections
+    if (isInitialLoadRef.current) {
+      prevSelectedVesselsRef.current = selectedVessels;
+      return;
+    }
+    
+    const prevVessels = prevSelectedVesselsRef.current;
+    
+    if (selectedVessels.length > 0) {
+      // Check if the currently selected vessel was actually removed
+      const wasRemoved = selectedVessel && prevVessels.includes(selectedVessel) && !selectedVessels.includes(selectedVessel);
+      
+      // Only update if:
+      // 1. No vessel is currently selected, OR
+      // 2. The selected vessel was explicitly removed from the list
+      if (!selectedVessel || wasRemoved) {
+        setSelectedVessel(selectedVessels[0]);
+      }
+      // Otherwise, preserve the manual selection even if the array order changes
+    } else {
+      // If no vessels are selected, clear the selected vessel
+      setSelectedVessel('');
+    }
+    
+    // Update ref for next render
+    prevSelectedVesselsRef.current = selectedVessels;
+  }, [selectedVessels]); // Only depend on selectedVessels to avoid interference with manual radio button selection
+
+  const handleCrewSelect = (crew: { crewUuid: string; name: string; rank: string }) => {
     if (!selectedVessel) {
       toast({
-        title: "Select a vessel",
-        description: "Please select a vessel first by clicking on the vessel header",
+        title: "No vessel selected",
+        description: "Please select a vessel first by clicking on a vessel header in the timeline",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedCrew(crew);
+    setEditingAssignment(null); // Clear editing mode
+    setDateDialogOpen(true);
+  };
+
+  const handleAssignmentClick = (assignment: Assignment) => {
+    // Set the vessel for context
+    setSelectedVessel(assignment.vessel);
+    // Set crew info from the assignment
+    setSelectedCrew({
+      crewUuid: assignment.crewUuid, // V2 uses crewUuid
+      name: assignment.crewName,
+      rank: assignment.rank
+    });
+    // Set editing mode
+    setEditingAssignment(assignment);
+    // Open the dialog
+    setDateDialogOpen(true);
+  };
+
+  const handleAssignmentApply = (joiningDate: Date, contractPeriod: number) => {
+    if (!selectedCrew || !selectedVessel) return;
+
+    // Find vessel and rank objects to get their IDs
+    const vesselObj = vessels.find((v: any) => v.name === selectedVessel || v.vessel === selectedVessel);
+    const rankObj = companyRanks.find((r: any) => r.rank === selectedCrew.rank);
+
+    // Validate that we have proper IDs - fail if not available
+    // Use entryId first as it contains the actual vessel ID (VSL-003), not the numeric entry ID
+    const vesselId = vesselObj?.entryId || vesselObj?.id;
+    const rankId = rankObj?.id;
+
+    if (!vesselId || !rankId) {
+      toast({
+        title: "Error",
+        description: `Missing vessel or rank ID. Vessel: ${selectedVessel}, Rank: ${selectedCrew.rank}`,
         variant: "destructive",
       });
       return;
     }
 
-    setSelectedCrewForAssignment({
-      crew,
-      vessel: selectedVessel,
-      rank: crew.rank,
-    });
-    setDatePeriodDialogOpen(true);
-  };
-
-  const handleApplyAssignment = (joiningDate: Date, contractPeriod: number) => {
-    if (!selectedCrewForAssignment) return;
-
-    const { crew, vessel, rank } = selectedCrewForAssignment;
-    const vesselUuid = getVesselId(vessel) || vessel;
-
-    const existingIndex = assignments.findIndex(
-      a => a.crewUuid === crew.id && a.vessel === vessel && a.rank === rank
-    );
-
-    if (existingIndex >= 0) {
-      const updated = [...assignments];
-      updated[existingIndex] = {
-        ...updated[existingIndex],
-        joiningDate: format(joiningDate, 'yyyy-MM-dd'),
+    if (editingAssignment) {
+      // Update existing assignment using unique ID
+      setAssignments(prev => prev.map(a => {
+        // Match by unique assignment ID to ensure we update the exact assignment
+        if (a.id === editingAssignment.id) {
+          return {
+            ...a,
+            joiningDate: joiningDate.toISOString(),
+            contractPeriod,
+          };
+        }
+        return a;
+      }));
+      
+      toast({
+        title: "Success",
+        description: `Assignment for ${selectedCrew.name} updated successfully`,
+      });
+    } else {
+      // Create new assignment with unique ID
+      const newAssignment: Assignment = {
+        id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
+        vessel: selectedVessel,
+        vesselUuid: vesselId, // V2 uses vesselUuid
+        vesselName: selectedVessel,
+        rank: selectedCrew.rank,
+        rankId: rankId,
+        crewUuid: selectedCrew.crewUuid, // V2 uses crewUuid
+        crewName: selectedCrew.name,
+        joiningDate: joiningDate.toISOString(),
         contractPeriod,
       };
-      setAssignments(updated);
-    } else {
-      setAssignments([
-        ...assignments,
-        {
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          vessel,
-          vesselUuid,
-          rank,
-          crewUuid: crew.id,
-          crewName: crew.name,
-          joiningDate: format(joiningDate, 'yyyy-MM-dd'),
-          contractPeriod,
-        },
-      ]);
-    }
 
-    setSelectedCrewForAssignment(null);
+      setAssignments(prev => [...prev, newAssignment]);
+    }
+    
+    // Clear editing state
+    setEditingAssignment(null);
   };
 
   const handleUnassign = () => {
-    if (!selectedCrewForAssignment) return;
+    if (!selectedCrew || !selectedVessel) return;
 
-    const { crew, vessel, rank } = selectedCrewForAssignment;
-    setAssignments(
-      assignments.filter(
-        a => !(a.crewUuid === crew.id && a.vessel === vessel && a.rank === rank)
-      )
-    );
-    setSelectedCrewForAssignment(null);
+    if (editingAssignment) {
+      // Remove specific assignment by ID when editing
+      setAssignments(prev => prev.filter(a => a.id !== editingAssignment.id));
+    } else {
+      // Remove assignment matching crew, vessel, and rank (for backward compatibility)
+      setAssignments(prev => 
+        prev.filter(a => !(
+          a.crewUuid === selectedCrew.crewUuid && 
+          a.vessel === selectedVessel && 
+          a.rank === selectedCrew.rank
+        ))
+      );
+    }
+
+    // Show toast confirmation
+    toast({
+      title: "Success",
+      description: `${selectedCrew.name} unassigned from ${selectedVessel}`,
+    });
+    
+    // Clear editing state
+    setEditingAssignment(null);
   };
 
-  const handleSaveDraft = async () => {
-    try {
-      const crewUserId = localStorage.getItem('crewUserId') || 'unknown';
-      
-      if (editPlan) {
-        await updateDraftMutation.mutateAsync({
-          draftUuid: editPlan.draftUuid,
-          data: {
-            planFromDate: format(dateRange.start, 'yyyy-MM-dd'),
-            planToDate: format(dateRange.end, 'yyyy-MM-dd'),
-            lastEdited: new Date().toISOString(),
-          },
-        });
-      } else {
-        const draft = await createDraftMutation.mutateAsync({
-          planFromDate: format(dateRange.start, 'yyyy-MM-dd'),
-          planToDate: format(dateRange.end, 'yyyy-MM-dd'),
-          createdByUuid: crewUserId,
-        });
+  const handleBack = () => {
+    onOpenChange(false);
+  };
 
-        for (const assignment of assignments) {
-          await createEntryMutation.mutateAsync({
-            draftUuid: draft.draftUuid,
-            vesselUuid: assignment.vesselUuid || assignment.vessel,
-            rank: assignment.rank,
-            crewUuid: assignment.crewUuid,
-            signOnDate: assignment.joiningDate,
-            contractPeriod: assignment.contractPeriod,
-          });
-        }
-      }
-
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation'] });
+  const handleSave = () => {
+    if (selectedVessels.length === 0) {
       toast({
-        title: "Success",
-        description: editPlan ? "Draft updated successfully" : "Draft saved successfully",
-      });
-      onOpenChange(false);
-      setAssignments([]);
-      setSelectedVessels([]);
-      setSelectedRanks([]);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save draft",
+        title: "Validation Error",
+        description: "Please select at least one vessel",
         variant: "destructive",
       });
+      return;
+    }
+
+    if (selectedRanks.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one rank",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (assignments.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please create at least one crew assignment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Calculate plan date range from assignments
+    const joiningDates = assignments.map(a => new Date(a.joiningDate));
+    const planFromDate = new Date(Math.min(...joiningDates.map(d => d.getTime())));
+    
+    // Calculate planToDate as the latest contract end date
+    const contractEndDates = assignments.map(a => {
+      const joiningDate = new Date(a.joiningDate);
+      return addMonths(joiningDate, a.contractPeriod);
+    });
+    const planToDate = new Date(Math.max(...contractEndDates.map(d => d.getTime())));
+
+    // Format crew roles as comma-separated string (use role variants)
+    const crewRoles = Array.from(new Set(selectedRoleVariants)).join(', ');
+
+    // Prepare plan data
+    const planData: any = {
+      vessels: JSON.stringify(selectedVessels),
+      crew: crewRoles,
+      planFromDate: format(planFromDate, 'yyyy-MM-dd'),
+      planToDate: format(planToDate, 'yyyy-MM-dd'),
+      assignments: JSON.stringify(assignments),
+    };
+
+    // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
+    if (!existingDraftUuid) {
+      planData.lastEdited = new Date().toISOString();
+      planData.createdByUuid = localStorage.getItem('crewUserId') || 'unknown';
+      planData.planStatus = 'In Draft';
+    }
+
+    saveRotationPlanMutation.mutate(planData);
+  };
+
+  const handlePropose = async () => {
+    // Validate form data first (same validations as save)
+    if (selectedVessels.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one vessel",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedRanks.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one rank",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (assignments.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please create at least one crew assignment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Calculate plan date range from assignments
+    const joiningDates = assignments.map(a => new Date(a.joiningDate));
+    const planFromDate = new Date(Math.min(...joiningDates.map(d => d.getTime())));
+    
+    // Calculate planToDate as the latest contract end date
+    const contractEndDates = assignments.map(a => {
+      const joiningDate = new Date(a.joiningDate);
+      return addMonths(joiningDate, a.contractPeriod);
+    });
+    const planToDate = new Date(Math.max(...contractEndDates.map(d => d.getTime())));
+
+    // Format crew roles as comma-separated string (use role variants)
+    const crewRoles = Array.from(new Set(selectedRoleVariants)).join(', ');
+
+    // Prepare plan data
+    const planData: any = {
+      vessels: JSON.stringify(selectedVessels),
+      crew: crewRoles,
+      planFromDate: format(planFromDate, 'yyyy-MM-dd'),
+      planToDate: format(planToDate, 'yyyy-MM-dd'),
+      assignments: JSON.stringify(assignments),
+    };
+
+    // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
+    if (!existingDraftUuid) {
+      planData.lastEdited = new Date().toISOString();
+      planData.createdByUuid = localStorage.getItem('crewUserId') || 'unknown';
+      planData.planStatus = 'In Draft';
+    }
+
+    try {
+      // First save the plan - mutateAsync returns the parsed JSON (not Response)
+      const savedPlan = await saveRotationPlanMutation.mutateAsync(planData);
+      
+      // Get the draft UUID - either from existing plan or from the newly saved plan
+      // For existing plans, use existingDraftUuid; for new plans, use the UUID from the save response
+      const draftUuid = existingDraftUuid ?? savedPlan?.draftUuid;
+
+      if (!draftUuid) {
+        toast({
+          title: "Error",
+          description: "Failed to get plan UUID after save",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Then propose the saved plan using V2 endpoint
+      proposePlanMutation.mutate(draftUuid);
+    } catch (error: any) {
+      // Save failed - error toast is already shown by the mutation's onError
+      console.error('Save failed before propose:', error);
     }
   };
 
-  const handleClose = () => {
-    onOpenChange(false);
-    setAssignments([]);
-    setSelectedVessels([]);
-    setSelectedRanks([]);
-  };
-
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{editPlan ? 'Edit Rotation Plan V2' : 'New Rotation Plan V2'}</DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-auto">
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-4">
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-sm font-medium mb-2 block">Vessels</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between" data-testid="select-vessels-v2">
-                        {selectedVessels.length === 0 ? "Select vessels" : `${selectedVessels.length} selected`}
-                        <ChevronDown className="h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-60 p-2" align="start">
-                      <div className="max-h-60 overflow-y-auto">
-                        {(vessels as any[]).map((vessel: any) => (
-                          <div key={vessel.vesselId || vessel.id} className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
-                            <Checkbox
-                              checked={selectedVessels.includes(vessel.name || vessel.vessel)}
-                              onCheckedChange={() => {
-                                const name = vessel.name || vessel.vessel;
-                                setSelectedVessels(prev =>
-                                  prev.includes(name) ? prev.filter(v => v !== name) : [...prev, name]
-                                );
-                                if (!selectedVessel && !selectedVessels.includes(name)) {
-                                  setSelectedVessel(name);
-                                }
-                              }}
-                              data-testid={`checkbox-vessel-v2-${vessel.vesselId || vessel.id}`}
-                            />
-                            <label className="text-sm cursor-pointer flex-1">{vessel.name || vessel.vessel}</label>
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-sm font-medium mb-2 block">Ranks</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between" data-testid="select-ranks-v2">
-                        {selectedRanks.length === 0 ? "Select ranks" : `${selectedRanks.length} selected`}
-                        <ChevronDown className="h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-60 p-2" align="start">
-                      <div className="max-h-60 overflow-y-auto">
-                        {companyRanks.map((rank: any) => (
-                          <div key={rank.id || rank.rank} className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
-                            <Checkbox
-                              checked={selectedRanks.includes(rank.rank)}
-                              onCheckedChange={() => {
-                                setSelectedRanks(prev =>
-                                  prev.includes(rank.rank) ? prev.filter(r => r !== rank.rank) : [...prev, rank.rank]
-                                );
-                              }}
-                              data-testid={`checkbox-rank-v2-${rank.rank}`}
-                            />
-                            <label className="text-sm cursor-pointer flex-1">{rank.rank}</label>
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="flex-1 min-w-[200px]">
-                  <label className="text-sm font-medium mb-2 block">Date Range</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between" data-testid="select-date-range-v2">
-                        {format(dateRange.start, 'dd-MMM-yy')} - {format(dateRange.end, 'dd-MMM-yy')}
-                        <CalendarIcon className="h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-4" align="start">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Start Date</label>
-                          <Calendar
-                            mode="single"
-                            selected={dateRange.start}
-                            onSelect={(date) => date && setDateRange({ ...dateRange, start: date })}
-                            disabled={(date) => date > dateRange.end}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">End Date</label>
-                          <Calendar
-                            mode="single"
-                            selected={dateRange.end}
-                            onSelect={(date) => date && setDateRange({ ...dateRange, end: date })}
-                            disabled={(date) => date < dateRange.start}
-                          />
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              {selectedVessels.length > 0 && selectedRanks.length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
-                  {selectedVessels.map((vessel) => (
-                    <div key={vessel} className="border-b last:border-b-0">
-                      <div 
-                        className="bg-[#52baf3] text-white p-3 flex items-center gap-3 cursor-pointer hover:bg-[#45a8e0]"
-                        onClick={() => setSelectedVessel(vessel)}
-                        data-testid={`vessel-header-v2-${vessel}`}
-                      >
-                        <div 
-                          className={`w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${
-                            selectedVessel === vessel ? 'bg-white' : ''
-                          }`}
-                        >
-                          {selectedVessel === vessel && (
-                            <div className="w-2 h-2 rounded-full bg-[#52baf3]" />
-                          )}
-                        </div>
-                        <span className="font-bold">{vessel}</span>
-                      </div>
-                      
-                      {selectedVessel === vessel && (
-                        <div className="p-4 bg-gray-50">
-                          <div className="flex gap-4 overflow-x-auto pb-4">
-                            {selectedRanks.map((rank) => (
-                              <CrewColumnV2
-                                key={`${vessel}-${rank}`}
-                                rank={rank}
-                                onCrewSelect={handleCrewSelect}
-                                assignments={assignments.filter(a => a.vessel === vessel)}
-                                allDeployedCrewMap={allDeployedCrewMap}
-                                selectedVesselUuids={selectedVesselUuids}
-                                planDateRange={dateRange}
-                              />
-                            ))}
-                          </div>
-                          
-                          {assignments.filter(a => a.vessel === vessel).length > 0 && (
-                            <div className="mt-4 border-t pt-4">
-                              <h4 className="text-sm font-medium mb-2">Assignments on {vessel}</h4>
-                              <div className="space-y-2">
-                                {assignments.filter(a => a.vessel === vessel).map((a) => (
-                                  <div 
-                                    key={a.id} 
-                                    className="flex items-center justify-between p-2 bg-white border rounded cursor-pointer hover:bg-blue-50"
-                                    onClick={() => {
-                                      setSelectedCrewForAssignment({
-                                        crew: { id: a.crewUuid, name: a.crewName, rank: a.rank },
-                                        vessel: a.vessel,
-                                        rank: a.rank,
-                                        initialValues: { joiningDate: a.joiningDate, contractPeriod: a.contractPeriod },
-                                      });
-                                      setDatePeriodDialogOpen(true);
-                                    }}
-                                    data-testid={`assignment-row-v2-${a.id}`}
-                                  >
-                                    <span className="text-sm">
-                                      <strong>{a.rank}:</strong> {a.crewName} ({format(new Date(a.joiningDate), 'dd-MMM-yy')}, {a.contractPeriod}M)
-                                    </span>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setAssignments(assignments.filter(x => x.id !== a.id));
-                                      }}
-                                      className="text-red-500 hover:text-red-700"
-                                    >
-                                      Remove
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[95vw] h-[90vh] p-0">
+        <DialogHeader className="p-6 pb-4 border-b">
+          <div className="flex items-center justify-between mb-4">
+            <DialogTitle className="text-2xl font-bold">
+              {editPlan ? "Edit Rotation Plan V2" : "New Rotation Plan V2"}
+            </DialogTitle>
+            <div className="flex gap-2 mr-8">
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                className="border-gray-300"
+                data-testid="button-back"
+              >
+                &lt; Back
+              </Button>
+              <Button
+                onClick={handleSave}
+                className="bg-blue-600 hover:bg-blue-700"
+                disabled={saveRotationPlanMutation.isPending}
+                data-testid="button-save"
+              >
+                {saveRotationPlanMutation.isPending ? "Saving..." : (editPlan ? "Update" : "Save")}
+              </Button>
+              <Button
+                onClick={handlePropose}
+                className="bg-green-600 hover:bg-green-700"
+                disabled={saveRotationPlanMutation.isPending || proposePlanMutation.isPending}
+                data-testid="button-propose"
+              >
+                {saveRotationPlanMutation.isPending ? "Saving..." : (proposePlanMutation.isPending ? "Proposing..." : "Propose")}
+              </Button>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={handleClose} data-testid="button-cancel-plan-v2">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveDraft}
-              disabled={createDraftMutation.isPending || updateDraftMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
-              data-testid="button-save-draft-v2"
-            >
-              {createDraftMutation.isPending || updateDraftMutation.isPending ? 'Saving...' : 'Save Draft'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          {/* Filter dropdowns - now part of the header */}
+          <div className="flex gap-4 flex-wrap items-center">
+          {/* Vessels multi-select */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-48 justify-between"
+                disabled={vesselsLoading}
+                data-testid="select-vessels"
+              >
+                <span className="truncate">
+                  {selectedVessels.length > 0
+                    ? `${selectedVessels.length} vessel${selectedVessels.length > 1 ? 's' : ''} selected`
+                    : vesselsLoading ? "Loading..." : "Vessels"
+                  }
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 p-2" align="start">
+              <div className="max-h-60 overflow-y-auto">
+                {vessels.map((vessel: any) => (
+                  <div
+                    key={vessel.id}
+                    className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                  >
+                    <Checkbox
+                      checked={selectedVessels.includes(vessel.name)}
+                      onCheckedChange={() => toggleVessel(vessel.name)}
+                      data-testid={`checkbox-vessel-${vessel.id}`}
+                    />
+                    <label
+                      className="text-sm cursor-pointer flex-1"
+                      onClick={() => toggleVessel(vessel.name)}
+                    >
+                      {vessel.name}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
-      <DatePeriodDialogV2
-        open={datePeriodDialogOpen}
-        onOpenChange={setDatePeriodDialogOpen}
-        onApply={handleApplyAssignment}
+          {/* Ranks multi-select */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-48 justify-between"
+                disabled={ranksLoading}
+                data-testid="select-ranks"
+              >
+                <span className="truncate">
+                  {selectedRanks.length > 0
+                    ? `${selectedRanks.length} rank${selectedRanks.length > 1 ? 's' : ''} selected`
+                    : ranksLoading ? "Loading..." : "Ranks"
+                  }
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 p-2" align="start">
+              <div className="max-h-60 overflow-y-auto">
+                {baseRanks.map((rank: any) => (
+                  <div
+                    key={rank.id}
+                    className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                  >
+                    <Checkbox
+                      checked={selectedRanks.includes(rank.rank)}
+                      onCheckedChange={() => toggleRank(rank.rank)}
+                      data-testid={`checkbox-rank-${rank.id}`}
+                    />
+                    <label
+                      className="text-sm cursor-pointer flex-1"
+                      onClick={() => toggleRank(rank.rank)}
+                    >
+                      {rank.rank}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Display selected role variants with remove buttons */}
+          {selectedRoleVariants.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap ml-4">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Selected roles:</span>
+              {selectedRoleVariants.map((variant) => (
+                <div
+                  key={variant}
+                  className="flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 rounded-md text-sm"
+                  data-testid={`chip-role-${variant}`}
+                >
+                  <span>{variant}</span>
+                  <button
+                    onClick={() => {
+                      setSelectedRoleVariantsState(prev => prev.filter(v => v !== variant));
+                      setHasManualVariants(true); // Mark as manually modified
+                    }}
+                    className="ml-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                    data-testid={`button-remove-role-${variant}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Date Range filter */}
+          <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-64 justify-between"
+                data-testid="select-date-range"
+              >
+                <span className="truncate flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {format(dateRange.start, 'dd-MMM-yyyy')} - {format(dateRange.end, 'dd-MMM-yyyy')}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4" align="start">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Start Date</label>
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.start}
+                    onSelect={(date) => date && setDateRange({ ...dateRange, start: date })}
+                    disabled={(date) => date > dateRange.end}
+                    data-testid="calendar-start-date"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">End Date</label>
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.end}
+                    onSelect={(date) => date && setDateRange({ ...dateRange, end: date })}
+                    disabled={(date) => date < dateRange.start}
+                    data-testid="calendar-end-date"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date();
+                      setDateRange({
+                        start: addMonths(today, -2),
+                        end: addMonths(today, 5)
+                      });
+                    }}
+                    data-testid="button-reset-date-range"
+                  >
+                    Reset to Default
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setDateRangeDialogOpen(false)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    data-testid="button-apply-date-range"
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          </div>
+        </DialogHeader>
+
+        {/* Main content area - split into left (crew) and right (vessels/timeline) sections */}
+        <div className="flex-1 px-6 pb-6 overflow-hidden flex gap-4">
+          {/* Left Section - Available Crew */}
+          <div className="w-1/3 border rounded-lg bg-white dark:bg-gray-900 overflow-auto">
+            {selectedRanks.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Select ranks to view available crew</p>
+              </div>
+            ) : (
+              <div className="flex gap-4 p-4" style={{ minWidth: `${selectedRanks.length * 280}px` }}>
+                {selectedRanks.map(rank => (
+                  <CrewColumn 
+                    key={rank} 
+                    rank={rank} 
+                    onCrewSelect={handleCrewSelect}
+                    assignments={assignments}
+                    currentlyDeployedCrewIds={currentlyDeployedCrewIds}
+                    allDeployedAssignments={allVesselPlanning}
+                    planDateRange={dateRange}
+                    selectedVesselIds={selectedVesselIds}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right Section - Vessel Timeline */}
+          <div className="flex-1 border rounded-lg bg-white dark:bg-gray-900 overflow-hidden">
+            {selectedVessels.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Select vessels to begin planning</p>
+              </div>
+            ) : selectedRanks.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Select ranks to view timeline</p>
+              </div>
+            ) : (
+              <VesselTimelineView
+                vessels={selectedVessels}
+                queryRanks={selectedRoleVariants}
+                displayRanks={timelineRoleVariants}
+                selectedVessel={selectedVessel}
+                onVesselSelect={setSelectedVessel}
+                onAssignmentClick={handleAssignmentClick}
+                dateRange={dateRange}
+                assignments={assignments}
+              />
+            )}
+          </div>
+        </div>
+      </DialogContent>
+
+      {/* Date Period Dialog for crew assignment */}
+      <DatePeriodDialog
+        open={dateDialogOpen}
+        onOpenChange={(open) => {
+          setDateDialogOpen(open);
+          if (!open) {
+            // Clear editing state when dialog closes
+            setEditingAssignment(null);
+          }
+        }}
+        onApply={handleAssignmentApply}
         onUnassign={handleUnassign}
-        crewName={selectedCrewForAssignment?.crew.name || ''}
-        crewId={selectedCrewForAssignment?.crew.id || ''}
-        vesselName={selectedCrewForAssignment?.vessel || ''}
-        rank={selectedCrewForAssignment?.rank || ''}
+        crewName={selectedCrew?.name || ''}
+        crewUuid={selectedCrew?.crewUuid || ''}
+        vesselName={selectedVessel}
+        rank={selectedCrew?.rank || ''}
         assignments={assignments}
-        initialValues={selectedCrewForAssignment?.initialValues}
+        initialValues={editingAssignment ? {
+          joiningDate: editingAssignment.joiningDate,
+          contractPeriod: editingAssignment.contractPeriod
+        } : undefined}
       />
-    </>
+    </Dialog>
   );
 }
 
