@@ -40,6 +40,7 @@ import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewIn
 
 interface CrewMember {
   id: string;
+  crewUuid?: string;
   empNo: string;
   employeeId: string; // Added for crew ID display
   firstName: string;
@@ -58,6 +59,7 @@ interface CrewInfoFormProps {
   onClose: () => void;
   crewMember: CrewMember | null;
   onCrewMemberChange?: (crewMember: CrewMember) => void;
+  isV2?: boolean;
 }
 
 interface FormData {
@@ -245,8 +247,10 @@ interface DoctorVisit {
   attachments?: FileAttachment[];
 }
 
-export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange }) => {
+export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange, isV2 = false }) => {
   const { toast } = useToast();
+  
+  const crewIdentifier = isV2 ? (crewMember?.crewUuid || crewMember?.id) : crewMember?.id;
   
   // Helper function to determine expiry date text color
   const getExpiryColorClass = (dateString: string): string => {
@@ -318,38 +322,110 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
     issues: Array<{ name: string; expiry: string; status: 'expired' | 'expiring' }>;
   }>({ category: '', issues: [] });
   
-  // Dashboard data query
+  // Dashboard data query - uses V2 endpoint when isV2=true
+  const dashboardApiPath = isV2 
+    ? `/api/v2/crew-pool/crew/${crewIdentifier}/dashboard`
+    : `/api/crew-members/${crewIdentifier}/dashboard`;
+  
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
-    queryKey: ['/api/crew-members', crewMember?.id, 'dashboard'],
+    queryKey: isV2 ? ['/api/v2/crew-pool/crew', crewIdentifier, 'dashboard'] : ['/api/crew-members', crewIdentifier, 'dashboard'],
     queryFn: async () => {
-      const response = await fetch(`/api/crew-members/${crewMember?.id}/dashboard`);
+      const response = await fetch(dashboardApiPath);
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard summary');
       }
       return response.json();
     },
-    enabled: !!crewMember?.id && isOpen,
+    enabled: !!crewIdentifier && isOpen,
   });
 
-  // All crew members query for dropdown
+  // All crew members query for dropdown - uses V2 endpoint when isV2=true
   const { data: allCrewMembersRaw = [] } = useQuery<CrewMember[]>({
-    queryKey: ['/api/crew-members'],
+    queryKey: isV2 ? ['/api/v2/crew-pool/crew'] : ['/api/crew-members'],
+    queryFn: async () => {
+      const apiPath = isV2 ? '/api/v2/crew-pool/crew' : '/api/crew-members';
+      const response = await fetch(apiPath);
+      if (!response.ok) throw new Error('Failed to fetch crew members');
+      return response.json();
+    },
     enabled: isOpen,
   });
 
-  // Detailed crew member data query for form fields
-  const queryEnabled = !!crewMember?.id && isOpen;
+  // Detailed crew member data query for form fields - uses V2 endpoint when isV2=true
+  const queryEnabled = !!crewIdentifier && isOpen;
+  const detailsApiPath = isV2 
+    ? `/api/v2/crew-pool/crew/${crewIdentifier}/profile`
+    : `/api/crew-members/${crewIdentifier}`;
   
   const { data: detailedCrewData, isLoading: isDetailedDataLoading } = useQuery<any>({
-    queryKey: ['/api/crew-members', crewMember?.id, 'details'], // Added 'details' to make unique
+    queryKey: isV2 ? ['/api/v2/crew-pool/crew', crewIdentifier, 'profile'] : ['/api/crew-members', crewIdentifier, 'details'],
     queryFn: async () => {
-      const response = await fetch(`/api/crew-members/${crewMember?.id}`);
+      const response = await fetch(detailsApiPath);
       if (!response.ok) {
         throw new Error('Failed to fetch crew member details');
       }
-      return response.json();
+      const data = await response.json();
+      
+      if (isV2 && data?.crew) {
+        const { crew, personalDetails, address, familyInfo, nextOfKin, children, documents, visas, education, licenses, trainingCourses, seaService, medicals } = data;
+        return {
+          id: crew.crewUuid,
+          crewUuid: crew.crewUuid,
+          firstName: crew.firstName || '',
+          middleName: crew.middleName || '',
+          familyName: crew.familyName || '',
+          nationality: crew.nationality || '',
+          presentRank: crew.rank || '',
+          employeeId: crew.crewId || '',
+          dob: crew.dateOfBirth || '',
+          gender: personalDetails?.gender || 'Male',
+          placeOfBirthCity: personalDetails?.placeOfBirthCity || '',
+          placeOfBirthCountry: personalDetails?.placeOfBirthCountry || '',
+          heightCm: personalDetails?.height || '',
+          weightKg: personalDetails?.weight || '',
+          bmi: personalDetails?.bmi || '',
+          nativeLanguage: personalDetails?.nativeLanguage || '',
+          foreignLanguages: personalDetails?.foreignLanguages || '',
+          englishProficiency: personalDetails?.englishProficiency || '',
+          rankAppliedFor: crew.rankAppliedFor || '',
+          vesselTypes: crew.vesselType ? [crew.vesselType] : [],
+          manningAgent: crew.manningAgent || '',
+          crewPool: crew.crewPool || '',
+          countryOfResidence: address?.countryOfResidence || '',
+          nearestAirport: address?.nearestAirport || '',
+          residentialAddressLine1: address?.addressLine1 || '',
+          residentialAddressLine2: address?.addressLine2 || '',
+          contactLandline: address?.landlinePhone || '',
+          mobile: address?.mobilePhone || '',
+          email: address?.email || '',
+          maritalStatus: familyInfo?.maritalStatus || '',
+          numberOfDependentChildren: familyInfo?.numberOfDependentChildren || '',
+          fatherName: familyInfo?.fatherName || '',
+          motherName: familyInfo?.motherName || '',
+          spouseFirstName: familyInfo?.spouseFirstName || '',
+          spouseMiddleName: familyInfo?.spouseMiddleName || '',
+          spouseFamilyName: familyInfo?.spouseFamilyName || '',
+          spouseDateOfBirth: familyInfo?.spouseDateOfBirth || '',
+          children: children || [],
+          nokFirstName: nextOfKin?.firstName || '',
+          nokMiddleName: nextOfKin?.middleName || '',
+          nokFamilyName: nextOfKin?.familyName || '',
+          nokTelephone: nextOfKin?.telephone || '',
+          nokEmail: nextOfKin?.email || '',
+          nokAddress: nextOfKin?.address || '',
+          nokRelationship: nextOfKin?.relationship || '',
+          documents: documents || [],
+          visas: visas || [],
+          education: education || [],
+          licenses: licenses || [],
+          trainingCourses: trainingCourses || [],
+          seaService: seaService || [],
+          medicals: medicals || [],
+        };
+      }
+      return data;
     },
-    enabled: queryEnabled, // Only fetch when editing existing crew member
+    enabled: queryEnabled,
   });
 
   // Crew ID will be auto-assigned by the API during creation
@@ -812,7 +888,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
 
   // Update form data when detailed crew data loads from API
   useEffect(() => {
-    if (detailedCrewData && crewMember?.id) {
+    if (detailedCrewData && crewIdentifier) {
       setFormData(prev => ({
         ...prev,
         // A1.1 General Particulars
@@ -945,7 +1021,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       // Also load the uploaded photo from crew data (or reset if no photo)
       setUploadedPhoto(detailedCrewData.uploadedPhoto || null);
     }
-  }, [detailedCrewData, crewMember?.id]);
+  }, [detailedCrewData, crewIdentifier]);
   
   // Reset photo when crew member changes or form closes
   useEffect(() => {

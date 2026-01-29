@@ -2052,6 +2052,7 @@ export function VesselModule_v2(): JSX.Element {
                     setSelectedCrewMember(null);
                 }}
                 crewMember={selectedCrewMember}
+                isV2={true}
             />
 
             <Dialog open={docExpiryDialogOpen} onOpenChange={setDocExpiryDialogOpen}>
