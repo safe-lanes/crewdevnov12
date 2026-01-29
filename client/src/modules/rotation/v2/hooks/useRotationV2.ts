@@ -201,6 +201,8 @@ export function useDeployEntryV2() {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'drafts'] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'archive'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation/proposals'] });
     },
   });
 }

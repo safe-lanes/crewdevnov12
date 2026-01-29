@@ -239,28 +239,49 @@ const useVessels = () => {
         queryKey: ['/api/external/vessels'],
         queryFn: async () => {
             const domain = localStorage.getItem('domain') || 'rsms';
-            const response = await fetch(
-                `${API_BASE_URL}/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
-                {
-                    method: 'GET',
-                    headers: { 'accept': '*/*' }
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
+                    {
+                        method: 'GET',
+                        headers: { 'accept': '*/*' }
+                    }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.vessels && data.vessels.length > 0) {
+                        return { source: 'external', data: data.vessels };
+                    }
                 }
-            );
-            if (!response.ok) {
-                throw new Error(`Failed to fetch vessels: ${response.status}`);
+            } catch (e) {
+                console.log('External vessels API unavailable, using local master data');
             }
-            const data = await response.json();
-            return data.vessels || [];
+            
+            const localResponse = await fetch('/api/masters/014/data');
+            if (!localResponse.ok) {
+                throw new Error('Failed to fetch vessels from local master data');
+            }
+            const localData = await localResponse.json();
+            return { source: 'local', data: localData };
         },
         staleTime: 5 * 60 * 1000,
         retry: 2,
-        select: (data: any[]) => {
-            return data.map((vessel: any) => ({
-                id: vessel.id,
-                vesselId: vessel.vuid,
-                name: vessel.vessel || 'Unknown Vessel',
-                vesselType: vessel.vesselType || 'Unknown Type',
-            }));
+        select: (result: { source: string; data: any[] }) => {
+            if (result.source === 'external') {
+                return result.data.map((vessel: any) => ({
+                    id: vessel.id,
+                    vesselId: vessel.vuid,
+                    name: vessel.vessel || 'Unknown Vessel',
+                    vesselType: vessel.vesselType || 'Unknown Type',
+                }));
+            } else {
+                return result.data.map((vessel: any) => ({
+                    id: vessel.id,
+                    vesselId: vessel.entryId,
+                    name: vessel.name || 'Unknown Vessel',
+                    vesselType: vessel.vesselType || 'Unknown Type',
+                }));
+            }
         }
     });
 };
@@ -507,6 +528,10 @@ export function VesselModule_v2(): JSX.Element {
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
     const { data: ports = [] } = usePorts();
+    
+    const { data: crewCounts = {} } = useQuery<Record<string, number>>({
+        queryKey: ['/api/v2/vessel/crew-counts'],
+    });
     
     const portLookup = useMemo(() => {
         const map = new Map<string, string>();
@@ -796,18 +821,19 @@ export function VesselModule_v2(): JSX.Element {
             filteredVessels = vessels.filter((vessel: any) => vessel.addGroup === addGroupValue || vessel.additionalGroup === addGroupValue);
         }
         
-        // V2: Empty records initially - crew count will come from V2 planning data
+        // V2: Crew count from crew_assignments table (is_current = true)
+        // Match using vesselId (vuid from external API) which is the UUID used in V2 tables
         return filteredVessels.map((vessel: any) => {
+            const vesselUuid = vessel.vesselId || vessel.id;
             return {
                 id: vessel.id,
                 vessel: vessel.name,
                 type: vessel.vesselType,
-                crewOnBoard: 0, // V2: Will be populated from V2 planning API
-                // Keep original data for selection
+                crewOnBoard: crewCounts[vesselUuid] || 0,
                 _originalVessel: vessel
             };
         });
-    }, [vessels, filterType, vesselValue, fleetValue, addGroupValue]);
+    }, [vessels, filterType, vesselValue, fleetValue, addGroupValue, crewCounts]);
 
     const handleEditVessel = (data: any) => {
         // Find original vessel from transformed data

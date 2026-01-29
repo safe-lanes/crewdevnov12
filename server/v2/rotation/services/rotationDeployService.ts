@@ -106,17 +106,29 @@ export const rotationDeployService = {
         deployedToPlanUuid: planUuid,
       });
 
+      // Set any existing current assignments for this crew to false
+      await db
+        .update(crewAssignments)
+        .set({ isCurrent: false })
+        .where(
+          and(
+            eq(crewAssignments.crewUuid, entry.crewUuid),
+            eq(crewAssignments.isCurrent, true)
+          )
+        );
+
+      // Create new current assignment for deployed crew
       await db
         .insert(crewAssignments)
         .values({
           assignUuid: uuidv4(),
           crewUuid: entry.crewUuid,
           vesselUuid: entry.vesselUuid,
-          isCurrent: false,
+          isCurrent: true,
           signOnDate: entry.signOnDate,
           contractPeriod: entry.contractPeriod?.toString(),
           portOfJoiningUuid: entry.joiningPortUuid,
-          assignmentType: "Planned",
+          assignmentType: "Deployed",
         });
 
       return { 

@@ -1,7 +1,10 @@
 import { Router } from "express";
-import { vesselPlanningController } from "./controllers";
+import { vesselPlanningController, vesselCrewCountController } from "./controllers";
 
 const router = Router();
+
+// Crew count endpoint - get crew on board counts for all vessels
+router.get("/crew-counts", vesselCrewCountController.getCrewCounts);
 
 router.get("/:vesselUuid/planning", vesselPlanningController.getByVesselUuid);
 router.get("/planning/:planUuid", vesselPlanningController.getByPlanUuid);
