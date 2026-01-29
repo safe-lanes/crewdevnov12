@@ -63,6 +63,7 @@ const formatContractPeriod = (value: any): string => {
 };
 
 export const CrewPoolModule_v2 = (): JSX.Element => {
+    console.log('[V2 Crew Pool] Component rendering...');
     const [selectedCrewPoolPage, setSelectedCrewPoolPage] = useState("crew-database");
     const [showFilters, setShowFilters] = useState(true);
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
