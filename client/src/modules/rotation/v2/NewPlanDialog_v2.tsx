@@ -1456,9 +1456,19 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   // Vessel lookup hook for name↔ID translation
   const { getVesselIds } = useVesselLookup();
 
-  // Fetch vessels from master data
+  // Fetch vessels from V2 master_vessels table
   const { data: vessels = [], isLoading: vesselsLoading } = useQuery<any[]>({
-    queryKey: ['/api/masters/014/data'],
+    queryKey: ['/api/v2/vessel/list'],
+    select: (data: any[]) => {
+      // Map to expected format used by the component
+      return data.map((v: any) => ({
+        id: v.id,
+        value: v.vesselUuid,
+        name: v.vessel,
+        vessel: v.vessel,
+        vesselType: v.vesselType,
+      }));
+    }
   });
 
   // Fetch company ranks

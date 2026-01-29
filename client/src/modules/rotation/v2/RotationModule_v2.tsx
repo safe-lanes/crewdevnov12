@@ -20,30 +20,13 @@ import { RotationVersionToggle } from '../components/VersionToggle';
 
 const useVessels = () => {
     return useQuery({
-        queryKey: ['/api/external/vessels'],
-        queryFn: async () => {
-            const domain = localStorage.getItem('domain') || 'rsms';
-            const response = await fetch(
-                `${API_BASE_URL}/crewmasterdata/getallmasterdata/vessels?domain=${domain}`,
-                {
-                    method: 'GET',
-                    headers: { 'accept': '*/*' }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch vessels: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return data.vessels || [];
-        },
+        queryKey: ['/api/v2/vessel/list'],
         staleTime: 5 * 60 * 1000,
         retry: 2,
         select: (data: any[]) => {
             return data.map((vessel: any) => ({
                 id: vessel.id,
-                vesselId: vessel.vuid,
+                vesselId: vessel.vesselUuid,
                 name: vessel.vessel || 'Unknown Vessel',
             }));
         }
