@@ -682,52 +682,9 @@ export function VesselModule_v2(): JSX.Element {
     };
     
     const getCrewTrainingComplianceStatus = (trainingCompanyId: string, vesselPosition: any): string | null => {
-        const fullRankName = vesselPosition.displayRole || vesselPosition.role || vesselPosition.rank;
-        const baseRankName = fullRankName?.split('_')[0];
-        const rankHasSuffix = fullRankName?.includes('_');
-        const rankPlanningData = vesselPlanning.find((p: any) => {
-            if (p.crewStatus !== 'primary') return false;
-            if (rankHasSuffix) {
-                return p.rank === fullRankName;
-            }
-            if (p.rank === fullRankName) return true;
-            if (p.rankId === vesselPosition.id || p.rankId === vesselPosition.rankId) return true;
-            const planningBaseRank = p.rank?.split('_')[0];
-            const planningHasSuffix = p.rank?.includes('_');
-            if (!planningHasSuffix && planningBaseRank === baseRankName) return true;
-            return false;
-        });
-        if (!rankPlanningData?.crewMemberId) return null;
-        const crewData = crewMemberLookup.get(rankPlanningData.crewMemberId);
-        if (!crewData) return null;
-        let trainingCourses: TrainingCourse[] = [];
-        if (crewData.trainingCourses) {
-            try {
-                trainingCourses = typeof crewData.trainingCourses === 'string' 
-                    ? JSON.parse(crewData.trainingCourses) 
-                    : crewData.trainingCourses;
-            } catch (e) {
-                trainingCourses = [];
-            }
-        }
-        const matchingCourse = trainingCourses.find((course: TrainingCourse) => 
-            course.companyId === trainingCompanyId || course.id === trainingCompanyId
-        );
-        if (!matchingCourse) return null;
-        if (!matchingCourse.expiry) return 'green';
-        try {
-            const expiryDate = new Date(matchingCourse.expiry);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const twoMonthsFromNow = new Date();
-            twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
-            twoMonthsFromNow.setHours(0, 0, 0, 0);
-            if (expiryDate < today) return 'red';
-            if (expiryDate <= twoMonthsFromNow) return 'yellow';
-            return 'green';
-        } catch {
-            return 'green';
-        }
+        // V2: Don't look up crew training data from V1 crewMemberLookup
+        // Return null to show empty compliance status until V2 has its own training data
+        return null;
     };
     
     const updatePlanningMutation = useUpdatePlanningV2();
@@ -1646,56 +1603,15 @@ export function VesselModule_v2(): JSX.Element {
                                                             if (!planningHasSuffix && planningBaseRank === baseRankName) return true;
                                                             return false;
                                                         });
-                                                        const crewMemberId = rankPlanningData?.crewMemberId;
-                                                        const crewMemberData = crewMemberId ? crewMemberLookup.get(crewMemberId) : null;
-                                                        let licenses: LicenseRecord[] = [];
-                                                        if (crewMemberData?.licenses) {
-                                                            try {
-                                                                licenses = typeof crewMemberData.licenses === 'string' 
-                                                                    ? JSON.parse(crewMemberData.licenses) 
-                                                                    : crewMemberData.licenses;
-                                                            } catch (e) {
-                                                                licenses = [];
-                                                            }
-                                                        }
+                                                        // V2: Don't look up crew from V1 - show empty values for detailed data
+                                                        // Crew name comes from V2 planning record only
+                                                        const crewMemberData = null; // V2: No V1 lookup
+                                                        const licenses: LicenseRecord[] = [];
                                                         const rankDepartment = inferDepartmentFromRank(fullRankName);
                                                         const highestCoc = findHighestActiveCoc(licenses, rankDepartment);
-                                                        let trainingCourses: TrainingCourse[] = [];
-                                                        if (crewMemberData?.trainingCourses) {
-                                                            try {
-                                                                trainingCourses = typeof crewMemberData.trainingCourses === 'string' 
-                                                                    ? JSON.parse(crewMemberData.trainingCourses) 
-                                                                    : crewMemberData.trainingCourses;
-                                                            } catch (e) {
-                                                                trainingCourses = [];
-                                                            }
-                                                        }
+                                                        const trainingCourses: TrainingCourse[] = [];
                                                         const tankerCerts = calculateTankerCertifications(trainingCourses);
-                                                        let companyYears = 0;
-                                                        if (crewMemberData?.currentCompanySeaService) {
-                                                            try {
-                                                                const companySeaService = typeof crewMemberData.currentCompanySeaService === 'string' 
-                                                                    ? JSON.parse(crewMemberData.currentCompanySeaService) 
-                                                                    : crewMemberData.currentCompanySeaService;
-                                                                if (Array.isArray(companySeaService) && companySeaService.length > 0) {
-                                                                    const fromDates = companySeaService
-                                                                        .map((s: any) => s.fromDate || s.signOnDate || s.from)
-                                                                        .filter((d: any) => d && typeof d === 'string' && d.trim() !== '')
-                                                                        .map((d: any) => new Date(d))
-                                                                        .filter((d: any) => !isNaN(d.getTime()));
-                                                                    if (fromDates.length > 0) {
-                                                                        const earliestDate = new Date(Math.min(...fromDates.map((d: any) => d.getTime())));
-                                                                        const today = new Date();
-                                                                        const diffMs = today.getTime() - earliestDate.getTime();
-                                                                        const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
-                                                                        const roundedYears = Math.round(diffYears * 10) / 10;
-                                                                        companyYears = diffYears > 0 ? Math.max(0.1, roundedYears) : 0;
-                                                                    }
-                                                                }
-                                                            } catch (e) {
-                                                                companyYears = 0;
-                                                            }
-                                                        }
+                                                        const companyYears = 0;
                                                         return (
                                                             <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
                                                                 <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
@@ -1725,46 +1641,32 @@ export function VesselModule_v2(): JSX.Element {
                                                                     {rankDepartment === 'deck' && hasValidGmdss(licenses) ? 'Yes' : ''}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-company-${index + 1}`}>
-                                                                    {companyYears > 0 ? companyYears : ''}
+                                                                    {/* V2: No crew experience data from V1 */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-rank-${index + 1}`}>
-                                                                    {crewMemberData?.experienceMetrics?.rank > 0 ? crewMemberData.experienceMetrics.rank : ''}
+                                                                    {/* V2: No crew experience data from V1 */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-tanker-${index + 1}`}>
-                                                                    {crewMemberData?.experienceMetrics?.vesselType?.name && crewMemberData?.experienceMetrics?.vesselType?.years > 0 ? (
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <span className="cursor-help">{crewMemberData.experienceMetrics.vesselType.years.toFixed(1)}</span>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent>
-                                                                                <p>{crewMemberData.experienceMetrics.vesselType.name}</p>
-                                                                            </TooltipContent>
-                                                                        </Tooltip>
-                                                                    ) : ''}
+                                                                    {/* V2: No crew experience data from V1 */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-all-${index + 1}`}>
-                                                                    {crewMemberData?.experienceMetrics?.tankers > 0 ? crewMemberData.experienceMetrics.tankers : ''}
+                                                                    {/* V2: No crew experience data from V1 */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-dow-${index + 1}`}>
-                                                                    {crewMemberData?.experienceMetrics?.oow > 0 ? crewMemberData.experienceMetrics.oow : ''}
+                                                                    {/* V2: No crew experience data from V1 */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
-                                                                    {crewMemberData?.experienceMetrics?.timeOnBoard > 0 ? crewMemberData.experienceMetrics.timeOnBoard : ''}
+                                                                    {/* V2: No crew experience data from V1 */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-language-${index + 1}`}>
-                                                                    {crewMemberData?.englishProficiency || ''}
+                                                                    {/* V2: No crew language data from V1 */}
                                                                 </TableCell>
                                                                 <TableCell className="text-xs" data-testid={`cell-officer-actions-${index + 1}`}>
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="sm" 
                                                                         className="h-8 w-8 p-0"
-                                                                        onClick={() => {
-                                                                            if (crewMemberData) {
-                                                                                setSelectedCrewMember(crewMemberData);
-                                                                                setIsCrewInfoFormOpen(true);
-                                                                            }
-                                                                        }}
+                                                                        disabled={true}
                                                                         data-testid={`button-view-officer-${index + 1}`}
                                                                     >
                                                                         <Eye className="h-4 w-4 text-gray-500" />
