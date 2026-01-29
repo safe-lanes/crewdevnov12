@@ -56,7 +56,7 @@ import {
     useArchivePlanningV2,
     useCreatePlanningV2 
 } from './hooks/useVesselV2';
-import type { VesselPlanningV2, UpdatePlanningInput } from './api/vesselApiV2';
+import type { VesselPlanningV2, CreatePlanningInput, UpdatePlanningInput } from './api/vesselApiV2';
 
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
     if (!licenses || licenses.length === 0) return false;
@@ -502,6 +502,8 @@ export function VesselModule_v2(): JSX.Element {
     const [planningEditDialogOpen, setPlanningEditDialogOpen] = useState(false);
     const [planningEditData, setPlanningEditData] = useState<{
         planUuid: string;
+        vesselUuid: string;
+        rankId: string;
         crewName: string;
         rank: string;
         type: 'onboard' | 'reliever';
@@ -722,26 +724,40 @@ export function VesselModule_v2(): JSX.Element {
         }
     };
     
-    const handleOpenPlanningEdit = (crew: any, type: 'onboard' | 'reliever', rankName: string) => {
-        if (!crew) {
+    const createPlanningMutation = useCreatePlanningV2();
+    
+    const handleCreatePlanning = async (data: CreatePlanningInput) => {
+        try {
+            await createPlanningMutation.mutateAsync(data);
             toast({
-                title: "No crew assigned",
-                description: `No ${type === 'onboard' ? 'on-board' : 'reliever'} crew assigned to this position.`,
+                title: "Success",
+                description: "Planning created successfully",
             });
-            return;
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to create planning",
+                variant: "destructive",
+            });
         }
+    };
+    
+    const handleOpenPlanningEdit = (crew: any, type: 'onboard' | 'reliever', rankName: string, rankId: string) => {
+        // Allow opening dialog even when crew is null (for creating new records)
         setPlanningEditData({
-            planUuid: crew.planUuid || crew.id,
-            crewName: crew.crewName || '',
+            planUuid: crew?.planUuid || crew?.id || '',
+            vesselUuid: selectedVessel?.vesselId || '',
+            rankId: rankId,
+            crewName: crew?.crewName || '',
             rank: rankName,
             type,
-            reliefDue: crew.reliefDue || '',
-            plannedSignOff: crew.plannedSignOff || '',
-            signOffPort: crew.signOffPort || '',
-            reliefStatus: crew.reliefStatus || '',
-            relieverSignOnDate: crew.relieverSignOnDate || '',
-            signOnPort: crew.signOnPort || '',
-            signOnStatus: crew.signOnStatus || '',
+            reliefDue: crew?.reliefDue || '',
+            plannedSignOff: crew?.plannedSignOff || '',
+            signOffPort: crew?.signOffPort || '',
+            reliefStatus: crew?.reliefStatus || '',
+            relieverSignOnDate: crew?.relieverSignOnDate || '',
+            signOnPort: crew?.signOnPort || '',
+            signOnStatus: crew?.signOnStatus || '',
         });
         setPlanningEditDialogOpen(true);
     };
@@ -749,19 +765,47 @@ export function VesselModule_v2(): JSX.Element {
     const handleSavePlanningEdit = async () => {
         if (!planningEditData) return;
         
-        const updateData: UpdatePlanningInput = {};
-        if (planningEditData.type === 'onboard') {
-            if (planningEditData.reliefDue) updateData.reliefDue = planningEditData.reliefDue;
-            if (planningEditData.plannedSignOff) updateData.signOffDate = planningEditData.plannedSignOff;
-            if (planningEditData.signOffPort) updateData.signOffPortUuid = planningEditData.signOffPort;
-            if (planningEditData.reliefStatus) updateData.reliefStatus = planningEditData.reliefStatus;
+        const isNewRecord = !planningEditData.planUuid;
+        
+        if (isNewRecord) {
+            // CREATE new planning record
+            const crewStatus = planningEditData.type === 'onboard' ? 'primary' : 'secondary';
+            const createData: CreatePlanningInput = {
+                vesselUuid: planningEditData.vesselUuid,
+                rankId: planningEditData.rankId,
+                rank: planningEditData.rank,
+                crewStatus,
+            };
+            
+            if (planningEditData.type === 'onboard') {
+                if (planningEditData.reliefDue) createData.reliefDue = planningEditData.reliefDue;
+                if (planningEditData.plannedSignOff) createData.signOffDate = planningEditData.plannedSignOff;
+                if (planningEditData.signOffPort) createData.signOffPortUuid = planningEditData.signOffPort;
+                if (planningEditData.reliefStatus) createData.reliefStatus = planningEditData.reliefStatus;
+            } else {
+                if (planningEditData.relieverSignOnDate) createData.relieverSignOnDate = planningEditData.relieverSignOnDate;
+                if (planningEditData.signOnPort) createData.joiningPortUuid = planningEditData.signOnPort;
+                if (planningEditData.signOnStatus) createData.joiningStatus = planningEditData.signOnStatus;
+            }
+            
+            await handleCreatePlanning(createData);
         } else {
-            if (planningEditData.relieverSignOnDate) updateData.relieverSignOnDate = planningEditData.relieverSignOnDate;
-            if (planningEditData.signOnPort) updateData.joiningPortUuid = planningEditData.signOnPort;
-            if (planningEditData.signOnStatus) updateData.joiningStatus = planningEditData.signOnStatus;
+            // UPDATE existing planning record
+            const updateData: UpdatePlanningInput = {};
+            if (planningEditData.type === 'onboard') {
+                if (planningEditData.reliefDue) updateData.reliefDue = planningEditData.reliefDue;
+                if (planningEditData.plannedSignOff) updateData.signOffDate = planningEditData.plannedSignOff;
+                if (planningEditData.signOffPort) updateData.signOffPortUuid = planningEditData.signOffPort;
+                if (planningEditData.reliefStatus) updateData.reliefStatus = planningEditData.reliefStatus;
+            } else {
+                if (planningEditData.relieverSignOnDate) updateData.relieverSignOnDate = planningEditData.relieverSignOnDate;
+                if (planningEditData.signOnPort) updateData.joiningPortUuid = planningEditData.signOnPort;
+                if (planningEditData.signOnStatus) updateData.joiningStatus = planningEditData.signOnStatus;
+            }
+            
+            await handleUpdatePlanning(planningEditData.planUuid, updateData);
         }
         
-        await handleUpdatePlanning(planningEditData.planUuid, updateData);
         setPlanningEditDialogOpen(false);
         setPlanningEditData(null);
     };
@@ -1809,7 +1853,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                     variant="ghost" 
                                                                     size="sm" 
                                                                     className="h-6 w-6 p-0"
-                                                                    onClick={() => handleOpenPlanningEdit(row.primaryCrew, 'onboard', row.rankName)}
+                                                                    onClick={() => handleOpenPlanningEdit(row.primaryCrew, 'onboard', row.rankName, row.rank.id || row.rank.rankId || '')}
                                                                     data-testid={`button-edit-onboard-${index}`}
                                                                 >
                                                                     <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
@@ -1826,7 +1870,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                     variant="ghost" 
                                                                     size="sm" 
                                                                     className="h-6 w-6 p-0"
-                                                                    onClick={() => handleOpenPlanningEdit(row.secondaryCrew, 'reliever', row.rankName)}
+                                                                    onClick={() => handleOpenPlanningEdit(row.secondaryCrew, 'reliever', row.rankName, row.rank.id || row.rank.rankId || '')}
                                                                     data-testid={`button-edit-reliever-${index}`}
                                                                 >
                                                                     <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />

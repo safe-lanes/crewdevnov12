@@ -65,6 +65,10 @@ export interface CreatePlanningInput {
   crewStatus?: string;
   signOnDate?: string;
   reliefDue?: string;
+  signOffDate?: string;
+  signOffPortUuid?: string;
+  signOffReason?: string;
+  reliefStatus?: string;
   contractPeriodMonths?: number;
   contractEndRangeStartMonths?: number;
   contractEndRangeEndMonths?: number;
