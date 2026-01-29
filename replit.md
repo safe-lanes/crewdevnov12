@@ -58,6 +58,10 @@ The application employs a modern web stack with a module-first architecture, pri
         - `useCrewByRank` hook: Version-aware crew fetching by rank with V2 field mapping
         - `useDeleteRotationPlan` hook: Version-aware plan deletion with uuid support for V2
         - V2 API clients: `rotationApiV2.ts` and `vesselApiV2.ts` following Crew Pool V2 patterns
+    - **Crew Deployment Workflow (V2)**: Two-stage workflow for deploying crew from Rotation to Vessel:
+        - Stage 1 - Deploy from Rotation: Creates `crew_assignments` with `isCurrent=false, assignmentType="Planned"`. Crew appears in Vessel Planning Reliever Status with "Planned" joiningStatus.
+        - Stage 2 - Sign On: When status changes to "Signed On" via `/api/v2/vessel/planning/:planUuid/sign-on`, crew moves from Reliever to On Board. Transaction updates: (1) old primary crew assignment set to `isCurrent=false`, (2) vessel_planning moves relieverCrewUuid to crewUuid with crewStatus="primary", (3) crew_assignment updated to `isCurrent=true, assignmentType="OnBoard"`.
+        - Crew List/Officer Matrix use `crew_assignments.isCurrent=true` to determine on-board crew.
     - **Crew Appraisals Module**: Manages appraisals through a 3-stage workflow.
     - **Crew Pool Module (V1 & V2)**: Manages active crew database. V2 features a re-architected system with a Repository + Service + Controller pattern, UUID identifiers, soft deletes, and comprehensive forms. Includes a "Save-Before-Attachment" pattern (uses direct API calls via `crewPoolApiV2` to preserve unsaved rows - mutations cause query invalidation which overwrites local form state) and generates sequential 'A000001' format Crew IDs.
     - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments.
