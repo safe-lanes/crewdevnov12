@@ -85,21 +85,12 @@ export function useCrewListV2(params?: {
   offset?: number;
 }) {
   return useQuery({
-    queryKey: [V2_QUERY_KEY, 'crew', params],
+    queryKey: [V2_QUERY_KEY, 'crew', 'list', params ?? {}],
     queryFn: async () => {
-      console.log('[V2 Crew Pool] Fetching crew list...');
-      try {
-        const response = await crewPoolApiV2.getCrewList(params);
-        console.log('[V2 Crew Pool] Raw response:', response);
-        const data = Array.isArray(response) 
-          ? response.map(mapV2CrewToLegacy)
-          : (response.data || []).map(mapV2CrewToLegacy);
-        console.log('[V2 Crew Pool] Mapped data count:', data.length);
-        return data;
-      } catch (error) {
-        console.error('[V2 Crew Pool] Error fetching crew:', error);
-        throw error;
-      }
+      const response = await crewPoolApiV2.getCrewList(params);
+      // API returns { data: [...], pagination: {...} }
+      const rawData = Array.isArray(response) ? response : (response.data || []);
+      return rawData.map(mapV2CrewToLegacy);
     },
     staleTime: V2_STALE_TIME,
   });
