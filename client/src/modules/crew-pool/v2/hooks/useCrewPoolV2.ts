@@ -87,11 +87,19 @@ export function useCrewListV2(params?: {
   return useQuery({
     queryKey: [V2_QUERY_KEY, 'crew', params],
     queryFn: async () => {
-      const response = await crewPoolApiV2.getCrewList(params);
-      const data = Array.isArray(response) 
-        ? response.map(mapV2CrewToLegacy)
-        : (response.data || []).map(mapV2CrewToLegacy);
-      return data;
+      console.log('[V2 Crew Pool] Fetching crew list...');
+      try {
+        const response = await crewPoolApiV2.getCrewList(params);
+        console.log('[V2 Crew Pool] Raw response:', response);
+        const data = Array.isArray(response) 
+          ? response.map(mapV2CrewToLegacy)
+          : (response.data || []).map(mapV2CrewToLegacy);
+        console.log('[V2 Crew Pool] Mapped data count:', data.length);
+        return data;
+      } catch (error) {
+        console.error('[V2 Crew Pool] Error fetching crew:', error);
+        throw error;
+      }
     },
     staleTime: V2_STALE_TIME,
   });
