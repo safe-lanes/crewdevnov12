@@ -44,7 +44,13 @@ The application employs a modern web stack with a module-first architecture, pri
     - **Vessel Database Module**: Displays vessel data, Officer Matrix, Planning, and Training Matrix, including "Time o/b (months)" calculation.
     - **Crew Handover Workflow**: Manages crew transitions with primary/secondary status.
     - **Crew Archive System**: Manages historical crew records with sign-off workflow.
-    - **Rotation Module (V1 & V2)**: Manages crew rotation planning with visual timelines. V2 features Repository + Service + Controller pattern with UUID identifiers, connecting to crew_members_v2 for crew visibility. Critical endpoint `/api/v2/rotation/crew/by-rank/:rank` enables V2 crew from Recruitment to be visible for vessel deployment. Deployments sync to both vessel_planning_v2 and crew_assignments tables.
+    - **Rotation Module (V1 & V2)**: Manages crew rotation planning with visual timelines. V2 features Repository + Service + Controller pattern with UUID identifiers, connecting to crew_members_v2 for crew visibility. Critical endpoint `/api/v2/rotation/crew/by-rank/:rank` enables V2 crew from Recruitment to be visible for vessel deployment. Deployments sync to both vessel_planning_v2 and crew_assignments tables. Frontend V2 integration includes:
+        - `RotationVersionToggle` component: UI toggle switch for V1/V2 mode with localStorage persistence
+        - `useRotationVersion` hook: Manages version state and provides version-aware data hooks
+        - `useRotationPlans` hook: Version-aware rotation plans fetching (V1 /api/rotation-plans, V2 /api/v2/rotation/drafts)
+        - `useCrewByRank` hook: Version-aware crew fetching by rank with V2 field mapping
+        - `useDeleteRotationPlan` hook: Version-aware plan deletion with uuid support for V2
+        - V2 API clients: `rotationApiV2.ts` and `vesselApiV2.ts` following Crew Pool V2 patterns
     - **Crew Appraisals Module**: Manages appraisals through a 3-stage workflow.
     - **Crew Pool Module (V1 & V2)**: Manages active crew database. V2 features a re-architected system with a Repository + Service + Controller pattern, UUID identifiers, soft deletes, and comprehensive forms. Includes a "Save-Before-Attachment" pattern (uses direct API calls via `crewPoolApiV2` to preserve unsaved rows - mutations cause query invalidation which overwrites local form state) and generates sequential 'A000001' format Crew IDs.
     - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments.

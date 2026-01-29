@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
   Table,
   TableBody,
@@ -26,51 +24,41 @@ import { useToast } from "@/hooks/use-toast";
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { NewPlanDialog } from './NewPlanDialog';
 import { RotationVersionToggle } from './components/VersionToggle';
+import { useRotationPlans, useDeleteRotationPlan } from './hooks/useRotationVersion';
 import type { RotationPlan } from '@shared/schema';
 
 export function RotationPlanTable() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [planToDelete, setPlanToDelete] = useState<number | null>(null);
+  const [planToDelete, setPlanToDelete] = useState<number | string | null>(null);
   const [editingPlan, setEditingPlan] = useState<RotationPlan | null>(null);
   const [newPlanDialogOpen, setNewPlanDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  // Fetch rotation plans
-  const { data: plans = [], isLoading } = useQuery<RotationPlan[]>({
-    queryKey: ['/api/rotation-plans'],
-  });
+  const { data: plans = [], isLoading, isV2 } = useRotationPlans();
+  const { deletePlan, isPending: isDeleting } = useDeleteRotationPlan();
 
-  // Delete mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/rotation-plans/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/rotation-plans'] });
-      toast({
-        title: "Success",
-        description: "Rotation plan deleted successfully",
-      });
-      setDeleteDialogOpen(false);
-      setPlanToDelete(null);
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to delete rotation plan",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleDeleteClick = (id: number) => {
+  const handleDeleteClick = (id: number | string) => {
     setPlanToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (planToDelete !== null) {
-      deleteMutation.mutate(planToDelete);
+      try {
+        await deletePlan(planToDelete);
+        toast({
+          title: "Success",
+          description: "Rotation plan deleted successfully",
+        });
+        setDeleteDialogOpen(false);
+        setPlanToDelete(null);
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to delete rotation plan",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -129,39 +117,42 @@ export function RotationPlanTable() {
                 </TableCell>
               </TableRow>
             ) : (
-              plans.map((plan) => (
-                <TableRow key={plan.id} data-testid={`row-plan-${plan.id}`}>
-                  <TableCell className="text-sm" data-testid={`text-draft-id-${plan.id}`}>{plan.draftId}</TableCell>
-                  <TableCell className="text-sm" data-testid={`text-last-edited-${plan.id}`}>{plan.lastEdited}</TableCell>
-                  <TableCell className="text-sm" data-testid={`text-vessels-${plan.id}`}>{parseVessels(plan.vessels)}</TableCell>
-                  <TableCell className="text-sm" data-testid={`text-crew-${plan.id}`}>{plan.crew}</TableCell>
-                  <TableCell className="text-sm" data-testid={`text-plan-dates-${plan.id}`}>{plan.planFromDate} - {plan.planToDate}</TableCell>
-                  <TableCell className="text-sm" data-testid={`text-created-by-${plan.id}`}>{plan.createdBy}</TableCell>
-                  <TableCell className="text-sm" data-testid={`text-plan-status-${plan.id}`}>{plan.planStatus}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                        onClick={() => handleEditClick(plan)}
-                        data-testid={`button-edit-${plan.id}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-                        onClick={() => handleDeleteClick(plan.id)}
-                        data-testid={`button-delete-${plan.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              plans.map((plan) => {
+                const planKey = (plan as any).uuid || plan.id;
+                return (
+                  <TableRow key={planKey} data-testid={`row-plan-${planKey}`}>
+                    <TableCell className="text-sm" data-testid={`text-draft-id-${planKey}`}>{plan.draftId}</TableCell>
+                    <TableCell className="text-sm" data-testid={`text-last-edited-${planKey}`}>{plan.lastEdited}</TableCell>
+                    <TableCell className="text-sm" data-testid={`text-vessels-${planKey}`}>{parseVessels(plan.vessels)}</TableCell>
+                    <TableCell className="text-sm" data-testid={`text-crew-${planKey}`}>{plan.crew}</TableCell>
+                    <TableCell className="text-sm" data-testid={`text-plan-dates-${planKey}`}>{plan.planFromDate} - {plan.planToDate}</TableCell>
+                    <TableCell className="text-sm" data-testid={`text-created-by-${planKey}`}>{plan.createdBy}</TableCell>
+                    <TableCell className="text-sm" data-testid={`text-plan-status-${planKey}`}>{plan.planStatus}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                          onClick={() => handleEditClick(plan)}
+                          data-testid={`button-edit-${planKey}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                          onClick={() => handleDeleteClick(planKey)}
+                          data-testid={`button-delete-${planKey}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
