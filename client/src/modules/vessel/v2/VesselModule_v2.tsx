@@ -1799,7 +1799,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                 crewName: primaryCrew.relieverCrewName,
                                                                 crewStatus: 'secondary',
                                                                 relieverSignOnDate: primaryCrew.relieverSignOnDate,
-                                                                signOnPort: primaryCrew.joiningPort,
+                                                                signOnPort: primaryCrew.joiningPortName,
                                                                 signOnStatus: primaryCrew.joiningStatus,
                                                                 relieverContractPeriodMonths: primaryCrew.relieverContractPeriodMonths,
                                                                 relieverContractEndRangeStartMonths: primaryCrew.relieverContractEndRangeStartMonths,
