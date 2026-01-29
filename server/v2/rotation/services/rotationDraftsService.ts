@@ -255,6 +255,115 @@ export const rotationDraftsService = {
     });
   },
 
+  async getProposals(filters?: { vessels?: string[]; ranks?: string[]; draftId?: string; dateFrom?: string; dateTo?: string; archived?: boolean }) {
+    // Get all drafts without status filter (we'll filter in memory to include both Proposed and Partially Approved)
+    const allDrafts = await rotationDraftsRepository.findAll();
+    
+    // Filter to only include Proposed, Partially Approved, or Completed (for archived view)
+    const filteredDrafts = allDrafts.filter(draft => {
+      const status = draft.planStatus;
+      if (filters?.archived) {
+        return status === "Proposed" || status === "Partially Approved" || status === "Completed";
+      }
+      return status === "Proposed" || status === "Partially Approved";
+    });
+    
+    // Get all entries for these drafts and flatten into proposals
+    const proposals: any[] = [];
+    
+    for (const draft of filteredDrafts) {
+      // Filter by draftId if provided
+      if (filters?.draftId && draft.draftId !== filters.draftId) {
+        continue;
+      }
+      
+      const rawEntries = await rotationEntriesRepository.findByDraftUuid(draft.draftUuid);
+      
+      for (const entry of rawEntries) {
+        // Filter by vessels
+        if (filters?.vessels && filters.vessels.length > 0 && entry.vesselUuid) {
+          if (!filters.vessels.includes(entry.vesselUuid)) {
+            continue;
+          }
+        }
+        
+        // Filter by ranks
+        if (filters?.ranks && filters.ranks.length > 0 && entry.rank) {
+          if (!filters.ranks.includes(entry.rank)) {
+            continue;
+          }
+        }
+        
+        // Filter by date range
+        if (filters?.dateFrom && entry.signOnDate) {
+          if (entry.signOnDate < filters.dateFrom) {
+            continue;
+          }
+        }
+        if (filters?.dateTo && entry.signOnDate) {
+          if (entry.signOnDate > filters.dateTo) {
+            continue;
+          }
+        }
+        
+        // For archived view, only include deployed/rejected entries
+        // For active view, exclude deployed/rejected entries
+        const proposalStatus = entry.proposalStatus?.toLowerCase() || '';
+        const isEntryArchived = proposalStatus === "deployed" || proposalStatus === "rejected";
+        
+        if (filters?.archived && !isEntryArchived) {
+          continue;
+        }
+        if (!filters?.archived && isEntryArchived) {
+          continue;
+        }
+        
+        // Enrich with crew name
+        let crewName = 'Unknown Crew';
+        if (entry.crewUuid) {
+          const crew = await crewMembersRepository.findByUuid(entry.crewUuid);
+          if (crew) {
+            crewName = `${crew.firstName || ''} ${crew.familyName || ''}`.trim() || 'Unknown Crew';
+          }
+        }
+        
+        // Get vessel name
+        const vesselName = entry.vesselUuid ? translateVesselCodeToName(entry.vesselUuid) : 'Unknown Vessel';
+        
+        proposals.push({
+          // Entry identifiers
+          entryUuid: entry.entryUuid,
+          draftUuid: draft.draftUuid,
+          draftId: draft.draftId,
+          // Legacy compatibility - V1 uses planId (numeric) and assignmentIndex
+          planId: draft.id,
+          assignmentIndex: entry.id,
+          // Core assignment data
+          vessel: vesselName,
+          vesselId: entry.vesselUuid,
+          vesselUuid: entry.vesselUuid,
+          rank: entry.rank,
+          rankId: entry.rankId,
+          crewId: entry.crewUuid,
+          crewUuid: entry.crewUuid,
+          crewMemberId: entry.crewUuid,
+          crewName,
+          signOnDate: entry.signOnDate,
+          joiningDate: entry.signOnDate, // Timeline uses joiningDate
+          contractPeriod: entry.contractPeriod || 6,
+          // Proposal metadata
+          proposedBy: draft.proposedByUuid || 'Unknown',
+          proposedDate: draft.proposedDate,
+          // Entry status
+          proposalStatus: entry.proposalStatus,
+          result: entry.proposalStatus,
+        });
+      }
+    }
+    
+    return proposals;
+  },
+
   async deleteDraft(draftUuid: string) {
     return rotationDraftsRepository.softDelete(draftUuid);
   },

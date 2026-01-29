@@ -10,6 +10,7 @@ const router = Router();
 
 router.get("/crew/by-rank/:rank", rotationCrewController.getByRank);
 
+router.get("/proposals", rotationDraftsController.getProposals);
 router.get("/drafts", rotationDraftsController.getAll);
 router.get("/drafts/:draftUuid", rotationDraftsController.getByDraftUuid);
 router.post("/drafts", rotationDraftsController.create);

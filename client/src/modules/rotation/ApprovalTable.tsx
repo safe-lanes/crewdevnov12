@@ -9,10 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog';
+import { useRotationVersion } from './hooks/useRotationVersion';
 
-// Hook to fetch proposed assignments
+// Hook to fetch proposed assignments - version aware
 const useProposals = (filters: any) => {
   const { getVesselIds } = useVesselLookup();
+  const { isV2 } = useRotationVersion();
   const queryParams = new URLSearchParams();
   
   if (filters.selectedVessels && filters.selectedVessels.length > 0) {
@@ -41,9 +43,18 @@ const useProposals = (filters: any) => {
     queryParams.append('archived', 'true');
   }
   
+  // Use V2 API when version toggle is set to V2
+  const apiEndpoint = isV2 
+    ? `/api/v2/rotation/proposals?${queryParams.toString()}`
+    : `/api/rotation/proposals?${queryParams.toString()}`;
+  
+  const queryKey = isV2
+    ? ['/api/v2/rotation/proposals', queryParams.toString()]
+    : ['/api/rotation/proposals', queryParams.toString()];
+  
   return useQuery({
-    queryKey: ['/api/rotation/proposals', queryParams.toString()],
-    queryFn: () => fetch(`/api/rotation/proposals?${queryParams.toString()}`).then(res => res.json()),
+    queryKey,
+    queryFn: () => fetch(apiEndpoint).then(res => res.json()),
   });
 };
 

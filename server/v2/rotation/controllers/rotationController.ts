@@ -127,6 +127,24 @@ export const rotationDraftsController = {
     }
   },
 
+  async getProposals(req: Request, res: Response) {
+    try {
+      const filters = {
+        vessels: req.query.vessels ? JSON.parse(req.query.vessels as string) : undefined,
+        ranks: req.query.ranks ? JSON.parse(req.query.ranks as string) : undefined,
+        draftId: req.query.draftId as string | undefined,
+        dateFrom: req.query.dateFrom as string | undefined,
+        dateTo: req.query.dateTo as string | undefined,
+        archived: req.query.archived === 'true',
+      };
+      const proposals = await rotationDraftsService.getProposals(filters);
+      res.json(proposals);
+    } catch (error) {
+      console.error("Error fetching proposals:", error);
+      res.status(500).json({ error: "Failed to fetch proposals" });
+    }
+  },
+
   async delete(req: Request, res: Response) {
     try {
       const { draftUuid } = req.params;
