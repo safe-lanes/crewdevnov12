@@ -822,22 +822,18 @@ export function VesselModule_v2(): JSX.Element {
             filteredVessels = vessels.filter((vessel: any) => vessel.addGroup === addGroupValue || vessel.additionalGroup === addGroupValue);
         }
         
+        // V2: Empty records initially - crew count will come from V2 planning data
         return filteredVessels.map((vessel: any) => {
-            const crewCount = crewMembers.filter((crew: any) => 
-                crew.presentVessel === vessel.name || 
-                crew.presentVessel === vessel.vesselId
-            ).length;
-
             return {
                 id: vessel.id,
                 vessel: vessel.name,
                 type: vessel.vesselType,
-                crewOnBoard: crewCount,
+                crewOnBoard: 0, // V2: Will be populated from V2 planning API
                 // Keep original data for selection
                 _originalVessel: vessel
             };
         });
-    }, [vessels, crewMembers, filterType, vesselValue, fleetValue, addGroupValue]);
+    }, [vessels, filterType, vesselValue, fleetValue, addGroupValue]);
 
     const handleEditVessel = (data: any) => {
         // Find original vessel from transformed data
