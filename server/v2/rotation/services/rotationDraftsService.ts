@@ -56,16 +56,96 @@ export const rotationDraftsService = {
     };
   },
 
-  async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId">) {
-    return rotationDraftsRepository.create(data);
+  async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId"> & { vessels?: string; crew?: string }) {
+    // Extract vessels and crew from data before creating draft
+    const { vessels: vesselsJson, crew: crewString, ...draftData } = data;
+    
+    // Create the draft first
+    const draft = await rotationDraftsRepository.create(draftData);
+    
+    // Save vessels to child table
+    if (vesselsJson) {
+      try {
+        const vesselUuids: string[] = JSON.parse(vesselsJson);
+        for (let i = 0; i < vesselUuids.length; i++) {
+          await rotationDraftVesselsRepository.create({
+            draftUuid: draft.draftUuid,
+            vesselUuid: vesselUuids[i],
+            sortOrder: i,
+          });
+        }
+      } catch (e) {
+        console.error("Failed to parse vessels JSON:", e);
+      }
+    }
+    
+    // Save ranks to child table
+    if (crewString) {
+      const rankNames = crewString.split(',').map(r => r.trim()).filter(r => r);
+      for (let i = 0; i < rankNames.length; i++) {
+        await rotationDraftRanksRepository.create({
+          draftUuid: draft.draftUuid,
+          rankName: rankNames[i],
+          sortOrder: i,
+        });
+      }
+    }
+    
+    return draft;
   },
 
-  async update(draftUuid: string, data: Partial<InsertRotationDraftsV2>) {
+  async update(draftUuid: string, data: Partial<InsertRotationDraftsV2> & { vessels?: string; crew?: string }) {
     const existing = await rotationDraftsRepository.findByDraftUuid(draftUuid);
     if (!existing) {
       throw new Error(`Draft not found: ${draftUuid}`);
     }
-    return rotationDraftsRepository.update(draftUuid, data);
+    
+    // Extract vessels and crew from data
+    const { vessels: vesselsJson, crew: crewString, ...draftData } = data;
+    
+    // Update vessels if provided (replace all)
+    if (vesselsJson !== undefined) {
+      // Delete existing vessels for this draft
+      const existingVessels = await rotationDraftVesselsRepository.findByDraftUuid(draftUuid);
+      for (const v of existingVessels) {
+        await rotationDraftVesselsRepository.softDelete(v.rvUuid);
+      }
+      
+      // Add new vessels
+      try {
+        const vesselUuids: string[] = JSON.parse(vesselsJson);
+        for (let i = 0; i < vesselUuids.length; i++) {
+          await rotationDraftVesselsRepository.create({
+            draftUuid,
+            vesselUuid: vesselUuids[i],
+            sortOrder: i,
+          });
+        }
+      } catch (e) {
+        console.error("Failed to parse vessels JSON:", e);
+      }
+    }
+    
+    // Update ranks if provided (replace all)
+    if (crewString !== undefined) {
+      // Delete existing ranks for this draft
+      const existingRanks = await rotationDraftRanksRepository.findByDraftUuid(draftUuid);
+      for (const r of existingRanks) {
+        await rotationDraftRanksRepository.softDelete(r.rrUuid);
+      }
+      
+      // Add new ranks
+      const rankNames = crewString.split(',').map(r => r.trim()).filter(r => r);
+      for (let i = 0; i < rankNames.length; i++) {
+        await rotationDraftRanksRepository.create({
+          draftUuid,
+          rankName: rankNames[i],
+          sortOrder: i,
+        });
+      }
+    }
+    
+    return rotationDraftsRepository.update(draftUuid, draftData);
   },
 
   async addVessel(draftUuid: string, data: Omit<InsertRotationDraftVesselsV2, "rvUuid" | "draftUuid">) {
