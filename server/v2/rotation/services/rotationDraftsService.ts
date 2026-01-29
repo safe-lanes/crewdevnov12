@@ -12,9 +12,31 @@ import type {
   InsertRotationDraftRanksV2,
   InsertRotationEntriesV2
 } from "../../../../shared/v2/rotation/schema";
-import { translateVesselCodeToName } from "../../../storage";
+import { getDb } from "../../db";
+import { masterVessels } from "../../../../shared/schema";
+import { eq } from "drizzle-orm";
 
 const crewMembersRepository = new CrewMembersRepository();
+
+// V2 helper: Get vessel name from master_vessels table by UUID
+async function getVesselNameByUuid(vesselUuid: string): Promise<string> {
+  try {
+    const db = getDb();
+    const result = await db
+      .select({ vessel: masterVessels.vessel })
+      .from(masterVessels)
+      .where(eq(masterVessels.vesselUuid, vesselUuid))
+      .limit(1);
+    
+    if (result.length > 0 && result[0].vessel) {
+      return result[0].vessel;
+    }
+    return vesselUuid; // Fallback to UUID if not found
+  } catch (error) {
+    console.error('Error fetching vessel name:', error);
+    return vesselUuid;
+  }
+}
 
 export const rotationDraftsService = {
   async getAll(filters?: { planStatus?: string }) {
@@ -26,8 +48,10 @@ export const rotationDraftsService = {
         const vessels = await rotationDraftVesselsRepository.findByDraftUuid(draft.draftUuid);
         const ranks = await rotationDraftRanksRepository.findByDraftUuid(draft.draftUuid);
         
-        // Translate vessel UUIDs to human-readable names
-        const vesselNames = vessels.map(v => translateVesselCodeToName(v.vesselUuid)).join(', ') || '—';
+        // Translate vessel UUIDs to human-readable names from master_vessels table
+        const vesselNamePromises = vessels.map(v => getVesselNameByUuid(v.vesselUuid));
+        const vesselNamesList = await Promise.all(vesselNamePromises);
+        const vesselNames = vesselNamesList.join(', ') || '—';
         
         return {
           ...draft,
@@ -62,7 +86,7 @@ export const rotationDraftsService = {
           }
         }
         
-        const vesselName = entry.vesselUuid ? translateVesselCodeToName(entry.vesselUuid) : 'Unknown Vessel';
+        const vesselName = entry.vesselUuid ? await getVesselNameByUuid(entry.vesselUuid) : 'Unknown Vessel';
         
         return {
           ...entry,
@@ -328,7 +352,7 @@ export const rotationDraftsService = {
         }
         
         // Get vessel name
-        const vesselName = entry.vesselUuid ? translateVesselCodeToName(entry.vesselUuid) : 'Unknown Vessel';
+        const vesselName = entry.vesselUuid ? await getVesselNameByUuid(entry.vesselUuid) : 'Unknown Vessel';
         
         proposals.push({
           // Entry identifiers
