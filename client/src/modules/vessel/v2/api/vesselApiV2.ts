@@ -82,29 +82,29 @@ export interface CreatePlanningInput {
 }
 
 export interface UpdatePlanningInput {
-  crewUuid?: string;
-  crewStatus?: string;
-  signOnDate?: string;
-  reliefDue?: string;
-  signOffDate?: string;
-  signOffPortUuid?: string;
-  signOffReason?: string;
-  reliefStatus?: string;
-  takeOverDate?: string;
-  takeOverConfirmation?: boolean;
-  handOverDate?: string;
-  relieverCrewUuid?: string;
-  relieverSignOnDate?: string;
-  joiningPortUuid?: string;
-  joiningStatus?: string;
-  contractPeriodMonths?: number;
-  contractEndRangeStartMonths?: number;
-  contractEndRangeEndMonths?: number;
-  relieverContractPeriodMonths?: number;
-  relieverContractEndRangeStartMonths?: number;
-  relieverContractEndRangeEndMonths?: number;
-  deploymentChecklistCompleted?: boolean;
-  applicableDocsChecked?: boolean;
+  crewUuid?: string | null;
+  crewStatus?: string | null;
+  signOnDate?: string | null;
+  reliefDue?: string | null;
+  signOffDate?: string | null;
+  signOffPortUuid?: string | null;
+  signOffReason?: string | null;
+  reliefStatus?: string | null;
+  takeOverDate?: string | null;
+  takeOverConfirmation?: boolean | null;
+  handOverDate?: string | null;
+  relieverCrewUuid?: string | null;
+  relieverSignOnDate?: string | null;
+  joiningPortUuid?: string | null;
+  joiningStatus?: string | null;
+  contractPeriodMonths?: number | null;
+  contractEndRangeStartMonths?: number | null;
+  contractEndRangeEndMonths?: number | null;
+  relieverContractPeriodMonths?: number | null;
+  relieverContractEndRangeStartMonths?: number | null;
+  relieverContractEndRangeEndMonths?: number | null;
+  deploymentChecklistCompleted?: boolean | null;
+  applicableDocsChecked?: boolean | null;
 }
 
 export const vesselApiV2 = {
