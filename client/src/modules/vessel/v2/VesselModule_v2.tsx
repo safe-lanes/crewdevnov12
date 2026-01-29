@@ -667,6 +667,25 @@ export function VesselModule_v2(): JSX.Element {
 
     const renderVesselDatabase = () => (
         <div className="flex flex-col h-full">
+            <SectionTitleComponents title="Vessel Database">
+                <div className="flex gap-2 items-center">
+                    <VesselVersionToggle />
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+                        data-testid="button-toggle-filters"
+                    >
+                        <Filter className="h-4 w-4" />
+                        Filters
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8" data-testid="button-export">
+                        <Download className="h-4 w-4 mr-1" />
+                        Export
+                    </Button>
+                </div>
+            </SectionTitleComponents>
             {showFilters && (
                 <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg">
                     <RadioGroup 
@@ -758,17 +777,24 @@ export function VesselModule_v2(): JSX.Element {
             <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
                 <CardContent className="p-4 pl-0 bg-[#f7fafc]">
                     <AgGridTable
-                        columnDefs={vesselColumns}
                         rowData={vesselData}
+                        columnDefs={vesselColumns}
                         onGridReady={(params) => {
                             gridApiRef.current = params.api;
                         }}
+                        context={{ handleEditVessel }}
+                        loading={vesselsLoading || crewLoading}
                         autoHeight={true}
                         maxHeight="500px"
                         minHeight="200px"
                         width="100%"
                         enableExport={true}
                         enableSideBar={true}
+                        enableStatusBar={false}
+                        enableRowGrouping={true}
+                        enablePivoting={true}
+                        enableAdvancedFilter={false}
+                        rowSelection={false}
                     />
                 </CardContent>
             </Card>
@@ -949,34 +975,14 @@ export function VesselModule_v2(): JSX.Element {
     };
 
     return (
-        <div className="flex min-h-screen">
+        <div data-testid="vessel-container">
             <VesselSideBar_v2
                 selectedVesselPage={selectedVesselPage}
                 setSelectedVesselPage={setSelectedVesselPage}
                 allowedPages={allowedPages}
             />
             
-            <MainLayout>
-                <SectionTitleComponents title="Vessel Database">
-                    <div className="flex gap-2 items-center">
-                        <VesselVersionToggle />
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowFilters(!showFilters)}
-                            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
-                            data-testid="button-toggle-filters"
-                        >
-                            <Filter className="h-4 w-4" />
-                            Filters
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8" data-testid="button-export">
-                            <Download className="h-4 w-4 mr-1" />
-                            Export
-                        </Button>
-                    </div>
-                </SectionTitleComponents>
-                
+            <MainLayout hasSidebar={true}>
                 {selectedVessel ? renderVesselDetail() : renderVesselDatabase()}
             </MainLayout>
 
