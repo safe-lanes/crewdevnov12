@@ -1,6 +1,47 @@
-import { eq, and, isNull, ilike, or } from "drizzle-orm";
+import { eq, and, isNull, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "../../db";
-import { crewMembersV2, crewAssignments } from "../../../../shared/v2/crew-pool/schema";
+import { crewMembersV2, crewAssignments, crewSeaService, crewPersonalDetails, crewLicenses } from "../../../../shared/v2/crew-pool/schema";
+
+interface CrewExperience {
+  company: number;
+  rank: number;
+  tankers: number;
+  oow: number;
+  endorsements: string;
+}
+
+function calculateExperienceFromSeaService(seaServiceRecords: any[], presentRank: string): CrewExperience {
+  let totalMonths = 0;
+  let rankMonths = 0;
+  let tankerMonths = 0;
+  let oowMonths = 0;
+  
+  for (const record of seaServiceRecords) {
+    const months = parseFloat(record.periodMonths) || 0;
+    totalMonths += months;
+    
+    if (record.rank === presentRank) {
+      rankMonths += months;
+    }
+    
+    const categories = record.experienceCategories || [];
+    if (categories.includes('Tanker') || categories.includes('Oil Tanker') || categories.includes('Chemical Tanker')) {
+      tankerMonths += months;
+    }
+    
+    if (record.rank?.includes('OOW') || record.rank?.includes('Officer of Watch')) {
+      oowMonths += months;
+    }
+  }
+  
+  return {
+    company: Math.round((totalMonths / 12) * 10) / 10,
+    rank: Math.round((rankMonths / 12) * 10) / 10,
+    tankers: Math.round((tankerMonths / 12) * 10) / 10,
+    oow: Math.round((oowMonths / 12) * 10) / 10,
+    endorsements: '',
+  };
+}
 
 export const crewAvailabilityService = {
   async getCrewByRank(rank: string): Promise<any[]> {
@@ -30,26 +71,98 @@ export const crewAvailabilityService = {
         )
       );
 
-    return results.map((row: any) => ({
-      crewUuid: row.crew.crewUuid,
-      empNo: row.crew.empNo,
-      employeeId: row.crew.employeeId,
-      firstName: row.crew.firstName,
-      familyName: row.crew.familyName,
-      fullName: row.crew.firstName && row.crew.familyName 
-        ? `${row.crew.firstName} ${row.crew.familyName}`
-        : row.crew.firstName || row.crew.familyName || "Unknown",
-      presentRank: row.crew.presentRank,
-      status: row.crew.status,
-      availability: row.crew.availability,
-      nextAvailability: row.crew.nextAvailability,
-      nationalityUuid: row.crew.nationalityUuid,
-      vesselTypeUuid: row.crew.vesselTypeUuid,
-      currentVesselUuid: row.currentVesselUuid,
-      currentSignOnDate: row.currentSignOnDate,
-      reliefDue: row.reliefDue,
-      isOnboard: !!row.currentVesselUuid,
-    }));
+    const crewUuids = results.map((row: any) => row.crew.crewUuid);
+    
+    const seaServiceByCrewPromise = crewUuids.length > 0 
+      ? db.select().from(crewSeaService).where(
+          and(
+            sql`${crewSeaService.crewUuid} = ANY(${crewUuids})`,
+            eq(crewSeaService.isDeleted, false)
+          )
+        )
+      : Promise.resolve([]);
+      
+    const personalDetailsByCrewPromise = crewUuids.length > 0
+      ? db.select().from(crewPersonalDetails).where(
+          and(
+            sql`${crewPersonalDetails.crewUuid} = ANY(${crewUuids})`,
+            eq(crewPersonalDetails.isDeleted, false)
+          )
+        )
+      : Promise.resolve([]);
+      
+    const licensesByCrewPromise = crewUuids.length > 0
+      ? db.select().from(crewLicenses).where(
+          and(
+            sql`${crewLicenses.crewUuid} = ANY(${crewUuids})`,
+            eq(crewLicenses.isDeleted, false),
+            isNull(crewLicenses.archivedAt)
+          )
+        )
+      : Promise.resolve([]);
+    
+    const [seaServiceRecords, personalDetailsRecords, licensesRecords] = await Promise.all([
+      seaServiceByCrewPromise,
+      personalDetailsByCrewPromise,
+      licensesByCrewPromise,
+    ]);
+    
+    const seaServiceByCrewMap = new Map<string, any[]>();
+    for (const record of seaServiceRecords) {
+      const existing = seaServiceByCrewMap.get(record.crewUuid) || [];
+      existing.push(record);
+      seaServiceByCrewMap.set(record.crewUuid, existing);
+    }
+    
+    const personalDetailsByCrewMap = new Map<string, any>();
+    for (const record of personalDetailsRecords) {
+      personalDetailsByCrewMap.set(record.crewUuid, record);
+    }
+    
+    const endorsementsByCrewMap = new Map<string, string[]>();
+    for (const license of licensesRecords) {
+      if (license.abbr) {
+        const existing = endorsementsByCrewMap.get(license.crewUuid) || [];
+        if (!existing.includes(license.abbr)) {
+          existing.push(license.abbr);
+        }
+        endorsementsByCrewMap.set(license.crewUuid, existing);
+      }
+    }
+
+    return results.map((row: any) => {
+      const crewUuid = row.crew.crewUuid;
+      const seaService = seaServiceByCrewMap.get(crewUuid) || [];
+      const personalDetails = personalDetailsByCrewMap.get(crewUuid);
+      const endorsements = endorsementsByCrewMap.get(crewUuid) || [];
+      
+      const experience = calculateExperienceFromSeaService(seaService, row.crew.presentRank);
+      experience.endorsements = endorsements.slice(0, 3).join(', ');
+      
+      return {
+        crewUuid: row.crew.crewUuid,
+        empNo: row.crew.empNo,
+        employeeId: row.crew.employeeId,
+        firstName: row.crew.firstName,
+        familyName: row.crew.familyName,
+        fullName: row.crew.firstName && row.crew.familyName 
+          ? `${row.crew.firstName} ${row.crew.familyName}`
+          : row.crew.firstName || row.crew.familyName || "Unknown",
+        presentRank: row.crew.presentRank,
+        status: row.crew.status,
+        availability: row.crew.availability,
+        nextAvailability: row.crew.nextAvailability,
+        nationalityUuid: row.crew.nationalityUuid,
+        vesselTypeUuid: row.crew.vesselTypeUuid,
+        currentVesselUuid: row.currentVesselUuid,
+        currentSignOnDate: row.currentSignOnDate,
+        reliefDue: row.reliefDue,
+        isOnboard: !!row.currentVesselUuid,
+        pool: personalDetails?.crewPool || null,
+        manningAgent: personalDetails?.manningAgent || null,
+        experience,
+      };
+    });
   },
 
   async getAvailableCrewByRank(rank: string): Promise<any[]> {

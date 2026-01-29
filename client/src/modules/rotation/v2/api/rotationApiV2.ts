@@ -2,6 +2,14 @@ import { apiRequest } from '@/lib/queryClient';
 
 const V2_BASE = '/api/v2/rotation';
 
+export interface CrewExperienceV2 {
+  company: number;
+  rank: number;
+  tankers: number;
+  oow: number;
+  endorsements: string;
+}
+
 export interface RotationCrewV2 {
   crewUuid: string;
   empNo: string;
@@ -19,6 +27,9 @@ export interface RotationCrewV2 {
   currentSignOnDate: string | null;
   reliefDue: string | null;
   isOnboard: boolean;
+  pool: string | null;
+  manningAgent: string | null;
+  experience: CrewExperienceV2;
 }
 
 export interface RotationDraftV2 {

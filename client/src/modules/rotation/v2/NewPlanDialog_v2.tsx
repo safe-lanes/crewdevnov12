@@ -66,14 +66,242 @@ interface AssignmentV2 {
   contractPeriod: number;
 }
 
+interface AvailableFilterOptionsV2 {
+  pools: string[];
+  manningAgents: string[];
+  shipTypes: string[];
+  nationalities: string[];
+  timeInCompanyOptions: string[];
+  timeInRankOptions: string[];
+  timeInTankersOptions: string[];
+  travelStatuses: string[];
+  higherCerts: string[];
+  performances: string[];
+}
+
+function CrewFilterDialogV2({
+  open,
+  onOpenChange,
+  rank,
+  filters,
+  onFiltersChange,
+  availableOptions,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  rank: string;
+  filters: CrewFilters;
+  onFiltersChange: (filters: CrewFilters) => void;
+  availableOptions: AvailableFilterOptionsV2;
+}) {
+  const [localFilters, setLocalFilters] = useState<CrewFilters>(filters);
+
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters, open]);
+
+  const handleApply = () => {
+    onFiltersChange(localFilters);
+    onOpenChange(false);
+  };
+
+  const handleReset = () => {
+    const emptyFilters: CrewFilters = {
+      pools: [],
+      manningAgents: [],
+      shipTypes: [],
+      nationalities: [],
+      timeInCompany: [],
+      timeInRank: [],
+      timeInTankers: [],
+      travelStatus: [],
+      higherCert: [],
+      performance: [],
+      availabilityDate: null,
+    };
+    setLocalFilters(emptyFilters);
+  };
+
+  type ArrayFilterKeys = Exclude<keyof CrewFilters, 'availabilityDate'>;
+  
+  const toggleFilter = (category: ArrayFilterKeys, value: string) => {
+    setLocalFilters(prev => {
+      const current = prev[category];
+      const updated = current.includes(value)
+        ? current.filter((v: string) => v !== value)
+        : [...current, value];
+      return { ...prev, [category]: updated };
+    });
+  };
+
+  const FilterSection = ({ title, options, category }: { title: string; options: string[]; category: ArrayFilterKeys }) => {
+    const selectedCount = localFilters[category].length;
+    const hasSelection = selectedCount > 0;
+    const displayValue = selectedCount === 1 
+      ? localFilters[category][0] 
+      : selectedCount > 1 
+        ? "Multiple Selection" 
+        : title;
+    
+    return (
+      <div className="mb-3">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-between relative",
+                hasSelection ? "text-foreground pt-5 h-auto min-h-9" : "text-gray-500"
+              )}
+              data-testid={`filter-v2-${category}`}
+            >
+              {hasSelection && (
+                <span className="absolute top-1 left-3 text-[10px] text-muted-foreground">
+                  {title}
+                </span>
+              )}
+              <span className={cn("truncate", hasSelection && "text-sm")}>{displayValue}</span>
+              <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-60 p-2" align="start">
+            <div className="max-h-48 overflow-y-auto">
+              {options.length === 0 ? (
+                <div className="text-sm text-gray-500 text-center py-2">No options available</div>
+              ) : (
+                options.map((option) => (
+                  <div
+                    key={option}
+                    className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                  >
+                    <Checkbox
+                      checked={localFilters[category].includes(option)}
+                      onCheckedChange={() => toggleFilter(category, option)}
+                      data-testid={`checkbox-filter-v2-${category}-${option}`}
+                    />
+                    <label
+                      className="text-sm cursor-pointer flex-1"
+                      onClick={() => toggleFilter(category, option)}
+                    >
+                      {option}
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Filter {rank}</DialogTitle>
+        </DialogHeader>
+        
+        <div className="max-h-[60vh] overflow-y-auto pr-2">
+          <FilterSection title="Pool" options={availableOptions.pools} category="pools" />
+          <FilterSection title="Manning Agent" options={availableOptions.manningAgents} category="manningAgents" />
+          <FilterSection title="Ship Type" options={availableOptions.shipTypes} category="shipTypes" />
+          <FilterSection title="Nationality" options={availableOptions.nationalities} category="nationalities" />
+          <FilterSection title="Time in Company" options={availableOptions.timeInCompanyOptions} category="timeInCompany" />
+          <FilterSection title="Time in Rank" options={availableOptions.timeInRankOptions} category="timeInRank" />
+          <FilterSection title="Time in Tankers" options={availableOptions.timeInTankersOptions} category="timeInTankers" />
+          
+          <div className="mb-3">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-between",
+                    localFilters.availabilityDate ? "text-black dark:text-white" : "text-gray-500"
+                  )}
+                  data-testid="filter-v2-availabilityDate"
+                >
+                  <span>
+                    {localFilters.availabilityDate 
+                      ? `Available by: ${format(localFilters.availabilityDate, 'dd-MMM-yyyy')}`
+                      : "Availability Date"
+                    }
+                  </span>
+                  <CalendarIcon className="h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <div className="p-2 border-b">
+                  <p className="text-sm text-gray-500">Show crew available on or before this date</p>
+                </div>
+                <Calendar
+                  mode="single"
+                  selected={localFilters.availabilityDate || undefined}
+                  onSelect={(date) => setLocalFilters(prev => ({ ...prev, availabilityDate: date || null }))}
+                  initialFocus
+                />
+                {localFilters.availabilityDate && (
+                  <div className="p-2 border-t">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-red-500 hover:text-red-600"
+                      onClick={() => setLocalFilters(prev => ({ ...prev, availabilityDate: null }))}
+                    >
+                      Clear Date
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+
+        <div className="flex justify-between pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={handleReset}
+            data-testid="button-reset-filters-v2"
+          >
+            Reset
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              data-testid="button-cancel-filters-v2"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApply}
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="button-apply-filters-v2"
+            >
+              Apply
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CrewColumnV2({ 
   rank, 
   onCrewSelect, 
   assignments,
+  allDeployedCrewMap,
+  selectedVesselUuids,
+  planDateRange,
 }: { 
   rank: string; 
   onCrewSelect: (crew: { id: string; name: string; rank: string }) => void;
   assignments: AssignmentV2[];
+  allDeployedCrewMap: Map<string, { vesselUuid: string; vesselName: string; signOnDate: string; signOffDate: string | null; contractPeriod?: number }[]>;
+  selectedVesselUuids: Set<string>;
+  planDateRange: { start: Date; end: Date };
 }) {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [filters, setFilters] = useState<CrewFilters>({
@@ -95,9 +323,45 @@ function CrewColumnV2({
 
   const { data: crewMembersV2 = [], isLoading } = useCrewByRankV2(normalizedRank);
 
+  const { data: manningAgentsData } = useQuery<any[]>({
+    queryKey: ['/api/masters/021/data'],
+  });
+
+  const { data: crewPoolsData } = useQuery<any[]>({
+    queryKey: ['/api/masters/022/data'],
+  });
+
   const crewMembers = useMemo(() => {
     return crewMembersV2.map(mapV2CrewToLegacyFormat);
   }, [crewMembersV2]);
+
+  const availableOptions: AvailableFilterOptionsV2 = useMemo(() => {
+    const pools = (crewPoolsData || [])
+      .filter((pool: any) => pool.name && !pool.isDeleted)
+      .map((pool: any) => pool.name)
+      .sort() as string[];
+    
+    const manningAgents = (manningAgentsData || [])
+      .filter((agent: any) => agent.name && !agent.isDeleted)
+      .map((agent: any) => agent.country ? `${agent.name} (${agent.country})` : agent.name)
+      .sort() as string[];
+    
+    const shipTypes = Array.from(new Set(crewMembersV2.map((c: any) => c.shipType).filter(Boolean))).sort() as string[];
+    const nationalities = Array.from(new Set(crewMembersV2.map((c: any) => c.nationality).filter(Boolean))).sort() as string[];
+    
+    return {
+      pools,
+      manningAgents,
+      shipTypes,
+      nationalities,
+      timeInCompanyOptions: ['0-1 years', '1-3 years', '3-5 years', '5-10 years', '10+ years'],
+      timeInRankOptions: ['0-1 years', '1-3 years', '3-5 years', '5+ years'],
+      timeInTankersOptions: ['0-1 years', '1-3 years', '3-5 years', '5+ years'],
+      travelStatuses: [],
+      higherCerts: [],
+      performances: [],
+    };
+  }, [crewMembersV2, manningAgentsData, crewPoolsData]);
 
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
     if (key === 'availabilityDate') return value !== null;
@@ -109,6 +373,52 @@ function CrewColumnV2({
       if (filters.pools.length > 0 && !filters.pools.includes(crew.pool || '')) return false;
       if (filters.nationalities.length > 0 && !filters.nationalities.includes(crew.nationality || '')) return false;
       
+      if (filters.manningAgents.length > 0) {
+        const crewAgent = crew.manningAgent || '';
+        const matches = filters.manningAgents.some(filterAgent => {
+          const agentName = filterAgent.replace(/\s*\([^)]*\)$/, '');
+          return crewAgent === filterAgent || crewAgent === agentName;
+        });
+        if (!matches) return false;
+      }
+      
+      if (filters.timeInCompany.length > 0 && crew.experience) {
+        const timeInCompany = crew.experience.company;
+        const matchesRange = filters.timeInCompany.some(range => {
+          if (range === '0-1 years') return timeInCompany >= 0 && timeInCompany <= 1;
+          if (range === '1-3 years') return timeInCompany > 1 && timeInCompany <= 3;
+          if (range === '3-5 years') return timeInCompany > 3 && timeInCompany <= 5;
+          if (range === '5-10 years') return timeInCompany > 5 && timeInCompany <= 10;
+          if (range === '10+ years') return timeInCompany > 10;
+          return false;
+        });
+        if (!matchesRange) return false;
+      }
+      
+      if (filters.timeInRank.length > 0 && crew.experience) {
+        const timeInRank = crew.experience.rank;
+        const matchesRange = filters.timeInRank.some(range => {
+          if (range === '0-1 years') return timeInRank >= 0 && timeInRank <= 1;
+          if (range === '1-3 years') return timeInRank > 1 && timeInRank <= 3;
+          if (range === '3-5 years') return timeInRank > 3 && timeInRank <= 5;
+          if (range === '5+ years') return timeInRank > 5;
+          return false;
+        });
+        if (!matchesRange) return false;
+      }
+      
+      if (filters.timeInTankers.length > 0 && crew.experience) {
+        const timeInTankers = crew.experience.tankers;
+        const matchesRange = filters.timeInTankers.some(range => {
+          if (range === '0-1 years') return timeInTankers >= 0 && timeInTankers <= 1;
+          if (range === '1-3 years') return timeInTankers > 1 && timeInTankers <= 3;
+          if (range === '3-5 years') return timeInTankers > 3 && timeInTankers <= 5;
+          if (range === '5+ years') return timeInTankers > 5;
+          return false;
+        });
+        if (!matchesRange) return false;
+      }
+      
       if (filters.availabilityDate) {
         if (!crew.nextAvailability) return true;
         try {
@@ -117,6 +427,14 @@ function CrewColumnV2({
         } catch {
           // pass
         }
+      }
+      
+      if (filters.shipTypes.length > 0) {
+        const crewShipType = crew.vesselType || crew.shipType || '';
+        const matchesShipType = filters.shipTypes.some(type => 
+          crewShipType.toLowerCase().includes(type.toLowerCase())
+        );
+        if (!matchesShipType) return false;
       }
       
       return true;
@@ -132,11 +450,63 @@ function CrewColumnV2({
     return vesselCount;
   };
 
+  const dateRangesOverlap = (
+    start1: Date, end1: Date | null,
+    start2: Date, end2: Date | null
+  ): boolean => {
+    const effectiveEnd1 = end1 || new Date('2100-12-31');
+    const effectiveEnd2 = end2 || new Date('2100-12-31');
+    return start1 <= effectiveEnd2 && start2 <= effectiveEnd1;
+  };
+
+  const hasGlobalDeploymentConflict = (crewId: string): { hasConflict: boolean; vesselName?: string } => {
+    const deployments = allDeployedCrewMap.get(crewId) || [];
+    
+    for (const deployment of deployments) {
+      if (selectedVesselUuids.has(deployment.vesselUuid)) continue;
+      
+      try {
+        const deployStart = new Date(deployment.signOnDate);
+        let deployEnd: Date | null = deployment.signOffDate ? new Date(deployment.signOffDate) : null;
+        
+        if (!deployEnd && deployment.contractPeriod && deployStart) {
+          deployEnd = new Date(deployStart);
+          deployEnd.setMonth(deployEnd.getMonth() + deployment.contractPeriod);
+        }
+        
+        if (dateRangesOverlap(planDateRange.start, planDateRange.end, deployStart, deployEnd)) {
+          return { hasConflict: true, vesselName: deployment.vesselName };
+        }
+      } catch {
+        continue;
+      }
+    }
+    
+    return { hasConflict: false };
+  };
+
   const getCrewNameColor = (crewId: string) => {
+    const globalConflict = hasGlobalDeploymentConflict(crewId);
+    if (globalConflict.hasConflict) return 'text-red-600';
+    
     const count = getCrewAssignmentCount(crewId);
     if (count >= 2) return 'text-[#814C02]';
     if (count === 1) return 'text-blue-600';
     return '';
+  };
+
+  const getCrewVesselInfo = (crewId: string): string | null => {
+    const globalConflict = hasGlobalDeploymentConflict(crewId);
+    if (globalConflict.hasConflict && globalConflict.vesselName) {
+      return globalConflict.vesselName;
+    }
+    
+    const crewAssignments = assignments.filter(a => a.crewUuid === crewId);
+    if (crewAssignments.length > 0) {
+      return crewAssignments.map(a => a.vessel).join(', ');
+    }
+    
+    return null;
   };
 
   if (isLoading) {
@@ -184,19 +554,52 @@ function CrewColumnV2({
                   }}
                 />
                 <div className="flex-1">
-                  <div className={`font-medium text-sm ${getCrewNameColor(crew.id)}`}>
-                    {crew.name}
-                  </div>
+                  {(() => {
+                    const nameColor = getCrewNameColor(crew.id);
+                    const vesselInfo = getCrewVesselInfo(crew.id);
+                    const hasColoredStatus = nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
+                    const showVesselTooltip = vesselInfo && hasColoredStatus;
+                    
+                    if (showVesselTooltip) {
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={`font-medium text-sm cursor-help ${nameColor}`}>
+                                {crew.name}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs">
+                              <div className="text-xs">
+                                <span className="font-medium">Vessel: </span>{vesselInfo}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    }
+                    
+                    return (
+                      <div className={`font-medium text-sm ${nameColor}`}>
+                        {crew.name}
+                      </div>
+                    );
+                  })()}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="text-xs text-gray-500 mt-1 cursor-help">
-                          {crew.nextAvailability ? formatAvailabilityDate(crew.nextAvailability) : '—'}
+                          {crew.experience?.company ?? 0} / {crew.experience?.rank ?? 0} / {crew.experience?.tankers ?? 0} / {crew.experience?.oow ?? 0} / {crew.experience?.endorsements || '—'}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs">
-                        <div className="text-xs">
-                          <span className="font-medium">Next Availability:</span> {crew.nextAvailability ? formatAvailabilityDate(crew.nextAvailability) : '—'}
+                        <div className="text-xs space-y-1">
+                          <div><span className="font-medium">Company (Yrs):</span> {crew.experience?.company ?? 0}</div>
+                          <div><span className="font-medium">Rank (Yrs):</span> {crew.experience?.rank ?? 0}</div>
+                          <div><span className="font-medium">Tankers (Yrs):</span> {crew.experience?.tankers ?? 0}</div>
+                          <div><span className="font-medium">OOW (Yrs):</span> {crew.experience?.oow ?? 0}</div>
+                          <div><span className="font-medium">Endorsements:</span> {crew.experience?.endorsements || '—'}</div>
+                          <div><span className="font-medium">Next Availability:</span> {crew.nextAvailability ? formatAvailabilityDate(crew.nextAvailability) : '—'}</div>
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -207,6 +610,15 @@ function CrewColumnV2({
           )}
         </div>
       </div>
+      
+      <CrewFilterDialogV2
+        open={filterDialogOpen}
+        onOpenChange={setFilterDialogOpen}
+        rank={rank}
+        filters={filters}
+        onFiltersChange={setFilters}
+        availableOptions={availableOptions}
+      />
     </>
   );
 }
@@ -413,6 +825,45 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       return data.filter((rank: any) => !rank.isRoleRow && !rank.is_role_row);
     }
   });
+
+  const { data: allVesselPlanningV2 = [] } = useQuery<any[]>({
+    queryKey: ['/api/v2/vessel/planning'],
+  });
+
+  const allDeployedCrewMap = useMemo(() => {
+    const map = new Map<string, { vesselUuid: string; vesselName: string; signOnDate: string; signOffDate: string | null; contractPeriod?: number }[]>();
+    
+    for (const planning of allVesselPlanningV2) {
+      if (planning.crewMemberUuid) {
+        const existing = map.get(planning.crewMemberUuid) || [];
+        existing.push({
+          vesselUuid: planning.vesselUuid,
+          vesselName: planning.vesselName || planning.vesselUuid,
+          signOnDate: planning.signOnDate,
+          signOffDate: planning.signOffDate,
+          contractPeriod: planning.contractPeriod,
+        });
+        map.set(planning.crewMemberUuid, existing);
+      }
+      if (planning.relieverCrewUuid) {
+        const existing = map.get(planning.relieverCrewUuid) || [];
+        existing.push({
+          vesselUuid: planning.vesselUuid,
+          vesselName: planning.vesselName || planning.vesselUuid,
+          signOnDate: planning.relieverSignOnDate || planning.signOnDate,
+          signOffDate: null,
+          contractPeriod: planning.relieverContractPeriod || 4,
+        });
+        map.set(planning.relieverCrewUuid, existing);
+      }
+    }
+    
+    return map;
+  }, [allVesselPlanningV2]);
+
+  const selectedVesselUuids = useMemo(() => {
+    return new Set(selectedVessels.map(v => getVesselId(v) || v));
+  }, [selectedVessels, getVesselId]);
 
   useEffect(() => {
     if (editPlan) {
@@ -680,6 +1131,9 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                         rank={rank}
                         onCrewSelect={handleCrewSelect}
                         assignments={assignments}
+                        allDeployedCrewMap={allDeployedCrewMap}
+                        selectedVesselUuids={selectedVesselUuids}
+                        planDateRange={dateRange}
                       />
                     ))}
                   </div>

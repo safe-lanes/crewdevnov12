@@ -226,13 +226,23 @@ export function mapV2CrewToLegacyFormat(crew: RotationCrewV2): {
   pool?: string;
   nationality?: string;
   nextAvailability?: string | null;
+  manningAgent?: string;
+  experience: {
+    company: number;
+    rank: number;
+    tankers: number;
+    oow: number;
+    endorsements: string;
+  };
 } {
   return {
     id: crew.crewUuid,
     name: crew.fullName || `${crew.firstName} ${crew.familyName}`.trim(),
     rank: crew.presentRank,
-    pool: undefined,
+    pool: crew.pool || undefined,
     nationality: undefined,
     nextAvailability: crew.nextAvailability,
+    manningAgent: crew.manningAgent || undefined,
+    experience: crew.experience || { company: 0, rank: 0, tankers: 0, oow: 0, endorsements: '' },
   };
 }
