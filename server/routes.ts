@@ -3480,21 +3480,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         let createdPlanningCountV2 = 0;
         for (const rank of ranksV2) {
-          const rankId = rank.rankId || rank.id;
+          // Get rankId and ensure it's converted to string for V2 compatibility
+          const rawRankId = rank.rankId || rank.id;
+          const rankIdStr = rawRankId != null ? String(rawRankId) : null;
           const rankName = rank.rank || rank.role;
           
           // Skip if no rankId, if it's a role row (variants), or if actualManningFlag is not set
           // Only ranks with Actual Manning checked should appear in vessel planning
-          if (!rankId || rank.isRoleRow || !rank.actualManningFlag) {
+          if (!rankIdStr || rank.isRoleRow || !rank.actualManningFlag) {
             continue;
           }
           
           // Only create V2 planning record if it doesn't already exist for this rank
-          if (!existingRankIdsV2.has(rankId)) {
+          // Note: existingRankIdsV2 contains string rankIds from V2 records
+          if (!existingRankIdsV2.has(rankIdStr)) {
             try {
               await vesselPlanningRepository.create({
-                vesselUuid: vesselId,
-                rankId: rankId,
+                vesselUuid: vesselId, // vesselId is already a text UUID (vessel code like "VSL-001")
+                rankId: rankIdStr,
                 rank: rankName,
                 crewUuid: null,
                 crewStatus: "primary",
@@ -3525,12 +3528,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 isSync: false,
               });
               createdPlanningCountV2++;
-              console.log(`🔗 [VESSEL PLANNING V2] Created V2 planning record for rank: ${rankName} (ID: ${rankId})`);
+              console.log(`🔗 [VESSEL PLANNING V2] Created V2 planning record for rank: ${rankName} (ID: ${rankIdStr})`);
             } catch (planningV2Error) {
-              console.warn(`🔗 [VESSEL PLANNING V2 WARNING] Failed to create V2 planning for rank ${rankId}:`, planningV2Error);
+              console.warn(`🔗 [VESSEL PLANNING V2 WARNING] Failed to create V2 planning for rank ${rankIdStr}:`, planningV2Error);
             }
           } else {
-            console.log(`🔗 [VESSEL PLANNING V2] Skipping existing V2 rank: ${rankName} (ID: ${rankId})`);
+            console.log(`🔗 [VESSEL PLANNING V2] Skipping existing V2 rank: ${rankName} (ID: ${rankIdStr})`);
           }
         }
         console.log(`🔗 [VESSEL PLANNING V2] ✅ Created ${createdPlanningCountV2} new V2 planning record(s) for vessel ${vesselId}`);
