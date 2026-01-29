@@ -367,7 +367,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
       const data = await response.json();
       
       if (isV2 && data?.crew) {
-        const { crew, personalDetails, address, familyInfo, nextOfKin, children, documents, visas, education, licenses, trainingCourses, seaService, medicals } = data;
+        const { crew, personalDetails, address, familyInfo, nextOfKin, children, documents, visas, education, licenses, trainingCourses, seaService, medicals, doctorVisits } = data;
+        
+        const seaServiceArr = seaService || [];
+        const companySeaService = seaServiceArr.filter((s: any) => s.serviceType === 'company' || s.isCompanyService);
+        const externalSeaService = seaServiceArr.filter((s: any) => s.serviceType === 'external' || !s.isCompanyService);
+        
         return {
           id: crew.crewUuid,
           crewUuid: crew.crewUuid,
@@ -375,9 +380,10 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           middleName: crew.middleName || '',
           familyName: crew.familyName || '',
           nationality: crew.nationality || '',
-          presentRank: crew.rank || '',
+          presentRank: crew.rank || crew.presentRank || '',
           employeeId: crew.crewId || '',
           dob: crew.dateOfBirth || '',
+          dateOfBirth: crew.dateOfBirth || '',
           gender: personalDetails?.gender || 'Male',
           placeOfBirthCity: personalDetails?.placeOfBirthCity || '',
           placeOfBirthCountry: personalDetails?.placeOfBirthCountry || '',
@@ -419,8 +425,12 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           education: education || [],
           licenses: licenses || [],
           trainingCourses: trainingCourses || [],
-          seaService: seaService || [],
+          currentCompanySeaService: companySeaService,
+          externalSeaService: externalSeaService,
+          seaService: seaServiceArr,
+          preJoiningMedicals: medicals || [],
           medicals: medicals || [],
+          doctorVisits: doctorVisits || [],
         };
       }
       return data;
