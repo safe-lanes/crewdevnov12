@@ -1786,7 +1786,25 @@ export function VesselModule_v2(): JSX.Element {
                                                         });
                                                         
                                                         const primaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'primary');
-                                                        const secondaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'secondary');
+                                                        // V2: Reliever data is stored in the same record as primary crew
+                                                        // Extract reliever fields from the primary record to create secondaryCrew object
+                                                        let secondaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'secondary');
+                                                        
+                                                        // If no separate secondary record exists, check if primary record has reliever data
+                                                        if (!secondaryCrew && primaryCrew?.relieverCrewId) {
+                                                            secondaryCrew = {
+                                                                planUuid: primaryCrew.planUuid,
+                                                                crewUuid: primaryCrew.relieverCrewId,
+                                                                crewName: primaryCrew.relieverCrewName,
+                                                                crewStatus: 'secondary',
+                                                                relieverSignOnDate: primaryCrew.relieverSignOnDate,
+                                                                signOnPort: primaryCrew.joiningPort,
+                                                                signOnStatus: primaryCrew.joiningStatus,
+                                                                relieverContractPeriodMonths: primaryCrew.relieverContractPeriodMonths,
+                                                                relieverContractEndRangeStartMonths: primaryCrew.relieverContractEndRangeStartMonths,
+                                                                relieverContractEndRangeEndMonths: primaryCrew.relieverContractEndRangeEndMonths,
+                                                            };
+                                                        }
                                                         
                                                         normalizedRows.push({
                                                             serialNumber: rankIndex + 1,
