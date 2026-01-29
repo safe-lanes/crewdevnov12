@@ -108,7 +108,7 @@ function ApprovalScreenV2() {
 
     return (
         <div className="flex flex-col h-full">
-            <SectionTitleComponents title="Rotation Approval V2">
+            <SectionTitleComponents title="Rotation Approval">
                 <div className="flex items-center gap-4">
                     <RotationVersionToggle />
                     <Button
@@ -370,7 +370,7 @@ export function RotationModule_v2() {
     const renderDueContent = () => {
         return (
             <div className="flex flex-col h-full">
-                <SectionTitleComponents title="Crew Due/ Overdue V2">
+                <SectionTitleComponents title="Crew Due/ Overdue">
                     <div className="flex items-center gap-4">
                         <RotationVersionToggle />
                         <Button

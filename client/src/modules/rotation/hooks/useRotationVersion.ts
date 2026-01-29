@@ -5,6 +5,7 @@ import { useDeleteDraftV2 } from '../v2/hooks/useRotationV2';
 import type { RotationPlan } from '@shared/schema';
 
 const STORAGE_KEY = 'rotation_module_version';
+const VERSION_CHANGE_EVENT = 'rotation_version_change';
 const DEFAULT_VERSION = 'v1';
 
 export type RotationVersion = 'v1' | 'v2';
@@ -21,17 +22,48 @@ export function useRotationVersion() {
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, version);
-    } catch {}
-  }, [version]);
+    const handleVersionChange = (e: Event) => {
+      const customEvent = e as CustomEvent<RotationVersion>;
+      if (customEvent.detail) {
+        setVersionState(customEvent.detail);
+      }
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        const newVersion = e.newValue as RotationVersion;
+        if (newVersion === 'v1' || newVersion === 'v2') {
+          setVersionState(newVersion);
+        }
+      }
+    };
+
+    window.addEventListener(VERSION_CHANGE_EVENT, handleVersionChange);
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener(VERSION_CHANGE_EVENT, handleVersionChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   const setVersion = useCallback((newVersion: RotationVersion) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, newVersion);
+    } catch {}
     setVersionState(newVersion);
+    window.dispatchEvent(new CustomEvent(VERSION_CHANGE_EVENT, { detail: newVersion }));
   }, []);
 
   const toggleVersion = useCallback(() => {
-    setVersionState(prev => prev === 'v1' ? 'v2' : 'v1');
+    setVersionState(prev => {
+      const newVersion = prev === 'v1' ? 'v2' : 'v1';
+      try {
+        localStorage.setItem(STORAGE_KEY, newVersion);
+      } catch {}
+      window.dispatchEvent(new CustomEvent(VERSION_CHANGE_EVENT, { detail: newVersion }));
+      return newVersion;
+    });
   }, []);
 
   const isV2 = version === 'v2';
@@ -57,6 +89,7 @@ export function getRotationVersion(): RotationVersion {
 export function setRotationVersion(version: RotationVersion): void {
   try {
     localStorage.setItem(STORAGE_KEY, version);
+    window.dispatchEvent(new CustomEvent(VERSION_CHANGE_EVENT, { detail: version }));
   } catch {}
 }
 

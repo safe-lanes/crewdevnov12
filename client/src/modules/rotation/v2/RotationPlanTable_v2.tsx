@@ -82,7 +82,7 @@ export function RotationPlanTable_v2() {
 
   return (
     <div className="flex flex-col h-full">
-      <SectionTitleComponents title="Rotation Plan V2">
+      <SectionTitleComponents title="Rotation Plan">
         <div className="flex items-center gap-4">
           <RotationVersionToggle />
           <Button

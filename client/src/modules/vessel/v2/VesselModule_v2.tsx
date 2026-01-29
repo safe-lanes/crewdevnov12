@@ -610,64 +610,116 @@ export function VesselModule_v2(): JSX.Element {
         );
     }, [vessels, vesselValue]);
 
-    const renderVesselDatabase = () => (
-        <div className="p-4 space-y-4">
-            <Card>
-                <CardContent className="pt-6">
-                    <div className="flex flex-wrap gap-4 mb-4">
-                        <RadioGroup
-                            value={filterType}
-                            onValueChange={(value: any) => setFilterType(value)}
-                            className="flex gap-4"
-                        >
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="vessel" id="vessel" />
-                                <Label htmlFor="vessel">Vessel</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="fleet" id="fleet" />
-                                <Label htmlFor="fleet">Fleet</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="addGroup" id="addGroup" />
-                                <Label htmlFor="addGroup">Add Group</Label>
-                            </div>
-                        </RadioGroup>
+    const handleClearFilters = () => {
+        setVesselValue("");
+        setFleetValue("");
+        setAddGroupValue("");
+    };
 
-                        {filterType === "vessel" && (
+    const renderVesselDatabase = () => (
+        <div className="flex flex-col h-full">
+            {showFilters && (
+                <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg">
+                    <RadioGroup 
+                        value={filterType} 
+                        onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+                        className="flex items-center gap-6"
+                    >
+                        <div className="flex items-center gap-2">
+                            <RadioGroupItem 
+                                value="vessel" 
+                                id="filter-vessel"
+                                className="h-4 w-4"
+                                data-testid="radio-vessel"
+                            />
                             <Select value={vesselValue} onValueChange={setVesselValue}>
-                                <SelectTrigger className="w-[200px]" data-testid="select-vessel-filter">
-                                    <SelectValue placeholder="Select Vessel" />
+                                <SelectTrigger 
+                                    className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                    data-testid="select-vessel-value"
+                                >
+                                    <SelectValue placeholder="Vessel" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">All Vessels</SelectItem>
-                                    {vessels.map((v: any) => (
-                                        <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>
+                                    <SelectItem value="_all">All Vessels</SelectItem>
+                                    {vessels.map((vessel: any) => (
+                                        <SelectItem key={vessel.id} value={vessel.name}>
+                                            {vessel.name}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                        )}
+                        </div>
 
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                setVesselValue("");
-                                setFleetValue("");
-                                setAddGroupValue("");
-                            }}
-                            data-testid="button-clear-filters"
-                        >
-                            Clear Filters
-                        </Button>
-                    </div>
+                        <div className="flex items-center gap-2">
+                            <RadioGroupItem 
+                                value="fleet" 
+                                id="filter-fleet"
+                                className="h-4 w-4"
+                                data-testid="radio-fleet"
+                            />
+                            <Select value={fleetValue} onValueChange={setFleetValue}>
+                                <SelectTrigger 
+                                    className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                    data-testid="select-fleet-value"
+                                >
+                                    <SelectValue placeholder="Fleet" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="fleet1">Fleet Group 1</SelectItem>
+                                    <SelectItem value="fleet2">Fleet Group 2</SelectItem>
+                                    <SelectItem value="fleet3">Fleet Group 3</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
+                        <div className="flex items-center gap-2">
+                            <RadioGroupItem 
+                                value="addGroup" 
+                                id="filter-addgroup"
+                                className="h-4 w-4"
+                                data-testid="radio-addgroup"
+                            />
+                            <Select value={addGroupValue} onValueChange={setAddGroupValue}>
+                                <SelectTrigger 
+                                    className="h-8 w-40 ml-2 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+                                    data-testid="select-addgroup-value"
+                                >
+                                    <SelectValue placeholder="Add Group" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="group1">Additional Group 1</SelectItem>
+                                    <SelectItem value="group2">Additional Group 2</SelectItem>
+                                    <SelectItem value="group3">Additional Group 3</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </RadioGroup>
+
+                    <Button
+                        variant="outline"
+                        onClick={handleClearFilters}
+                        className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+                        data-testid="button-clear-filters"
+                    >
+                        Clear
+                    </Button>
+                </div>
+            )}
+
+            <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
+                <CardContent className="p-4 pl-0 bg-[#f7fafc]">
                     <AgGridTable
                         columnDefs={vesselColumns}
                         rowData={filteredVessels}
                         onGridReady={(params) => {
                             gridApiRef.current = params.api;
                         }}
+                        autoHeight={true}
+                        maxHeight="500px"
+                        minHeight="200px"
+                        width="100%"
+                        enableExport={true}
+                        enableSideBar={true}
                     />
                 </CardContent>
             </Card>
@@ -856,10 +908,20 @@ export function VesselModule_v2(): JSX.Element {
             />
             
             <MainLayout>
-                <SectionTitleComponents title="Vessel Database V2">
+                <SectionTitleComponents title="Vessel Database">
                     <div className="flex gap-2 items-center">
                         <VesselVersionToggle />
-                        <Button variant="outline" size="sm" data-testid="button-export">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+                            data-testid="button-toggle-filters"
+                        >
+                            <Filter className="h-4 w-4" />
+                            Filters
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8" data-testid="button-export">
                             <Download className="h-4 w-4 mr-1" />
                             Export
                         </Button>
