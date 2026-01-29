@@ -696,11 +696,13 @@ function DatePeriodDialogV2({
     setUnassignChecked(false);
   };
 
+  const isEditMode = !!initialValues;
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" data-testid="dialog-date-period-v2">
         <DialogHeader>
-          <DialogTitle>Assign {crewName}</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Assignment' : 'Assign'} - {crewName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -813,6 +815,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     crew: { id: string; name: string; rank: string };
     vessel: string;
     rank: string;
+    initialValues?: { joiningDate: string; contractPeriod: number };
   } | null>(null);
 
   const { data: vessels = [] } = useQuery({
@@ -1109,59 +1112,87 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
               </div>
 
               {selectedVessels.length > 0 && selectedRanks.length > 0 && (
-                <div className="border rounded-lg p-4">
-                  <div className="mb-4">
-                    <label className="text-sm font-medium">Selected Vessel: </label>
-                    <Select value={selectedVessel} onValueChange={setSelectedVessel}>
-                      <SelectTrigger className="w-[200px] inline-flex ml-2" data-testid="select-active-vessel-v2">
-                        <SelectValue placeholder="Select vessel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {selectedVessels.map((v) => (
-                          <SelectItem key={v} value={v}>{v}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex gap-4 overflow-x-auto pb-4">
-                    {selectedRanks.map((rank) => (
-                      <CrewColumnV2
-                        key={rank}
-                        rank={rank}
-                        onCrewSelect={handleCrewSelect}
-                        assignments={assignments}
-                        allDeployedCrewMap={allDeployedCrewMap}
-                        selectedVesselUuids={selectedVesselUuids}
-                        planDateRange={dateRange}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {assignments.length > 0 && (
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-3">Planned Assignments ({assignments.length})</h3>
-                  <div className="space-y-2">
-                    {assignments.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <span className="text-sm">
-                          <strong>{a.vessel}</strong> - {a.rank}: {a.crewName} ({format(new Date(a.joiningDate), 'dd-MMM-yy')}, {a.contractPeriod}M)
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setAssignments(assignments.filter(x => x.id !== a.id))}
-                          className="text-red-500 hover:text-red-700"
+                <div className="border rounded-lg overflow-hidden">
+                  {selectedVessels.map((vessel) => (
+                    <div key={vessel} className="border-b last:border-b-0">
+                      <div 
+                        className="bg-[#52baf3] text-white p-3 flex items-center gap-3 cursor-pointer hover:bg-[#45a8e0]"
+                        onClick={() => setSelectedVessel(vessel)}
+                        data-testid={`vessel-header-v2-${vessel}`}
+                      >
+                        <div 
+                          className={`w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${
+                            selectedVessel === vessel ? 'bg-white' : ''
+                          }`}
                         >
-                          Remove
-                        </Button>
+                          {selectedVessel === vessel && (
+                            <div className="w-2 h-2 rounded-full bg-[#52baf3]" />
+                          )}
+                        </div>
+                        <span className="font-bold">{vessel}</span>
                       </div>
-                    ))}
-                  </div>
+                      
+                      {selectedVessel === vessel && (
+                        <div className="p-4 bg-gray-50">
+                          <div className="flex gap-4 overflow-x-auto pb-4">
+                            {selectedRanks.map((rank) => (
+                              <CrewColumnV2
+                                key={`${vessel}-${rank}`}
+                                rank={rank}
+                                onCrewSelect={handleCrewSelect}
+                                assignments={assignments.filter(a => a.vessel === vessel)}
+                                allDeployedCrewMap={allDeployedCrewMap}
+                                selectedVesselUuids={selectedVesselUuids}
+                                planDateRange={dateRange}
+                              />
+                            ))}
+                          </div>
+                          
+                          {assignments.filter(a => a.vessel === vessel).length > 0 && (
+                            <div className="mt-4 border-t pt-4">
+                              <h4 className="text-sm font-medium mb-2">Assignments on {vessel}</h4>
+                              <div className="space-y-2">
+                                {assignments.filter(a => a.vessel === vessel).map((a) => (
+                                  <div 
+                                    key={a.id} 
+                                    className="flex items-center justify-between p-2 bg-white border rounded cursor-pointer hover:bg-blue-50"
+                                    onClick={() => {
+                                      setSelectedCrewForAssignment({
+                                        crew: { id: a.crewUuid, name: a.crewName, rank: a.rank },
+                                        vessel: a.vessel,
+                                        rank: a.rank,
+                                        initialValues: { joiningDate: a.joiningDate, contractPeriod: a.contractPeriod },
+                                      });
+                                      setDatePeriodDialogOpen(true);
+                                    }}
+                                    data-testid={`assignment-row-v2-${a.id}`}
+                                  >
+                                    <span className="text-sm">
+                                      <strong>{a.rank}:</strong> {a.crewName} ({format(new Date(a.joiningDate), 'dd-MMM-yy')}, {a.contractPeriod}M)
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setAssignments(assignments.filter(x => x.id !== a.id));
+                                      }}
+                                      className="text-red-500 hover:text-red-700"
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
+
             </div>
           </div>
 
@@ -1191,6 +1222,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
         vesselName={selectedCrewForAssignment?.vessel || ''}
         rank={selectedCrewForAssignment?.rank || ''}
         assignments={assignments}
+        initialValues={selectedCrewForAssignment?.initialValues}
       />
     </>
   );
