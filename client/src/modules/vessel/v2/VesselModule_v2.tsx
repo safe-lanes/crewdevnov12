@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { VesselSideBar_v2 } from './VesselSideBar_v2';
 import MainLayout from '@/components/main/MainLayout';
@@ -496,6 +497,7 @@ export function VesselModule_v2(): JSX.Element {
     const [reliefDialogData, setReliefDialogData] = useState<{ rank: string; rankId: string; planningData: any } | null>(null);
 
     const { toast } = useToast();
+    const [, setLocation] = useLocation();
     const gridApiRef = useRef<GridApi | null>(null);
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
@@ -1026,6 +1028,66 @@ export function VesselModule_v2(): JSX.Element {
         }
     };
 
+    const handleAppraisalClick = async (crew: any, buttonConfig: { text: string; appraisalId?: number; status?: string }) => {
+        const crewRank = crew.presentRank || crew.rank || '';
+        
+        try {
+            const response = await fetch(`/api/rank-groups/check-assignment?rank=${encodeURIComponent(crewRank)}&formName=${encodeURIComponent('Crew Appraisal Form')}`);
+            const result = await response.json();
+            
+            if (!result.hasAssignment) {
+                toast({
+                    title: "Cannot Open Appraisal Form",
+                    description: `No Appraisal Rank Group assigned from Admin Module for rank "${crewRank}". Please configure rank groups in Admin > Forms Configuration.`,
+                    variant: "destructive",
+                });
+                return;
+            }
+        } catch (error) {
+            console.error("Error checking rank group assignment:", error);
+            toast({
+                title: "Error",
+                description: "Failed to validate rank group assignment. Please try again.",
+                variant: "destructive",
+            });
+            return;
+        }
+        
+        const nameParts = (crew.crewMemberName || '').split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
+        const crewForAppraisal = {
+            id: crew.crewMemberId || crew.crewUuid,
+            employeeId: crew.crewEmpNo || crew.employeeId || '',
+            name: {
+                first: crew.firstName || firstName,
+                middle: crew.middleName || '',
+                last: crew.familyName || crew.lastName || lastName
+            },
+            rank: crewRank,
+            nationality: crew.nationality || '',
+            vessel: selectedVessel?.name || crew.presentVessel || '',
+            vesselType: selectedVessel?.vesselType || '',
+            signOn: crew.signOnDate || crew.joiningDate || '',
+            _appraisalId: buttonConfig.appraisalId,
+            _initialStatus: buttonConfig.status,
+        };
+        setSelectedCrewForAppraisal(crewForAppraisal);
+        setShowAppraisalForm(true);
+    };
+
+    const handleCloseAppraisalForm = () => {
+        setShowAppraisalForm(false);
+        setSelectedCrewForAppraisal(null);
+    };
+
+    const handleViewCrewClick = (crew: any) => {
+        if (crew.crewUuid) {
+            setLocation(`/crew-pool?crewUuid=${crew.crewUuid}&version=v2`);
+        }
+    };
+
     const handleDownloadIMOCrewList = async () => {
         if (!selectedVessel) return;
         
@@ -1355,14 +1417,71 @@ export function VesselModule_v2(): JSX.Element {
                                                                             <span className="text-gray-400">-</span>
                                                                         )}
                                                                     </TableCell>
-                                                                    <TableCell className="text-xs text-blue-600 hover:underline cursor-pointer">
-                                                                        {planning.appraisalStatus || 'Add'}
+                                                                    <TableCell className="text-xs" data-testid={`cell-appraisal-${index + 1}`}>
+                                                                        {(() => {
+                                                                            const crewAppraisals = allAppraisals
+                                                                                .filter((a: any) => 
+                                                                                    a.crewMemberId === planning.crewMemberId || a.crewMemberId === planning.crewUuid
+                                                                                )
+                                                                                .sort((a: any, b: any) => {
+                                                                                    const dateA = new Date(a.updatedAt || a.createdAt || 0);
+                                                                                    const dateB = new Date(b.updatedAt || b.createdAt || 0);
+                                                                                    return dateB.getTime() - dateA.getTime();
+                                                                                });
+                                                                            const hasAppraisal = crewAppraisals.length > 0;
+                                                                            const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                            const buttonText = hasAppraisal ? 'View' : 'Add';
+                                                                            const buttonConfig = {
+                                                                                text: buttonText,
+                                                                                appraisalId: latestAppraisal?.id,
+                                                                                status: latestAppraisal?.status
+                                                                            };
+                                                                            return (
+                                                                                <Button
+                                                                                    variant="link"
+                                                                                    size="sm"
+                                                                                    onClick={() => handleAppraisalClick(planning, buttonConfig)}
+                                                                                    className={hasAppraisal ? 'text-green-600' : 'text-blue-600'}
+                                                                                    data-testid={`button-appraisal-${index + 1}`}
+                                                                                >
+                                                                                    {buttonText}
+                                                                                </Button>
+                                                                            );
+                                                                        })()}
                                                                     </TableCell>
-                                                                    <TableCell className="text-xs text-blue-600 hover:underline cursor-pointer">
-                                                                        Add
+                                                                    <TableCell className="text-xs" data-testid={`cell-handover-${index + 1}`}>
+                                                                        {(() => {
+                                                                            const hasAttachments = (planning.handoverAttachmentCount || 0) > 0;
+                                                                            return (
+                                                                                <Button
+                                                                                    variant="link"
+                                                                                    size="sm"
+                                                                                    onClick={() => {
+                                                                                        setHandoverDialogData({
+                                                                                            planningId: planning.planUuid,
+                                                                                            vesselId: selectedVessel?.vesselId || '',
+                                                                                            crewName: planning.crewMemberName || '',
+                                                                                            rank: planning.rank || ''
+                                                                                        });
+                                                                                        setHandoverDialogOpen(true);
+                                                                                    }}
+                                                                                    className={hasAttachments ? 'text-green-600' : 'text-blue-600'}
+                                                                                    data-testid={`button-handover-${index + 1}`}
+                                                                                >
+                                                                                    {hasAttachments ? 'View' : 'Add'}
+                                                                                </Button>
+                                                                            );
+                                                                        })()}
                                                                     </TableCell>
-                                                                    <TableCell className="text-xs text-gray-700">
-                                                                        <Eye className="h-4 w-4 text-gray-400 cursor-pointer" />
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-view-${index + 1}`}>
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="icon"
+                                                                            onClick={() => handleViewCrewClick(planning)}
+                                                                            data-testid={`button-view-crew-${index + 1}`}
+                                                                        >
+                                                                            <Eye className="h-4 w-4 text-gray-500" />
+                                                                        </Button>
                                                                     </TableCell>
                                                                 </>
                                                             )}

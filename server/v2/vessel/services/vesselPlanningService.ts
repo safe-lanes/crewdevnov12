@@ -111,7 +111,7 @@ export const vesselPlanningService = {
     }
 
     // Execute all operations in a transaction for consistency
-    const result = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx: typeof db) => {
       // 1. Archive old primary crew if exists
       if (planning.crewUuid) {
         await tx

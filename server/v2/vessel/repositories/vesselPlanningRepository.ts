@@ -3,7 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import { vesselPlanningV2, vesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { masterPorts } from "../../../../shared/schema";
+import { masterPorts, masterNationalities } from "../../../../shared/schema";
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { v4 as uuidv4 } from "uuid";
 
@@ -13,6 +13,8 @@ export class VesselPlanningRepository {
     const relieverCrew = alias(crewMembersV2, "reliever_crew");
     const signOffPort = alias(masterPorts, "sign_off_port");
     const joiningPort = alias(masterPorts, "joining_port");
+    const crewNationality = alias(masterNationalities, "crew_nationality");
+    const relieverNationalityTable = alias(masterNationalities, "reliever_nationality");
     
     const results = await db
       .select({
@@ -20,8 +22,10 @@ export class VesselPlanningRepository {
         crewFirstName: crewMembersV2.firstName,
         crewFamilyName: crewMembersV2.familyName,
         crewEmpNo: crewMembersV2.empNo,
+        crewNationalityName: crewNationality.nationality,
         relieverFirstName: relieverCrew.firstName,
         relieverFamilyName: relieverCrew.familyName,
+        relieverNationalityName: relieverNationalityTable.nationality,
         signOffPortName: signOffPort.name,
         joiningPortName: joiningPort.name,
       })
@@ -30,6 +34,8 @@ export class VesselPlanningRepository {
       .leftJoin(relieverCrew, eq(vesselPlanningV2.relieverCrewUuid, relieverCrew.crewUuid))
       .leftJoin(signOffPort, eq(vesselPlanningV2.signOffPortUuid, signOffPort.portUuid))
       .leftJoin(joiningPort, eq(vesselPlanningV2.joiningPortUuid, joiningPort.portUuid))
+      .leftJoin(crewNationality, eq(crewMembersV2.nationalityUuid, crewNationality.natUuid))
+      .leftJoin(relieverNationalityTable, eq(relieverCrew.nationalityUuid, relieverNationalityTable.natUuid))
       .where(
         and(
           eq(vesselPlanningV2.vesselUuid, vesselUuid),
@@ -45,9 +51,11 @@ export class VesselPlanningRepository {
         ? `${row.crewFirstName} ${row.crewFamilyName}`
         : null,
       crewEmpNo: row.crewEmpNo,
+      nationality: row.crewNationalityName || null,
       relieverCrewName: row.relieverFirstName && row.relieverFamilyName
         ? `${row.relieverFirstName} ${row.relieverFamilyName}`
         : null,
+      relieverNationality: row.relieverNationalityName || null,
       signOffPortName: row.signOffPortName || null,
       joiningPortName: row.joiningPortName || null,
     }));
@@ -58,6 +66,8 @@ export class VesselPlanningRepository {
     const relieverCrew = alias(crewMembersV2, "reliever_crew");
     const signOffPort = alias(masterPorts, "sign_off_port");
     const joiningPort = alias(masterPorts, "joining_port");
+    const crewNationality = alias(masterNationalities, "crew_nationality");
+    const relieverNationalityTable = alias(masterNationalities, "reliever_nationality");
     
     const results = await db
       .select({
@@ -65,8 +75,10 @@ export class VesselPlanningRepository {
         crewFirstName: crewMembersV2.firstName,
         crewFamilyName: crewMembersV2.familyName,
         crewEmpNo: crewMembersV2.empNo,
+        crewNationalityName: crewNationality.nationality,
         relieverFirstName: relieverCrew.firstName,
         relieverFamilyName: relieverCrew.familyName,
+        relieverNationalityName: relieverNationalityTable.nationality,
         signOffPortName: signOffPort.name,
         joiningPortName: joiningPort.name,
       })
@@ -75,6 +87,8 @@ export class VesselPlanningRepository {
       .leftJoin(relieverCrew, eq(vesselPlanningV2.relieverCrewUuid, relieverCrew.crewUuid))
       .leftJoin(signOffPort, eq(vesselPlanningV2.signOffPortUuid, signOffPort.portUuid))
       .leftJoin(joiningPort, eq(vesselPlanningV2.joiningPortUuid, joiningPort.portUuid))
+      .leftJoin(crewNationality, eq(crewMembersV2.nationalityUuid, crewNationality.natUuid))
+      .leftJoin(relieverNationalityTable, eq(relieverCrew.nationalityUuid, relieverNationalityTable.natUuid))
       .where(
         and(
           eq(vesselPlanningV2.planUuid, planUuid),
@@ -90,9 +104,11 @@ export class VesselPlanningRepository {
         ? `${row.crewFirstName} ${row.crewFamilyName}`
         : null,
       crewEmpNo: row.crewEmpNo,
+      nationality: row.crewNationalityName || null,
       relieverCrewName: row.relieverFirstName && row.relieverFamilyName
         ? `${row.relieverFirstName} ${row.relieverFamilyName}`
         : null,
+      relieverNationality: row.relieverNationalityName || null,
       signOffPortName: row.signOffPortName || null,
       joiningPortName: row.joiningPortName || null,
     };
