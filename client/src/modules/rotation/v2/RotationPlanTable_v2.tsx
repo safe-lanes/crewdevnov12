@@ -101,7 +101,10 @@ export function RotationPlanTable_v2() {
             <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
               <TableHead className="text-white font-normal text-xs h-10">Draft ID</TableHead>
               <TableHead className="text-white font-normal text-xs h-10">Last Edited</TableHead>
+              <TableHead className="text-white font-normal text-xs h-10">Vessel</TableHead>
+              <TableHead className="text-white font-normal text-xs h-10">Crew</TableHead>
               <TableHead className="text-white font-normal text-xs h-10">Plan from/To</TableHead>
+              <TableHead className="text-white font-normal text-xs h-10">Created by</TableHead>
               <TableHead className="text-white font-normal text-xs h-10">Plan Status</TableHead>
               <TableHead className="text-white font-normal text-xs h-10 text-right">Actions</TableHead>
             </TableRow>
@@ -109,7 +112,7 @@ export function RotationPlanTable_v2() {
           <TableBody>
             {drafts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-500 dark:text-gray-400 py-8">
+                <TableCell colSpan={8} className="text-center text-gray-500 dark:text-gray-400 py-8">
                   No rotation plans found
                 </TableCell>
               </TableRow>
@@ -122,8 +125,17 @@ export function RotationPlanTable_v2() {
                   <TableCell className="text-sm" data-testid={`text-last-edited-v2-${draft.draftUuid}`}>
                     {formatDate(draft.lastEdited)}
                   </TableCell>
+                  <TableCell className="text-sm" data-testid={`text-vessel-v2-${draft.draftUuid}`}>
+                    {draft.vesselNames || '—'}
+                  </TableCell>
+                  <TableCell className="text-sm" data-testid={`text-crew-v2-${draft.draftUuid}`}>
+                    {draft.crewRanks || '—'}
+                  </TableCell>
                   <TableCell className="text-sm" data-testid={`text-plan-dates-v2-${draft.draftUuid}`}>
                     {formatDate(draft.planFromDate)} - {formatDate(draft.planToDate)}
+                  </TableCell>
+                  <TableCell className="text-sm" data-testid={`text-created-by-v2-${draft.draftUuid}`}>
+                    {draft.createdByName || 'Current User'}
                   </TableCell>
                   <TableCell className="text-sm" data-testid={`text-plan-status-v2-${draft.draftUuid}`}>
                     {draft.planStatus}

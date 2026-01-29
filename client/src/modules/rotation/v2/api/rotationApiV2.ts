@@ -44,6 +44,10 @@ export interface RotationDraftV2 {
   proposedDate: string | null;
   createdAt: string;
   updatedAt: string;
+  // Summary fields for list view (populated by backend)
+  vesselNames?: string;
+  crewRanks?: string;
+  createdByName?: string;
 }
 
 export interface RotationEntryV2 {

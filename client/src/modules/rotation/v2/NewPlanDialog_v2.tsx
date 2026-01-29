@@ -35,14 +35,18 @@ function formatAvailabilityDate(dateString: string | null | undefined): string {
 
 interface RotationPlan {
   draftUuid: string; // V2 uses UUID as primary identifier
-  lastEdited: string;
-  vessels: string; // JSON array
-  crew: string;
+  lastEdited?: string | null;
+  vessels?: string; // JSON array (optional for list view)
+  crew?: string; // Optional for list view
   planFromDate: string;
   planToDate: string;
   createdByUuid?: string; // V2 uses UUID
-  planStatus: string;
-  assignments: string | null; // JSON array
+  planStatus?: string | null;
+  assignments?: string | null; // JSON array (optional)
+  // V2 summary fields
+  vesselNames?: string;
+  crewRanks?: string;
+  createdByName?: string;
 }
 
 interface NewPlanDialogProps {
@@ -1673,7 +1677,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     },
     onSuccess: (savedPlan) => {
       // Invalidate and refetch rotation plans to update the table
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation/drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation', 'drafts'] });
       
       // Capture the plan UUID from new saves so subsequent saves use PATCH
       if (!existingDraftUuid && savedPlan?.draftUuid) {
@@ -1703,7 +1707,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation/drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation', 'drafts'] });
       toast({
         title: "Success",
         description: "Rotation plan proposed for approval successfully",
@@ -1732,12 +1736,14 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       
       if (editPlan) {
         try {
-          // Parse vessels from JSON
-          const vessels = JSON.parse(editPlan.vessels);
-          setSelectedVessels(Array.isArray(vessels) ? vessels : []);
+          // Parse vessels from JSON (handle V2 format where vessels might be undefined)
+          if (editPlan.vessels) {
+            const vessels = JSON.parse(editPlan.vessels);
+            setSelectedVessels(Array.isArray(vessels) ? vessels : []);
+          }
           
           // Parse role variants from crew field (comma-separated)
-          const roleVariants = editPlan.crew.split(',').map(r => r.trim());
+          const roleVariants = editPlan.crew ? editPlan.crew.split(',').map(r => r.trim()) : [];
           
           // Find which base ranks have variants in the saved data
           const baseRanksWithVariants = new Set<string>();

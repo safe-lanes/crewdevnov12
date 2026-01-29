@@ -11,10 +11,31 @@ import type {
   InsertRotationDraftRanksV2,
   InsertRotationEntriesV2
 } from "../../../../shared/v2/rotation/schema";
+import { translateVesselCodeToName } from "../../../storage";
 
 export const rotationDraftsService = {
   async getAll(filters?: { planStatus?: string }) {
-    return rotationDraftsRepository.findAll(filters);
+    const drafts = await rotationDraftsRepository.findAll(filters);
+    
+    // Enrich each draft with vessel names and rank names for the list view
+    const enrichedDrafts = await Promise.all(
+      drafts.map(async (draft) => {
+        const vessels = await rotationDraftVesselsRepository.findByDraftUuid(draft.draftUuid);
+        const ranks = await rotationDraftRanksRepository.findByDraftUuid(draft.draftUuid);
+        
+        // Translate vessel UUIDs to human-readable names
+        const vesselNames = vessels.map(v => translateVesselCodeToName(v.vesselUuid)).join(', ') || '—';
+        
+        return {
+          ...draft,
+          vesselNames,
+          crewRanks: ranks.map(r => r.rankName).join(', ') || '—',
+          createdByName: 'Current User', // Placeholder - user lookup not yet implemented
+        };
+      })
+    );
+    
+    return enrichedDrafts;
   },
 
   async getByDraftUuid(draftUuid: string) {
