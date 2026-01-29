@@ -1834,8 +1834,8 @@ export function VesselModule_v2(): JSX.Element {
                                                             {/* On Board Status */}
                                                             <TableCell className="text-xs text-gray-700">{row.primaryCrew?.crewName || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{formatDateOnly(row.primaryCrew?.reliefDue)}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.primaryCrew?.plannedSignOff)}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{row.primaryCrew?.signOffPort || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.primaryCrew?.signOffDate)}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.primaryCrew?.signOffPortName || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.primaryCrew?.reliefStatus || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">
                                                                 <Button 
