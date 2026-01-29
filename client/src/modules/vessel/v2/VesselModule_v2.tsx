@@ -929,10 +929,6 @@ export function VesselModule_v2(): JSX.Element {
                         <Filter className="h-4 w-4" />
                         Filters
                     </Button>
-                    <Button variant="outline" size="sm" className="h-8" data-testid="button-export">
-                        <Download className="h-4 w-4 mr-1" />
-                        Export
-                    </Button>
                 </div>
             </SectionTitleComponents>
             {showFilters && (
