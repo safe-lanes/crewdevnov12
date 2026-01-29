@@ -4,6 +4,7 @@ import {
   rotationDraftRanksRepository 
 } from "../repositories";
 import { rotationEntriesRepository, rotationArchiveRepository } from "../repositories";
+import { CrewMembersRepository } from "../../crew-pool/repositories";
 import type { 
   RotationDraftsV2, 
   InsertRotationDraftsV2,
@@ -12,6 +13,8 @@ import type {
   InsertRotationEntriesV2
 } from "../../../../shared/v2/rotation/schema";
 import { translateVesselCodeToName } from "../../../storage";
+
+const crewMembersRepository = new CrewMembersRepository();
 
 export const rotationDraftsService = {
   async getAll(filters?: { planStatus?: string }) {
@@ -46,7 +49,28 @@ export const rotationDraftsService = {
 
     const vessels = await rotationDraftVesselsRepository.findByDraftUuid(draftUuid);
     const ranks = await rotationDraftRanksRepository.findByDraftUuid(draftUuid);
-    const entries = await rotationEntriesRepository.findByDraftUuid(draftUuid);
+    const rawEntries = await rotationEntriesRepository.findByDraftUuid(draftUuid);
+    
+    // Enrich entries with crew names and vessel names
+    const entries = await Promise.all(
+      rawEntries.map(async (entry) => {
+        let crewName = 'Unknown Crew';
+        if (entry.crewUuid) {
+          const crew = await crewMembersRepository.findByUuid(entry.crewUuid);
+          if (crew) {
+            crewName = `${crew.firstName || ''} ${crew.familyName || ''}`.trim() || 'Unknown Crew';
+          }
+        }
+        
+        const vesselName = entry.vesselUuid ? translateVesselCodeToName(entry.vesselUuid) : 'Unknown Vessel';
+        
+        return {
+          ...entry,
+          crewName,
+          vesselName,
+        };
+      })
+    );
 
     return {
       ...draft,
@@ -56,9 +80,9 @@ export const rotationDraftsService = {
     };
   },
 
-  async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId"> & { vessels?: string; crew?: string }) {
-    // Extract vessels and crew from data before creating draft
-    const { vessels: vesselsJson, crew: crewString, ...draftData } = data;
+  async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId"> & { vessels?: string; crew?: string; assignments?: string }) {
+    // Extract vessels, crew, and assignments from data before creating draft
+    const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...draftData } = data;
     
     // Create the draft first
     const draft = await rotationDraftsRepository.create(draftData);
@@ -91,17 +115,37 @@ export const rotationDraftsService = {
       }
     }
     
+    // Save assignments to entries table
+    if (assignmentsJson) {
+      try {
+        const assignments = JSON.parse(assignmentsJson);
+        for (const assignment of assignments) {
+          await rotationEntriesRepository.create({
+            draftUuid: draft.draftUuid,
+            vesselUuid: assignment.vesselUuid || assignment.vessel,
+            rank: assignment.rank,
+            rankId: assignment.rankId,
+            crewUuid: assignment.crewUuid,
+            signOnDate: assignment.joiningDate,
+            contractPeriod: assignment.contractPeriod || 3,
+          });
+        }
+      } catch (e) {
+        console.error("Failed to parse assignments JSON:", e);
+      }
+    }
+    
     return draft;
   },
 
-  async update(draftUuid: string, data: Partial<InsertRotationDraftsV2> & { vessels?: string; crew?: string }) {
+  async update(draftUuid: string, data: Partial<InsertRotationDraftsV2> & { vessels?: string; crew?: string; assignments?: string }) {
     const existing = await rotationDraftsRepository.findByDraftUuid(draftUuid);
     if (!existing) {
       throw new Error(`Draft not found: ${draftUuid}`);
     }
     
-    // Extract vessels and crew from data
-    const { vessels: vesselsJson, crew: crewString, ...draftData } = data;
+    // Extract vessels, crew, and assignments from data
+    const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...draftData } = data;
     
     // Update vessels if provided (replace all)
     if (vesselsJson !== undefined) {
@@ -142,6 +186,33 @@ export const rotationDraftsService = {
           rankName: rankNames[i],
           sortOrder: i,
         });
+      }
+    }
+    
+    // Update assignments if provided (replace all)
+    if (assignmentsJson !== undefined) {
+      // Delete existing entries for this draft
+      const existingEntries = await rotationEntriesRepository.findByDraftUuid(draftUuid);
+      for (const e of existingEntries) {
+        await rotationEntriesRepository.softDelete(e.entryUuid);
+      }
+      
+      // Add new assignments
+      try {
+        const assignments = JSON.parse(assignmentsJson);
+        for (const assignment of assignments) {
+          await rotationEntriesRepository.create({
+            draftUuid,
+            vesselUuid: assignment.vesselUuid || assignment.vessel,
+            rank: assignment.rank,
+            rankId: assignment.rankId,
+            crewUuid: assignment.crewUuid,
+            signOnDate: assignment.joiningDate,
+            contractPeriod: assignment.contractPeriod || 3,
+          });
+        }
+      } catch (e) {
+        console.error("Failed to parse assignments JSON:", e);
       }
     }
     

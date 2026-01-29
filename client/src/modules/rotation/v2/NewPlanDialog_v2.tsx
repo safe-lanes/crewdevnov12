@@ -1804,13 +1804,33 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
           setSelectedRoleVariantsState(filteredRoleVariants);
           setHasManualVariants(true); // Mark as manually set from saved data
           
-          // Parse assignments from JSON and ensure each has a unique ID
-          const savedAssignments = editPlan.assignments ? JSON.parse(editPlan.assignments) : [];
-          const assignmentsWithIds = savedAssignments.map((a: Assignment) => ({
-            ...a,
-            id: a.id || `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-          }));
-          setAssignments(assignmentsWithIds);
+          // Load assignments from fullDraftData.entries (V2 API) or fallback to editPlan.assignments
+          let loadedAssignments: Assignment[] = [];
+          
+          if (fullDraftData.entries && fullDraftData.entries.length > 0) {
+            // Map V2 entries to Assignment format (entries are enriched with crewName/vesselName from API)
+            loadedAssignments = fullDraftData.entries.map((entry: any) => ({
+              id: entry.entryUuid || `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              vessel: entry.vesselUuid || '',
+              vesselUuid: entry.vesselUuid,
+              vesselName: entry.vesselName,
+              rank: entry.rank || '',
+              rankId: entry.rankId,
+              crewUuid: entry.crewUuid || '',
+              crewName: entry.crewName || 'Unknown Crew',
+              joiningDate: entry.signOnDate || '',
+              contractPeriod: entry.contractPeriod || 3,
+            }));
+          } else if (editPlan.assignments) {
+            // Fallback to legacy JSON format
+            const savedAssignments = JSON.parse(editPlan.assignments);
+            loadedAssignments = savedAssignments.map((a: Assignment) => ({
+              ...a,
+              id: a.id || `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            }));
+          }
+          
+          setAssignments(loadedAssignments);
         } catch (error) {
           console.error('Failed to parse edit plan data:', error);
           toast({

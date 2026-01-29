@@ -65,18 +65,19 @@ export const rotationDraftsController = {
 
   async create(req: Request, res: Response) {
     try {
-      // Extract extra fields before validation (vessels/crew for child tables)
-      const { vessels, crew, ...draftFields } = req.body;
+      // Extract extra fields before validation (vessels/crew/assignments for child tables)
+      const { vessels, crew, assignments, ...draftFields } = req.body;
       
       const validatedData = insertRotationDraftsV2Schema
         .omit({ draftUuid: true, draftId: true })
         .parse(draftFields);
       
-      // Pass vessels and crew to service for child table population
+      // Pass vessels, crew, and assignments to service for child table population
       const draft = await rotationDraftsService.create({
         ...validatedData,
         vessels,
         crew,
+        assignments,
       });
       res.status(201).json(draft);
     } catch (error: any) {
@@ -91,7 +92,16 @@ export const rotationDraftsController = {
   async update(req: Request, res: Response) {
     try {
       const { draftUuid } = req.params;
-      const draft = await rotationDraftsService.update(draftUuid, req.body);
+      // Extract extra fields that go to child tables
+      const { vessels, crew, assignments, ...draftFields } = req.body;
+      
+      // Pass all fields including child table data to service
+      const draft = await rotationDraftsService.update(draftUuid, {
+        ...draftFields,
+        vessels,
+        crew,
+        assignments,
+      });
       res.json(draft);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
