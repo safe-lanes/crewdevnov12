@@ -322,6 +322,65 @@ const usePorts = () => {
     });
 };
 
+const useCompanyTrainings = () => {
+    return useQuery<any[]>({
+        queryKey: ['/api/company-trainings'],
+        queryFn: async () => {
+            const response = await fetch('/api/company-trainings');
+            if (!response.ok) throw new Error('Failed to fetch company trainings');
+            return response.json();
+        },
+    });
+};
+
+const useCompanyTrainingGroups = () => {
+    return useQuery<any[]>({
+        queryKey: ['/api/company-training-groups'],
+        queryFn: async () => {
+            const response = await fetch('/api/company-training-groups');
+            if (!response.ok) throw new Error('Failed to fetch company training groups');
+            return response.json();
+        },
+    });
+};
+
+const useCompanyTrainingRequirements = () => {
+    return useQuery<any[]>({
+        queryKey: ['/api/company-training-requirements'],
+        queryFn: async () => {
+            const response = await fetch('/api/company-training-requirements');
+            if (!response.ok) throw new Error('Failed to fetch company training requirements');
+            return response.json();
+        },
+    });
+};
+
+const useTrainingMatrixVesselRevisions = (vesselId: string | null) => {
+    return useQuery<any[]>({
+        queryKey: ['/api/training-matrix-vessel-revisions/by-vessel', vesselId],
+        queryFn: async () => {
+            if (!vesselId) return [];
+            const response = await fetch(`/api/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
+            if (!response.ok) throw new Error('Failed to fetch training matrix vessel revisions');
+            return response.json();
+        },
+        enabled: !!vesselId,
+    });
+};
+
+const useTrainingMatrixVesselDraft = (vesselId: string | null) => {
+    return useQuery<any[]>({
+        queryKey: ['/api/training-matrix-vessel-drafts/by-vessel', vesselId],
+        queryFn: async () => {
+            if (!vesselId) return [];
+            const response = await fetch(`/api/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
+            if (!response.ok) throw new Error('Failed to fetch training matrix vessel draft');
+            return response.json();
+        },
+        enabled: !!vesselId,
+    });
+};
+
 const formatDateOnly = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
     try {
@@ -440,6 +499,20 @@ export function VesselModule_v2(): JSX.Element {
         crewName: string;
         rank: string;
     }>({ planningId: '', vesselId: '', crewName: '', rank: '' });
+    const [planningEditDialogOpen, setPlanningEditDialogOpen] = useState(false);
+    const [planningEditData, setPlanningEditData] = useState<{
+        planUuid: string;
+        crewName: string;
+        rank: string;
+        type: 'onboard' | 'reliever';
+        reliefDue?: string;
+        plannedSignOff?: string;
+        signOffPort?: string;
+        reliefStatus?: string;
+        relieverSignOnDate?: string;
+        signOnPort?: string;
+        signOnStatus?: string;
+    } | null>(null);
 
     const { toast } = useToast();
     const gridApiRef = useRef<GridApi | null>(null);
@@ -525,6 +598,138 @@ export function VesselModule_v2(): JSX.Element {
     
     const { data: allAppraisals = [] } = useAppraisals();
     
+    const { data: companyTrainings = [] } = useCompanyTrainings();
+    const { data: companyTrainingGroups = [] } = useCompanyTrainingGroups();
+    const { data: companyTrainingRequirements = [] } = useCompanyTrainingRequirements();
+    const { data: trainingMatrixRevisions = [] } = useTrainingMatrixVesselRevisions(selectedVessel?.vesselId || null);
+    const { data: trainingMatrixDrafts = [] } = useTrainingMatrixVesselDraft(selectedVessel?.vesselId || null);
+    
+    const applicableTrainingIds = useMemo(() => {
+        const ids = new Set<number>();
+        [...trainingMatrixRevisions, ...trainingMatrixDrafts].forEach((entry: any) => {
+            if (entry.trainingIds && Array.isArray(entry.trainingIds)) {
+                entry.trainingIds.forEach((id: number) => ids.add(id));
+            }
+        });
+        return ids;
+    }, [trainingMatrixRevisions, trainingMatrixDrafts]);
+    
+    const groupedTrainingsForMatrix = useMemo(() => {
+        const applicableTrainings = companyTrainings.filter((training: any) => 
+            applicableTrainingIds.has(training.id)
+        );
+        const groupLabelMap = new Map<string, string>();
+        companyTrainingGroups.forEach((group: any) => {
+            if (group.code && group.label) {
+                groupLabelMap.set(group.code, group.label);
+            }
+        });
+        const grouped: { groupCode: string; groupLabel: string; trainings: any[] }[] = [];
+        const groupMap = new Map<string, any[]>();
+        const noGroupTrainings: any[] = [];
+        applicableTrainings.forEach((training: any) => {
+            if (training.groupCode) {
+                if (!groupMap.has(training.groupCode)) {
+                    groupMap.set(training.groupCode, []);
+                }
+                groupMap.get(training.groupCode)!.push(training);
+            } else {
+                noGroupTrainings.push(training);
+            }
+        });
+        const sortedGroupCodes = Array.from(groupMap.keys()).sort();
+        sortedGroupCodes.forEach(code => {
+            const trainings = groupMap.get(code) || [];
+            trainings.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            grouped.push({
+                groupCode: code,
+                groupLabel: groupLabelMap.get(code) || code,
+                trainings
+            });
+        });
+        if (noGroupTrainings.length > 0) {
+            noGroupTrainings.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            grouped.push({
+                groupCode: '',
+                groupLabel: 'Unassigned',
+                trainings: noGroupTrainings
+            });
+        }
+        return grouped;
+    }, [companyTrainings, companyTrainingGroups, applicableTrainingIds]);
+    
+    const trainingRequirementsLookup = useMemo(() => {
+        const lookup = new Map<string, string>();
+        companyTrainingRequirements.forEach((req: any) => {
+            if (req.companyTrainingId && req.rankId && req.status) {
+                lookup.set(`${req.companyTrainingId}-${req.rankId}`, req.status);
+            }
+        });
+        return lookup;
+    }, [companyTrainingRequirements]);
+    
+    const getTrainingRequirementStatus = (trainingId: number, vesselPosition: any): string | null => {
+        let lookupRankId: number | null = null;
+        if (vesselPosition.isRoleRow && vesselPosition.originalRankId) {
+            lookupRankId = parseInt(vesselPosition.originalRankId, 10);
+        } else if (vesselPosition.id) {
+            lookupRankId = parseInt(vesselPosition.id, 10);
+        } else if (vesselPosition.rankId) {
+            lookupRankId = typeof vesselPosition.rankId === 'number' ? vesselPosition.rankId : parseInt(vesselPosition.rankId, 10);
+        }
+        if (!lookupRankId || isNaN(lookupRankId)) return null;
+        return trainingRequirementsLookup.get(`${trainingId}-${lookupRankId}`) || null;
+    };
+    
+    const getCrewTrainingComplianceStatus = (trainingCompanyId: string, vesselPosition: any): string | null => {
+        const fullRankName = vesselPosition.displayRole || vesselPosition.role || vesselPosition.rank;
+        const baseRankName = fullRankName?.split('_')[0];
+        const rankHasSuffix = fullRankName?.includes('_');
+        const rankPlanningData = vesselPlanning.find((p: any) => {
+            if (p.crewStatus !== 'primary') return false;
+            if (rankHasSuffix) {
+                return p.rank === fullRankName;
+            }
+            if (p.rank === fullRankName) return true;
+            if (p.rankId === vesselPosition.id || p.rankId === vesselPosition.rankId) return true;
+            const planningBaseRank = p.rank?.split('_')[0];
+            const planningHasSuffix = p.rank?.includes('_');
+            if (!planningHasSuffix && planningBaseRank === baseRankName) return true;
+            return false;
+        });
+        if (!rankPlanningData?.crewMemberId) return null;
+        const crewData = crewMemberLookup.get(rankPlanningData.crewMemberId);
+        if (!crewData) return null;
+        let trainingCourses: TrainingCourse[] = [];
+        if (crewData.trainingCourses) {
+            try {
+                trainingCourses = typeof crewData.trainingCourses === 'string' 
+                    ? JSON.parse(crewData.trainingCourses) 
+                    : crewData.trainingCourses;
+            } catch (e) {
+                trainingCourses = [];
+            }
+        }
+        const matchingCourse = trainingCourses.find((course: TrainingCourse) => 
+            course.companyId === trainingCompanyId || course.id === trainingCompanyId
+        );
+        if (!matchingCourse) return null;
+        if (!matchingCourse.expiry) return 'green';
+        try {
+            const expiryDate = new Date(matchingCourse.expiry);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const twoMonthsFromNow = new Date();
+            twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+            twoMonthsFromNow.setHours(0, 0, 0, 0);
+            if (expiryDate < today) return 'red';
+            if (expiryDate <= twoMonthsFromNow) return 'yellow';
+            return 'green';
+        } catch {
+            return 'green';
+        }
+    };
+    
     const updatePlanningMutation = useUpdatePlanningV2();
     const archivePlanningMutation = useArchivePlanningV2();
     
@@ -558,6 +763,50 @@ export function VesselModule_v2(): JSX.Element {
                 variant: "destructive",
             });
         }
+    };
+    
+    const handleOpenPlanningEdit = (crew: any, type: 'onboard' | 'reliever', rankName: string) => {
+        if (!crew) {
+            toast({
+                title: "No crew assigned",
+                description: `No ${type === 'onboard' ? 'on-board' : 'reliever'} crew assigned to this position.`,
+            });
+            return;
+        }
+        setPlanningEditData({
+            planUuid: crew.planUuid || crew.id,
+            crewName: crew.crewName || '',
+            rank: rankName,
+            type,
+            reliefDue: crew.reliefDue || '',
+            plannedSignOff: crew.plannedSignOff || '',
+            signOffPort: crew.signOffPort || '',
+            reliefStatus: crew.reliefStatus || '',
+            relieverSignOnDate: crew.relieverSignOnDate || '',
+            signOnPort: crew.signOnPort || '',
+            signOnStatus: crew.signOnStatus || '',
+        });
+        setPlanningEditDialogOpen(true);
+    };
+    
+    const handleSavePlanningEdit = async () => {
+        if (!planningEditData) return;
+        
+        const updateData: UpdatePlanningInput = {};
+        if (planningEditData.type === 'onboard') {
+            if (planningEditData.reliefDue) updateData.reliefDue = planningEditData.reliefDue;
+            if (planningEditData.plannedSignOff) updateData.signOffDate = planningEditData.plannedSignOff;
+            if (planningEditData.signOffPort) updateData.signOffPortUuid = planningEditData.signOffPort;
+            if (planningEditData.reliefStatus) updateData.reliefStatus = planningEditData.reliefStatus;
+        } else {
+            if (planningEditData.relieverSignOnDate) updateData.relieverSignOnDate = planningEditData.relieverSignOnDate;
+            if (planningEditData.signOnPort) updateData.joiningPortUuid = planningEditData.signOnPort;
+            if (planningEditData.signOnStatus) updateData.joiningStatus = planningEditData.signOnStatus;
+        }
+        
+        await handleUpdatePlanning(planningEditData.planUuid, updateData);
+        setPlanningEditDialogOpen(false);
+        setPlanningEditData(null);
     };
 
     // Transform vessel data to match V1 format with crew count
@@ -1165,26 +1414,377 @@ export function VesselModule_v2(): JSX.Element {
 
                         <TabsContent value="training-matrix" className="mt-0">
                             <div className="space-y-4">
-                                <div className="text-center text-gray-500 py-8 bg-white rounded-lg shadow-sm border border-gray-200">
-                                    Training Matrix - V2 Implementation
+                                <div className="flex items-center gap-6 text-xs">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-20 h-5 bg-[#F0FDF4] border border-gray-300 flex items-center justify-center">
+                                            Mandatory
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-24 h-5 bg-blue-100 border border-gray-300 flex items-center justify-center">
+                                            Recommended
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                        <span>Valid</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                        <span>Expiring in 2 months</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                        <span>Expired</span>
+                                    </div>
                                 </div>
+                                {(() => {
+                                    const filteredRanks = vesselRanks.filter((rank: any) => {
+                                        const fullRankName = rank.displayRole || rank.role || rank.rank;
+                                        const hasVariantSuffix = fullRankName?.includes('_');
+                                        if (hasVariantSuffix) return true;
+                                        const hasVariants = vesselRanks.some((other: any) => {
+                                            const otherName = other.displayRole || other.role || other.rank;
+                                            return other.rankId === rank.rankId && otherName?.includes('_');
+                                        });
+                                        return !hasVariants;
+                                    });
+                                    const hasApplicableTrainings = groupedTrainingsForMatrix.length > 0 && 
+                                        groupedTrainingsForMatrix.some(group => group.trainings.length > 0);
+                                    return (
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                    <div className="overflow-auto h-[calc(100vh-300px)] w-full relative">
+                                        <Table className="min-w-max relative">
+                                            <TableHeader>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky left-0 z-40 bg-[#52baf3] border-r border-white/20">
+                                                        Company ID
+                                                    </TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-96 sticky left-24 z-40 bg-[#52baf3] border-r border-white/20">
+                                                        Training Label
+                                                    </TableHead>
+                                                    {filteredRanks.length > 0 ? (
+                                                        filteredRanks.map((rank: any, index: number) => (
+                                                            <TableHead 
+                                                                key={rank.id || index} 
+                                                                className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]"
+                                                                data-testid={`header-rank-${index}`}
+                                                            >
+                                                                {rank.displayRole || rank.role || rank.rank}
+                                                            </TableHead>
+                                                        ))
+                                                    ) : (
+                                                        <TableHead className="text-white text-xs font-normal text-center">
+                                                            No Ranks
+                                                        </TableHead>
+                                                    )}
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {ranksLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={2 + filteredRanks.length} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading vessel positions...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : filteredRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={3} className="text-center text-xs text-gray-500 py-8">
+                                                            {NO_RANKS_CONFIGURED_MESSAGE}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : !hasApplicableTrainings ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={2 + filteredRanks.length} className="text-center text-xs text-gray-500 py-8">
+                                                            No trainings configured for this vessel. Configure trainings in Admin &gt; Training Matrix &gt; Vessel.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    <>
+                                                        {groupedTrainingsForMatrix.map((group, groupIndex) => (
+                                                            <React.Fragment key={group.groupCode || `unassigned-${groupIndex}`}>
+                                                                <TableRow className="bg-blue-100 hover:bg-blue-100">
+                                                                    <TableCell 
+                                                                        colSpan={2 + filteredRanks.length} 
+                                                                        className="text-xs font-semibold text-gray-900 sticky left-0 z-20 bg-blue-100"
+                                                                    >
+                                                                        {group.groupCode ? `${group.groupCode}. ${group.groupLabel}` : group.groupLabel}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                                {group.trainings.map((training: any) => (
+                                                                    <TableRow key={training.id} className="hover:bg-gray-50 border-b border-gray-200">
+                                                                        <TableCell 
+                                                                            className="text-xs text-gray-700 sticky left-0 z-20 bg-white border-r border-gray-200 border-b border-gray-200" 
+                                                                            data-testid={`cell-company-id-${training.id}`}
+                                                                        >
+                                                                            {training.companyId}
+                                                                        </TableCell>
+                                                                        <TableCell 
+                                                                            className="text-xs text-gray-700 sticky left-24 z-20 bg-white border-r border-gray-200 border-b border-gray-200" 
+                                                                            data-testid={`cell-training-label-${training.id}`}
+                                                                        >
+                                                                            {training.trainingLabel}
+                                                                        </TableCell>
+                                                                        {filteredRanks.map((rank: any, rankIndex: number) => {
+                                                                            const status = getTrainingRequirementStatus(training.id, rank);
+                                                                            const complianceStatus = getCrewTrainingComplianceStatus(training.companyId, rank);
+                                                                            let bgColor = 'bg-white';
+                                                                            if (status === 'M') {
+                                                                                bgColor = 'bg-[#F0FDF4]';
+                                                                            } else if (status === 'R') {
+                                                                                bgColor = 'bg-blue-100';
+                                                                            }
+                                                                            let dotColor = '';
+                                                                            if (complianceStatus === 'green') {
+                                                                                dotColor = 'bg-green-500';
+                                                                            } else if (complianceStatus === 'yellow') {
+                                                                                dotColor = 'bg-yellow-500';
+                                                                            } else if (complianceStatus === 'red') {
+                                                                                dotColor = 'bg-red-500';
+                                                                            }
+                                                                            return (
+                                                                                <TableCell 
+                                                                                    key={rank.id || rankIndex}
+                                                                                    className={`text-xs text-center border-b border-gray-200 ${bgColor}`}
+                                                                                    data-testid={`cell-training-${training.id}-rank-${rankIndex}`}
+                                                                                >
+                                                                                    {complianceStatus && (
+                                                                                        <div className="flex items-center justify-center">
+                                                                                            <div className={`w-3 h-3 rounded-full ${dotColor}`}></div>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </TableCell>
+                                                                            );
+                                                                        })}
+                                                                    </TableRow>
+                                                                ))}
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+                                    );
+                                })()}
                             </div>
                         </TabsContent>
 
                         <TabsContent value="officer-matrix" className="mt-0">
                             <div className="space-y-4">
-                                <div className="flex justify-end mb-4">
+                                <div className="flex justify-end">
                                     <Button
                                         variant="outline"
                                         size="sm"
+                                        className="h-8 gap-2 border-[#16569e] text-[#16569e] hover:bg-[#16569e] hover:text-white"
                                         onClick={() => setComplianceDialogOpen(true)}
                                         data-testid="button-check-compliance"
                                     >
                                         Check Compliance
                                     </Button>
                                 </div>
-                                <div className="text-center text-gray-500 py-8 bg-white rounded-lg shadow-sm border border-gray-200">
-                                    Officer Matrix - V2 Implementation
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                    <ScrollArea className="h-[calc(100vh-280px)] w-full">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] border-r border-white/20">Rank</TableHead>
+                                                    <TableHead colSpan={2} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Rank, Name & Nationality</TableHead>
+                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Certification & Qualification</TableHead>
+                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">Years in Service (Today's Date)</TableHead>
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal text-center w-24 sticky top-0 z-30 bg-[#52baf3]">
+                                                        <div className="flex flex-col items-center">
+                                                            <span>Language</span>
+                                                            <span className="text-[10px] font-light mt-0.5">English</span>
+                                                        </div>
+                                                    </TableHead>
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
+                                                </TableRow>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    <TableHead className="text-white text-xs font-normal sticky top-[41px] z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40">Nationality</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Cert. Comp.</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Issuing Country</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Admin Accept</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Tanker Cert.</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Spl. tanker Training</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40">Radio Qual.</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">Company</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">Rank</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-[41px] z-30 bg-[#52baf3]">Tanker Type</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">All Types</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3]">OOW</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40">Time o/b (months)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {ranksLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={17} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading vessel positions...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={17} className="text-center text-xs text-gray-500 py-8">
+                                                            {NO_RANKS_CONFIGURED_MESSAGE}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : officerMatrixRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={17} className="text-center text-xs text-gray-500 py-8">
+                                                            No officer ranks configured for this vessel.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    officerMatrixRanks.map((rank: any, index: number) => {
+                                                        const fullRankName = rank.displayRole || rank.role || rank.rank;
+                                                        const baseRankName = fullRankName?.split('_')[0];
+                                                        const rankHasSuffix = fullRankName?.includes('_');
+                                                        const rankPlanningData = vesselPlanning.find((p: any) => {
+                                                            if (p.crewStatus !== 'primary') return false;
+                                                            if (rankHasSuffix) {
+                                                                return p.rank === fullRankName;
+                                                            }
+                                                            if (p.rank === fullRankName) return true;
+                                                            if (p.rankId === rank.id || p.rankId === rank.rankId) return true;
+                                                            const planningBaseRank = p.rank?.split('_')[0];
+                                                            const planningHasSuffix = p.rank?.includes('_');
+                                                            if (!planningHasSuffix && planningBaseRank === baseRankName) return true;
+                                                            return false;
+                                                        });
+                                                        const crewMemberId = rankPlanningData?.crewMemberId;
+                                                        const crewMemberData = crewMemberId ? crewMemberLookup.get(crewMemberId) : null;
+                                                        let licenses: LicenseRecord[] = [];
+                                                        if (crewMemberData?.licenses) {
+                                                            try {
+                                                                licenses = typeof crewMemberData.licenses === 'string' 
+                                                                    ? JSON.parse(crewMemberData.licenses) 
+                                                                    : crewMemberData.licenses;
+                                                            } catch (e) {
+                                                                licenses = [];
+                                                            }
+                                                        }
+                                                        const rankDepartment = inferDepartmentFromRank(fullRankName);
+                                                        const highestCoc = findHighestActiveCoc(licenses, rankDepartment);
+                                                        let trainingCourses: TrainingCourse[] = [];
+                                                        if (crewMemberData?.trainingCourses) {
+                                                            try {
+                                                                trainingCourses = typeof crewMemberData.trainingCourses === 'string' 
+                                                                    ? JSON.parse(crewMemberData.trainingCourses) 
+                                                                    : crewMemberData.trainingCourses;
+                                                            } catch (e) {
+                                                                trainingCourses = [];
+                                                            }
+                                                        }
+                                                        const tankerCerts = calculateTankerCertifications(trainingCourses);
+                                                        let companyYears = 0;
+                                                        if (crewMemberData?.currentCompanySeaService) {
+                                                            try {
+                                                                const companySeaService = typeof crewMemberData.currentCompanySeaService === 'string' 
+                                                                    ? JSON.parse(crewMemberData.currentCompanySeaService) 
+                                                                    : crewMemberData.currentCompanySeaService;
+                                                                if (Array.isArray(companySeaService) && companySeaService.length > 0) {
+                                                                    const fromDates = companySeaService
+                                                                        .map((s: any) => s.fromDate || s.signOnDate || s.from)
+                                                                        .filter((d: any) => d && typeof d === 'string' && d.trim() !== '')
+                                                                        .map((d: any) => new Date(d))
+                                                                        .filter((d: any) => !isNaN(d.getTime()));
+                                                                    if (fromDates.length > 0) {
+                                                                        const earliestDate = new Date(Math.min(...fromDates.map((d: any) => d.getTime())));
+                                                                        const today = new Date();
+                                                                        const diffMs = today.getTime() - earliestDate.getTime();
+                                                                        const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+                                                                        const roundedYears = Math.round(diffYears * 10) / 10;
+                                                                        companyYears = diffYears > 0 ? Math.max(0.1, roundedYears) : 0;
+                                                                    }
+                                                                }
+                                                            } catch (e) {
+                                                                companyYears = 0;
+                                                            }
+                                                        }
+                                                        return (
+                                                            <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
+                                                                <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
+                                                                    {rank.displayRole || rank.role || rank.rank}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-name-${index + 1}`}>
+                                                                    {rankPlanningData?.crewName || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-nationality-${index + 1}`}>
+                                                                    {rankPlanningData?.nationality || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-cert-comp-${index + 1}`}>
+                                                                    {highestCoc?.officerMatrixLabel || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-issuing-country-${index + 1}`}>
+                                                                    {highestCoc?.issuingCountry || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-admin-accept-${index + 1}`}>
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-tanker-${index + 1}`}>
+                                                                    {tankerCerts.tankerCert}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-spl-tanker-${index + 1}`}>
+                                                                    {tankerCerts.splTankerTraining}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-radio-${index + 1}`}>
+                                                                    {rankDepartment === 'deck' && hasValidGmdss(licenses) ? 'Yes' : ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-company-${index + 1}`}>
+                                                                    {companyYears > 0 ? companyYears : ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-rank-${index + 1}`}>
+                                                                    {crewMemberData?.experienceMetrics?.rank > 0 ? crewMemberData.experienceMetrics.rank : ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-tanker-${index + 1}`}>
+                                                                    {crewMemberData?.experienceMetrics?.vesselType?.name && crewMemberData?.experienceMetrics?.vesselType?.years > 0 ? (
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <span className="cursor-help">{crewMemberData.experienceMetrics.vesselType.years.toFixed(1)}</span>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>{crewMemberData.experienceMetrics.vesselType.name}</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    ) : ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-all-${index + 1}`}>
+                                                                    {crewMemberData?.experienceMetrics?.tankers > 0 ? crewMemberData.experienceMetrics.tankers : ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-dow-${index + 1}`}>
+                                                                    {crewMemberData?.experienceMetrics?.oow > 0 ? crewMemberData.experienceMetrics.oow : ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
+                                                                    {crewMemberData?.experienceMetrics?.timeOnBoard > 0 ? crewMemberData.experienceMetrics.timeOnBoard : ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-language-${index + 1}`}>
+                                                                    {crewMemberData?.englishProficiency || ''}
+                                                                </TableCell>
+                                                                <TableCell className="text-xs" data-testid={`cell-officer-actions-${index + 1}`}>
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="sm" 
+                                                                        className="h-8 w-8 p-0"
+                                                                        onClick={() => {
+                                                                            if (crewMemberData) {
+                                                                                setSelectedCrewMember(crewMemberData);
+                                                                                setIsCrewInfoFormOpen(true);
+                                                                            }
+                                                                        }}
+                                                                        data-testid={`button-view-officer-${index + 1}`}
+                                                                    >
+                                                                        <Eye className="h-4 w-4 text-gray-500" />
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
                                 </div>
                             </div>
                         </TabsContent>
@@ -1311,7 +1911,15 @@ export function VesselModule_v2(): JSX.Element {
                                                             <TableCell className="text-xs text-gray-700">{row.primaryCrew?.signOffPort || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.primaryCrew?.reliefStatus || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">
-                                                                <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="sm" 
+                                                                    className="h-6 w-6 p-0"
+                                                                    onClick={() => handleOpenPlanningEdit(row.primaryCrew, 'onboard', row.rankName)}
+                                                                    data-testid={`button-edit-onboard-${index}`}
+                                                                >
+                                                                    <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
+                                                                </Button>
                                                             </TableCell>
                                                             
                                                             {/* Reliever Status */}
@@ -1320,7 +1928,15 @@ export function VesselModule_v2(): JSX.Element {
                                                             <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.signOnPort || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.signOnStatus || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">
-                                                                <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="sm" 
+                                                                    className="h-6 w-6 p-0"
+                                                                    onClick={() => handleOpenPlanningEdit(row.secondaryCrew, 'reliever', row.rankName)}
+                                                                    data-testid={`button-edit-reliever-${index}`}
+                                                                >
+                                                                    <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
+                                                                </Button>
                                                             </TableCell>
                                                         </TableRow>
                                                     ));
@@ -1429,6 +2045,141 @@ export function VesselModule_v2(): JSX.Element {
                     queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, handoverDialogData.vesselId, 'planning'] });
                 }}
             />
+            
+            <Dialog open={planningEditDialogOpen} onOpenChange={setPlanningEditDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-[#16569e]" data-testid="dialog-title-planning-edit">
+                            Edit {planningEditData?.type === 'onboard' ? 'On Board Status' : 'Reliever Status'} - {planningEditData?.rank}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4 space-y-4">
+                        <div className="text-sm font-medium text-gray-600">
+                            Crew: {planningEditData?.crewName}
+                        </div>
+                        {planningEditData?.type === 'onboard' ? (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>Relief Due</Label>
+                                    <Input 
+                                        type="date" 
+                                        value={planningEditData?.reliefDue?.split('T')[0] || ''} 
+                                        onChange={(e) => setPlanningEditData(prev => prev ? {...prev, reliefDue: e.target.value} : null)}
+                                        data-testid="input-relief-due"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Planned Sign Off</Label>
+                                    <Input 
+                                        type="date" 
+                                        value={planningEditData?.plannedSignOff?.split('T')[0] || ''} 
+                                        onChange={(e) => setPlanningEditData(prev => prev ? {...prev, plannedSignOff: e.target.value} : null)}
+                                        data-testid="input-planned-signoff"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Sign Off Port</Label>
+                                    <Select 
+                                        value={planningEditData?.signOffPort || ''} 
+                                        onValueChange={(val) => setPlanningEditData(prev => prev ? {...prev, signOffPort: val} : null)}
+                                    >
+                                        <SelectTrigger data-testid="select-signoff-port">
+                                            <SelectValue placeholder="Select port" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {ports.map((port: any) => (
+                                                <SelectItem key={port.puid} value={port.puid}>
+                                                    {port.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Relief Status</Label>
+                                    <Select 
+                                        value={planningEditData?.reliefStatus || ''} 
+                                        onValueChange={(val) => setPlanningEditData(prev => prev ? {...prev, reliefStatus: val} : null)}
+                                    >
+                                        <SelectTrigger data-testid="select-relief-status">
+                                            <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Pending">Pending</SelectItem>
+                                            <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                            <SelectItem value="Completed">Completed</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>Sign On Date</Label>
+                                    <Input 
+                                        type="date" 
+                                        value={planningEditData?.relieverSignOnDate?.split('T')[0] || ''} 
+                                        onChange={(e) => setPlanningEditData(prev => prev ? {...prev, relieverSignOnDate: e.target.value} : null)}
+                                        data-testid="input-reliever-signon-date"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Sign On Port</Label>
+                                    <Select 
+                                        value={planningEditData?.signOnPort || ''} 
+                                        onValueChange={(val) => setPlanningEditData(prev => prev ? {...prev, signOnPort: val} : null)}
+                                    >
+                                        <SelectTrigger data-testid="select-signon-port">
+                                            <SelectValue placeholder="Select port" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {ports.map((port: any) => (
+                                                <SelectItem key={port.puid} value={port.puid}>
+                                                    {port.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Sign On Status</Label>
+                                    <Select 
+                                        value={planningEditData?.signOnStatus || ''} 
+                                        onValueChange={(val) => setPlanningEditData(prev => prev ? {...prev, signOnStatus: val} : null)}
+                                    >
+                                        <SelectTrigger data-testid="select-signon-status">
+                                            <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Pending">Pending</SelectItem>
+                                            <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                            <SelectItem value="Completed">Completed</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </>
+                        )}
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => {
+                                    setPlanningEditDialogOpen(false);
+                                    setPlanningEditData(null);
+                                }}
+                                data-testid="button-cancel-planning-edit"
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                onClick={handleSavePlanningEdit}
+                                data-testid="button-save-planning-edit"
+                            >
+                                Save
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
