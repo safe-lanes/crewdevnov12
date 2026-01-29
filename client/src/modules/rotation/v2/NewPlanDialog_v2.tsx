@@ -562,7 +562,7 @@ function CrewColumn({
     const vesselCount = new Set(
       assignments
         .filter(a => a.crewUuid === crewUuid)
-        .map(a => a.vessel)
+        .map(a => a.vesselUuid) // Use vesselUuid for consistent counting
     ).size;
     return vesselCount;
   };
@@ -834,10 +834,11 @@ function DatePeriodDialog({
   const [unassignChecked, setUnassignChecked] = useState(false);
 
   // Check if crew is already assigned to this vessel and rank
+  // Note: vesselName prop now contains the vessel UUID (selectedVessel)
   const isAlreadyAssigned = useMemo(() => {
     return assignments.some(a => 
       a.crewUuid === crewUuid && 
-      a.vessel === vesselName && 
+      a.vesselUuid === vesselName && 
       a.rank === rank
     );
   }, [assignments, crewUuid, vesselName, rank]);
@@ -992,22 +993,30 @@ function VesselTimelineView({
   onVesselSelect,
   onAssignmentClick,
   dateRange,
-  assignments = []
+  assignments = [],
+  vesselLookup = []
 }: { 
-  vessels: string[]; 
+  vessels: string[]; // Now contains UUIDs
   queryRanks: string[];
   displayRanks: string[];
-  selectedVessel: string;
-  onVesselSelect: (vessel: string) => void;
+  selectedVessel: string; // UUID
+  onVesselSelect: (vessel: string) => void; // vessel is UUID
   onAssignmentClick?: (assignment: Assignment) => void;
   dateRange: { start: Date; end: Date };
   assignments?: Assignment[];
+  vesselLookup?: { value: string; name: string }[]; // For UUID to name translation
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   
-  // Use vessel lookup hook for translating vessel names to IDs
+  // Helper to get vessel name from UUID
+  const getVesselNameFromUuid = (uuid: string): string => {
+    const vessel = vesselLookup.find(v => v.value === uuid);
+    return vessel?.name || uuid;
+  };
+  
+  // Use vessel lookup hook for translating vessel names to IDs (for existing crew fetch)
   const { getVesselIds } = useVesselLookup();
   
   // Use custom date range from props
@@ -1016,15 +1025,15 @@ function VesselTimelineView({
   const endDate = dateRange.end;
   const totalDays = useMemo(() => differenceInDays(endDate, startDate), [startDate, endDate]);
   
-  // Build query params for fetching existing crew - translate vessel names to IDs
+  // Build query params for fetching existing crew - vessels array already contains UUIDs
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     params.append('filterType', 'vessel');
-    const vesselIds = getVesselIds(vessels);
-    vesselIds.forEach(id => params.append('vessels', id));
+    // vessels is now an array of UUIDs, use them directly
+    vessels.forEach(uuid => params.append('vessels', uuid));
     queryRanks.forEach(r => params.append('rank', r));
     return params;
-  }, [vessels, queryRanks, getVesselIds]);
+  }, [vessels, queryRanks]);
   
   // Fetch existing crew for selected vessels and ALL ranks (including base ranks)
   const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
@@ -1051,42 +1060,54 @@ function VesselTimelineView({
     return mapping;
   }, [displayRanks]);
   
-  // Group data by vessel and display rank (with smart mapping from base ranks to variants)
+  // Group data by vessel UUID and display rank (with smart mapping from base ranks to variants)
   const groupedData = useMemo(() => {
     const groups: { [key: string]: { [key: string]: { existing: ExistingCrew[], assignments: Assignment[] } } } = {};
     
-    vessels.forEach(vessel => {
-      groups[vessel] = {};
+    // vessels is now an array of UUIDs
+    vessels.forEach(vesselUuid => {
+      groups[vesselUuid] = {};
       displayRanks.forEach(rank => {
-        groups[vessel][rank] = {
+        groups[vesselUuid][rank] = {
           existing: [],
-          assignments: assignments.filter(a => a.vessel === vessel && a.rank === rank),
+          // Match assignments by vesselUuid (which is now the UUID)
+          assignments: assignments.filter(a => a.vesselUuid === vesselUuid && a.rank === rank),
         };
       });
     });
     
+    // Create name-to-UUID lookup from vesselLookup
+    const nameToUuidMap = new Map<string, string>();
+    vesselLookup.forEach(v => {
+      if (v.name && v.value) {
+        nameToUuidMap.set(v.name, v.value);
+      }
+    });
+    
     // Distribute existing crew to appropriate display ranks
+    // Note: crew.vessel is the vessel name, need to map to UUID
     existingCrew.forEach(crew => {
-      const vessel = crew.vessel;
+      const vesselName = crew.vessel;
+      const vesselUuid = nameToUuidMap.get(vesselName) || vesselName; // Map name to UUID
       const crewRank = crew.rank;
       
       // Check if this rank is in displayRanks
       if (displayRanks.includes(crewRank)) {
         // Direct match - add to this rank
-        if (groups[vessel]?.[crewRank]) {
-          groups[vessel][crewRank].existing.push(crew);
+        if (groups[vesselUuid]?.[crewRank]) {
+          groups[vesselUuid][crewRank].existing.push(crew);
         }
       } else if (rankMapping.has(crewRank)) {
         // This is a base rank that has variants - distribute to first variant
         const variants = rankMapping.get(crewRank)!;
-        if (variants.length > 0 && groups[vessel]?.[variants[0]]) {
-          groups[vessel][variants[0]].existing.push(crew);
+        if (variants.length > 0 && groups[vesselUuid]?.[variants[0]]) {
+          groups[vesselUuid][variants[0]].existing.push(crew);
         }
       }
     });
     
     return groups;
-  }, [vessels, displayRanks, existingCrew, assignments, rankMapping]);
+  }, [vessels, displayRanks, existingCrew, assignments, rankMapping, vesselLookup]);
   
   // Resize canvas to match container
   useEffect(() => {
@@ -1154,11 +1175,13 @@ function VesselTimelineView({
       ctx.lineWidth = 2;
       ctx.stroke();
       
-      // Draw vessel name (with adequate spacing after radio button)
+      // Draw vessel name (with adequate spacing after radio button) - display name, not UUID
+      const vesselDisplayName = getVesselNameFromUuid(vessel);
       ctx.fillStyle = 'white';
       ctx.font = 'bold 14px sans-serif';
-      ctx.fillText(vessel, 50, yOffset + 30);
+      ctx.fillText(vesselDisplayName, 50, yOffset + 30);
       
+      // vessel is now a UUID, so comparison with selectedVessel (also UUID) works correctly
       if (selectedVessel === vessel) {
         ctx.beginPath();
         ctx.arc(20, yOffset + 24, 4, 0, 2 * Math.PI);
@@ -1868,12 +1891,19 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     }
   }, [editPlan, fullDraftData, open, toast, companyRanks]);
 
-  const toggleVessel = (vesselName: string) => {
+  // Toggle vessel selection by UUID (vessel.value)
+  const toggleVessel = (vesselUuid: string) => {
     setSelectedVessels(prev =>
-      prev.includes(vesselName)
-        ? prev.filter(v => v !== vesselName)
-        : [...prev, vesselName]
+      prev.includes(vesselUuid)
+        ? prev.filter(v => v !== vesselUuid)
+        : [...prev, vesselUuid]
     );
+  };
+  
+  // Helper to get vessel name from UUID for display
+  const getVesselNameByUuid = (uuid: string): string => {
+    const vessel = vessels.find((v: any) => v.value === uuid);
+    return vessel?.name || uuid;
   };
 
   const toggleRank = (rank: string) => {
@@ -1931,8 +1961,8 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   };
 
   const handleAssignmentClick = (assignment: Assignment) => {
-    // Set the vessel for context
-    setSelectedVessel(assignment.vessel);
+    // Set the vessel for context - use vesselUuid since selectedVessel is now a UUID
+    setSelectedVessel(assignment.vesselUuid || '');
     // Set crew info from the assignment
     setSelectedCrew({
       crewUuid: assignment.crewUuid, // V2 uses crewUuid
@@ -1948,19 +1978,20 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   const handleAssignmentApply = (joiningDate: Date, contractPeriod: number) => {
     if (!selectedCrew || !selectedVessel) return;
 
-    // Find vessel and rank objects to get their IDs
-    const vesselObj = vessels.find((v: any) => v.name === selectedVessel || v.vessel === selectedVessel);
+    // Find vessel by UUID (selectedVessel is now a UUID) and rank objects to get their IDs
+    const vesselObj = vessels.find((v: any) => v.value === selectedVessel);
     const rankObj = companyRanks.find((r: any) => r.rank === selectedCrew.rank);
 
     // Validate that we have proper IDs - fail if not available
-    // Use entryId first as it contains the actual vessel ID (VSL-003), not the numeric entry ID
-    const vesselId = vesselObj?.entryId || vesselObj?.id;
+    // For V2, use vessel.value which is the UUID
+    const vesselId = vesselObj?.value || vesselObj?.id;
+    const vesselName = vesselObj?.name || selectedVessel;
     const rankId = rankObj?.id;
 
     if (!vesselId || !rankId) {
       toast({
         title: "Error",
-        description: `Missing vessel or rank ID. Vessel: ${selectedVessel}, Rank: ${selectedCrew.rank}`,
+        description: `Missing vessel or rank ID. Vessel: ${vesselName}, Rank: ${selectedCrew.rank}`,
         variant: "destructive",
       });
       return;
@@ -1988,9 +2019,9 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       // Create new assignment with unique ID
       const newAssignment: Assignment = {
         id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
-        vessel: selectedVessel,
-        vesselUuid: vesselId, // V2 uses vesselUuid
-        vesselName: selectedVessel,
+        vessel: vesselName,
+        vesselUuid: vesselId, // V2 uses vesselUuid (which is vessel.value)
+        vesselName: vesselName,
         rank: selectedCrew.rank,
         rankId: rankId,
         crewUuid: selectedCrew.crewUuid, // V2 uses crewUuid
@@ -2008,16 +2039,20 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
 
   const handleUnassign = () => {
     if (!selectedCrew || !selectedVessel) return;
+    
+    // Get vessel name for display (selectedVessel is now a UUID)
+    const vesselObj = vessels.find((v: any) => v.value === selectedVessel);
+    const vesselDisplayName = vesselObj?.name || selectedVessel;
 
     if (editingAssignment) {
       // Remove specific assignment by ID when editing
       setAssignments(prev => prev.filter(a => a.id !== editingAssignment.id));
     } else {
-      // Remove assignment matching crew, vessel, and rank (for backward compatibility)
+      // Remove assignment matching crew, vessel UUID, and rank
       setAssignments(prev => 
         prev.filter(a => !(
           a.crewUuid === selectedCrew.crewUuid && 
-          a.vessel === selectedVessel && 
+          a.vesselUuid === selectedVessel && 
           a.rank === selectedCrew.rank
         ))
       );
@@ -2026,7 +2061,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     // Show toast confirmation
     toast({
       title: "Success",
-      description: `${selectedCrew.name} unassigned from ${selectedVessel}`,
+      description: `${selectedCrew.name} unassigned from ${vesselDisplayName}`,
     });
     
     // Clear editing state
@@ -2246,13 +2281,13 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                     className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
                   >
                     <Checkbox
-                      checked={selectedVessels.includes(vessel.name)}
-                      onCheckedChange={() => toggleVessel(vessel.name)}
+                      checked={selectedVessels.includes(vessel.value)}
+                      onCheckedChange={() => toggleVessel(vessel.value)}
                       data-testid={`checkbox-vessel-${vessel.id}`}
                     />
                     <label
                       className="text-sm cursor-pointer flex-1"
-                      onClick={() => toggleVessel(vessel.name)}
+                      onClick={() => toggleVessel(vessel.value)}
                     >
                       {vessel.name}
                     </label>
@@ -2443,6 +2478,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                 onAssignmentClick={handleAssignmentClick}
                 dateRange={dateRange}
                 assignments={assignments}
+                vesselLookup={vessels.map((v: any) => ({ value: v.value, name: v.name }))}
               />
             )}
           </div>
