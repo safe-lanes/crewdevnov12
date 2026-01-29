@@ -65,10 +65,19 @@ export const rotationDraftsController = {
 
   async create(req: Request, res: Response) {
     try {
+      // Extract extra fields before validation (vessels/crew for child tables)
+      const { vessels, crew, ...draftFields } = req.body;
+      
       const validatedData = insertRotationDraftsV2Schema
         .omit({ draftUuid: true, draftId: true })
-        .parse(req.body);
-      const draft = await rotationDraftsService.create(validatedData);
+        .parse(draftFields);
+      
+      // Pass vessels and crew to service for child table population
+      const draft = await rotationDraftsService.create({
+        ...validatedData,
+        vessels,
+        crew,
+      });
       res.status(201).json(draft);
     } catch (error: any) {
       if (error instanceof z.ZodError) {

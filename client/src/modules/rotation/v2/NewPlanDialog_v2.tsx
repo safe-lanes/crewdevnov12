@@ -1419,6 +1419,23 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   // Track saved plan ID for new plans - allows subsequent saves to use PATCH instead of POST
   const [savedPlanId, setSavedPlanId] = useState<number | null>(null);
   
+  // Fetch full draft details when editing (list view only has summary data)
+  const { data: fullDraftData } = useQuery<{
+    draftUuid: string;
+    vessels: Array<{ vesselUuid: string }>;
+    ranks: Array<{ rankName: string }>;
+    entries: any[];
+  }>({
+    queryKey: ['/api/v2/rotation', 'drafts', editPlan?.draftUuid],
+    queryFn: async () => {
+      if (!editPlan?.draftUuid) return null;
+      const response = await fetch(`/api/v2/rotation/drafts/${editPlan.draftUuid}`);
+      if (!response.ok) throw new Error('Failed to fetch draft details');
+      return response.json();
+    },
+    enabled: !!editPlan?.draftUuid && open,
+  });
+  
   // Reset savedPlanId when dialog closes to prevent stale state
   useEffect(() => {
     if (!open) {
@@ -1729,21 +1746,31 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     },
   });
 
-  // Pre-populate form when editing an existing plan
+  // Pre-populate form when editing an existing plan (use fullDraftData from API)
   useEffect(() => {
     if (open) {
       isInitialLoadRef.current = true;
       
-      if (editPlan) {
+      if (editPlan && fullDraftData) {
         try {
-          // Parse vessels from JSON (handle V2 format where vessels might be undefined)
-          if (editPlan.vessels) {
+          // Use vessels from full draft data (array of {vesselUuid})
+          if (fullDraftData.vessels && fullDraftData.vessels.length > 0) {
+            const vesselUuids = fullDraftData.vessels.map(v => v.vesselUuid);
+            setSelectedVessels(vesselUuids);
+          } else if (editPlan.vessels) {
+            // Fallback to legacy JSON format
             const vessels = JSON.parse(editPlan.vessels);
             setSelectedVessels(Array.isArray(vessels) ? vessels : []);
           }
           
-          // Parse role variants from crew field (comma-separated)
-          const roleVariants = editPlan.crew ? editPlan.crew.split(',').map(r => r.trim()) : [];
+          // Use ranks from full draft data (array of {rankName})
+          let roleVariants: string[] = [];
+          if (fullDraftData.ranks && fullDraftData.ranks.length > 0) {
+            roleVariants = fullDraftData.ranks.map(r => r.rankName);
+          } else if (editPlan.crew) {
+            // Fallback to legacy comma-separated format
+            roleVariants = editPlan.crew.split(',').map(r => r.trim());
+          }
           
           // Find which base ranks have variants in the saved data
           const baseRanksWithVariants = new Set<string>();
@@ -1792,7 +1819,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
             variant: "destructive",
           });
         }
-      } else {
+      } else if (!editPlan) {
         // Reset form when creating new plan
         setSelectedVessels([]);
         setSelectedRanks([]);
@@ -1808,7 +1835,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
         isInitialLoadRef.current = false;
       }, 100);
     }
-  }, [editPlan, open, toast, companyRanks]);
+  }, [editPlan, fullDraftData, open, toast, companyRanks]);
 
   const toggleVessel = (vesselName: string) => {
     setSelectedVessels(prev =>
