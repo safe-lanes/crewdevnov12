@@ -12,7 +12,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Eye } from 'lucide-react';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColDef, GridApi } from 'ag-grid-community';
@@ -561,54 +560,104 @@ export function VesselModule_v2(): JSX.Element {
         }
     };
 
+    // Transform vessel data to match V1 format with crew count
+    const vesselData = useMemo(() => {
+        // First filter vessels based on selected filter type and value
+        let filteredVessels = vessels;
+        
+        if (filterType === "vessel" && vesselValue && vesselValue !== "_all") {
+            filteredVessels = vessels.filter((vessel: any) => vessel.name === vesselValue);
+        } else if (filterType === "fleet" && fleetValue) {
+            filteredVessels = vessels.filter((vessel: any) => vessel.fleet === fleetValue || vessel.fleetGroup === fleetValue);
+        } else if (filterType === "addGroup" && addGroupValue) {
+            filteredVessels = vessels.filter((vessel: any) => vessel.addGroup === addGroupValue || vessel.additionalGroup === addGroupValue);
+        }
+        
+        return filteredVessels.map((vessel: any) => {
+            const crewCount = crewMembers.filter((crew: any) => 
+                crew.presentVessel === vessel.name || 
+                crew.presentVessel === vessel.vesselId
+            ).length;
+
+            return {
+                id: vessel.id,
+                vessel: vessel.name,
+                type: vessel.vesselType,
+                crewOnBoard: crewCount,
+                // Keep original data for selection
+                _originalVessel: vessel
+            };
+        });
+    }, [vessels, crewMembers, filterType, vesselValue, fleetValue, addGroupValue]);
+
+    const handleEditVessel = (data: any) => {
+        // Find original vessel from transformed data
+        const originalVessel = data._originalVessel || vessels.find((v: any) => v.id === data.id);
+        if (originalVessel) {
+            setSelectedVessel(originalVessel);
+        }
+    };
+
+    const ActionsCellRenderer = (props: any) => {
+        const handleClick = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            handleEditVessel(props.data);
+        };
+
+        return (
+            <div className="flex items-center justify-center h-full">
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0"
+                    onClick={handleClick}
+                    data-testid={`button-edit-${props.data.id}`}
+                >
+                    <Edit className="h-4 w-4 text-gray-500" />
+                </Button>
+            </div>
+        );
+    };
+
     const vesselColumns: ColDef[] = useMemo(() => [
         {
-            headerName: "Vessel Name",
-            field: "name",
+            headerName: 'Vessel',
+            field: 'vessel',
+            flex: 1,
+            cellStyle: { fontSize: '13px', color: '#4f5863' },
+            filter: 'agTextColumnFilter',
             sortable: true,
-            filter: true,
-            flex: 2,
-            cellRenderer: (params: any) => (
-                <span 
-                    className="text-blue-600 hover:underline cursor-pointer"
-                    onClick={() => setSelectedVessel(params.data)}
-                    data-testid={`link-vessel-${params.data.id}`}
-                >
-                    {params.value}
-                </span>
-            )
+            resizable: true
         },
         {
-            headerName: "Vessel Type",
-            field: "vesselType",
-            sortable: true,
-            filter: true,
+            headerName: 'Type',
+            field: 'type',
             flex: 1,
+            cellStyle: { fontSize: '13px', color: '#4f5863' },
+            filter: 'agSetColumnFilter',
+            sortable: true,
+            resizable: true,
+            enableRowGroup: false
         },
         {
-            headerName: "Action",
-            field: "action",
+            headerName: 'Crew o/b',
+            field: 'crewOnBoard',
             flex: 1,
-            cellRenderer: (params: any) => (
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedVessel(params.data)}
-                    data-testid={`button-view-vessel-${params.data.id}`}
-                >
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                </Button>
-            )
+            cellStyle: { fontSize: '13px', color: '#4f5863' },
+            filter: 'agNumberColumnFilter',
+            sortable: true,
+            resizable: true
+        },
+        {
+            headerName: '',
+            field: 'actions',
+            flex: 0.5,
+            cellRenderer: ActionsCellRenderer,
+            sortable: false,
+            filter: false,
+            cellClass: 'flex items-center justify-center'
         }
     ], []);
-
-    const filteredVessels = useMemo(() => {
-        if (!vesselValue) return vessels;
-        return vessels.filter((v: any) => 
-            v.name.toLowerCase().includes(vesselValue.toLowerCase())
-        );
-    }, [vessels, vesselValue]);
 
     const handleClearFilters = () => {
         setVesselValue("");
@@ -710,7 +759,7 @@ export function VesselModule_v2(): JSX.Element {
                 <CardContent className="p-4 pl-0 bg-[#f7fafc]">
                     <AgGridTable
                         columnDefs={vesselColumns}
-                        rowData={filteredVessels}
+                        rowData={vesselData}
                         onGridReady={(params) => {
                             gridApiRef.current = params.api;
                         }}
