@@ -1,8 +1,13 @@
-# V2 Implementation Plan: Admin, Vessel, and Rotation Modules
+# V2 Implementation Plan: Vessel and Rotation Modules
 
 ## Overview
 
-This document provides the complete implementation plan for migrating Admin, Vessel, and Rotation modules to V2 architecture, following the established patterns from Crew Pool V2 and Recruitment V2.
+This document provides the complete implementation plan for migrating Vessel and Rotation modules to V2 architecture, following the established patterns from Crew Pool V2 and Recruitment V2.
+
+**SCOPE CLARIFICATION (Updated):**
+- vessel_revisions_v2 and vessel_revision_ranks_v2 tables work INDEPENDENTLY and are NOT part of this migration
+- Admin V2 Phase has been REMOVED from scope
+- Focus is on Vessel Planning V2 and Rotation V2 modules only
 
 **Key Principles:**
 1. Minimal frontend changes - UI files copied to v2/ folders, connected to V2 APIs
@@ -11,6 +16,9 @@ This document provides the complete implementation plan for migrating Admin, Ves
 4. Resolve all FKs in backend queries, not frontend
 5. Performance benchmarks required
 6. Legacy and V2 must produce identical behavior
+
+**Critical Deliverable:**
+V2 crew from `crew_members_v2` must be visible in Rotation Module for vessel deployment, with data syncing to both `vessel_planning_v2` and `crew_assignments` tables.
 
 ---
 
@@ -82,36 +90,13 @@ This document provides the complete implementation plan for migrating Admin, Ves
 }
 ```
 
-### 1.3 Extract V1 Admin Revision Queries
-
-**Key Functions:**
-| Function | Purpose |
-|----------|---------|
-| `getVesselRevisions()` | Get revision history for vessel |
-| `submitRevision()` | Submit new revision |
-| `getDrafts()` | Get draft revisions |
-
-**Response Format (vessel_revisions):**
-```typescript
-{
-  id: number,
-  vesselId: string,
-  revision: string,        // "R0", "R1", etc.
-  revisionDate: string,
-  revisionData: string,    // JSON - needs normalization!
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### 1.4 Column Mapping Document
+### 1.3 Column Mapping Document
 
 | V1 Column | V2 Column | Notes |
 |-----------|-----------|-------|
 | `id` (serial) | `id` (serial) + `*_uuid` (text UK) | Keep serial PK, add UUID |
 | `vesselId` (text) | `vessel_uuid` (text FK) | Reference master_vessels |
 | `crewMemberId` | `crew_uuid` (text FK) | Reference crew_members_v2 |
-| `revisionData` (JSON text) | Normalized to `vessel_revision_ranks_v2` | One row per rank |
 | `assignments` (JSON text) | Normalized to `rotation_entries_v2` | One row per assignment |
 | `vessels` (JSON text) | Normalized to `rotation_draft_vessels_v2` | One row per vessel |
 
@@ -119,75 +104,9 @@ This document provides the complete implementation plan for migrating Admin, Ves
 
 ## PHASE 2: V2 SCHEMA & MIGRATIONS
 
-### 2.1 Migration: vessel_revisions_v2 (11 columns)
+> **Note:** vessel_revisions_v2 and vessel_revision_ranks_v2 are OUT OF SCOPE - they work independently
 
-```sql
-CREATE TABLE IF NOT EXISTS vessel_revisions_v2 (
-  id SERIAL PRIMARY KEY,
-  revision_uuid TEXT NOT NULL UNIQUE,
-  vessel_uuid TEXT NOT NULL,
-  revision TEXT NOT NULL,
-  revision_date TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_by_uuid TEXT,
-  updated_by_uuid TEXT,
-  is_deleted BOOLEAN DEFAULT false,
-  is_sync BOOLEAN DEFAULT false
-);
-
-CREATE INDEX IF NOT EXISTS idx_vessel_revisions_v2_vessel ON vessel_revisions_v2(vessel_uuid);
-CREATE INDEX IF NOT EXISTS idx_vessel_revisions_v2_deleted ON vessel_revisions_v2(is_deleted) WHERE is_deleted = false;
-```
-
-### 2.2 Migration: vessel_revision_ranks_v2 (37 columns)
-
-```sql
-CREATE TABLE IF NOT EXISTS vessel_revision_ranks_v2 (
-  id SERIAL PRIMARY KEY,
-  rank_uuid TEXT NOT NULL UNIQUE,
-  revision_uuid TEXT NOT NULL,
-  source_id TEXT,
-  rank_name TEXT,
-  rank_id TEXT,
-  role TEXT,
-  original_rank_id TEXT,
-  is_role_row BOOLEAN DEFAULT false,
-  actual_manning TEXT[],
-  actual_manning_flag BOOLEAN DEFAULT false,
-  safe_manning BOOLEAN DEFAULT false,
-  optimum_manning BOOLEAN DEFAULT false,
-  high_workload_manning BOOLEAN DEFAULT false,
-  officer BOOLEAN DEFAULT false,
-  rating BOOLEAN DEFAULT false,
-  senior_officer BOOLEAN DEFAULT false,
-  deck_officer BOOLEAN DEFAULT false,
-  eng_officer BOOLEAN DEFAULT false,
-  petty_officer BOOLEAN DEFAULT false,
-  deck_rating BOOLEAN DEFAULT false,
-  engine_rating BOOLEAN DEFAULT false,
-  general_rating BOOLEAN DEFAULT false,
-  catering_rating BOOLEAN DEFAULT false,
-  safety_officer BOOLEAN DEFAULT false,
-  sso BOOLEAN DEFAULT false,
-  medical_officer BOOLEAN DEFAULT false,
-  navigating_officer BOOLEAN DEFAULT false,
-  emt_officer BOOLEAN DEFAULT false,
-  has_multiple BOOLEAN DEFAULT false,
-  sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_by_uuid TEXT,
-  updated_by_uuid TEXT,
-  is_deleted BOOLEAN DEFAULT false,
-  is_sync BOOLEAN DEFAULT false
-);
-
-CREATE INDEX IF NOT EXISTS idx_revision_ranks_v2_revision ON vessel_revision_ranks_v2(revision_uuid);
-CREATE INDEX IF NOT EXISTS idx_revision_ranks_v2_deleted ON vessel_revision_ranks_v2(is_deleted) WHERE is_deleted = false;
-```
-
-### 2.3 Migration: vessel_planning_v2 (37 columns)
+### 2.1 Migration: vessel_planning_v2 (37 columns)
 
 ```sql
 CREATE TABLE IF NOT EXISTS vessel_planning_v2 (
@@ -414,79 +333,11 @@ CREATE INDEX IF NOT EXISTS idx_rotation_archive_v2_result ON rotation_archive_v2
 
 ---
 
-## PHASE 3: ADMIN V2 MODULE
+## PHASE 3: VESSEL V2 MODULE
+
+> **Note:** Previous Admin V2 Phase has been REMOVED - vessel_revisions work independently
 
 ### 3.1 Backend Folder Structure
-
-```
-server/v2/admin/
-├── controllers/
-│   ├── vesselRevisionsController.ts
-│   ├── revisionRanksController.ts
-│   └── index.ts
-├── repositories/
-│   ├── vesselRevisionsRepository.ts
-│   ├── revisionRanksRepository.ts
-│   └── index.ts
-├── services/
-│   ├── vesselRevisionsService.ts
-│   └── index.ts
-├── routes.ts
-└── index.ts
-```
-
-### 3.2 Repository Pattern with JOINs
-
-**vesselRevisionsRepository.ts:**
-```typescript
-// Multi-table JOIN example - resolve vessel name in single query
-async getByVesselUuid(vesselUuid: string) {
-  return db
-    .select({
-      revision: vesselRevisionsV2,
-      vesselName: masterVessels.vesselName,
-      vesselCode: masterVessels.vesselCode,
-    })
-    .from(vesselRevisionsV2)
-    .leftJoin(masterVessels, eq(vesselRevisionsV2.vesselUuid, masterVessels.vesselUuid))
-    .where(and(
-      eq(vesselRevisionsV2.vesselUuid, vesselUuid),
-      eq(vesselRevisionsV2.isDeleted, false)
-    ))
-    .orderBy(desc(vesselRevisionsV2.createdAt));
-}
-```
-
-### 3.3 API Endpoints
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/api/v2/admin/vessels/:vesselUuid/revisions` | Get all revisions |
-| GET | `/api/v2/admin/revisions/:revisionUuid` | Get single revision with ranks |
-| POST | `/api/v2/admin/vessels/:vesselUuid/revisions` | Create new revision |
-| PATCH | `/api/v2/admin/revisions/:revisionUuid` | Update revision |
-| DELETE | `/api/v2/admin/revisions/:revisionUuid` | Soft delete |
-
-### 3.4 Frontend Structure
-
-```
-client/src/modules/admin/
-├── v2/
-│   ├── AdminModule_v2.tsx        # Copy of AdminModule.tsx
-│   ├── api/
-│   │   └── adminApi.ts           # V2 API calls
-│   └── index.ts
-├── hooks/
-│   └── useAdminVersion.ts        # Version toggle hook
-├── AdminModule.tsx               # UNCHANGED
-└── index.tsx                     # Router with version switch
-```
-
----
-
-## PHASE 4: VESSEL V2 MODULE
-
-### 4.1 Backend Folder Structure
 
 ```
 server/v2/vessel/
@@ -505,7 +356,7 @@ server/v2/vessel/
 └── index.ts
 ```
 
-### 4.2 Multi-Table JOIN Example
+### 3.2 Multi-Table JOIN Example
 
 **vesselPlanningRepository.ts:**
 ```typescript
@@ -536,7 +387,7 @@ async getByVesselUuid(vesselUuid: string) {
 }
 ```
 
-### 4.3 API Endpoints
+### 3.3 API Endpoints
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
@@ -546,7 +397,7 @@ async getByVesselUuid(vesselUuid: string) {
 | PATCH | `/api/v2/vessel/planning/:planUuid` | Update planning |
 | POST | `/api/v2/vessel/planning/:planUuid/archive` | Archive planning |
 
-### 4.4 Frontend Structure
+### 3.4 Frontend Structure
 
 ```
 client/src/modules/vessel/
@@ -567,9 +418,9 @@ client/src/modules/vessel/
 
 ---
 
-## PHASE 5: ROTATION V2 MODULE
+## PHASE 4: ROTATION V2 MODULE
 
-### 5.1 Backend Folder Structure
+### 4.1 Backend Folder Structure
 
 ```
 server/v2/rotation/
@@ -596,7 +447,7 @@ server/v2/rotation/
 └── index.ts
 ```
 
-### 5.2 Critical Endpoint: Crew by Rank (V2)
+### 4.2 Critical Endpoint: Crew by Rank (V2)
 
 **routes.ts:**
 ```typescript
@@ -627,7 +478,7 @@ async getCrewByRank(rank: string) {
 }
 ```
 
-### 5.3 Deploy Service (vessel_planning_v2 sync)
+### 4.3 Deploy Service (vessel_planning_v2 sync)
 
 **rotationDeployService.ts:**
 ```typescript
@@ -689,7 +540,7 @@ async deployEntry(entryUuid: string, deployedByUuid: string) {
 }
 ```
 
-### 5.4 API Endpoints
+### 4.4 API Endpoints
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
@@ -705,7 +556,7 @@ async deployEntry(entryUuid: string, deployedByUuid: string) {
 | GET | `/api/v2/rotation/crew/by-rank/:rank` | **Get V2 crew for selection** |
 | GET | `/api/v2/rotation/archive` | Get deployment history |
 
-### 5.5 Frontend Structure
+### 4.5 Frontend Structure
 
 ```
 client/src/modules/rotation/
@@ -732,9 +583,9 @@ client/src/modules/rotation/
 
 ---
 
-## PHASE 6: INTEGRATION & TESTING
+## PHASE 5: INTEGRATION & TESTING
 
-### 6.1 V2 Crew Visibility Fix
+### 5.1 V2 Crew Visibility Fix
 
 The critical fix for V2 crew visibility in rotation:
 
@@ -756,7 +607,7 @@ router.get("/crew/by-rank/:rank", async (req, res) => {
 });
 ```
 
-### 6.2 Performance Logging
+### 5.2 Performance Logging
 
 Add timing to all repositories:
 ```typescript
@@ -768,7 +619,7 @@ async getByVesselUuid(vesselUuid: string) {
 }
 ```
 
-### 6.3 Parity Tests
+### 5.3 Parity Tests
 
 | Test | V1 Input | Expected V2 Output |
 |------|----------|-------------------|
@@ -777,13 +628,12 @@ async getByVesselUuid(vesselUuid: string) {
 | Deploy crew | entryUuid + crewUuid | vessel_planning_v2 updated |
 | Crew by rank | rank: "Master" | V2 crew list (not empty!) |
 
-### 6.4 Version Toggle Testing
+### 5.4 Version Toggle Testing
 
-1. Admin: Switch between Legacy and V2, verify same data displayed
-2. Vessel: Switch between Legacy and V2, verify same planning data
-3. Rotation: Switch between Legacy and V2, verify crew selection works in both
+1. Vessel: Switch between Legacy and V2, verify same planning data
+2. Rotation: Switch between Legacy and V2, verify crew selection works in both
 
-### 6.5 Integration Verification
+### 5.5 Integration Verification
 
 1. Transfer candidate from Recruitment V2 to Crew Pool V2
 2. Verify crew visible in Rotation V2 by-rank endpoint
@@ -793,17 +643,29 @@ async getByVesselUuid(vesselUuid: string) {
 
 ---
 
-## Effort Estimates
+## Effort Estimates (Updated - Admin V2 Removed)
 
-| Phase | Backend Hours | Frontend Hours | Total |
-|-------|---------------|----------------|-------|
-| Phase 1 | 4 | 0 | 4 |
-| Phase 2 | 4 | 0 | 4 |
-| Phase 3 | 6 | 4 | 10 |
-| Phase 4 | 8 | 4 | 12 |
-| Phase 5 | 12 | 6 | 18 |
-| Phase 6 | 4 | 2 | 6 |
-| **Total** | **38** | **16** | **54** |
+| Phase | Description | Backend Hours | Frontend Hours | Total |
+|-------|-------------|---------------|----------------|-------|
+| Phase 1 | Legacy Analysis | 4 | 0 | 4 |
+| Phase 2 | V2 Schema & Migrations (7 tables) | 4 | 0 | 4 |
+| Phase 3 | Vessel V2 Module | 8 | 4 | 12 |
+| Phase 4 | Rotation V2 Module | 12 | 6 | 18 |
+| Phase 5 | Integration & Testing | 4 | 2 | 6 |
+| **Total** | | **32** | **12** | **44** |
+
+**Tables in Scope (7 total):**
+1. vessel_planning_v2 (37 columns)
+2. vessel_planning_attachments_v2 (17 columns)
+3. rotation_drafts_v2 (15 columns)
+4. rotation_draft_vessels_v2 (11 columns)
+5. rotation_draft_ranks_v2 (11 columns)
+6. rotation_entries_v2 (30 columns)
+7. rotation_archive_v2 (30 columns)
+
+**Tables OUT OF SCOPE:**
+- vessel_revisions_v2 (works independently)
+- vessel_revision_ranks_v2 (works independently)
 
 ---
 
