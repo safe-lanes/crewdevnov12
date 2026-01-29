@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import recruitmentV2Routes from "./routes/v2/recruitment";
 import crewPoolV2Routes from "./v2/crew-pool/routes";
+import { vesselV2Routes } from "./v2/vessel";
+import { rotationV2Routes } from "./v2/rotation";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience, deriveEndorsementCode } from "./storage";
 import { storageAccount } from "./storage-accounts";
 import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertFormVersionSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster, insertTrainingMatrixVesselDraftSchema, insertTrainingMatrixVesselRevisionSchema, insertPayElementSchema, insertContractPayElementSchema, insertAllotmentSchema, insertAdvanceSchema, insertBondItemSchema } from "@shared/schema";
@@ -1460,6 +1462,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Mount v2 crew pool routes
   app.use("/api/v2/crew-pool", crewPoolV2Routes);
+  
+  // Mount v2 vessel routes
+  app.use("/api/v2/vessel", vesselV2Routes);
+  
+  // Mount v2 rotation routes
+  app.use("/api/v2/rotation", rotationV2Routes);
 
   // Health check endpoint for database connectivity
   app.get("/api/health", async (req, res) => {
