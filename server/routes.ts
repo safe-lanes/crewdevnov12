@@ -4,6 +4,7 @@ import recruitmentV2Routes from "./routes/v2/recruitment";
 import crewPoolV2Routes from "./v2/crew-pool/routes";
 import { vesselV2Routes } from "./v2/vessel";
 import { rotationV2Routes } from "./v2/rotation";
+import { vesselPlanningRepository } from "./v2/vessel/repositories/vesselPlanningRepository";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience, deriveEndorsementCode } from "./storage";
 import { storageAccount } from "./storage-accounts";
 import { type VesselPlanning, type InsertRecruitmentCandidate, insertFormSchema, insertFormVersionSchema, insertRankGroupSchema, insertAvailableRankSchema, updateAvailableRankSchema, insertCrewMemberSchema, insertAppraisalResultSchema, insertRecruitmentCandidateSchema, insertPromotionHierarchySchema, insertCompanyProcessingSchema, insertPromotionFormSchema, insertDataMasterSchema, insertMasterDataEntrySchema, insertVesselGroupSchema, insertVesselDraftSchema, insertVesselRevisionSchema, insertVesselPlanningSchema, insertRotationPlanSchema, insertDrugAlcoholTestRecordSchema, insertRestHoursVesselRecordSchema, insertRestHoursCrewRecordSchema, insertRestHoursDailyRecordSchema, insertFixedTaskSchema, insertVariableTaskSchema, insertVesselViolationCommentSchema, insertOfficeViolationCommentSchema, insertNCReportSchema, insertVesselDateLineAdjustmentSchema, insertOilMajorRulesSchema, type OilMajorRulesConfig, insertTrainingMasterSchema, updateTrainingMasterSchema, trainingMaster, insertTrainingMatrixVesselDraftSchema, insertTrainingMatrixVesselRevisionSchema, insertPayElementSchema, insertContractPayElementSchema, insertAllotmentSchema, insertAdvanceSchema, insertBondItemSchema } from "@shared/schema";
@@ -3460,6 +3461,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (planningError) {
         console.error(`🔗 [VESSEL PLANNING ERROR] Failed to sync vessel_planning:`, planningError);
         // Don't fail the entire submission if planning sync fails
+      }
+      
+      // Step 5b: Auto-initialize vessel_planning_v2 records for new ranks (V2 architecture)
+      console.log(`🔗 [VESSEL PLANNING V2] Syncing vessel_planning_v2 records with vessel ranks`);
+      try {
+        // Parse revisionData - it's directly an array of rank objects
+        const parsedRevisionDataV2 = typeof revisionData === 'string' ? JSON.parse(revisionData) : revisionData;
+        const ranksV2 = Array.isArray(parsedRevisionDataV2) ? parsedRevisionDataV2 : [];
+        
+        console.log(`🔗 [VESSEL PLANNING V2] Found ${ranksV2.length} rank(s) in submitted revision for vessel ${vesselId}`);
+        
+        // Get existing V2 vessel planning records for this vessel
+        const existingPlanningV2 = await vesselPlanningRepository.findByVesselUuid(vesselId);
+        const existingRankIdsV2 = new Set(existingPlanningV2.map((p: any) => p.rankId));
+        
+        console.log(`🔗 [VESSEL PLANNING V2] Found ${existingPlanningV2.length} existing V2 planning record(s), ${existingRankIdsV2.size} unique rank IDs`);
+        
+        let createdPlanningCountV2 = 0;
+        for (const rank of ranksV2) {
+          const rankId = rank.rankId || rank.id;
+          const rankName = rank.rank || rank.role;
+          
+          // Skip if no rankId, if it's a role row (variants), or if actualManningFlag is not set
+          // Only ranks with Actual Manning checked should appear in vessel planning
+          if (!rankId || rank.isRoleRow || !rank.actualManningFlag) {
+            continue;
+          }
+          
+          // Only create V2 planning record if it doesn't already exist for this rank
+          if (!existingRankIdsV2.has(rankId)) {
+            try {
+              await vesselPlanningRepository.create({
+                vesselUuid: vesselId,
+                rankId: rankId,
+                rank: rankName,
+                crewUuid: null,
+                crewStatus: "primary",
+                signOnDate: null,
+                reliefDue: null,
+                signOffDate: null,
+                signOffPortUuid: null,
+                signOffReason: null,
+                reliefStatus: null,
+                takeOverDate: null,
+                takeOverConfirmation: false,
+                handOverDate: null,
+                relieverCrewUuid: null,
+                relieverSignOnDate: null,
+                joiningPortUuid: null,
+                joiningStatus: null,
+                contractPeriodMonths: null,
+                contractEndRangeStartMonths: null,
+                contractEndRangeEndMonths: null,
+                relieverContractPeriodMonths: null,
+                relieverContractEndRangeStartMonths: null,
+                relieverContractEndRangeEndMonths: null,
+                deploymentChecklistCompleted: null,
+                applicableDocsChecked: null,
+                isArchived: false,
+                archivedDate: null,
+                isDeleted: false,
+                isSync: false,
+              });
+              createdPlanningCountV2++;
+              console.log(`🔗 [VESSEL PLANNING V2] Created V2 planning record for rank: ${rankName} (ID: ${rankId})`);
+            } catch (planningV2Error) {
+              console.warn(`🔗 [VESSEL PLANNING V2 WARNING] Failed to create V2 planning for rank ${rankId}:`, planningV2Error);
+            }
+          } else {
+            console.log(`🔗 [VESSEL PLANNING V2] Skipping existing V2 rank: ${rankName} (ID: ${rankId})`);
+          }
+        }
+        console.log(`🔗 [VESSEL PLANNING V2] ✅ Created ${createdPlanningCountV2} new V2 planning record(s) for vessel ${vesselId}`);
+      } catch (planningV2Error) {
+        console.error(`🔗 [VESSEL PLANNING V2 ERROR] Failed to sync vessel_planning_v2:`, planningV2Error);
+        // Don't fail the entire submission if V2 planning sync fails
       }
       
       // Step 6: Return the created revision with metadata
