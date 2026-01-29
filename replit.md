@@ -38,6 +38,13 @@ The application employs a modern web stack with a module-first architecture, pri
 - **Vessel ID/Name Translation**: Backend uses IDs, UI displays names.
 - **Canonical Vessel Code Enforcement**: All storage backends enforce VSL-XXX format.
 - **Vessel Planning V2**: V2 architecture for vessel planning with Repository + Service + Controller pattern. Uses UUID-based vessel_planning_v2 table with attachments support. API endpoints at `/api/v2/vessel/`.
+- **Vessel Module V2 Migration**: Frontend V2 integration includes:
+    - `VesselVersionToggle` component: UI toggle switch for V1/V2 mode with localStorage persistence (key: `vessel_module_version`)
+    - `useVesselVersion` hook: Manages version state at module level in `vessel/index.tsx`
+    - Router pattern: `vessel/index.tsx` switches between `VesselModule` (V1) and `VesselModule_v2` based on version
+    - V2 components in `vessel/v2/` folder: `VesselModule_v2.tsx`, `VesselSideBar_v2.tsx`, `ComplianceMatrixDialog_v2.tsx`
+    - V2 hooks in `vessel/v2/hooks/`: `useVesselV2.ts` with planning CRUD operations
+    - V2 API client: `vessel/v2/api/vesselApiV2.ts` following Crew Pool V2 patterns
 - **Master Data System**: Centralized reference data storage.
 - **Vessel Revision System**: Manages vessel rank assignments with draft/submission workflows.
 - **Crew Modules**:

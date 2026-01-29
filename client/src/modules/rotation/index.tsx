@@ -1,5 +1,5 @@
 import { useRotationVersion } from './hooks/useRotationVersion';
-import RotationModule from './RotationModule';
+import { RotationModule } from './RotationModule';
 import { RotationModule_v2 } from './v2/RotationModule_v2';
 
 export default function RotationRouter() {

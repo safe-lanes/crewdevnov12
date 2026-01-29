@@ -50,6 +50,7 @@ import { useRankOrdering } from '@/hooks/useRankOrdering';
 import { API_BASE_URL } from '@/config/api';
 import { generateFALForm5Document } from '@/lib/generateFALForm5';
 import { generateUSCrewListDocument } from '@/lib/generateUSCrewList';
+import { VesselVersionToggle } from './components/VersionToggle';
 
 // Helper function to check if crew member has valid GMDSS certificate
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
@@ -4060,7 +4061,8 @@ export const VesselModule = (): JSX.Element => {
         return (
             <div className="flex flex-col h-full">
                 <SectionTitleComponents title="Vessel Database">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                        <VesselVersionToggle />
                         <Button
                             variant="outline"
                             size="sm"

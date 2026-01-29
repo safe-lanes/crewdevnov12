@@ -50,6 +50,7 @@ import { useRankOrdering } from '@/hooks/useRankOrdering';
 import { API_BASE_URL } from '@/config/api';
 import { generateFALForm5Document } from '@/lib/generateFALForm5';
 import { generateUSCrewListDocument } from '@/lib/generateUSCrewList';
+import { VesselVersionToggle } from '../components/VersionToggle';
 import { 
     useVesselPlanningV2, 
     useUpdatePlanningV2, 
@@ -856,7 +857,8 @@ export function VesselModule_v2(): JSX.Element {
             
             <MainLayout>
                 <SectionTitleComponents title="Vessel Database V2">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                        <VesselVersionToggle />
                         <Button variant="outline" size="sm" data-testid="button-export">
                             <Download className="h-4 w-4 mr-1" />
                             Export

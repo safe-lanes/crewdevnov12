@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import VesselModule from './VesselModule';
+import { VesselModule } from './VesselModule';
 import { VesselModule_v2 } from './v2/VesselModule_v2';
 
 const STORAGE_KEY = 'vessel_module_version';

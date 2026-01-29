@@ -11,8 +11,8 @@ const AdminModule = lazy(() => import("./modules/admin/AdminModule").then(m => (
 const ElementCrewAppraisals = lazy(() => import("./modules/crewing/ElementCrewAppraisals").then(m => ({ default: m.ElementCrewAppraisals })));
 const RecruitmentWrapper = lazy(() => import("./modules/recruitment/RecruitmentWrapper").then(m => ({ default: m.RecruitmentWrapper })));
 const CrewPoolModuleRouter = lazy(() => import("./modules/crew-pool").then(m => ({ default: m.CrewPoolModuleRouter })));
-const VesselModule = lazy(() => import("./modules/vessel/VesselModule").then(m => ({ default: m.VesselModule })));
-const RotationModule = lazy(() => import("./modules/rotation/RotationModule").then(m => ({ default: m.RotationModule })));
+const VesselRouter = lazy(() => import("./modules/vessel/index"));
+const RotationRouter = lazy(() => import("./modules/rotation/index"));
 const PromotionsModule = lazy(() => import("./modules/promotions/PromotionsModule").then(m => ({ default: m.PromotionsModule })));
 const DrugsAlcoholModule = lazy(() => import("./modules/drugs-alcohol/DrugsAlcoholModule").then(m => ({ default: m.DrugsAlcoholModule })));
 const RestHoursModule = lazy(() => import("./modules/rest-hours/RestHoursModule").then(m => ({ default: m.RestHoursModule })));
@@ -43,8 +43,8 @@ function App() {
                 <Route path="/dashboard" component={DashboardPage} />
                 <Route path="/recruitment" component={RecruitmentWrapper} />
                 <Route path="/crew-pool" component={CrewPoolModuleRouter} />
-                <Route path="/vessel" component={VesselModule} />
-                <Route path="/rotation" component={RotationModule} />
+                <Route path="/vessel" component={VesselRouter} />
+                <Route path="/rotation" component={RotationRouter} />
                 <Route path="/promotions" component={PromotionsModule} />
                 <Route path="/drugs-alcohol" component={DrugsAlcoholModule} />
                 <Route path="/rest-hours/vessel/:vesselId/:month" component={RestHoursVesselOverview} />
