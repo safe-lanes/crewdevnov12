@@ -35,7 +35,7 @@ export const rotationDraftsService = {
     };
   },
 
-  async create(data: Omit<InsertRotationDraftsV2, "draftUuid">) {
+  async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId">) {
     return rotationDraftsRepository.create(data);
   },
 

@@ -47,13 +47,14 @@ export class RotationDraftsRepository {
     return results[0];
   }
 
-  async create(data: Omit<InsertRotationDraftsV2, "draftUuid">): Promise<RotationDraftsV2> {
+  async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId">): Promise<RotationDraftsV2> {
     const db = getDb();
     const results = await db
       .insert(rotationDraftsV2)
       .values({
         ...data,
         draftUuid: uuidv4(),
+        draftId: `DRAFT-${Date.now()}`,
       })
       .returning();
     return results[0];

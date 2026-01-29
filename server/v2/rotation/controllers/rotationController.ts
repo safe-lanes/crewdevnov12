@@ -66,7 +66,7 @@ export const rotationDraftsController = {
   async create(req: Request, res: Response) {
     try {
       const validatedData = insertRotationDraftsV2Schema
-        .omit({ draftUuid: true })
+        .omit({ draftUuid: true, draftId: true })
         .parse(req.body);
       const draft = await rotationDraftsService.create(validatedData);
       res.status(201).json(draft);
