@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter, Edit, ArrowLeft, Download } from 'lucide-react';
+import { Filter, Edit, ArrowLeft, Download, Eye } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -801,175 +801,538 @@ export function VesselModule_v2(): JSX.Element {
         </div>
     );
 
+    const handleBackToList = () => {
+        setSelectedVessel(null);
+        setActiveTab("crew-list");
+    };
+
+    const handleVesselChange = (vesselName: string) => {
+        const vessel = vessels.find((v: any) => v.name === vesselName);
+        if (vessel) {
+            setSelectedVessel(vessel);
+        }
+    };
+
+    const handleDownloadIMOCrewList = async () => {
+        if (!selectedVessel) return;
+        
+        const vesselCrew = filteredVesselPlanning
+            .filter((planning: any) => {
+                if (!planning.crewMemberId) return false;
+                return !planning.isArchived;
+            })
+            .sort((a: any, b: any) => {
+                const aOrder = getSortOrder(a.rank);
+                const bOrder = getSortOrder(b.rank);
+                if (aOrder !== bOrder) return aOrder - bOrder;
+                const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
+                const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
+                return aSuffix - bSuffix;
+            });
+        
+        const headers = ['S.No', 'Rank', 'Surname, Given Name', 'Nationality', 'Certificate of Competency'];
+        const rows = vesselCrew.map((planning: any, index: number) => {
+            return [
+                (index + 1).toString(),
+                planning.rank?.split('_')[0] || '',
+                planning.crewName || '',
+                planning.nationality || '',
+                ''
+            ];
+        });
+        
+        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${selectedVessel.name}_IMO_Crew_List.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleDownloadUSCrewList = async () => {
+        if (!selectedVessel) return;
+        
+        const vesselCrew = filteredVesselPlanning
+            .filter((planning: any) => {
+                if (!planning.crewMemberId) return false;
+                return !planning.isArchived;
+            })
+            .sort((a: any, b: any) => {
+                const aOrder = getSortOrder(a.rank);
+                const bOrder = getSortOrder(b.rank);
+                if (aOrder !== bOrder) return aOrder - bOrder;
+                const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
+                const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
+                return aSuffix - bSuffix;
+            });
+        
+        const headers = ['S.No', 'Rank', 'Surname, Given Name', 'Nationality', 'Date of Birth', 'Place of Birth'];
+        const rows = vesselCrew.map((planning: any, index: number) => {
+            return [
+                (index + 1).toString(),
+                planning.rank?.split('_')[0] || '',
+                planning.crewName || '',
+                planning.nationality || '',
+                '',
+                ''
+            ];
+        });
+        
+        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${selectedVessel.name}_US_Crew_List.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
     const renderVesselDetail = () => {
         if (!selectedVessel) return null;
 
-        const crewListData = filteredVesselPlanning.filter((p: any) => 
-            showArchived ? true : !p.isArchived
-        );
+        const vesselCrew = filteredVesselPlanning
+            .filter((planning: any) => {
+                if (!planning.crewMemberId) return false;
+                const isArchived = planning.isArchived === true;
+                return showArchived ? isArchived : !isArchived;
+            })
+            .sort((a: any, b: any) => {
+                const aOrder = getSortOrder(a.rank);
+                const bOrder = getSortOrder(b.rank);
+                if (aOrder !== bOrder) return aOrder - bOrder;
+                const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
+                const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
+                if (aSuffix !== bSuffix) return aSuffix - bSuffix;
+                const aIsPrimary = a.crewStatus === 'primary' ? 0 : 1;
+                const bIsPrimary = b.crewStatus === 'primary' ? 0 : 1;
+                return aIsPrimary - bIsPrimary;
+            });
+        
+        const rankCrewMap = new Map<string, { primary: boolean; secondary: boolean }>();
+        vesselCrew.forEach((planning: any) => {
+            const rankBase = planning.rank?.split('_')[0] || planning.rank;
+            if (!rankCrewMap.has(rankBase)) {
+                rankCrewMap.set(rankBase, { primary: false, secondary: false });
+            }
+            const entry = rankCrewMap.get(rankBase)!;
+            if (planning.crewStatus === 'primary') entry.primary = true;
+            if (planning.crewStatus === 'secondary') entry.secondary = true;
+        });
 
         return (
-            <div className="p-4 space-y-4">
-                <div className="flex items-center gap-4 mb-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedVessel(null)}
-                        data-testid="button-back-to-list"
-                    >
-                        <ArrowLeft className="h-4 w-4 mr-1" />
-                        Back to List
-                    </Button>
-                    <h2 className="text-xl font-semibold text-[#16569e]" data-testid="text-vessel-name">
-                        {selectedVessel.name}
-                    </h2>
-                    <span className="text-sm text-gray-500">({selectedVessel.vesselType})</span>
+            <div className="flex flex-col h-full">
+                {/* Header with vessel dropdown, tabs, and back button */}
+                <div className="flex items-center justify-between mb-6 pb-4">
+                    {/* Left: Vessel Dropdown */}
+                    <div className="flex-shrink-0">
+                        <Select value={selectedVessel.name} onValueChange={handleVesselChange}>
+                            <SelectTrigger 
+                                className="h-10 border-none shadow-none text-xl font-semibold text-[#0f172a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800"
+                                data-testid="select-vessel-detail"
+                            >
+                                <SelectValue>{selectedVessel.name}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {vessels.map((vessel: any) => (
+                                    <SelectItem key={vessel.id} value={vessel.name}>
+                                        {vessel.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Center: Tabs */}
+                    <div className="flex-1 flex justify-center">
+                        <div className="flex items-center bg-transparent rounded-full p-1 border border-gray-300 h-8">
+                            {[
+                                { id: "crew-list", label: "Crew List" },
+                                { id: "training-matrix", label: "Training Matrix" },
+                                { id: "officer-matrix", label: "Officer Matrix" },
+                                { id: "planning", label: "Planning" }
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
+                                        activeTab === tab.id
+                                            ? "text-[#16569e] font-bold underline"
+                                            : "text-gray-600 hover:text-gray-800 font-medium"
+                                    }`}
+                                    data-testid={`tab-${tab.id}`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Right: Back Button */}
+                    <div className="flex-shrink-0">
+                        <Button
+                            variant="outline"
+                            onClick={handleBackToList}
+                            className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
+                            data-testid="button-back-to-list"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="text-xs">Back</span>
+                        </Button>
+                    </div>
                 </div>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList>
-                        <TabsTrigger value="crew-list" data-testid="tab-crew-list">Crew List</TabsTrigger>
-                        <TabsTrigger value="officer-matrix" data-testid="tab-officer-matrix">Officer Matrix</TabsTrigger>
-                        <TabsTrigger value="training-matrix" data-testid="tab-training-matrix">Training Matrix</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="crew-list">
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex items-center gap-4">
+                {/* Tab Content */}
+                <div className="flex-1 overflow-auto">
+                    <Tabs value={activeTab} className="w-full h-full">
+                        <TabsContent value="crew-list" className="mt-0">
+                            <div className="space-y-4">
+                                {/* Controls: Show Archived and Download buttons */}
+                                <div className="flex items-center justify-between">
+                                    {/* Show Archived Checkbox */}
+                                    <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
                                         <Checkbox
-                                            id="show-archived"
+                                            id="show-archived-crew"
                                             checked={showArchived}
-                                            onCheckedChange={(checked) => setShowArchived(checked as boolean)}
-                                            data-testid="checkbox-show-archived"
+                                            onCheckedChange={(checked) => setShowArchived(checked === true)}
+                                            data-testid="checkbox-show-archived-crew"
                                         />
-                                        <Label htmlFor="show-archived">Show Archived</Label>
+                                        <label 
+                                            htmlFor="show-archived-crew" 
+                                            className="text-sm text-gray-700 cursor-pointer select-none"
+                                        >
+                                            Show Archived
+                                        </label>
                                     </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setComplianceDialogOpen(true)}
-                                        data-testid="button-compliance-matrix"
-                                    >
-                                        Compliance Matrix
-                                    </Button>
+                                    
+                                    {/* Download buttons */}
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 gap-2"
+                                            onClick={handleDownloadIMOCrewList}
+                                            data-testid="button-download-imo"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            <span className="text-xs">IMO Crew List</span>
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 gap-2"
+                                            onClick={handleDownloadUSCrewList}
+                                            data-testid="button-download-us"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            <span className="text-xs">US Crew List</span>
+                                        </Button>
+                                    </div>
                                 </div>
 
-                                {ranksLoading || planningLoading ? (
-                                    <div className="flex items-center justify-center py-8">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#16569e]"></div>
-                                    </div>
-                                ) : vesselRanks.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-500">
-                                        {NO_RANKS_CONFIGURED_MESSAGE}
-                                    </div>
-                                ) : (
-                                    <ScrollArea className="h-[500px]">
+                                {/* Table Container */}
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                    <ScrollArea className="h-[calc(100vh-330px)] w-full">
                                         <Table>
                                             <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-[150px]">Rank</TableHead>
-                                                    <TableHead>Crew Name</TableHead>
-                                                    <TableHead>Sign On Date</TableHead>
-                                                    <TableHead>Relief Due</TableHead>
-                                                    <TableHead>Status</TableHead>
-                                                    <TableHead>Actions</TableHead>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]">S. No.</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Rank</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Nationality</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Signed On</TableHead>
+                                                    {showArchived ? (
+                                                        <>
+                                                            <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Actual Sign Off Date</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Relief Date</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Planned S/Off</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Doc. Expiring (2m)/Expired</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Medical Expiring</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
+                                                        </>
+                                                    )}
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {crewListData.map((planning: any, index: number) => {
-                                                    const displayRank = normalizeRank(planning.rank || '');
+                                                {ranksLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={14} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading vessel positions...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={14} className="text-center text-xs text-gray-500 py-8">
+                                                            {NO_RANKS_CONFIGURED_MESSAGE}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : planningLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={14} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading crew members...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselCrew.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={showArchived ? 8 : 14} className="text-center text-xs text-gray-500 py-8">
+                                                            {showArchived 
+                                                                ? "No archived crew members for this vessel."
+                                                                : "No crew members assigned to this vessel."
+                                                            }
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselCrew.map((planning: any, index: number) => {
+                                                    const rankBase = planning.rank?.split('_')[0] || planning.rank;
+                                                    const rankEntry = rankCrewMap.get(rankBase);
+                                                    const hasBothCrewTypes = !!(rankEntry?.primary && rankEntry?.secondary);
+                                                    const statusBadge = hasBothCrewTypes ? (planning.crewStatus === 'secondary' ? ' (S)' : ' (P)') : '';
+                                                    const displayRank = rankBase + statusBadge;
+                                                    
                                                     return (
-                                                        <TableRow 
-                                                            key={planning.planUuid || index}
-                                                            className={planning.isArchived ? 'opacity-50' : ''}
-                                                            data-testid={`row-crew-${planning.planUuid || index}`}
-                                                        >
-                                                            <TableCell className="font-medium">{displayRank}</TableCell>
-                                                            <TableCell>
-                                                                {planning.crewName ? (
-                                                                    <span 
-                                                                        className="text-blue-600 hover:underline cursor-pointer"
-                                                                        onClick={() => {
-                                                                            const crew = crewMemberLookup.get(planning.crewMemberId);
-                                                                            if (crew) {
-                                                                                setSelectedCrewMember(crew);
-                                                                                setIsCrewInfoFormOpen(true);
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        {planning.crewName}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-gray-400">Vacant</span>
-                                                                )}
+                                                        <TableRow key={planning.id || planning.planUuid || index} className="hover:bg-gray-50 border-b border-gray-100">
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-sno-${index + 1}`}>
+                                                                {index + 1}.
                                                             </TableCell>
-                                                            <TableCell>{formatDateOnly(planning.signOnDate)}</TableCell>
-                                                            <TableCell>{formatDateOnly(planning.reliefDue)}</TableCell>
-                                                            <TableCell>
-                                                                <span className={`px-2 py-1 rounded text-xs ${
-                                                                    planning.isArchived 
-                                                                        ? 'bg-gray-100 text-gray-600' 
-                                                                        : planning.crewName 
-                                                                            ? 'bg-green-100 text-green-700' 
-                                                                            : 'bg-orange-100 text-orange-700'
-                                                                }`}>
-                                                                    {planning.isArchived ? 'Archived' : planning.crewName ? 'Active' : 'Vacant'}
-                                                                </span>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-rank-${index + 1}`}>
+                                                                {displayRank}
                                                             </TableCell>
-                                                            <TableCell>
-                                                                <div className="flex gap-2">
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                onClick={() => {
-                                                                                    setSelectedRankForOnBoard(planning);
-                                                                                    setOnBoardDialogOpen(true);
-                                                                                }}
-                                                                                disabled={planning.isArchived}
-                                                                                data-testid={`button-edit-onboard-${planning.planUuid}`}
-                                                                            >
-                                                                                <Edit className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent>Edit On Board Status</TooltipContent>
-                                                                    </Tooltip>
-                                                                </div>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-name-${index + 1}`}>
+                                                                {planning.crewName || ''}
                                                             </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-nationality-${index + 1}`}>
+                                                                {planning.nationality || ''}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-700" data-testid={`cell-joined-${index + 1}`}>
+                                                                {formatDateOnly(planning.signOnDate)}
+                                                            </TableCell>
+                                                            {showArchived ? (
+                                                                <>
+                                                                    <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.actualSignOffDate)}</TableCell>
+                                                                    <TableCell className="text-xs text-gray-700">
+                                                                        <span className="text-blue-600 hover:underline cursor-pointer">Edit</span>
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700">
+                                                                        <Eye className="h-4 w-4 text-gray-400" />
+                                                                    </TableCell>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.reliefDue)}</TableCell>
+                                                                    <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.plannedSignOff)}</TableCell>
+                                                                    <TableCell className="text-xs text-gray-700">
+                                                                        {planning.docExpiringCount ? (
+                                                                            <span className="text-red-600 font-medium">{planning.docExpiringCount}</span>
+                                                                        ) : (
+                                                                            <span className="text-gray-400">0/0</span>
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700">
+                                                                        {planning.medicalExpiring ? (
+                                                                            <span className="text-red-600 font-medium">{planning.medicalExpiring}</span>
+                                                                        ) : (
+                                                                            <span className="text-gray-400">-</span>
+                                                                        )}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-blue-600 hover:underline cursor-pointer">
+                                                                        {planning.appraisalStatus || 'Add'}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-blue-600 hover:underline cursor-pointer">
+                                                                        Add
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700">
+                                                                        <Eye className="h-4 w-4 text-gray-400 cursor-pointer" />
+                                                                    </TableCell>
+                                                                </>
+                                                            )}
                                                         </TableRow>
                                                     );
                                                 })}
                                             </TableBody>
                                         </Table>
                                     </ScrollArea>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    <TabsContent value="officer-matrix">
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="text-center text-gray-500 py-8">
-                                    Officer Matrix - V2 Implementation
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
+                            </div>
+                        </TabsContent>
 
-                    <TabsContent value="training-matrix">
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="text-center text-gray-500 py-8">
+                        <TabsContent value="training-matrix" className="mt-0">
+                            <div className="space-y-4">
+                                <div className="text-center text-gray-500 py-8 bg-white rounded-lg shadow-sm border border-gray-200">
                                     Training Matrix - V2 Implementation
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                </Tabs>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="officer-matrix" className="mt-0">
+                            <div className="space-y-4">
+                                <div className="flex justify-end mb-4">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setComplianceDialogOpen(true)}
+                                        data-testid="button-check-compliance"
+                                    >
+                                        Check Compliance
+                                    </Button>
+                                </div>
+                                <div className="text-center text-gray-500 py-8 bg-white rounded-lg shadow-sm border border-gray-200">
+                                    Officer Matrix - V2 Implementation
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="planning" className="mt-0">
+                            <div className="space-y-4">
+                                {/* Table Container */}
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                    <ScrollArea className="h-[calc(100vh-280px)] w-full">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    {/* Common columns */}
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3] border-r border-white/20">S.N</TableHead>
+                                                    <TableHead rowSpan={2} className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3] border-r border-white/20">Rank</TableHead>
+                                                    
+                                                    {/* On Board Status Section */}
+                                                    <TableHead colSpan={6} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3] border-r-2 border-white/40">On Board Status</TableHead>
+                                                    
+                                                    {/* Reliever Status Section */}
+                                                    <TableHead colSpan={5} className="text-white text-xs font-normal text-center sticky top-0 z-30 bg-[#52baf3]">Reliever Status</TableHead>
+                                                </TableRow>
+                                                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    {/* On Board Status columns */}
+                                                    <TableHead className="text-white text-xs font-normal sticky top-[41px] z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Relief Due</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">S/Off Date</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-[41px] z-30 bg-[#52baf3]">S/Off Port</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Relief Status</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-[41px] z-30 bg-[#52baf3] border-r-2 border-white/40"></TableHead>
+                                                    
+                                                    {/* Reliever Status columns */}
+                                                    <TableHead className="text-white text-xs font-normal sticky top-[41px] z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Sign On Date</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-32 sticky top-[41px] z-30 bg-[#52baf3]">Sign On Port</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-28 sticky top-[41px] z-30 bg-[#52baf3]">Sign On Status</TableHead>
+                                                    <TableHead className="text-white text-xs font-normal w-16 sticky top-[41px] z-30 bg-[#52baf3]"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {ranksLoading ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={13} className="text-center text-xs text-gray-500 py-8">
+                                                            Loading vessel positions...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : vesselRanks.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={13} className="text-center text-xs text-gray-500 py-8">
+                                                            {NO_RANKS_CONFIGURED_MESSAGE}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (() => {
+                                                    const normalizedRows: any[] = [];
+                                                    
+                                                    const filteredVesselRanks = vesselRanks.filter((rank: any) => {
+                                                        const fullRankName = rank.displayRole || rank.role || rank.rank;
+                                                        const hasVariantSuffix = fullRankName?.includes('_');
+                                                        
+                                                        if (hasVariantSuffix) return true;
+                                                        
+                                                        const hasVariants = vesselRanks.some((other: any) => {
+                                                            const otherName = other.displayRole || other.role || other.rank;
+                                                            return other.rankId === rank.rankId && otherName?.includes('_');
+                                                        });
+                                                        
+                                                        return !hasVariants;
+                                                    });
+                                                    
+                                                    filteredVesselRanks.forEach((rank: any, rankIndex: number) => {
+                                                        const fullRankName = rank.displayRole || rank.role || rank.rank;
+                                                        const baseRankName = fullRankName?.split('_')[0];
+                                                        
+                                                        const rankHasSuffix = fullRankName?.includes('_');
+                                                        
+                                                        const matchingRecords = vesselPlanning.filter((p: any) => {
+                                                            if (p.isArchived) return false;
+                                                            
+                                                            if (rankHasSuffix) {
+                                                                return p.rank === fullRankName;
+                                                            }
+                                                            
+                                                            if (p.rank === fullRankName) return true;
+                                                            if (p.rankId === rank.id || p.rankId === rank.rankId) return true;
+                                                            
+                                                            const planningBaseRank = p.rank?.split('_')[0];
+                                                            const planningHasSuffix = p.rank?.includes('_');
+                                                            if (!planningHasSuffix && planningBaseRank === baseRankName) return true;
+                                                            
+                                                            return false;
+                                                        });
+                                                        
+                                                        const primaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'primary');
+                                                        const secondaryCrew = matchingRecords.find((p: any) => p.crewStatus === 'secondary');
+                                                        
+                                                        normalizedRows.push({
+                                                            serialNumber: rankIndex + 1,
+                                                            rank,
+                                                            rankName: baseRankName,
+                                                            primaryCrew,
+                                                            secondaryCrew
+                                                        });
+                                                    });
+                                                    
+                                                    if (normalizedRows.length === 0) {
+                                                        return (
+                                                            <TableRow>
+                                                                <TableCell colSpan={13} className="text-center text-xs text-gray-500 py-8">
+                                                                    No ranks configured for this vessel.
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    }
+                                                    
+                                                    return normalizedRows.map((row: any, index: number) => (
+                                                        <TableRow key={row.rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
+                                                            <TableCell className="text-xs text-gray-700">{row.serialNumber}.</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.rankName}</TableCell>
+                                                            
+                                                            {/* On Board Status */}
+                                                            <TableCell className="text-xs text-gray-700">{row.primaryCrew?.crewName || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.primaryCrew?.reliefDue)}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.primaryCrew?.plannedSignOff)}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.primaryCrew?.signOffPort || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.primaryCrew?.reliefStatus || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">
+                                                                <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
+                                                            </TableCell>
+                                                            
+                                                            {/* Reliever Status */}
+                                                            <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.crewName || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.secondaryCrew?.relieverSignOnDate)}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.signOnPort || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.signOnStatus || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">
+                                                                <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ));
+                                                })()}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                </div>
             </div>
         );
     };
