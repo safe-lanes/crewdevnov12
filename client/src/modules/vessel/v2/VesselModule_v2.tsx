@@ -417,6 +417,12 @@ const NO_RANKS_CONFIGURED_MESSAGE = "No positions configured for this vessel. Pl
 const V2_QUERY_KEY = '/api/v2/vessel';
 
 const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
+    const planningAny = planning as any;
+    const crewMemberName = planningAny.crewMemberName || planning.crewName;
+    const nameParts = crewMemberName ? crewMemberName.split(' ') : [];
+    const firstName = nameParts[0] || '';
+    const familyName = nameParts.slice(1).join(' ') || '';
+    
     return {
         id: planning.planUuid,
         planUuid: planning.planUuid,
@@ -425,10 +431,19 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         rankId: planning.rankId,
         rank: planning.rank,
         role: planning.rank,
+        presentRank: planning.rank,
         crewMemberId: planning.crewUuid,
         crewUuid: planning.crewUuid,
-        crewName: (planning as any).crewMemberName || planning.crewName,
-        onBoardCrewName: (planning as any).crewMemberName || planning.crewName,
+        crewName: crewMemberName,
+        crewMemberName: crewMemberName,
+        onBoardCrewName: crewMemberName,
+        firstName: firstName,
+        familyName: familyName,
+        lastName: familyName,
+        crewEmpNo: planningAny.crewEmpNo || '',
+        employeeId: planningAny.crewEmpNo || '',
+        nationality: planningAny.nationality || '',
+        relieverNationality: planningAny.relieverNationality || '',
         crewStatus: planning.crewStatus,
         signOnDate: planning.signOnDate,
         joiningDate: planning.signOnDate,
@@ -1083,8 +1098,9 @@ export function VesselModule_v2(): JSX.Element {
     };
 
     const handleViewCrewClick = (crew: any) => {
-        if (crew.crewUuid) {
-            setLocation(`/crew-pool?crewUuid=${crew.crewUuid}&version=v2`);
+        if (crew) {
+            setSelectedCrewMember(crew);
+            setIsCrewInfoFormOpen(true);
         }
     };
 
@@ -1798,9 +1814,9 @@ export function VesselModule_v2(): JSX.Element {
                                                                 <TableCell className="text-xs" data-testid={`cell-officer-actions-${index + 1}`}>
                                                                     <Button 
                                                                         variant="ghost" 
-                                                                        size="sm" 
-                                                                        className="h-8 w-8 p-0"
-                                                                        disabled={true}
+                                                                        size="icon"
+                                                                        disabled={!rankPlanningData}
+                                                                        onClick={() => rankPlanningData && handleViewCrewClick(rankPlanningData)}
                                                                         data-testid={`button-view-officer-${index + 1}`}
                                                                     >
                                                                         <Eye className="h-4 w-4 text-gray-500" />
