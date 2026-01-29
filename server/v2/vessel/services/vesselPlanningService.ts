@@ -95,6 +95,20 @@ export const vesselPlanningService = {
     const relieverCrewUuid = planning.relieverCrewUuid;
     const vesselUuid = planning.vesselUuid;
     const signOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
+    const effectiveContractPeriod = data.contractPeriodMonths || planning.relieverContractPeriodMonths;
+    
+    // AUTO-CALCULATE RELIEF DUE: signOnDate + contractPeriodMonths (matching V1 logic)
+    let calculatedReliefDue: string | null = null;
+    if (signOnDate && effectiveContractPeriod) {
+      try {
+        const signOnDateObj = new Date(signOnDate);
+        signOnDateObj.setMonth(signOnDateObj.getMonth() + effectiveContractPeriod);
+        calculatedReliefDue = signOnDateObj.toISOString().split('T')[0];
+        console.log(`📅 [VESSEL-PLANNING-V2] Auto-calculated reliefDue: ${calculatedReliefDue} (signOnDate: ${signOnDate} + ${effectiveContractPeriod} months)`);
+      } catch (calcError) {
+        console.warn(`⚠️ [VESSEL-PLANNING-V2] Failed to auto-calculate reliefDue:`, calcError);
+      }
+    }
 
     // Execute all operations in a transaction for consistency
     const result = await db.transaction(async (tx) => {
@@ -123,7 +137,8 @@ export const vesselPlanningService = {
           crewUuid: relieverCrewUuid,
           crewStatus: "primary", // Explicitly set to primary for on-board
           signOnDate,
-          contractPeriodMonths: data.contractPeriodMonths || planning.relieverContractPeriodMonths,
+          contractPeriodMonths: effectiveContractPeriod,
+          reliefDue: calculatedReliefDue, // Auto-calculated from signOnDate + contractPeriodMonths
           // Clear reliever fields
           relieverCrewUuid: null,
           relieverSignOnDate: null,
