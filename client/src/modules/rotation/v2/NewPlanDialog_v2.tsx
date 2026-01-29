@@ -1986,7 +1986,8 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     // For V2, use vessel.value which is the UUID
     const vesselId = vesselObj?.value || vesselObj?.id;
     const vesselName = vesselObj?.name || selectedVessel;
-    const rankId = rankObj?.id;
+    // Use rankId (R002 format) to match vessel revision format, not id (numeric format)
+    const rankId = rankObj?.rankId || rankObj?.id;
 
     if (!vesselId || !rankId) {
       toast({
