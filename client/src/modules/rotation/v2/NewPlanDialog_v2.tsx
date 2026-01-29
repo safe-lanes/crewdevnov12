@@ -53,8 +53,8 @@ interface NewPlanDialogProps {
 
 interface CrewMember {
   crewUuid: string; // V2 uses crewUuid as primary identifier
-  name: string;
-  rank: string;
+  fullName: string; // V2 uses fullName instead of name
+  presentRank: string; // V2 uses presentRank instead of rank
   pool?: string;
   crewPool?: string;
   manningAgent?: string;
@@ -721,13 +721,13 @@ function CrewColumn({
               <div
                 key={crew.crewUuid}
                 className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
-                onClick={() => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.name, rank: crew.rank })}
+                onClick={() => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank })}
               >
                 <Checkbox 
                   data-testid={`checkbox-crew-${crew.crewUuid}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onCrewSelect({ crewUuid: crew.crewUuid, name: crew.name, rank: crew.rank });
+                    onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank });
                   }}
                 />
                 <div className="flex-1">
@@ -744,7 +744,7 @@ function CrewColumn({
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className={`font-medium text-sm cursor-help ${nameColor}`}>
-                                {crew.name}
+                                {crew.fullName}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent side="right" className="max-w-xs">
@@ -759,7 +759,7 @@ function CrewColumn({
                     
                     return (
                       <div className={`font-medium text-sm ${nameColor}`}>
-                        {crew.name}
+                        {crew.fullName}
                       </div>
                     );
                   })()}
