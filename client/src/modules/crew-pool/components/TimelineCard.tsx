@@ -231,6 +231,7 @@ function TimelineCanvas({
     ctx.stroke();
     
     const filteredAssignments = assignments.filter(a => {
+      if (!a.startDate) return false;
       const aStart = parseISO(a.startDate);
       const aEnd = a.rangeEndDate 
         ? parseISO(a.rangeEndDate) 
