@@ -461,7 +461,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             vesselCode: m.vesselUuid || m.vesselCode || '',
             vessel: m.vesselName || m.vessel || '',
             dateOfMedical: m.examinationDate || m.dateOfMedical || '',
-            fitnessForSeaService: m.fitForDuty || m.fitnessForSeaService || '',
+            fitnessForDuty: m.fitForDuty || m.fitnessForDuty || '',
             expiry: m.expiryDate || m.expiry || '',
           })),
           medicals: medicals || [],
