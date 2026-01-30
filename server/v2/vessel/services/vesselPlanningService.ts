@@ -110,11 +110,14 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
         const medExpiry = new Date(latestMedical.expiryDate);
         medExpiry.setHours(0, 0, 0, 0);
         
-        if (medExpiry < today) {
-          medicalExpiring = 'Expired';
-        } else if (medExpiry <= twoMonthsFromNow) {
-          medicalExpiring = 'Expiring';
-        }
+        // Return the actual date in DD-MMM-YYYY format (e.g., 01-Jan-2026)
+        // Frontend will compute expiry status from this date
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const day = String(medExpiry.getDate()).padStart(2, '0');
+        const month = months[medExpiry.getMonth()];
+        const year = medExpiry.getFullYear();
+        
+        medicalExpiring = `${day}-${month}-${year}`;
       }
     }
   } catch (error) {

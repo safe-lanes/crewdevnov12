@@ -1447,11 +1447,33 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 return <span className="text-gray-500">-</span>;
                                                                             }
                                                                             
-                                                                            const colorClass = medExpiry === 'Expired' 
-                                                                                ? 'text-red-600 font-medium' 
-                                                                                : medExpiry === 'Expiring' 
-                                                                                    ? 'text-orange-500 font-medium' 
-                                                                                    : 'text-gray-700';
+                                                                            // Parse DD-MMM-YYYY format and compute status
+                                                                            const months: Record<string, number> = {
+                                                                                'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+                                                                                'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+                                                                            };
+                                                                            const dateParts = medExpiry.split('-');
+                                                                            let colorClass = 'text-gray-700';
+                                                                            
+                                                                            if (dateParts.length === 3) {
+                                                                                const day = parseInt(dateParts[0]);
+                                                                                const month = months[dateParts[1]];
+                                                                                const year = parseInt(dateParts[2]);
+                                                                                
+                                                                                if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+                                                                                    const expiryDate = new Date(year, month, day);
+                                                                                    const today = new Date();
+                                                                                    today.setHours(0, 0, 0, 0);
+                                                                                    const twoMonthsFromNow = new Date(today);
+                                                                                    twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+                                                                                    
+                                                                                    if (expiryDate < today) {
+                                                                                        colorClass = 'text-red-600 font-medium';
+                                                                                    } else if (expiryDate <= twoMonthsFromNow) {
+                                                                                        colorClass = 'text-orange-500 font-medium';
+                                                                                    }
+                                                                                }
+                                                                            }
                                                                             
                                                                             return <span className={colorClass}>{medExpiry}</span>;
                                                                         })()}
