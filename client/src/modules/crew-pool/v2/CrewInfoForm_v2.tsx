@@ -388,11 +388,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const detailedCrewData = v2FullProfile || null;
   const isDetailedDataLoading = isV2ProfileLoading;
   
-  // V2: Dashboard data is computed from full profile (no separate endpoint in V2)
-  // For now, set dashboard data to undefined since V2 doesn't have a separate dashboard endpoint
-  const dashboardData = undefined as CrewDashboardSummary | undefined;
-  const isDashboardLoading = false;
-  const dashboardError: Error | null = null;
+  // V2: Dashboard data from V2 API endpoint
+  const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
+    queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'dashboard'],
+    queryFn: async () => {
+      const response = await fetch(`/api/v2/crew-pool/crew/${crewUuid}/dashboard`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard summary');
+      }
+      return response.json();
+    },
+    enabled: !!crewUuid && isOpen,
+  });
 
   // Crew ID will be auto-assigned by the API during creation
 
