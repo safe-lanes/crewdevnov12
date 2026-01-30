@@ -336,6 +336,7 @@ export const dashboardService = {
         and(
           eq(crewAssignments.crewUuid, crewUuid),
           eq(crewAssignments.isDeleted, false),
+          eq(crewAssignments.isCurrent, true),
           isNull(crewAssignments.signOffDate)
         )
       )
