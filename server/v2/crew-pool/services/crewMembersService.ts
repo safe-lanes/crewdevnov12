@@ -1,4 +1,4 @@
-import { eq, and, desc, or, ilike, sql, isNull } from "drizzle-orm";
+import { eq, and, desc, or, ilike, sql, isNull, aliasedTable } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { CrewMembersRepository } from "../repositories";
@@ -399,12 +399,16 @@ export const crewMembersService = {
 
     const total = countResult?.count || 0;
 
+    // Create an alias for lastVessel name resolution
+    const lastVesselAlias = aliasedTable(masterVessels, "lastVesselAlias");
+    
     const results = await db
       .select({
         crew: crewMembersV2,
         currentVessel: crewAssignments.vesselUuid,
         lastVessel: crewAssignments.lastVesselUuid,
         signOnDate: crewAssignments.signOnDate,
+        signOffDate: crewAssignments.signOffDate,
         reliefDue: crewAssignments.reliefDue,
         contractPeriod: crewAssignments.contractPeriod,
         assignmentReason: crewAssignments.reason,
@@ -412,6 +416,7 @@ export const crewMembersService = {
         nationality: masterNationalities.nationality,
         vesselType: masterVesselTypes.vesselType,
         currentVesselName: masterVessels.vessel,
+        lastVesselName: lastVesselAlias.vessel,
       })
       .from(crewMembersV2)
       .leftJoin(
@@ -435,6 +440,10 @@ export const crewMembersService = {
         masterVessels,
         eq(crewAssignments.vesselUuid, masterVessels.vesselUuid)
       )
+      .leftJoin(
+        lastVesselAlias,
+        eq(crewAssignments.lastVesselUuid, lastVesselAlias.vesselUuid)
+      )
       .where(and(...conditions))
       .orderBy(desc(crewMembersV2.createdAt))
       .limit(limit)
@@ -449,11 +458,12 @@ export const crewMembersService = {
       vesselType: r.vesselType,
       presentVessel: r.currentVessel,
       presentVesselName: r.currentVesselName,
-      lastVessel: r.lastVessel,
+      lastVessel: r.lastVesselName || r.lastVessel,
       signOnDate: r.signOnDate,
+      signOffDate: r.signOffDate,
       reliefDue: r.reliefDue,
       contractPeriod: r.contractPeriod,
-      assignmentReason: r.assignmentReason,
+      reason: r.assignmentReason,
       status: this.calculateCrewStatus(r.crew.isActive !== false, !!r.currentVessel),
       timeOnBoardMonths: this.calculateTimeOnBoard(r.signOnDate),
     }));
