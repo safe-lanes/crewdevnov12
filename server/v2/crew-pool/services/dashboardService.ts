@@ -47,13 +47,15 @@ export interface RankExperienceItem {
 }
 
 export interface ServiceTimelineItem {
-  vesselName: string;
-  vesselCode?: string;
-  rank: string;
-  fromDate: string;
-  toDate: string;
-  months: number;
-  serviceType: string;
+  vessel: string;
+  vesselId?: string;
+  startDate: string;
+  endDate: string | null;
+  contractEndDate: string | null;
+  rangeEndDate: string | null;
+  type: "onBoard" | "planned" | "completed";
+  appraisalIds?: number[];
+  handoverIds?: number[];
 }
 
 export interface ComplianceItem {
@@ -506,23 +508,36 @@ export const dashboardService = {
 
   buildServiceTimeline(companyService: any[], externalService: any[] = []): ServiceTimelineItem[] {
     const allService = [...companyService, ...externalService];
+    const today = new Date();
+    
     return allService
-      .filter((s: any) => s.fromDate && s.toDate)
-      .map((s: any) => ({
-        vesselName: s.vesselName || "Unknown",
-        vesselCode: s.vesselCode || s.vesselTypeUuid || undefined,
-        rank: s.rank || "Unknown",
-        fromDate: s.fromDate,
-        toDate: s.toDate,
-        months: Math.round(
-          parseFloat(s.periodMonths || "0") ||
-            crewSeaServiceService.calculatePeriodMonths(s.fromDate, s.toDate)
-        ),
-        serviceType: s.serviceType || "company",
-      }))
+      .filter((s: any) => s.fromDate)
+      .map((s: any) => {
+        const startDate = new Date(s.fromDate);
+        const endDate = s.toDate ? new Date(s.toDate) : null;
+        
+        let type: "onBoard" | "planned" | "completed" = "completed";
+        if (!endDate || endDate > today) {
+          if (startDate > today) {
+            type = "planned";
+          } else {
+            type = "onBoard";
+          }
+        }
+        
+        return {
+          vessel: s.vesselName || "Unknown",
+          vesselId: s.vesselCode || s.vesselTypeUuid || undefined,
+          startDate: s.fromDate,
+          endDate: s.toDate || null,
+          contractEndDate: s.contractEndDate || s.toDate || null,
+          rangeEndDate: s.rangeEndDate || null,
+          type,
+        };
+      })
       .sort((a: ServiceTimelineItem, b: ServiceTimelineItem) => {
-        const dateA = new Date(a.fromDate);
-        const dateB = new Date(b.fromDate);
+        const dateA = new Date(a.startDate);
+        const dateB = new Date(b.startDate);
         return dateB.getTime() - dateA.getTime();
       });
   },
