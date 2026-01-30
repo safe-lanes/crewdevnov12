@@ -376,6 +376,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         return {
           id: crew.crewUuid,
           crewUuid: crew.crewUuid,
+          uploadedPhoto: crew.uploadedPhoto || null,
           firstName: crew.firstName || '',
           middleName: crew.middleName || '',
           familyName: crew.familyName || '',
