@@ -433,7 +433,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           })),
           education: (education || []).map((e: any) => ({
             ...e,
-            school: e.institution || e.school || '',
+            schoolCollegeUniversity: e.institution || e.schoolCollegeUniversity || '',
           })),
           licenses: licenses || [],
           trainingCourses: trainingCourses || [],
