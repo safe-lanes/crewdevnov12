@@ -68,7 +68,7 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     signOnDate: v2Crew.signOnDate || '',
     signOffDate: v2Crew.signOffDate || '',
     reliefDue: v2Crew.reliefDue || '',
-    contractPeriodMonths: v2Crew.contractPeriodMonths || '',
+    contractPeriodMonths: v2Crew.contractPeriodMonths || v2Crew.contractPeriod || '',
     assignmentReason: v2Crew.assignmentReason || '',
     reason: v2Crew.reason || '',
   };

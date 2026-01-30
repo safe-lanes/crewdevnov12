@@ -595,12 +595,15 @@ export const vesselPlanningService = {
 
       // 3. Update crew_assignments: target only the specific "Planned" assignment
       // Filter by isCurrent=false and assignmentType="Planned" to avoid updating old/wrong records
+      // Include contractPeriod and reliefDue so Current Assignment columns display in Crew Pool grid
       await tx
         .update(crewAssignments)
         .set({ 
           isCurrent: true,
           assignmentType: "OnBoard",
           signOnDate,
+          contractPeriod: effectiveContractPeriod ? String(effectiveContractPeriod) : null,
+          reliefDue: calculatedReliefDue,
         })
         .where(
           and(
