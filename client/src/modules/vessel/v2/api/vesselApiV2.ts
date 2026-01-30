@@ -40,6 +40,8 @@ export interface VesselPlanningV2 {
   archivedDate: string | null;
   createdAt: string;
   updatedAt: string;
+  docExpiringCount?: string;
+  medicalExpiring?: string;
 }
 
 export interface VesselPlanningAttachmentV2 {

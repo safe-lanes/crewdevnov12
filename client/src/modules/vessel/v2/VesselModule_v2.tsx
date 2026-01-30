@@ -474,6 +474,8 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         archivedDate: planning.archivedDate,
         createdAt: planning.createdAt,
         updatedAt: planning.updatedAt,
+        docExpiringCount: planning.docExpiringCount || '',
+        medicalExpiring: planning.medicalExpiring || '',
     };
 };
 
@@ -1420,18 +1422,39 @@ export function VesselModule_v2(): JSX.Element {
                                                                     <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.reliefDue)}</TableCell>
                                                                     <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.plannedSignOff)}</TableCell>
                                                                     <TableCell className="text-xs text-gray-700">
-                                                                        {planning.docExpiringCount ? (
-                                                                            <span className="text-red-600 font-medium">{planning.docExpiringCount}</span>
-                                                                        ) : (
-                                                                            <span className="text-gray-400">0/0</span>
-                                                                        )}
+                                                                        {(() => {
+                                                                            const docCount = planning.docExpiringCount || '0/0';
+                                                                            const parts = docCount.split('/');
+                                                                            const expiringCount = parseInt(parts[0]) || 0;
+                                                                            const expiredCount = parseInt(parts[1]) || 0;
+                                                                            const totalIssues = expiringCount + expiredCount;
+                                                                            
+                                                                            if (totalIssues === 0) {
+                                                                                return <span className="text-gray-500">0/0</span>;
+                                                                            }
+                                                                            
+                                                                            return (
+                                                                                <span className={expiredCount > 0 ? 'text-red-600 font-medium' : 'text-orange-500 font-medium'}>
+                                                                                    {docCount}
+                                                                                </span>
+                                                                            );
+                                                                        })()}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs text-gray-700">
-                                                                        {planning.medicalExpiring ? (
-                                                                            <span className="text-red-600 font-medium">{planning.medicalExpiring}</span>
-                                                                        ) : (
-                                                                            <span className="text-gray-400">-</span>
-                                                                        )}
+                                                                        {(() => {
+                                                                            const medExpiry = planning.medicalExpiring || '-';
+                                                                            if (medExpiry === '-' || medExpiry === '') {
+                                                                                return <span className="text-gray-500">-</span>;
+                                                                            }
+                                                                            
+                                                                            const colorClass = medExpiry === 'Expired' 
+                                                                                ? 'text-red-600 font-medium' 
+                                                                                : medExpiry === 'Expiring' 
+                                                                                    ? 'text-orange-500 font-medium' 
+                                                                                    : 'text-gray-700';
+                                                                            
+                                                                            return <span className={colorClass}>{medExpiry}</span>;
+                                                                        })()}
                                                                     </TableCell>
                                                                     <TableCell className="text-xs" data-testid={`cell-appraisal-${index + 1}`}>
                                                                         {(() => {
