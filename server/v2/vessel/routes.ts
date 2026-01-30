@@ -21,6 +21,9 @@ router.delete("/planning/attachments/:attUuid", vesselPlanningController.deleteA
 router.post("/planning/:planUuid/sign-on", vesselPlanningController.signOnReliever);
 router.patch("/planning/:planUuid/reliever-status", vesselPlanningController.updateRelieverStatus);
 
+// Sign-off endpoint - updates both vessel_planning_v2 and crew_assignments
+router.post("/planning/:planUuid/sign-off", vesselPlanningController.signOffCrew);
+
 // Officer Matrix data endpoint
 router.get("/officer-matrix/:crewUuid", vesselPlanningController.getOfficerMatrixData);
 

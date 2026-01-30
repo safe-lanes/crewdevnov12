@@ -167,6 +167,34 @@ export const vesselPlanningController = {
   },
 
   /**
+   * Sign off crew from vessel - updates both vessel_planning_v2 and crew_assignments
+   */
+  async signOffCrew(req: Request, res: Response) {
+    try {
+      const { planUuid } = req.params;
+      const { signOffDate, signOffReason, signOffPortUuid } = req.body;
+      
+      if (!signOffDate) {
+        return res.status(400).json({ error: "signOffDate is required" });
+      }
+      
+      const planning = await vesselPlanningService.signOffCrew(planUuid, {
+        signOffDate,
+        signOffReason,
+        signOffPortUuid,
+      });
+      
+      res.json(planning);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error signing off crew:", error);
+      res.status(500).json({ error: "Failed to sign off crew" });
+    }
+  },
+
+  /**
    * Get Officer Matrix data for a crew member
    * Returns experience metrics, certifications, and English proficiency
    */

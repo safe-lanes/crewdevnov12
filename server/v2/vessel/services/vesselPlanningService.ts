@@ -477,6 +477,55 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.archive(planUuid, archivedByUuid);
   },
 
+  /**
+   * Sign off crew from vessel - updates both vessel_planning_v2 and crew_assignments
+   * This should be called instead of just update() when signing off crew
+   */
+  async signOffCrew(planUuid: string, data: {
+    signOffDate: string;
+    signOffReason?: string;
+    signOffPortUuid?: string;
+  }) {
+    const db = getDb();
+    
+    const planning = await vesselPlanningRepository.findByPlanUuid(planUuid);
+    if (!planning) {
+      throw new Error(`Planning record not found: ${planUuid}`);
+    }
+
+    const crewUuid = planning.crewUuid;
+    const vesselUuid = planning.vesselUuid;
+    
+    // Update crew_assignments if we have a crew member
+    if (crewUuid && vesselUuid) {
+      console.log(`📋 [VESSEL-PLANNING-V2] Updating crew_assignments for sign-off: crewUuid=${crewUuid}, signOffDate=${data.signOffDate}, reason=${data.signOffReason}`);
+      
+      await db
+        .update(crewAssignments)
+        .set({
+          signOffDate: data.signOffDate,
+          reason: data.signOffReason || null,
+          isCurrent: false,
+          updatedAt: sql`NOW()`,
+        })
+        .where(
+          and(
+            eq(crewAssignments.crewUuid, crewUuid),
+            eq(crewAssignments.vesselUuid, vesselUuid),
+            eq(crewAssignments.isCurrent, true)
+          )
+        );
+    }
+
+    // Update the vessel planning record
+    return vesselPlanningRepository.update(planUuid, {
+      signOffDate: data.signOffDate,
+      signOffReason: data.signOffReason,
+      signOffPortUuid: data.signOffPortUuid,
+      reliefStatus: "Signed Off",
+    });
+  },
+
   async addAttachment(planUuid: string, data: Omit<InsertVesselPlanningAttachmentsV2, "attUuid" | "planUuid">) {
     const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
     if (!existing) {

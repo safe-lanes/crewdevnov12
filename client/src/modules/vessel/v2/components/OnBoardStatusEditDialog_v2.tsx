@@ -284,26 +284,15 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 
-                const crewUuid = planningData?.crewUuid;
-                if (crewUuid) {
-                    const signOffPayload = {
-                        signOffDate: data.signOffDate,
-                        signOffReason: data.signOffReason,
-                    };
-                    await apiRequest('POST', `/api/v2/crew-pool/crew/${crewUuid}/sign-off`, signOffPayload);
-                }
-                
-                await vesselApiV2.archivePlanning(planningData.planUuid, 'user');
-                
-                await updatePlanningV2.mutateAsync({
-                    planUuid: planningData.planUuid,
-                    data: {
-                        signOffDate: data.signOffDate,
-                        signOffPortUuid: cleanFormData.signOffPort,
-                        signOffReason: data.signOffReason,
-                        reliefStatus: data.reliefStatus,
-                    }
+                // Use the new V2 sign-off endpoint that updates BOTH vessel_planning_v2 AND crew_assignments
+                await apiRequest('POST', `/api/v2/vessel/planning/${planningData.planUuid}/sign-off`, {
+                    signOffDate: data.signOffDate,
+                    signOffReason: data.signOffReason,
+                    signOffPortUuid: cleanFormData.signOffPort,
                 });
+                
+                // Archive the planning record after sign-off
+                await vesselApiV2.archivePlanning(planningData.planUuid, 'user');
             } else {
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 
