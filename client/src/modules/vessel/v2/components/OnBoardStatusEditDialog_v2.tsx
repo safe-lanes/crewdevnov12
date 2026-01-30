@@ -333,6 +333,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
             queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
             queryClient.invalidateQueries({ queryKey: ['v2-crew-pool'] });
+            // Invalidate dashboard query so crew status updates immediately after sign-off
+            if (planningData?.crewUuid) {
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', planningData.crewUuid, 'dashboard'] });
+            }
             
             toast({
                 title: "Success",
