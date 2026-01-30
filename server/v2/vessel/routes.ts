@@ -21,4 +21,7 @@ router.delete("/planning/attachments/:attUuid", vesselPlanningController.deleteA
 router.post("/planning/:planUuid/sign-on", vesselPlanningController.signOnReliever);
 router.patch("/planning/:planUuid/reliever-status", vesselPlanningController.updateRelieverStatus);
 
+// Officer Matrix data endpoint
+router.get("/officer-matrix/:crewUuid", vesselPlanningController.getOfficerMatrixData);
+
 export default router;

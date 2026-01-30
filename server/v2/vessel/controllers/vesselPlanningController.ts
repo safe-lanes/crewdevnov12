@@ -165,4 +165,31 @@ export const vesselPlanningController = {
       res.status(500).json({ error: "Failed to update reliever status" });
     }
   },
+
+  /**
+   * Get Officer Matrix data for a crew member
+   * Returns experience metrics, certifications, and English proficiency
+   */
+  async getOfficerMatrixData(req: Request, res: Response) {
+    try {
+      const { crewUuid } = req.params;
+      const { rank, signOnDate, department } = req.query;
+      
+      if (!crewUuid) {
+        return res.status(400).json({ error: "crewUuid is required" });
+      }
+      
+      const data = await vesselPlanningService.getOfficerMatrixData(
+        crewUuid,
+        (rank as string) || '',
+        (signOnDate as string) || null,
+        ((department as string) || 'deck') as 'deck' | 'engine'
+      );
+      
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching officer matrix data:", error);
+      res.status(500).json({ error: "Failed to fetch officer matrix data" });
+    }
+  },
 };

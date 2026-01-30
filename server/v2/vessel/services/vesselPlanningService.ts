@@ -2,8 +2,8 @@ import { vesselPlanningRepository, vesselPlanningAttachmentsRepository } from ".
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
-import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals } from "../../../../shared/v2/crew-pool/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { eq, and, sql, desc } from "drizzle-orm";
 
 /**
  * Calculate document and medical expiry counts for a crew member
@@ -128,6 +128,305 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
     docExpiringCount: `${expiringDocs}/${expiredDocs}`,
     medicalExpiring
   };
+}
+
+/**
+ * Calculate experience metrics from V2 crew_sea_service table
+ * Same logic as V1's calculateExperienceFromSeaService function
+ */
+async function calculateExperienceMetricsV2(crewUuid: string | null, currentRank: string, signOnDate: string | null): Promise<{
+  companyYears: number;
+  rankYears: number;
+  tankerTypeYears: number;
+  allTankersYears: number;
+  oowYears: number;
+  timeOnBoardMonths: number;
+}> {
+  if (!crewUuid) {
+    return { companyYears: 0, rankYears: 0, tankerTypeYears: 0, allTankersYears: 0, oowYears: 0, timeOnBoardMonths: 0 };
+  }
+  
+  const db = getDb();
+  const today = new Date();
+  
+  try {
+    // Fetch all sea service records for this crew
+    const seaServices = await db
+      .select()
+      .from(crewSeaService)
+      .where(and(
+        eq(crewSeaService.crewUuid, crewUuid),
+        eq(crewSeaService.isDeleted, false)
+      ));
+    
+    // Helper function to parse period in months
+    const getServicePeriodMonths = (service: any): number => {
+      const fromStr = service.fromDate;
+      if (!fromStr) return 0;
+      
+      const from = new Date(fromStr);
+      if (isNaN(from.getTime())) return 0;
+      
+      const toStr = service.toDate;
+      let to: Date;
+      
+      if (toStr) {
+        to = new Date(toStr);
+        if (isNaN(to.getTime())) {
+          // Use stored periodMonths as fallback
+          return parseFloat(service.periodMonths) || 0;
+        }
+      } else {
+        // Active contract - use today
+        to = today;
+      }
+      
+      const diffMs = to.getTime() - from.getTime();
+      return diffMs / (1000 * 60 * 60 * 24 * 30.44); // Convert to months
+    };
+    
+    // Helper to check if vessel type is tanker
+    const isTankerVesselType = (vesselType: string | null): boolean => {
+      if (!vesselType) return false;
+      const tankerTypes = ['tanker', 'oil tanker', 'chemical tanker', 'gas tanker', 'lng', 'lpg', 'product tanker', 'crude oil tanker'];
+      return tankerTypes.some(t => vesselType.toLowerCase().includes(t));
+    };
+    
+    // Helper to check if rank is officer
+    const isOfficerRank = (rank: string | null): boolean => {
+      if (!rank) return false;
+      const officerPatterns = ['master', 'chief officer', 'chief mate', '2nd officer', '3rd officer', 
+        'chief engineer', '2nd engineer', '3rd engineer', '4th engineer', 'officer', 'oow', 'eto'];
+      return officerPatterns.some(p => rank.toLowerCase().includes(p));
+    };
+    
+    // Separate company (serviceType = 'E1') and external (serviceType = 'E2') sea service
+    const companySeaService = seaServices.filter((s: typeof seaServices[0]) => s.serviceType === 'E1');
+    const allSeaService = seaServices;
+    
+    // 1. Company (Yrs) - Calendar time from earliest E1 "from" date to today
+    let companyYears = 0;
+    if (companySeaService.length > 0) {
+      const fromDates = companySeaService
+        .map((s: typeof seaServices[0]) => s.fromDate)
+        .filter((d: string | null): d is string => d !== null && d.trim() !== '')
+        .map((d: string) => new Date(d))
+        .filter((d: Date) => !isNaN(d.getTime()));
+      
+      if (fromDates.length > 0) {
+        const earliestDate = new Date(Math.min(...fromDates.map((d: Date) => d.getTime())));
+        const diffMs = today.getTime() - earliestDate.getTime();
+        const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+        const roundedYears = Math.round(diffYears * 10) / 10;
+        companyYears = diffYears > 0 ? Math.max(0.1, roundedYears) : 0;
+      }
+    }
+    
+    // 2. Rank (Yrs) - Sum of Period(M) where rank = current rank / 12
+    let rankMonths = 0;
+    if (currentRank) {
+      const normalizedCurrentRank = currentRank.trim().toLowerCase();
+      for (const service of allSeaService) {
+        if (service.rank && service.rank.trim().toLowerCase() === normalizedCurrentRank) {
+          rankMonths += getServicePeriodMonths(service);
+        }
+      }
+    }
+    const rankYears = Math.round((rankMonths / 12) * 10) / 10;
+    
+    // 3. Tanker Type (Yrs) - specific tanker type experience (simplified to all tanker for now)
+    // TODO: Match against vessel's specific tanker type
+    let tankerTypeMonths = 0;
+    for (const service of allSeaService) {
+      // Use vesselTypeUuid to look up vessel type - for now, check any tanker type
+      if (isTankerVesselType(service.vesselTypeUuid)) {
+        tankerTypeMonths += getServicePeriodMonths(service);
+      }
+    }
+    const tankerTypeYears = Math.round((tankerTypeMonths / 12) * 10) / 10;
+    
+    // 4. All Types (Yrs) - Total tanker experience across all tanker types
+    let allTankerMonths = 0;
+    for (const service of allSeaService) {
+      if (isTankerVesselType(service.vesselTypeUuid)) {
+        allTankerMonths += getServicePeriodMonths(service);
+      }
+    }
+    const allTankersYears = Math.round((allTankerMonths / 12) * 10) / 10;
+    
+    // 5. OOW (Yrs) - Officer of the Watch experience
+    let oowMonths = 0;
+    for (const service of allSeaService) {
+      if (isOfficerRank(service.rank)) {
+        oowMonths += getServicePeriodMonths(service);
+      }
+    }
+    const oowYears = Math.round((oowMonths / 12) * 10) / 10;
+    
+    // 6. Time on Board (months) - from sign-on date to today
+    let timeOnBoardMonths = 0;
+    if (signOnDate) {
+      const signOn = new Date(signOnDate);
+      if (!isNaN(signOn.getTime())) {
+        const diffMs = today.getTime() - signOn.getTime();
+        const diffMonths = diffMs / (1000 * 60 * 60 * 24 * 30.44);
+        timeOnBoardMonths = Math.round(diffMonths * 10) / 10;
+        if (timeOnBoardMonths < 0) timeOnBoardMonths = 0;
+      }
+    }
+    
+    return {
+      companyYears,
+      rankYears,
+      tankerTypeYears,
+      allTankersYears,
+      oowYears,
+      timeOnBoardMonths
+    };
+  } catch (error) {
+    console.error(`Error calculating experience metrics for crew ${crewUuid}:`, error);
+    return { companyYears: 0, rankYears: 0, tankerTypeYears: 0, allTankersYears: 0, oowYears: 0, timeOnBoardMonths: 0 };
+  }
+}
+
+/**
+ * Get certification data from V2 crew_licenses table for Officer Matrix
+ */
+async function getCertificationsV2(crewUuid: string | null, department: 'deck' | 'engine'): Promise<{
+  certComp: string;
+  issuingCountry: string;
+  tankerCert: string;
+  splTankerTraining: string;
+  radioQual: boolean;
+}> {
+  if (!crewUuid) {
+    return { certComp: '', issuingCountry: '', tankerCert: '', splTankerTraining: '', radioQual: false };
+  }
+  
+  const db = getDb();
+  
+  try {
+    // Fetch all licenses for this crew
+    const licenses = await db
+      .select()
+      .from(crewLicenses)
+      .where(and(
+        eq(crewLicenses.crewUuid, crewUuid),
+        eq(crewLicenses.isDeleted, false)
+      ));
+    
+    // Fetch training courses for tanker certifications
+    const trainingCourses = await db
+      .select()
+      .from(crewTrainingCourses)
+      .where(and(
+        eq(crewTrainingCourses.crewUuid, crewUuid),
+        eq(crewTrainingCourses.isDeleted, false)
+      ));
+    
+    // Find highest COC (Certificate of Competency)
+    const cocPatterns = department === 'deck' 
+      ? ['master', 'chief mate', 'chief officer', 'officer of the watch', 'oow', 'second mate', 'third mate']
+      : ['chief engineer', 'second engineer', '2nd engineer', 'third engineer', '3rd engineer', 'fourth engineer', '4th engineer', 'electro-technical officer', 'eto'];
+    
+    // Priority ranking for COCs (higher index = higher priority)
+    const cocPriority = department === 'deck'
+      ? ['third mate', 'second mate', 'oow', 'officer of the watch', 'chief officer', 'chief mate', 'master']
+      : ['fourth engineer', '4th engineer', 'third engineer', '3rd engineer', 'second engineer', '2nd engineer', 'chief engineer', 'electro-technical officer', 'eto'];
+    
+    let highestCoc: any = null;
+    let highestPriority = -1;
+    
+    for (const license of licenses) {
+      const certName = (license.certificateDocument || '').toLowerCase();
+      for (let i = 0; i < cocPriority.length; i++) {
+        if (certName.includes(cocPriority[i]) && i > highestPriority) {
+          highestPriority = i;
+          highestCoc = license;
+        }
+      }
+    }
+    
+    // Derive officerMatrixLabel from highest COC
+    let certComp = '';
+    if (highestCoc) {
+      const certName = (highestCoc.certificateDocument || '').toLowerCase();
+      if (certName.includes('master')) certComp = 'Master II/2';
+      else if (certName.includes('chief mate') || certName.includes('chief officer')) certComp = 'Chief Mate II/2';
+      else if (certName.includes('oow') || certName.includes('officer of the watch')) certComp = 'OOW II/1';
+      else if (certName.includes('chief engineer')) certComp = 'Chief Engineer III/2';
+      else if (certName.includes('second engineer') || certName.includes('2nd engineer')) certComp = '2nd Engineer III/2';
+      else if (certName.includes('third engineer') || certName.includes('3rd engineer')) certComp = '3rd Engineer III/1';
+      else if (certName.includes('electro') || certName.includes('eto')) certComp = 'ETO III/6';
+    }
+    
+    // Check for GMDSS (radio qualification)
+    const hasGmdss = licenses.some((l: typeof licenses[0]) => {
+      const certName = (l.certificateDocument || l.abbr || '').toLowerCase();
+      return certName.includes('gmdss') || certName.includes('goc') || certName.includes('general operator');
+    });
+    
+    // Calculate tanker certifications from training courses
+    const tankerCertPatterns = ['o(a)', 'c(a)', 'g(a)', 'oil tanker', 'chemical tanker', 'gas tanker'];
+    const splTankerPatterns = ['o(b)', 'c(b)', 'g(b)', 'advanced oil', 'advanced chemical', 'advanced gas'];
+    
+    const tankerCerts: string[] = [];
+    const splTankerCerts: string[] = [];
+    
+    for (const course of trainingCourses) {
+      const courseName = (course.trainingCourse || course.abbr || '').toLowerCase();
+      for (const pattern of tankerCertPatterns) {
+        if (courseName.includes(pattern)) {
+          if (pattern.includes('o')) tankerCerts.push('O');
+          else if (pattern.includes('c')) tankerCerts.push('C');
+          else if (pattern.includes('g')) tankerCerts.push('G');
+        }
+      }
+      for (const pattern of splTankerPatterns) {
+        if (courseName.includes(pattern)) {
+          if (pattern.includes('o')) splTankerCerts.push('O(A)');
+          else if (pattern.includes('c')) splTankerCerts.push('C(A)');
+          else if (pattern.includes('g')) splTankerCerts.push('G(A)');
+        }
+      }
+    }
+    
+    return {
+      certComp,
+      issuingCountry: highestCoc?.issuingCountryUuid || '',
+      tankerCert: Array.from(new Set(tankerCerts)).join(', '),
+      splTankerTraining: Array.from(new Set(splTankerCerts)).join(', '),
+      radioQual: department === 'deck' && hasGmdss
+    };
+  } catch (error) {
+    console.error(`Error getting certifications for crew ${crewUuid}:`, error);
+    return { certComp: '', issuingCountry: '', tankerCert: '', splTankerTraining: '', radioQual: false };
+  }
+}
+
+/**
+ * Get English proficiency from V2 crew_personal_details table
+ */
+async function getEnglishProficiencyV2(crewUuid: string | null): Promise<string> {
+  if (!crewUuid) return '';
+  
+  const db = getDb();
+  
+  try {
+    const details = await db
+      .select()
+      .from(crewPersonalDetails)
+      .where(and(
+        eq(crewPersonalDetails.crewUuid, crewUuid),
+        eq(crewPersonalDetails.isDeleted, false)
+      ))
+      .limit(1);
+    
+    return details[0]?.englishProficiency || '';
+  } catch (error) {
+    console.error(`Error getting English proficiency for crew ${crewUuid}:`, error);
+    return '';
+  }
 }
 
 export const vesselPlanningService = {
@@ -336,5 +635,23 @@ export const vesselPlanningService = {
       joiningStatus,
       ...updateData,
     });
+  },
+
+  /**
+   * Get Officer Matrix data for a crew member
+   * Returns experience metrics, certifications, and English proficiency
+   */
+  async getOfficerMatrixData(crewUuid: string, currentRank: string, signOnDate: string | null, department: 'deck' | 'engine') {
+    const [experienceMetrics, certifications, englishProficiency] = await Promise.all([
+      calculateExperienceMetricsV2(crewUuid, currentRank, signOnDate),
+      getCertificationsV2(crewUuid, department),
+      getEnglishProficiencyV2(crewUuid)
+    ]);
+
+    return {
+      ...experienceMetrics,
+      ...certifications,
+      englishProficiency
+    };
   },
 };

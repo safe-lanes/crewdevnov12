@@ -214,4 +214,37 @@ export const vesselApiV2 = {
     }
     return response.json();
   },
+
+  /**
+   * Get Officer Matrix data for a crew member
+   * Returns experience metrics, certifications, and English proficiency
+   */
+  async getOfficerMatrixData(crewUuid: string, rank: string, signOnDate: string | null, department: 'deck' | 'engine'): Promise<OfficerMatrixData> {
+    const params = new URLSearchParams();
+    if (rank) params.append('rank', rank);
+    if (signOnDate) params.append('signOnDate', signOnDate);
+    params.append('department', department);
+    
+    const response = await fetch(`${V2_BASE}/officer-matrix/${crewUuid}?${params.toString()}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Failed to fetch officer matrix data');
+    }
+    return response.json();
+  },
 };
+
+export interface OfficerMatrixData {
+  companyYears: number;
+  rankYears: number;
+  tankerTypeYears: number;
+  allTankersYears: number;
+  oowYears: number;
+  timeOnBoardMonths: number;
+  certComp: string;
+  issuingCountry: string;
+  tankerCert: string;
+  splTankerTraining: string;
+  radioQual: boolean;
+  englishProficiency: string;
+}

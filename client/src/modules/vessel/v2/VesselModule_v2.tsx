@@ -48,6 +48,7 @@ import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
 import { API_BASE_URL } from '@/config/api';
+import { vesselApiV2, OfficerMatrixData } from './api/vesselApiV2';
 import { generateFALForm5Document } from '@/lib/generateFALForm5';
 import { generateUSCrewListDocument } from '@/lib/generateUSCrewList';
 import { VesselVersionToggle } from '../components/VersionToggle';
@@ -478,6 +479,110 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         medicalExpiring: planning.medicalExpiring || '',
     };
 };
+
+/**
+ * Officer Matrix Row Component for V2
+ * Fetches and displays experience metrics, certifications, and language proficiency
+ */
+interface OfficerMatrixRowV2Props {
+    rank: any;
+    index: number;
+    rankPlanningData: any;
+    rankDepartment: 'deck' | 'engine' | null;
+    handleViewCrewClick: (planning: any) => void;
+}
+
+function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, handleViewCrewClick }: OfficerMatrixRowV2Props) {
+    const crewUuid = rankPlanningData?.crewUuid;
+    const fullRankName = rank.displayRole || rank.role || rank.rank;
+    
+    // Determine department: use inferred value, or derive from rank category if available
+    const effectiveDepartment: 'deck' | 'engine' | null = rankDepartment ?? 
+        (rank.category === 'Engine' ? 'engine' : 
+         rank.category === 'Deck' ? 'deck' : 
+         rank.department === 'engine' ? 'engine' :
+         rank.department === 'deck' ? 'deck' : null);
+    
+    // Fetch Officer Matrix data from V2 endpoint
+    // Only fetch if we have a crew member and a valid department
+    const { data: officerData } = useQuery({
+        queryKey: ['/api/v2/vessel/officer-matrix', crewUuid, fullRankName, effectiveDepartment],
+        queryFn: async () => {
+            if (!crewUuid || !effectiveDepartment) return null;
+            return vesselApiV2.getOfficerMatrixData(
+                crewUuid,
+                fullRankName,
+                rankPlanningData?.signOnDate || null,
+                effectiveDepartment
+            );
+        },
+        enabled: !!crewUuid && !!effectiveDepartment,
+        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    });
+    
+    return (
+        <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
+            <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
+                {fullRankName}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-name-${index + 1}`}>
+                {rankPlanningData?.crewName || ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-nationality-${index + 1}`}>
+                {rankPlanningData?.nationality || ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-cert-comp-${index + 1}`}>
+                {officerData?.certComp || ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-issuing-country-${index + 1}`}>
+                {officerData?.issuingCountry || ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-admin-accept-${index + 1}`}>
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-tanker-${index + 1}`}>
+                {officerData?.tankerCert || ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-spl-tanker-${index + 1}`}>
+                {officerData?.splTankerTraining || ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-radio-${index + 1}`}>
+                {officerData?.radioQual ? 'Yes' : ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-company-${index + 1}`}>
+                {officerData?.companyYears && officerData.companyYears > 0 ? officerData.companyYears : ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-rank-${index + 1}`}>
+                {officerData?.rankYears && officerData.rankYears > 0 ? officerData.rankYears : ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-tanker-${index + 1}`}>
+                {officerData?.tankerTypeYears && officerData.tankerTypeYears > 0 ? officerData.tankerTypeYears : ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-all-${index + 1}`}>
+                {officerData?.allTankersYears && officerData.allTankersYears > 0 ? officerData.allTankersYears : ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-dow-${index + 1}`}>
+                {officerData?.oowYears && officerData.oowYears > 0 ? officerData.oowYears : ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
+                {officerData?.timeOnBoardMonths && officerData.timeOnBoardMonths > 0 ? officerData.timeOnBoardMonths : ''}
+            </TableCell>
+            <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-language-${index + 1}`}>
+                {officerData?.englishProficiency || ''}
+            </TableCell>
+            <TableCell className="text-xs" data-testid={`cell-officer-actions-${index + 1}`}>
+                <Button 
+                    variant="ghost" 
+                    size="icon"
+                    disabled={!rankPlanningData}
+                    onClick={() => rankPlanningData && handleViewCrewClick(rankPlanningData)}
+                    data-testid={`button-view-officer-${index + 1}`}
+                >
+                    <Eye className="h-4 w-4 text-gray-500" />
+                </Button>
+            </TableCell>
+        </TableRow>
+    );
+}
 
 export function VesselModule_v2(): JSX.Element {
     const queryClient = useQueryClient();
@@ -1798,76 +1903,16 @@ export function VesselModule_v2(): JSX.Element {
                                                             if (!planningHasSuffix && planningBaseRank === baseRankName) return true;
                                                             return false;
                                                         });
-                                                        // V2: Don't look up crew from V1 - show empty values for detailed data
-                                                        // Crew name comes from V2 planning record only
-                                                        const crewMemberData = null; // V2: No V1 lookup
-                                                        const licenses: LicenseRecord[] = [];
                                                         const rankDepartment = inferDepartmentFromRank(fullRankName);
-                                                        const highestCoc = findHighestActiveCoc(licenses, rankDepartment);
-                                                        const trainingCourses: TrainingCourse[] = [];
-                                                        const tankerCerts = calculateTankerCertifications(trainingCourses);
-                                                        const companyYears = 0;
                                                         return (
-                                                            <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
-                                                                <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
-                                                                    {rank.displayRole || rank.role || rank.rank}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-name-${index + 1}`}>
-                                                                    {rankPlanningData?.crewName || ''}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-nationality-${index + 1}`}>
-                                                                    {rankPlanningData?.nationality || ''}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-cert-comp-${index + 1}`}>
-                                                                    {highestCoc?.officerMatrixLabel || ''}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-issuing-country-${index + 1}`}>
-                                                                    {highestCoc?.issuingCountry || ''}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-admin-accept-${index + 1}`}>
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-tanker-${index + 1}`}>
-                                                                    {tankerCerts.tankerCert}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-spl-tanker-${index + 1}`}>
-                                                                    {tankerCerts.splTankerTraining}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-radio-${index + 1}`}>
-                                                                    {rankDepartment === 'deck' && hasValidGmdss(licenses) ? 'Yes' : ''}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-company-${index + 1}`}>
-                                                                    {/* V2: No crew experience data from V1 */}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-rank-${index + 1}`}>
-                                                                    {/* V2: No crew experience data from V1 */}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-tanker-${index + 1}`}>
-                                                                    {/* V2: No crew experience data from V1 */}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-all-${index + 1}`}>
-                                                                    {/* V2: No crew experience data from V1 */}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-dow-${index + 1}`}>
-                                                                    {/* V2: No crew experience data from V1 */}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
-                                                                    {/* V2: No crew experience data from V1 */}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-language-${index + 1}`}>
-                                                                    {/* V2: No crew language data from V1 */}
-                                                                </TableCell>
-                                                                <TableCell className="text-xs" data-testid={`cell-officer-actions-${index + 1}`}>
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        size="icon"
-                                                                        disabled={!rankPlanningData}
-                                                                        onClick={() => rankPlanningData && handleViewCrewClick(rankPlanningData)}
-                                                                        data-testid={`button-view-officer-${index + 1}`}
-                                                                    >
-                                                                        <Eye className="h-4 w-4 text-gray-500" />
-                                                                    </Button>
-                                                                </TableCell>
-                                                            </TableRow>
+                                                            <OfficerMatrixRowV2 
+                                                                key={rank.id || index}
+                                                                rank={rank}
+                                                                index={index}
+                                                                rankPlanningData={rankPlanningData}
+                                                                rankDepartment={rankDepartment}
+                                                                handleViewCrewClick={handleViewCrewClick}
+                                                            />
                                                         );
                                                     })
                                                 )}
