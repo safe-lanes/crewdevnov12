@@ -2294,11 +2294,11 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
                     ))}
                   </>
                 ) : rankExperienceData?.items && rankExperienceData.items.length > 0 ? (
-                  rankExperienceData.items.map((item: { type: string; label: string; months: number; years: number }, index: number) => {
+                  rankExperienceData.items.map((item: { type?: string; label: string; months: number; years: number }, index: number) => {
                     const percentage = rankExperienceData.totalMonths > 0 
                       ? (item.months / rankExperienceData.totalMonths) * 100 
                       : 0;
-                    const rankSlug = item.type.toLowerCase().replace(/[\s\/]+/g, '-');
+                    const rankSlug = (item.type || item.label || 'rank').toLowerCase().replace(/[\s\/]+/g, '-');
                     
                     return (
                       <div key={index} className="space-y-1" data-testid={`rank-${rankSlug}`}>
