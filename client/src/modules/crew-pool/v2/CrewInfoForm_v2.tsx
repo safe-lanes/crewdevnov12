@@ -2968,11 +2968,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     ))}
                   </>
                 ) : shipTypesData?.items && shipTypesData.items.length > 0 ? (
-                  shipTypesData.items.map((item: { type: string; label: string; months: number; years: number }, index: number) => {
+                  shipTypesData.items.map((item: { type?: string; label: string; months: number; years: number }, index: number) => {
                     const percentage = shipTypesData.totalMonths > 0 
                       ? (item.months / shipTypesData.totalMonths) * 100 
                       : 0;
-                    const typeSlug = item.type.toLowerCase().replace(/[\s\/]+/g, '-');
+                    const typeSlug = (item.type || item.label || 'unknown').toLowerCase().replace(/[\s\/]+/g, '-');
                     
                     return (
                       <div key={index} className="space-y-1" data-testid={`ship-type-${typeSlug}`}>
