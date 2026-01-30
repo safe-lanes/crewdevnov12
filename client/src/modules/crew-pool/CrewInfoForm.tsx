@@ -370,8 +370,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
         const { crew, personalDetails, address, familyInfo, nextOfKin, children, documents, visas, education, licenses, trainingCourses, seaService, medicals, doctorVisits } = data;
         
         const seaServiceArr = seaService || [];
-        const companySeaService = seaServiceArr.filter((s: any) => s.serviceType === 'company' || s.isCompanyService);
-        const externalSeaService = seaServiceArr.filter((s: any) => s.serviceType === 'external' || !s.isCompanyService);
+        const companySeaService = seaServiceArr.filter((s: any) => s.serviceType === 'company');
+        const externalSeaService = seaServiceArr.filter((s: any) => s.serviceType === 'external' || s.serviceType !== 'company');
         
         return {
           id: crew.crewUuid,
@@ -381,22 +381,22 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           familyName: crew.familyName || '',
           nationality: crew.nationality || '',
           presentRank: crew.rank || crew.presentRank || '',
-          employeeId: crew.crewId || '',
-          dob: crew.dateOfBirth || '',
-          dateOfBirth: crew.dateOfBirth || '',
-          gender: personalDetails?.gender || 'Male',
+          employeeId: crew.empNo || crew.employeeId || '',
+          dob: crew.dob || '',
+          dateOfBirth: crew.dob || '',
+          gender: crew.gender || 'Male',
           placeOfBirthCity: personalDetails?.placeOfBirthCity || '',
           placeOfBirthCountry: personalDetails?.placeOfBirthCountry || '',
-          heightCm: personalDetails?.height || '',
-          weightKg: personalDetails?.weight || '',
+          heightCm: personalDetails?.heightCm || '',
+          weightKg: personalDetails?.weightKg || '',
           bmi: personalDetails?.bmi || '',
           nativeLanguage: personalDetails?.nativeLanguage || '',
           foreignLanguages: personalDetails?.foreignLanguages || '',
           englishProficiency: personalDetails?.englishProficiency || '',
           rankAppliedFor: crew.rankAppliedFor || '',
           vesselTypes: crew.vesselType ? [crew.vesselType] : [],
-          manningAgent: crew.manningAgent || '',
-          crewPool: crew.crewPool || '',
+          manningAgent: personalDetails?.manningAgent || '',
+          crewPool: personalDetails?.crewPool || '',
           countryOfResidence: address?.countryOfResidence || '',
           nearestAirport: address?.nearestAirport || '',
           residentialAddressLine1: address?.addressLine1 || '',
