@@ -21,9 +21,11 @@ export interface LegacyCrewMember {
   presentVessel: string;
   lastVessel: string;
   signOnDate: string;
+  signOffDate: string;
   reliefDue: string;
   contractPeriodMonths: string;
   assignmentReason: string;
+  reason: string;
 }
 
 function calculateAge(dob: string): string {
@@ -64,9 +66,11 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     presentVessel: v2Crew.presentVessel || '',
     lastVessel: v2Crew.lastVessel || '',
     signOnDate: v2Crew.signOnDate || '',
+    signOffDate: v2Crew.signOffDate || '',
     reliefDue: v2Crew.reliefDue || '',
     contractPeriodMonths: v2Crew.contractPeriodMonths || '',
     assignmentReason: v2Crew.assignmentReason || '',
+    reason: v2Crew.reason || '',
   };
 }
 
