@@ -454,9 +454,19 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
             periodMonths: s.periodMonths || '',
           })),
           seaService: seaServiceArr,
-          preJoiningMedicals: medicals || [],
+          preJoiningMedicals: (medicals || []).map((m: any) => ({
+            ...m,
+            vessel: m.vesselName || m.vessel || '',
+            dateOfMedical: m.examinationDate || m.dateOfMedical || '',
+            fitnessForSeaService: m.fitForDuty || m.fitnessForSeaService || '',
+            expiry: m.expiryDate || m.expiry || '',
+          })),
           medicals: medicals || [],
-          doctorVisits: doctorVisits || [],
+          doctorVisits: (doctorVisits || []).map((d: any) => ({
+            ...d,
+            date: d.visitDate || d.date || '',
+            complaint: d.reason || d.complaint || '',
+          })),
         };
       }
       return data;
