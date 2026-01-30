@@ -16,6 +16,10 @@ export const dashboardController = {
         return res.status(404).json({ error: "Crew member not found" });
       }
 
+      // Disable HTTP caching to ensure fresh data after sign-on/sign-off operations
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
       return res.json(dashboard);
     } catch (error: any) {
       console.error("Error fetching crew dashboard:", error);
