@@ -2,12 +2,148 @@ import { vesselPlanningRepository, vesselPlanningAttachmentsRepository } from ".
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
-import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
+import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals } from "../../../../shared/v2/crew-pool/schema";
 import { eq, and, sql } from "drizzle-orm";
+
+/**
+ * Calculate document and medical expiry counts for a crew member
+ * Same logic as V1's analyzeDocumentExpiry function
+ */
+async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ docExpiringCount: string; medicalExpiring: string }> {
+  if (!crewUuid) {
+    return { docExpiringCount: '0/0', medicalExpiring: '-' };
+  }
+  
+  const db = getDb();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const twoMonthsFromNow = new Date(today);
+  twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+  
+  let expiredDocs = 0;
+  let expiringDocs = 0;
+  let medicalExpiring = '-';
+  
+  try {
+    // Helper to analyze expiry for any document type
+    const analyzeExpiry = (expiry: string | null) => {
+      if (!expiry) return;
+      const expiryDate = new Date(expiry);
+      if (isNaN(expiryDate.getTime())) return;
+      expiryDate.setHours(0, 0, 0, 0);
+      
+      if (expiryDate < today) {
+        expiredDocs++;
+      } else if (expiryDate <= twoMonthsFromNow) {
+        expiringDocs++;
+      }
+    };
+    
+    // Fetch and analyze documents (Travel Docs)
+    const docs = await db
+      .select()
+      .from(crewDocuments)
+      .where(and(
+        eq(crewDocuments.crewUuid, crewUuid),
+        eq(crewDocuments.isDeleted, false)
+      ));
+    for (const doc of docs) {
+      analyzeExpiry(doc.expiry);
+    }
+    
+    // Fetch and analyze visas
+    const visas = await db
+      .select()
+      .from(crewVisas)
+      .where(and(
+        eq(crewVisas.crewUuid, crewUuid),
+        eq(crewVisas.isDeleted, false)
+      ));
+    for (const visa of visas) {
+      analyzeExpiry(visa.expiry);
+    }
+    
+    // Fetch and analyze licenses
+    const licenses = await db
+      .select()
+      .from(crewLicenses)
+      .where(and(
+        eq(crewLicenses.crewUuid, crewUuid),
+        eq(crewLicenses.isDeleted, false)
+      ));
+    for (const lic of licenses) {
+      analyzeExpiry(lic.expiry);
+    }
+    
+    // Fetch and analyze training courses
+    const training = await db
+      .select()
+      .from(crewTrainingCourses)
+      .where(and(
+        eq(crewTrainingCourses.crewUuid, crewUuid),
+        eq(crewTrainingCourses.isDeleted, false)
+      ));
+    for (const t of training) {
+      analyzeExpiry(t.expiry);
+    }
+    
+    // Fetch medicals for this crew
+    const medicals = await db
+      .select()
+      .from(crewPreJoiningMedicals)
+      .where(and(
+        eq(crewPreJoiningMedicals.crewUuid, crewUuid),
+        eq(crewPreJoiningMedicals.isDeleted, false)
+      ));
+    
+    // Analyze medical expiry - check most recent medical
+    if (medicals.length > 0) {
+      // Sort by examination date descending to get most recent
+      const sortedMedicals = [...medicals].sort((a: typeof medicals[0], b: typeof medicals[0]) => {
+        const dateA = a.examinationDate ? new Date(a.examinationDate).getTime() : 0;
+        const dateB = b.examinationDate ? new Date(b.examinationDate).getTime() : 0;
+        return dateB - dateA;
+      });
+      
+      const latestMedical = sortedMedicals[0];
+      if (latestMedical.expiryDate) {
+        const medExpiry = new Date(latestMedical.expiryDate);
+        medExpiry.setHours(0, 0, 0, 0);
+        
+        if (medExpiry < today) {
+          medicalExpiring = 'Expired';
+        } else if (medExpiry <= twoMonthsFromNow) {
+          medicalExpiring = 'Expiring';
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error calculating expiry counts for crew ${crewUuid}:`, error);
+  }
+  
+  return {
+    docExpiringCount: `${expiringDocs}/${expiredDocs}`,
+    medicalExpiring
+  };
+}
 
 export const vesselPlanningService = {
   async getByVesselUuid(vesselUuid: string) {
-    return vesselPlanningRepository.findByVesselUuid(vesselUuid);
+    const planningRecords = await vesselPlanningRepository.findByVesselUuid(vesselUuid);
+    
+    // Enrich each planning record with document/medical expiry counts
+    const enrichedRecords = await Promise.all(
+      planningRecords.map(async (record: any) => {
+        const { docExpiringCount, medicalExpiring } = await calculateExpiryCountsForCrew(record.crewUuid);
+        return {
+          ...record,
+          docExpiringCount,
+          medicalExpiring
+        };
+      })
+    );
+    
+    return enrichedRecords;
   },
 
   async getByPlanUuid(planUuid: string) {
