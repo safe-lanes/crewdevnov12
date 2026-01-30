@@ -439,7 +439,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           trainingCourses: trainingCourses || [],
           currentCompanySeaService: companySeaService.map((s: any) => ({
             ...s,
-            vesselName: s.vesselName || s.resolvedVesselName || s.vesselName || '',
+            vesselCode: s.vesselUuid || s.vesselCode || '',
+            vesselName: s.vesselName || s.resolvedVesselName || '',
             vesselType: s.resolvedVesselTypeName || s.vesselType || '',
             from: s.fromDate || s.from || '',
             to: s.toDate || s.to || '',
@@ -447,7 +448,8 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           })),
           externalSeaService: externalSeaService.map((s: any) => ({
             ...s,
-            vesselName: s.vesselName || s.resolvedVesselName || s.vesselName || '',
+            vesselCode: s.vesselUuid || s.vesselCode || '',
+            vesselName: s.vesselName || s.resolvedVesselName || '',
             vesselType: s.resolvedVesselTypeName || s.vesselType || '',
             from: s.fromDate || s.from || '',
             to: s.toDate || s.to || '',
