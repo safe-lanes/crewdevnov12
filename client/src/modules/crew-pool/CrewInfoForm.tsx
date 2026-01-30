@@ -458,6 +458,7 @@ export const CrewInfoForm: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, cre
           seaService: seaServiceArr,
           preJoiningMedicals: (medicals || []).map((m: any) => ({
             ...m,
+            vesselCode: m.vesselUuid || m.vesselCode || '',
             vessel: m.vesselName || m.vessel || '',
             dateOfMedical: m.examinationDate || m.dateOfMedical || '',
             fitnessForSeaService: m.fitForDuty || m.fitnessForSeaService || '',
