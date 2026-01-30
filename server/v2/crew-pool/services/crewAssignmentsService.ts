@@ -197,6 +197,7 @@ export const crewAssignmentsService = {
       .update(crewAssignments)
       .set({
         signOffDate: signOffDateStr,
+        reason: data.signOffReason || null,
         isCurrent: false,
         updatedAt: new Date(),
       })

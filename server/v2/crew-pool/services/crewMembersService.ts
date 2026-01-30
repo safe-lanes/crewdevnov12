@@ -1,4 +1,4 @@
-import { eq, and, desc, or, ilike, sql, isNull, aliasedTable } from "drizzle-orm";
+import { eq, and, desc, or, ilike, sql, isNull, isNotNull, inArray, aliasedTable } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { CrewMembersRepository } from "../repositories";
@@ -399,24 +399,23 @@ export const crewMembersService = {
 
     const total = countResult?.count || 0;
 
-    // Create an alias for lastVessel name resolution
-    const lastVesselAlias = aliasedTable(masterVessels, "lastVesselAlias");
+    // Create aliases for vessel name resolution
+    const previousAssignmentAlias = aliasedTable(crewAssignments, "prevAssignment");
+    const previousVesselAlias = aliasedTable(masterVessels, "prevVessel");
     
+    // Get crew with current assignment (isCurrent=true)
     const results = await db
       .select({
         crew: crewMembersV2,
+        // Current assignment data
         currentVessel: crewAssignments.vesselUuid,
-        lastVessel: crewAssignments.lastVesselUuid,
         signOnDate: crewAssignments.signOnDate,
-        signOffDate: crewAssignments.signOffDate,
         reliefDue: crewAssignments.reliefDue,
         contractPeriod: crewAssignments.contractPeriod,
-        assignmentReason: crewAssignments.reason,
         // Resolved master data names
         nationality: masterNationalities.nationality,
         vesselType: masterVesselTypes.vesselType,
         currentVesselName: masterVessels.vessel,
-        lastVesselName: lastVesselAlias.vessel,
       })
       .from(crewMembersV2)
       .leftJoin(
@@ -440,33 +439,72 @@ export const crewMembersService = {
         masterVessels,
         eq(crewAssignments.vesselUuid, masterVessels.vesselUuid)
       )
-      .leftJoin(
-        lastVesselAlias,
-        eq(crewAssignments.lastVesselUuid, lastVesselAlias.vesselUuid)
-      )
       .where(and(...conditions))
       .orderBy(desc(crewMembersV2.createdAt))
       .limit(limit)
       .offset(offset);
 
-    const data = results.map((r: any) => ({
-      ...r.crew,
-      // Return both UUID (for forms) and resolved name (for display)
-      nationalityUuid: r.crew.nationalityUuid,
-      nationality: r.nationality,
-      vesselTypeUuid: r.crew.vesselTypeUuid,
-      vesselType: r.vesselType,
-      presentVessel: r.currentVessel,
-      presentVesselName: r.currentVesselName,
-      lastVessel: r.lastVesselName || r.lastVessel,
-      signOnDate: r.signOnDate,
-      signOffDate: r.signOffDate,
-      reliefDue: r.reliefDue,
-      contractPeriod: r.contractPeriod,
-      reason: r.assignmentReason,
-      status: this.calculateCrewStatus(r.crew.isActive !== false, !!r.currentVessel),
-      timeOnBoardMonths: this.calculateTimeOnBoard(r.signOnDate),
-    }));
+    // Get crew UUIDs from results to fetch previous assignments
+    const crewUuids = results.map((r: any) => r.crew.crewUuid).filter(Boolean);
+    
+    // Fetch previous assignments (most recent where isCurrent=false) for all crew
+    const previousAssignmentsMap = new Map<string, any>();
+    if (crewUuids.length > 0) {
+      // Use a subquery approach: for each crew, get their most recent non-current assignment with vessel name
+      const prevAssignments = await db
+        .select({
+          crewUuid: crewAssignments.crewUuid,
+          vesselUuid: crewAssignments.vesselUuid,
+          vesselName: masterVessels.vessel,
+          signOffDate: crewAssignments.signOffDate,
+          reason: crewAssignments.reason,
+        })
+        .from(crewAssignments)
+        .leftJoin(
+          masterVessels,
+          eq(crewAssignments.vesselUuid, masterVessels.vesselUuid)
+        )
+        .where(
+          and(
+            inArray(crewAssignments.crewUuid, crewUuids),
+            eq(crewAssignments.isCurrent, false),
+            eq(crewAssignments.isDeleted, false),
+            isNotNull(crewAssignments.signOffDate)
+          )
+        )
+        .orderBy(desc(crewAssignments.signOffDate));
+      
+      // Group by crewUuid, keep only the most recent (first) for each crew
+      for (const prev of prevAssignments) {
+        if (!previousAssignmentsMap.has(prev.crewUuid)) {
+          previousAssignmentsMap.set(prev.crewUuid, prev);
+        }
+      }
+    }
+
+    const data = results.map((r: any) => {
+      const prevAssignment = previousAssignmentsMap.get(r.crew.crewUuid);
+      return {
+        ...r.crew,
+        // Return both UUID (for forms) and resolved name (for display)
+        nationalityUuid: r.crew.nationalityUuid,
+        nationality: r.nationality,
+        vesselTypeUuid: r.crew.vesselTypeUuid,
+        vesselType: r.vesselType,
+        presentVessel: r.currentVessel,
+        presentVesselName: r.currentVesselName,
+        // Current assignment data
+        signOnDate: r.signOnDate,
+        reliefDue: r.reliefDue,
+        contractPeriod: r.contractPeriod,
+        // Previous assignment data (from most recent non-current assignment)
+        lastVessel: prevAssignment?.vesselName || prevAssignment?.vesselUuid || null,
+        signOffDate: prevAssignment?.signOffDate || null,
+        reason: prevAssignment?.reason || null,
+        status: this.calculateCrewStatus(r.crew.isActive !== false, !!r.currentVessel),
+        timeOnBoardMonths: this.calculateTimeOnBoard(r.signOnDate),
+      };
+    });
 
     return {
       data,

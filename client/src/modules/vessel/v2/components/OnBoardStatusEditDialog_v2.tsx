@@ -284,15 +284,13 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 
-                const crewMemberId = planningData?.crewMemberId || planningData?.crewUuid;
-                if (crewMemberId) {
-                    const vesselName = getVesselName(vesselUuid) || vesselUuid;
+                const crewUuid = planningData?.crewUuid;
+                if (crewUuid) {
                     const signOffPayload = {
-                        lastVessel: vesselName,
                         signOffDate: data.signOffDate,
-                        reason: data.signOffReason,
+                        signOffReason: data.signOffReason,
                     };
-                    await apiRequest('POST', `/api/crew-members/${crewMemberId}/sign-off`, signOffPayload);
+                    await apiRequest('POST', `/api/v2/crew-pool/crew/${crewUuid}/sign-off`, signOffPayload);
                 }
                 
                 await vesselApiV2.archivePlanning(planningData.planUuid, 'user');
@@ -345,6 +343,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
             queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
+            queryClient.invalidateQueries({ queryKey: ['v2-crew-pool'] });
             
             toast({
                 title: "Success",
