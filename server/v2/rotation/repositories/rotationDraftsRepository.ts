@@ -153,6 +153,13 @@ export class RotationDraftRanksRepository {
       .set({ isDeleted: true, updatedAt: new Date() })
       .where(eq(rotationDraftRanksV2.rrUuid, rrUuid));
   }
+
+  async hardDeleteByDraftUuid(draftUuid: string): Promise<void> {
+    const db = getDb();
+    await db
+      .delete(rotationDraftRanksV2)
+      .where(eq(rotationDraftRanksV2.draftUuid, draftUuid));
+  }
 }
 
 export const rotationDraftsRepository = new RotationDraftsRepository();

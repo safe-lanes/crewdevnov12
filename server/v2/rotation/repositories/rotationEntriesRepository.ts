@@ -101,6 +101,13 @@ export class RotationEntriesRepository {
       .set({ isDeleted: true, updatedAt: new Date() })
       .where(eq(rotationEntriesV2.entryUuid, entryUuid));
   }
+
+  async hardDeleteByDraftUuid(draftUuid: string): Promise<void> {
+    const db = getDb();
+    await db
+      .delete(rotationEntriesV2)
+      .where(eq(rotationEntriesV2.draftUuid, draftUuid));
+  }
 }
 
 export class RotationArchiveRepository {
