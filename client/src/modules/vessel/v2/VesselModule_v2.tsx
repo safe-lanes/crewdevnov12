@@ -1622,12 +1622,69 @@ export function VesselModule_v2(): JSX.Element {
                                                             </TableCell>
                                                             {showArchived ? (
                                                                 <>
-                                                                    <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.actualSignOffDate)}</TableCell>
-                                                                    <TableCell className="text-xs text-gray-700">
-                                                                        <span className="text-blue-600 hover:underline cursor-pointer">Edit</span>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-signoff-date-${index + 1}`}>
+                                                                        {formatDateOnly(planning.signOffDate || planning.archivedDate)}
                                                                     </TableCell>
-                                                                    <TableCell className="text-xs text-gray-700">
-                                                                        <Eye className="h-4 w-4 text-gray-400" />
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
+                                                                        {(() => {
+                                                                            const crewAppraisals = allAppraisals
+                                                                                .filter((a: any) => 
+                                                                                    a.crewMemberId === planning.crewMemberId || a.crewMemberId === planning.crewUuid
+                                                                                )
+                                                                                .sort((a: any, b: any) => {
+                                                                                    const dateA = new Date(a.updatedAt || a.createdAt || 0);
+                                                                                    const dateB = new Date(b.updatedAt || b.createdAt || 0);
+                                                                                    return dateB.getTime() - dateA.getTime();
+                                                                                });
+                                                                            const hasAppraisal = crewAppraisals.length > 0;
+                                                                            const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                            const buttonText = hasAppraisal ? 'View' : 'Add';
+                                                                            const buttonConfig = {
+                                                                                text: buttonText,
+                                                                                appraisalId: latestAppraisal?.id,
+                                                                                status: latestAppraisal?.status
+                                                                            };
+                                                                            return (
+                                                                                <Button
+                                                                                    variant="link"
+                                                                                    size="sm"
+                                                                                    onClick={() => handleAppraisalClick(planning, buttonConfig)}
+                                                                                    className={hasAppraisal ? 'text-green-600' : 'text-blue-600'}
+                                                                                    data-testid={`button-appraisal-${index + 1}`}
+                                                                                >
+                                                                                    {buttonText}
+                                                                                </Button>
+                                                                            );
+                                                                        })()}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
+                                                                        {(() => {
+                                                                            const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments) || (planning.handoverAttachmentCount || 0);
+                                                                            const hasAttachments = attachmentCount > 0;
+                                                                            const handoverDate = formatDateOnly(planning.handOverDate);
+                                                                            return (
+                                                                                <div className="flex flex-col gap-0.5">
+                                                                                    {handoverDate && <span className="text-gray-600">{handoverDate}</span>}
+                                                                                    <Button
+                                                                                        variant="link"
+                                                                                        size="sm"
+                                                                                        onClick={() => {
+                                                                                            setHandoverDialogData({
+                                                                                                planningId: planning.planUuid,
+                                                                                                vesselId: selectedVessel?.vesselId || '',
+                                                                                                crewName: planning.crewMemberName || '',
+                                                                                                rank: planning.rank || ''
+                                                                                            });
+                                                                                            setHandoverDialogOpen(true);
+                                                                                        }}
+                                                                                        className={`p-0 h-auto ${hasAttachments ? 'text-green-600' : 'text-blue-600'}`}
+                                                                                        data-testid={`button-handover-${index + 1}`}
+                                                                                    >
+                                                                                        {hasAttachments ? 'View' : 'Add'}
+                                                                                    </Button>
+                                                                                </div>
+                                                                            );
+                                                                        })()}
                                                                     </TableCell>
                                                                 </>
                                                             ) : (
@@ -1725,7 +1782,8 @@ export function VesselModule_v2(): JSX.Element {
                                                                     </TableCell>
                                                                     <TableCell className="text-xs" data-testid={`cell-handover-${index + 1}`}>
                                                                         {(() => {
-                                                                            const hasAttachments = (planning.handoverAttachmentCount || 0) > 0;
+                                                                            const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments) || (planning.handoverAttachmentCount || 0);
+                                                                            const hasAttachments = attachmentCount > 0;
                                                                             return (
                                                                                 <Button
                                                                                     variant="link"
