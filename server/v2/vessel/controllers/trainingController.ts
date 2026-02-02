@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNotNull } from "drizzle-orm";
 import { getDb } from "../../db";
-import { crewAssignments, crewTrainingCourses } from "../../../../shared/v2/crew-pool/schema";
+import { crewTrainingCourses } from "../../../../shared/v2/crew-pool/schema";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 
 interface CrewTrainingData {
   role: string;
@@ -20,22 +21,30 @@ export const trainingController = {
       const vesselUuid = req.params.vesselUuid;
       const db = getDb();
       
-      const assignments = await db
-        .select()
-        .from(crewAssignments)
+      // Get crew from vessel_planning_v2 (primary crew with crewUuid assigned)
+      const planningEntries = await db
+        .select({
+          crewUuid: vesselPlanningV2.crewUuid,
+          rank: vesselPlanningV2.rank,
+        })
+        .from(vesselPlanningV2)
         .where(
           and(
-            eq(crewAssignments.vesselUuid, vesselUuid),
-            eq(crewAssignments.isCurrent, true),
-            eq(crewAssignments.isDeleted, false),
-            isNull(crewAssignments.signOffDate)
+            eq(vesselPlanningV2.vesselUuid, vesselUuid),
+            eq(vesselPlanningV2.isDeleted, false),
+            eq(vesselPlanningV2.crewStatus, 'primary'),
+            isNotNull(vesselPlanningV2.crewUuid)
           )
         );
       
       const result: CrewTrainingData[] = [];
       
-      for (const assignment of assignments) {
-        if (!assignment.crewUuid) continue;
+      // Use a Set to avoid duplicate crew entries
+      const processedCrewUuids = new Set<string>();
+      
+      for (const entry of planningEntries) {
+        if (!entry.crewUuid || processedCrewUuids.has(entry.crewUuid)) continue;
+        processedCrewUuids.add(entry.crewUuid);
         
         const trainings = await db
           .select({
@@ -45,11 +54,11 @@ export const trainingController = {
             expiry: crewTrainingCourses.expiry,
           })
           .from(crewTrainingCourses)
-          .where(eq(crewTrainingCourses.crewUuid, assignment.crewUuid));
+          .where(eq(crewTrainingCourses.crewUuid, entry.crewUuid));
         
         result.push({
-          role: assignment.rank || '',
-          crewUuid: assignment.crewUuid,
+          role: entry.rank || '',
+          crewUuid: entry.crewUuid,
           trainings: trainings.map((t: { courseId: string | null; trainingCourse: string | null; abbr: string | null; expiry: string | null }) => ({
             courseId: t.courseId || '',
             trainingCourse: t.trainingCourse || '',
