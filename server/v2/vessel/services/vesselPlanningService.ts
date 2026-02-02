@@ -10,31 +10,28 @@ import { eq, and, sql, desc, or } from "drizzle-orm";
  * Resolve a port value to its UUID
  * Accepts either a UUID or port name, returns the port_uuid
  * This handles legacy data that may contain port names instead of UUIDs
+ * 
+ * Performance optimization: If the input matches UUID format, return it directly
+ * without database validation. Port UUIDs come from port selectors that only
+ * return valid UUIDs, and the main issue (port names being stored) is handled
+ * by the name lookup fallback. Invalid UUIDs will fail at JOIN time (acceptable).
  */
 async function resolvePortToUuid(portValue: string | null | undefined): Promise<string | null> {
   if (!portValue) return null;
   
-  const db = getDb();
-  
-  // Check if it looks like a UUID (contains hyphens in UUID pattern)
+  // Check if it looks like a UUID - if so, trust it and return immediately
+  // This avoids an unnecessary database query for valid UUIDs
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidPattern.test(portValue)) {
-    // Verify the UUID exists in master_ports
-    const exists = await db
-      .select({ portUuid: masterPorts.portUuid })
-      .from(masterPorts)
-      .where(eq(masterPorts.portUuid, portValue))
-      .limit(1);
-    if (exists.length > 0) {
-      return portValue; // Valid UUID
-    }
+    return portValue;
   }
   
-  // Try to find by port name (case-insensitive)
+  // Not a UUID format - try to find by port name (case-insensitive)
+  const db = getDb();
   const byName = await db
     .select({ portUuid: masterPorts.portUuid })
     .from(masterPorts)
-    .where(sql`UPPER(${masterPorts.name}) = UPPER(${portValue})`)
+    .where(sql`UPPER(${masterPorts.name}) = UPPER(${portValue.trim()})`)
     .limit(1);
   
   if (byName.length > 0) {
