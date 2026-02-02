@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNull } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
 
@@ -8,6 +8,10 @@ export const vesselCrewCountController = {
     try {
       const db = getDb();
       
+      // Count crew that are currently on board:
+      // - isCurrent = true (active assignment)
+      // - signOffDate IS NULL (not signed off)
+      // - isDeleted = false (not deleted)
       const results = await db
         .select({
           vesselUuid: crewAssignments.vesselUuid,
@@ -17,6 +21,8 @@ export const vesselCrewCountController = {
         .where(
           and(
             eq(crewAssignments.isCurrent, true),
+            eq(crewAssignments.isDeleted, false),
+            isNull(crewAssignments.signOffDate),
             sql`${crewAssignments.vesselUuid} IS NOT NULL`
           )
         )
