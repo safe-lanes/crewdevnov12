@@ -1,0 +1,43 @@
+Analyze the complete codebase for vessel and rotation functionality, including UI (frontend), backend, and database components. Generate a detailed report covering the following areas:
+
+## 1. Code Standards Analysis
+- Review code formatting, naming conventions, and consistency across files
+- Check for adherence to language-specific best practices (e.g., PEP 8 for Python, ESLint rules for JavaScript)
+- Identify inconsistent patterns in function/variable naming
+- Evaluate code organization and file structure
+- Check for proper error handling and logging practices
+- Assess code documentation and comments quality
+- Identify any security vulnerabilities or anti-patterns
+
+## 2. Unused Database Columns
+- Scan all database tables related to vessel and rotation
+- Identify columns that are:
+  - Never written to (always NULL or default values)
+  - Never read in queries or application code
+  - Defined but not referenced in the codebase
+- List each unused column with: table name, column name, data type, and last known usage (if any)
+
+## 3. Data Integrity & Foreign Key Validation
+- Verify UUID columns contain valid UUID format values
+- Check foreign key relationships are properly maintained
+- Identify mismatched data types in FK relationships
+- Validate that reference columns actually reference existing records
+- Check for orphaned records or broken references
+- Verify enum/choice field values match defined constraints
+- Identify columns with incorrect data types for their purpose
+
+## 4. Unused Code Detection
+- Identify unused functions, methods, and classes
+- Find unreachable code blocks
+- Detect unused imports and dependencies
+- Locate commented-out code blocks
+- Find duplicate code sections
+- Identify unused API endpoints or routes
+- List unused UI components or templates
+
+Please provide:
+- A summary of findings for each section
+- Specific file paths and line numbers for issues
+- Severity ratings (critical, high, medium, low)
+- Actionable recommendations for cleanup and improvements
+- Estimated impact of removing unused elements (storage, performance, maintainability)
