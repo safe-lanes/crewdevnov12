@@ -171,12 +171,20 @@ export const rotationDraftsService = {
     // Extract vessels, crew, and assignments from data
     const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...draftData } = data;
     
+    // Determine if we should use hard delete (for Draft status) or soft delete (for Proposed/Completed)
+    const isDraftStatus = existing.planStatus === 'Draft';
+    
     // Update vessels if provided (replace all)
     if (vesselsJson !== undefined) {
-      // Delete existing vessels for this draft
-      const existingVessels = await rotationDraftVesselsRepository.findByDraftUuid(draftUuid);
-      for (const v of existingVessels) {
-        await rotationDraftVesselsRepository.softDelete(v.rvUuid);
+      if (isDraftStatus) {
+        // Hard delete for Draft status - prevents duplicate records
+        await rotationDraftVesselsRepository.hardDeleteByDraftUuid(draftUuid);
+      } else {
+        // Soft delete for Proposed/Completed status - preserves audit trail
+        const existingVessels = await rotationDraftVesselsRepository.findByDraftUuid(draftUuid);
+        for (const v of existingVessels) {
+          await rotationDraftVesselsRepository.softDelete(v.rvUuid);
+        }
       }
       
       // Add new vessels
@@ -196,10 +204,15 @@ export const rotationDraftsService = {
     
     // Update ranks if provided (replace all)
     if (crewString !== undefined) {
-      // Delete existing ranks for this draft
-      const existingRanks = await rotationDraftRanksRepository.findByDraftUuid(draftUuid);
-      for (const r of existingRanks) {
-        await rotationDraftRanksRepository.softDelete(r.rrUuid);
+      if (isDraftStatus) {
+        // Hard delete for Draft status - prevents duplicate records
+        await rotationDraftRanksRepository.hardDeleteByDraftUuid(draftUuid);
+      } else {
+        // Soft delete for Proposed/Completed status - preserves audit trail
+        const existingRanks = await rotationDraftRanksRepository.findByDraftUuid(draftUuid);
+        for (const r of existingRanks) {
+          await rotationDraftRanksRepository.softDelete(r.rrUuid);
+        }
       }
       
       // Add new ranks
@@ -215,10 +228,15 @@ export const rotationDraftsService = {
     
     // Update assignments if provided (replace all)
     if (assignmentsJson !== undefined) {
-      // Delete existing entries for this draft
-      const existingEntries = await rotationEntriesRepository.findByDraftUuid(draftUuid);
-      for (const e of existingEntries) {
-        await rotationEntriesRepository.softDelete(e.entryUuid);
+      if (isDraftStatus) {
+        // Hard delete for Draft status - prevents duplicate records
+        await rotationEntriesRepository.hardDeleteByDraftUuid(draftUuid);
+      } else {
+        // Soft delete for Proposed/Completed status - preserves audit trail
+        const existingEntries = await rotationEntriesRepository.findByDraftUuid(draftUuid);
+        for (const e of existingEntries) {
+          await rotationEntriesRepository.softDelete(e.entryUuid);
+        }
       }
       
       // Add new assignments
