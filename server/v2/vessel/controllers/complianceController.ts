@@ -65,6 +65,22 @@ function isEngineerOfficer(rank: string): boolean {
   return ['chief engineer', '2nd engineer', '3rd engineer', '4th engineer'].some(r => normalized.includes(r));
 }
 
+function calculateMonthsFromDates(fromDate: string | null, toDate: string | null): number {
+  if (!fromDate) return 0;
+  
+  const from = new Date(fromDate);
+  const to = toDate ? new Date(toDate) : new Date();
+  
+  if (isNaN(from.getTime())) return 0;
+  if (isNaN(to.getTime())) return 0;
+  
+  const months = (to.getFullYear() - from.getFullYear()) * 12 + 
+                 (to.getMonth() - from.getMonth()) +
+                 (to.getDate() - from.getDate()) / 30;
+  
+  return Math.max(0, months);
+}
+
 function calculateYearsFromSeaService(
   seaServices: any[],
   filterType: 'company' | 'all' | 'rank' | 'vesselType',
@@ -87,7 +103,12 @@ function calculateYearsFromSeaService(
     }
     
     if (include) {
-      const months = parseFloat(service.periodMonths) || 0;
+      let months = parseFloat(service.periodMonths) || 0;
+      
+      if (months === 0 && service.fromDate) {
+        months = calculateMonthsFromDates(service.fromDate, service.toDate);
+      }
+      
       totalMonths += months;
     }
   }
@@ -168,122 +189,115 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
   return experiences;
 }
 
-function evaluateRuleAgainstCrew(
-  rule: any,
+function parseRankPairString(rankPairStr: string): string[] {
+  return rankPairStr
+    .split(/[+,]/)
+    .map(r => r.trim())
+    .filter(r => r.length > 0);
+}
+
+function matchRankToCrewExperience(rankName: string, crewExperiences: CrewExperience[]): CrewExperience | undefined {
+  const normalized = rankName.toLowerCase().replace(/\//g, ' ').trim();
+  
+  const rankMappings: Record<string, string[]> = {
+    'master': ['master'],
+    'chief officer': ['chief officer', 'c/o'],
+    'second officer': ['2nd officer', '2/o', 'second officer', '2nd off'],
+    'third officer': ['3rd officer', '3/o', 'third officer', '3rd off'],
+    'chief engineer': ['chief engineer', 'c/e'],
+    'second engineer': ['2nd engineer', '2/e', 'second engineer', '2nd eng'],
+    'third engineer': ['3rd engineer', '3/e', 'third engineer', '3rd eng'],
+    'fourth engineer': ['4th engineer', '4/e', 'fourth engineer', '4th eng'],
+  };
+  
+  for (const crew of crewExperiences) {
+    const crewRankNormalized = normalizeRankName(crew.rank).toLowerCase();
+    
+    if (crewRankNormalized === normalized) return crew;
+    
+    for (const [key, aliases] of Object.entries(rankMappings)) {
+      const ruleMatchesKey = aliases.some(a => normalized === a || normalized.startsWith(a + ' '));
+      const crewMatchesKey = crewRankNormalized === key || aliases.some(a => crewRankNormalized === a);
+      
+      if (ruleMatchesKey && crewMatchesKey) {
+        return crew;
+      }
+    }
+  }
+  
+  return undefined;
+}
+
+function evaluateExperienceRules(
+  ruleArray: any[],
   crewExperiences: CrewExperience[],
-  category: string
+  category: string,
+  getExperienceValue: (crew: CrewExperience) => number
 ): ComplianceRuleResult[] {
   const results: ComplianceRuleResult[] = [];
   
-  if (category === 'Years with Operator') {
-    const rankPairs = rule.rankPairs || [];
-    for (const pair of rankPairs) {
-      const ranks = pair.ranks || [];
-      let totalYears = 0;
-      const rankLabels: string[] = [];
-      
-      for (const rankName of ranks) {
-        const crew = crewExperiences.find(c => 
-          normalizeRankName(c.rank).toLowerCase() === normalizeRankName(rankName).toLowerCase()
-        );
-        if (crew) {
-          totalYears += crew.yearsWithOperator;
-          rankLabels.push(normalizeRankName(rankName));
-        }
-      }
-      
-      const requiredYears = pair.requiredYears || 0;
-      results.push({
-        category,
-        label: `Combined aggregate for ${rankLabels.join(' and ')} shall not be less than ${requiredYears} years.`,
-        rankPair: rankLabels.join(' + '),
-        requiredValue: requiredYears,
-        actualValue: Math.round(totalYears * 10) / 10,
-        unit: 'years',
-        status: totalYears >= requiredYears ? 'pass' : 'fail'
-      });
-    }
-  } else if (category === 'Years in Rank') {
-    const rankPairs = rule.rankPairs || [];
-    for (const pair of rankPairs) {
-      const ranks = pair.ranks || [];
-      let totalYears = 0;
-      const rankLabels: string[] = [];
-      
-      for (const rankName of ranks) {
-        const crew = crewExperiences.find(c => 
-          normalizeRankName(c.rank).toLowerCase() === normalizeRankName(rankName).toLowerCase()
-        );
-        if (crew) {
-          totalYears += crew.yearsInRank;
-          rankLabels.push(normalizeRankName(rankName));
-        }
-      }
-      
-      const requiredYears = pair.requiredYears || 0;
-      results.push({
-        category,
-        label: `Combined aggregate for ${rankLabels.join(' and ')} shall not be less than ${requiredYears} years.`,
-        rankPair: rankLabels.join(' + '),
-        requiredValue: requiredYears,
-        actualValue: Math.round(totalYears * 10) / 10,
-        unit: 'years',
-        status: totalYears >= requiredYears ? 'pass' : 'fail'
-      });
-    }
-  } else if (category === 'Years on This Type of Tanker') {
-    const rankPairs = rule.rankPairs || [];
-    for (const pair of rankPairs) {
-      const ranks = pair.ranks || [];
-      let totalYears = 0;
-      const rankLabels: string[] = [];
-      
-      for (const rankName of ranks) {
-        const crew = crewExperiences.find(c => 
-          normalizeRankName(c.rank).toLowerCase() === normalizeRankName(rankName).toLowerCase()
-        );
-        if (crew) {
-          totalYears += crew.yearsOnTankerType;
-          rankLabels.push(normalizeRankName(rankName));
-        }
-      }
-      
-      const requiredYears = pair.requiredYears || 0;
-      results.push({
-        category,
-        label: `Combined aggregate for ${rankLabels.join(' and ')} shall not be less than ${requiredYears} years.`,
-        rankPair: rankLabels.join(' + '),
-        requiredValue: requiredYears,
-        actualValue: Math.round(totalYears * 10) / 10,
-        unit: 'years',
-        status: totalYears >= requiredYears ? 'pass' : 'fail'
-      });
-    }
-  } else if (category === 'English Proficiency') {
-    const minLevel = rule.minLevel || 2;
-    const targetRanks = rule.targetRanks || 'allOfficers';
+  for (const rule of ruleArray) {
+    const rankPairStr = rule.rankPair || '';
+    const requiredValue = rule.requiredValue || 0;
+    const label = rule.label || '';
     
-    let targetCrew: CrewExperience[] = [];
-    if (targetRanks === 'allOfficers') {
-      targetCrew = crewExperiences.filter(c => isOfficerRank(c.rank));
-    } else if (targetRanks === 'deckOfficers') {
-      targetCrew = crewExperiences.filter(c => isDeckOfficer(c.rank));
-    } else if (targetRanks === 'engineOfficers') {
-      targetCrew = crewExperiences.filter(c => isEngineerOfficer(c.rank));
+    const ranks = parseRankPairString(rankPairStr);
+    let totalYears = 0;
+    const foundRanks: string[] = [];
+    
+    for (const rankName of ranks) {
+      const crew = matchRankToCrewExperience(rankName, crewExperiences);
+      if (crew) {
+        totalYears += getExperienceValue(crew);
+        foundRanks.push(normalizeRankName(crew.rank));
+      }
     }
     
-    for (const crew of targetCrew) {
-      const status = crew.englishProficiency >= minLevel ? 'pass' : 
-                     (crew.englishProficiency === -1 ? 'not_applicable' : 'fail');
+    if (foundRanks.length > 0) {
       results.push({
         category,
-        label: `English proficiency for ${normalizeRankName(crew.rank)}`,
-        rankPair: normalizeRankName(crew.rank),
-        requiredValue: minLevel,
-        actualValue: crew.englishProficiency,
-        unit: 'level',
-        status
+        label: label || `Combined aggregate for ${foundRanks.join(' and ')} shall not be less than ${requiredValue} years.`,
+        rankPair: foundRanks.join(' + '),
+        requiredValue,
+        actualValue: Math.round(totalYears * 10) / 10,
+        unit: 'years',
+        status: totalYears >= requiredValue ? 'pass' : 'fail'
       });
+    }
+  }
+  
+  return results;
+}
+
+function evaluateEnglishProficiencyRules(
+  ruleArray: any[],
+  crewExperiences: CrewExperience[]
+): ComplianceRuleResult[] {
+  const results: ComplianceRuleResult[] = [];
+  
+  for (const rule of ruleArray) {
+    const rankPairStr = rule.rankPair || '';
+    const requiredLevel = rule.requiredLevel || 'Good';
+    const label = rule.label || '';
+    
+    const requiredLevelNum = PROFICIENCY_MAP[requiredLevel] ?? 2;
+    const ranks = parseRankPairString(rankPairStr);
+    
+    for (const rankName of ranks) {
+      const crew = matchRankToCrewExperience(rankName, crewExperiences);
+      if (crew) {
+        const status = crew.englishProficiency >= requiredLevelNum ? 'pass' : 
+                       (crew.englishProficiency === -1 ? 'not_applicable' : 'fail');
+        results.push({
+          category: 'English Proficiency',
+          label: label || `English proficiency for ${normalizeRankName(crew.rank)} must be ${requiredLevel}`,
+          rankPair: normalizeRankName(crew.rank),
+          requiredValue: requiredLevelNum,
+          actualValue: crew.englishProficiency,
+          unit: 'level',
+          status
+        });
+      }
     }
   }
   
@@ -297,20 +311,49 @@ function checkComplianceForOilMajor(
 ): ComplianceCheckResult {
   const allResults: ComplianceRuleResult[] = [];
   
-  const categories = [
-    'Years with Operator',
-    'Years in Rank', 
-    'Years on This Type of Tanker',
-    'English Proficiency'
-  ];
+  const experienceRules = rules?.experienceRules || {};
   
-  for (const category of categories) {
-    const categoryKey = category.toLowerCase().replace(/ /g, '_');
-    const rule = rules?.[categoryKey] || rules?.[category];
-    if (rule) {
-      const categoryResults = evaluateRuleAgainstCrew(rule, crewExperiences, category);
-      allResults.push(...categoryResults);
-    }
+  if (experienceRules.yearsWithOperator?.length) {
+    allResults.push(...evaluateExperienceRules(
+      experienceRules.yearsWithOperator,
+      crewExperiences,
+      'Years with Operator',
+      (crew) => crew.yearsWithOperator
+    ));
+  }
+  
+  if (experienceRules.yearsInRank?.length) {
+    allResults.push(...evaluateExperienceRules(
+      experienceRules.yearsInRank,
+      crewExperiences,
+      'Years in Rank',
+      (crew) => crew.yearsInRank
+    ));
+  }
+  
+  if (experienceRules.yearsOnTankerType?.length) {
+    allResults.push(...evaluateExperienceRules(
+      experienceRules.yearsOnTankerType,
+      crewExperiences,
+      'Years on This Type of Tanker',
+      (crew) => crew.yearsOnTankerType
+    ));
+  }
+  
+  if (experienceRules.yearsOnAllTankers?.length) {
+    allResults.push(...evaluateExperienceRules(
+      experienceRules.yearsOnAllTankers,
+      crewExperiences,
+      'Years on All Tankers',
+      (crew) => crew.yearsOnTankerType
+    ));
+  }
+  
+  if (rules?.englishProficiencyRules?.length) {
+    allResults.push(...evaluateEnglishProficiencyRules(
+      rules.englishProficiencyRules,
+      crewExperiences
+    ));
   }
   
   const passed = allResults.filter(r => r.status === 'pass').length;
@@ -318,7 +361,9 @@ function checkComplianceForOilMajor(
   const total = allResults.length;
   
   let overallStatus: 'green' | 'yellow' | 'red' = 'green';
-  if (failed > 0) {
+  if (total === 0) {
+    overallStatus = 'green';
+  } else if (failed > 0) {
     overallStatus = 'red';
   }
   
