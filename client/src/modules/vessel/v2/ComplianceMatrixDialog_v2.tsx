@@ -189,7 +189,7 @@ export function ComplianceMatrixDialog_v2({
         staleTime: 0,
         queryFn: async () => {
             if (isSimulatedMode) {
-                const response = await fetch(`/api/v2/compliance/matrix/${vesselId}/simulated`, {
+                const response = await fetch(`/api/v2/vessel/compliance/matrix/${vesselId}/simulated`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ simulatedCrew })
@@ -199,13 +199,9 @@ export function ComplianceMatrixDialog_v2({
                 }
                 return response.json();
             } else {
-                const response = await fetch(`/api/v2/compliance/matrix/${vesselId}`);
+                const response = await fetch(`/api/v2/vessel/compliance/matrix/${vesselId}`);
                 if (!response.ok) {
-                    const response_v1 = await fetch(`/api/compliance/matrix/${vesselId}`);
-                    if (!response_v1.ok) {
-                        throw new Error('Failed to fetch compliance data');
-                    }
-                    return response_v1.json();
+                    throw new Error('Failed to fetch V2 compliance data');
                 }
                 return response.json();
             }

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { vesselPlanningController, vesselCrewCountController, vesselListController } from "./controllers";
+import { vesselPlanningController, vesselCrewCountController, vesselListController, complianceController, trainingController } from "./controllers";
 
 const router = Router();
 
@@ -8,6 +8,13 @@ router.get("/list", vesselListController.getAll);
 
 // Crew count endpoint - get crew on board counts for all vessels
 router.get("/crew-counts", vesselCrewCountController.getCrewCounts);
+
+// Compliance Matrix endpoints
+router.get("/compliance/matrix/:vesselUuid", complianceController.getComplianceMatrix);
+router.post("/compliance/matrix/:vesselUuid/simulated", complianceController.getSimulatedComplianceMatrix);
+
+// Training Matrix endpoint - get crew training data for a vessel
+router.get("/training/:vesselUuid", trainingController.getVesselCrewTrainings);
 
 router.get("/:vesselUuid/planning", vesselPlanningController.getByVesselUuid);
 router.get("/planning/:planUuid", vesselPlanningController.getByPlanUuid);

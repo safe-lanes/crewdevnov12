@@ -377,6 +377,47 @@ const useTrainingMatrixVesselDraft = (vesselId: string | null) => {
     });
 };
 
+interface CrewTrainingV2 {
+    role: string;
+    crewUuid: string;
+    trainings: {
+        courseId: string;
+        trainingCourse: string;
+        abbr: string;
+        expiry: string | null;
+    }[];
+}
+
+const useVesselCrewTrainingsV2 = (vesselUuid: string | null) => {
+    return useQuery<CrewTrainingV2[]>({
+        queryKey: ['/api/v2/vessel/training', vesselUuid],
+        queryFn: async () => {
+            if (!vesselUuid) return [];
+            const response = await fetch(`/api/v2/vessel/training/${vesselUuid}`);
+            if (!response.ok) throw new Error('Failed to fetch V2 crew trainings');
+            return response.json();
+        },
+        enabled: !!vesselUuid,
+    });
+};
+
+const getTrainingExpiryStatus = (expiryDate: string | null): 'green' | 'yellow' | 'red' | null => {
+    if (!expiryDate) return null;
+    
+    const expiry = new Date(expiryDate);
+    const today = new Date();
+    const twoMonthsFromNow = new Date();
+    twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+    
+    if (expiry < today) {
+        return 'red';
+    } else if (expiry < twoMonthsFromNow) {
+        return 'yellow';
+    } else {
+        return 'green';
+    }
+};
+
 const formatDateOnly = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
     try {
@@ -713,6 +754,33 @@ export function VesselModule_v2(): JSX.Element {
     const { data: trainingMatrixRevisions = [] } = useTrainingMatrixVesselRevisions(selectedVessel?.vesselId || null);
     const { data: trainingMatrixDrafts = [] } = useTrainingMatrixVesselDraft(selectedVessel?.vesselId || null);
     
+    const { data: crewTrainingsV2 = [] } = useVesselCrewTrainingsV2(selectedVessel?.vesselUuid || null);
+    
+    const crewTrainingLookupByRole = useMemo(() => {
+        const lookup = new Map<string, Map<string, string>>();
+        
+        for (const crewTraining of crewTrainingsV2) {
+            const roleKey = crewTraining.role;
+            if (!roleKey) continue;
+            
+            const trainingMap = new Map<string, string>();
+            for (const training of crewTraining.trainings) {
+                if (training.courseId && training.expiry) {
+                    trainingMap.set(training.courseId, training.expiry);
+                }
+                if (training.abbr && training.expiry) {
+                    trainingMap.set(training.abbr, training.expiry);
+                }
+            }
+            
+            if (!lookup.has(roleKey)) {
+                lookup.set(roleKey, trainingMap);
+            }
+        }
+        
+        return lookup;
+    }, [crewTrainingsV2]);
+    
     const applicableTrainingIds = useMemo(() => {
         const ids = new Set<number>();
         [...trainingMatrixRevisions, ...trainingMatrixDrafts].forEach((entry: any) => {
@@ -790,10 +858,17 @@ export function VesselModule_v2(): JSX.Element {
         return trainingRequirementsLookup.get(`${trainingId}-${lookupRankId}`) || null;
     };
     
-    const getCrewTrainingComplianceStatus = (trainingCompanyId: string, vesselPosition: any): string | null => {
-        // V2: Don't look up crew training data from V1 crewMemberLookup
-        // Return null to show empty compliance status until V2 has its own training data
-        return null;
+    const getCrewTrainingComplianceStatus = (trainingCompanyId: string, vesselPosition: any): 'green' | 'yellow' | 'red' | null => {
+        const roleKey = vesselPosition.displayRole || vesselPosition.role || vesselPosition.rank || '';
+        if (!roleKey) return null;
+        
+        const crewTrainings = crewTrainingLookupByRole.get(roleKey);
+        if (!crewTrainings) return null;
+        
+        const expiryDate = crewTrainings.get(trainingCompanyId);
+        if (!expiryDate) return null;
+        
+        return getTrainingExpiryStatus(expiryDate);
     };
     
     const updatePlanningMutation = useUpdatePlanningV2();
