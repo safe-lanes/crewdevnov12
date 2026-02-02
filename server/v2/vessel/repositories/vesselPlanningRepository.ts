@@ -39,8 +39,8 @@ export class VesselPlanningRepository {
       .where(
         and(
           eq(vesselPlanningV2.vesselUuid, vesselUuid),
-          eq(vesselPlanningV2.isDeleted, false),
-          eq(vesselPlanningV2.isArchived, false)
+          eq(vesselPlanningV2.isDeleted, false)
+          // Note: Removed isArchived filter - return all records so frontend can filter by showArchived toggle
         )
       )
       .orderBy(desc(vesselPlanningV2.createdAt));
