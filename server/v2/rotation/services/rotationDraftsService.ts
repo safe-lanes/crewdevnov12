@@ -175,7 +175,8 @@ export const rotationDraftsService = {
     // Use target status if provided in update, otherwise use existing status
     // This ensures we preserve audit trail when transitioning to Proposed/Completed in same request
     const targetStatus = draftData.planStatus || existing.planStatus;
-    const isDraftStatus = targetStatus === 'Draft';
+    // Check for both "Draft" and "In Draft" status values (database may use either)
+    const isDraftStatus = targetStatus === 'Draft' || targetStatus === 'In Draft';
     
     // Update vessels if provided (replace all)
     if (vesselsJson !== undefined) {
