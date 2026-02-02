@@ -788,8 +788,41 @@ export function VesselModule_v2(): JSX.Element {
                 entry.trainingIds.forEach((id: number) => ids.add(id));
             }
         });
+        
+        // V2: Also include trainings from crew training data (for V2 independence)
+        // Map courseId/companyId (e.g., 'SC005', 'SA001') and abbr to company training id
+        const courseIdToTrainingId = new Map<string, number>();
+        const abbrToTrainingId = new Map<string, number>();
+        companyTrainings.forEach((training: any) => {
+            if (training.companyId) {
+                courseIdToTrainingId.set(training.companyId, training.id);
+            }
+            if (training.abbr) {
+                abbrToTrainingId.set(training.abbr, training.id);
+            }
+        });
+        
+        crewTrainingsV2.forEach((crewTraining) => {
+            crewTraining.trainings.forEach((training) => {
+                // Match by courseId first
+                if (training.courseId) {
+                    const trainingId = courseIdToTrainingId.get(training.courseId);
+                    if (trainingId) {
+                        ids.add(trainingId);
+                    }
+                }
+                // Also match by abbr as fallback
+                if (training.abbr) {
+                    const trainingId = abbrToTrainingId.get(training.abbr);
+                    if (trainingId) {
+                        ids.add(trainingId);
+                    }
+                }
+            });
+        });
+        
         return ids;
-    }, [trainingMatrixRevisions, trainingMatrixDrafts]);
+    }, [trainingMatrixRevisions, trainingMatrixDrafts, crewTrainingsV2, companyTrainings]);
     
     const groupedTrainingsForMatrix = useMemo(() => {
         const applicableTrainings = companyTrainings.filter((training: any) => 
