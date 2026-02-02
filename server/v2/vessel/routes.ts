@@ -21,8 +21,9 @@ router.get("/planning/:planUuid", vesselPlanningController.getByPlanUuid);
 router.post("/:vesselUuid/planning", vesselPlanningController.create);
 router.patch("/planning/:planUuid", vesselPlanningController.update);
 router.post("/planning/:planUuid/archive", vesselPlanningController.archive);
+router.get("/planning/:planUuid/attachments", vesselPlanningController.getAttachments);
 router.post("/planning/:planUuid/attachments", vesselPlanningController.addAttachment);
-router.delete("/planning/attachments/:attUuid", vesselPlanningController.deleteAttachment);
+router.delete("/planning/:planUuid/attachments/:attUuid", vesselPlanningController.deleteAttachment);
 
 // Reliever sign-on and status update endpoints
 router.post("/planning/:planUuid/sign-on", vesselPlanningController.signOnReliever);

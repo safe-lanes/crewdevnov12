@@ -1,4 +1,4 @@
-import { eq, and, desc, isNull, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, sql, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import { vesselPlanningV2, vesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
@@ -45,6 +45,28 @@ export class VesselPlanningRepository {
       )
       .orderBy(desc(vesselPlanningV2.createdAt));
 
+    const planUuids = results.map((row: any) => row.planning.planUuid).filter(Boolean);
+    
+    let countMap = new Map<string, number>();
+    
+    if (planUuids.length > 0) {
+      const attachmentCounts = await db
+        .select({
+          planUuid: vesselPlanningAttachmentsV2.planUuid,
+          count: sql<number>`count(*)::int`.as('count'),
+        })
+        .from(vesselPlanningAttachmentsV2)
+        .where(
+          and(
+            inArray(vesselPlanningAttachmentsV2.planUuid, planUuids),
+            eq(vesselPlanningAttachmentsV2.isDeleted, false)
+          )
+        )
+        .groupBy(vesselPlanningAttachmentsV2.planUuid);
+      
+      countMap = new Map(attachmentCounts.map((ac: { planUuid: string; count: number }) => [ac.planUuid, ac.count]));
+    }
+
     return results.map((row: any) => ({
       ...row.planning,
       crewMemberName: row.crewFirstName && row.crewFamilyName 
@@ -58,6 +80,7 @@ export class VesselPlanningRepository {
       relieverNationality: row.relieverNationalityName || null,
       signOffPortName: row.signOffPortName || null,
       joiningPortName: row.joiningPortName || null,
+      handoverAttachmentCount: countMap.get(row.planning.planUuid) || 0,
     }));
   }
 

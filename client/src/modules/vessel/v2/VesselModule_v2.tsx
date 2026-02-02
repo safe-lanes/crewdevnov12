@@ -2356,10 +2356,11 @@ export function VesselModule_v2(): JSX.Element {
             <HandoverAttachmentsDialog
                 open={handoverDialogOpen}
                 onOpenChange={setHandoverDialogOpen}
-                planningId={handoverDialogData.planningId as any}
+                planningId={handoverDialogData.planningId}
                 vesselId={handoverDialogData.vesselId}
                 crewName={handoverDialogData.crewName}
                 rank={handoverDialogData.rank}
+                version="v2"
                 onAttachmentsChanged={() => {
                     queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, handoverDialogData.vesselId, 'planning'] });
                 }}

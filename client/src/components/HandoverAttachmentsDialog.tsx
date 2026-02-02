@@ -26,11 +26,12 @@ interface HandoverAttachment {
 interface HandoverAttachmentsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  planningId: number;
+  planningId: number | string;
   vesselId: string;
   crewName: string;
   rank: string;
   onAttachmentsChanged?: (hasAttachments: boolean) => void;
+  version?: 'v1' | 'v2';
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -44,15 +45,27 @@ export function HandoverAttachmentsDialog({
   crewName,
   rank,
   onAttachmentsChanged,
+  version = 'v1',
 }: HandoverAttachmentsDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
 
+  const isV2 = version === 'v2';
+  
+  const getEndpointBase = () => {
+    if (isV2) {
+      return `/api/v2/vessel/planning/${planningId}/attachments`;
+    }
+    return `/api/vessel-planning/${planningId}/handover-attachments`;
+  };
+
   const { data: attachments = [], isLoading, refetch } = useQuery<HandoverAttachment[]>({
-    queryKey: ['/api/vessel-planning', planningId, 'handover-attachments'],
+    queryKey: isV2 
+      ? ['/api/v2/vessel/planning', planningId, 'attachments']
+      : ['/api/vessel-planning', planningId, 'handover-attachments'],
     queryFn: async () => {
-      const response = await fetch(`/api/vessel-planning/${planningId}/handover-attachments`);
+      const response = await fetch(getEndpointBase());
       if (!response.ok) throw new Error('Failed to fetch attachments');
       return response.json();
     },
@@ -61,12 +74,16 @@ export function HandoverAttachmentsDialog({
 
   const uploadMutation = useMutation({
     mutationFn: async (attachment: { filename: string; fileType: string; fileData: string; fileSize: number }) => {
-      return apiRequest('POST', `/api/vessel-planning/${planningId}/handover-attachments`, attachment);
+      return apiRequest('POST', getEndpointBase(), attachment);
     },
     onSuccess: (_, variables) => {
       refetch();
       onAttachmentsChanged?.(true);
-      queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
+      if (isV2) {
+        queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselId, 'planning'] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
+      }
       setUploadingFiles(prev => {
         const next = new Set(prev);
         next.delete(variables.filename);
@@ -93,6 +110,9 @@ export function HandoverAttachmentsDialog({
 
   const deleteMutation = useMutation({
     mutationFn: async (attachmentId: string) => {
+      if (isV2) {
+        return apiRequest('DELETE', `${getEndpointBase()}/${attachmentId}`);
+      }
       return apiRequest('DELETE', `/api/vessel-planning/${planningId}/handover-attachments/${attachmentId}`);
     },
     onSuccess: (_, attachmentId) => {
@@ -101,7 +121,14 @@ export function HandoverAttachmentsDialog({
         const remaining = attachments.filter(a => a.id !== attachmentId);
         onAttachmentsChanged?.(remaining.length > 0);
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
+      
+      // Invalidate the appropriate query key based on version
+      if (version === 'v2') {
+        queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselId, 'planning'] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
+      }
+      
       toast({
         title: 'File Removed',
         description: deletedAttachment ? `${deletedAttachment.filename} has been removed.` : 'File has been removed.',

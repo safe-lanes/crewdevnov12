@@ -526,6 +526,10 @@ export const vesselPlanningService = {
     });
   },
 
+  async getAttachments(planUuid: string) {
+    return vesselPlanningAttachmentsRepository.findByPlanUuid(planUuid);
+  },
+
   async addAttachment(planUuid: string, data: Omit<InsertVesselPlanningAttachmentsV2, "attUuid" | "planUuid">) {
     const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
     if (!existing) {

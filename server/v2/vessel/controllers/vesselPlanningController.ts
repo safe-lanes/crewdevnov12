@@ -74,6 +74,28 @@ export const vesselPlanningController = {
     }
   },
 
+  async getAttachments(req: Request, res: Response) {
+    try {
+      const { planUuid } = req.params;
+      const attachments = await vesselPlanningService.getAttachments(planUuid);
+      
+      const formattedAttachments = attachments.map((att: any) => ({
+        id: att.attUuid,
+        filename: att.fileName,
+        fileType: att.fileType,
+        fileData: att.fileData,
+        fileSize: parseInt(att.fileSize || '0', 10),
+        uploadedBy: att.uploadedByUuid || '',
+        uploadDate: att.uploadDate,
+      }));
+      
+      res.json(formattedAttachments);
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      res.status(500).json({ error: "Failed to fetch attachments" });
+    }
+  },
+
   async addAttachment(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
