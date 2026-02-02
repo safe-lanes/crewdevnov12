@@ -1,1 +1,1 @@
-export { vesselPlanningService } from "./vesselPlanningService";
+export { vesselPlanningService, getAllForConflictDetection } from "./vesselPlanningService";

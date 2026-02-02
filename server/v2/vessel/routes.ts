@@ -6,6 +6,9 @@ const router = Router();
 // Vessel list endpoint - get all vessels from master_vessels
 router.get("/list", vesselListController.getAll);
 
+// Get all planning records for conflict detection (used by Rotation V2)
+router.get("/planning", vesselPlanningController.getAll);
+
 // Crew count endpoint - get crew on board counts for all vessels
 router.get("/crew-counts", vesselCrewCountController.getCrewCounts);
 

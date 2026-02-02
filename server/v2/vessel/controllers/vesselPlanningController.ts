@@ -1,9 +1,23 @@
 import { Request, Response } from "express";
-import { vesselPlanningService } from "../services";
+import { vesselPlanningService, getAllForConflictDetection } from "../services";
 import { insertVesselPlanningV2Schema } from "../../../../shared/v2/vessel/schema";
 import { z } from "zod";
 
 export const vesselPlanningController = {
+  /**
+   * Get all planning records for conflict detection in rotation planning
+   * Returns minimal fields: crewMemberId, relieverCrewId, vesselUuid, signOnDate, reliefDue, relieverSignOnDate, contractPeriodMonths
+   */
+  async getAll(req: Request, res: Response) {
+    try {
+      const planning = await getAllForConflictDetection();
+      res.json(planning);
+    } catch (error) {
+      console.error("Error fetching all vessel planning:", error);
+      res.status(500).json({ error: "Failed to fetch vessel planning" });
+    }
+  },
+
   async getByVesselUuid(req: Request, res: Response) {
     try {
       const { vesselUuid } = req.params;

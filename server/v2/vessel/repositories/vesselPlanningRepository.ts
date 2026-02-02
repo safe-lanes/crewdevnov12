@@ -8,6 +8,34 @@ import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachment
 import { v4 as uuidv4 } from "uuid";
 
 export class VesselPlanningRepository {
+  /**
+   * Find all non-archived planning records for conflict detection
+   * Returns minimal fields needed to check crew assignment overlaps
+   */
+  async findAllForConflictDetection(): Promise<any[]> {
+    const db = getDb();
+    
+    const results = await db
+      .select({
+        crewMemberId: vesselPlanningV2.crewUuid,
+        relieverCrewId: vesselPlanningV2.relieverCrewUuid,
+        vesselUuid: vesselPlanningV2.vesselUuid,
+        signOnDate: vesselPlanningV2.signOnDate,
+        reliefDue: vesselPlanningV2.reliefDue,
+        relieverSignOnDate: vesselPlanningV2.relieverSignOnDate,
+        contractPeriodMonths: vesselPlanningV2.contractPeriodMonths,
+      })
+      .from(vesselPlanningV2)
+      .where(
+        and(
+          eq(vesselPlanningV2.isDeleted, false),
+          eq(vesselPlanningV2.isArchived, false)
+        )
+      );
+
+    return results;
+  }
+
   async findByVesselUuid(vesselUuid: string): Promise<any[]> {
     const db = getDb();
     const relieverCrew = alias(crewMembersV2, "reliever_crew");

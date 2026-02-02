@@ -6,6 +6,13 @@ import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCo
 import { eq, and, sql, desc } from "drizzle-orm";
 
 /**
+ * Get all planning records for conflict detection in rotation planning
+ */
+export async function getAllForConflictDetection() {
+  return vesselPlanningRepository.findAllForConflictDetection();
+}
+
+/**
  * Calculate document and medical expiry counts for a crew member
  * Same logic as V1's analyzeDocumentExpiry function
  */
