@@ -719,11 +719,37 @@ export function VesselModule_v2(): JSX.Element {
         });
     }, [vesselRanksRaw, baseRankOrderMap]);
     
-    const { data: vesselPlanningV2Raw = [], isLoading: planningLoading } = useVesselPlanningV2(selectedVessel?.vesselId || null);
+    const { data: vesselPlanningV2Raw = [], isLoading: planningLoading } = useVesselPlanningV2(selectedVessel?.vesselUuid || null);
     
     const vesselPlanning = useMemo(() => {
         return vesselPlanningV2Raw.map(mapV2PlanningToLegacy);
     }, [vesselPlanningV2Raw]);
+    
+    // Derive ranks from V2 vessel planning when V1 ranks are empty
+    const trainingMatrixRanks = useMemo(() => {
+        // If V1 ranks exist, use them
+        if (vesselRanks.length > 0) {
+            return vesselRanks;
+        }
+        // Otherwise derive unique ranks from V2 vessel planning
+        const uniqueRanks = new Map<string, any>();
+        for (const plan of vesselPlanningV2Raw) {
+            const rankKey = plan.rank || '';
+            if (rankKey && !uniqueRanks.has(rankKey)) {
+                uniqueRanks.set(rankKey, {
+                    id: plan.rankId || rankKey,
+                    rankId: plan.rankId,
+                    rank: plan.rank,
+                    displayRole: plan.rank,
+                    role: plan.rank,
+                    sortOrder: baseRankOrderMap.get(plan.rank) ?? 999999,
+                });
+            }
+        }
+        return Array.from(uniqueRanks.values()).sort((a, b) => 
+            (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999)
+        );
+    }, [vesselRanks, vesselPlanningV2Raw, baseRankOrderMap]);
     
     const officerMatrixRanks = useMemo(() => {
         const officerRanks = vesselRanks.filter((rank: any) => rank.officer === true);
@@ -1763,11 +1789,11 @@ export function VesselModule_v2(): JSX.Element {
                                     </div>
                                 </div>
                                 {(() => {
-                                    const filteredRanks = vesselRanks.filter((rank: any) => {
+                                    const filteredRanks = trainingMatrixRanks.filter((rank: any) => {
                                         const fullRankName = rank.displayRole || rank.role || rank.rank;
                                         const hasVariantSuffix = fullRankName?.includes('_');
                                         if (hasVariantSuffix) return true;
-                                        const hasVariants = vesselRanks.some((other: any) => {
+                                        const hasVariants = trainingMatrixRanks.some((other: any) => {
                                             const otherName = other.displayRole || other.role || other.rank;
                                             return other.rankId === rank.rankId && otherName?.includes('_');
                                         });
