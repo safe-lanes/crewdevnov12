@@ -518,6 +518,7 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         updatedAt: planning.updatedAt,
         docExpiringCount: planning.docExpiringCount || '',
         medicalExpiring: planning.medicalExpiring || '',
+        handoverAttachmentCount: planningAny.handoverAttachmentCount || 0,
     };
 };
 

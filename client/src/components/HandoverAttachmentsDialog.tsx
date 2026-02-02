@@ -80,7 +80,7 @@ export function HandoverAttachmentsDialog({
       refetch();
       onAttachmentsChanged?.(true);
       if (isV2) {
-        queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselId, 'planning'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselId, 'planning'], refetchType: 'all' });
       } else {
         queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
       }
