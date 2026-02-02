@@ -354,6 +354,18 @@ export const rotationDraftsService = {
         // Get vessel name
         const vesselName = entry.vesselUuid ? await getVesselNameByUuid(entry.vesselUuid) : 'Unknown Vessel';
         
+        // Determine the archived date (deployedDate for deployed entries)
+        // and capitalize result for display (Deployed, Rejected)
+        let displayResult = entry.proposalStatus;
+        if (entry.proposalStatus?.toLowerCase() === 'deployed') {
+          displayResult = 'Deployed';
+        } else if (entry.proposalStatus?.toLowerCase() === 'rejected') {
+          displayResult = 'Rejected';
+        }
+        
+        // Use deployedDate as archivedDate for archived entries
+        const archivedDate = entry.deployedDate || null;
+        
         proposals.push({
           // Entry identifiers
           entryUuid: entry.entryUuid,
@@ -380,7 +392,9 @@ export const rotationDraftsService = {
           proposedDate: draft.proposedDate,
           // Entry status
           proposalStatus: entry.proposalStatus,
-          result: entry.proposalStatus,
+          result: displayResult,
+          // Archived date (for archived view)
+          archivedDate: archivedDate,
         });
       }
     }
