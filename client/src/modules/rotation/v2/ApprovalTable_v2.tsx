@@ -345,6 +345,8 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
       proposedBy: proposal.proposedBy || 'Unknown',
       proposedDate: proposal.proposedDate || '',
       currentCrew: null, // V2 proposals don't include current crew data yet
+      result: proposal.result || '',
+      archivedDate: proposal.archivedDate || '',
     }));
   }, [proposalsData, getVesselName]);
 
