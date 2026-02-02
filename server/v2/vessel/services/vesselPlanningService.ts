@@ -3,7 +3,48 @@ import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachment
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { masterPorts } from "../../../../shared/schema";
+import { eq, and, sql, desc, or } from "drizzle-orm";
+
+/**
+ * Resolve a port value to its UUID
+ * Accepts either a UUID or port name, returns the port_uuid
+ * This handles legacy data that may contain port names instead of UUIDs
+ */
+async function resolvePortToUuid(portValue: string | null | undefined): Promise<string | null> {
+  if (!portValue) return null;
+  
+  const db = getDb();
+  
+  // Check if it looks like a UUID (contains hyphens in UUID pattern)
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidPattern.test(portValue)) {
+    // Verify the UUID exists in master_ports
+    const exists = await db
+      .select({ portUuid: masterPorts.portUuid })
+      .from(masterPorts)
+      .where(eq(masterPorts.portUuid, portValue))
+      .limit(1);
+    if (exists.length > 0) {
+      return portValue; // Valid UUID
+    }
+  }
+  
+  // Try to find by port name (case-insensitive)
+  const byName = await db
+    .select({ portUuid: masterPorts.portUuid })
+    .from(masterPorts)
+    .where(sql`UPPER(${masterPorts.name}) = UPPER(${portValue})`)
+    .limit(1);
+  
+  if (byName.length > 0) {
+    return byName[0].portUuid;
+  }
+  
+  // If nothing found, return null to avoid inserting invalid data
+  console.warn(`Could not resolve port value to UUID: ${portValue}`);
+  return null;
+}
 
 /**
  * Get all planning records for conflict detection in rotation planning
@@ -465,7 +506,15 @@ export const vesselPlanningService = {
   },
 
   async create(data: Omit<InsertVesselPlanningV2, "planUuid">) {
-    return vesselPlanningRepository.create(data);
+    // Resolve port values to UUIDs (handles both UUID and port name inputs)
+    const resolvedData = { ...data };
+    if (data.joiningPortUuid) {
+      resolvedData.joiningPortUuid = await resolvePortToUuid(data.joiningPortUuid) || undefined;
+    }
+    if (data.signOffPortUuid) {
+      resolvedData.signOffPortUuid = await resolvePortToUuid(data.signOffPortUuid) || undefined;
+    }
+    return vesselPlanningRepository.create(resolvedData);
   },
 
   async update(planUuid: string, data: Partial<InsertVesselPlanningV2>) {
@@ -473,7 +522,17 @@ export const vesselPlanningService = {
     if (!existing) {
       throw new Error(`Planning record not found: ${planUuid}`);
     }
-    return vesselPlanningRepository.update(planUuid, data);
+    
+    // Resolve port values to UUIDs (handles both UUID and port name inputs)
+    const resolvedData = { ...data };
+    if (data.joiningPortUuid) {
+      resolvedData.joiningPortUuid = await resolvePortToUuid(data.joiningPortUuid) || undefined;
+    }
+    if (data.signOffPortUuid) {
+      resolvedData.signOffPortUuid = await resolvePortToUuid(data.signOffPortUuid) || undefined;
+    }
+    
+    return vesselPlanningRepository.update(planUuid, resolvedData);
   },
 
   async archive(planUuid: string, archivedByUuid?: string) {
@@ -524,11 +583,16 @@ export const vesselPlanningService = {
         );
     }
 
+    // Resolve port value to UUID if provided
+    const resolvedPortUuid = data.signOffPortUuid 
+      ? await resolvePortToUuid(data.signOffPortUuid) 
+      : undefined;
+
     // Update the vessel planning record
     return vesselPlanningRepository.update(planUuid, {
       signOffDate: data.signOffDate,
       signOffReason: data.signOffReason,
-      signOffPortUuid: data.signOffPortUuid,
+      signOffPortUuid: resolvedPortUuid,
       reliefStatus: "Signed Off",
     });
   },
@@ -555,7 +619,12 @@ export const vesselPlanningService = {
     joiningPortUuid?: string;
     joiningStatus?: string;
   }) {
-    return vesselPlanningRepository.update(planUuid, relieverData);
+    // Resolve port value to UUID if provided
+    const resolvedData = { ...relieverData };
+    if (relieverData.joiningPortUuid) {
+      resolvedData.joiningPortUuid = await resolvePortToUuid(relieverData.joiningPortUuid) || undefined;
+    }
+    return vesselPlanningRepository.update(planUuid, resolvedData);
   },
 
   async findByVesselAndRank(vesselUuid: string, rankId: string) {
@@ -594,6 +663,9 @@ export const vesselPlanningService = {
     const vesselUuid = planning.vesselUuid;
     const signOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
     const effectiveContractPeriod = data.contractPeriodMonths || planning.relieverContractPeriodMonths;
+    
+    // Resolve port value to UUID (handles both UUID and port name inputs)
+    const resolvedPortUuid = await resolvePortToUuid(data.signOnPort) || planning.joiningPortUuid;
     
     // AUTO-CALCULATE RELIEF DUE: signOnDate + contractPeriodMonths (matching V1 logic)
     let calculatedReliefDue: string | null = null;
@@ -645,7 +717,7 @@ export const vesselPlanningService = {
           relieverContractEndRangeEndMonths: null,
           // Update status
           joiningStatus: "Signed On",
-          joiningPortUuid: data.signOnPort || planning.joiningPortUuid,
+          joiningPortUuid: resolvedPortUuid,
           deploymentChecklistCompleted: false,
           applicableDocsChecked: false,
           updatedAt: sql`NOW()`,
@@ -694,9 +766,16 @@ export const vesselPlanningService = {
       throw new Error(`Planning record not found: ${planUuid}`);
     }
 
+    // Resolve port value to UUID if provided (handles both UUID and port name inputs)
+    let resolvedData = { ...updateData };
+    if (updateData?.joiningPortUuid) {
+      const resolvedPortUuid = await resolvePortToUuid(updateData.joiningPortUuid);
+      resolvedData.joiningPortUuid = resolvedPortUuid || undefined;
+    }
+
     return vesselPlanningRepository.update(planUuid, {
       joiningStatus,
-      ...updateData,
+      ...resolvedData,
     });
   },
 
