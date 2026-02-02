@@ -172,7 +172,10 @@ export const rotationDraftsService = {
     const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...draftData } = data;
     
     // Determine if we should use hard delete (for Draft status) or soft delete (for Proposed/Completed)
-    const isDraftStatus = existing.planStatus === 'Draft';
+    // Use target status if provided in update, otherwise use existing status
+    // This ensures we preserve audit trail when transitioning to Proposed/Completed in same request
+    const targetStatus = draftData.planStatus || existing.planStatus;
+    const isDraftStatus = targetStatus === 'Draft';
     
     // Update vessels if provided (replace all)
     if (vesselsJson !== undefined) {
