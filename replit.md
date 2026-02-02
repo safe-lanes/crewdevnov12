@@ -70,8 +70,8 @@ The application employs a modern web stack with a module-first architecture, pri
     - **Promotion Hierarchy System**: Configurable promotion paths integrated with a Promotions module, with dynamic criteria loading for review forms.
 - **Compliance & Training**:
     - **Drugs & Alcohol Testing Module**: Tracks six test types with filtering and summary views.
-    - **Training Matrix Module**: Manages certifications and requirements, including Company Training configurations and a per-rank Training Requirement Matrix.
-    - **Oil Major Compliance Engine**: Validates crew officer experience against various oil major requirements.
+    - **Training Matrix Module**: Manages certifications and requirements, including Company Training configurations and a per-rank Training Requirement Matrix. V2 endpoint `/api/v2/vessel/training/:vesselUuid` uses crew_training_courses joined with crew_assignments for V2 crew data. Frontend training status indicators: green=valid, yellow=expiring in 2 months, red=expired.
+    - **Oil Major Compliance Engine**: Validates crew officer experience against various oil major requirements. V2 endpoint `/api/v2/vessel/compliance/matrix/:vesselUuid` uses V2 tables (crew_sea_service, crew_personal_details, crew_assignments, crew_members_v2) for compliance evaluation.
     - **Rest Hours Module**: Manages seafarer work and rest hours compliance with Dashboard, Record, and Plan sections, including "Majority-Day Violation Assignment" logic and PDF export.
 - **Recruitment Module (V1 & V2)**: Manages candidate applications. V2 is a complete restructure using Repository + Service + Controller pattern, serial IDs with UUID soft foreign keys, and 54 normalized tables across 4 phases (Candidate Core, Documents, Screening, Approvals). Features API endpoints following `/api/v2/recruitment/` and a feature flag system for version toggling.
 - **Core Utilities**:
