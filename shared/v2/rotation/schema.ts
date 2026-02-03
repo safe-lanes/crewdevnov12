@@ -25,7 +25,7 @@ export const rotationDraftsV2 = pgTable("rotation_drafts_v2", {
   lastEdited: text("last_edited"),
   planFromDate: text("plan_from_date").notNull(),
   planToDate: text("plan_to_date").notNull(),
-  createdByUuid: text("created_by_uuid").notNull(),
+  createdByUuid: text("created_by_uuid"),
   planStatus: text("plan_status").default("In Draft"),
   proposedByUuid: text("proposed_by_uuid"),
   proposedDate: text("proposed_date"),
