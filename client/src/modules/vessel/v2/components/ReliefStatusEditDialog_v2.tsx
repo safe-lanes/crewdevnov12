@@ -28,6 +28,7 @@ import { CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdatePlanningV2, useCreatePlanningV2 } from '../hooks/useVesselV2';
 import { vesselApiV2 } from '../api/vesselApiV2';
+import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -80,13 +81,6 @@ const parseDateString = (dateStr: string): Date | undefined => {
     }
 };
 
-const usePorts = () => {
-    const queryClient = useQueryClient();
-    return {
-        data: queryClient.getQueryData<any[]>(['/api/external/ports']) || [],
-    };
-};
-
 interface ReliefStatusEditDialogV2Props {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -106,7 +100,6 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const { data: ports = [] } = usePorts();
     const [joiningDateOpen, setJoiningDateOpen] = useState(false);
     const [unassignChecked, setUnassignChecked] = useState(false);
     const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
@@ -551,41 +544,23 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                         <FormField
                             control={form.control}
                             name="relieverSignOnPort"
-                            render={({ field }) => {
-                                const selectedPort = ports.find((p: any) => p.puid === field.value);
-                                return (
-                                    <FormItem>
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <FormLabel className="text-sm text-gray-700">Sign On Port:</FormLabel>
-                                            <FormControl>
-                                                <Select 
-                                                    onValueChange={field.onChange} 
-                                                    value={field.value as string} 
-                                                    data-testid="select-joining-port"
-                                                    disabled={!isRelieverAssigned}
-                                                >
-                                                    <SelectTrigger className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
-                                                        <SelectValue placeholder="Select Port">
-                                                            {selectedPort?.name || (field.value ? field.value : "Select Port")}
-                                                        </SelectValue>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {ports.length > 0 ? (
-                                                            ports.map((port: any) => (
-                                                                <SelectItem key={port.puid} value={port.puid}>
-                                                                    {port.name}{port.country ? ` (${port.country})` : ''}
-                                                                </SelectItem>
-                                                            ))
-                                                        ) : (
-                                                            <SelectItem value="" disabled>Loading ports...</SelectItem>
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                            </FormControl>
-                                        </div>
-                                    </FormItem>
-                                );
-                            }}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Sign On Port:</FormLabel>
+                                        <FormControl>
+                                            <SearchablePortCombobox
+                                                value={field.value as string}
+                                                onValueChange={field.onChange}
+                                                placeholder="Search port..."
+                                                disabled={!isRelieverAssigned}
+                                                className="col-span-2"
+                                                data-testid="select-joining-port"
+                                            />
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
                         />
 
                         <FormField

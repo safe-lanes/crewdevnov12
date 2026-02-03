@@ -19,6 +19,7 @@ import { useUpdatePlanningV2, useCreatePlanningV2, useVesselPlanningV2 } from '.
 import { vesselApiV2 } from '../api/vesselApiV2';
 import { apiRequest } from '@/lib/queryClient';
 import { API_BASE_URL } from '@/config/api';
+import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 
 const SIGN_OFF_REASONS = [
     "Contract Completed",
@@ -47,13 +48,6 @@ const onBoardStatusFormSchema = z.object({
 
 type OnBoardStatusFormData = z.infer<typeof onBoardStatusFormSchema>;
 
-const usePorts = () => {
-    const queryClient = useQueryClient();
-    return {
-        data: queryClient.getQueryData<any[]>(['/api/external/ports']) || [],
-    };
-};
-
 interface OnBoardStatusEditDialogV2Props {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -73,23 +67,12 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const { data: ports = [] } = usePorts();
     const { getVesselName } = useVesselLookup();
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
     const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
     
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
-    
-    const portLookup = useMemo(() => {
-        const map = new Map<string, string>();
-        ports.forEach((port: any) => {
-            if (port.puid && port.name) {
-                map.set(port.puid, port.name);
-            }
-        });
-        return map;
-    }, [ports]);
     
     const form = useForm<OnBoardStatusFormData>({
         resolver: zodResolver(onBoardStatusFormSchema),
@@ -424,7 +407,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Sign On Port:</span>
                             <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
-                                <span className="text-sm text-gray-900">{planningData?.joiningPort || planningData?.joiningPortUuid ? (portLookup.get(planningData.joiningPort || planningData.joiningPortUuid) || planningData.joiningPort || planningData.joiningPortUuid) : '-'}</span>
+                                <span className="text-sm text-gray-900">{planningData?.joiningPortName || planningData?.joiningPort || planningData?.joiningPortUuid || '-'}</span>
                             </div>
                         </div>
 
@@ -673,40 +656,21 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         <FormField
                             control={form.control}
                             name="signOffPort"
-                            render={({ field }) => {
-                                const selectedPort = ports.find((p: any) => p.puid === field.value);
-                                return (
-                                    <FormItem>
-                                        <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                            <FormLabel className="text-sm text-gray-700">Sign Off Port</FormLabel>
-                                            <FormControl>
-                                                <Select 
-                                                    onValueChange={field.onChange} 
-                                                    value={field.value || undefined} 
-                                                    data-testid="select-sign-off-port"
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select Port">
-                                                            {selectedPort?.name || (field.value ? field.value : "Select Port")}
-                                                        </SelectValue>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {ports.length > 0 ? (
-                                                            ports.map((port: any) => (
-                                                                <SelectItem key={port.puid} value={port.puid}>
-                                                                    {port.name}{port.country ? ` (${port.country})` : ''}
-                                                                </SelectItem>
-                                                            ))
-                                                        ) : (
-                                                            <SelectItem value="" disabled>Loading ports...</SelectItem>
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                            </FormControl>
-                                        </div>
-                                    </FormItem>
-                                );
-                            }}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Sign Off Port</FormLabel>
+                                        <FormControl>
+                                            <SearchablePortCombobox
+                                                value={field.value as string}
+                                                onValueChange={field.onChange}
+                                                placeholder="Search port..."
+                                                data-testid="select-sign-off-port"
+                                            />
+                                        </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
                         />
 
                         <div className="flex justify-end gap-2 pt-4">
