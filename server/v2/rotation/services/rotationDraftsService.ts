@@ -190,91 +190,175 @@ export const rotationDraftsService = {
     // Apply audit user fields
     const draftData = applyAuditUser(rawDraftData, false);
     
-    // Determine if we should use hard delete (for Draft status) or soft delete (for Proposed/Completed)
-    // Use target status if provided in update, otherwise use existing status
-    // This ensures we preserve audit trail when transitioning to Proposed/Completed in same request
-    const targetStatus = draftData.planStatus || existing.planStatus;
-    // Check for both "Draft" and "In Draft" status values (database may use either)
-    const isDraftStatus = targetStatus === 'Draft' || targetStatus === 'In Draft';
+    // UPSERT LOGIC: Update existing records, create new ones, soft-delete removed ones
     
-    // Update vessels if provided (replace all)
+    // Update vessels if provided using UPSERT pattern with reactivation
     if (vesselsJson !== undefined) {
-      if (isDraftStatus) {
-        // Hard delete for Draft status - prevents duplicate records
-        await rotationDraftVesselsRepository.hardDeleteByDraftUuid(draftUuid);
-      } else {
-        // Soft delete for Proposed/Completed status - preserves audit trail
-        const existingVessels = await rotationDraftVesselsRepository.findByDraftUuid(draftUuid);
-        for (const v of existingVessels) {
-          await rotationDraftVesselsRepository.softDelete(v.rvUuid);
-        }
-      }
-      
-      // Add new vessels
       try {
         const vesselUuids: string[] = JSON.parse(vesselsJson);
+        // Get ALL vessels including soft-deleted to enable reactivation
+        const allVessels = await rotationDraftVesselsRepository.findAllByDraftUuid(draftUuid, true);
+        const activeVessels = allVessels.filter(v => !v.isDeleted);
+        const deletedVesselMap = new Map(allVessels.filter(v => v.isDeleted).map(v => [v.vesselUuid, v]));
+        const activeVesselMap = new Map(activeVessels.map(v => [v.vesselUuid, v]));
+        const incomingVesselSet = new Set(vesselUuids);
+        
+        // Update existing, reactivate deleted, or create new vessels
         for (let i = 0; i < vesselUuids.length; i++) {
-          await rotationDraftVesselsRepository.create({
-            draftUuid,
-            vesselUuid: vesselUuids[i],
-            sortOrder: i,
-          });
+          const vesselUuid = vesselUuids[i];
+          const activeVessel = activeVesselMap.get(vesselUuid);
+          const deletedVessel = deletedVesselMap.get(vesselUuid);
+          
+          if (activeVessel) {
+            // Update existing active record
+            await rotationDraftVesselsRepository.update(activeVessel.rvUuid, { sortOrder: i });
+          } else if (deletedVessel) {
+            // Reactivate soft-deleted record
+            await rotationDraftVesselsRepository.reactivate(deletedVessel.rvUuid, { sortOrder: i });
+          } else {
+            // Create new record
+            await rotationDraftVesselsRepository.create({
+              draftUuid,
+              vesselUuid,
+              sortOrder: i,
+            });
+          }
+        }
+        
+        // Soft-delete active vessels that are no longer in the list
+        for (const activeVessel of activeVessels) {
+          if (!incomingVesselSet.has(activeVessel.vesselUuid)) {
+            await rotationDraftVesselsRepository.softDelete(activeVessel.rvUuid);
+          }
         }
       } catch (e) {
         console.error("Failed to parse vessels JSON:", e);
       }
     }
     
-    // Update ranks if provided (replace all)
+    // Update ranks if provided using UPSERT pattern with reactivation
     if (crewString !== undefined) {
-      if (isDraftStatus) {
-        // Hard delete for Draft status - prevents duplicate records
-        await rotationDraftRanksRepository.hardDeleteByDraftUuid(draftUuid);
-      } else {
-        // Soft delete for Proposed/Completed status - preserves audit trail
-        const existingRanks = await rotationDraftRanksRepository.findByDraftUuid(draftUuid);
-        for (const r of existingRanks) {
-          await rotationDraftRanksRepository.softDelete(r.rrUuid);
+      const rankNames = crewString.split(',').map(r => r.trim()).filter(r => r);
+      // Get ALL ranks including soft-deleted to enable reactivation
+      const allRanks = await rotationDraftRanksRepository.findAllByDraftUuid(draftUuid, true);
+      const activeRanks = allRanks.filter(r => !r.isDeleted);
+      const deletedRankMap = new Map(allRanks.filter(r => r.isDeleted).map(r => [r.rankName, r]));
+      const activeRankMap = new Map(activeRanks.map(r => [r.rankName, r]));
+      const incomingRankSet = new Set(rankNames);
+      
+      // Update existing, reactivate deleted, or create new ranks
+      for (let i = 0; i < rankNames.length; i++) {
+        const rankName = rankNames[i];
+        const activeRank = activeRankMap.get(rankName);
+        const deletedRank = deletedRankMap.get(rankName);
+        
+        if (activeRank) {
+          // Update existing active record
+          await rotationDraftRanksRepository.update(activeRank.rrUuid, { sortOrder: i });
+        } else if (deletedRank) {
+          // Reactivate soft-deleted record
+          await rotationDraftRanksRepository.reactivate(deletedRank.rrUuid, { sortOrder: i });
+        } else {
+          // Create new record
+          await rotationDraftRanksRepository.create({
+            draftUuid,
+            rankName,
+            sortOrder: i,
+          });
         }
       }
       
-      // Add new ranks
-      const rankNames = crewString.split(',').map(r => r.trim()).filter(r => r);
-      for (let i = 0; i < rankNames.length; i++) {
-        await rotationDraftRanksRepository.create({
-          draftUuid,
-          rankName: rankNames[i],
-          sortOrder: i,
-        });
+      // Soft-delete active ranks that are no longer in the list
+      for (const activeRank of activeRanks) {
+        if (!incomingRankSet.has(activeRank.rankName)) {
+          await rotationDraftRanksRepository.softDelete(activeRank.rrUuid);
+        }
       }
     }
     
-    // Update assignments if provided (replace all)
+    // Update assignments if provided using UPSERT pattern with reactivation
     if (assignmentsJson !== undefined) {
-      if (isDraftStatus) {
-        // Hard delete for Draft status - prevents duplicate records
-        await rotationEntriesRepository.hardDeleteByDraftUuid(draftUuid);
-      } else {
-        // Soft delete for Proposed/Completed status - preserves audit trail
-        const existingEntries = await rotationEntriesRepository.findByDraftUuid(draftUuid);
-        for (const e of existingEntries) {
-          await rotationEntriesRepository.softDelete(e.entryUuid);
-        }
-      }
-      
-      // Add new assignments
       try {
         const assignments = JSON.parse(assignmentsJson);
-        for (const assignment of assignments) {
-          await rotationEntriesRepository.create({
-            draftUuid,
-            vesselUuid: assignment.vesselUuid || assignment.vessel,
+        // Get ALL entries including soft-deleted to enable reactivation
+        const allEntries = await rotationEntriesRepository.findAllByDraftUuid(draftUuid, true);
+        const activeEntries = allEntries.filter(e => !e.isDeleted);
+        const deletedEntries = allEntries.filter(e => e.isDeleted);
+        
+        // Build maps by entryUuid for direct lookup
+        const activeByUuid = new Map(activeEntries.map(e => [e.entryUuid, e]));
+        const deletedByUuid = new Map(deletedEntries.map(e => [e.entryUuid, e]));
+        
+        // Build maps by composite key (vesselUuid|rank|crewUuid) for fallback
+        // For null crewUuid, use array to handle multiple entries with same vessel/rank
+        const activeByCompositeKey = new Map<string, any[]>();
+        for (const e of activeEntries) {
+          const key = `${e.vesselUuid}|${e.rank}|${e.crewUuid || ''}`;
+          if (!activeByCompositeKey.has(key)) activeByCompositeKey.set(key, []);
+          activeByCompositeKey.get(key)!.push(e);
+        }
+        const deletedByCompositeKey = new Map<string, any[]>();
+        for (const e of deletedEntries) {
+          const key = `${e.vesselUuid}|${e.rank}|${e.crewUuid || ''}`;
+          if (!deletedByCompositeKey.has(key)) deletedByCompositeKey.set(key, []);
+          deletedByCompositeKey.get(key)!.push(e);
+        }
+        
+        const processedEntryUuids = new Set<string>();
+        
+        // Update existing, reactivate deleted, or create new entries
+        for (let idx = 0; idx < assignments.length; idx++) {
+          const assignment = assignments[idx];
+          const vesselUuid = assignment.vesselUuid || assignment.vessel;
+          const compositeKey = `${vesselUuid}|${assignment.rank}|${assignment.crewUuid || ''}`;
+          
+          // Try to find existing entry by entryUuid first (most reliable)
+          let existingEntry = assignment.entryUuid ? activeByUuid.get(assignment.entryUuid) : undefined;
+          let deletedEntry = assignment.entryUuid ? deletedByUuid.get(assignment.entryUuid) : undefined;
+          
+          // Fallback to composite key match (take first unprocessed from array)
+          if (!existingEntry && !deletedEntry) {
+            const activeMatches = activeByCompositeKey.get(compositeKey) || [];
+            existingEntry = activeMatches.find(e => !processedEntryUuids.has(e.entryUuid));
+            
+            if (!existingEntry) {
+              const deletedMatches = deletedByCompositeKey.get(compositeKey) || [];
+              deletedEntry = deletedMatches.find(e => !processedEntryUuids.has(e.entryUuid));
+            }
+          }
+          
+          const entryData = {
+            vesselUuid,
             rank: assignment.rank,
             rankId: assignment.rankId,
             crewUuid: assignment.crewUuid,
             signOnDate: assignment.joiningDate,
             contractPeriod: assignment.contractPeriod || 3,
-          });
+          };
+          
+          if (existingEntry) {
+            // Update existing active record
+            processedEntryUuids.add(existingEntry.entryUuid);
+            await rotationEntriesRepository.update(existingEntry.entryUuid, entryData);
+          } else if (deletedEntry) {
+            // Reactivate soft-deleted record
+            processedEntryUuids.add(deletedEntry.entryUuid);
+            await rotationEntriesRepository.reactivate(deletedEntry.entryUuid, entryData);
+          } else {
+            // Create new record
+            const newEntry = await rotationEntriesRepository.create({
+              draftUuid,
+              ...entryData,
+            });
+            processedEntryUuids.add(newEntry.entryUuid);
+          }
+        }
+        
+        // Soft-delete active entries that are no longer in the list
+        for (const activeEntry of activeEntries) {
+          if (!processedEntryUuids.has(activeEntry.entryUuid)) {
+            await rotationEntriesRepository.softDelete(activeEntry.entryUuid);
+          }
         }
       } catch (e) {
         console.error("Failed to parse assignments JSON:", e);

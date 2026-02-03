@@ -94,6 +94,47 @@ export class RotationEntriesRepository {
     return results[0];
   }
 
+  async reactivate(entryUuid: string, data: Partial<InsertRotationEntriesV2>): Promise<RotationEntriesV2> {
+    const db = getDb();
+    const results = await db
+      .update(rotationEntriesV2)
+      .set({
+        ...data,
+        isDeleted: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(rotationEntriesV2.entryUuid, entryUuid))
+      .returning();
+    return results[0];
+  }
+
+  async findAllByDraftUuid(draftUuid: string, includeDeleted = false): Promise<any[]> {
+    const db = getDb();
+    const conditions = [eq(rotationEntriesV2.draftUuid, draftUuid)];
+    if (!includeDeleted) {
+      conditions.push(eq(rotationEntriesV2.isDeleted, false));
+    }
+    const results = await db
+      .select({
+        entry: rotationEntriesV2,
+        crewFirstName: crewMembersV2.firstName,
+        crewFamilyName: crewMembersV2.familyName,
+        crewEmpNo: crewMembersV2.empNo,
+      })
+      .from(rotationEntriesV2)
+      .leftJoin(crewMembersV2, eq(rotationEntriesV2.crewUuid, crewMembersV2.crewUuid))
+      .where(and(...conditions))
+      .orderBy(desc(rotationEntriesV2.createdAt));
+
+    return results.map((row: { entry: any; crewFirstName: string | null; crewFamilyName: string | null; crewEmpNo: string | null }) => ({
+      ...row.entry,
+      crewName: row.crewFirstName && row.crewFamilyName 
+        ? `${row.crewFirstName} ${row.crewFamilyName}`
+        : null,
+      crewEmpNo: row.crewEmpNo,
+    }));
+  }
+
   async softDelete(entryUuid: string): Promise<void> {
     const db = getDb();
     await db

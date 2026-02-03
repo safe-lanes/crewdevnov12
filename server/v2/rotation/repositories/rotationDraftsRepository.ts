@@ -110,6 +110,62 @@ export class RotationDraftVesselsRepository {
     return results[0];
   }
 
+  async findByDraftAndVessel(draftUuid: string, vesselUuid: string, includeDeleted = false): Promise<RotationDraftVesselsV2 | undefined> {
+    const db = getDb();
+    const conditions = [
+      eq(rotationDraftVesselsV2.draftUuid, draftUuid),
+      eq(rotationDraftVesselsV2.vesselUuid, vesselUuid),
+    ];
+    if (!includeDeleted) {
+      conditions.push(eq(rotationDraftVesselsV2.isDeleted, false));
+    }
+    const results = await db
+      .select()
+      .from(rotationDraftVesselsV2)
+      .where(and(...conditions));
+    return results[0];
+  }
+
+  async findAllByDraftUuid(draftUuid: string, includeDeleted = false): Promise<RotationDraftVesselsV2[]> {
+    const db = getDb();
+    const conditions = [eq(rotationDraftVesselsV2.draftUuid, draftUuid)];
+    if (!includeDeleted) {
+      conditions.push(eq(rotationDraftVesselsV2.isDeleted, false));
+    }
+    return db
+      .select()
+      .from(rotationDraftVesselsV2)
+      .where(and(...conditions))
+      .orderBy(rotationDraftVesselsV2.sortOrder);
+  }
+
+  async reactivate(rvUuid: string, data: Partial<InsertRotationDraftVesselsV2>): Promise<RotationDraftVesselsV2> {
+    const db = getDb();
+    const results = await db
+      .update(rotationDraftVesselsV2)
+      .set({
+        ...data,
+        isDeleted: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(rotationDraftVesselsV2.rvUuid, rvUuid))
+      .returning();
+    return results[0];
+  }
+
+  async update(rvUuid: string, data: Partial<InsertRotationDraftVesselsV2>): Promise<RotationDraftVesselsV2> {
+    const db = getDb();
+    const results = await db
+      .update(rotationDraftVesselsV2)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(rotationDraftVesselsV2.rvUuid, rvUuid))
+      .returning();
+    return results[0];
+  }
+
   async softDelete(rvUuid: string): Promise<void> {
     const db = getDb();
     await db
@@ -149,6 +205,62 @@ export class RotationDraftRanksRepository {
         ...data,
         rrUuid: uuidv4(),
       })
+      .returning();
+    return results[0];
+  }
+
+  async findByDraftAndRankName(draftUuid: string, rankName: string, includeDeleted = false): Promise<RotationDraftRanksV2 | undefined> {
+    const db = getDb();
+    const conditions = [
+      eq(rotationDraftRanksV2.draftUuid, draftUuid),
+      eq(rotationDraftRanksV2.rankName, rankName),
+    ];
+    if (!includeDeleted) {
+      conditions.push(eq(rotationDraftRanksV2.isDeleted, false));
+    }
+    const results = await db
+      .select()
+      .from(rotationDraftRanksV2)
+      .where(and(...conditions));
+    return results[0];
+  }
+
+  async findAllByDraftUuid(draftUuid: string, includeDeleted = false): Promise<RotationDraftRanksV2[]> {
+    const db = getDb();
+    const conditions = [eq(rotationDraftRanksV2.draftUuid, draftUuid)];
+    if (!includeDeleted) {
+      conditions.push(eq(rotationDraftRanksV2.isDeleted, false));
+    }
+    return db
+      .select()
+      .from(rotationDraftRanksV2)
+      .where(and(...conditions))
+      .orderBy(rotationDraftRanksV2.sortOrder);
+  }
+
+  async reactivate(rrUuid: string, data: Partial<InsertRotationDraftRanksV2>): Promise<RotationDraftRanksV2> {
+    const db = getDb();
+    const results = await db
+      .update(rotationDraftRanksV2)
+      .set({
+        ...data,
+        isDeleted: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(rotationDraftRanksV2.rrUuid, rrUuid))
+      .returning();
+    return results[0];
+  }
+
+  async update(rrUuid: string, data: Partial<InsertRotationDraftRanksV2>): Promise<RotationDraftRanksV2> {
+    const db = getDb();
+    const results = await db
+      .update(rotationDraftRanksV2)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(rotationDraftRanksV2.rrUuid, rrUuid))
       .returning();
     return results[0];
   }
