@@ -255,8 +255,8 @@ export const rotationEntriesController = {
   async deploy(req: Request, res: Response) {
     try {
       const { entryUuid } = req.params;
-      const { deployedByUuid } = req.body;
-      const result = await rotationDeployService.deployEntry(entryUuid, deployedByUuid);
+      const { deployedByUuid, auditUserUuid } = req.body;
+      const result = await rotationDeployService.deployEntry(entryUuid, deployedByUuid, auditUserUuid);
       
       if (!result.success) {
         return res.status(400).json({ error: result.error });
@@ -272,8 +272,8 @@ export const rotationEntriesController = {
   async reject(req: Request, res: Response) {
     try {
       const { entryUuid } = req.params;
-      const { rejectedByUuid, reason } = req.body;
-      const result = await rotationDeployService.rejectEntry(entryUuid, rejectedByUuid, reason);
+      const { rejectedByUuid, reason, auditUserUuid } = req.body;
+      const result = await rotationDeployService.rejectEntry(entryUuid, rejectedByUuid, reason, auditUserUuid);
       
       if (!result.success) {
         return res.status(400).json({ error: result.error });

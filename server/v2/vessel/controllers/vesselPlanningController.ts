@@ -76,8 +76,8 @@ export const vesselPlanningController = {
   async archive(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
-      const { archivedByUuid } = req.body;
-      const planning = await vesselPlanningService.archive(planUuid, archivedByUuid);
+      const { archivedByUuid, auditUserUuid } = req.body;
+      const planning = await vesselPlanningService.archive(planUuid, archivedByUuid, auditUserUuid);
       res.json(planning);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

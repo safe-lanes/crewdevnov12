@@ -141,7 +141,10 @@ export const vesselApiV2 = {
   },
 
   async archivePlanning(planUuid: string, archivedByUuid: string): Promise<VesselPlanningV2> {
-    const response = await apiRequest('POST', `${V2_BASE}/planning/${planUuid}/archive`, { archivedByUuid });
+    const response = await apiRequest('POST', `${V2_BASE}/planning/${planUuid}/archive`, { 
+      archivedByUuid,
+      auditUserUuid: archivedByUuid 
+    });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(error.message || 'Failed to archive planning');

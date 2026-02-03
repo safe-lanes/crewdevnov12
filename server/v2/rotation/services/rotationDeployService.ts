@@ -21,8 +21,9 @@ function applyAuditUser<T extends object>(data: T, isCreate = false): T & { crea
 }
 
 export const rotationDeployService = {
-  async deployEntry(entryUuid: string, deployedByUuid: string): Promise<{ success: boolean; planUuid?: string; archiveUuid?: string; error?: string }> {
+  async deployEntry(entryUuid: string, deployedByUuid: string, auditUserUuid?: string): Promise<{ success: boolean; planUuid?: string; archiveUuid?: string; error?: string }> {
     const db = getDb();
+    const effectiveAuditUser = auditUserUuid || deployedByUuid;
     
     try {
       const entry = await rotationEntriesRepository.findByEntryUuid(entryUuid);
@@ -58,6 +59,7 @@ export const rotationDeployService = {
         proposalStatus: "Deployed",
         deployedByUuid,
         deployedDate,
+        updatedByUuid: effectiveAuditUser,
       });
 
       const existingPlan = await vesselPlanningRepository.findByVesselAndRank(
@@ -74,6 +76,7 @@ export const rotationDeployService = {
           joiningPortUuid: entry.joiningPortUuid,
           joiningStatus: "Planned",
           relieverContractPeriodMonths: entry.contractPeriod,
+          updatedByUuid: effectiveAuditUser,
         });
         planUuid = existingPlan.planUuid;
       } else {
@@ -89,6 +92,8 @@ export const rotationDeployService = {
             joiningPortUuid: entry.joiningPortUuid,
             joiningStatus: "Planned",
             relieverContractPeriodMonths: entry.contractPeriod,
+            createdByUuid: effectiveAuditUser,
+            updatedByUuid: effectiveAuditUser,
           })
           .returning();
         planUuid = newPlan[0].planUuid;
@@ -96,6 +101,7 @@ export const rotationDeployService = {
 
       await rotationEntriesRepository.update(entryUuid, {
         deployedToPlanUuid: planUuid,
+        updatedByUuid: effectiveAuditUser,
       });
 
       const archive = await rotationArchiveRepository.create({
@@ -117,12 +123,16 @@ export const rotationDeployService = {
         currentCrewRangeStart: entry.currentCrewRangeStart,
         currentCrewRangeEnd: entry.currentCrewRangeEnd,
         deployedToPlanUuid: planUuid,
+        createdByUuid: effectiveAuditUser,
       });
 
       // Set any existing current assignments for this crew to false
       await db
         .update(crewAssignments)
-        .set({ isCurrent: false })
+        .set({ 
+          isCurrent: false,
+          updatedByUuid: effectiveAuditUser,
+        })
         .where(
           and(
             eq(crewAssignments.crewUuid, entry.crewUuid),
@@ -143,6 +153,8 @@ export const rotationDeployService = {
           contractPeriod: entry.contractPeriod?.toString(),
           portOfJoiningUuid: entry.joiningPortUuid,
           assignmentType: "Planned", // Initially planned, will become "OnBoard" when signed on
+          createdByUuid: effectiveAuditUser,
+          updatedByUuid: effectiveAuditUser,
         });
 
       return { 
@@ -156,8 +168,9 @@ export const rotationDeployService = {
     }
   },
 
-  async rejectEntry(entryUuid: string, rejectedByUuid: string, reason: string): Promise<{ success: boolean; archiveUuid?: string; error?: string }> {
+  async rejectEntry(entryUuid: string, rejectedByUuid: string, reason: string, auditUserUuid?: string): Promise<{ success: boolean; archiveUuid?: string; error?: string }> {
     const db = getDb();
+    const effectiveAuditUser = auditUserUuid || rejectedByUuid;
     
     try {
       const entry = await rotationEntriesRepository.findByEntryUuid(entryUuid);
@@ -170,6 +183,7 @@ export const rotationDeployService = {
       await rotationEntriesRepository.update(entryUuid, {
         proposalStatus: "Rejected",
         rejectionReason: reason,
+        updatedByUuid: effectiveAuditUser,
       });
 
       let crewName: string | undefined;
@@ -204,6 +218,7 @@ export const rotationDeployService = {
         currentCrewUuid: entry.currentCrewUuid,
         currentCrewSignOnDate: entry.currentCrewSignOnDate,
         currentCrewContractEnd: entry.currentCrewContractEnd,
+        createdByUuid: effectiveAuditUser,
       });
 
       return { success: true, archiveUuid: archive.archiveUuid };

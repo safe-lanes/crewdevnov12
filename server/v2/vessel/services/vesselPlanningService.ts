@@ -551,10 +551,14 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.update(planUuid, resolvedData);
   },
 
-  async archive(planUuid: string, archivedByUuid?: string) {
+  async archive(planUuid: string, archivedByUuid?: string, auditUserUuid?: string) {
     const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
     if (!existing) {
       throw new Error(`Planning record not found: ${planUuid}`);
+    }
+    const effectiveAuditUser = auditUserUuid || archivedByUuid;
+    if (effectiveAuditUser) {
+      await vesselPlanningRepository.update(planUuid, { updatedByUuid: effectiveAuditUser });
     }
     return vesselPlanningRepository.archive(planUuid, archivedByUuid);
   },
@@ -567,6 +571,7 @@ export const vesselPlanningService = {
     signOffDate: string;
     signOffReason?: string;
     signOffPortUuid?: string;
+    auditUserUuid?: string;
   }) {
     const db = getDb();
     
@@ -589,6 +594,7 @@ export const vesselPlanningService = {
           reason: data.signOffReason || null,
           isCurrent: false,
           updatedAt: sql`NOW()`,
+          updatedByUuid: data.auditUserUuid || null,
         })
         .where(
           and(
@@ -610,6 +616,7 @@ export const vesselPlanningService = {
       signOffReason: data.signOffReason,
       signOffPortUuid: resolvedPortUuid,
       reliefStatus: "Signed Off",
+      updatedByUuid: data.auditUserUuid || null,
     });
   },
 
@@ -634,11 +641,16 @@ export const vesselPlanningService = {
     relieverSignOnDate?: string;
     joiningPortUuid?: string;
     joiningStatus?: string;
+    auditUserUuid?: string;
   }) {
     // Resolve port value to UUID if provided
-    const resolvedData = { ...relieverData };
+    const resolvedData: any = { ...relieverData };
     if (relieverData.joiningPortUuid) {
       resolvedData.joiningPortUuid = await resolvePortToUuid(relieverData.joiningPortUuid) || undefined;
+    }
+    if (relieverData.auditUserUuid) {
+      resolvedData.updatedByUuid = relieverData.auditUserUuid;
+      delete resolvedData.auditUserUuid;
     }
     return vesselPlanningRepository.update(planUuid, resolvedData);
   },
@@ -662,6 +674,7 @@ export const vesselPlanningService = {
     signOnDate?: string;
     signOnPort?: string;
     contractPeriodMonths?: number;
+    auditUserUuid?: string;
   }) {
     const db = getDb();
     
@@ -705,6 +718,7 @@ export const vesselPlanningService = {
           .set({ 
             isCurrent: false,
             signOffDate: signOnDate,
+            updatedByUuid: data.auditUserUuid || null,
           })
           .where(
             and(
@@ -737,6 +751,7 @@ export const vesselPlanningService = {
           deploymentChecklistCompleted: false,
           applicableDocsChecked: false,
           updatedAt: sql`NOW()`,
+          updatedByUuid: data.auditUserUuid || null,
         })
         .where(eq(vesselPlanningV2.planUuid, planUuid))
         .returning();
@@ -752,6 +767,7 @@ export const vesselPlanningService = {
           signOnDate,
           contractPeriod: effectiveContractPeriod ? String(effectiveContractPeriod) : null,
           reliefDue: calculatedReliefDue,
+          updatedByUuid: data.auditUserUuid || null,
         })
         .where(
           and(
@@ -776,6 +792,7 @@ export const vesselPlanningService = {
     relieverSignOnDate?: string;
     joiningPortUuid?: string;
     relieverContractPeriodMonths?: number;
+    auditUserUuid?: string;
   }) {
     const planning = await vesselPlanningRepository.findByPlanUuid(planUuid);
     if (!planning) {
@@ -783,10 +800,16 @@ export const vesselPlanningService = {
     }
 
     // Resolve port value to UUID if provided (handles both UUID and port name inputs)
-    let resolvedData = { ...updateData };
+    let resolvedData: any = { ...updateData };
     if (updateData?.joiningPortUuid) {
       const resolvedPortUuid = await resolvePortToUuid(updateData.joiningPortUuid);
       resolvedData.joiningPortUuid = resolvedPortUuid || undefined;
+    }
+    
+    // Apply audit user
+    if (updateData?.auditUserUuid) {
+      resolvedData.updatedByUuid = updateData.auditUserUuid;
+      delete resolvedData.auditUserUuid;
     }
 
     return vesselPlanningRepository.update(planUuid, {

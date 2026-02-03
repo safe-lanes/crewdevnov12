@@ -252,7 +252,10 @@ export const rotationApiV2 = {
   },
 
   async deployEntry(entryUuid: string, deployedByUuid: string): Promise<{ success: boolean; planUuid: string }> {
-    const response = await apiRequest('POST', `${V2_BASE}/entries/${entryUuid}/deploy`, { deployedByUuid });
+    const response = await apiRequest('POST', `${V2_BASE}/entries/${entryUuid}/deploy`, { 
+      deployedByUuid,
+      auditUserUuid: deployedByUuid 
+    });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(error.message || 'Failed to deploy entry');
@@ -261,7 +264,11 @@ export const rotationApiV2 = {
   },
 
   async rejectEntry(entryUuid: string, rejectionReason: string, rejectedByUuid: string): Promise<RotationEntryV2> {
-    const response = await apiRequest('POST', `${V2_BASE}/entries/${entryUuid}/reject`, { rejectionReason, rejectedByUuid });
+    const response = await apiRequest('POST', `${V2_BASE}/entries/${entryUuid}/reject`, { 
+      rejectionReason, 
+      rejectedByUuid,
+      auditUserUuid: rejectedByUuid 
+    });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(error.message || 'Failed to reject entry');
