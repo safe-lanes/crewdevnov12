@@ -7,6 +7,19 @@ import { rotationEntriesRepository, rotationArchiveRepository } from "../reposit
 import { vesselPlanningRepository } from "../../vessel/repositories";
 import { v4 as uuidv4 } from "uuid";
 
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  
+  if (isCreate) {
+    result.createdByUuid = auditUserUuid;
+  }
+  result.updatedByUuid = auditUserUuid;
+  
+  return result;
+}
+
 export const rotationDeployService = {
   async deployEntry(entryUuid: string, deployedByUuid: string): Promise<{ success: boolean; planUuid?: string; archiveUuid?: string; error?: string }> {
     const db = getDb();

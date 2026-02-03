@@ -6,6 +6,19 @@ import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCo
 import { masterPorts } from "../../../../shared/schema";
 import { eq, and, sql, desc, or } from "drizzle-orm";
 
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  
+  if (isCreate) {
+    result.createdByUuid = auditUserUuid;
+  }
+  result.updatedByUuid = auditUserUuid;
+  
+  return result;
+}
+
 /**
  * Resolve a port value to its UUID
  * Accepts either a UUID or port name, returns the port_uuid
@@ -502,31 +515,37 @@ export const vesselPlanningService = {
     return { ...planning, attachments };
   },
 
-  async create(data: Omit<InsertVesselPlanningV2, "planUuid">) {
+  async create(data: Omit<InsertVesselPlanningV2, "planUuid"> & { auditUserUuid?: string }) {
+    // Apply audit user fields
+    const auditedData = applyAuditUser(data, true);
+    
     // Resolve port values to UUIDs (handles both UUID and port name inputs)
-    const resolvedData = { ...data };
-    if (data.joiningPortUuid) {
-      resolvedData.joiningPortUuid = await resolvePortToUuid(data.joiningPortUuid) || undefined;
+    const resolvedData = { ...auditedData };
+    if (auditedData.joiningPortUuid) {
+      resolvedData.joiningPortUuid = await resolvePortToUuid(auditedData.joiningPortUuid) || undefined;
     }
-    if (data.signOffPortUuid) {
-      resolvedData.signOffPortUuid = await resolvePortToUuid(data.signOffPortUuid) || undefined;
+    if (auditedData.signOffPortUuid) {
+      resolvedData.signOffPortUuid = await resolvePortToUuid(auditedData.signOffPortUuid) || undefined;
     }
     return vesselPlanningRepository.create(resolvedData);
   },
 
-  async update(planUuid: string, data: Partial<InsertVesselPlanningV2>) {
+  async update(planUuid: string, data: Partial<InsertVesselPlanningV2> & { auditUserUuid?: string }) {
     const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
     if (!existing) {
       throw new Error(`Planning record not found: ${planUuid}`);
     }
     
+    // Apply audit user fields
+    const auditedData = applyAuditUser(data, false);
+    
     // Resolve port values to UUIDs (handles both UUID and port name inputs)
-    const resolvedData = { ...data };
-    if (data.joiningPortUuid) {
-      resolvedData.joiningPortUuid = await resolvePortToUuid(data.joiningPortUuid) || undefined;
+    const resolvedData = { ...auditedData };
+    if (auditedData.joiningPortUuid) {
+      resolvedData.joiningPortUuid = await resolvePortToUuid(auditedData.joiningPortUuid) || undefined;
     }
-    if (data.signOffPortUuid) {
-      resolvedData.signOffPortUuid = await resolvePortToUuid(data.signOffPortUuid) || undefined;
+    if (auditedData.signOffPortUuid) {
+      resolvedData.signOffPortUuid = await resolvePortToUuid(auditedData.signOffPortUuid) || undefined;
     }
     
     return vesselPlanningRepository.update(planUuid, resolvedData);

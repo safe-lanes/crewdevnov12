@@ -12,6 +12,27 @@ function getCrewUserId(): string | null {
   }
 }
 
+function withAuditUser<T>(data: T): T {
+  const auditUserUuid = getCrewUserId();
+  
+  if (Array.isArray(data)) {
+    return data.map(item => 
+      typeof item === 'object' && item !== null 
+        ? { ...item, auditUserUuid } 
+        : item
+    ) as T;
+  }
+  
+  if (typeof data === 'object' && data !== null) {
+    return {
+      ...data,
+      auditUserUuid,
+    };
+  }
+  
+  return data;
+}
+
 export function useVesselPlanningV2(vesselCode: string | null) {
   return useQuery({
     queryKey: [V2_QUERY_KEY, vesselCode, 'planning'],
@@ -34,7 +55,7 @@ export function useCreatePlanningV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: CreatePlanningInput) => vesselApiV2.createPlanning(data),
+    mutationFn: (data: CreatePlanningInput) => vesselApiV2.createPlanning(withAuditUser(data)),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, variables.vesselUuid, 'planning'] });
     },
@@ -46,7 +67,7 @@ export function useUpdatePlanningV2() {
   
   return useMutation({
     mutationFn: ({ planUuid, data }: { planUuid: string; data: UpdatePlanningInput }) => 
-      vesselApiV2.updatePlanning(planUuid, data),
+      vesselApiV2.updatePlanning(planUuid, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY] });
     },

@@ -12,6 +12,27 @@ function getCrewUserId(): string | null {
   }
 }
 
+function withAuditUser<T>(data: T): T {
+  const auditUserUuid = getCrewUserId();
+  
+  if (Array.isArray(data)) {
+    return data.map(item => 
+      typeof item === 'object' && item !== null 
+        ? { ...item, auditUserUuid } 
+        : item
+    ) as T;
+  }
+  
+  if (typeof data === 'object' && data !== null) {
+    return {
+      ...data,
+      auditUserUuid,
+    };
+  }
+  
+  return data;
+}
+
 export function useCrewByRankV2(rank: string | null) {
   return useQuery({
     queryKey: [V2_QUERY_KEY, 'crew', 'by-rank', rank],
@@ -58,10 +79,7 @@ export function useCreateDraftV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: CreateDraftInput) => rotationApiV2.createDraft({
-      ...data,
-      createdByUuid: data.createdByUuid || getCrewUserId() || 'unknown',
-    }),
+    mutationFn: (data: CreateDraftInput) => rotationApiV2.createDraft(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'drafts'] });
     },
@@ -73,7 +91,7 @@ export function useUpdateDraftV2() {
   
   return useMutation({
     mutationFn: ({ draftUuid, data }: { draftUuid: string; data: any }) => 
-      rotationApiV2.updateDraft(draftUuid, data),
+      rotationApiV2.updateDraft(draftUuid, withAuditUser(data)),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'drafts'] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'drafts', variables.draftUuid] });
@@ -157,7 +175,7 @@ export function useCreateEntryV2() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: CreateEntryInput) => rotationApiV2.createEntry(data),
+    mutationFn: (data: CreateEntryInput) => rotationApiV2.createEntry(withAuditUser(data)),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'entries'] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'drafts', variables.draftUuid] });
@@ -170,7 +188,7 @@ export function useUpdateEntryV2() {
   
   return useMutation({
     mutationFn: ({ entryUuid, data }: { entryUuid: string; data: any }) => 
-      rotationApiV2.updateEntry(entryUuid, data),
+      rotationApiV2.updateEntry(entryUuid, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'entries'] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'drafts'] });

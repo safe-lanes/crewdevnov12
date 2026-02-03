@@ -18,6 +18,19 @@ import { eq } from "drizzle-orm";
 
 const crewMembersRepository = new CrewMembersRepository();
 
+function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
+  const auditUserUuid = (data as any).auditUserUuid || null;
+  const result = { ...data } as any;
+  delete result.auditUserUuid;
+  
+  if (isCreate) {
+    result.createdByUuid = auditUserUuid;
+  }
+  result.updatedByUuid = auditUserUuid;
+  
+  return result;
+}
+
 // V2 helper: Get vessel name from master_vessels table by UUID
 async function getVesselNameByUuid(vesselUuid: string): Promise<string> {
   try {
@@ -104,12 +117,15 @@ export const rotationDraftsService = {
     };
   },
 
-  async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId"> & { vessels?: string; crew?: string; assignments?: string }) {
+  async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId"> & { vessels?: string; crew?: string; assignments?: string; auditUserUuid?: string }) {
     // Extract vessels, crew, and assignments from data before creating draft
     const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...draftData } = data;
     
+    // Apply audit user fields
+    const auditedDraftData = applyAuditUser(draftData, true);
+    
     // Create the draft first
-    const draft = await rotationDraftsRepository.create(draftData);
+    const draft = await rotationDraftsRepository.create(auditedDraftData);
     
     // Save vessels to child table
     if (vesselsJson) {
@@ -162,14 +178,17 @@ export const rotationDraftsService = {
     return draft;
   },
 
-  async update(draftUuid: string, data: Partial<InsertRotationDraftsV2> & { vessels?: string; crew?: string; assignments?: string }) {
+  async update(draftUuid: string, data: Partial<InsertRotationDraftsV2> & { vessels?: string; crew?: string; assignments?: string; auditUserUuid?: string }) {
     const existing = await rotationDraftsRepository.findByDraftUuid(draftUuid);
     if (!existing) {
       throw new Error(`Draft not found: ${draftUuid}`);
     }
     
     // Extract vessels, crew, and assignments from data
-    const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...draftData } = data;
+    const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...rawDraftData } = data;
+    
+    // Apply audit user fields
+    const draftData = applyAuditUser(rawDraftData, false);
     
     // Determine if we should use hard delete (for Draft status) or soft delete (for Proposed/Completed)
     // Use target status if provided in update, otherwise use existing status
@@ -442,16 +461,18 @@ export const rotationEntriesService = {
     return entry;
   },
 
-  async create(data: Omit<InsertRotationEntriesV2, "entryUuid">) {
-    return rotationEntriesRepository.create(data);
+  async create(data: Omit<InsertRotationEntriesV2, "entryUuid"> & { auditUserUuid?: string }) {
+    const auditedData = applyAuditUser(data, true);
+    return rotationEntriesRepository.create(auditedData);
   },
 
-  async update(entryUuid: string, data: Partial<InsertRotationEntriesV2>) {
+  async update(entryUuid: string, data: Partial<InsertRotationEntriesV2> & { auditUserUuid?: string }) {
     const existing = await rotationEntriesRepository.findByEntryUuid(entryUuid);
     if (!existing) {
       throw new Error(`Entry not found: ${entryUuid}`);
     }
-    return rotationEntriesRepository.update(entryUuid, data);
+    const auditedData = applyAuditUser(data, false);
+    return rotationEntriesRepository.update(entryUuid, auditedData);
   },
 
   async delete(entryUuid: string) {
