@@ -1683,7 +1683,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       })
       .filter(n => n > 0);
     const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
-    return `${prefix}-${maxNum + 1}`;
+    return `${prefix}-${String(maxNum + 1).padStart(3, '0')}`;
   };
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1770,8 +1770,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const addLicense = () => {
+    const nextId = getNextId(formData.licenses, 'LIC');
     const newLic = {
-      id: getNextId(formData.licenses, 'LIC'),
+      id: nextId,
+      licenseId: nextId,
       certificateDocument: '',
       abbr: '',
       requirement: '',
@@ -1796,8 +1798,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const addTrainingCourse = () => {
+    const nextId = getNextId(formData.trainingCourses, 'TRN');
     const newCourse = {
-      id: getNextId(formData.trainingCourses, 'TRN'),
+      id: nextId,
+      courseId: nextId,
       trainingCourse: '',
       abbr: '',
       requirement: '',
@@ -2017,18 +2021,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const match = l.id.match(/^LIC-(\d+)$/);
       return match ? parseInt(match[1], 10) : 0;
     }));
-    const newLicenses = selectedLicenses.map((license, index) => ({
-      id: `LIC-${maxNum + index + 1}`,
-      licenseId: license.id,
-      certificateDocument: license.name,
-      abbr: license.abbr || '',
-      requirement: license.requirement || '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: '',
-      attachments: []
-    }));
+    const newLicenses = selectedLicenses.map((license, index) => {
+      const formattedId = `LIC-${String(maxNum + index + 1).padStart(3, '0')}`;
+      return {
+        id: formattedId,
+        licenseId: formattedId,
+        certificateDocument: license.name,
+        abbr: license.abbr || '',
+        requirement: license.requirement || '',
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: '',
+        attachments: []
+      };
+    });
     setFormData(prev => ({ ...prev, licenses: [...existingLicenses, ...newLicenses] }));
     setIsLicenseDialogOpen(false);
   };
@@ -2039,18 +2046,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const match = c.id.match(/^TRN-(\d+)$/);
       return match ? parseInt(match[1], 10) : 0;
     }));
-    const newCourses = selectedCourses.map((course, index) => ({
-      id: `TRN-${maxNum + index + 1}`,
-      courseId: course.id,
-      trainingCourse: course.name,
-      abbr: course.abbr || '',
-      requirement: course.requirement || '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: '',
-      attachments: []
-    }));
+    const newCourses = selectedCourses.map((course, index) => {
+      const formattedId = `TRN-${String(maxNum + index + 1).padStart(3, '0')}`;
+      return {
+        id: formattedId,
+        courseId: formattedId,
+        trainingCourse: course.name,
+        abbr: course.abbr || '',
+        requirement: course.requirement || '',
+        certificateNo: '',
+        issuingAuthority: '',
+        issued: '',
+        expiry: '',
+        attachments: []
+      };
+    });
     setFormData(prev => ({ ...prev, trainingCourses: [...existingCourses, ...newCourses] }));
     setIsTrainingDialogOpen(false);
   };
@@ -4530,7 +4540,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableBody>
             {formData.licenses.map((lic) => (
               <TableRow key={lic.id} className="border-b border-gray-200">
-                <TableCell className="p-3 text-[13px]">{lic.id}</TableCell>
+                <TableCell className="p-3 text-[13px]">{lic.licenseId || lic.id}</TableCell>
                 <TableCell className="p-3">
                   <Input value={lic.certificateDocument} onChange={(e) => updateLicense(lic.id, 'certificateDocument', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                 </TableCell>
@@ -4605,7 +4615,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableBody>
             {formData.trainingCourses.map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
-                <TableCell className="p-3 text-[13px]">{course.id}</TableCell>
+                <TableCell className="p-3 text-[13px]">{course.courseId || course.id}</TableCell>
                 <TableCell className="p-3">
                   <Input value={course.trainingCourse} onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                 </TableCell>
