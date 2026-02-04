@@ -2699,6 +2699,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const handleSaveOnly = async () => {
     await handleSaveAndContinue();
+    
+    // If on Section B or C, also save screening/approval data
+    if ((activeSection === 'B' || activeSection === 'C') && recCanUuid) {
+      await handleSaveScreening(true); // skipToasts=true to avoid duplicate notifications
+    }
   };
 
   // Handle export to PDF (matching legacy functionality)
@@ -2825,7 +2830,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     });
   };
 
-  const handleSaveScreening = async () => {
+  const handleSaveScreening = async (skipToasts: boolean = false) => {
     if (!recCanUuid) {
       toast({
         title: "Error",
@@ -2836,10 +2841,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
 
     try {
-      toast({
-        title: "Saving...",
-        description: "Saving screening data",
-      });
+      if (!skipToasts) {
+        toast({
+          title: "Saving...",
+          description: "Saving screening data",
+        });
+      }
 
       const [b1Result, b2Result, b3Result, b4Result, b5Result, b6Result, b7Result, b8Result] = await Promise.all([
         saveScreeningB1Mutation.mutateAsync({
@@ -3455,10 +3462,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Also invalidate candidates list to refresh sidebar filtering
       queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
 
-      toast({
-        title: "Success",
-        description: "Screening data saved successfully",
-      });
+      if (!skipToasts) {
+        toast({
+          title: "Success",
+          description: "Screening data saved successfully",
+        });
+      }
     } catch (error) {
       console.error('Save screening error:', error);
       toast({
@@ -5167,7 +5176,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         type="button"
                         size="sm"
                         className="bg-green-600 hover:bg-green-700 text-white"
-                        onClick={handleSaveScreening}
+                        onClick={() => handleSaveScreening()}
                         data-testid="button-b1-submit"
                       >
                         Submit
