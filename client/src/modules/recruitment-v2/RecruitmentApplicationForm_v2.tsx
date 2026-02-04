@@ -8079,7 +8079,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             <SelectItem value="_loading" disabled>Loading options...</SelectItem>
                           )}
                           {vesselFleetOptions
-                            .filter(option => !formData.c2FleetGroups.includes(option.value))
+                            .filter(option => option.category === 'fleet' && !formData.c2FleetGroups.includes(option.value))
                             .map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}
