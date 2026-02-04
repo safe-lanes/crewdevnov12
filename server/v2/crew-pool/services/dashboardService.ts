@@ -153,7 +153,7 @@ export const dashboardService = {
           : null,
         nextAvailability:
           !hasActiveAssignment && calculatedStatus === "On Leave"
-            ? this.formatDate(personalDetails?.nextAvailability)
+            ? this.formatDate(crew.nextAvailability || personalDetails?.nextAvailability)
             : null,
         presentAssignment: primaryAssignment?.vesselImo || primaryAssignment?.vesselName || null,
         emergencyContact: nextOfKin
@@ -207,6 +207,7 @@ export const dashboardService = {
         presentRank: crewMembersV2.presentRank,
         isActive: crewMembersV2.isActive,
         status: crewMembersV2.status,
+        nextAvailability: crewMembersV2.nextAvailability,
         nationalityName: masterNationalities.nationality,
       })
       .from(crewMembersV2)
