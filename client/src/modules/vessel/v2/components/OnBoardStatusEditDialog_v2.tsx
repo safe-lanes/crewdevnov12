@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -74,6 +74,25 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
     
+    // Look up port name for signOnPort display - only use UUID field, not name field
+    const signOnPortUuid = planningData?.joiningPortUuid;
+    const { data: signOnPortData } = useQuery<{ portUuid: string; name: string; country: string | null } | null>({
+        queryKey: ['/api/v2/ports', signOnPortUuid],
+        queryFn: async () => {
+            if (!signOnPortUuid) return null;
+            const response = await fetch(`/api/v2/ports/${signOnPortUuid}`);
+            if (!response.ok) return null;
+            return response.json();
+        },
+        enabled: !!signOnPortUuid && open,
+        staleTime: 300000,
+    });
+    
+    // Use fetched port name first, then fall back to pre-joined name from planningData
+    const signOnPortDisplayName = signOnPortData?.name 
+        ? `${signOnPortData.name}${signOnPortData.country ? ` (${signOnPortData.country})` : ''}`
+        : planningData?.joiningPortName || planningData?.joiningPort || '-';
+    
     const form = useForm<OnBoardStatusFormData>({
         resolver: zodResolver(onBoardStatusFormSchema),
         defaultValues: {
@@ -101,10 +120,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 onBoardCrewName: planningData.onBoardCrewName || '',
                 onBoardCrewNationality: planningData.onBoardCrewNationality || '',
                 signOnDate: planningData.signOnDate || '',
-                joiningPort: planningData.joiningPort || planningData.joiningPortUuid || '',
+                joiningPort: planningData.joiningPortUuid || '',
                 reliefDue: planningData.reliefDue || '',
                 signOffDate: planningData.signOffDate || '',
-                signOffPort: planningData.signOffPort || planningData.signOffPortUuid || '',
+                signOffPort: planningData.signOffPortUuid || '',
                 signOffReason: planningData.signOffReason || '',
                 reliefStatus: planningData.reliefStatus || '',
                 takeOverDate: planningData.takeOverDate || '',
@@ -407,7 +426,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                             <span className="text-sm text-gray-700">Sign On Port:</span>
                             <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
-                                <span className="text-sm text-gray-900">{planningData?.joiningPortName || planningData?.joiningPort || planningData?.joiningPortUuid || '-'}</span>
+                                <span className="text-sm text-gray-900">{signOnPortDisplayName}</span>
                             </div>
                         </div>
 

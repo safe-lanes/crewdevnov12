@@ -133,7 +133,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 relieverContractEndRangeStartMonths: planningData.relieverContractEndRangeStartMonths ?? planningData.contractEndRangeStartMonths,
                 relieverContractEndRangeEndMonths: planningData.relieverContractEndRangeEndMonths ?? planningData.contractEndRangeEndMonths,
                 relieverSignOnDate: planningData.relieverSignOnDate || planningData.joiningDate || '',
-                relieverSignOnPort: planningData.relieverSignOnPort || planningData.joiningPort || planningData.joiningPortUuid || '',
+                relieverSignOnPort: planningData.relieverSignOnPort || planningData.joiningPortUuid || '',
                 deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
                 applicableDocsChecked: planningData.applicableDocsChecked || false,
             });
