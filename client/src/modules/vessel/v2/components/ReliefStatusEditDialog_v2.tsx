@@ -173,7 +173,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 // Use the new sign-on API which properly updates crew_assignments.isCurrent
                 // and moves reliever to on-board crew
                 const signOnDate = data.relieverSignOnDate || planningData.relieverSignOnDate || planningData.joiningDate;
-                const signOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPortUuid;
+                const signOnPort = data.relieverSignOnPort || planningData.relieverSignOnPort || planningData.joiningPort;
                 const contractPeriodMonths = data.relieverContractPeriodMonths ?? planningData.relieverContractPeriodMonths;
                 
                 await vesselApiV2.signOnReliever(planningData.planUuid, {
