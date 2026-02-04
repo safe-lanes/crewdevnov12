@@ -2191,7 +2191,8 @@ export function VesselModule_v2(): JSX.Element {
                                                                 crewName: primaryCrew.relieverCrewName,
                                                                 crewStatus: 'secondary',
                                                                 relieverSignOnDate: primaryCrew.relieverSignOnDate,
-                                                                signOnPort: primaryCrew.joiningPortName,
+                                                                signOnPort: primaryCrew.joiningPortUuid || primaryCrew.joiningPort,
+                                                                signOnPortName: primaryCrew.joiningPortName,
                                                                 signOnStatus: primaryCrew.joiningStatus,
                                                                 relieverContractPeriodMonths: primaryCrew.relieverContractPeriodMonths,
                                                                 relieverContractEndRangeStartMonths: primaryCrew.relieverContractEndRangeStartMonths,
@@ -2244,7 +2245,7 @@ export function VesselModule_v2(): JSX.Element {
                                                             {/* Reliever Status */}
                                                             <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.crewName || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{formatDateOnly(row.secondaryCrew?.relieverSignOnDate)}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.signOnPort || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.signOnPortName || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.signOnStatus || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">
                                                                 <Button 
