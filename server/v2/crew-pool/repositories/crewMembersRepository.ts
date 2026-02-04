@@ -37,7 +37,7 @@ export class CrewMembersRepository {
     if (filters?.search) {
       const searchLower = filters.search.toLowerCase();
       return results.filter(
-        (crew) =>
+        (crew: CrewMemberV2) =>
           crew.firstName?.toLowerCase().includes(searchLower) ||
           crew.familyName?.toLowerCase().includes(searchLower) ||
           crew.empNo?.toLowerCase().includes(searchLower) ||

@@ -533,9 +533,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [recCanUuid, setRecCanUuid] = useState<string | null>(candidate?.recCanUuid || null);
   const [formData, setFormData] = useState<LocalFormData>(getInitialFormData);
   const [editingSections, setEditingSections] = useState<{[key: string]: boolean}>({
-    'A1.1': true,
-    'A1.2': true,
-    'A1.3': true,
+    'A1.1': false,
+    'A1.2': false,
+    'A1.3': false,
   });
   
   // Comment editing state - exact copy from legacy
