@@ -601,6 +601,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
+  const [isB7TrainingDialogOpen, setIsB7TrainingDialogOpen] = useState(false);
   const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
   const [isVisaDialogOpen, setIsVisaDialogOpen] = useState(false);
 
@@ -2088,6 +2089,26 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     });
     setFormData(prev => ({ ...prev, trainingCourses: [...existingCourses, ...newCourses] }));
     setIsTrainingDialogOpen(false);
+  };
+
+  // Handler for adding training courses from database to B7 Training Needs section
+  const addB7TrainingFromDatabase = (selectedCourses: TrainingCourseTemplate[]) => {
+    setFormData(prev => {
+      const existingNeeds = prev.b7TrainingNeeds.filter(t => t.training && t.training.trim() !== '');
+      const newNeeds = selectedCourses.map((course) => ({
+        id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+        training: course.name,
+        identifiedBy: '',
+        category: course.requirement || '',
+        dueDate: '',
+        comments: ''
+      }));
+      return {
+        ...prev,
+        b7TrainingNeeds: [...existingNeeds, ...newNeeds]
+      };
+    });
+    setIsB7TrainingDialogOpen(false);
   };
 
   const addTravelDocsFromDatabase = (selectedDocs: TravelDocumentTemplate[]) => {
@@ -7382,9 +7403,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          // TODO: Open training database dialog
-                        }}
+                        onClick={() => setIsB7TrainingDialogOpen(true)}
                         className="text-gray-600 border-gray-300 hover:bg-gray-50 text-xs"
                         data-testid="button-add-b7-training-from-db"
                       >
@@ -8383,6 +8402,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         onClose={() => setIsTrainingDialogOpen(false)}
         onConfirm={addTrainingCoursesFromDatabase}
         existingCourseIds={formData.trainingCourses.map(c => c.courseId).filter((id): id is string => Boolean(id))}
+      />
+      
+      {/* B7 Training Needs - reuses same training course selection dialog */}
+      <TrainingCourseSelectionDialog
+        open={isB7TrainingDialogOpen}
+        onClose={() => setIsB7TrainingDialogOpen(false)}
+        onConfirm={addB7TrainingFromDatabase}
+        existingCourseIds={[]}
       />
       
       <TravelDocumentSelectionDialog
