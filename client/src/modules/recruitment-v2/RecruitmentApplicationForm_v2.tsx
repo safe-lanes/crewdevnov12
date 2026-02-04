@@ -165,6 +165,7 @@ import {
   useV2SaveTrainingAttachment,
   useV2SaveSeaServiceAttachment,
   useV2SaveAdditionalInfoAttachment,
+  useV2DeleteAttachment,
 } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
 import { LicenseSelectionDialog } from '@/modules/crew-pool/LicenseSelectionDialog';
@@ -579,8 +580,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     open: boolean;
     type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo' | 'b1' | 'b2' | 'b3' | 'b4' | 'b5' | 'b6' | 'b7' | 'b8' | null;
     itemId: string;
+    serverId?: number;
     itemName: string;
-  }>({ open: false, type: null, itemId: '', itemName: '' });
+  }>({ open: false, type: null, itemId: '', serverId: undefined, itemName: '' });
 
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
@@ -695,6 +697,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const saveTrainingAttachmentMutation = useV2SaveTrainingAttachment();
   const saveSeaServiceAttachmentMutation = useV2SaveSeaServiceAttachment();
   const saveAdditionalInfoAttachmentMutation = useV2SaveAdditionalInfoAttachment();
+  const deleteAttachmentMutation = useV2DeleteAttachment();
 
   const saveScreeningB1Mutation = useV2SaveScreeningB1();
   const saveScreeningB2Mutation = useV2SaveScreeningB2();
@@ -2108,9 +2111,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const openAttachmentDialog = (
     type: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'additionalInfo' | 'b1' | 'b2' | 'b3' | 'b4' | 'b5' | 'b6' | 'b7' | 'b8',
     itemId: string,
-    itemName: string
+    itemName: string,
+    serverId?: number
   ) => {
-    setAttachmentDialog({ open: true, type, itemId, itemName });
+    setAttachmentDialog({ open: true, type, itemId, serverId, itemName });
   };
 
   const getAttachmentsForItem = (): FileAttachment[] => {
@@ -4368,10 +4372,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('document', doc.id, doc.document || 'Document')} data-testid={`button-attach-doc-${doc.id}`}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('document', doc.id, doc.document || 'Document', doc.serverId)} data-testid={`button-attach-doc-${doc.id}`}>
                       <Paperclip className="h-3 w-3" />
-                      {(doc.attachments?.length || 0) > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{doc.attachments?.length}</span>
+                      {(doc.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{doc.attachments?.filter(a => !a.isDeleted)?.length}</span>
                       )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => removeDocument(doc.id)}>
@@ -4433,10 +4437,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('visa', visa.id, visa.issuingCountry || 'Visa')} data-testid={`button-attach-visa-${visa.id}`}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('visa', visa.id, visa.issuingCountry || 'Visa', visa.serverId)} data-testid={`button-attach-visa-${visa.id}`}>
                       <Paperclip className="h-3 w-3" />
-                      {(visa.attachments?.length || 0) > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{visa.attachments?.length}</span>
+                      {(visa.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{visa.attachments?.filter(a => !a.isDeleted)?.length}</span>
                       )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => removeVisa(visa.id)}>
@@ -4489,10 +4493,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('education', edu.id, edu.schoolCollegeUniversity || 'Education')} data-testid={`button-attach-edu-${edu.id}`}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('education', edu.id, edu.schoolCollegeUniversity || 'Education', edu.serverId)} data-testid={`button-attach-edu-${edu.id}`}>
                       <Paperclip className="h-3 w-3" />
-                      {(edu.attachments?.length || 0) > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{edu.attachments?.length}</span>
+                      {(edu.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{edu.attachments?.filter(a => !a.isDeleted)?.length}</span>
                       )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => removeEducation(edu.id)}>
@@ -4564,10 +4568,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('license', lic.id, lic.certificateDocument || 'License')} data-testid={`button-attach-lic-${lic.id}`}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('license', lic.id, lic.certificateDocument || 'License', lic.serverId)} data-testid={`button-attach-lic-${lic.id}`}>
                       <Paperclip className="h-3 w-3" />
-                      {(lic.attachments?.length || 0) > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{lic.attachments?.length}</span>
+                      {(lic.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{lic.attachments?.filter(a => !a.isDeleted)?.length}</span>
                       )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => removeLicense(lic.id)}>
@@ -4639,10 +4643,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('training', course.id, course.trainingCourse || 'Training')} data-testid={`button-attach-training-${course.id}`}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('training', course.id, course.trainingCourse || 'Training', course.serverId)} data-testid={`button-attach-training-${course.id}`}>
                       <Paperclip className="h-3 w-3" />
-                      {(course.attachments?.length || 0) > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{course.attachments?.length}</span>
+                      {(course.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{course.attachments?.filter(a => !a.isDeleted)?.length}</span>
                       )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => removeTrainingCourse(course.id)}>
@@ -4737,10 +4741,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('seaService', service.id, service.vesselName || 'Sea Service')} data-testid={`button-attach-seaservice-${service.id}`}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('seaService', service.id, service.vesselName || 'Sea Service', service.serverId)} data-testid={`button-attach-seaservice-${service.id}`}>
                       <Paperclip className="h-3 w-3" />
-                      {(service.attachments?.length || 0) > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{service.attachments?.length}</span>
+                      {(service.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{service.attachments?.filter(a => !a.isDeleted)?.length}</span>
                       )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => removeSeaService(service.id)}>
@@ -4785,10 +4789,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600 relative" onClick={() => openAttachmentDialog('additionalInfo', info.id, info.information || 'Additional Info')} data-testid={`button-attach-additionalinfo-${info.id}`}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600 relative" onClick={() => openAttachmentDialog('additionalInfo', info.id, info.information || 'Additional Info', info.serverId)} data-testid={`button-attach-additionalinfo-${info.id}`}>
                       <Paperclip className="h-3 w-3" />
-                      {(info.attachments?.length || 0) > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{info.attachments?.length}</span>
+                      {(info.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{info.attachments?.filter(a => !a.isDeleted)?.length}</span>
                       )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600" onClick={() => removeAdditionalInfo(info.id)}>
@@ -8369,6 +8373,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         onOpenChange={(open) => setAttachmentDialog(prev => ({ ...prev, open }))}
         attachments={getAttachmentsForItem()}
         onAttachmentsChange={updateAttachments}
+        onDeleteAttachment={async (attUuid) => {
+          const parentType = attachmentDialog.type || 'document';
+          const parentUuid = attachmentDialog.serverId?.toString() || attachmentDialog.itemId || '';
+          await deleteAttachmentMutation.mutateAsync({ attUuid, parentUuid, parentType });
+        }}
         title="Manage Attachments"
         itemName={attachmentDialog.itemName}
       />

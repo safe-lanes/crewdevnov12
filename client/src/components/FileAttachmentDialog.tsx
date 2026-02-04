@@ -29,6 +29,7 @@ interface FileAttachmentDialogProps {
   onOpenChange: (open: boolean) => void;
   attachments: FileAttachment[];
   onAttachmentsChange: (attachments: FileAttachment[]) => void;
+  onDeleteAttachment?: (attUuid: string) => Promise<void>;
   title?: string;
   itemName?: string;
 }
@@ -41,6 +42,7 @@ export function FileAttachmentDialog({
   onOpenChange,
   attachments,
   onAttachmentsChange,
+  onDeleteAttachment,
   title = 'Manage Attachments',
   itemName,
 }: FileAttachmentDialogProps) {
@@ -100,24 +102,44 @@ export function FileAttachmentDialog({
     }
   };
 
-  const handleRemoveAttachment = (id: string) => {
+  const handleRemoveAttachment = async (id: string) => {
     const attachment = attachments.find((a) => a.id === id);
     
     if (attachment) {
-      if (attachment.attUuid) {
+      const fileName = attachment.name || (attachment as any).fileName || 'file';
+      
+      if (attachment.attUuid && onDeleteAttachment) {
+        try {
+          await onDeleteAttachment(attachment.attUuid);
+          onAttachmentsChange(attachments.filter((a) => a.id !== id));
+          toast({
+            title: 'File Deleted',
+            description: `${fileName} has been deleted.`,
+          });
+        } catch (error) {
+          toast({
+            title: 'Delete Failed',
+            description: `Failed to delete ${fileName}. Please try again.`,
+            variant: 'destructive',
+          });
+        }
+      } else if (attachment.attUuid) {
         onAttachmentsChange(
           attachments.map((a) => 
             a.id === id ? { ...a, isDeleted: true } : a
           )
         );
+        toast({
+          title: 'File Marked for Deletion',
+          description: `${fileName} will be removed when you save.`,
+        });
       } else {
         onAttachmentsChange(attachments.filter((a) => a.id !== id));
+        toast({
+          title: 'File Removed',
+          description: `${fileName} has been removed.`,
+        });
       }
-      
-      toast({
-        title: 'File Removed',
-        description: `${attachment.name} has been removed.`,
-      });
     }
   };
 
@@ -304,7 +326,7 @@ export function FileAttachmentDialog({
               </ScrollArea>
             )}
 
-            {attachments.length === 0 && (
+            {attachments.filter(a => !a.isDeleted).length === 0 && (
               <div className="text-center py-6 text-gray-500">
                 <FileText className="h-10 w-10 mx-auto mb-2 text-gray-300" />
                 <p className="text-sm">No attachments yet</p>
@@ -315,7 +337,7 @@ export function FileAttachmentDialog({
           <DialogFooter>
             <div className="flex justify-between w-full items-center">
               <span className="text-sm text-gray-500">
-                {attachments.length} file{attachments.length !== 1 ? 's' : ''} attached
+                {attachments.filter(a => !a.isDeleted).length} file{attachments.filter(a => !a.isDeleted).length !== 1 ? 's' : ''} attached
               </span>
               <Button
                 type="button"
