@@ -650,6 +650,7 @@ export const screeningB8Shortlisting = pgTable("screening_b8_shortlisting", {
   shortlisted: text("shortlisted"),
   submittedByUuid: text("submitted_by_uuid"),
   submittedDate: text("submitted_date"),
+  selectedApproverUuids: text("selected_approver_uuids").array().default([]),
   ...auditColumns,
 });
 
