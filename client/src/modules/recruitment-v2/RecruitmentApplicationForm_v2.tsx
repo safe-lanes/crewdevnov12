@@ -4330,7 +4330,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Number</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
@@ -4342,7 +4341,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableBody>
             {formData.documents.map((doc) => (
               <TableRow key={doc.id} className="border-b border-gray-200">
-                <TableCell className="p-3 text-[13px]">{doc.id}</TableCell>
                 <TableCell className="p-3">
                   <Input value={doc.document} onChange={(e) => updateDocument(doc.id, 'document', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                 </TableCell>
@@ -4397,7 +4395,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Serial No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
@@ -4409,7 +4406,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableBody>
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} className="border-b border-gray-200">
-                <TableCell className="p-3 text-[13px]">{visa.id}</TableCell>
                 <TableCell className="p-3">
                   <Input value={visa.issuingCountry} onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                 </TableCell>
@@ -4459,7 +4455,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
@@ -4470,7 +4465,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableBody>
             {formData.education.map((edu) => (
               <TableRow key={edu.id} className="border-b border-gray-200">
-                <TableCell className="p-3 text-[13px]">{edu.id}</TableCell>
                 <TableCell className="p-3">
                   <Input type="date" value={edu.dateOfCompletion} onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                 </TableCell>
