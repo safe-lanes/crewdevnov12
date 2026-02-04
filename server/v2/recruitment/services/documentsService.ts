@@ -127,7 +127,7 @@ export class DocumentsService {
   }
 
   async deleteDocumentAttachment(id: number): Promise<boolean> {
-    return documentAttachmentsRepository.hardDelete(id);
+    return documentAttachmentsRepository.softDelete(id);
   }
 
   async createDocumentAttachment(docUuid: string, data: Partial<InsertDocumentAttachment>, createdByUuid?: string): Promise<CandDocumentAttachment> {
@@ -201,7 +201,7 @@ export class DocumentsService {
   }
 
   async deleteVisaAttachment(id: number): Promise<boolean> {
-    return visaAttachmentsRepository.hardDelete(id);
+    return visaAttachmentsRepository.softDelete(id);
   }
 
   async createVisaAttachment(visaUuid: string, data: Partial<InsertVisaAttachment>, createdByUuid?: string): Promise<CandVisaAttachment> {
@@ -275,7 +275,7 @@ export class DocumentsService {
   }
 
   async deleteEducationAttachment(id: number): Promise<boolean> {
-    return educationAttachmentsRepository.hardDelete(id);
+    return educationAttachmentsRepository.softDelete(id);
   }
 
   async createEducationAttachment(eduUuid: string, data: Partial<InsertEducationAttachment>, createdByUuid?: string): Promise<CandEducationAttachment> {
@@ -349,7 +349,7 @@ export class DocumentsService {
   }
 
   async deleteLicenseAttachment(id: number): Promise<boolean> {
-    return licenseAttachmentsRepository.hardDelete(id);
+    return licenseAttachmentsRepository.softDelete(id);
   }
 
   async createLicenseAttachment(licUuid: string, data: Partial<InsertLicenseAttachment>, createdByUuid?: string): Promise<CandLicenseAttachment> {
@@ -423,7 +423,7 @@ export class DocumentsService {
   }
 
   async deleteTrainingAttachment(id: number): Promise<boolean> {
-    return trainingAttachmentsRepository.hardDelete(id);
+    return trainingAttachmentsRepository.softDelete(id);
   }
 
   async createTrainingAttachment(trainUuid: string, data: Partial<InsertTrainingAttachment>, createdByUuid?: string): Promise<CandTrainingAttachment> {
@@ -497,7 +497,7 @@ export class DocumentsService {
   }
 
   async deleteSeaServiceAttachment(id: number): Promise<boolean> {
-    return seaServiceAttachmentsRepository.hardDelete(id);
+    return seaServiceAttachmentsRepository.softDelete(id);
   }
 
   async createSeaServiceAttachment(seaUuid: string, data: Partial<InsertSeaServiceAttachment>, createdByUuid?: string): Promise<CandSeaServiceAttachment> {
@@ -571,7 +571,7 @@ export class DocumentsService {
   }
 
   async deleteAdditionalInfoAttachment(id: number): Promise<boolean> {
-    return additionalInfoAttachmentsRepository.hardDelete(id);
+    return additionalInfoAttachmentsRepository.softDelete(id);
   }
 
   async createAdditionalInfoAttachment(infoUuid: string, data: Partial<InsertAdditionalInfoAttachment>, createdByUuid?: string): Promise<CandAdditionalInfoAttachment> {
