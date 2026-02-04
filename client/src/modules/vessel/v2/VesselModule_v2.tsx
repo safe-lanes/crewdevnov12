@@ -1005,6 +1005,7 @@ export function VesselModule_v2(): JSX.Element {
                 relieverSignOnDate: crew.relieverSignOnDate || crew.signOnDate,
                 relieverSignOnPort: crew.relieverSignOnPortUuid || crew.signOnPortUuid || crew.joiningPortUuid || '',
                 joiningPort: crew.relieverSignOnPortUuid || crew.joiningPortUuid || '',
+                joiningPortUuid: crew.joiningPortUuid || '',
                 deploymentChecklistCompleted: crew.deploymentChecklistCompleted,
                 applicableDocsChecked: crew.applicableDocsChecked,
                 crewStatus: crew.crewStatus || 'secondary',
