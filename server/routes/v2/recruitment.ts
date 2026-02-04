@@ -295,4 +295,22 @@ router.put("/candidates/:recCanUuid/decision", recruitmentDecisionController.ups
 router.get("/decisions/:decisionUuid/assigned-groups", recruitmentDecisionController.getAssignedGroups);
 router.post("/decisions/:decisionUuid/assigned-groups", recruitmentDecisionController.addAssignedGroup);
 
+// Master data endpoints for dropdowns
+router.get("/fleet-groups", async (_req, res) => {
+  try {
+    const { getDb } = await import("../../v2/db");
+    const { masterFleetGroups } = await import("@shared/schema");
+    const db = getDb();
+    const fleetGroups = await db.select({
+      fgUuid: masterFleetGroups.fgUuid,
+      name: masterFleetGroups.name,
+      vessels: masterFleetGroups.vessels,
+    }).from(masterFleetGroups);
+    res.json({ fleetGroups });
+  } catch (error) {
+    console.error("Error fetching fleet groups:", error);
+    res.status(500).json({ error: "Failed to fetch fleet groups" });
+  }
+});
+
 export default router;
