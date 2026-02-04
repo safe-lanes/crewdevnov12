@@ -193,6 +193,7 @@ router.put("/screening/b1/comments/:commentUuid", screeningB1Controller.updateCo
 router.delete("/screening/b1/comments/:commentUuid", screeningB1Controller.deleteComment);
 router.get("/screening/b1/:b1Uuid/attachments", screeningB1Controller.getAttachments);
 router.post("/screening/b1/:b1Uuid/attachments", screeningB1Controller.createAttachment);
+router.delete("/screening/b1/attachments/:id", screeningB1Controller.deleteAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b2", screeningB2Controller.get);
 router.put("/candidates/:recCanUuid/screening/b2", screeningB2Controller.upsert);
@@ -205,6 +206,7 @@ router.put("/screening/b2/comments/:commentUuid", screeningB2Controller.updateCo
 router.delete("/screening/b2/comments/:commentUuid", screeningB2Controller.deleteComment);
 router.get("/screening/b2/:b2Uuid/attachments", screeningB2Controller.getAttachments);
 router.post("/screening/b2/:b2Uuid/attachments", screeningB2Controller.createAttachment);
+router.delete("/screening/b2/attachments/:id", screeningB2Controller.deleteAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b3", screeningB3Controller.get);
 router.put("/candidates/:recCanUuid/screening/b3", screeningB3Controller.upsert);
@@ -217,6 +219,7 @@ router.put("/screening/b3/comments/:commentUuid", screeningB3Controller.updateCo
 router.delete("/screening/b3/comments/:commentUuid", screeningB3Controller.deleteComment);
 router.get("/screening/b3/:b3Uuid/attachments", screeningB3Controller.getAttachments);
 router.post("/screening/b3/:b3Uuid/attachments", screeningB3Controller.createAttachment);
+router.delete("/screening/b3/attachments/:id", screeningB3Controller.deleteAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b4", screeningB4Controller.get);
 router.put("/candidates/:recCanUuid/screening/b4", screeningB4Controller.upsert);
@@ -229,6 +232,7 @@ router.put("/screening/b4/comments/:commentUuid", screeningB4Controller.updateCo
 router.delete("/screening/b4/comments/:commentUuid", screeningB4Controller.deleteComment);
 router.get("/screening/b4/:b4Uuid/attachments", screeningB4Controller.getAttachments);
 router.post("/screening/b4/:b4Uuid/attachments", screeningB4Controller.createAttachment);
+router.delete("/screening/b4/attachments/:id", screeningB4Controller.deleteAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b5", screeningB5Controller.get);
 router.put("/candidates/:recCanUuid/screening/b5", screeningB5Controller.upsert);
@@ -241,6 +245,7 @@ router.put("/screening/b5/comments/:commentUuid", screeningB5Controller.updateCo
 router.delete("/screening/b5/comments/:commentUuid", screeningB5Controller.deleteComment);
 router.get("/screening/b5/:b5Uuid/attachments", screeningB5Controller.getAttachments);
 router.post("/screening/b5/:b5Uuid/attachments", screeningB5Controller.createAttachment);
+router.delete("/screening/b5/attachments/:id", screeningB5Controller.deleteAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b6", screeningB6Controller.get);
 router.put("/candidates/:recCanUuid/screening/b6", screeningB6Controller.upsert);
@@ -253,6 +258,7 @@ router.put("/screening/b6/comments/:commentUuid", screeningB6Controller.updateCo
 router.delete("/screening/b6/comments/:commentUuid", screeningB6Controller.deleteComment);
 router.get("/screening/b6/:b6Uuid/attachments", screeningB6Controller.getAttachments);
 router.post("/screening/b6/:b6Uuid/attachments", screeningB6Controller.createAttachment);
+router.delete("/screening/b6/attachments/:id", screeningB6Controller.deleteAttachment);
 
 router.get("/candidates/:recCanUuid/screening/b7", screeningB7Controller.get);
 router.put("/candidates/:recCanUuid/screening/b7", screeningB7Controller.upsert);
@@ -270,6 +276,7 @@ router.put("/screening/b8/comments/:commentUuid", screeningB8Controller.updateCo
 router.delete("/screening/b8/comments/:commentUuid", screeningB8Controller.deleteComment);
 router.get("/screening/b8/:b8Uuid/attachments", screeningB8Controller.getAttachments);
 router.post("/screening/b8/:b8Uuid/attachments", screeningB8Controller.createAttachment);
+router.delete("/screening/b8/attachments/:id", screeningB8Controller.deleteAttachment);
 
 router.get("/candidates/:recCanUuid/approvals", approvalsController.getApprovals);
 router.post("/candidates/:recCanUuid/approvals", approvalsController.createApproval);

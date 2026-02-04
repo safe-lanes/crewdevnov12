@@ -1996,6 +1996,13 @@ export function useV2DeleteAttachment() {
         training: "training",
         "sea-service": "sea-service",
         "additional-info": "additional-info",
+        "screening-b1": "screening/b1",
+        "screening-b2": "screening/b2",
+        "screening-b3": "screening/b3",
+        "screening-b4": "screening/b4",
+        "screening-b5": "screening/b5",
+        "screening-b6": "screening/b6",
+        "screening-b8": "screening/b8",
       };
       const endpoint = endpointMap[parentType] || parentType;
       return deleteApi(`/${endpoint}/attachments/${id}`);

@@ -98,6 +98,18 @@ export const screeningB1Controller = {
       res.status(500).json({ error: "Failed to create B1 attachment" });
     }
   },
+
+  async deleteAttachment(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+      const result = await screeningB1Service.deleteAttachment(id);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B1 attachment:", error);
+      res.status(500).json({ error: "Failed to delete B1 attachment" });
+    }
+  },
 };
 
 export const screeningB2Controller = {
@@ -219,6 +231,18 @@ export const screeningB2Controller = {
     } catch (error) {
       console.error("Error creating B2 attachment:", error);
       res.status(500).json({ error: "Failed to create B2 attachment" });
+    }
+  },
+
+  async deleteAttachment(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+      const result = await screeningB2Service.deleteAttachment(id);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B2 attachment:", error);
+      res.status(500).json({ error: "Failed to delete B2 attachment" });
     }
   },
 };
@@ -344,6 +368,18 @@ export const screeningB3Controller = {
       res.status(500).json({ error: "Failed to create B3 attachment" });
     }
   },
+
+  async deleteAttachment(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+      const result = await screeningB3Service.deleteAttachment(id);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B3 attachment:", error);
+      res.status(500).json({ error: "Failed to delete B3 attachment" });
+    }
+  },
 };
 
 export const screeningB4Controller = {
@@ -465,6 +501,18 @@ export const screeningB4Controller = {
     } catch (error) {
       console.error("Error creating B4 attachment:", error);
       res.status(500).json({ error: "Failed to create B4 attachment" });
+    }
+  },
+
+  async deleteAttachment(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+      const result = await screeningB4Service.deleteAttachment(id);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B4 attachment:", error);
+      res.status(500).json({ error: "Failed to delete B4 attachment" });
     }
   },
 };
@@ -590,6 +638,18 @@ export const screeningB5Controller = {
       res.status(500).json({ error: "Failed to create B5 attachment" });
     }
   },
+
+  async deleteAttachment(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+      const result = await screeningB5Service.deleteAttachment(id);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B5 attachment:", error);
+      res.status(500).json({ error: "Failed to delete B5 attachment" });
+    }
+  },
 };
 
 export const screeningB6Controller = {
@@ -711,6 +771,18 @@ export const screeningB6Controller = {
     } catch (error) {
       console.error("Error creating B6 attachment:", error);
       res.status(500).json({ error: "Failed to create B6 attachment" });
+    }
+  },
+
+  async deleteAttachment(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+      const result = await screeningB6Service.deleteAttachment(id);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B6 attachment:", error);
+      res.status(500).json({ error: "Failed to delete B6 attachment" });
     }
   },
 };
@@ -883,6 +955,18 @@ export const screeningB8Controller = {
     } catch (error) {
       console.error("Error creating B8 attachment:", error);
       res.status(500).json({ error: "Failed to create B8 attachment" });
+    }
+  },
+
+  async deleteAttachment(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+      const result = await screeningB8Service.deleteAttachment(id);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B8 attachment:", error);
+      res.status(500).json({ error: "Failed to delete B8 attachment" });
     }
   },
 };

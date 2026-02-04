@@ -1389,6 +1389,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b1Attachments: screeningB1Attachments.map((att: any) => ({
           id: att.attachUuid || att.attUuid || att.id?.toString(),
+          numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
           name: att.fileName || '',
           type: att.fileType || '',
@@ -1407,6 +1408,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b2Attachments: screeningB2Attachments.map((att: any) => ({
           id: att.attachUuid || att.attUuid || att.id?.toString(),
+          numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
           name: att.fileName || '',
           type: att.fileType || '',
@@ -1425,6 +1427,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b3Attachments: screeningB3Attachments.map((att: any) => ({
           id: att.attachUuid || att.attUuid || att.id?.toString(),
+          numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
           name: att.fileName || '',
           type: att.fileType || '',
@@ -1443,6 +1446,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b4Attachments: screeningB4Attachments.map((att: any) => ({
           id: att.attachUuid || att.attUuid || att.id?.toString(),
+          numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
           name: att.fileName || '',
           type: att.fileType || '',
@@ -1461,6 +1465,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b5Attachments: screeningB5Attachments.map((att: any) => ({
           id: att.attachUuid || att.attUuid || att.id?.toString(),
+          numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
           name: att.fileName || '',
           type: att.fileType || '',
@@ -1479,6 +1484,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b6Attachments: screeningB6Attachments.map((att: any) => ({
           id: att.attachUuid || att.attUuid || att.id?.toString(),
+          numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
           name: att.fileName || '',
           type: att.fileType || '',
@@ -1497,6 +1503,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b8Attachments: screeningB8Attachments.map((att: any) => ({
           id: att.attachUuid || att.attUuid || att.id?.toString(),
+          numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
           name: att.fileName || '',
           type: att.fileType || '',
@@ -8392,6 +8399,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           const typeMap: Record<string, string> = {
             'seaService': 'sea-service',
             'additionalInfo': 'additional-info',
+            'b1': 'screening-b1',
+            'b2': 'screening-b2',
+            'b3': 'screening-b3',
+            'b4': 'screening-b4',
+            'b5': 'screening-b5',
+            'b6': 'screening-b6',
+            'b8': 'screening-b8',
           };
           const rawType = attachmentDialog.type || 'document';
           const parentType = typeMap[rawType] || rawType;

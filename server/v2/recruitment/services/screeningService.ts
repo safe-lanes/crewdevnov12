@@ -141,6 +141,10 @@ export class ScreeningB1Service {
       updatedByUuid: auditUser,
     } as any);
   }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    return screeningB1Repository.deleteAttachment(id);
+  }
 }
 
 export class ScreeningB2Service {
@@ -222,6 +226,10 @@ export class ScreeningB2Service {
       createdByUuid: auditUser,
       updatedByUuid: auditUser,
     } as any);
+  }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    return screeningB2Repository.deleteAttachment(id);
   }
 }
 
@@ -305,6 +313,10 @@ export class ScreeningB3Service {
       updatedByUuid: auditUser,
     } as any);
   }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    return screeningB3Repository.deleteAttachment(id);
+  }
 }
 
 export class ScreeningB4Service {
@@ -387,6 +399,10 @@ export class ScreeningB4Service {
       updatedByUuid: auditUser,
     } as any);
   }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    return screeningB4Repository.deleteAttachment(id);
+  }
 }
 
 export class ScreeningB5Service {
@@ -468,6 +484,10 @@ export class ScreeningB5Service {
       createdByUuid: auditUser,
       updatedByUuid: auditUser,
     } as any);
+  }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    return screeningB5Repository.deleteAttachment(id);
   }
 }
 
@@ -564,6 +584,10 @@ export class ScreeningB6Service {
       createdByUuid: auditUser,
       updatedByUuid: auditUser,
     } as any);
+  }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    return screeningB6Repository.deleteAttachment(id);
   }
 }
 
@@ -692,6 +716,10 @@ export class ScreeningB8Service {
       createdByUuid: auditUser,
       updatedByUuid: auditUser,
     } as any);
+  }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    return screeningB8Repository.deleteAttachment(id);
   }
 }
 

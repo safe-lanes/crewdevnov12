@@ -165,6 +165,15 @@ export class ScreeningB1Repository {
     const results = await db.insert(screeningB1Attachments).values(data).returning();
     return results[0];
   }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB1Attachments)
+      .set({ isDeleted: true })
+      .where(eq(screeningB1Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
 }
 
 export class ScreeningB2Repository {
@@ -257,6 +266,15 @@ export class ScreeningB2Repository {
     const db = getDb();
     const results = await db.insert(screeningB2Attachments).values(data).returning();
     return results[0];
+  }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB2Attachments)
+      .set({ isDeleted: true })
+      .where(eq(screeningB2Attachments.id, id))
+      .returning();
+    return results.length > 0;
   }
 }
 
@@ -351,6 +369,15 @@ export class ScreeningB3Repository {
     const results = await db.insert(screeningB3Attachments).values(data).returning();
     return results[0];
   }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB3Attachments)
+      .set({ isDeleted: true })
+      .where(eq(screeningB3Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
 }
 
 export class ScreeningB4Repository {
@@ -444,6 +471,15 @@ export class ScreeningB4Repository {
     const results = await db.insert(screeningB4Attachments).values(data).returning();
     return results[0];
   }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB4Attachments)
+      .set({ isDeleted: true })
+      .where(eq(screeningB4Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
 }
 
 export class ScreeningB5Repository {
@@ -536,6 +572,15 @@ export class ScreeningB5Repository {
     const db = getDb();
     const results = await db.insert(screeningB5Attachments).values(data).returning();
     return results[0];
+  }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB5Attachments)
+      .set({ isDeleted: true })
+      .where(eq(screeningB5Attachments.id, id))
+      .returning();
+    return results.length > 0;
   }
 }
 
@@ -649,6 +694,15 @@ export class ScreeningB6Repository {
     const db = getDb();
     const results = await db.insert(screeningB6Attachments).values(data).returning();
     return results[0];
+  }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB6Attachments)
+      .set({ isDeleted: true })
+      .where(eq(screeningB6Attachments.id, id))
+      .returning();
+    return results.length > 0;
   }
 }
 
@@ -808,6 +862,15 @@ export class ScreeningB8Repository {
     const db = getDb();
     const results = await db.insert(screeningB8Attachments).values(data).returning();
     return results[0];
+  }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB8Attachments)
+      .set({ isDeleted: true })
+      .where(eq(screeningB8Attachments.id, id))
+      .returning();
+    return results.length > 0;
   }
 }
 
