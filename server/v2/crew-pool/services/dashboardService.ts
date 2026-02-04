@@ -151,10 +151,7 @@ export const dashboardService = {
         sailingDue: hasActiveAssignment
           ? this.formatDate(primaryAssignment?.reliefDue)
           : null,
-        nextAvailability:
-          !hasActiveAssignment && calculatedStatus === "On Leave"
-            ? this.formatDate(crew.nextAvailability || personalDetails?.nextAvailability)
-            : null,
+        nextAvailability: this.formatDate(crew.nextAvailability || personalDetails?.nextAvailability),
         presentAssignment: primaryAssignment?.vesselImo || primaryAssignment?.vesselName || null,
         emergencyContact: nextOfKin
           ? {
