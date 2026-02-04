@@ -7062,9 +7062,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     ) : approverMasterData.length === 0 ? (
                                       <SelectItem value="_empty" disabled>No office users found</SelectItem>
                                     ) : (
-                                      approverMasterData.map((interviewer: string) => (
-                                        <SelectItem key={interviewer} value={interviewer}>
-                                          {interviewer}
+                                      approverMasterData.map((interviewer: { userUuid: string; displayName: string }) => (
+                                        <SelectItem key={interviewer.userUuid} value={interviewer.displayName}>
+                                          {interviewer.displayName}
                                         </SelectItem>
                                       ))
                                     )}
@@ -7463,9 +7463,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   ) : approverMasterData.length === 0 ? (
                                     <SelectItem value="_empty" disabled>No users found</SelectItem>
                                   ) : (
-                                    approverMasterData.map((name: string) => (
-                                      <SelectItem key={name} value={name}>
-                                        {name}
+                                    approverMasterData.map((user: { userUuid: string; displayName: string }) => (
+                                      <SelectItem key={user.userUuid} value={user.displayName}>
+                                        {user.displayName}
                                       </SelectItem>
                                     ))
                                   )}
@@ -7915,9 +7915,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   ) : approverMasterData.length === 0 ? (
                                     <SelectItem value="_empty" disabled>No office users found</SelectItem>
                                   ) : (
-                                    approverMasterData.map((approverName: string) => (
-                                      <SelectItem key={approverName} value={approverName}>
-                                        {approverName}
+                                    approverMasterData.map((approver: { userUuid: string; displayName: string }) => (
+                                      <SelectItem key={approver.userUuid} value={approver.displayName}>
+                                        {approver.displayName}
                                       </SelectItem>
                                     ))
                                   )}
