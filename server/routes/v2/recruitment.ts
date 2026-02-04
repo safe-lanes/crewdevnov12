@@ -270,6 +270,7 @@ router.get("/candidates/:recCanUuid/screening/b8", screeningB8Controller.get);
 router.put("/candidates/:recCanUuid/screening/b8", screeningB8Controller.upsert);
 router.get("/screening/b8/:b8Uuid/approvers", screeningB8Controller.getApprovers);
 router.post("/screening/b8/:b8Uuid/approvers", screeningB8Controller.createApprover);
+router.post("/screening/b8/approver-details", screeningB8Controller.getApproverDetails);
 router.get("/screening/b8/:b8Uuid/comments", screeningB8Controller.getComments);
 router.post("/screening/b8/:b8Uuid/comments", screeningB8Controller.createComment);
 router.put("/screening/b8/comments/:commentUuid", screeningB8Controller.updateComment);

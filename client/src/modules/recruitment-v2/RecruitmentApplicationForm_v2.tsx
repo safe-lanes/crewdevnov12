@@ -801,16 +801,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const { data: externalLanguagesData } = useExternalLanguages();
   const { data: externalUsersData, isLoading: isLoadingUsers } = useExternalUsers();
 
-  // Filter users by userType === "Office" and extract displayName for approver/interviewer dropdown
+  // Filter users by userType === "Office" and extract userUuid + displayName for approver/interviewer dropdown
   const approverMasterData = useMemo(() => {
     const users = (externalUsersData as any)?.users || externalUsersData || [];
     if (users.length > 0) {
-      const displayNames = users
+      const approverList = users
         .filter((user: any) => user.userType?.toLowerCase() === 'office')
-        .map((user: any) => user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`)
-        .filter(Boolean);
-      // Deduplicate to prevent React key warnings
-      return Array.from(new Set(displayNames)).sort() as string[];
+        .map((user: any) => ({
+          userUuid: user.uuid || user.userUuid || user.id || '',
+          displayName: user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`,
+        }))
+        .filter((u: any) => u.displayName && u.userUuid);
+      // Deduplicate by userUuid
+      const uniqueMap = new Map();
+      approverList.forEach((u: any) => {
+        if (!uniqueMap.has(u.userUuid)) {
+          uniqueMap.set(u.userUuid, u);
+        }
+      });
+      return Array.from(uniqueMap.values()).sort((a: any, b: any) => a.displayName.localeCompare(b.displayName));
     }
     return [];
   }, [externalUsersData]);
@@ -1253,6 +1262,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFormData(prev => ({
         ...prev,
         b8Shortlisted: screeningB8Data.shortlisted || '',
+        // Load selectedApproverUuids from B8 record directly
+        selectedApproversForSubmission: (screeningB8Data as any).selectedApproverUuids || [],
       }));
     }
   }, [screeningB8Data]);
@@ -1611,26 +1622,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
   }, [screeningB7TrainingItems]);
 
-  useEffect(() => {
-    if (screeningB8Approvers && screeningB8Approvers.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        b8SelectedApprovers: screeningB8Approvers.map(approver => ({
-          id: approver.approverUuid,
-          serverId: approver.id,
-          approverName: approver.approverName || '',
-          approverRole: approver.approverRole || '',
-          approvalDate: approver.approvalDate || '',
-          decision: approver.decision || '',
-          remarks: approver.remarks || '',
-        })),
-        // Also populate selectedApproversForSubmission for the checkbox UI
-        selectedApproversForSubmission: screeningB8Approvers
-          .map(approver => approver.approverName)
-          .filter((name): name is string => !!name),
-      }));
-    }
-  }, [screeningB8Approvers]);
+  // Note: selectedApproversForSubmission is now loaded from screeningB8Data.selectedApproverUuids
+  // The old approvers table (screeningB8Approvers) is no longer used for this functionality
 
   // Part C - Load approvals data
   useEffect(() => {
@@ -2833,19 +2826,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
   };
 
-  // Toggle approver selection for "Submit for Approval to" multi-select
-  const toggleApproverSelection = (approverName: string) => {
+  // Toggle approver selection for "Submit for Approval to" multi-select (using userUuid)
+  const toggleApproverSelection = (userUuid: string) => {
     setFormData(prev => {
       const currentSelected = prev.selectedApproversForSubmission;
-      if (currentSelected.includes(approverName)) {
+      if (currentSelected.includes(userUuid)) {
         return {
           ...prev,
-          selectedApproversForSubmission: currentSelected.filter(a => a !== approverName)
+          selectedApproversForSubmission: currentSelected.filter(u => u !== userUuid)
         };
       } else {
         return {
           ...prev,
-          selectedApproversForSubmission: [...currentSelected, approverName]
+          selectedApproversForSubmission: [...currentSelected, userUuid]
         };
       }
     });
@@ -2937,7 +2930,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             shortlisted: formData.b8Shortlisted || undefined,
             submittedByUuid: formData.b8SubmittedBy || undefined,
             submittedDate: formData.b8SubmittedDate || undefined,
-            selectedApprovers: JSON.stringify(formData.selectedApproversForSubmission || []),
+            selectedApproverUuids: formData.selectedApproversForSubmission || [],
           } as any,
         }),
       ]);
@@ -3104,18 +3097,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
-      // Save B8 approvers from UI (formData.selectedApproversForSubmission is a string array of approver names)
-      const serverB8ApproverMap = new Map((screeningB8Approvers || []).map(a => [a.approverName, a.id]));
-      for (const approverName of formData.selectedApproversForSubmission) {
-        if (!serverB8ApproverMap.has(approverName) && currentB8Uuid) {
-          await createB8ApproverMutation.mutateAsync({
-            b8Uuid: currentB8Uuid,
-            data: {
-              approverName: approverName || undefined,
-            },
-          });
-        }
-      }
+      // Note: selectedApproverUuids are now saved directly with the B8 record (no separate approvers table needed)
 
       // Save B1-B8 section comments using reconciliation pattern
       const currentB1Uuid = b1Result?.b1Uuid || b1Uuid;
@@ -7827,18 +7809,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 ) : approverMasterData.length === 0 ? (
                                   <div className="px-3 py-4 text-sm text-gray-500 text-center">No office users found</div>
                                 ) : (
-                                  approverMasterData.map((approverName: string) => (
+                                  approverMasterData.map((approver: { userUuid: string; displayName: string }) => (
                                     <div
-                                      key={approverName}
+                                      key={approver.userUuid}
                                       className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                      onClick={() => toggleApproverSelection(approverName)}
-                                      data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                                      onClick={() => toggleApproverSelection(approver.userUuid)}
+                                      data-testid={`checkbox-approver-${approver.userUuid}`}
                                     >
                                       <Checkbox
-                                        checked={formData.selectedApproversForSubmission.includes(approverName)}
+                                        checked={formData.selectedApproversForSubmission.includes(approver.userUuid)}
                                         className="mr-2"
                                       />
-                                      <span className="text-sm text-gray-700">{approverName}</span>
+                                      <span className="text-sm text-gray-700">{approver.displayName}</span>
                                     </div>
                                   ))
                                 )}

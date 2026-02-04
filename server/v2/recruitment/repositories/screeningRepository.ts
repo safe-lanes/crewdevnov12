@@ -814,6 +814,26 @@ export class ScreeningB8Repository {
     );
   }
 
+  // Fetch approver details by joining with master_users using the selectedApproverUuids array
+  async getApproverDetailsByUuids(userUuids: string[]): Promise<Array<{ userUuid: string; displayName: string; designation: string | null }>> {
+    if (!userUuids || userUuids.length === 0) {
+      return [];
+    }
+    const db = getDb();
+    const results = await db.select({
+      userUuid: masterUsers.userUuid,
+      displayName: masterUsers.fullname,
+      designation: masterUsers.designation,
+    }).from(masterUsers).where(
+      sql`${masterUsers.userUuid} = ANY(${userUuids})`
+    );
+    return results.map((r: { userUuid: string | null; displayName: string | null; designation: string | null }) => ({
+      userUuid: r.userUuid || '',
+      displayName: r.displayName || '',
+      designation: r.designation || null,
+    }));
+  }
+
   async createApprover(data: InsertScreeningB8Approver): Promise<ScreeningB8Approver> {
     const db = getDb();
     const results = await db.insert(screeningB8SelectedApprovers).values(data).returning();

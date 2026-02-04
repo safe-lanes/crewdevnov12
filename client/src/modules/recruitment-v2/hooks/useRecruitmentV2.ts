@@ -2600,3 +2600,20 @@ export function useV2CreateScreeningB8Approver() {
     },
   });
 }
+
+// Approver details from master_users (for display)
+export interface ApproverDetail {
+  userUuid: string;
+  displayName: string;
+  designation: string | null;
+}
+
+// Hook to fetch approver details by UUIDs (joins with master_users)
+export function useV2ApproverDetails(userUuids: string[]) {
+  return useQuery<ApproverDetail[]>({
+    queryKey: ["v2", "approver-details", userUuids],
+    queryFn: () => postApi<ApproverDetail[]>(`/screening/b8/approver-details`, { userUuids }),
+    enabled: userUuids && userUuids.length > 0,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+}

@@ -665,6 +665,11 @@ export class ScreeningB8Service {
     return screeningB8Repository.findApprovers(b8Uuid);
   }
 
+  // Get approver details by joining selectedApproverUuids with master_users
+  async getApproverDetails(userUuids: string[]) {
+    return screeningB8Repository.getApproverDetailsByUuids(userUuids);
+  }
+
   async createApprover(b8Uuid: string, data: Record<string, unknown>, userUuid?: string) {
     const auditUser = extractAuditUser(userUuid, data);
     return screeningB8Repository.createApprover({

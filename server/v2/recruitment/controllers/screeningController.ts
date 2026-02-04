@@ -892,6 +892,21 @@ export const screeningB8Controller = {
     }
   },
 
+  // Get approver details by joining with master_users using userUuids array
+  async getApproverDetails(req: Request, res: Response) {
+    try {
+      const { userUuids } = req.body;
+      if (!userUuids || !Array.isArray(userUuids)) {
+        return res.status(400).json({ error: "userUuids array is required" });
+      }
+      const result = await screeningB8Service.getApproverDetails(userUuids);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting approver details:", error);
+      res.status(500).json({ error: "Failed to get approver details" });
+    }
+  },
+
   async getComments(req: Request, res: Response) {
     try {
       const { b8Uuid } = req.params;
