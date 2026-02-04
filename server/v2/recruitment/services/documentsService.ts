@@ -126,6 +126,10 @@ export class DocumentsService {
     return documentAttachmentsRepository.findByDocUuid(docUuid);
   }
 
+  async deleteDocumentAttachment(id: number): Promise<boolean> {
+    return documentAttachmentsRepository.hardDelete(id);
+  }
+
   async createDocumentAttachment(docUuid: string, data: Partial<InsertDocumentAttachment>, createdByUuid?: string): Promise<CandDocumentAttachment> {
     return documentAttachmentsRepository.create({
       attUuid: uuidv4(),
@@ -194,6 +198,10 @@ export class DocumentsService {
 
   async getVisaAttachments(visaUuid: string): Promise<CandVisaAttachment[]> {
     return visaAttachmentsRepository.findByVisaUuid(visaUuid);
+  }
+
+  async deleteVisaAttachment(id: number): Promise<boolean> {
+    return visaAttachmentsRepository.hardDelete(id);
   }
 
   async createVisaAttachment(visaUuid: string, data: Partial<InsertVisaAttachment>, createdByUuid?: string): Promise<CandVisaAttachment> {
@@ -266,6 +274,10 @@ export class DocumentsService {
     return educationAttachmentsRepository.findByEduUuid(eduUuid);
   }
 
+  async deleteEducationAttachment(id: number): Promise<boolean> {
+    return educationAttachmentsRepository.hardDelete(id);
+  }
+
   async createEducationAttachment(eduUuid: string, data: Partial<InsertEducationAttachment>, createdByUuid?: string): Promise<CandEducationAttachment> {
     return educationAttachmentsRepository.create({
       attUuid: uuidv4(),
@@ -334,6 +346,10 @@ export class DocumentsService {
 
   async getLicenseAttachments(licUuid: string): Promise<CandLicenseAttachment[]> {
     return licenseAttachmentsRepository.findByLicUuid(licUuid);
+  }
+
+  async deleteLicenseAttachment(id: number): Promise<boolean> {
+    return licenseAttachmentsRepository.hardDelete(id);
   }
 
   async createLicenseAttachment(licUuid: string, data: Partial<InsertLicenseAttachment>, createdByUuid?: string): Promise<CandLicenseAttachment> {
@@ -406,6 +422,10 @@ export class DocumentsService {
     return trainingAttachmentsRepository.findByTrainUuid(trainUuid);
   }
 
+  async deleteTrainingAttachment(id: number): Promise<boolean> {
+    return trainingAttachmentsRepository.hardDelete(id);
+  }
+
   async createTrainingAttachment(trainUuid: string, data: Partial<InsertTrainingAttachment>, createdByUuid?: string): Promise<CandTrainingAttachment> {
     return trainingAttachmentsRepository.create({
       attUuid: uuidv4(),
@@ -476,6 +496,10 @@ export class DocumentsService {
     return seaServiceAttachmentsRepository.findBySeaUuid(seaUuid);
   }
 
+  async deleteSeaServiceAttachment(id: number): Promise<boolean> {
+    return seaServiceAttachmentsRepository.hardDelete(id);
+  }
+
   async createSeaServiceAttachment(seaUuid: string, data: Partial<InsertSeaServiceAttachment>, createdByUuid?: string): Promise<CandSeaServiceAttachment> {
     return seaServiceAttachmentsRepository.create({
       attUuid: uuidv4(),
@@ -544,6 +568,10 @@ export class DocumentsService {
 
   async getAdditionalInfoAttachments(infoUuid: string): Promise<CandAdditionalInfoAttachment[]> {
     return additionalInfoAttachmentsRepository.findByInfoUuid(infoUuid);
+  }
+
+  async deleteAdditionalInfoAttachment(id: number): Promise<boolean> {
+    return additionalInfoAttachmentsRepository.hardDelete(id);
   }
 
   async createAdditionalInfoAttachment(infoUuid: string, data: Partial<InsertAdditionalInfoAttachment>, createdByUuid?: string): Promise<CandAdditionalInfoAttachment> {

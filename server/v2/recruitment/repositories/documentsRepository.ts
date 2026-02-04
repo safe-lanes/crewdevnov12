@@ -101,6 +101,12 @@ export class DocumentAttachmentsRepository {
     const results = await db.update(candDocumentsAttachments).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candDocumentsAttachments.id, id)).returning();
     return results.length > 0;
   }
+
+  async hardDelete(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.delete(candDocumentsAttachments).where(eq(candDocumentsAttachments.id, id)).returning();
+    return results.length > 0;
+  }
 }
 
 export class VisasRepository {
@@ -155,6 +161,12 @@ export class VisaAttachmentsRepository {
   async softDelete(id: number): Promise<boolean> {
     const db = getDb();
     const results = await db.update(candVisasAttachments).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candVisasAttachments.id, id)).returning();
+    return results.length > 0;
+  }
+
+  async hardDelete(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.delete(candVisasAttachments).where(eq(candVisasAttachments.id, id)).returning();
     return results.length > 0;
   }
 }
@@ -213,6 +225,12 @@ export class EducationAttachmentsRepository {
     const results = await db.update(candEducationAttachments).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candEducationAttachments.id, id)).returning();
     return results.length > 0;
   }
+
+  async hardDelete(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.delete(candEducationAttachments).where(eq(candEducationAttachments.id, id)).returning();
+    return results.length > 0;
+  }
 }
 
 export class LicensesRepository {
@@ -267,6 +285,12 @@ export class LicenseAttachmentsRepository {
   async softDelete(id: number): Promise<boolean> {
     const db = getDb();
     const results = await db.update(candLicensesAttachments).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candLicensesAttachments.id, id)).returning();
+    return results.length > 0;
+  }
+
+  async hardDelete(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.delete(candLicensesAttachments).where(eq(candLicensesAttachments.id, id)).returning();
     return results.length > 0;
   }
 }
@@ -325,6 +349,12 @@ export class TrainingAttachmentsRepository {
     const results = await db.update(candTrainingAttachments).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candTrainingAttachments.id, id)).returning();
     return results.length > 0;
   }
+
+  async hardDelete(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.delete(candTrainingAttachments).where(eq(candTrainingAttachments.id, id)).returning();
+    return results.length > 0;
+  }
 }
 
 export class SeaServiceRepository {
@@ -381,6 +411,12 @@ export class SeaServiceAttachmentsRepository {
     const results = await db.update(candSeaServiceAttachments).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candSeaServiceAttachments.id, id)).returning();
     return results.length > 0;
   }
+
+  async hardDelete(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.delete(candSeaServiceAttachments).where(eq(candSeaServiceAttachments.id, id)).returning();
+    return results.length > 0;
+  }
 }
 
 export class AdditionalInfoRepository {
@@ -435,6 +471,12 @@ export class AdditionalInfoAttachmentsRepository {
   async softDelete(id: number): Promise<boolean> {
     const db = getDb();
     const results = await db.update(candAdditionalInfoAttachments).set({ isDeleted: true, updatedAt: new Date() }).where(eq(candAdditionalInfoAttachments.id, id)).returning();
+    return results.length > 0;
+  }
+
+  async hardDelete(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db.delete(candAdditionalInfoAttachments).where(eq(candAdditionalInfoAttachments.id, id)).returning();
     return results.length > 0;
   }
 }

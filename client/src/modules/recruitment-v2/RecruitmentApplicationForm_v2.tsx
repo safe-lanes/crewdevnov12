@@ -539,6 +539,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     'A1.3': false,
   });
   
+  const mapApiAttachments = (attachments: any[] | undefined): FileAttachment[] => {
+    if (!attachments) return [];
+    return attachments.map(att => ({
+      id: att.attUuid || String(att.id),
+      numericId: att.id,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: att.fileSize || 0,
+      data: att.fileData || '',
+      uploadedAt: att.createdAt || new Date().toISOString(),
+      attUuid: att.attUuid,
+      isDeleted: att.isDeleted || false,
+    }));
+  };
+  
   // Comment editing state - exact copy from legacy
   const [editingB1Comment, setEditingB1Comment] = useState<string | null>(null);
   const [newB1Comment, setNewB1Comment] = useState<{[key: string]: string}>({});
@@ -1030,7 +1045,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           issued: doc.issued || '',
           expiry: doc.expiry || '',
           issuingAuthority: doc.issuingAuthority || '',
-          attachments: (doc.attachments || []) as any,
+          attachments: mapApiAttachments(doc.attachments),
         })),
       }));
     }
@@ -1049,7 +1064,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           issued: visa.issued || '',
           expiry: visa.expiry || '',
           visaType: visa.visaType || '',
-          attachments: (visa.attachments || []) as any,
+          attachments: mapApiAttachments(visa.attachments),
         })),
       }));
     }
@@ -1066,7 +1081,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           schoolCollegeUniversity: edu.institution || '',
           subjectsField: edu.subjectsField || '',
           qualifications: edu.qualifications || '',
-          attachments: (edu.attachments || []) as any,
+          attachments: mapApiAttachments(edu.attachments),
         })),
       }));
     }
@@ -1087,7 +1102,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           issuingAuthority: lic.issuingAuthority || '',
           issued: lic.issued || '',
           expiry: lic.expiry || '',
-          attachments: (lic.attachments || []) as any,
+          attachments: mapApiAttachments(lic.attachments),
         })),
       }));
     }
@@ -1108,7 +1123,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           issuingAuthority: course.issuingAuthority || '',
           issued: course.issued || '',
           expiry: course.expiry || '',
-          attachments: (course.attachments || []) as any,
+          attachments: mapApiAttachments(course.attachments),
         })),
       }));
     }
@@ -1130,7 +1145,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           from: service.fromDate || '',
           to: service.toDate || '',
           periodMonths: service.periodMonths || '',
-          attachments: (service.attachments || []) as any,
+          attachments: mapApiAttachments(service.attachments),
         })),
       }));
     }
@@ -1145,7 +1160,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           serverId: ai.id,
           information: ai.information || '',
           response: ai.response || '',
-          attachments: (ai.attachments || []) as any,
+          attachments: mapApiAttachments(ai.attachments),
         })),
       }));
     }
@@ -8373,10 +8388,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         onOpenChange={(open) => setAttachmentDialog(prev => ({ ...prev, open }))}
         attachments={getAttachmentsForItem()}
         onAttachmentsChange={updateAttachments}
-        onDeleteAttachment={async (attUuid) => {
-          const parentType = attachmentDialog.type || 'document';
+        onDeleteAttachment={async (id, attUuid) => {
+          const typeMap: Record<string, string> = {
+            'seaService': 'sea-service',
+            'additionalInfo': 'additional-info',
+          };
+          const rawType = attachmentDialog.type || 'document';
+          const parentType = typeMap[rawType] || rawType;
           const parentUuid = attachmentDialog.serverId?.toString() || attachmentDialog.itemId || '';
-          await deleteAttachmentMutation.mutateAsync({ attUuid, parentUuid, parentType });
+          await deleteAttachmentMutation.mutateAsync({ id, parentUuid, parentType });
         }}
         title="Manage Attachments"
         itemName={attachmentDialog.itemName}

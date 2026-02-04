@@ -1980,14 +1980,26 @@ export function useV2DeleteAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
-      attUuid,
+      id,
       parentUuid,
       parentType,
     }: {
-      attUuid: string;
+      id: number;
       parentUuid: string;
       parentType: string;
-    }) => deleteApi(`/attachments/${attUuid}`),
+    }) => {
+      const endpointMap: Record<string, string> = {
+        document: "documents",
+        visa: "visas",
+        education: "education",
+        license: "licenses",
+        training: "training",
+        "sea-service": "sea-service",
+        "additional-info": "additional-info",
+      };
+      const endpoint = endpointMap[parentType] || parentType;
+      return deleteApi(`/${endpoint}/attachments/${id}`);
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [

@@ -483,3 +483,87 @@ export async function deleteAdditionalInfo(req: Request, res: Response) {
     res.status(500).json({ error: "Failed to delete additional info" });
   }
 }
+
+export async function deleteDocumentAttachment(req: Request, res: Response) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+    const result = await documentsService.deleteDocumentAttachment(id);
+    res.json({ success: result });
+  } catch (error) {
+    console.error("Error deleting document attachment:", error);
+    res.status(500).json({ error: "Failed to delete attachment" });
+  }
+}
+
+export async function deleteVisaAttachment(req: Request, res: Response) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+    const result = await documentsService.deleteVisaAttachment(id);
+    res.json({ success: result });
+  } catch (error) {
+    console.error("Error deleting visa attachment:", error);
+    res.status(500).json({ error: "Failed to delete attachment" });
+  }
+}
+
+export async function deleteEducationAttachment(req: Request, res: Response) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+    const result = await documentsService.deleteEducationAttachment(id);
+    res.json({ success: result });
+  } catch (error) {
+    console.error("Error deleting education attachment:", error);
+    res.status(500).json({ error: "Failed to delete attachment" });
+  }
+}
+
+export async function deleteLicenseAttachment(req: Request, res: Response) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+    const result = await documentsService.deleteLicenseAttachment(id);
+    res.json({ success: result });
+  } catch (error) {
+    console.error("Error deleting license attachment:", error);
+    res.status(500).json({ error: "Failed to delete attachment" });
+  }
+}
+
+export async function deleteTrainingAttachment(req: Request, res: Response) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+    const result = await documentsService.deleteTrainingAttachment(id);
+    res.json({ success: result });
+  } catch (error) {
+    console.error("Error deleting training attachment:", error);
+    res.status(500).json({ error: "Failed to delete attachment" });
+  }
+}
+
+export async function deleteSeaServiceAttachment(req: Request, res: Response) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+    const result = await documentsService.deleteSeaServiceAttachment(id);
+    res.json({ success: result });
+  } catch (error) {
+    console.error("Error deleting sea service attachment:", error);
+    res.status(500).json({ error: "Failed to delete attachment" });
+  }
+}
+
+export async function deleteAdditionalInfoAttachment(req: Request, res: Response) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid attachment ID" });
+    const result = await documentsService.deleteAdditionalInfoAttachment(id);
+    res.json({ success: result });
+  } catch (error) {
+    console.error("Error deleting additional info attachment:", error);
+    res.status(500).json({ error: "Failed to delete attachment" });
+  }
+}

@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface FileAttachment {
   id: string;
+  numericId?: number;
   name: string;
   type: string;
   size: number;
@@ -29,7 +30,7 @@ interface FileAttachmentDialogProps {
   onOpenChange: (open: boolean) => void;
   attachments: FileAttachment[];
   onAttachmentsChange: (attachments: FileAttachment[]) => void;
-  onDeleteAttachment?: (attUuid: string) => Promise<void>;
+  onDeleteAttachment?: (id: number, attUuid: string) => Promise<void>;
   title?: string;
   itemName?: string;
 }
@@ -107,10 +108,11 @@ export function FileAttachmentDialog({
     
     if (attachment) {
       const fileName = attachment.name || (attachment as any).fileName || 'file';
+      const numericId = (attachment as any).numericId || parseInt(id, 10);
       
-      if (attachment.attUuid && onDeleteAttachment) {
+      if (attachment.attUuid && onDeleteAttachment && !isNaN(numericId)) {
         try {
-          await onDeleteAttachment(attachment.attUuid);
+          await onDeleteAttachment(numericId, attachment.attUuid);
           onAttachmentsChange(attachments.filter((a) => a.id !== id));
           toast({
             title: 'File Deleted',
