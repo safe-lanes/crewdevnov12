@@ -122,7 +122,15 @@ async function deleteApi<T>(endpoint: string): Promise<T> {
   if (!response.ok) {
     throw new Error(`API Error: ${response.status}`);
   }
-  return response.json();
+  const text = await response.text();
+  if (!text) {
+    return { success: true } as T;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { success: true } as T;
+  }
 }
 
 export function useV2Candidates() {
