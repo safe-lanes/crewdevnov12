@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RestHoursModule } from './RestHoursModule';
 import { RestHoursModule_v2 } from './v2/RestHoursModule_v2';
+import { RestHoursVesselOverview as RestHoursVesselOverviewV1 } from './RestHoursVesselOverview';
+import { RestHoursVesselOverview as RestHoursVesselOverviewV2 } from './v2/components/RestHoursVesselOverview';
 
 const STORAGE_KEY = 'rest_hours_module_version';
 const VERSION_CHANGE_EVENT = 'rest_hours_version_change';
@@ -75,5 +77,16 @@ export function RestHoursModuleRouter() {
   return <RestHoursModule />;
 }
 
+export function RestHoursVesselOverviewRouter() {
+  const { isV2 } = useRestHoursVersion();
+
+  if (isV2) {
+    return <RestHoursVesselOverviewV2 />;
+  }
+
+  return <RestHoursVesselOverviewV1 />;
+}
+
 export { RestHoursModule };
 export { RestHoursModule_v2 } from './v2/RestHoursModule_v2';
+export { RestHoursVesselOverviewV1, RestHoursVesselOverviewV2 };
