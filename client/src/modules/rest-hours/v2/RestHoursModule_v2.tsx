@@ -2,9 +2,9 @@ import { useLocation } from 'wouter';
 import { useState, useEffect } from 'react';
 import MainLayout from '@/components/main/MainLayout';
 import RestHoursSideBar from '../RestHoursSideBar';
-import { RestHoursDashboard } from '../RestHoursDashboard';
-import { RestHoursRecord } from '../RestHoursRecord';
-import { RestHoursPlan } from '../RestHoursPlan';
+import { RestHoursDashboard } from './components/RestHoursDashboard';
+import { RestHoursRecord } from './components/RestHoursRecord';
+import { RestHoursPlan } from './components/RestHoursPlan';
 import { restHoursApiV2 } from './api/restHoursApiV2';
 
 export const RestHoursModule_v2 = (): JSX.Element => {

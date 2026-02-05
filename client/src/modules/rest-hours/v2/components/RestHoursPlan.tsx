@@ -9,7 +9,7 @@ import { FixedTasksTable } from './FixedTasksTable';
 import { useToast } from '@/hooks/use-toast';
 import type { FixedTask } from '@shared/schema';
 import { PeriodFilter } from '@/components/filters/PeriodFilter';
-import { parseRestHoursFilters, partToPeriodFilter } from './utils/filterParams';
+import { parseRestHoursFilters, partToPeriodFilter } from '../utils/filterParams';
 import { useViewport } from '@/hooks/useViewport';
 import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
 

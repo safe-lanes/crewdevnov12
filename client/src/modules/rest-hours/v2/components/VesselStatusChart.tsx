@@ -7,7 +7,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { VesselListDialog } from './VesselListDialog';
 import { VesselReviewDialog } from './VesselReviewDialog';
-import { serializeRestHoursFilters, periodFilterToPart, type RestHoursFilters } from './utils/filterParams';
+import { serializeRestHoursFilters, periodFilterToPart, type RestHoursFilters } from '../utils/filterParams';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 interface VesselStatusChartProps {
