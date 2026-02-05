@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { getDb } from "../../db";
 import { masterVessels } from "../../../../shared/schema";
-import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { eq, isNull, or } from "drizzle-orm";
+import { crewMembersV2, crewAssignments } from "../../../../shared/v2/crew-pool/schema";
+import { eq, isNull, or, and } from "drizzle-orm";
 
 export const masterDataController = {
   async getVessels(req: Request, res: Response) {
@@ -39,11 +39,19 @@ export const masterDataController = {
           middleName: crewMembersV2.middleName,
           familyName: crewMembersV2.familyName,
           presentRank: crewMembersV2.presentRank,
+          vesselUuid: crewAssignments.vesselUuid,
           status: crewMembersV2.status,
           isActive: crewMembersV2.isActive,
           uploadedPhoto: crewMembersV2.uploadedPhoto,
         })
         .from(crewMembersV2)
+        .leftJoin(
+          crewAssignments,
+          and(
+            eq(crewMembersV2.crewUuid, crewAssignments.crewUuid),
+            eq(crewAssignments.isCurrent, true)
+          )
+        )
         .where(
           or(
             eq(crewMembersV2.isDeleted, false),
@@ -53,13 +61,14 @@ export const masterDataController = {
 
       const crewMembers = await query;
 
-      const formattedCrew = crewMembers.map((crew) => ({
+      const formattedCrew = crewMembers.map((crew: any) => ({
         ...crew,
         name: [crew.firstName, crew.middleName, crew.familyName]
           .filter(Boolean)
           .join(" "),
         rank: crew.presentRank,
         crewMemberId: crew.empNo,
+        presentVessel: crew.vesselUuid,
       }));
 
       res.json(formattedCrew);
