@@ -343,12 +343,8 @@ export const restHoursApiV2 = {
       return response.json();
     },
 
-    async getByKey(vesselUuid: string, rankUuid: string, taskName: string) {
-      const searchParams = new URLSearchParams();
-      searchParams.set('vesselUuid', vesselUuid);
-      searchParams.set('rankUuid', rankUuid);
-      searchParams.set('taskName', taskName);
-      const url = `${V2_BASE}/fixed-tasks/by-key?${searchParams}`;
+    async getByKey(crewMemberId: string, vesselId: string, monthYear: string) {
+      const url = `${V2_BASE}/fixed-tasks/by-key/${encodeURIComponent(crewMemberId)}/${encodeURIComponent(vesselId)}/${encodeURIComponent(monthYear)}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch fixed task by key');
       return response.json();

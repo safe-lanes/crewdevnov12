@@ -401,11 +401,12 @@ export const RHRecordingForm = ({
   });
 
   // Fetch fixed tasks for this crew member to auto-populate plan data
+  // API order: crewMemberId, vesselId, monthYear (matches backend route)
   const { data: fixedTask } = useQuery<FixedTask>({
     queryKey: ['v2', 'rest-hours', 'fixed-tasks', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
     queryFn: async () => {
       try {
-        return await restHoursApiV2.fixedTasks.getByKey(selectedVesselId, selectedCrewMemberId, selectedPeriod);
+        return await restHoursApiV2.fixedTasks.getByKey(selectedCrewMemberId, selectedVesselId, selectedPeriod);
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No fixed tasks found
