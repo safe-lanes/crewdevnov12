@@ -348,21 +348,39 @@ export const dashboardService = {
     externalService: any[],
     currentRank: string
   ) {
-    let companyMonths = 0;
     let rankMonths = 0;
     let tankerMonths = 0;
     let oowMonths = 0;
 
     const allService = [...companyService, ...externalService];
 
+    // V1 matching: Company (Yrs) = Calendar time from earliest company sea service "from" date to today
+    // This is tenure-based, not accumulated months
+    let companyYears = 0;
+    if (companyService.length > 0) {
+      const fromDates = companyService
+        .map((s) => s.fromDate)
+        .filter((d: any) => d && typeof d === "string" && d.trim() !== "")
+        .map((d: any) => new Date(d))
+        .filter((d: any) => !isNaN(d.getTime()));
+
+      if (fromDates.length > 0) {
+        const earliestDate = new Date(
+          Math.min(...fromDates.map((d: any) => d.getTime()))
+        );
+        const today = new Date();
+        const diffMs = today.getTime() - earliestDate.getTime();
+        const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+        // Ensure any positive company tenure shows at least 0.1 years
+        const roundedYears = Math.round(diffYears * 10) / 10;
+        companyYears = diffYears > 0 ? Math.max(0.1, roundedYears) : 0;
+      }
+    }
+
     for (const record of allService) {
       const months =
         parseFloat(record.periodMonths || "0") ||
         crewSeaServiceService.calculatePeriodMonths(record.fromDate, record.toDate);
-
-      if (record.serviceType === "company") {
-        companyMonths += months;
-      }
 
       if (record.rank === currentRank) {
         rankMonths += months;
@@ -399,7 +417,7 @@ export const dashboardService = {
     }
 
     return {
-      company: Math.round(companyMonths),
+      company: companyYears,
       rank: Math.round(rankMonths),
       tankers: Math.round(tankerMonths),
       oow: Math.round(oowMonths),
