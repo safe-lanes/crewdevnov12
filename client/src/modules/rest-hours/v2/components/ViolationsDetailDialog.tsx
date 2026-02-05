@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import type { RestHoursDailyRecord } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
 import type { ViolationDailyRecord, ViolationDiagnostic } from '../types';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
@@ -44,18 +45,16 @@ export function ViolationsDetailDialog({
   opaMode,
   isPredicted = false,
 }: ViolationsDetailDialogProps) {
-  // Fetch daily records container for this crew member
+  // Fetch daily records for this crew member
   const { data: recordContainer, isLoading } = useQuery<RestHoursDailyRecord | null>({
-    queryKey: ['/api/rest-hours-daily-records/by-key', crewMemberId, vesselId, monthValue],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', crewMemberId, vesselId, monthValue],
     queryFn: async () => {
-      const response = await fetch(`/api/rest-hours-daily-records/by-key/${crewMemberId}/${vesselId}/${monthValue}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null;
-        }
-        throw new Error('Failed to fetch rest hours record');
+      try {
+        const records = await restHoursApiV2.dailyRecords.getAll({ crewRecordUuid: crewMemberId });
+        return records && records.length > 0 ? records[0] : null;
+      } catch (error) {
+        return null;
       }
-      return response.json();
     },
     enabled: open,
   });

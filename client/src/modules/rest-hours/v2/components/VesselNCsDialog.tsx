@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import { NCReportDialog } from './NCReportDialog';
 import type { NCReport, RestHoursCrewRecord } from '@shared/schema';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface VesselNCsDialogProps {
   open: boolean;
@@ -44,27 +45,39 @@ export function VesselNCsDialog({
   const [selectedCrewRecord, setSelectedCrewRecord] = useState<RestHoursCrewRecord | null>(null);
   const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
 
-  // Build query params
-  const queryParams = useMemo(() => {
-    const params = new URLSearchParams();
-    const validVesselIds = vesselIds.filter(id => id && id.trim() !== '');
-    validVesselIds.forEach(id => params.append('vesselIds', id));
-    params.append('monthValue', monthValue);
-    params.append('complianceMode', complianceMode);
-    params.append('opaMode', String(opaMode));
-    return params;
-  }, [vesselIds, monthValue, complianceMode, opaMode]);
-
-  // Fetch crew records
-  const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-crew-records', vesselIds, monthValue, complianceMode, opaMode],
+  // Fetch vessel records first to get UUIDs for the given month
+  const [year, month] = monthValue.split('-');
+  const { data: vesselRecords = [], isLoading: isLoadingVesselRecords } = useQuery<any[]>({
+    queryKey: ['v2', 'rest-hours', 'vessel-records', vesselIds, monthValue],
     queryFn: async () => {
-      const url = `/api/rest-hours-crew-records?${queryParams.toString()}`;
-      const response = await fetch(url, { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch crew records');
-      return response.json();
+      const records = await restHoursApiV2.vesselRecords.getAll({ month, year });
+      // Filter to only the requested vessel IDs if specified
+      if (vesselIds.length > 0) {
+        return records.filter((r: any) => vesselIds.includes(r.vesselUuid));
+      }
+      return records;
     },
     enabled: open,
+  });
+
+  // Get vessel record UUIDs for fetching crew records
+  const vesselRecordUuids = useMemo(() => 
+    vesselRecords.map((vr: any) => vr.uuid), 
+    [vesselRecords]
+  );
+
+  // Fetch crew records for all vessel records using V2 API
+  const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
+    queryKey: ['v2', 'rest-hours', 'crew-records', vesselRecordUuids, complianceMode, opaMode],
+    queryFn: async () => {
+      const allCrewRecords: any[] = [];
+      for (const vesselRecordUuid of vesselRecordUuids) {
+        const records = await restHoursApiV2.crewRecords.getAll({ vesselRecordUuid });
+        allCrewRecords.push(...records);
+      }
+      return allCrewRecords;
+    },
+    enabled: open && vesselRecordUuids.length > 0,
   });
 
   // Fetch vessel master data from external SAIL ERP API (all 11 vessels)
@@ -79,46 +92,47 @@ export function VesselNCsDialog({
     return map;
   }, [vesselMasterData]);
 
-  // Get crew IDs that have NCs
-  const crewIdsWithNCs = useMemo(() => {
-    return crewSummaries
-      .filter(crew => crew.totalNCs > 0)
-      .map(crew => crew.crewMemberId);
+  // Get crew records that have NCs
+  const crewRecordsWithNCs = useMemo(() => {
+    return crewSummaries.filter(crew => crew.totalNCs > 0);
   }, [crewSummaries]);
 
-  // Fetch NC reports for crew with NCs
+  // Fetch NC reports for all vessel records using V2 API
   const { data: allNCReports = [], isLoading: isLoadingNCs } = useQuery<NCReport[]>({
-    queryKey: ['/api/nc-reports/all'],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', vesselRecordUuids],
     queryFn: async () => {
-      const response = await fetch('/api/nc-reports/all', { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch NC reports');
-      return response.json();
+      const allReports: NCReport[] = [];
+      for (const vesselRecordUuid of vesselRecordUuids) {
+        const reports = await restHoursApiV2.ncReports.getAll({ vesselRecordUuid });
+        allReports.push(...reports);
+      }
+      return allReports;
     },
-    enabled: open && crewIdsWithNCs.length > 0,
+    enabled: open && crewRecordsWithNCs.length > 0 && vesselRecordUuids.length > 0,
   });
 
   // Group NCs by vessel
   const vesselGroups = useMemo(() => {
     const groups = new Map<string, VesselNCGroup>();
 
-    // Filter crew summaries to only those with NCs
-    const crewWithNCs = crewSummaries.filter(crew => crew.totalNCs > 0);
-
-    // Create NC reports map for quick lookup
+    // Create NC reports map for quick lookup by crew record UUID
     const ncReportsMap = new Map<string, NCReport>();
-    allNCReports
-      .filter(report => report.monthValue === monthValue)
-      .forEach(report => {
-        const key = `${report.crewMemberId}-${report.vesselId}-${report.monthValue}`;
-        ncReportsMap.set(key, report);
-      });
+    allNCReports.forEach(report => {
+      // V2 uses crewRecordUuid as the key (cast to any for V2 property access)
+      const v2Report = report as any;
+      const key = v2Report.crewRecordUuid || `${report.crewMemberId}-${report.vesselId}`;
+      ncReportsMap.set(key, report);
+    });
 
     // Process each crew member with NCs
-    crewWithNCs.forEach(crew => {
-      const vesselId = crew.vesselId;
+    crewRecordsWithNCs.forEach(crew => {
+      // V2 uses vesselUuid instead of vesselId - get it from the vessel record
+      const vesselRecord = vesselRecords.find((vr: any) => vr.uuid === crew.vesselRecordUuid);
+      const vesselId = vesselRecord?.vesselUuid || crew.vesselUuid || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
-      const ncReportKey = `${crew.crewMemberId}-${crew.vesselId}-${monthValue}`;
-      const ncReport = ncReportsMap.get(ncReportKey) || null;
+      
+      // Look up NC report by crew record UUID
+      const ncReport = ncReportsMap.get(crew.uuid) || null;
 
       // Get or create vessel group
       if (!groups.has(vesselId)) {
@@ -133,10 +147,10 @@ export function VesselNCsDialog({
       const group = groups.get(vesselId)!;
       group.totalNCs += crew.totalNCs;
       group.crewMembers.push({
-        crewMemberId: crew.crewMemberId,
-        crewMemberName: crew.name,
-        rank: crew.rank,
-        vesselId: crew.vesselId,
+        crewMemberId: crew.crewUuid || crew.uuid,
+        crewMemberName: crew.crewName || crew.name,
+        rank: crew.rankName || crew.rank,
+        vesselId: vesselId,
         status: (ncReport?.status as any) || 'Open',
         ncReport,
         crewRecord: crew,
@@ -147,7 +161,7 @@ export function VesselNCsDialog({
     return Array.from(groups.values()).sort((a, b) => 
       a.vesselName.localeCompare(b.vesselName)
     );
-  }, [crewSummaries, allNCReports, monthValue, vesselNameMap]);
+  }, [crewRecordsWithNCs, allNCReports, vesselNameMap, vesselRecords]);
 
   // Calculate row count for each vessel (for rowSpan)
   const vesselRowCounts = useMemo(() => {
@@ -170,7 +184,7 @@ export function VesselNCsDialog({
     setNCReportDialogOpen(true);
   };
 
-  const isLoading = isLoadingSummaries || isLoadingNCs;
+  const isLoading = isLoadingVesselRecords || isLoadingSummaries || isLoadingNCs;
 
   return (
     <>

@@ -5,6 +5,7 @@ import type { RestHoursCrewRecord } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
 import type { ViolationDailyRecord } from '../types';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface VesselViolationsDialogProps {
   open: boolean;
@@ -41,27 +42,39 @@ export function VesselViolationsDialog({
   vesselIds = [],
 }: VesselViolationsDialogProps) {
   
-  // Build query params
-  const queryParams = useMemo(() => {
-    const params = new URLSearchParams();
-    const validVesselIds = vesselIds.filter(id => id && id.trim() !== '');
-    validVesselIds.forEach(id => params.append('vesselIds', id));
-    params.append('monthValue', monthValue);
-    params.append('complianceMode', complianceMode);
-    params.append('opaMode', String(opaMode));
-    return params;
-  }, [vesselIds, monthValue, complianceMode, opaMode]);
-
-  // Fetch crew records
-  const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-crew-records', vesselIds, monthValue, complianceMode, opaMode],
+  // Fetch vessel records first to get UUIDs for the given month
+  const [year, month] = monthValue.split('-');
+  const { data: vesselRecords = [], isLoading: isLoadingVesselRecords } = useQuery<any[]>({
+    queryKey: ['v2', 'rest-hours', 'vessel-records', vesselIds, monthValue],
     queryFn: async () => {
-      const url = `/api/rest-hours-crew-records?${queryParams.toString()}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch crew records');
-      return response.json();
+      const records = await restHoursApiV2.vesselRecords.getAll({ month, year });
+      // Filter to only the requested vessel IDs if specified
+      if (vesselIds.length > 0) {
+        return records.filter((r: any) => vesselIds.includes(r.vesselUuid));
+      }
+      return records;
     },
     enabled: open,
+  });
+
+  // Get vessel record UUIDs for fetching crew records
+  const vesselRecordUuids = useMemo(() => 
+    vesselRecords.map((vr: any) => vr.uuid), 
+    [vesselRecords]
+  );
+
+  // Fetch crew records for all vessel records
+  const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
+    queryKey: ['v2', 'rest-hours', 'crew-records', vesselRecordUuids, complianceMode, opaMode],
+    queryFn: async () => {
+      const allCrewRecords: any[] = [];
+      for (const vesselRecordUuid of vesselRecordUuids) {
+        const records = await restHoursApiV2.crewRecords.getAll({ vesselRecordUuid });
+        allCrewRecords.push(...records);
+      }
+      return allCrewRecords;
+    },
+    enabled: open && vesselRecordUuids.length > 0,
   });
 
   // Fetch vessel master data from external SAIL ERP API (all 11 vessels)
@@ -76,57 +89,54 @@ export function VesselViolationsDialog({
     return map;
   }, [vesselMasterData]);
 
-  // Get crew IDs that have violations
-  const crewIdsWithViolations = useMemo(() => {
-    return crewSummaries
-      .filter(crew => {
-        const violationDatesField = crew.violationDates;
-        return violationDatesField && violationDatesField !== '[]';
-      })
-      .map(crew => crew.crewMemberId);
+  // Get crew records with violations (using uuid instead of crewMemberId for V2)
+  const crewRecordsWithViolations = useMemo(() => {
+    return crewSummaries.filter(crew => {
+      const violationDatesField = crew.violationDates;
+      return violationDatesField && violationDatesField !== '[]';
+    });
   }, [crewSummaries]);
 
-  // Fetch daily records for crew with violations
+  const crewRecordUuidsWithViolations = useMemo(() => 
+    crewRecordsWithViolations.map(crew => crew.uuid),
+    [crewRecordsWithViolations]
+  );
+
+  // Fetch daily records for crew with violations using V2 API
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-daily-records', crewIdsWithViolations, monthValue],
+    queryKey: ['v2', 'rest-hours', 'daily-records', crewRecordUuidsWithViolations, monthValue],
     queryFn: async () => {
-      // Fetch all daily records (no filtering at API level since endpoint doesn't support it)
-      const response = await fetch('/api/rest-hours-daily-records');
-      if (!response.ok) throw new Error('Failed to fetch daily records');
-      return response.json();
+      const allRecords: any[] = [];
+      for (const crewRecordUuid of crewRecordUuidsWithViolations) {
+        const records = await restHoursApiV2.dailyRecords.getAll({ crewRecordUuid });
+        allRecords.push(...records);
+      }
+      return allRecords;
     },
-    enabled: open && crewIdsWithViolations.length > 0,
+    enabled: open && crewRecordUuidsWithViolations.length > 0,
   });
 
   // Group violations by vessel
   const vesselGroups = useMemo(() => {
     const groups = new Map<string, VesselViolationGroup>();
 
-    // Filter crew summaries to only those with violations
-    const crewWithViolations = crewSummaries.filter(crew => {
-      const violationDatesField = crew.violationDates;
-      return violationDatesField && violationDatesField !== '[]';
-    });
-
-    // Create a map of daily records for quick lookup
+    // Create a map of daily records for quick lookup by crew record UUID
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
-    const filteredRecords = allDailyRecords.filter(record =>
-      crewIdsWithViolations.includes(record.crewMemberId) && 
-      record.monthYear === monthValue
-    );
     
-    filteredRecords.forEach(recordContainer => {
-      try {
-        const dailyRecords: DailyRecord[] = JSON.parse(recordContainer.dailyRecords);
-        dailyRecordsMap.set(recordContainer.crewMemberId, dailyRecords);
-      } catch (e) {
-        console.error('Failed to parse daily records:', e);
+    allDailyRecords.forEach(record => {
+      const crewRecordUuid = record.crewRecordUuid;
+      if (!dailyRecordsMap.has(crewRecordUuid)) {
+        dailyRecordsMap.set(crewRecordUuid, []);
       }
+      // V2 daily records are individual records, not containers
+      dailyRecordsMap.get(crewRecordUuid)!.push(record);
     });
 
     // Process each crew member with violations
-    crewWithViolations.forEach(crew => {
-      const vesselId = crew.vesselId;
+    crewRecordsWithViolations.forEach(crew => {
+      // V2 uses vesselUuid instead of vesselId - get it from the vessel record
+      const vesselRecord = vesselRecords.find((vr: any) => vr.uuid === crew.vesselRecordUuid);
+      const vesselId = vesselRecord?.vesselUuid || crew.vesselUuid || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
 
       // Parse violation dates
@@ -139,7 +149,7 @@ export function VesselViolationsDialog({
       }
 
       // Filter violations based on compliance mode and OPA mode
-      const dailyRecords = dailyRecordsMap.get(crew.crewMemberId) || [];
+      const dailyRecords = dailyRecordsMap.get(crew.uuid) || [];
       const filteredViolationDays: number[] = [];
 
       violationDays.forEach(day => {
@@ -169,9 +179,9 @@ export function VesselViolationsDialog({
 
       const group = groups.get(vesselId)!;
       group.crewMembers.push({
-        crewMemberId: crew.crewMemberId,
-        crewMemberName: crew.name,
-        rank: crew.rank,
+        crewMemberId: crew.crewUuid || crew.uuid,
+        crewMemberName: crew.crewName || crew.name,
+        rank: crew.rankName || crew.rank,
         totalViolations: filteredViolationDays.length,
         violationDates: filteredViolationDays.sort((a, b) => a - b),
       });
@@ -181,7 +191,7 @@ export function VesselViolationsDialog({
     return Array.from(groups.values()).sort((a, b) => 
       a.vesselName.localeCompare(b.vesselName)
     );
-  }, [crewSummaries, allDailyRecords, monthValue, complianceMode, opaMode, vesselNameMap, crewIdsWithViolations]);
+  }, [crewRecordsWithViolations, allDailyRecords, complianceMode, opaMode, vesselNameMap, vesselRecords]);
 
   // Calculate row count for each vessel (for rowSpan)
   const vesselRowCounts = useMemo(() => {
@@ -205,7 +215,7 @@ export function VesselViolationsDialog({
     return `${monthName}: ${days.join(', ')}`;
   };
 
-  const isLoading = isLoadingSummaries || isLoadingDaily;
+  const isLoading = isLoadingVesselRecords || isLoadingSummaries || isLoadingDaily;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

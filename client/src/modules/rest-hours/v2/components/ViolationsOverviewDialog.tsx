@@ -7,8 +7,9 @@ import { useMemo, useState, useEffect } from 'react';
 import type { RestHoursCrewRecord } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
 import { useToast } from '@/hooks/use-toast';
-import { queryClient, apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
@@ -112,12 +113,11 @@ export function ViolationsOverviewDialog({
   queryParams.append('opaMode', String(opaMode));
 
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-crew-records', queryParams.toString()],
+    queryKey: ['v2', 'rest-hours', 'crew-records', { vesselIds: vesselIdsToUse, monthValue, complianceMode, opaMode }],
     queryFn: async () => {
-      const url = `/api/rest-hours-crew-records?${queryParams.toString()}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch crew records');
-      return response.json();
+      return restHoursApiV2.crewRecords.getAll({
+        vesselRecordUuid: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
+      });
     },
     enabled: open,
   });
@@ -146,25 +146,23 @@ export function ViolationsOverviewDialog({
 
   // Fetch daily records only for crew members with violations
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-daily-records'],
+    queryKey: ['v2', 'rest-hours', 'daily-records', { crewIds: crewIdsWithViolations }],
     queryFn: async () => {
-      const response = await fetch('/api/rest-hours-daily-records');
-      if (!response.ok) throw new Error('Failed to fetch daily records');
-      return response.json();
+      return restHoursApiV2.dailyRecords.getAll({});
     },
     enabled: open && crewIdsWithViolations.length > 0,
   });
 
   // Fetch existing vessel comment (only for actual violations, not predicted, and single vessel view)
   const { data: vesselCommentData } = useQuery<{ comment: string } | null>({
-    queryKey: ['/api/vessel-violation-comments', vesselId, monthValue],
+    queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId, monthValue],
     queryFn: async () => {
-      const response = await fetch(`/api/vessel-violation-comments?vesselId=${vesselId}&monthValue=${monthValue}`);
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error('Failed to fetch vessel comment');
+      try {
+        const comments = await restHoursApiV2.vesselComments.getAll({ vesselRecordUuid: vesselId });
+        return comments && comments.length > 0 ? { comment: comments[0].comment } : null;
+      } catch (error) {
+        return null;
       }
-      return response.json();
     },
     enabled: open && !isPredicted && !rankFilter && vesselIdsToUse.length === 1 && vesselId !== '',
   });
@@ -181,14 +179,13 @@ export function ViolationsOverviewDialog({
   // Mutation to save vessel comment
   const saveCommentMutation = useMutation({
     mutationFn: async (comment: string) => {
-      return apiRequest('POST', '/api/vessel-violation-comments', {
-        vesselId,
-        monthValue,
+      return restHoursApiV2.vesselComments.create({
+        vesselRecordUuid: vesselId,
         comment,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/vessel-violation-comments', vesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId, monthValue] });
       toast({
         title: 'Success',
         description: 'Vessel comment saved successfully',

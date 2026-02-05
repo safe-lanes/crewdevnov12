@@ -11,13 +11,14 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { NCReport, RestHoursCrewRecord, RestHoursDailyRecord, MasterDataEntry } from "@shared/schema";
 import { filterViolations } from '../violationFilters';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useExternalUsers, type ExternalUser } from '@/hooks/useExternalUsers';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface NCReportDialogProps {
   open: boolean;
@@ -117,28 +118,34 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   }, [officeClosureVerifiedByName, officeUsers, officeClosureVerifiedByPositionFallback]);
 
   // Fetch daily records to get violation details
+  const crewRecordUuid = (crewRecord as any).uuid;
   const { data: dailyRecordContainer } = useQuery<RestHoursDailyRecord | null>({
-    queryKey: ['/api/rest-hours-daily-records/by-key', crewRecord.crewMemberId, crewRecord.vesselId, crewRecord.monthValue],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-crew', crewRecordUuid],
     queryFn: async () => {
-      const response = await fetch(`/api/rest-hours-daily-records/by-key/${crewRecord.crewMemberId}/${crewRecord.vesselId}/${crewRecord.monthValue}`);
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error('Failed to fetch rest hours record');
+      if (!crewRecordUuid) return null;
+      try {
+        const records = await restHoursApiV2.dailyRecords.getAll({ crewRecordUuid });
+        return records && records.length > 0 ? records[0] : null;
+      } catch (error) {
+        return null;
       }
-      return response.json();
     },
-    enabled: open,
+    enabled: open && !!crewRecordUuid,
   });
 
   // Fetch existing NC report
   const { data: existingReport, isLoading } = useQuery<NCReport | null>({
-    queryKey: ["/api/nc-reports", crewRecord.crewMemberId, crewRecord.vesselId, crewRecord.monthValue],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', 'by-crew', crewRecordUuid],
     queryFn: async () => {
-      const response = await fetch(`/api/nc-reports?crewMemberId=${crewRecord.crewMemberId}&vesselId=${crewRecord.vesselId}&monthValue=${crewRecord.monthValue}`);
-      if (!response.ok) throw new Error("Failed to fetch NC report");
-      return response.json();
+      if (!crewRecordUuid) return null;
+      try {
+        const reports = await restHoursApiV2.ncReports.getAll({ crewRecordUuid });
+        return reports && reports.length > 0 ? reports[0] : null;
+      } catch (error) {
+        return null;
+      }
     },
-    enabled: open,
+    enabled: open && !!crewRecordUuid,
   });
 
   // Update form fields when existing report is loaded
@@ -196,6 +203,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       const ncStatus = submissionStatus === "office-submitted" ? "Closed" : "Open";
       
       const data = {
+        crewRecordUuid: crewRecordUuid,
         crewMemberId: crewRecord.crewMemberId,
         vesselId: crewRecord.vesselId,
         rank: crewRecord.rank,
@@ -213,10 +221,15 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
         status: ncStatus,
         submissionStatus: submissionStatus,
       };
-      return await apiRequest("POST", "/api/nc-reports", data);
+      
+      // If there's an existing report, update it; otherwise create new
+      if (existingReport && (existingReport as any).uuid) {
+        return await restHoursApiV2.ncReports.update((existingReport as any).uuid, data);
+      }
+      return await restHoursApiV2.ncReports.create(data);
     },
     onSuccess: (_, submissionStatus) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/nc-reports"] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'nc-reports'] });
       const statusText = submissionStatus === "draft" ? "saved" : submissionStatus === "vessel-submitted" ? "submitted by vessel" : "submitted by office";
       toast({
         title: "Success",

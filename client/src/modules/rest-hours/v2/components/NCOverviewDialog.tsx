@@ -8,6 +8,7 @@ import { filterViolations } from '../violationFilters';
 import { NCReportDialog } from './NCReportDialog';
 import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
@@ -114,19 +115,23 @@ export function NCOverviewDialog({
   queryParams.append('opaMode', String(opaMode));
 
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-crew-records', queryParams.toString()],
+    queryKey: ['v2', 'rest-hours', 'crew-records', vesselIdsToUse, monthValue, complianceMode, opaMode],
     queryFn: async () => {
-      const url = `/api/rest-hours-crew-records?${queryParams.toString()}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch crew records');
-      return response.json();
+      // For V2 API, we fetch crew records - the API may need vessel record UUID instead of vessel IDs
+      // If vesselIdsToUse contains vessel UUIDs, we can use them
+      const records = await restHoursApiV2.crewRecords.getAll();
+      // Filter by vessel IDs and month if needed (V2 may return all records)
+      return records.filter((r: any) => 
+        (vesselIdsToUse.length === 0 || vesselIdsToUse.includes(r.vesselId) || vesselIdsToUse.includes(r.vesselUuid)) &&
+        r.monthValue === monthValue
+      );
     },
     enabled: open,
   });
 
   // Fetch available ranks for sorting
   const { data: availableRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/available-ranks'],
+    queryKey: ['v2', 'rest-hours', 'available-ranks'],
     enabled: open,
   });
 
@@ -155,22 +160,20 @@ export function NCOverviewDialog({
 
   // Fetch daily records only for crew members with NCs
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-daily-records'],
+    queryKey: ['v2', 'rest-hours', 'daily-records', crewIdsWithNCs],
     queryFn: async () => {
-      const response = await fetch('/api/rest-hours-daily-records');
-      if (!response.ok) throw new Error('Failed to fetch daily records');
-      return response.json();
+      const records = await restHoursApiV2.dailyRecords.getAll();
+      return records;
     },
     enabled: open && crewIdsWithNCs.length > 0,
   });
 
   // Fetch NC reports for crew with NCs
   const { data: allNCReports = [], isLoading: isLoadingNCs } = useQuery<NCReport[]>({
-    queryKey: ['/api/nc-reports/all'],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', 'all'],
     queryFn: async () => {
-      const response = await fetch('/api/nc-reports/all', { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch NC reports');
-      return response.json();
+      const reports = await restHoursApiV2.ncReports.getAll();
+      return reports;
     },
     enabled: open && crewIdsWithNCs.length > 0 && !isPredicted,
   });
