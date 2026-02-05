@@ -12,10 +12,11 @@ import { useMemo, useState, useEffect } from 'react';
 import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
 import { useToast } from '@/hooks/use-toast';
-import { queryClient, apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
 import { NCReportDialog } from './NCReportDialog';
 import { cn } from '@/lib/utils';
 import type { ViolationDailyRecord, ViolationDiagnostic } from '../types';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
   1: "Minimum 10 hours of rest in any 24 hour period",
@@ -99,19 +100,10 @@ export function VesselReviewDialog({
   const reviewerPosition = OFFICE_USERS.find(u => u.name === reviewerName)?.position || '';
 
   // Fetch all crew records for this vessel and month
-  const queryParams = new URLSearchParams();
-  queryParams.append('vesselIds', vesselId);
-  queryParams.append('monthValue', monthValue);
-  queryParams.append('complianceMode', complianceMode);
-  queryParams.append('opaMode', String(opaMode));
-
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-crew-records', vesselId, monthValue, complianceMode, opaMode],
+    queryKey: ['v2', 'rest-hours', 'crew-records', vesselId, monthValue, complianceMode, opaMode],
     queryFn: async () => {
-      const url = `/api/rest-hours-crew-records?${queryParams.toString()}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch crew records');
-      return response.json();
+      return restHoursApiV2.crewRecords.getAll({ vesselRecordUuid: vesselId });
     },
     enabled: open,
   });
@@ -128,55 +120,38 @@ export function VesselReviewDialog({
 
   // Fetch daily records for crew with violations
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-daily-records'],
+    queryKey: ['v2', 'rest-hours', 'daily-records', vesselId],
     queryFn: async () => {
-      const response = await fetch('/api/rest-hours-daily-records');
-      if (!response.ok) throw new Error('Failed to fetch daily records');
-      return response.json();
+      return restHoursApiV2.dailyRecords.getAll();
     },
     enabled: open && crewIdsWithViolations.length > 0,
   });
 
   // Fetch existing vessel comment
-  const { data: vesselCommentData } = useQuery<{ comment: string } | null>({
-    queryKey: ['/api/vessel-violation-comments', vesselId, monthValue],
+  const { data: vesselCommentsData = [] } = useQuery<any[]>({
+    queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId],
     queryFn: async () => {
-      const response = await fetch(`/api/vessel-violation-comments?vesselId=${vesselId}&monthValue=${monthValue}`);
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error('Failed to fetch vessel comment');
-      }
-      return response.json();
+      return restHoursApiV2.vesselComments.getAll({ vesselRecordUuid: vesselId });
     },
     enabled: open,
   });
+  const vesselCommentData = vesselCommentsData.length > 0 ? vesselCommentsData[0] : null;
 
   // Fetch existing office comment
-  const { data: officeCommentData } = useQuery<{ 
-    comment: string;
-    reviewerName: string;
-    reviewerPosition: string;
-    reviewDate: string;
-  } | null>({
-    queryKey: ['/api/office-violation-comments', vesselId, monthValue],
+  const { data: officeCommentsData = [] } = useQuery<any[]>({
+    queryKey: ['v2', 'rest-hours', 'office-comments', vesselId],
     queryFn: async () => {
-      const response = await fetch(`/api/office-violation-comments?vesselId=${vesselId}&monthValue=${monthValue}`);
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error('Failed to fetch office comment');
-      }
-      return response.json();
+      return restHoursApiV2.officeComments.getAll({ vesselRecordUuid: vesselId });
     },
     enabled: open && isOfficeMode,
   });
+  const officeCommentData = officeCommentsData.length > 0 ? officeCommentsData[0] : null;
 
   // Fetch NC reports for this vessel/month
   const { data: allNCReports = [] } = useQuery<NCReport[]>({
-    queryKey: ['/api/nc-reports'],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', vesselId],
     queryFn: async () => {
-      const response = await fetch('/api/nc-reports');
-      if (!response.ok) throw new Error('Failed to fetch NC reports');
-      return response.json();
+      return restHoursApiV2.ncReports.getAll({ vesselRecordUuid: vesselId });
     },
     enabled: open,
   });
@@ -324,14 +299,13 @@ export function VesselReviewDialog({
   // Mutation to save vessel comment
   const saveCommentMutation = useMutation({
     mutationFn: async (comment: string) => {
-      return apiRequest('POST', '/api/vessel-violation-comments', {
-        vesselId,
-        monthValue,
+      return restHoursApiV2.vesselComments.create({
+        vesselRecordUuid: vesselId,
         comment,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/vessel-violation-comments', vesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId] });
       toast({
         title: 'Success',
         description: 'Vessel comment saved successfully',
@@ -349,9 +323,8 @@ export function VesselReviewDialog({
   // Mutation to save office comment
   const saveOfficeCommentMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', '/api/office-violation-comments', {
-        vesselId,
-        monthValue,
+      return restHoursApiV2.officeComments.create({
+        vesselRecordUuid: vesselId,
         comment: officeComment,
         reviewerName,
         reviewerPosition,
@@ -359,8 +332,8 @@ export function VesselReviewDialog({
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/office-violation-comments', vesselId, monthValue] });
-      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-vessel-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments', vesselId] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       toast({
         title: 'Success',
         description: 'Office comment saved successfully',
@@ -379,21 +352,19 @@ export function VesselReviewDialog({
   const submitReviewMutation = useMutation({
     mutationFn: async () => {
       // First save the comment
-      await apiRequest('POST', '/api/vessel-violation-comments', {
-        vesselId,
-        monthValue,
+      await restHoursApiV2.vesselComments.create({
+        vesselRecordUuid: vesselId,
         comment: vesselComment,
       });
 
       // Then update the vessel review submission date
-      return apiRequest('POST', '/api/rest-hours-vessel-records/submit-review', {
-        vesselId,
-        monthValue,
+      return restHoursApiV2.vesselRecords.submitVesselReview(vesselId, {
+        comment: vesselComment,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-vessel-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/vessel-violation-comments', vesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId] });
       toast({
         title: 'Success',
         description: 'Vessel review submitted successfully',
@@ -413,9 +384,8 @@ export function VesselReviewDialog({
   const submitOfficeReviewMutation = useMutation({
     mutationFn: async () => {
       // First save the office comment
-      await apiRequest('POST', '/api/office-violation-comments', {
-        vesselId,
-        monthValue,
+      await restHoursApiV2.officeComments.create({
+        vesselRecordUuid: vesselId,
         comment: officeComment,
         reviewerName,
         reviewerPosition,
@@ -423,14 +393,16 @@ export function VesselReviewDialog({
       });
 
       // Then update the office review submission date
-      return apiRequest('POST', '/api/rest-hours-vessel-records/submit-office-review', {
-        vesselId,
-        monthValue,
+      return restHoursApiV2.vesselRecords.submitOfficeReview(vesselId, {
+        comment: officeComment,
+        reviewerName,
+        reviewerPosition,
+        reviewDate,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-vessel-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/office-violation-comments', vesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments', vesselId] });
       toast({
         title: 'Success',
         description: 'Office review submitted successfully',

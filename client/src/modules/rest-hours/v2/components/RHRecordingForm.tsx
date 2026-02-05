@@ -9,7 +9,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { FileText } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { generateRestHoursPDF } from '@/lib/generateRestHoursPDF';
-import { queryClient, apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import type { RestHoursDailyRecord, FixedTask, VesselDateLineAdjustment, DateLineAdjustmentItem, VariableTask } from '@shared/schema';
@@ -353,16 +354,16 @@ export const RHRecordingForm = ({
 
   // Fetch existing record if available
   const { data: existingRecord, isError } = useQuery<RestHoursDailyRecord>({
-    queryKey: ['/api/rest-hours-daily-records/by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
     queryFn: async () => {
-      const response = await fetch(`/api/rest-hours-daily-records/by-key/${selectedCrewMemberId}/${selectedVesselId}/${selectedPeriod}`);
-      if (!response.ok) {
-        if (response.status === 404) {
+      try {
+        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, `${selectedVesselId}/${selectedPeriod}`);
+      } catch (error: any) {
+        if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No existing record found
         }
-        throw new Error('Failed to fetch rest hours record');
+        throw error;
       }
-      return response.json();
     },
     enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!selectedPeriod,
     retry: false,
@@ -372,17 +373,17 @@ export const RHRecordingForm = ({
 
   // Fetch previous month's record for cross-month rolling window calculations
   const { data: previousMonthRecord } = useQuery<RestHoursDailyRecord>({
-    queryKey: ['/api/rest-hours-daily-records/by-key', selectedCrewMemberId, selectedVesselId, previousMonthPeriod],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, previousMonthPeriod],
     queryFn: async () => {
       if (!previousMonthPeriod) return null;
-      const response = await fetch(`/api/rest-hours-daily-records/by-key/${selectedCrewMemberId}/${selectedVesselId}/${previousMonthPeriod}`);
-      if (!response.ok) {
-        if (response.status === 404) {
+      try {
+        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, `${selectedVesselId}/${previousMonthPeriod}`);
+      } catch (error: any) {
+        if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No previous month record found
         }
-        throw new Error('Failed to fetch previous month record');
+        throw error;
       }
-      return response.json();
     },
     enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!previousMonthPeriod,
     retry: false,
@@ -392,16 +393,16 @@ export const RHRecordingForm = ({
 
   // Fetch fixed tasks for this crew member to auto-populate plan data
   const { data: fixedTask } = useQuery<FixedTask>({
-    queryKey: ['/api/fixed-tasks/by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
+    queryKey: ['v2', 'rest-hours', 'fixed-tasks', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
     queryFn: async () => {
-      const response = await fetch(`/api/fixed-tasks/by-key/${selectedCrewMemberId}/${selectedVesselId}/${selectedPeriod}`);
-      if (!response.ok) {
-        if (response.status === 404) {
+      try {
+        return await restHoursApiV2.fixedTasks.getByKey(selectedVesselId, selectedCrewMemberId, selectedPeriod);
+      } catch (error: any) {
+        if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No fixed tasks found
         }
-        throw new Error('Failed to fetch fixed tasks');
+        throw error;
       }
-      return response.json();
     },
     enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!selectedPeriod,
     retry: false,
@@ -411,14 +412,10 @@ export const RHRecordingForm = ({
 
   // Fetch variable tasks for the vessel/period to overlay onto crew records
   const { data: variableTasks = [] } = useQuery<VariableTask[]>({
-    queryKey: ['/api/variable-tasks', selectedVesselId, selectedPeriod],
+    queryKey: ['v2', 'rest-hours', 'variable-tasks', selectedVesselId, selectedPeriod],
     queryFn: async () => {
       if (!selectedVesselId || !selectedPeriod) return [];
-      const response = await fetch(`/api/variable-tasks?vesselId=${selectedVesselId}&periodValue=${selectedPeriod}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch variable tasks');
-      }
-      return response.json();
+      return await restHoursApiV2.variableTasks.getAll({ vesselUuid: selectedVesselId, date: selectedPeriod });
     },
     enabled: open && !!selectedVesselId && !!selectedPeriod,
     retry: false,
@@ -434,15 +431,20 @@ export const RHRecordingForm = ({
 
   // Fetch date line adjustments for the selected vessel and month
   const { data: dateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
-    queryKey: ['/api/vessel-dateline-adjustments', selectedVesselId, selectedPeriod],
+    queryKey: ['v2', 'rest-hours', 'dateline-adjustments', selectedVesselId, selectedPeriod],
     queryFn: async () => {
       if (!selectedVesselId || !selectedPeriod) return null;
-      const response = await fetch(`/api/vessel-dateline-adjustments/${selectedVesselId}/${selectedPeriod}`);
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error('Failed to fetch vessel date line adjustments');
+      try {
+        const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselUuid: selectedVesselId });
+        // Filter for the specific period
+        const periodAdjustment = adjustments.find((a: any) => a.monthYear === selectedPeriod || a.period === selectedPeriod);
+        return periodAdjustment || null;
+      } catch (error: any) {
+        if (error.message?.includes('404') || error.message?.includes('not found')) {
+          return null;
+        }
+        throw error;
       }
-      return response.json();
     },
     enabled: open && !!selectedVesselId && !!selectedPeriod,
     retry: false,
@@ -452,15 +454,20 @@ export const RHRecordingForm = ({
 
   // Fetch previous month's date line adjustments for cross-month rolling windows
   const { data: previousMonthDateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
-    queryKey: ['/api/vessel-dateline-adjustments', selectedVesselId, previousMonthPeriod],
+    queryKey: ['v2', 'rest-hours', 'dateline-adjustments', selectedVesselId, previousMonthPeriod],
     queryFn: async () => {
       if (!selectedVesselId || !previousMonthPeriod) return null;
-      const response = await fetch(`/api/vessel-dateline-adjustments/${selectedVesselId}/${previousMonthPeriod}`);
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error('Failed to fetch previous month date line adjustments');
+      try {
+        const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselUuid: selectedVesselId });
+        // Filter for the specific period
+        const periodAdjustment = adjustments.find((a: any) => a.monthYear === previousMonthPeriod || a.period === previousMonthPeriod);
+        return periodAdjustment || null;
+      } catch (error: any) {
+        if (error.message?.includes('404') || error.message?.includes('not found')) {
+          return null;
+        }
+        throw error;
       }
-      return response.json();
     },
     enabled: open && !!selectedVesselId && !!previousMonthPeriod,
     retry: false,
@@ -998,16 +1005,16 @@ export const RHRecordingForm = ({
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
       if (formId) {
-        return apiRequest('PUT', `/api/rest-hours-daily-records/${formId}`, data);
+        return await restHoursApiV2.dailyRecords.update(String(formId), data);
       } else {
-        return apiRequest('POST', '/api/rest-hours-daily-records', data);
+        return await restHoursApiV2.dailyRecords.create(data);
       }
     },
     onSuccess: (data: any) => {
-      setFormId(data.id);
+      setFormId(data.id || data.uuid);
       setIsDirty(false); // Reset dirty flag after successful save
-      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-daily-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-crew-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'daily-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'crew-records'] });
       
       // Check if we should close the dialog after auto-save
       if (closeAfterSaveRef.current) {
