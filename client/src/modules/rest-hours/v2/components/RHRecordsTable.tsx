@@ -12,6 +12,7 @@ import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
 import { VesselReviewDialog } from './VesselReviewDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface RHRecordsTableProps {
   selectedVessels: string[];
@@ -632,27 +633,19 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const [officeReviewDialogOpen, setOfficeReviewDialogOpen] = useState(false);
   const [selectedOfficeReviewRecord, setSelectedOfficeReviewRecord] = useState<RestHoursVesselRecordWithName | null>(null);
 
-  // Build query params for backend
-  const queryParams = useMemo(() => {
-    const params = new URLSearchParams();
-    // Only pass month if it's a valid value (not "older" or empty)
-    if (selectedMonth && selectedMonth !== 'older' && selectedMonth !== '') {
-      params.append('monthValue', selectedMonth);
+  // Build V2 API params from selectedMonth (format: "2025-12")
+  const v2ApiParams = useMemo(() => {
+    if (!selectedMonth || selectedMonth === 'older' || selectedMonth === '') {
+      return { month: undefined, year: undefined };
     }
-    params.append('complianceMode', complianceMode);
-    params.append('opaMode', String(opaMode));
-    return params.toString();
-  }, [selectedMonth, complianceMode, opaMode]);
+    const [year, month] = selectedMonth.split('-');
+    return { month, year };
+  }, [selectedMonth]);
 
   const { data: records = [], isLoading } = useQuery<RestHoursVesselRecord[]>({
-    queryKey: ['/api/rest-hours-vessel-records', queryParams],
+    queryKey: ['v2', 'rest-hours', 'vessel-records', v2ApiParams, complianceMode, opaMode],
     queryFn: async () => {
-      const url = queryParams 
-        ? `/api/rest-hours-vessel-records?${queryParams}`
-        : '/api/rest-hours-vessel-records';
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch vessel records');
-      return response.json();
+      return restHoursApiV2.vesselRecords.getAll(v2ApiParams);
     },
   });
 

@@ -13,6 +13,7 @@ import { NCReportDialog } from './NCReportDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
 import { type ComplianceMode } from '../violationFilters';
 import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface RHCrewRecordsTableProps {
   vesselId?: string;
@@ -418,26 +419,17 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     return map;
   }, [availableRanks, vesselRanks]);
 
-  // Build query params
-  const queryParams = new URLSearchParams();
-  if (vesselId) queryParams.append('vesselIds', vesselId);
-  if (monthValue) queryParams.append('monthValue', monthValue);
-  if (selectedRanks && selectedRanks.length > 0) {
-    selectedRanks.forEach(rank => queryParams.append('ranks', rank));
-  }
-  if (searchText) queryParams.append('search', searchText);
-  queryParams.append('complianceMode', complianceMode);
-  queryParams.append('opaMode', String(opaMode));
+  // Build V2 API params
+  const v2ApiParams = useMemo(() => ({
+    vesselRecordUuid: vesselId,
+    crewUuid: undefined,
+    rankUuid: undefined,
+  }), [vesselId]);
 
   const { data: rawRecords = [], isLoading } = useQuery<RestHoursCrewRecord[]>({
-    queryKey: ['/api/rest-hours-crew-records', queryParams.toString()],
+    queryKey: ['v2', 'rest-hours', 'crew-records', v2ApiParams, monthValue, selectedRanks, searchText, complianceMode, opaMode],
     queryFn: async () => {
-      const url = queryParams.toString() 
-        ? `/api/rest-hours-crew-records?${queryParams.toString()}`
-        : '/api/rest-hours-crew-records';
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch crew records');
-      return response.json();
+      return restHoursApiV2.crewRecords.getAll(v2ApiParams);
     },
   });
 
