@@ -281,9 +281,8 @@ export const RHRecordingForm = ({
   }, [allCrewMembers, selectedVesselId]);
   
   // Get selected crew member details
-  // V2: selectedCrewMemberId is in empNo format (e.g., "A000042"), match against cm.empNo
   const selectedCrewMember = useMemo(() => {
-    return filteredCrewMembers.find((cm: any) => cm.empNo === selectedCrewMemberId);
+    return filteredCrewMembers.find((cm: any) => cm.id === selectedCrewMemberId);
   }, [filteredCrewMembers, selectedCrewMemberId]);
   
   // Derived values from selections
@@ -318,9 +317,9 @@ export const RHRecordingForm = ({
       return;
     }
     
-    // When vessel changes, select the first crew member on that vessel (use empNo for V2)
+    // When vessel changes, select the first crew member on that vessel
     if (filteredCrewMembers.length > 0) {
-      setSelectedCrewMemberId(filteredCrewMembers[0].empNo);
+      setSelectedCrewMemberId(filteredCrewMembers[0].id);
     }
   }, [selectedVesselId, filteredCrewMembers, open]);
 
@@ -362,15 +361,12 @@ export const RHRecordingForm = ({
     setDailyRecords(records);
   }, [selectedPeriod, selectedCrewMemberId, selectedVesselId, open]);
 
-  // V2 uses empNo format (e.g., "A000042") for crewMemberId in API calls
-  const crewMemberEmpNo = selectedCrewMember?.empNo;
-
   // Fetch existing record if available
   const { data: existingRecord, isError } = useQuery<RestHoursDailyRecord>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', crewMemberEmpNo, selectedVesselId, selectedPeriod],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
     queryFn: async () => {
       try {
-        return await restHoursApiV2.dailyRecords.getByKey(crewMemberEmpNo!, `${selectedVesselId}/${selectedPeriod}`);
+        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, `${selectedVesselId}/${selectedPeriod}`);
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No existing record found
@@ -378,7 +374,7 @@ export const RHRecordingForm = ({
         throw error;
       }
     },
-    enabled: open && !!crewMemberEmpNo && !!selectedVesselId && !!selectedPeriod,
+    enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!selectedPeriod,
     retry: false,
     gcTime: 0, // Don't cache - each crew's data must be fresh to prevent data leakage
     staleTime: 0, // Always fetch fresh data
@@ -386,11 +382,11 @@ export const RHRecordingForm = ({
 
   // Fetch previous month's record for cross-month rolling window calculations
   const { data: previousMonthRecord } = useQuery<RestHoursDailyRecord>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', crewMemberEmpNo, selectedVesselId, previousMonthPeriod],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, previousMonthPeriod],
     queryFn: async () => {
       if (!previousMonthPeriod) return null;
       try {
-        return await restHoursApiV2.dailyRecords.getByKey(crewMemberEmpNo!, `${selectedVesselId}/${previousMonthPeriod}`);
+        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, `${selectedVesselId}/${previousMonthPeriod}`);
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No previous month record found
@@ -398,7 +394,7 @@ export const RHRecordingForm = ({
         throw error;
       }
     },
-    enabled: open && !!crewMemberEmpNo && !!selectedVesselId && !!previousMonthPeriod,
+    enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!previousMonthPeriod,
     retry: false,
     gcTime: 0,
     staleTime: 0,
@@ -407,10 +403,10 @@ export const RHRecordingForm = ({
   // Fetch fixed tasks for this crew member to auto-populate plan data
   // API order: crewMemberId, vesselId, monthYear (matches backend route)
   const { data: fixedTask } = useQuery<FixedTask>({
-    queryKey: ['v2', 'rest-hours', 'fixed-tasks', 'by-key', crewMemberEmpNo, selectedVesselId, selectedPeriod],
+    queryKey: ['v2', 'rest-hours', 'fixed-tasks', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
     queryFn: async () => {
       try {
-        return await restHoursApiV2.fixedTasks.getByKey(crewMemberEmpNo!, selectedVesselId, selectedPeriod);
+        return await restHoursApiV2.fixedTasks.getByKey(selectedCrewMemberId, selectedVesselId, selectedPeriod);
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No fixed tasks found
@@ -418,7 +414,7 @@ export const RHRecordingForm = ({
         throw error;
       }
     },
-    enabled: open && !!crewMemberEmpNo && !!selectedVesselId && !!selectedPeriod,
+    enabled: open && !!selectedCrewMemberId && !!selectedVesselId && !!selectedPeriod,
     retry: false,
     gcTime: 0,
     staleTime: 0,
@@ -438,11 +434,10 @@ export const RHRecordingForm = ({
   });
 
   // Filter variable tasks to only those involving the selected crew member
-  // Use empNo format for variable tasks filter to match V2 data format
   const crewVariableTasks = useMemo(() => {
-    if (!crewMemberEmpNo || !variableTasks.length) return [];
-    return variableTasks.filter(task => isCrewMemberInTask(task, crewMemberEmpNo));
-  }, [variableTasks, crewMemberEmpNo]);
+    if (!selectedCrewMemberId || !variableTasks.length) return [];
+    return variableTasks.filter(task => isCrewMemberInTask(task, selectedCrewMemberId));
+  }, [variableTasks, selectedCrewMemberId]);
 
   // Fetch date line adjustments for the selected vessel and month
   const { data: dateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
@@ -1076,9 +1071,8 @@ export const RHRecordingForm = ({
       return record;
     });
     
-    // Use empNo format for crewMemberId in V2 API
     const payload = {
-      crewMemberId: crewMemberEmpNo,
+      crewMemberId: selectedCrewMemberId,
       vesselId: selectedVesselId,
       rank,
       name: crewMemberName,
@@ -1100,7 +1094,7 @@ export const RHRecordingForm = ({
     }
     
     // If there are unsaved changes, auto-save before closing
-    if (isDirty && dailyRecords.length > 0 && crewMemberEmpNo && selectedVesselId) {
+    if (isDirty && dailyRecords.length > 0 && selectedCrewMemberId && selectedVesselId) {
       closeAfterSaveRef.current = true;
       
       // Merge the latest violations before saving
@@ -1120,9 +1114,8 @@ export const RHRecordingForm = ({
         return record;
       });
       
-      // Use empNo format for crewMemberId in V2 API
       const payload = {
-        crewMemberId: crewMemberEmpNo,
+        crewMemberId: selectedCrewMemberId,
         vesselId: selectedVesselId,
         rank,
         name: crewMemberName,
@@ -1137,7 +1130,7 @@ export const RHRecordingForm = ({
       // No unsaved changes, just close
       onOpenChange(false);
     }
-  }, [isDirty, dailyRecords, timelineViolations, crewMemberEmpNo, selectedVesselId, rank, crewMemberName, selectedPeriod, showPlanning, opaMode, saveMutation, onOpenChange]);
+  }, [isDirty, dailyRecords, timelineViolations, selectedCrewMemberId, selectedVesselId, rank, crewMemberName, selectedPeriod, showPlanning, opaMode, saveMutation, onOpenChange]);
   
   // Handle Dialog's onOpenChange - intercept close requests to trigger auto-save
   const handleDialogOpenChange = useCallback((isOpen: boolean) => {
@@ -1516,7 +1509,7 @@ export const RHRecordingForm = ({
               </SelectTrigger>
               <SelectContent>
                 {filteredCrewMembers.map((cm: any) => (
-                  <SelectItem key={cm.empNo} value={cm.empNo}>
+                  <SelectItem key={cm.id} value={cm.id}>
                     {cm.presentRank}, {cm.firstName}{cm.middleName ? ' ' + cm.middleName : ''} {cm.familyName}
                   </SelectItem>
                 ))}
