@@ -115,19 +115,23 @@ export const restHoursApiV2 = {
       return response.json();
     },
 
-    async getViolationsByRank(params?: { vesselRecordUuid?: string }) {
+    // V1 pattern: /api/rest-hours-violations-by-rank
+    async getViolationsByRank(params?: { vesselId?: string; monthValue?: string }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselRecordUuid) searchParams.set('vesselRecordUuid', params.vesselRecordUuid);
-      const url = `${V2_BASE}/crew-records/violations-by-rank${searchParams.toString() ? '?' + searchParams : ''}`;
+      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
+      const url = `${V2_BASE}/violations-by-rank${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch violations by rank');
       return response.json();
     },
 
-    async getNcsByRank(params?: { vesselRecordUuid?: string }) {
+    // V1 pattern: /api/rest-hours-ncs-by-rank
+    async getNcsByRank(params?: { vesselId?: string; monthValue?: string }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselRecordUuid) searchParams.set('vesselRecordUuid', params.vesselRecordUuid);
-      const url = `${V2_BASE}/crew-records/ncs-by-rank${searchParams.toString() ? '?' + searchParams : ''}`;
+      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
+      const url = `${V2_BASE}/ncs-by-rank${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch NCs by rank');
       return response.json();
@@ -151,8 +155,10 @@ export const restHoursApiV2 = {
       return response.json();
     },
 
-    async getByKey(crewRecordUuid: string, date: string) {
-      const response = await fetch(`${V2_BASE}/daily-records/by-key/${crewRecordUuid}/${date}`);
+    // V1 pattern: /api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear
+    async getByKey(crewMemberId: string, vesselId: string, monthYear: string) {
+      const url = `${V2_BASE}/daily-records/by-key/${encodeURIComponent(crewMemberId)}/${encodeURIComponent(vesselId)}/${encodeURIComponent(monthYear)}`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch daily record by key');
       return response.json();
     },

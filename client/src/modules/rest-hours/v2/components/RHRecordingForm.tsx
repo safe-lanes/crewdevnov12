@@ -362,11 +362,12 @@ export const RHRecordingForm = ({
   }, [selectedPeriod, selectedCrewMemberId, selectedVesselId, open]);
 
   // Fetch existing record if available
+  // V1 pattern: /api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear
   const { data: existingRecord, isError } = useQuery<RestHoursDailyRecord>({
     queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
     queryFn: async () => {
       try {
-        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, `${selectedVesselId}/${selectedPeriod}`);
+        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, selectedVesselId, selectedPeriod);
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No existing record found
@@ -381,12 +382,13 @@ export const RHRecordingForm = ({
   });
 
   // Fetch previous month's record for cross-month rolling window calculations
+  // V1 pattern: /api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear
   const { data: previousMonthRecord } = useQuery<RestHoursDailyRecord>({
     queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, previousMonthPeriod],
     queryFn: async () => {
       if (!previousMonthPeriod) return null;
       try {
-        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, `${selectedVesselId}/${previousMonthPeriod}`);
+        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, selectedVesselId, previousMonthPeriod);
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No previous month record found
