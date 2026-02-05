@@ -68,11 +68,14 @@ export const restHoursApiV2 = {
   },
 
   crewRecords: {
-    async getAll(params?: { vesselRecordUuid?: string; crewUuid?: string; rankUuid?: string }) {
+    async getAll(params?: { vesselId?: string; monthValue?: string; ranks?: string[]; search?: string }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselRecordUuid) searchParams.set('vesselRecordUuid', params.vesselRecordUuid);
-      if (params?.crewUuid) searchParams.set('crewUuid', params.crewUuid);
-      if (params?.rankUuid) searchParams.set('rankUuid', params.rankUuid);
+      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
+      if (params?.ranks && params.ranks.length > 0) {
+        params.ranks.forEach(rank => searchParams.append('ranks', rank));
+      }
+      if (params?.search) searchParams.set('search', params.search);
       const url = `${V2_BASE}/crew-records${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch crew records');

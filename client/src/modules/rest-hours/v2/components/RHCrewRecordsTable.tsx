@@ -419,15 +419,16 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     return map;
   }, [availableRanks, vesselRanks]);
 
-  // Build V2 API params
+  // Build V2 API params (matching V1 pattern: vesselId, monthValue, ranks, search)
   const v2ApiParams = useMemo(() => ({
-    vesselRecordUuid: vesselId,
-    crewUuid: undefined,
-    rankUuid: undefined,
-  }), [vesselId]);
+    vesselId: vesselId,
+    monthValue: monthValue,
+    ranks: selectedRanks,
+    search: searchText,
+  }), [vesselId, monthValue, selectedRanks, searchText]);
 
   const { data: rawRecords = [], isLoading } = useQuery<RestHoursCrewRecord[]>({
-    queryKey: ['v2', 'rest-hours', 'crew-records', v2ApiParams, monthValue, selectedRanks, searchText, complianceMode, opaMode],
+    queryKey: ['v2', 'rest-hours', 'crew-records', vesselId, monthValue, selectedRanks, searchText, complianceMode, opaMode],
     queryFn: async () => {
       return restHoursApiV2.crewRecords.getAll(v2ApiParams);
     },

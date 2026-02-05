@@ -204,17 +204,12 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     }
   };
 
-  // Fetch crew records for export using V2 API
+  // Fetch crew records for export using V2 API (matching V1 pattern: vesselId, monthValue)
   const { data: crewRecordsForExport = [] } = useQuery({
-    queryKey: ['v2', 'rest-hours', 'crew-records', selectedVessel, periodValue],
+    queryKey: ['v2', 'rest-hours', 'crew-records-export', selectedVessel, periodValue],
     queryFn: async () => {
       if (!selectedVessel || !periodValue) return [];
-      // First get vessel record for this vessel/month
-      const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ vesselUuid: selectedVessel });
-      const vesselRecord = vesselRecords?.find((vr: any) => vr.monthYear === periodValue);
-      if (!vesselRecord?.uuid) return [];
-      // Then get crew records for that vessel record
-      return restHoursApiV2.crewRecords.getAll({ vesselRecordUuid: vesselRecord.uuid });
+      return restHoursApiV2.crewRecords.getAll({ vesselId: selectedVessel, monthValue: periodValue });
     },
     enabled: !!selectedVessel && !!periodValue,
   });

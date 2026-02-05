@@ -1,4 +1,7 @@
 import { CrewRecordsRepository } from "../repositories";
+import { getDb } from "../../db";
+import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { eq, and, or, isNull } from "drizzle-orm";
 import type {
   RhCrewRecordV2,
   InsertRhCrewRecordV2,
@@ -59,6 +62,69 @@ export const crewRecordsService = {
       }
     } else {
       allRecords = await crewRecordsRepository.findAll({ monthValue });
+    }
+
+    // For V2: If no records found and vesselIds provided, generate placeholder rows from crew_assignments
+    if (allRecords.length === 0 && vesselIds && vesselIds.length > 0 && monthValue) {
+      const db = getDb();
+      for (const vesselId of vesselIds) {
+        // Fetch current crew members from crew_assignments joined with crew_members_v2
+        const crewData = await db
+          .select({
+            crewUuid: crewAssignments.crewUuid,
+            vesselUuid: crewAssignments.vesselUuid,
+            signOnDate: crewAssignments.signOnDate,
+            firstName: crewMembersV2.firstName,
+            familyName: crewMembersV2.familyName,
+            presentRank: crewMembersV2.presentRank,
+            empNo: crewMembersV2.empNo,
+          })
+          .from(crewAssignments)
+          .innerJoin(
+            crewMembersV2,
+            eq(crewAssignments.crewUuid, crewMembersV2.crewUuid)
+          )
+          .where(
+            and(
+              eq(crewAssignments.vesselUuid, vesselId),
+              eq(crewAssignments.isCurrent, true),
+              or(
+                eq(crewMembersV2.isDeleted, false),
+                isNull(crewMembersV2.isDeleted)
+              )
+            )
+          );
+        
+        // Create placeholder records for each crew member
+        for (const crew of crewData) {
+          // Use Partial<RhCrewRecordV2> and cast to avoid strict type checking for placeholder records
+          const placeholderRecord = {
+            id: 0,
+            rhCrewRecordUuid: `placeholder-${crew.crewUuid}-${monthValue}`,
+            vesselId: vesselId,
+            crewMemberId: crew.empNo || crew.crewUuid,
+            rank: crew.presentRank || 'Unknown',
+            name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim() || 'Unknown',
+            month: monthValue,
+            monthValue: monthValue,
+            signOnOffInfo: crew.signOnDate || null,
+            recordingStatusPercent: 0,
+            activityConflicting: false,
+            totalViolations: 0,
+            totalNCs: 0,
+            predictedViolations: 0,
+            predictedNCs: 0,
+            sortOrder: null,
+            createdAt: null,
+            updatedAt: null,
+            createdByUuid: null,
+            updatedByUuid: null,
+            isDeleted: false,
+            isSync: false,
+          } as RhCrewRecordV2;
+          allRecords.push(placeholderRecord);
+        }
+      }
     }
 
     if (ranks && ranks.length > 0) {
