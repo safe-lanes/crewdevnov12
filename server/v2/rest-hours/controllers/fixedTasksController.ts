@@ -54,7 +54,12 @@ export const fixedTasksController = {
 
   async create(req: Request, res: Response) {
     try {
-      const task = await fixedTasksService.create(req.body);
+      const data = { ...req.body };
+      if (data.vesselUuid && !data.vesselId) {
+        data.vesselId = data.vesselUuid;
+        delete data.vesselUuid;
+      }
+      const task = await fixedTasksService.create(data);
       res.status(201).json(task);
     } catch (error: any) {
       if (error.message?.includes("required")) {
@@ -68,7 +73,12 @@ export const fixedTasksController = {
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const task = await fixedTasksService.update(uuid, req.body);
+      const data = { ...req.body };
+      if (data.vesselUuid && !data.vesselId) {
+        data.vesselId = data.vesselUuid;
+        delete data.vesselUuid;
+      }
+      const task = await fixedTasksService.update(uuid, data);
       res.json(task);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
