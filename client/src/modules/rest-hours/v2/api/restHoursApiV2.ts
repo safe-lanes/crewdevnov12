@@ -291,11 +291,20 @@ export const restHoursApiV2 = {
   },
 
   ncReports: {
-    async getAll(params?: { vesselRecordUuid?: string; crewRecordUuid?: string }) {
+    // V1 pattern: GET /api/nc-reports/all - returns all NC reports (no filtering)
+    async getAll() {
+      const response = await fetch(`${V2_BASE}/nc-reports/all`);
+      if (!response.ok) throw new Error('Failed to fetch all NC reports');
+      return response.json();
+    },
+
+    // V1 pattern: GET /api/nc-reports - filters by crewMemberId, vesselId, monthValue
+    async getFiltered(params: { crewMemberId: string; vesselId: string; monthValue: string }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselRecordUuid) searchParams.set('vesselRecordUuid', params.vesselRecordUuid);
-      if (params?.crewRecordUuid) searchParams.set('crewRecordUuid', params.crewRecordUuid);
-      const url = `${V2_BASE}/nc-reports${searchParams.toString() ? '?' + searchParams : ''}`;
+      searchParams.set('crewMemberId', params.crewMemberId);
+      searchParams.set('vesselId', params.vesselId);
+      searchParams.set('monthValue', params.monthValue);
+      const url = `${V2_BASE}/nc-reports?${searchParams}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch NC reports');
       return response.json();

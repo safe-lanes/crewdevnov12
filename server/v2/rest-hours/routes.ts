@@ -67,7 +67,10 @@ router.delete("/office-comments/:uuid", commentsController.deleteOfficeComment);
 // ============================================
 // NC REPORTS
 // ============================================
-router.get("/nc-reports", ncReportsController.getAll);
+// V1 pattern: GET /api/nc-reports/all - returns all NC reports without filtering
+router.get("/nc-reports/all", ncReportsController.getAll);
+// V1 pattern: GET /api/nc-reports - filters by crewMemberId, vesselId, monthValue
+router.get("/nc-reports", ncReportsController.getFiltered);
 router.get("/nc-reports/:uuid", ncReportsController.getByUuid);
 router.post("/nc-reports", ncReportsController.create);
 router.put("/nc-reports/:uuid", ncReportsController.update);

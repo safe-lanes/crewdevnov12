@@ -67,12 +67,13 @@ export function VesselNCsDialog({
   );
 
   // Fetch crew records for all vessel records using V2 API
+  // V1 pattern: uses vesselId param
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
     queryKey: ['v2', 'rest-hours', 'crew-records', vesselRecordUuids, complianceMode, opaMode],
     queryFn: async () => {
       const allCrewRecords: any[] = [];
-      for (const vesselRecordUuid of vesselRecordUuids) {
-        const records = await restHoursApiV2.crewRecords.getAll({ vesselRecordUuid });
+      for (const vesselId of vesselRecordUuids) {
+        const records = await restHoursApiV2.crewRecords.getAll({ vesselId });
         allCrewRecords.push(...records);
       }
       return allCrewRecords;
@@ -106,14 +107,12 @@ export function VesselNCsDialog({
 
   // Fetch NC reports for all vessel records using V2 API
   const { data: allNCReports = [], isLoading: isLoadingNCs } = useQuery<NCReport[]>({
-    queryKey: ['v2', 'rest-hours', 'nc-reports', vesselRecordUuids],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', 'all', vesselRecordUuids],
     queryFn: async () => {
-      const allReports: NCReport[] = [];
-      for (const vesselRecordUuid of vesselRecordUuids) {
-        const reports = await restHoursApiV2.ncReports.getAll({ vesselRecordUuid });
-        allReports.push(...reports);
-      }
-      return allReports;
+      // V1 pattern: GET /api/nc-reports/all then filter client-side
+      const reports = await restHoursApiV2.ncReports.getAll();
+      // Filter by vesselRecordUuids on client side
+      return reports.filter((r: any) => vesselRecordUuids.includes(r.vesselId) || vesselRecordUuids.includes(r.vesselRecordUuid));
     },
     enabled: open && crewRecordsWithNCs.length > 0 && vesselRecordUuids.length > 0,
   });

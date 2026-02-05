@@ -100,10 +100,11 @@ export function VesselReviewDialog({
   const reviewerPosition = OFFICE_USERS.find(u => u.name === reviewerName)?.position || '';
 
   // Fetch all crew records for this vessel and month
+  // V1 pattern: uses vesselId param
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
     queryKey: ['v2', 'rest-hours', 'crew-records', vesselId, monthValue, complianceMode, opaMode],
     queryFn: async () => {
-      return restHoursApiV2.crewRecords.getAll({ vesselRecordUuid: vesselId });
+      return restHoursApiV2.crewRecords.getAll({ vesselId: vesselId, monthValue: monthValue });
     },
     enabled: open,
   });
@@ -147,11 +148,14 @@ export function VesselReviewDialog({
   });
   const officeCommentData = officeCommentsData.length > 0 ? officeCommentsData[0] : null;
 
-  // Fetch NC reports for this vessel/month
+  // Fetch all NC reports and filter by vesselId on client side
+  // V1 pattern: GET /api/nc-reports/all
   const { data: allNCReports = [] } = useQuery<NCReport[]>({
-    queryKey: ['v2', 'rest-hours', 'nc-reports', vesselId],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', 'all'],
     queryFn: async () => {
-      return restHoursApiV2.ncReports.getAll({ vesselRecordUuid: vesselId });
+      const reports = await restHoursApiV2.ncReports.getAll();
+      // Filter by vesselId on client side
+      return vesselId ? reports.filter((r: any) => r.vesselId === vesselId) : reports;
     },
     enabled: open,
   });

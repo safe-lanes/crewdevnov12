@@ -2,13 +2,30 @@ import { Request, Response } from "express";
 import { ncReportsService } from "../services";
 
 export const ncReportsController = {
+  // V1 pattern: GET /api/nc-reports/all - returns all NC reports (no filtering)
   async getAll(req: Request, res: Response) {
     try {
+      const reports = await ncReportsService.getAll({});
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching all NC reports:", error);
+      res.status(500).json({ error: "Failed to fetch all NC reports" });
+    }
+  },
+
+  // V1 pattern: GET /api/nc-reports - filters by crewMemberId, vesselId, monthValue
+  async getFiltered(req: Request, res: Response) {
+    try {
       const { vesselId, monthValue, crewMemberId } = req.query;
+      
+      if (!crewMemberId || !vesselId || !monthValue) {
+        return res.status(400).json({ error: "crewMemberId, vesselId, and monthValue are required" });
+      }
+      
       const reports = await ncReportsService.getAll({
-        vesselId: vesselId as string | undefined,
-        monthValue: monthValue as string | undefined,
-        crewMemberId: crewMemberId as string | undefined,
+        vesselId: vesselId as string,
+        monthValue: monthValue as string,
+        crewMemberId: crewMemberId as string,
       });
       res.json(reports);
     } catch (error) {

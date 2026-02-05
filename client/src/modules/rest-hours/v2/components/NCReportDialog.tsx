@@ -146,8 +146,10 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
     queryFn: async () => {
       if (!crewRecordUuid) return null;
       try {
-        const reports = await restHoursApiV2.ncReports.getAll({ crewRecordUuid });
-        return reports && reports.length > 0 ? reports[0] : null;
+        // V1 pattern: GET /api/nc-reports/all then filter client-side
+        const reports = await restHoursApiV2.ncReports.getAll();
+        const filtered = reports.filter((r: any) => r.crewMemberId === crewRecordUuid || r.crewRecordUuid === crewRecordUuid);
+        return filtered && filtered.length > 0 ? filtered[0] : null;
       } catch (error) {
         return null;
       }
