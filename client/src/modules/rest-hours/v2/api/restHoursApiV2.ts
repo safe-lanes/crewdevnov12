@@ -48,8 +48,9 @@ export const restHoursApiV2 = {
       return response.json();
     },
 
+    // V1 pattern: /api/rest-hours-vessel-records/submit-review
     async submitVesselReview(uuid: string, data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/vessel-records/${uuid}/vessel-review`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/vessel-records/${uuid}/submit-vessel-review`, data);
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to submit vessel review');
@@ -57,8 +58,9 @@ export const restHoursApiV2 = {
       return response.json();
     },
 
+    // V1 pattern: /api/rest-hours-vessel-records/submit-office-review
     async submitOfficeReview(uuid: string, data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/vessel-records/${uuid}/office-review`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/vessel-records/${uuid}/submit-office-review`, data);
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to submit office review');
@@ -447,24 +449,26 @@ export const restHoursApiV2 = {
     },
   },
 
+  // V1 pattern: /api/vessel-dateline-adjustments/:vesselId/:monthValue
   datelineAdjustments: {
-    async getAll(params?: { vesselUuid?: string }) {
+    async getAll(params?: { vesselId?: string; monthValue?: string }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselUuid) searchParams.set('vesselUuid', params.vesselUuid);
-      const url = `${V2_BASE}/dateline-adjustments${searchParams.toString() ? '?' + searchParams : ''}`;
+      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
+      const url = `${V2_BASE}/dateline${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch dateline adjustments');
       return response.json();
     },
 
     async getByUuid(uuid: string) {
-      const response = await fetch(`${V2_BASE}/dateline-adjustments/${uuid}`);
+      const response = await fetch(`${V2_BASE}/dateline/${uuid}`);
       if (!response.ok) throw new Error('Failed to fetch dateline adjustment');
       return response.json();
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/dateline-adjustments`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/dateline`, data);
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create dateline adjustment');
@@ -473,7 +477,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/dateline-adjustments/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/dateline/${uuid}`, data);
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update dateline adjustment');
@@ -482,7 +486,7 @@ export const restHoursApiV2 = {
     },
 
     async delete(uuid: string) {
-      const response = await apiRequest('DELETE', `${V2_BASE}/dateline-adjustments/${uuid}`);
+      const response = await apiRequest('DELETE', `${V2_BASE}/dateline/${uuid}`);
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to delete dateline adjustment');

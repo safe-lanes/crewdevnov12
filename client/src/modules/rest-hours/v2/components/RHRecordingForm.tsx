@@ -442,12 +442,13 @@ export const RHRecordingForm = ({
   }, [variableTasks, selectedCrewMemberId]);
 
   // Fetch date line adjustments for the selected vessel and month
+  // V1 pattern: /api/vessel-dateline-adjustments/:vesselId/:monthValue
   const { data: dateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
     queryKey: ['v2', 'rest-hours', 'dateline-adjustments', selectedVesselId, selectedPeriod],
     queryFn: async () => {
       if (!selectedVesselId || !selectedPeriod) return null;
       try {
-        const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselUuid: selectedVesselId });
+        const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselId: selectedVesselId, monthValue: selectedPeriod });
         // Filter for the specific period
         const periodAdjustment = adjustments.find((a: any) => a.monthYear === selectedPeriod || a.period === selectedPeriod);
         return periodAdjustment || null;
@@ -465,12 +466,13 @@ export const RHRecordingForm = ({
   });
 
   // Fetch previous month's date line adjustments for cross-month rolling windows
+  // V1 pattern: /api/vessel-dateline-adjustments/:vesselId/:monthValue
   const { data: previousMonthDateLineAdjustment } = useQuery<VesselDateLineAdjustment | null>({
     queryKey: ['v2', 'rest-hours', 'dateline-adjustments', selectedVesselId, previousMonthPeriod],
     queryFn: async () => {
       if (!selectedVesselId || !previousMonthPeriod) return null;
       try {
-        const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselUuid: selectedVesselId });
+        const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselId: selectedVesselId, monthValue: previousMonthPeriod });
         // Filter for the specific period
         const periodAdjustment = adjustments.find((a: any) => a.monthYear === previousMonthPeriod || a.period === previousMonthPeriod);
         return periodAdjustment || null;
