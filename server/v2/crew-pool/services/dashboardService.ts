@@ -424,12 +424,15 @@ export const dashboardService = {
     const items = Array.from(shipTypeMap.entries())
       .map(([name, months]) => ({
         name,
+        label: name,
         months: Math.round(months),
+        years: Math.round(months / 12 * 10) / 10,
         percentage: totalMonths > 0 ? Math.round((months / totalMonths) * 100) : 0,
       }))
       .sort((a, b) => b.months - a.months);
 
-    return { items, totalMonths: Math.round(totalMonths) };
+    const totalYears = Math.round(totalMonths / 12 * 10) / 10;
+    return { items, totalMonths: Math.round(totalMonths), totalYears };
   },
 
   calculateRankExperience(companyService: any[], externalService: any[]) {
@@ -450,12 +453,15 @@ export const dashboardService = {
     const items = Array.from(rankMap.entries())
       .map(([rank, months]) => ({
         rank,
+        label: rank,
         months: Math.round(months),
+        years: Math.round(months / 12 * 10) / 10,
         percentage: totalMonths > 0 ? Math.round((months / totalMonths) * 100) : 0,
       }))
       .sort((a, b) => b.months - a.months);
 
-    return { items, totalMonths: Math.round(totalMonths) };
+    const totalYears = Math.round(totalMonths / 12 * 10) / 10;
+    return { items, totalMonths: Math.round(totalMonths), totalYears };
   },
 
   calculateRankExperienceByVesselType(
