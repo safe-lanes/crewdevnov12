@@ -13,6 +13,7 @@ import { parseRestHoursFilters, partToPeriodFilter } from '../utils/filterParams
 import { useViewport } from '@/hooks/useViewport';
 import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
 import { RestHoursVersionToggle } from '../../RestHoursVersionToggle';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 export const RestHoursPlan = (): JSX.Element => {
   const viewport = useViewport();
@@ -121,11 +122,10 @@ export const RestHoursPlan = (): JSX.Element => {
     const prevMonthYear = `${prevYear}-${prevMonth}`;
 
     try {
-      const response = await fetch(`/api/fixed-tasks?vesselId=${selectedVessel}&monthYear=${prevMonthYear}`);
-      if (response.ok) {
-        const prevTasks: FixedTask[] = await response.json();
-        // Trigger state update in child via ref
-        setNewMonthTrigger({ tasks: prevTasks, timestamp: Date.now() });
+      const prevTasks = await restHoursApiV2.fixedTasks.getAll({ vesselUuid: selectedVessel });
+      const filteredTasks = (prevTasks as FixedTask[]).filter((t: any) => t.monthYear === prevMonthYear);
+      if (filteredTasks.length > 0) {
+        setNewMonthTrigger({ tasks: filteredTasks, timestamp: Date.now() });
         setIsEditMode(true);
         toast({
           title: 'Previous month copied',
