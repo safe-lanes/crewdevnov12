@@ -15,7 +15,7 @@ const VesselRouter = lazy(() => import("./modules/vessel/index"));
 const RotationRouter = lazy(() => import("./modules/rotation/index"));
 const PromotionsModule = lazy(() => import("./modules/promotions/PromotionsModule").then(m => ({ default: m.PromotionsModule })));
 const DrugsAlcoholModule = lazy(() => import("./modules/drugs-alcohol/DrugsAlcoholModule").then(m => ({ default: m.DrugsAlcoholModule })));
-const RestHoursModule = lazy(() => import("./modules/rest-hours/RestHoursModule").then(m => ({ default: m.RestHoursModule })));
+const RestHoursModuleRouter = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursModuleRouter })));
 const RestHoursVesselOverview = lazy(() => import("./modules/rest-hours/RestHoursVesselOverview").then(m => ({ default: m.RestHoursVesselOverview })));
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const ReportsComingSoon = lazy(() => import("./pages/ReportsComingSoon").then(m => ({ default: m.ReportsComingSoon })));
@@ -48,8 +48,8 @@ function App() {
                 <Route path="/promotions" component={PromotionsModule} />
                 <Route path="/drugs-alcohol" component={DrugsAlcoholModule} />
                 <Route path="/rest-hours/vessel/:vesselId/:month" component={RestHoursVesselOverview} />
-                <Route path="/rest-hours/:rest*" component={RestHoursModule} />
-                <Route path="/rest-hours" component={RestHoursModule} />
+                <Route path="/rest-hours/:rest*" component={RestHoursModuleRouter} />
+                <Route path="/rest-hours" component={RestHoursModuleRouter} />
                 <Route path="/reports" component={ReportsComingSoon} />
                 <Route path="/admin/*" component={AdminModule} />
                 <Route path="/admin" component={AdminModule} />
