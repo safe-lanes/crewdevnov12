@@ -485,4 +485,22 @@ export const restHoursApiV2 = {
       return response.json();
     },
   },
+
+  masters: {
+    async getVessels() {
+      const response = await fetch(`${V2_BASE}/masters/vessels`);
+      if (!response.ok) throw new Error('Failed to fetch vessels');
+      return response.json();
+    },
+
+    async getCrewMembers(params?: { vesselUuid?: string; rank?: string }) {
+      const searchParams = new URLSearchParams();
+      if (params?.vesselUuid) searchParams.set('vesselUuid', params.vesselUuid);
+      if (params?.rank) searchParams.set('rank', params.rank);
+      const url = `${V2_BASE}/masters/crew-members${searchParams.toString() ? '?' + searchParams : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch crew members');
+      return response.json();
+    },
+  },
 };

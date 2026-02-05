@@ -6,3 +6,4 @@ export { ncReportsController } from "./ncReportsController";
 export { fixedTasksController } from "./fixedTasksController";
 export { variableTasksController } from "./variableTasksController";
 export { datelineController } from "./datelineController";
+export { masterDataController } from "./masterDataController";

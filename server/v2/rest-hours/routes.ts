@@ -8,6 +8,7 @@ import {
   fixedTasksController,
   variableTasksController,
   datelineController,
+  masterDataController,
 } from "./controllers";
 
 const router = Router();
@@ -101,5 +102,11 @@ router.get("/dateline/:uuid", datelineController.getByUuid);
 router.post("/dateline", datelineController.create);
 router.put("/dateline/:uuid", datelineController.update);
 router.delete("/dateline/:uuid", datelineController.delete);
+
+// ============================================
+// MASTER DATA (Vessels & Crew for V2)
+// ============================================
+router.get("/masters/vessels", masterDataController.getVessels);
+router.get("/masters/crew-members", masterDataController.getCrewMembers);
 
 export default router;
