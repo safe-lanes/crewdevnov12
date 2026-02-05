@@ -72,7 +72,13 @@ The application employs a modern web stack with a module-first architecture, pri
     - **Drugs & Alcohol Testing Module**: Tracks six test types with filtering and summary views.
     - **Training Matrix Module**: Manages certifications and requirements, including Company Training configurations and a per-rank Training Requirement Matrix. V2 endpoint `/api/v2/vessel/training/:vesselUuid` uses crew_training_courses joined with crew_assignments for V2 crew data. Frontend training status indicators: green=valid, yellow=expiring in 2 months, red=expired.
     - **Oil Major Compliance Engine**: Validates crew officer experience against various oil major requirements. V2 endpoint `/api/v2/vessel/compliance/matrix/:vesselUuid` uses V2 tables (crew_sea_service, crew_personal_details, crew_assignments, crew_members_v2) for compliance evaluation.
-    - **Rest Hours Module**: Manages seafarer work and rest hours compliance with Dashboard, Record, and Plan sections, including "Majority-Day Violation Assignment" logic and PDF export.
+    - **Rest Hours Module (V1 & V2)**: Manages seafarer work and rest hours compliance with Dashboard, Record, and Plan sections, including "Majority-Day Violation Assignment" logic and PDF export. V2 features:
+        - Backend: 9 tables (rh_vessels, rh_crew_records, rh_daily_records, rh_fixed_tasks, rh_variable_tasks, rh_vessel_comments, rh_office_comments, rh_nc_reports, rh_dateline_adjustments) with 54 API endpoints at `/api/v2/rest-hours/*`
+        - Repository + Service + Controller pattern with UUID identifiers, soft deletes (isDeleted: true), and audit columns (createdByUuid/updatedByUuid)
+        - `RestHoursVersionToggle` component: UI toggle switch for V1/V2 mode with localStorage persistence (key: `rest_hours_module_version`)
+        - V2 components in `rest-hours/v2/` folder with full API migration from V1 to V2 endpoints
+        - V2 API client: `rest-hours/v2/api/restHoursApiV2.ts` with methods for all resources (vesselRecords, crewRecords, dailyRecords, fixedTasks, variableTasks, vesselComments, officeComments, ncReports, datelineAdjustments)
+        - Query key pattern: `['v2', 'rest-hours', ...]` for cache management
 - **Recruitment Module (V1 & V2)**: Manages candidate applications. V2 is a complete restructure using Repository + Service + Controller pattern, serial IDs with UUID soft foreign keys, and 54 normalized tables across 4 phases (Candidate Core, Documents, Screening, Approvals). Features API endpoints following `/api/v2/recruitment/` and a feature flag system for version toggling.
 - **Core Utilities**:
     - **Rank Designation Synchronization**: Supports company and vessel-specific rank designations.
