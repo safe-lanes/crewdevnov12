@@ -11,7 +11,7 @@ import { type ComplianceMode } from '../violationFilters';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
 import { VesselReviewDialog } from './VesselReviewDialog';
-import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface RHRecordsTableProps {
@@ -619,7 +619,14 @@ const OfficeReviewRenderer = (params: ICellRendererParams) => {
 export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode, opaMode }: RHRecordsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [, setLocation] = useLocation();
-  const { vessels: allVessels, getVesselName } = useVesselLookup();
+  const { vessels: v2Vessels, getVesselName } = useV2Vessels();
+
+  const allVessels = useMemo(() => v2Vessels.map(v => ({
+    id: v.id,
+    entryId: v.vesselUuid ?? '',
+    name: v.vessel ?? '',
+    vesselType: v.vesselType ?? '',
+  })), [v2Vessels]);
   const [violationsDialogOpen, setViolationsDialogOpen] = useState(false);
   const [selectedViolationsRecord, setSelectedViolationsRecord] = useState<RestHoursVesselRecordWithName | null>(null);
   const [predictedViolationsDialogOpen, setPredictedViolationsDialogOpen] = useState(false);

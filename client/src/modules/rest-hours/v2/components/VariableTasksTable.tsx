@@ -14,6 +14,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { VariableTaskForm } from './VariableTaskForm';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +26,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { VariableTask, InsertVariableTask } from '@shared/schema';
-import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 type SortColumn = 'startDateTime' | 'finishDateTime' | 'task' | 'status' | 'crewInvolved' | 'remarks' | 'submissionStatus' | null;
 type SortDirection = 'asc' | 'desc';
@@ -93,8 +93,10 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     );
   }, [allTasks, vesselId, periodValue]);
 
+  // Fetch crew members from V2 API (crew_members_v2 table)
   const { data: crewMembers = [] } = useQuery<any[]>({
-    queryKey: ['/api/crew-members'],
+    queryKey: ['v2', 'rest-hours', 'masters', 'crew-members'],
+    queryFn: () => restHoursApiV2.masters.getCrewMembers(),
   });
 
   const vesselCrewMembers = useMemo(() => {

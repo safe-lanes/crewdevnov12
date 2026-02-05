@@ -8,7 +8,7 @@ import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { VesselListDialog } from './VesselListDialog';
 import { VesselReviewDialog } from './VesselReviewDialog';
 import { serializeRestHoursFilters, periodFilterToPart, type RestHoursFilters } from '../utils/filterParams';
-import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface VesselStatusChartProps {
@@ -94,8 +94,15 @@ export const VesselStatusChart = ({
     return `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   }, [periodFilter, currentYear, currentMonth]);
 
-  // Fetch all vessels from external SAIL ERP API (all 11 vessels)
-  const { vessels: allVessels } = useVesselLookup();
+  // Fetch all vessels using V2 API
+  const { vessels: v2Vessels } = useV2Vessels();
+
+  const allVessels = useMemo(() => v2Vessels.map(v => ({
+    id: v.id,
+    entryId: v.vesselUuid ?? '',
+    name: v.vessel ?? '',
+    vesselType: v.vesselType ?? '',
+  })), [v2Vessels]);
 
   // Fetch vessel records
   const { data: vesselRecords = [], isLoading, isError } = useQuery<any[]>({

@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
-import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { RHRecordsTable } from './RHRecordsTable';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from '../utils/filterParams';
@@ -45,7 +45,14 @@ export const RestHoursRecord = (): JSX.Element => {
     toggleVessel,
   } = useRestHoursFiltersStore();
 
-  const { vessels, isLoading: vesselsLoading } = useVesselLookup();
+  const { vessels: v2Vessels, isLoading: vesselsLoading } = useV2Vessels();
+  
+  const vessels = useMemo(() => v2Vessels.map(v => ({
+    id: v.id,
+    entryId: v.vesselUuid ?? '',
+    name: v.vessel ?? '',
+    vesselType: v.vesselType ?? '',
+  })), [v2Vessels]);
 
   // Convert PeriodFilterValue to string format for queries (YYYY-MM)
   const selectedMonthString = useMemo(() => {

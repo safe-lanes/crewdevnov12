@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 
 interface VesselListDialogProps {
   open: boolean;
@@ -38,8 +38,15 @@ export const VesselListDialog = ({
   onVesselReviewClick,
   onRecordsClick,
 }: VesselListDialogProps) => {
-  // Fetch vessel master data from external SAIL ERP API (all 11 vessels)
-  const { vessels: allVessels } = useVesselLookup();
+  // Fetch vessel master data using V2 API
+  const { vessels: v2Vessels } = useV2Vessels();
+
+  const allVessels = useMemo(() => v2Vessels.map(v => ({
+    id: v.id,
+    entryId: v.vesselUuid ?? '',
+    name: v.vessel ?? '',
+    vesselType: v.vesselType ?? '',
+  })), [v2Vessels]);
 
   // Filter vessels to show only those in the provided set
   const vessels = useMemo(() => {

@@ -270,9 +270,10 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
   const isSavingRef = useRef(false);
   const hasInitializedRef = useRef(false);
 
-  // Fetch crew members assigned to this vessel
+  // Fetch crew members from V2 API (crew_members_v2 table)
   const { data: allCrewMembers = [] } = useQuery<any[]>({
-    queryKey: ['/api/crew-members'],
+    queryKey: ['v2', 'rest-hours', 'masters', 'crew-members'],
+    queryFn: () => restHoursApiV2.masters.getCrewMembers(),
     enabled: !!vesselId,
   });
 

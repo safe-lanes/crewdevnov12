@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { NCReportDialog } from './NCReportDialog';
 import type { NCReport, RestHoursCrewRecord } from '@shared/schema';
-import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface VesselNCsDialogProps {
@@ -80,8 +80,15 @@ export function VesselNCsDialog({
     enabled: open && vesselRecordUuids.length > 0,
   });
 
-  // Fetch vessel master data from external SAIL ERP API (all 11 vessels)
-  const { vessels: vesselMasterData } = useVesselLookup();
+  // Fetch vessel master data using V2 API
+  const { vessels: v2Vessels } = useV2Vessels();
+
+  const vesselMasterData = useMemo(() => v2Vessels.map(v => ({
+    id: v.id,
+    entryId: v.vesselUuid ?? '',
+    name: v.vessel ?? '',
+    vesselType: v.vesselType ?? '',
+  })), [v2Vessels]);
 
   // Create vessel name map
   const vesselNameMap = useMemo(() => {

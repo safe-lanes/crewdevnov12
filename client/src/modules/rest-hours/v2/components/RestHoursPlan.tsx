@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { Filter, Edit2, Plus, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { VariableTasksTable } from './VariableTasksTable';
 import { FixedTasksTable } from './FixedTasksTable';
 import { useToast } from '@/hooks/use-toast';
@@ -39,7 +39,14 @@ export const RestHoursPlan = (): JSX.Element => {
     setPlanVesselId: setSelectedVessel,
   } = useRestHoursFiltersStore();
 
-  const { vessels, isLoading: vesselsLoading } = useVesselLookup();
+  const { vessels: v2Vessels, isLoading: vesselsLoading } = useV2Vessels();
+
+  const vessels = useMemo(() => v2Vessels.map(v => ({
+    id: v.id,
+    entryId: v.vesselUuid ?? '',
+    name: v.vessel ?? '',
+    vesselType: v.vesselType ?? '',
+  })), [v2Vessels]);
 
   // Parse URL parameters on mount (localStorage is handled by the store automatically)
   useEffect(() => {

@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import type { VariableTask, InsertVariableTask } from '@shared/schema';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface VariableTaskFormProps {
   open: boolean;
@@ -77,9 +78,10 @@ export const VariableTaskForm = ({
   const { toast } = useToast();
   const [showOtherTask, setShowOtherTask] = useState(false);
 
-  // Fetch all crew members
+  // Fetch all crew members from V2 API (crew_members_v2 table)
   const { data: allCrewMembers = [] } = useQuery<any[]>({
-    queryKey: ['/api/crew-members'],
+    queryKey: ['v2', 'rest-hours', 'masters', 'crew-members'],
+    queryFn: () => restHoursApiV2.masters.getCrewMembers(),
     enabled: open,
   });
 

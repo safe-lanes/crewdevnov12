@@ -6,7 +6,7 @@ import { ChartToolbar } from '@/components/charts/ChartToolbar';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
-import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface VesselAnalysisChartProps {
@@ -71,8 +71,15 @@ export const VesselAnalysisChart = ({
     return months;
   }, [selectedYear]);
 
-  // Fetch vessel master data from external SAIL ERP API (all 11 vessels)
-  const { vessels: allVessels } = useVesselLookup();
+  // Fetch vessel master data using V2 API
+  const { vessels: v2Vessels } = useV2Vessels();
+
+  const allVessels = useMemo(() => v2Vessels.map(v => ({
+    id: v.id,
+    entryId: v.vesselUuid ?? '',
+    name: v.vessel ?? '',
+    vesselType: v.vesselType ?? '',
+  })), [v2Vessels]);
 
   // Create vessel ID to name map
   const vesselNameMap = useMemo(() => {

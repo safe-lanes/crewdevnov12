@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
-import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { AgCharts, type AgChartOptions } from '@/lib/agCharts';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { RankWiseViolationsChart } from './RankWiseViolationsChart';
@@ -60,7 +60,14 @@ export const RestHoursDashboard = (): JSX.Element => {
     toggleVessel,
   } = useRestHoursFiltersStore();
 
-  const { vessels, isLoading: vesselsLoading } = useVesselLookup();
+  const { vessels: v2Vessels, isLoading: vesselsLoading } = useV2Vessels();
+
+  const vessels = useMemo(() => v2Vessels.map(v => ({
+    id: v.id,
+    entryId: v.vesselUuid ?? '',
+    name: v.vessel ?? '',
+    vesselType: v.vesselType ?? '',
+  })), [v2Vessels]);
 
   const handleClearFilters = () => {
     setFilterType("vessel");

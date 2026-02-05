@@ -12,7 +12,7 @@ import { generateRestHoursPDF } from '@/lib/generateRestHoursPDF';
 import { queryClient } from '@/lib/queryClient';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 import { useToast } from '@/hooks/use-toast';
-import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import type { RestHoursDailyRecord, FixedTask, VesselDateLineAdjustment, DateLineAdjustmentItem, VariableTask } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
 import {
@@ -202,7 +202,15 @@ export const RHRecordingForm = ({
   monthValue: initialMonthValue,
 }: RHRecordingFormProps): JSX.Element => {
   const { toast } = useToast();
-  const { vessels, getVesselName } = useVesselLookup();
+  const { vessels: v2Vessels, getVesselName } = useV2Vessels();
+  
+  const vessels = useMemo(() => v2Vessels.map(v => ({
+    id: v.id,
+    entryId: v.vesselUuid ?? '',
+    name: v.vessel ?? '',
+    vesselType: v.vesselType ?? '',
+    imoNumber: v.imoNumber ?? '',
+  })), [v2Vessels]);
   
   // Dropdown selections state
   const [selectedPeriod, setSelectedPeriod] = useState(initialMonthValue);
@@ -241,9 +249,10 @@ export const RHRecordingForm = ({
     return `${prevYear}-${prevMonth}`;
   }, [selectedPeriod]);
   
-  // Fetch crew members for dropdown
+  // Fetch crew members from V2 API (crew_members_v2 table)
   const { data: allCrewMembers = [] } = useQuery<any[]>({
-    queryKey: ['/api/crew-members'],
+    queryKey: ['v2', 'rest-hours', 'masters', 'crew-members'],
+    queryFn: () => restHoursApiV2.masters.getCrewMembers(),
     enabled: open,
   });
   
