@@ -1,7 +1,7 @@
 import { LayoutDashboard, FileText, Calendar } from 'lucide-react';
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { RestHoursVersionToggle } from './v2/components/RestHoursVersionToggle';
+import { RestHoursVersionToggle } from './RestHoursVersionToggle';
 
 interface RestHoursSideBarProps {
     selectedRestHoursPage: string;
