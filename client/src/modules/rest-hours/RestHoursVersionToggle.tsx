@@ -38,7 +38,7 @@ export function RestHoursVersionToggle({ className, compact = false }: RestHours
 
   return (
     <div className={`flex items-center gap-2 ${className || ''}`} data-testid="rest-hours-version-toggle">
-      <Label htmlFor="rest-hours-version" className="text-xs text-white">
+      <Label htmlFor="rest-hours-version" className="text-xs text-muted-foreground">
         V1
       </Label>
       <Switch
@@ -47,12 +47,12 @@ export function RestHoursVersionToggle({ className, compact = false }: RestHours
         onCheckedChange={toggleVersion}
         data-testid="switch-rest-hours-version"
       />
-      <Label htmlFor="rest-hours-version" className="text-xs text-white">
+      <Label htmlFor="rest-hours-version" className="text-xs text-muted-foreground">
         V2
       </Label>
       {isV2 && (
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-600 text-white">
-          Active
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+          V2 Active
         </Badge>
       )}
     </div>

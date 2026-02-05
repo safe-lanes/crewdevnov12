@@ -12,6 +12,7 @@ import { PeriodFilter } from '@/components/filters/PeriodFilter';
 import { parseRestHoursFilters, partToPeriodFilter } from './utils/filterParams';
 import { useViewport } from '@/hooks/useViewport';
 import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
+import { RestHoursVersionToggle } from './RestHoursVersionToggle';
 
 export const RestHoursPlan = (): JSX.Element => {
   const viewport = useViewport();
@@ -258,7 +259,8 @@ export const RestHoursPlan = (): JSX.Element => {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <RestHoursVersionToggle />
             {selectedTab === "fixed" && (
               <>
                 {!isEditMode ? (
@@ -343,7 +345,8 @@ export const RestHoursPlan = (): JSX.Element => {
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
+            <RestHoursVersionToggle />
             {selectedTab === "fixed" && (
               <>
                 {!isEditMode ? (
@@ -431,7 +434,8 @@ export const RestHoursPlan = (): JSX.Element => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end items-center gap-4">
+            <RestHoursVersionToggle />
             {selectedTab === "fixed" && (
               <>
                 {!isEditMode ? (

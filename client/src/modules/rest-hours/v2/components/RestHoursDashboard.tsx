@@ -19,6 +19,7 @@ import { VesselAnalysisChart } from './VesselAnalysisChart';
 import { VesselStatusChart } from './VesselStatusChart';
 import { useViewport } from '@/hooks/useViewport';
 import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
+import { RestHoursVersionToggle } from '../../RestHoursVersionToggle';
 
 export const RestHoursDashboard = (): JSX.Element => {
   const viewport = useViewport();
@@ -372,7 +373,8 @@ export const RestHoursDashboard = (): JSX.Element => {
   return (
     <div className="flex flex-col h-full">
       <SectionTitleComponents title="RH Dashboard - Office">
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
+          <RestHoursVersionToggle />
           <Button
             variant="outline"
             size="sm"

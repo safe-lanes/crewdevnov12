@@ -13,6 +13,7 @@ import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/Perio
 import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from './utils/filterParams';
 import { useViewport } from '@/hooks/useViewport';
 import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
+import { RestHoursVersionToggle } from './RestHoursVersionToggle';
 
 export const RestHoursRecord = (): JSX.Element => {
   const viewport = useViewport();
@@ -393,6 +394,7 @@ export const RestHoursRecord = (): JSX.Element => {
     <div className="flex flex-col h-full">
       <SectionTitleComponents title="RH Records - Office Overview">
         <div className={`flex items-center ${isPhone ? 'flex-col gap-2' : 'flex-row gap-4'}`}>
+          <RestHoursVersionToggle />
           <div className="flex items-center gap-1">
             <span className="text-xs text-[#4f5863]">Rest</span>
             <button
