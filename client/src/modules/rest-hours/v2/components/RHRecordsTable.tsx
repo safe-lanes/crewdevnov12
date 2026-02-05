@@ -7,7 +7,7 @@ import { Edit, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { RestHoursVesselRecord } from '@shared/schema';
-import { type ComplianceMode } from './violationFilters';
+import { type ComplianceMode } from '../violationFilters';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
 import { VesselReviewDialog } from './VesselReviewDialog';

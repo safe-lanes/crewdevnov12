@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useMemo, useState, useEffect } from 'react';
 import type { RestHoursCrewRecord } from '@shared/schema';
-import { filterViolations } from './violationFilters';
+import { filterViolations } from '../violationFilters';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useVesselLookup } from '@/hooks/useVesselLookup';

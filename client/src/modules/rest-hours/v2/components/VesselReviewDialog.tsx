@@ -10,12 +10,12 @@ import { format } from 'date-fns';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useMemo, useState, useEffect } from 'react';
 import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
-import { filterViolations } from './violationFilters';
+import { filterViolations } from '../violationFilters';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { NCReportDialog } from './NCReportDialog';
 import { cn } from '@/lib/utils';
-import type { ViolationDailyRecord, ViolationDiagnostic } from './types';
+import type { ViolationDailyRecord, ViolationDiagnostic } from '../types';
 
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
   1: "Minimum 10 hours of rest in any 24 hour period",

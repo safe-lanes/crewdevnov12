@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { filterViolations } from './violationFilters';
+import { filterViolations } from '../violationFilters';
 import { NCReportDialog } from './NCReportDialog';
 import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
 import { useVesselLookup } from '@/hooks/useVesselLookup';

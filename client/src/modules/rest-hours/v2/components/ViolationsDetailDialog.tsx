@@ -3,8 +3,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { RestHoursDailyRecord } from '@shared/schema';
-import { filterViolations } from './violationFilters';
-import type { ViolationDailyRecord, ViolationDiagnostic } from './types';
+import { filterViolations } from '../violationFilters';
+import type { ViolationDailyRecord, ViolationDiagnostic } from '../types';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {

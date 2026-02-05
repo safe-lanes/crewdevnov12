@@ -11,7 +11,7 @@ import { RHRecordingForm } from './RHRecordingForm';
 import { ViolationsDetailDialog } from './ViolationsDetailDialog';
 import { NCReportDialog } from './NCReportDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
-import { type ComplianceMode } from './violationFilters';
+import { type ComplianceMode } from '../violationFilters';
 import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
 
 interface RHCrewRecordsTableProps {

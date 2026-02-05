@@ -2,8 +2,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { RestHoursCrewRecord } from '@shared/schema';
-import { filterViolations } from './violationFilters';
-import type { ViolationDailyRecord } from './types';
+import { filterViolations } from '../violationFilters';
+import type { ViolationDailyRecord } from '../types';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 
 interface VesselViolationsDialogProps {

@@ -15,7 +15,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { NCReport, RestHoursCrewRecord, RestHoursDailyRecord, MasterDataEntry } from "@shared/schema";
-import { filterViolations } from './violationFilters';
+import { filterViolations } from '../violationFilters';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useExternalUsers, type ExternalUser } from '@/hooks/useExternalUsers';
 
