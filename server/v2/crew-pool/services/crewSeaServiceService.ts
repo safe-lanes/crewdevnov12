@@ -276,10 +276,11 @@ export const crewSeaServiceService = {
     fromDate: string | Date | null | undefined,
     toDate: string | Date | null | undefined
   ): number {
-    if (!fromDate || !toDate) return 0;
+    if (!fromDate) return 0;
     try {
       const from = new Date(fromDate);
-      const to = new Date(toDate);
+      // For active contracts (no toDate), calculate from fromDate to today
+      const to = toDate ? new Date(toDate) : new Date();
       const diffTime = to.getTime() - from.getTime();
       return Math.max(0, diffTime / (1000 * 60 * 60 * 24 * 30.44));
     } catch {
