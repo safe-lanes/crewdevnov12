@@ -416,11 +416,12 @@ export const dashboardService = {
       }
     }
 
+    // Convert months to years (matching V1 behavior) with one decimal place
     return {
       company: companyYears,
-      rank: Math.round(rankMonths),
-      tankers: Math.round(tankerMonths),
-      oow: Math.round(oowMonths),
+      rank: Math.round((rankMonths / 12) * 10) / 10,
+      tankers: Math.round((tankerMonths / 12) * 10) / 10,
+      oow: Math.round((oowMonths / 12) * 10) / 10,
     };
   },
 
