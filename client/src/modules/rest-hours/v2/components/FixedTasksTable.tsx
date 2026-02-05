@@ -315,8 +315,9 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
   });
 
   // Create stable dependency values to avoid infinite loops
+  // Use empNo (A000001 format) for consistency with V1 and crew_assignments
   const crewMemberIds = useMemo(() => {
-    return vesselCrewMembers.map(c => c.id).join(',');
+    return vesselCrewMembers.map(c => c.empNo).join(',');
   }, [vesselCrewMembers]);
 
   const existingTaskIds = useMemo(() => {
@@ -344,11 +345,11 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     // If already initialized, check for updates needed
     if (hasInitializedRef.current && crewTasks.length > 0) {
       const currentCrewIds = new Set(crewTasks.map(t => t.crewMemberId));
-      const newCrewIds = new Set(vesselCrewMembers.map((c: any) => c.id));
+      const newCrewIds = new Set(vesselCrewMembers.map((c: any) => c.empNo));
       
       // Check if crew roster has changed (added or removed members)
       const hasRosterChange = 
-        vesselCrewMembers.some((c: any) => !currentCrewIds.has(c.id)) ||
+        vesselCrewMembers.some((c: any) => !currentCrewIds.has(c.empNo)) ||
         crewTasks.some(t => !newCrewIds.has(t.crewMemberId));
       
       // Check if we need to update taskIds (after initial save creates new tasks)
@@ -376,8 +377,8 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
           const existingByCrewId = new Map(prev.map(t => [t.crewMemberId, t]));
           
           return vesselCrewMembers.map((crew: any) => {
-            const existingLocal = existingByCrewId.get(crew.id);
-            const existingServer = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.id);
+            const existingLocal = existingByCrewId.get(crew.empNo);
+            const existingServer = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.empNo);
             
             if (existingLocal) {
               // Check if local data is empty but server has data
@@ -404,7 +405,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
             
             // New crew member - initialize from server or empty (parse JSON strings if needed)
             return {
-              crewMemberId: crew.id,
+              crewMemberId: crew.empNo,
               crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
               rank: crew.presentRank || '',
               seaHours: parseHoursData(existingServer?.seaHours),
@@ -427,11 +428,12 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     }
 
     // Initial load - build from server data (parse JSON strings if needed)
+    // Use empNo (A000001 format) for crewMemberId consistency with V1 and crew_assignments
     const tasks: CrewTaskData[] = vesselCrewMembers.map((crew: any) => {
-      const existingTask = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.id);
+      const existingTask = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.empNo);
       
       return {
-        crewMemberId: crew.id,
+        crewMemberId: crew.empNo,
         crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
         rank: crew.presentRank || '',
         seaHours: parseHoursData(existingTask?.seaHours),
