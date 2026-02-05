@@ -656,8 +656,15 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     },
   });
 
+  const { data: crewCountByVessel = {} } = useQuery<Record<string, number>>({
+    queryKey: ['v2', 'rest-hours', 'crew-count-by-vessel'],
+    queryFn: async () => {
+      return restHoursApiV2.masters.getCrewCountByVessel();
+    },
+  });
+
   // Merge ALL vessels from external API with fetched records
-  // Creates placeholder rows with zero values for vessels without existing records
+  // Creates placeholder rows with crew counts from crew_assignments for vessels without existing records
   const recordsWithVesselName = useMemo(() => {
     // Skip placeholder generation for "older" filter - only show actual records
     if (selectedMonth === 'older' || !selectedMonth) {
@@ -694,21 +701,22 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       const existingRecord = recordsByVesselId.get(vesselId);
 
       if (existingRecord) {
-        // Use existing record with vessel name (preserve record's month data)
+        // Use existing record with vessel name (preserve record's month data and totalCrew)
         return {
           ...existingRecord,
-          vesselName: vessel.name || vesselId
+          vesselName: vessel.name || vesselId,
         };
       }
 
-      // Create placeholder row with zero/default values for vessels without records
+      // Create placeholder row with crew count from crew_assignments
+      const crewCount = crewCountByVessel[vesselId] || 0;
       const placeholderRecord: RestHoursVesselRecordWithName = {
         id: -(index + 1),
         vesselId: vesselId,
         vesselName: vessel.name || vesselId,
         month: monthDisplay,
         monthValue: selectedMonth,
-        totalCrew: 0,
+        totalCrew: crewCount,
         recordingStatusPercent: 0,
         activityConflicting: false,
         crewWithActivityConflicts: 0,
@@ -744,7 +752,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       }));
 
     return [...vesselRows, ...remainingRecords];
-  }, [records, allVessels, selectedMonth, getVesselName]);
+  }, [records, allVessels, selectedMonth, getVesselName, crewCountByVessel]);
 
   const filteredRecords = useMemo(() => {
     let filtered = recordsWithVesselName;

@@ -108,5 +108,6 @@ router.delete("/dateline/:uuid", datelineController.delete);
 // ============================================
 router.get("/masters/vessels", masterDataController.getVessels);
 router.get("/masters/crew-members", masterDataController.getCrewMembers);
+router.get("/masters/crew-count-by-vessel", masterDataController.getCrewCountByVessel);
 
 export default router;
