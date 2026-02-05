@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, Fragment, memo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { queryClient, apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Save, Edit2 } from 'lucide-react';
 import type { FixedTask } from '@shared/schema';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface FixedTasksTableProps {
   vesselId: string;
@@ -304,12 +305,10 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
 
   // Fetch existing fixed tasks for this vessel and month
   const { data: existingTasks = [] } = useQuery<FixedTask[]>({
-    queryKey: ['/api/fixed-tasks', vesselId, monthYear],
+    queryKey: ['v2', 'rest-hours', 'fixed-tasks', vesselId, monthYear],
     queryFn: async () => {
       if (!vesselId || !monthYear) return [];
-      const response = await fetch(`/api/fixed-tasks?vesselId=${vesselId}&monthYear=${monthYear}`);
-      if (!response.ok) throw new Error('Failed to fetch fixed tasks');
-      return response.json();
+      return restHoursApiV2.fixedTasks.getAll({ vesselUuid: vesselId });
     },
     enabled: !!vesselId && !!monthYear,
   });
@@ -453,7 +452,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       const results = await Promise.all(crewTasks.map(async (task) => {
         const data = {
           crewMemberId: task.crewMemberId,
-          vesselId,
+          vesselUuid: vesselId,
           rank: task.rank,
           name: task.crewName,
           monthYear,
@@ -462,23 +461,11 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         };
 
         if (task.taskId) {
-          // Update existing
-          const response = await fetch(`/api/fixed-tasks/${task.taskId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          });
-          if (!response.ok) throw new Error('Failed to update task');
-          return response.json();
+          // Update existing using V2 API
+          return restHoursApiV2.fixedTasks.update(String(task.taskId), data);
         } else {
-          // Create new
-          const response = await fetch('/api/fixed-tasks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          });
-          if (!response.ok) throw new Error('Failed to create task');
-          return response.json();
+          // Create new using V2 API
+          return restHoursApiV2.fixedTasks.create(data);
         }
       }));
 
@@ -497,7 +484,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       // Clear saving flag before invalidating to allow proper re-fetch
       isSavingRef.current = false;
       
-      queryClient.invalidateQueries({ queryKey: ['/api/fixed-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'fixed-tasks'] });
       setIsEditMode(false);
       toast({
         title: 'Success',

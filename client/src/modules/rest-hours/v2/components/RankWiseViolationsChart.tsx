@@ -5,6 +5,7 @@ import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
 import { ChartToolbar, type ChartType } from '@/components/charts/ChartToolbar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface RankWiseViolationsChartProps {
   vesselIds?: string[];
@@ -53,26 +54,45 @@ export const RankWiseViolationsChart = ({
   }, [vesselIds, monthValue, complianceMode, opaMode]);
 
   const { data: violationsData = [], isLoading, error } = useQuery<ViolationByRank[]>({
-    queryKey: ['/api/rest-hours-violations-by-rank', queryParams],
+    queryKey: ['v2', 'rest-hours', 'violations-by-rank', queryParams],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (queryParams.monthValue) {
-        params.append('monthValue', queryParams.monthValue);
-      }
-      if (queryParams.vesselIds && queryParams.vesselIds.length > 0) {
-        queryParams.vesselIds.forEach((id: string) => params.append('vesselIds', id));
-      }
-      params.append('complianceMode', queryParams.complianceMode);
-      params.append('opaMode', String(queryParams.opaMode));
+      if (!queryParams.monthValue) return [];
       
-      const url = `/api/rest-hours-violations-by-rank${params.toString() ? `?${params.toString()}` : ''}`;
-      const res = await fetch(url, { credentials: 'include' });
+      const [year, month] = queryParams.monthValue.split('-');
       
-      if (!res.ok) {
-        throw new Error(`Failed to fetch violations: ${res.statusText}`);
+      // Get vessel records for this month
+      const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ month, year });
+      
+      // Filter by vesselIds if provided
+      const filteredVesselRecords = queryParams.vesselIds && queryParams.vesselIds.length > 0
+        ? vesselRecords.filter((vr: any) => queryParams.vesselIds.includes(vr.vesselUuid))
+        : vesselRecords;
+      
+      // Aggregate violations by rank across all vessel records
+      const rankViolationsMap = new Map<string, number>();
+      
+      for (const vr of filteredVesselRecords) {
+        try {
+          const violationsByRank = await restHoursApiV2.crewRecords.getViolationsByRank({ 
+            vesselRecordUuid: vr.uuid 
+          });
+          
+          violationsByRank.forEach((item: any) => {
+            const currentCount = rankViolationsMap.get(item.rank) || 0;
+            rankViolationsMap.set(item.rank, currentCount + (item.violationDays || 0));
+          });
+        } catch (e) {
+          console.warn('Failed to fetch violations for vessel record:', vr.uuid);
+        }
       }
       
-      return await res.json();
+      // Convert map to array
+      const result: ViolationByRank[] = Array.from(rankViolationsMap.entries()).map(([rank, violationDays]) => ({
+        rank,
+        violationDays,
+      }));
+      
+      return result.sort((a, b) => b.violationDays - a.violationDays);
     },
     enabled: !!monthValue,
   });

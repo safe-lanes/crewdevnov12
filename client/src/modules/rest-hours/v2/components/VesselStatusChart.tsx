@@ -9,6 +9,7 @@ import { VesselListDialog } from './VesselListDialog';
 import { VesselReviewDialog } from './VesselReviewDialog';
 import { serializeRestHoursFilters, periodFilterToPart, type RestHoursFilters } from '../utils/filterParams';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface VesselStatusChartProps {
   vesselIds?: string[];
@@ -98,26 +99,25 @@ export const VesselStatusChart = ({
 
   // Fetch vessel records
   const { data: vesselRecords = [], isLoading, isError } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-vessel-records', vesselIds, monthValue, complianceMode, opaMode],
+    queryKey: ['v2', 'rest-hours', 'vessel-records', vesselIds, monthValue, complianceMode, opaMode],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (monthValue) {
-        params.append('monthValue', monthValue);
-      }
-      if (vesselIds && vesselIds.length > 0) {
-        vesselIds.forEach((id: string) => params.append('vesselIds', id));
-      }
-      params.append('complianceMode', complianceMode);
-      params.append('opaMode', String(opaMode));
+      if (!monthValue) return [];
       
-      const url = `/api/rest-hours-vessel-records?${params.toString()}`;
-      const res = await fetch(url, { credentials: 'include' });
+      const [year, month] = monthValue.split('-');
       
-      if (!res.ok) {
-        throw new Error(`Failed to fetch vessel records: ${res.statusText}`);
-      }
+      // Get vessel records for this month using V2 API
+      const records = await restHoursApiV2.vesselRecords.getAll({ month, year });
       
-      return await res.json();
+      // Filter by vesselIds if provided
+      const filteredRecords = vesselIds && vesselIds.length > 0
+        ? records.filter((vr: any) => vesselIds.includes(vr.vesselUuid))
+        : records;
+      
+      // Map to expected format with vesselId property
+      return filteredRecords.map((vr: any) => ({
+        ...vr,
+        vesselId: vr.vesselUuid,
+      }));
     },
     enabled: !!monthValue,
   });

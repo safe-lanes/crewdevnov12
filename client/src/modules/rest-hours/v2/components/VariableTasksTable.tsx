@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { queryClient, apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
 import { VariableTaskForm } from './VariableTaskForm';
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { VariableTask, InsertVariableTask } from '@shared/schema';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 type SortColumn = 'startDateTime' | 'finishDateTime' | 'task' | 'status' | 'crewInvolved' | 'remarks' | 'submissionStatus' | null;
 type SortDirection = 'asc' | 'desc';
@@ -73,11 +74,16 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
   const [formOpen, setFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<VariableTask | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   const { data: allTasks = [], isLoading } = useQuery<VariableTask[]>({
-    queryKey: ['/api/variable-tasks'],
+    queryKey: ['v2', 'rest-hours', 'variable-tasks', vesselId],
+    queryFn: async () => {
+      if (!vesselId) return [];
+      return restHoursApiV2.variableTasks.getAll({ vesselUuid: vesselId });
+    },
+    enabled: !!vesselId,
   });
 
   const tasks = useMemo(() => {
@@ -98,10 +104,10 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertVariableTask) => {
-      return apiRequest('POST', '/api/variable-tasks', data);
+      return restHoursApiV2.variableTasks.create(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/variable-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'variable-tasks'] });
       toast({
         title: 'Success',
         description: 'Variable task created successfully',
@@ -117,11 +123,11 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertVariableTask> }) => {
-      return apiRequest('PATCH', `/api/variable-tasks/${id}`, data);
+    mutationFn: async ({ uuid, data }: { uuid: string; data: Partial<InsertVariableTask> }) => {
+      return restHoursApiV2.variableTasks.update(uuid, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/variable-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'variable-tasks'] });
       toast({
         title: 'Success',
         description: 'Variable task updated successfully',
@@ -137,11 +143,11 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return apiRequest('DELETE', `/api/variable-tasks/${id}`);
+    mutationFn: async (uuid: string) => {
+      return restHoursApiV2.variableTasks.delete(uuid);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/variable-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'variable-tasks'] });
       toast({
         title: 'Success',
         description: 'Variable task deleted successfully',
@@ -233,8 +239,8 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     setFormOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setTaskToDelete(id);
+  const handleDelete = (uuid: string) => {
+    setTaskToDelete(uuid);
     setDeleteDialogOpen(true);
   };
 
@@ -253,7 +259,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
 
   const handleFormSubmit = (data: InsertVariableTask, isDraft: boolean) => {
     if (editingTask) {
-      updateMutation.mutate({ id: editingTask.id, data });
+      updateMutation.mutate({ uuid: (editingTask as any).uuid || String(editingTask.id), data });
     } else {
       createMutation.mutate(data);
     }
@@ -394,7 +400,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(task.id)}
+                          onClick={() => handleDelete((task as any).uuid || String(task.id))}
                           className="text-gray-600 hover:text-red-600 transition-colors"
                           data-testid={`button-delete-${task.id}`}
                         >

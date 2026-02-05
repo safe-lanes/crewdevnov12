@@ -5,6 +5,7 @@ import type { AgChartOptions, AgChartInstance } from '@/lib/agCharts';
 import { ChartToolbar, type ChartType } from '@/components/charts/ChartToolbar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface RankWiseNCsChartProps {
   vesselIds?: string[];
@@ -51,24 +52,45 @@ export const RankWiseNCsChart = ({
   }, [vesselIds, monthValue]);
 
   const { data: ncsData = [], isLoading, error } = useQuery<NCByRank[]>({
-    queryKey: ['/api/rest-hours-ncs-by-rank', queryParams],
+    queryKey: ['v2', 'rest-hours', 'ncs-by-rank', queryParams],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (queryParams.monthValue) {
-        params.append('monthValue', queryParams.monthValue);
-      }
-      if (queryParams.vesselIds && queryParams.vesselIds.length > 0) {
-        queryParams.vesselIds.forEach((id: string) => params.append('vesselIds', id));
+      if (!queryParams.monthValue) return [];
+      
+      const [year, month] = queryParams.monthValue.split('-');
+      
+      // Get vessel records for this month
+      const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ month, year });
+      
+      // Filter by vesselIds if provided
+      const filteredVesselRecords = queryParams.vesselIds && queryParams.vesselIds.length > 0
+        ? vesselRecords.filter((vr: any) => queryParams.vesselIds.includes(vr.vesselUuid))
+        : vesselRecords;
+      
+      // Aggregate NCs by rank across all vessel records
+      const rankNCsMap = new Map<string, number>();
+      
+      for (const vr of filteredVesselRecords) {
+        try {
+          const ncsByRank = await restHoursApiV2.crewRecords.getNcsByRank({ 
+            vesselRecordUuid: vr.uuid 
+          });
+          
+          ncsByRank.forEach((item: any) => {
+            const currentCount = rankNCsMap.get(item.rank) || 0;
+            rankNCsMap.set(item.rank, currentCount + (item.ncCount || 0));
+          });
+        } catch (e) {
+          console.warn('Failed to fetch NCs for vessel record:', vr.uuid);
+        }
       }
       
-      const url = `/api/rest-hours-ncs-by-rank${params.toString() ? `?${params.toString()}` : ''}`;
-      const res = await fetch(url, { credentials: 'include' });
+      // Convert map to array
+      const result: NCByRank[] = Array.from(rankNCsMap.entries()).map(([rank, ncCount]) => ({
+        rank,
+        ncCount,
+      }));
       
-      if (!res.ok) {
-        throw new Error(`Failed to fetch NCs: ${res.statusText}`);
-      }
-      
-      return await res.json();
+      return result.sort((a, b) => b.ncCount - a.ncCount);
     },
     enabled: !!monthValue,
   });

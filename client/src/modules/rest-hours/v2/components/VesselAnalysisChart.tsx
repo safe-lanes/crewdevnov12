@@ -7,6 +7,7 @@ import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { ViolationsOverviewDialog } from './ViolationsOverviewDialog';
 import { NCOverviewDialog } from './NCOverviewDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface VesselAnalysisChartProps {
   vesselIds?: string[];
@@ -84,27 +85,35 @@ export const VesselAnalysisChart = ({
 
   // Fetch crew records data for all months
   const { data: allCrewRecords = [], isLoading } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-crew-records-vessel-analysis', vesselIds, complianceMode, opaMode, monthsToFetch],
+    queryKey: ['v2', 'rest-hours', 'crew-records-vessel-analysis', vesselIds, complianceMode, opaMode, monthsToFetch],
     queryFn: async () => {
       if (monthsToFetch.length === 0) return [];
       
-      const fetchPromises = monthsToFetch.map(async (month) => {
-        const params = new URLSearchParams();
-        params.append('monthValue', month);
-        if (vesselIds && vesselIds.length > 0) {
-          vesselIds.forEach((id: string) => params.append('vesselIds', id));
-        }
-        params.append('complianceMode', complianceMode);
-        params.append('opaMode', String(opaMode));
+      const fetchPromises = monthsToFetch.map(async (monthValue) => {
+        const [year, month] = monthValue.split('-');
         
-        const url = `/api/rest-hours-crew-records?${params.toString()}`;
-        const res = await fetch(url, { credentials: 'include' });
+        // Get vessel records for this month
+        const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ month, year });
         
-        if (!res.ok) {
-          throw new Error(`Failed to fetch crew records for ${month}: ${res.statusText}`);
-        }
+        // Filter by vesselIds if provided
+        const filteredVesselRecords = vesselIds && vesselIds.length > 0
+          ? vesselRecords.filter((vr: any) => vesselIds.includes(vr.vesselUuid))
+          : vesselRecords;
         
-        return await res.json();
+        // Get crew records for each vessel record
+        const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
+          const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
+            vesselRecordUuid: vr.uuid 
+          });
+          return crewRecords.map((cr: any) => ({
+            ...cr,
+            vesselId: vr.vesselUuid,
+            monthValue,
+          }));
+        });
+        
+        const allCrewRecords = await Promise.all(crewRecordsPromises);
+        return allCrewRecords.flat();
       });
 
       const allResults = await Promise.all(fetchPromises);

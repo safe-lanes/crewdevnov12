@@ -6,6 +6,7 @@ import { ChartToolbar, type ChartType } from '@/components/charts/ChartToolbar';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface PeriodicAnalysisChartProps {
   vesselIds?: string[];
@@ -170,7 +171,7 @@ export const PeriodicAnalysisChart = ({
   // For Quarters view: fetch months based on period filter
   // For Months view: fetch months based on period filter
   const { data: allCrewRecords = [], isLoading } = useQuery<any[]>({
-    queryKey: ['/api/rest-hours-crew-records-periodic', vesselIds, complianceMode, opaMode, periodType, monthsToFetch, quarterlyMonthsToFetch, monthlyMonthsToFetch],
+    queryKey: ['v2', 'rest-hours', 'crew-records-periodic', vesselIds, complianceMode, opaMode, periodType, monthsToFetch, quarterlyMonthsToFetch, monthlyMonthsToFetch],
     queryFn: async () => {
       // Determine which months to fetch based on period type
       let monthsToFetchList: string[];
@@ -184,24 +185,35 @@ export const PeriodicAnalysisChart = ({
       
       if (monthsToFetchList.length === 0) return [];
       
-      // Fetch data for all months in parallel
-      const fetchPromises = monthsToFetchList.map(async (month) => {
-        const params = new URLSearchParams();
-        params.append('monthValue', month);
-        if (vesselIds && vesselIds.length > 0) {
-          vesselIds.forEach((id: string) => params.append('vesselIds', id));
-        }
-        params.append('complianceMode', complianceMode);
-        params.append('opaMode', String(opaMode));
+      // Fetch vessel records for each month, then get crew records
+      const fetchPromises = monthsToFetchList.map(async (monthValue) => {
+        const [year, month] = monthValue.split('-');
         
-        const url = `/api/rest-hours-crew-records?${params.toString()}`;
-        const res = await fetch(url, { credentials: 'include' });
+        // Get vessel records for this month
+        const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ 
+          month, 
+          year 
+        });
         
-        if (!res.ok) {
-          throw new Error(`Failed to fetch crew records for ${month}: ${res.statusText}`);
-        }
+        // Filter by vesselIds if provided
+        const filteredVesselRecords = vesselIds && vesselIds.length > 0
+          ? vesselRecords.filter((vr: any) => vesselIds.includes(vr.vesselUuid))
+          : vesselRecords;
         
-        return await res.json();
+        // Get crew records for each vessel record
+        const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
+          const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
+            vesselRecordUuid: vr.uuid 
+          });
+          return crewRecords.map((cr: any) => ({
+            ...cr,
+            vesselId: vr.vesselUuid,
+            monthValue,
+          }));
+        });
+        
+        const allCrewRecords = await Promise.all(crewRecordsPromises);
+        return allCrewRecords.flat();
       });
 
       // Wait for all requests to complete

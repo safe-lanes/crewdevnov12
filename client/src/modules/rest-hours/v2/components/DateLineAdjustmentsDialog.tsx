@@ -10,8 +10,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { VesselDateLineAdjustment, DateLineAdjustmentItem } from '@shared/schema';
+import { queryClient } from '@/lib/queryClient';
+import { restHoursApiV2 } from '../api/restHoursApiV2';
+import type { RhDatelineAdjustmentV2, DateLineAdjustmentItem } from '@shared/v2/rest-hours/types';
 
 interface DateLineAdjustmentsDialogProps {
   open: boolean;
@@ -31,16 +32,13 @@ export const DateLineAdjustmentsDialog = ({
   const { toast } = useToast();
   const [adjustments, setAdjustments] = useState<DateLineAdjustmentItem[]>([]);
 
-  const { data: existingAdjustment } = useQuery<VesselDateLineAdjustment | null>({
-    queryKey: ['/api/vessel-dateline-adjustments', vesselId, monthValue],
+  const { data: existingAdjustment } = useQuery<RhDatelineAdjustmentV2 | null>({
+    queryKey: ['v2', 'rest-hours', 'dateline-adjustments', vesselId, monthValue],
     queryFn: async () => {
       if (!vesselId || !monthValue) return null;
-      const response = await fetch(`/api/vessel-dateline-adjustments/${vesselId}/${monthValue}`);
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error('Failed to fetch vessel date line adjustments');
-      }
-      return response.json();
+      const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselUuid: vesselId });
+      const found = adjustments.find((a: RhDatelineAdjustmentV2) => a.monthValue === monthValue);
+      return found || null;
     },
     enabled: open && !!vesselId && !!monthValue,
   });
@@ -60,13 +58,21 @@ export const DateLineAdjustmentsDialog = ({
   }, [existingAdjustment]);
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { vesselId: string; monthValue: string; adjustments: string }) => {
-      return apiRequest('PUT', `/api/vessel-dateline-adjustments/${data.vesselId}/${data.monthValue}`, { adjustments: data.adjustments });
+    mutationFn: async (data: { vesselUuid: string; monthValue: string; adjustments: string; existingUuid?: string }) => {
+      if (data.existingUuid) {
+        return restHoursApiV2.datelineAdjustments.update(data.existingUuid, { adjustments: data.adjustments });
+      } else {
+        return restHoursApiV2.datelineAdjustments.create({
+          vesselUuid: data.vesselUuid,
+          monthValue: data.monthValue,
+          adjustments: data.adjustments,
+        });
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/vessel-dateline-adjustments'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-crew-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/rest-hours-daily-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'dateline-adjustments'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'crew-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'daily-records'] });
       toast({
         title: 'Success',
         description: 'Date line adjustments saved successfully',
@@ -85,11 +91,11 @@ export const DateLineAdjustmentsDialog = ({
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (!vesselId || !monthValue) throw new Error('Missing vessel or month');
-      return apiRequest('DELETE', `/api/vessel-dateline-adjustments/${vesselId}/${monthValue}`);
+      if (!existingAdjustment?.adjustmentUuid) throw new Error('No existing adjustment to delete');
+      return restHoursApiV2.datelineAdjustments.delete(existingAdjustment.adjustmentUuid);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/vessel-dateline-adjustments'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'dateline-adjustments'] });
       toast({
         title: 'Success',
         description: 'Date line adjustments cleared successfully',
@@ -138,9 +144,10 @@ export const DateLineAdjustmentsDialog = ({
       return;
     }
     saveMutation.mutate({
-      vesselId,
+      vesselUuid: vesselId,
       monthValue,
       adjustments: JSON.stringify(adjustments),
+      existingUuid: existingAdjustment?.adjustmentUuid,
     });
   };
 
