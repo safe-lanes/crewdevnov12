@@ -148,33 +148,41 @@ export const crewRecordsService = {
   async getViolationsByRank(params: {
     vesselId?: string;
     monthValue?: string;
-  }): Promise<Record<string, number>> {
+  }): Promise<Array<{ rank: string; violationDays: number }>> {
     const records = await crewRecordsRepository.findAll(params);
     
     const violationsByRank: Record<string, number> = {};
     for (const record of records) {
       const rank = record.rank || "Unknown";
       const violations = record.totalViolations || 0;
-      violationsByRank[rank] = (violationsByRank[rank] || 0) + violations;
+      if (violations > 0) {
+        violationsByRank[rank] = (violationsByRank[rank] || 0) + violations;
+      }
     }
 
-    return violationsByRank;
+    return Object.entries(violationsByRank)
+      .map(([rank, violationDays]) => ({ rank, violationDays }))
+      .sort((a, b) => b.violationDays - a.violationDays);
   },
 
   async getNcsByRank(params: {
     vesselId?: string;
     monthValue?: string;
-  }): Promise<Record<string, number>> {
+  }): Promise<Array<{ rank: string; ncCount: number }>> {
     const records = await crewRecordsRepository.findAll(params);
     
     const ncsByRank: Record<string, number> = {};
     for (const record of records) {
       const rank = record.rank || "Unknown";
       const ncs = record.totalNCs || 0;
-      ncsByRank[rank] = (ncsByRank[rank] || 0) + ncs;
+      if (ncs > 0) {
+        ncsByRank[rank] = (ncsByRank[rank] || 0) + ncs;
+      }
     }
 
-    return ncsByRank;
+    return Object.entries(ncsByRank)
+      .map(([rank, ncCount]) => ({ rank, ncCount }))
+      .sort((a, b) => b.ncCount - a.ncCount);
   },
 
   async create(
