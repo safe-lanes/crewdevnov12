@@ -156,7 +156,10 @@ export const rhFixedTasksV2 = pgTable("rh_fixed_tasks_v2", {
 export const rhVariableTasksV2 = pgTable("rh_variable_tasks_v2", {
   id: serial("id").primaryKey(),
   variableTaskUuid: text("variable_task_uuid").notNull().unique(),
-  date: text("date").notNull(),
+  startDateTime: text("start_date_time").notNull(),
+  finishDateTime: text("finish_date_time").notNull(),
+  startDateTimeSort: text("start_date_time_sort").notNull(),
+  finishDateTimeSort: text("finish_date_time_sort").notNull(),
   task: text("task").notNull(),
   status: text("status").notNull(),
   crewInvolved: integer("crew_involved").notNull(),

@@ -4,9 +4,9 @@ import { variableTasksService } from "../services";
 export const variableTasksController = {
   async getAll(req: Request, res: Response) {
     try {
-      const { vesselId, periodValue } = req.query;
+      const { vesselId, vesselUuid, periodValue } = req.query;
       const tasks = await variableTasksService.getAll({
-        vesselId: vesselId as string | undefined,
+        vesselId: (vesselId || vesselUuid) as string | undefined,
         periodValue: periodValue as string | undefined,
       });
       res.json(tasks);
