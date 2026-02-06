@@ -336,7 +336,7 @@ export const RHRecordingForm = ({
     
     // Reset all form state to clean slate
     setFormId(null);
-    setRecordMode('Rec');
+    setRecordMode('Plan');
     setShowPlanning(true);
     setOpaMode(false);
     setIsDirty(false); // Reset dirty flag on form initialization
@@ -661,7 +661,7 @@ export const RHRecordingForm = ({
   }, [crewVariableTasks, selectedPeriod]);
 
   // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms)
-  // Note: isPlan is set to false (Rec mode) since initialization always resets recordMode to 'Rec'
+  // Note: isPlan is set to true (Plan mode) since new records default to planning mode
   useEffect(() => {
     if (!open || existingRecord) return;
     
@@ -703,7 +703,7 @@ export const RHRecordingForm = ({
         return {
           ...record,
           hours: newHours,
-          isPlan: false, // Default to 'Rec' mode (actual recording) - initialization resets recordMode to 'Rec'
+          isPlan: true, // Default to 'Plan' mode - new records start in planning mode
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
         };
