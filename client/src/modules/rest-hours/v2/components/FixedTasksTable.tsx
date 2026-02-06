@@ -23,6 +23,7 @@ interface CrewTaskData {
   seaHours: string[]; // 48 entries (daily template)
   portHours: string[]; // 48 entries (daily template)
   taskId?: number;
+  fixedTaskUuid?: string;
 }
 
 // Memoize static hour headers (0-23) to prevent rebuilding on every render
@@ -387,23 +388,22 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
                 (hasActualHoursData(existingServer.seaHours) || hasActualHoursData(existingServer.portHours));
               
               if (localIsEmpty && serverHasData) {
-                // Replace empty local data with server data (parse JSON strings if needed)
                 return {
                   ...existingLocal,
                   seaHours: parseHoursData(existingServer?.seaHours),
                   portHours: parseHoursData(existingServer?.portHours),
                   taskId: existingServer?.id || existingLocal.taskId,
+                  fixedTaskUuid: (existingServer as any)?.fixedTaskUuid || existingLocal.fixedTaskUuid,
                 };
               }
               
-              // Preserve local edits, only update taskId if needed
               return {
                 ...existingLocal,
                 taskId: existingServer?.id || existingLocal.taskId,
+                fixedTaskUuid: (existingServer as any)?.fixedTaskUuid || existingLocal.fixedTaskUuid,
               };
             }
             
-            // New crew member - initialize from server or empty (parse JSON strings if needed)
             return {
               crewMemberId: crew.empNo,
               crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
@@ -411,16 +411,17 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
               seaHours: parseHoursData(existingServer?.seaHours),
               portHours: parseHoursData(existingServer?.portHours),
               taskId: existingServer?.id,
+              fixedTaskUuid: (existingServer as any)?.fixedTaskUuid,
             };
           });
         });
       } else if (needsTaskIdUpdate) {
-        // Only update taskIds, preserve local seaHours/portHours data
         setCrewTasks(prev => prev.map(task => {
           const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId);
           return {
             ...task,
             taskId: serverTask?.id || task.taskId,
+            fixedTaskUuid: (serverTask as any)?.fixedTaskUuid || task.fixedTaskUuid,
           };
         }));
       }
@@ -439,6 +440,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         seaHours: parseHoursData(existingTask?.seaHours),
         portHours: parseHoursData(existingTask?.portHours),
         taskId: existingTask?.id,
+        fixedTaskUuid: (existingTask as any)?.fixedTaskUuid,
       };
     });
 
@@ -455,7 +457,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       const results = await Promise.all(crewTasks.map(async (task) => {
         const data = {
           crewMemberId: task.crewMemberId,
-          vesselUuid: vesselId,
+          vesselId: vesselId,
           rank: task.rank,
           name: task.crewName,
           monthYear,
@@ -463,8 +465,9 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
           portHours: JSON.stringify(task.portHours),
         };
 
-        if (task.taskId) {
-          // Update existing using V2 API
+        if (task.fixedTaskUuid) {
+          return restHoursApiV2.fixedTasks.update(task.fixedTaskUuid, data);
+        } else if (task.taskId) {
           return restHoursApiV2.fixedTasks.update(String(task.taskId), data);
         } else {
           // Create new using V2 API
@@ -481,6 +484,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         return {
           ...task,
           taskId: savedTask?.id || task.taskId,
+          fixedTaskUuid: (savedTask as any)?.fixedTaskUuid || task.fixedTaskUuid,
         };
       }));
       
