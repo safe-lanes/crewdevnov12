@@ -261,7 +261,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
 
   const handleFormSubmit = (data: InsertVariableTask, isDraft: boolean) => {
     if (editingTask) {
-      updateMutation.mutate({ uuid: (editingTask as any).uuid || String(editingTask.id), data });
+      updateMutation.mutate({ uuid: (editingTask as any).variableTaskUuid || String(editingTask.id), data });
     } else {
       createMutation.mutate(data);
     }
@@ -402,7 +402,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete((task as any).uuid || String(task.id))}
+                          onClick={() => handleDelete((task as any).variableTaskUuid || String(task.id))}
                           className="text-gray-600 hover:text-red-600 transition-colors"
                           data-testid={`button-delete-${task.id}`}
                         >
