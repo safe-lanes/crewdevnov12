@@ -723,19 +723,37 @@ export const RHRecordingForm = ({
       
       try {
         const parsedRecords = JSON.parse(existingRecord.dailyRecords);
-        // Load records as-is; timelineViolations memo will handle all calculations
+        
+        const hasLatestFixedTask = fixedTask && Array.isArray(fixedTask.seaHours) && fixedTask.seaHours.length === 48;
+        const latestTemplate: string[] = hasLatestFixedTask ? (fixedTask.seaHours as unknown as string[]).slice() : [];
+        
         const updatedRecords = parsedRecords.map((record: DailyRecord) => {
-          // Calculate basic 24hr metrics if missing (backward compatibility)
-          const restHours = record.hours ? record.hours.filter((h: string) => h === '').length / 2 : 24;
+          let hours = record.hours;
+          
+          if (record.isPlan && hasLatestFixedTask) {
+            const newHours = [...latestTemplate];
+            
+            const dayCells = variableTaskCellsMap.get(record.day);
+            if (dayCells && dayCells.length > 0) {
+              for (const cellRange of dayCells) {
+                for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
+                  newHours[i] = 'w';
+                }
+              }
+            }
+            hours = newHours;
+          }
+          
+          const restHours = hours ? hours.filter((h: string) => h === '').length / 2 : 24;
           const workHours = 24 - restHours;
           
           return {
             ...record,
+            hours,
             entryId: record.entryId || `day-${record.day}-primary`,
             occurrence: (record.occurrence || 'primary') as 'primary' | 'duplicate',
-            hoursOfRest24hr: record.hoursOfRest24hr ?? restHours,
-            hoursOfWork24hr: record.hoursOfWork24hr ?? workHours,
-            // Metrics and violations will be calculated by timelineViolations memo
+            hoursOfRest24hr: restHours,
+            hoursOfWork24hr: workHours,
             anyPeriodRest24hr: 24,
             anyPeriodRest7day: 168,
             anyPeriodWork24hr: 0,
@@ -745,18 +763,15 @@ export const RHRecordingForm = ({
           };
         });
         
-        // Apply retarded day logic if adjustments are available
         const recordsWithRetarded = ensureRetardedDayRecords(updatedRecords, parsedDateLineAdjustments);
         setDailyRecords(recordsWithRetarded);
       } catch (error) {
         console.error('Failed to parse daily records:', error);
       }
     } else if (isError || existingRecord === undefined) {
-      // No record found (404) or query error - state remains clean from initialization
-      // This explicitly ensures no stale data leaks between crew members
       console.log('No existing record found - using clean initialized state');
     }
-  }, [existingRecord, isError, open, parsedDateLineAdjustments]);
+  }, [existingRecord, isError, open, parsedDateLineAdjustments, fixedTask, variableTaskCellsMap]);
 
   // Helper function to compute violatingRanges for hover highlighting
   const computeViolatingRanges = (
