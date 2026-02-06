@@ -56,7 +56,6 @@ export function ViolationsDetailDialog({
         throw new Error('Failed to fetch rest hours record');
       }
       const data = await response.json();
-      console.warn('[V2-DIALOG] Fetched data:', { hasDailyRecords: !!data?.dailyRecords, keys: Object.keys(data || {}) });
       return data;
     },
     enabled: open,
@@ -65,7 +64,6 @@ export function ViolationsDetailDialog({
   // Parse and filter daily records, grouping violations by majorityDay for consistency with grid display
   const violationRecords = useMemo(() => {
     if (!recordContainer || !recordContainer.dailyRecords) {
-      console.warn('[V2-DIALOG] No data:', { hasContainer: !!recordContainer, hasDR: !!recordContainer?.dailyRecords, isLoading, open });
       return [];
     }
 

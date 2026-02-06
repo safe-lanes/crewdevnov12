@@ -20,18 +20,14 @@ export const dailyRecordsController = {
   async getByKey(req: Request, res: Response) {
     try {
       const { crewMemberId, vesselId, monthYear } = req.params;
-      console.log(`[V2-DEBUG] getByKey called: crew=${crewMemberId}, vessel=${vesselId}, month=${monthYear}`);
       const record = await dailyRecordsService.getByKey(
         crewMemberId,
         vesselId,
         monthYear
       );
       if (!record) {
-        console.log(`[V2-DEBUG] getByKey: record NOT FOUND`);
         return res.status(404).json({ error: "Daily record not found" });
       }
-      const drLen = record.dailyRecords ? record.dailyRecords.length : 0;
-      console.log(`[V2-DEBUG] getByKey: record FOUND, dailyRecords string length=${drLen}`);
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("required")) {
