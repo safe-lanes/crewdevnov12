@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 import type { RestHoursDailyRecord } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
 import type { ViolationDailyRecord, ViolationDiagnostic } from '../types';
-import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 // Violation code descriptions mapping
 const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
@@ -45,15 +44,20 @@ export function ViolationsDetailDialog({
   opaMode,
   isPredicted = false,
 }: ViolationsDetailDialogProps) {
-  // Fetch daily records for this crew member using by-key endpoint (matches V1 pattern)
+  // Fetch daily records using direct fetch (matching V1 pattern exactly)
   const { data: recordContainer, isLoading } = useQuery<RestHoursDailyRecord | null>({
     queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', crewMemberId, vesselId, monthValue],
     queryFn: async () => {
-      try {
-        return await restHoursApiV2.dailyRecords.getByKey(crewMemberId, vesselId, monthValue);
-      } catch (error) {
-        return null;
+      const response = await fetch(`/api/v2/rest-hours/daily-records/by-key/${crewMemberId}/${vesselId}/${monthValue}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error('Failed to fetch rest hours record');
       }
+      const data = await response.json();
+      console.warn('[V2-DIALOG] Fetched data:', { hasDailyRecords: !!data?.dailyRecords, keys: Object.keys(data || {}) });
+      return data;
     },
     enabled: open,
   });
@@ -61,6 +65,7 @@ export function ViolationsDetailDialog({
   // Parse and filter daily records, grouping violations by majorityDay for consistency with grid display
   const violationRecords = useMemo(() => {
     if (!recordContainer || !recordContainer.dailyRecords) {
+      console.warn('[V2-DIALOG] No data:', { hasContainer: !!recordContainer, hasDR: !!recordContainer?.dailyRecords, isLoading, open });
       return [];
     }
 

@@ -345,12 +345,14 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
 
   // Handler for opening the violations detail dialog
   const handleViewViolations = (record: RestHoursCrewRecord) => {
+    console.log('[V2 DEBUG] handleViewViolations called with:', { crewMemberId: record.crewMemberId, vesselId: record.vesselId, monthValue: record.monthValue, totalViolations: record.totalViolations });
     setSelectedViolationsRecord(record);
     setViolationsDialogOpen(true);
   };
 
   // Handler for opening the predicted violations detail dialog
   const handleViewPredictedViolations = (record: RestHoursCrewRecord) => {
+    console.log('[V2 DEBUG] handleViewPredictedViolations called with:', { crewMemberId: record.crewMemberId, vesselId: record.vesselId, monthValue: record.monthValue, predictedViolations: record.predictedViolations });
     setSelectedPredictedViolationsRecord(record);
     setPredictedViolationsDialogOpen(true);
   };
