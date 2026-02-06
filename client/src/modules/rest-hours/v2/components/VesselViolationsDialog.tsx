@@ -57,24 +57,24 @@ export function VesselViolationsDialog({
     enabled: open,
   });
 
-  // Get vessel record UUIDs for fetching crew records
-  const vesselRecordUuids = useMemo(() => 
-    vesselRecords.map((vr: any) => vr.uuid), 
+  // Get actual vessel UUIDs for fetching crew records
+  const vesselUuids = useMemo(() => 
+    vesselRecords.map((vr: any) => vr.vesselUuid), 
     [vesselRecords]
   );
 
   // Fetch crew records for all vessel records
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'crew-records', vesselRecordUuids, complianceMode, opaMode],
+    queryKey: ['v2', 'rest-hours', 'crew-records', vesselUuids, complianceMode, opaMode],
     queryFn: async () => {
       const allCrewRecords: any[] = [];
-      for (const vesselRecordUuid of vesselRecordUuids) {
-        const records = await restHoursApiV2.crewRecords.getAll({ vesselId: vesselRecordUuid });
+      for (const vesselId of vesselUuids) {
+        const records = await restHoursApiV2.crewRecords.getAll({ vesselId });
         allCrewRecords.push(...records);
       }
       return allCrewRecords;
     },
-    enabled: open && vesselRecordUuids.length > 0,
+    enabled: open && vesselUuids.length > 0,
   });
 
   // Fetch vessel master data using V2 API
@@ -140,7 +140,7 @@ export function VesselViolationsDialog({
 
     // Process each crew member with violations
     crewRecordsWithViolations.forEach(crew => {
-      const vesselRecord = vesselRecords.find((vr: any) => vr.uuid === (crew.vesselId || crew.vesselRecordUuid));
+      const vesselRecord = vesselRecords.find((vr: any) => vr.vesselUuid === (crew.vesselId || crew.vesselRecordUuid));
       const vesselId = vesselRecord?.vesselUuid || crew.vesselUuid || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
 

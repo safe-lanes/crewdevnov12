@@ -60,25 +60,25 @@ export function VesselNCsDialog({
     enabled: open,
   });
 
-  // Get vessel record UUIDs for fetching crew records
-  const vesselRecordUuids = useMemo(() => 
-    vesselRecords.map((vr: any) => vr.uuid), 
+  // Get actual vessel UUIDs for fetching crew records
+  const vesselUuids = useMemo(() => 
+    vesselRecords.map((vr: any) => vr.vesselUuid), 
     [vesselRecords]
   );
 
   // Fetch crew records for all vessel records using V2 API
   // V1 pattern: uses vesselId param
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'crew-records', vesselRecordUuids, complianceMode, opaMode],
+    queryKey: ['v2', 'rest-hours', 'crew-records', vesselUuids, complianceMode, opaMode],
     queryFn: async () => {
       const allCrewRecords: any[] = [];
-      for (const vesselId of vesselRecordUuids) {
+      for (const vesselId of vesselUuids) {
         const records = await restHoursApiV2.crewRecords.getAll({ vesselId });
         allCrewRecords.push(...records);
       }
       return allCrewRecords;
     },
-    enabled: open && vesselRecordUuids.length > 0,
+    enabled: open && vesselUuids.length > 0,
   });
 
   // Fetch vessel master data using V2 API
@@ -107,14 +107,12 @@ export function VesselNCsDialog({
 
   // Fetch NC reports for all vessel records using V2 API
   const { data: allNCReports = [], isLoading: isLoadingNCs } = useQuery<NCReport[]>({
-    queryKey: ['v2', 'rest-hours', 'nc-reports', 'all', vesselRecordUuids],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', 'all', vesselUuids],
     queryFn: async () => {
-      // V1 pattern: GET /api/nc-reports/all then filter client-side
       const reports = await restHoursApiV2.ncReports.getAll();
-      // Filter by vesselRecordUuids on client side
-      return reports.filter((r: any) => vesselRecordUuids.includes(r.vesselId) || vesselRecordUuids.includes(r.vesselRecordUuid));
+      return reports.filter((r: any) => vesselUuids.includes(r.vesselId) || vesselUuids.includes(r.vesselRecordUuid));
     },
-    enabled: open && crewRecordsWithNCs.length > 0 && vesselRecordUuids.length > 0,
+    enabled: open && crewRecordsWithNCs.length > 0 && vesselUuids.length > 0,
   });
 
   // Group NCs by vessel
@@ -129,7 +127,7 @@ export function VesselNCsDialog({
 
     // Process each crew member with NCs
     crewRecordsWithNCs.forEach(crew => {
-      const vesselRecord = vesselRecords.find((vr: any) => vr.uuid === (crew.vesselId || crew.vesselRecordUuid));
+      const vesselRecord = vesselRecords.find((vr: any) => vr.vesselUuid === (crew.vesselId || crew.vesselRecordUuid));
       const vesselId = vesselRecord?.vesselUuid || crew.vesselUuid || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
       

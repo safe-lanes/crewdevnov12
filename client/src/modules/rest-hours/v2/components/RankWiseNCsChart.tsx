@@ -72,7 +72,7 @@ export const RankWiseNCsChart = ({
       for (const vr of filteredVesselRecords) {
         try {
           const ncsByRank = await restHoursApiV2.crewRecords.getNcsByRank({ 
-            vesselId: vr.uuid 
+            vesselId: vr.vesselUuid 
           });
           
           ncsByRank.forEach((item: any) => {
@@ -80,7 +80,7 @@ export const RankWiseNCsChart = ({
             rankNCsMap.set(item.rank, currentCount + (item.ncCount || 0));
           });
         } catch (e) {
-          console.warn('Failed to fetch NCs for vessel record:', vr.uuid);
+          console.warn('Failed to fetch NCs for vessel record:', vr.vesselUuid);
         }
       }
       

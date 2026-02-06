@@ -74,7 +74,7 @@ export const RankWiseViolationsChart = ({
       for (const vr of filteredVesselRecords) {
         try {
           const violationsByRank = await restHoursApiV2.crewRecords.getViolationsByRank({ 
-            vesselId: vr.uuid 
+            vesselId: vr.vesselUuid 
           });
           
           violationsByRank.forEach((item: any) => {
@@ -82,7 +82,7 @@ export const RankWiseViolationsChart = ({
             rankViolationsMap.set(item.rank, currentCount + (item.violationDays || 0));
           });
         } catch (e) {
-          console.warn('Failed to fetch violations for vessel record:', vr.uuid);
+          console.warn('Failed to fetch violations for vessel record:', vr.vesselUuid);
         }
       }
       
