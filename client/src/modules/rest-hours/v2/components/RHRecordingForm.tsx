@@ -224,7 +224,7 @@ export const RHRecordingForm = ({
   const [opaMode, setOpaMode] = useState(false);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
   const [previousMonthRecords, setPreviousMonthRecords] = useState<DailyRecord[]>([]);
-  const [formId, setFormId] = useState<number | null>(null);
+  const [formId, setFormId] = useState<string | null>(null);
   
   // Track if user has made changes that need auto-save
   const [isDirty, setIsDirty] = useState(false);
@@ -717,7 +717,7 @@ export const RHRecordingForm = ({
     
     if (existingRecord) {
       // Existing record found - load it
-      setFormId(existingRecord.id);
+      setFormId((existingRecord as any).rhDailyUuid || (existingRecord as any).rh_daily_uuid);
       setShowPlanning(true); // Always show planning by default
       setOpaMode(existingRecord.opaMode || false);
       
@@ -1025,7 +1025,7 @@ export const RHRecordingForm = ({
       }
     },
     onSuccess: (data: any) => {
-      setFormId(data.id || data.uuid);
+      setFormId(data.rhDailyUuid || data.rh_daily_uuid);
       setIsDirty(false); // Reset dirty flag after successful save
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'daily-records'] });
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'crew-records'] });
