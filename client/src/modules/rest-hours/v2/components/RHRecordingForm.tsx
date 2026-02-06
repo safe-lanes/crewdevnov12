@@ -744,6 +744,8 @@ export const RHRecordingForm = ({
       setShowPlanning(true); // Always show planning by default
       setOpaMode(existingRecord.opaMode || false);
       
+      lastViolationsHashRef.current = '';
+      
       try {
         const parsedRecords = JSON.parse(existingRecord.dailyRecords);
         
