@@ -310,7 +310,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     queryKey: ['v2', 'rest-hours', 'fixed-tasks', vesselId, monthYear],
     queryFn: async () => {
       if (!vesselId || !monthYear) return [];
-      return restHoursApiV2.fixedTasks.getAll({ vesselUuid: vesselId });
+      return restHoursApiV2.fixedTasks.getAll({ vesselId });
     },
     enabled: !!vesselId && !!monthYear,
   });

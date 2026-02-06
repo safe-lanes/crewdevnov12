@@ -345,9 +345,9 @@ export const restHoursApiV2 = {
   },
 
   fixedTasks: {
-    async getAll(params?: { vesselUuid?: string }) {
+    async getAll(params?: { vesselId?: string }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselUuid) searchParams.set('vesselUuid', params.vesselUuid);
+      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
       const url = `${V2_BASE}/fixed-tasks${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch fixed tasks');
