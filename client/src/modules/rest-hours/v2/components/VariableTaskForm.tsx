@@ -117,9 +117,9 @@ export const VariableTaskForm = ({
       if (!rankData) return;
 
       const crewItem = {
-        id: crew.id || crew.employeeId,
+        id: crew.empNo || crew.crewMemberId || String(crew.id),
         rank: crew.presentRank,
-        name: `${crew.firstName || ''} ${crew.lastName || ''}`.trim(),
+        name: `${crew.firstName || ''} ${crew.familyName || crew.lastName || ''}`.trim(),
         rankData,
       };
 
