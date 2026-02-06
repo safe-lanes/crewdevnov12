@@ -85,17 +85,50 @@ const parseVariableTaskToCells = (task: VariableTask, monthYear: string): Variab
   const results: VariableTaskCells[] = [];
   
   try {
-    // Parse start and finish date/times (format: "DD/MM/YYYY HH:mm")
+    const monthMap: Record<string, number> = {
+      'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+      'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12,
+    };
+
     const parseDateTime = (dateTimeStr: string): { day: number; month: number; year: number; hour: number; minute: number } | null => {
-      const match = dateTimeStr.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
-      if (!match) return null;
-      return {
-        day: parseInt(match[1], 10),
-        month: parseInt(match[2], 10),
-        year: parseInt(match[3], 10),
-        hour: parseInt(match[4], 10),
-        minute: parseInt(match[5], 10),
-      };
+      const v1Match = dateTimeStr.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+      if (v1Match) {
+        return {
+          day: parseInt(v1Match[1], 10),
+          month: parseInt(v1Match[2], 10),
+          year: parseInt(v1Match[3], 10),
+          hour: parseInt(v1Match[4], 10),
+          minute: parseInt(v1Match[5], 10),
+        };
+      }
+      const v2Match = dateTimeStr.match(/^(\d{2})-(\w{3})-(\d{4})\s*\/\s*(\d{2}):(\d{2})$/);
+      if (v2Match) {
+        const monthNum = monthMap[v2Match[2]];
+        if (!monthNum) return null;
+        return {
+          day: parseInt(v2Match[1], 10),
+          month: monthNum,
+          year: parseInt(v2Match[3], 10),
+          hour: parseInt(v2Match[4], 10),
+          minute: parseInt(v2Match[5], 10),
+        };
+      }
+      if ((task as any).startDateTimeSort || (task as any).finishDateTimeSort) {
+        const sortField = dateTimeStr === task.startDateTime ? (task as any).startDateTimeSort : (task as any).finishDateTimeSort;
+        if (sortField) {
+          const isoMatch = sortField.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+          if (isoMatch) {
+            return {
+              day: parseInt(isoMatch[3], 10),
+              month: parseInt(isoMatch[2], 10),
+              year: parseInt(isoMatch[1], 10),
+              hour: parseInt(isoMatch[4], 10),
+              minute: parseInt(isoMatch[5], 10),
+            };
+          }
+        }
+      }
+      return null;
     };
     
     const start = parseDateTime(task.startDateTime);
@@ -665,17 +698,11 @@ export const RHRecordingForm = ({
   useEffect(() => {
     if (!open || existingRecord) return;
     
-    // Only apply template once per crew/vessel/month combination
-    if (templateAppliedRef.current) return;
-    
     // Only apply if we have fixed task template or variable tasks
     const hasFixedTask = fixedTask && Array.isArray(fixedTask.seaHours) && fixedTask.seaHours.length === 48;
     const hasVariableTasks = variableTaskCellsMap.size > 0;
     
     if (!hasFixedTask && !hasVariableTasks) return;
-    
-    // Mark template as applied to prevent re-application
-    templateAppliedRef.current = true;
     
     // Use seaHours as the template (assuming vessel is at sea by default)
     const seaHoursArray = Array.isArray(fixedTask?.seaHours) ? (fixedTask.seaHours as string[]) : [];
@@ -683,17 +710,13 @@ export const RHRecordingForm = ({
     
     setDailyRecords(prevRecords => {
       return prevRecords.map(record => {
-        // Start with fixed task template
         const newHours = [...template];
         
-        // Overlay variable task work hours if any exist for this day
         const dayCells = variableTaskCellsMap.get(record.day);
         if (dayCells && dayCells.length > 0) {
           for (const cellRange of dayCells) {
             for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
-              // Variable tasks always mark cells as work ('w')
-              // This overrides fixed task duty markers ('d') and empty cells
-              newHours[i] = 'w';
+              newHours[i] = 'a';
             }
           }
         }
@@ -703,7 +726,7 @@ export const RHRecordingForm = ({
         return {
           ...record,
           hours: newHours,
-          isPlan: true, // Default to 'Plan' mode - new records start in planning mode
+          isPlan: true,
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
         };
@@ -737,7 +760,7 @@ export const RHRecordingForm = ({
             if (dayCells && dayCells.length > 0) {
               for (const cellRange of dayCells) {
                 for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
-                  newHours[i] = 'w';
+                  newHours[i] = 'a';
                 }
               }
             }
