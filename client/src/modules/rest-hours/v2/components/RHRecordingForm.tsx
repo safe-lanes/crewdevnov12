@@ -336,7 +336,7 @@ export const RHRecordingForm = ({
     
     // Reset all form state to clean slate
     setFormId(null);
-    setRecordMode('Rec');
+    setRecordMode('Plan');
     setShowPlanning(true);
     setOpaMode(false);
     setIsDirty(false); // Reset dirty flag on form initialization
@@ -363,7 +363,7 @@ export const RHRecordingForm = ({
 
   // Fetch existing record if available
   // V1 pattern: /api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear
-  const { data: existingRecord, isError, isLoading: isLoadingExisting } = useQuery<RestHoursDailyRecord>({
+  const { data: existingRecord, isError } = useQuery<RestHoursDailyRecord>({
     queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
     queryFn: async () => {
       try {
@@ -660,10 +660,10 @@ export const RHRecordingForm = ({
     return cellsMap;
   }, [crewVariableTasks, selectedPeriod]);
 
-  // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms only)
-  // Wait for existing record query to finish loading before applying template to avoid overwriting saved isPlan values
+  // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms)
+  // Note: isPlan is set to true (Plan mode) since new records default to planning mode
   useEffect(() => {
-    if (!open || existingRecord || isLoadingExisting) return;
+    if (!open || existingRecord) return;
     
     // Only apply template once per crew/vessel/month combination
     if (templateAppliedRef.current) return;
@@ -703,13 +703,13 @@ export const RHRecordingForm = ({
         return {
           ...record,
           hours: newHours,
-          isPlan: false, // Default to 'Rec' mode (actual recording) - matches V1 behavior
+          isPlan: true, // Default to 'Plan' mode - new records start in planning mode
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
         };
       });
     });
-  }, [fixedTask, open, existingRecord, isLoadingExisting, variableTaskCellsMap]);
+  }, [fixedTask, open, existingRecord, variableTaskCellsMap]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
@@ -744,13 +744,6 @@ export const RHRecordingForm = ({
             violationDiagnostics: [],
           };
         });
-        
-        const planCount = updatedRecords.filter((r: DailyRecord) => r.isPlan).length;
-        if (planCount > updatedRecords.length / 2) {
-          setRecordMode('Plan');
-        } else {
-          setRecordMode('Rec');
-        }
         
         // Apply retarded day logic if adjustments are available
         const recordsWithRetarded = ensureRetardedDayRecords(updatedRecords, parsedDateLineAdjustments);
