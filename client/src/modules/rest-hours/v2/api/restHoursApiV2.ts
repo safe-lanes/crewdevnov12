@@ -141,9 +141,9 @@ export const restHoursApiV2 = {
   },
 
   dailyRecords: {
-    async getAll(params?: { crewRecordUuid?: string; date?: string }) {
+    async getAll(params?: { crewMemberId?: string; date?: string }) {
       const searchParams = new URLSearchParams();
-      if (params?.crewRecordUuid) searchParams.set('crewRecordUuid', params.crewRecordUuid);
+      if (params?.crewMemberId) searchParams.set('crewMemberId', params.crewMemberId);
       if (params?.date) searchParams.set('date', params.date);
       const url = `${V2_BASE}/daily-records${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
@@ -192,7 +192,7 @@ export const restHoursApiV2 = {
       return response.json();
     },
 
-    async backfillViolations(data: { crewRecordUuid: string }) {
+    async backfillViolations(data: { crewMemberId: string }) {
       const response = await apiRequest('POST', `${V2_BASE}/daily-records/backfill-violations`, data);
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
@@ -203,9 +203,9 @@ export const restHoursApiV2 = {
   },
 
   vesselComments: {
-    async getAll(params?: { vesselRecordUuid?: string }) {
+    async getAll(params?: { vesselId?: string }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselRecordUuid) searchParams.set('vesselRecordUuid', params.vesselRecordUuid);
+      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
       const url = `${V2_BASE}/vessel-comments${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch vessel comments');
@@ -247,9 +247,9 @@ export const restHoursApiV2 = {
   },
 
   officeComments: {
-    async getAll(params?: { vesselRecordUuid?: string }) {
+    async getAll(params?: { vesselId?: string }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselRecordUuid) searchParams.set('vesselRecordUuid', params.vesselRecordUuid);
+      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
       const url = `${V2_BASE}/office-comments${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch office comments');

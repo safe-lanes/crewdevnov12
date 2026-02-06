@@ -131,7 +131,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
     queryFn: async () => {
       if (!crewRecordUuid) return null;
       try {
-        const records = await restHoursApiV2.dailyRecords.getAll({ crewRecordUuid });
+        const records = await restHoursApiV2.dailyRecords.getAll({ crewMemberId: crewRecordUuid });
         return records && records.length > 0 ? records[0] : null;
       } catch (error) {
         return null;
@@ -148,7 +148,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       try {
         // V1 pattern: GET /api/nc-reports/all then filter client-side
         const reports = await restHoursApiV2.ncReports.getAll();
-        const filtered = reports.filter((r: any) => r.crewMemberId === crewRecordUuid || r.crewRecordUuid === crewRecordUuid);
+        const filtered = reports.filter((r: any) => r.crewMemberId === crewRecordUuid);
         return filtered && filtered.length > 0 ? filtered[0] : null;
       } catch (error) {
         return null;
@@ -212,8 +212,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       const ncStatus = submissionStatus === "office-submitted" ? "Closed" : "Open";
       
       const data = {
-        crewRecordUuid: crewRecordUuid,
-        crewMemberId: crewRecord.crewMemberId,
+        crewMemberId: crewRecordUuid,
         vesselId: crewRecord.vesselId,
         rank: crewRecord.rank,
         monthValue: crewRecord.monthValue,

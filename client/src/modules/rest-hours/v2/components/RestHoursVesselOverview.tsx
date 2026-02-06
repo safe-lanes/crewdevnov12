@@ -220,7 +220,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     try {
       // In V2, daily records are fetched by crewRecordUuid
       // The crewMemberId here should actually be the crewRecordUuid from the crew records export
-      const dailyRecords = await restHoursApiV2.dailyRecords.getAll({ crewRecordUuid: crewMemberId });
+      const dailyRecords = await restHoursApiV2.dailyRecords.getAll({ crewMemberId });
       if (!dailyRecords || !Array.isArray(dailyRecords)) return [];
       return dailyRecords.map(ensureDailyRecordDefaults);
     } catch (error) {
@@ -246,7 +246,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     try {
       // For V2, use the crew record UUID for fetching daily records
       const crewData = crewRecordsForExport.map((record: any) => ({
-        crewMemberId: record.uuid || record.crewRecordUuid || '', // Use crew record UUID for V2 daily records API
+        crewMemberId: record.crewMemberId || record.uuid || '', // Use crew record UUID for V2 daily records API
         vesselId: record.vesselUuid || record.vesselId || selectedVessel,
         name: record.name || record.crewName || '',
         rank: record.rank || record.rankName || '',

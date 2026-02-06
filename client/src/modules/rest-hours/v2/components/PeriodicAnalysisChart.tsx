@@ -203,7 +203,7 @@ export const PeriodicAnalysisChart = ({
         // Get crew records for each vessel record
         const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
           const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
-            vesselRecordUuid: vr.uuid 
+            vesselId: vr.uuid 
           });
           return crewRecords.map((cr: any) => ({
             ...cr,

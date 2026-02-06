@@ -74,7 +74,7 @@ export const RankWiseViolationsChart = ({
       for (const vr of filteredVesselRecords) {
         try {
           const violationsByRank = await restHoursApiV2.crewRecords.getViolationsByRank({ 
-            vesselRecordUuid: vr.uuid 
+            vesselId: vr.uuid 
           });
           
           violationsByRank.forEach((item: any) => {

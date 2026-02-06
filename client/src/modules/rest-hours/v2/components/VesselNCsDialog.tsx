@@ -121,19 +121,15 @@ export function VesselNCsDialog({
   const vesselGroups = useMemo(() => {
     const groups = new Map<string, VesselNCGroup>();
 
-    // Create NC reports map for quick lookup by crew record UUID
     const ncReportsMap = new Map<string, NCReport>();
     allNCReports.forEach(report => {
-      // V2 uses crewRecordUuid as the key (cast to any for V2 property access)
-      const v2Report = report as any;
-      const key = v2Report.crewRecordUuid || `${report.crewMemberId}-${report.vesselId}`;
+      const key = report.crewMemberId || `${report.crewMemberId}-${report.vesselId}`;
       ncReportsMap.set(key, report);
     });
 
     // Process each crew member with NCs
     crewRecordsWithNCs.forEach(crew => {
-      // V2 uses vesselUuid instead of vesselId - get it from the vessel record
-      const vesselRecord = vesselRecords.find((vr: any) => vr.uuid === crew.vesselRecordUuid);
+      const vesselRecord = vesselRecords.find((vr: any) => vr.uuid === (crew.vesselId || crew.vesselRecordUuid));
       const vesselId = vesselRecord?.vesselUuid || crew.vesselUuid || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
       

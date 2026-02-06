@@ -50,7 +50,7 @@ export function ViolationsDetailDialog({
     queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', crewMemberId, vesselId, monthValue],
     queryFn: async () => {
       try {
-        const records = await restHoursApiV2.dailyRecords.getAll({ crewRecordUuid: crewMemberId });
+        const records = await restHoursApiV2.dailyRecords.getAll({ crewMemberId });
         return records && records.length > 0 ? records[0] : null;
       } catch (error) {
         return null;

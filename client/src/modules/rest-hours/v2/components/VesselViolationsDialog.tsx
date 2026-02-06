@@ -69,7 +69,7 @@ export function VesselViolationsDialog({
     queryFn: async () => {
       const allCrewRecords: any[] = [];
       for (const vesselRecordUuid of vesselRecordUuids) {
-        const records = await restHoursApiV2.crewRecords.getAll({ vesselRecordUuid });
+        const records = await restHoursApiV2.crewRecords.getAll({ vesselId: vesselRecordUuid });
         allCrewRecords.push(...records);
       }
       return allCrewRecords;
@@ -104,23 +104,23 @@ export function VesselViolationsDialog({
     });
   }, [crewSummaries]);
 
-  const crewRecordUuidsWithViolations = useMemo(() => 
+  const crewMemberIdsWithViolations = useMemo(() => 
     crewRecordsWithViolations.map(crew => crew.uuid),
     [crewRecordsWithViolations]
   );
 
   // Fetch daily records for crew with violations using V2 API
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', crewRecordUuidsWithViolations, monthValue],
+    queryKey: ['v2', 'rest-hours', 'daily-records', crewMemberIdsWithViolations, monthValue],
     queryFn: async () => {
       const allRecords: any[] = [];
-      for (const crewRecordUuid of crewRecordUuidsWithViolations) {
-        const records = await restHoursApiV2.dailyRecords.getAll({ crewRecordUuid });
+      for (const crewMemberId of crewMemberIdsWithViolations) {
+        const records = await restHoursApiV2.dailyRecords.getAll({ crewMemberId });
         allRecords.push(...records);
       }
       return allRecords;
     },
-    enabled: open && crewRecordUuidsWithViolations.length > 0,
+    enabled: open && crewMemberIdsWithViolations.length > 0,
   });
 
   // Group violations by vessel
@@ -131,18 +131,16 @@ export function VesselViolationsDialog({
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
     allDailyRecords.forEach(record => {
-      const crewRecordUuid = record.crewRecordUuid;
-      if (!dailyRecordsMap.has(crewRecordUuid)) {
-        dailyRecordsMap.set(crewRecordUuid, []);
+      const crewMemberId = record.crewMemberId;
+      if (!dailyRecordsMap.has(crewMemberId)) {
+        dailyRecordsMap.set(crewMemberId, []);
       }
-      // V2 daily records are individual records, not containers
-      dailyRecordsMap.get(crewRecordUuid)!.push(record);
+      dailyRecordsMap.get(crewMemberId)!.push(record);
     });
 
     // Process each crew member with violations
     crewRecordsWithViolations.forEach(crew => {
-      // V2 uses vesselUuid instead of vesselId - get it from the vessel record
-      const vesselRecord = vesselRecords.find((vr: any) => vr.uuid === crew.vesselRecordUuid);
+      const vesselRecord = vesselRecords.find((vr: any) => vr.uuid === (crew.vesselId || crew.vesselRecordUuid));
       const vesselId = vesselRecord?.vesselUuid || crew.vesselUuid || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
 

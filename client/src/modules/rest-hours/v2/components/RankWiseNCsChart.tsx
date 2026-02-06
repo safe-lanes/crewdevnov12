@@ -72,7 +72,7 @@ export const RankWiseNCsChart = ({
       for (const vr of filteredVesselRecords) {
         try {
           const ncsByRank = await restHoursApiV2.crewRecords.getNcsByRank({ 
-            vesselRecordUuid: vr.uuid 
+            vesselId: vr.uuid 
           });
           
           ncsByRank.forEach((item: any) => {

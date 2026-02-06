@@ -132,7 +132,7 @@ export function VesselReviewDialog({
   const { data: vesselCommentsData = [] } = useQuery<any[]>({
     queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId],
     queryFn: async () => {
-      return restHoursApiV2.vesselComments.getAll({ vesselRecordUuid: vesselId });
+      return restHoursApiV2.vesselComments.getAll({ vesselId });
     },
     enabled: open,
   });
@@ -142,7 +142,7 @@ export function VesselReviewDialog({
   const { data: officeCommentsData = [] } = useQuery<any[]>({
     queryKey: ['v2', 'rest-hours', 'office-comments', vesselId],
     queryFn: async () => {
-      return restHoursApiV2.officeComments.getAll({ vesselRecordUuid: vesselId });
+      return restHoursApiV2.officeComments.getAll({ vesselId });
     },
     enabled: open && isOfficeMode,
   });
@@ -304,7 +304,7 @@ export function VesselReviewDialog({
   const saveCommentMutation = useMutation({
     mutationFn: async (comment: string) => {
       return restHoursApiV2.vesselComments.create({
-        vesselRecordUuid: vesselId,
+        vesselId,
         comment,
       });
     },
@@ -328,7 +328,7 @@ export function VesselReviewDialog({
   const saveOfficeCommentMutation = useMutation({
     mutationFn: async () => {
       return restHoursApiV2.officeComments.create({
-        vesselRecordUuid: vesselId,
+        vesselId,
         comment: officeComment,
         reviewerName,
         reviewerPosition,
@@ -357,7 +357,7 @@ export function VesselReviewDialog({
     mutationFn: async () => {
       // First save the comment
       await restHoursApiV2.vesselComments.create({
-        vesselRecordUuid: vesselId,
+        vesselId,
         comment: vesselComment,
       });
 
@@ -389,7 +389,7 @@ export function VesselReviewDialog({
     mutationFn: async () => {
       // First save the office comment
       await restHoursApiV2.officeComments.create({
-        vesselRecordUuid: vesselId,
+        vesselId,
         comment: officeComment,
         reviewerName,
         reviewerPosition,

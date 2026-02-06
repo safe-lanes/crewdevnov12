@@ -116,7 +116,7 @@ export function ViolationsOverviewDialog({
     queryKey: ['v2', 'rest-hours', 'crew-records', { vesselIds: vesselIdsToUse, monthValue, complianceMode, opaMode }],
     queryFn: async () => {
       return restHoursApiV2.crewRecords.getAll({
-        vesselRecordUuid: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
+        vesselId: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
       });
     },
     enabled: open,
@@ -165,7 +165,7 @@ export function ViolationsOverviewDialog({
     queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId, monthValue],
     queryFn: async () => {
       try {
-        const comments = await restHoursApiV2.vesselComments.getAll({ vesselRecordUuid: vesselId });
+        const comments = await restHoursApiV2.vesselComments.getAll({ vesselId });
         return comments && comments.length > 0 ? { comment: comments[0].comment } : null;
       } catch (error) {
         return null;
@@ -187,7 +187,7 @@ export function ViolationsOverviewDialog({
   const saveCommentMutation = useMutation({
     mutationFn: async (comment: string) => {
       return restHoursApiV2.vesselComments.create({
-        vesselRecordUuid: vesselId,
+        vesselId,
         comment,
       });
     },
