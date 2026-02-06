@@ -130,9 +130,9 @@ export function VesselReviewDialog({
 
   // Fetch existing vessel comment
   const { data: vesselCommentsData = [] } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId],
+    queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId, monthValue],
     queryFn: async () => {
-      return restHoursApiV2.vesselComments.getAll({ vesselId });
+      return restHoursApiV2.vesselComments.getAll({ vesselId, monthValue });
     },
     enabled: open,
   });
@@ -140,9 +140,9 @@ export function VesselReviewDialog({
 
   // Fetch existing office comment
   const { data: officeCommentsData = [] } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'office-comments', vesselId],
+    queryKey: ['v2', 'rest-hours', 'office-comments', vesselId, monthValue],
     queryFn: async () => {
-      return restHoursApiV2.officeComments.getAll({ vesselId });
+      return restHoursApiV2.officeComments.getAll({ vesselId, monthValue });
     },
     enabled: open && isOfficeMode,
   });
@@ -305,11 +305,12 @@ export function VesselReviewDialog({
     mutationFn: async (comment: string) => {
       return restHoursApiV2.vesselComments.create({
         vesselId,
+        monthValue,
         comment,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId, monthValue] });
       toast({
         title: 'Success',
         description: 'Vessel comment saved successfully',
@@ -329,6 +330,7 @@ export function VesselReviewDialog({
     mutationFn: async () => {
       return restHoursApiV2.officeComments.create({
         vesselId,
+        monthValue,
         comment: officeComment,
         reviewerName,
         reviewerPosition,
@@ -336,7 +338,7 @@ export function VesselReviewDialog({
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments', vesselId] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments', vesselId, monthValue] });
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       toast({
         title: 'Success',
@@ -358,6 +360,7 @@ export function VesselReviewDialog({
       // First save the comment
       await restHoursApiV2.vesselComments.create({
         vesselId,
+        monthValue,
         comment: vesselComment,
       });
 
@@ -390,6 +393,7 @@ export function VesselReviewDialog({
       // First save the office comment
       await restHoursApiV2.officeComments.create({
         vesselId,
+        monthValue,
         comment: officeComment,
         reviewerName,
         reviewerPosition,
@@ -406,7 +410,7 @@ export function VesselReviewDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments', vesselId] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments', vesselId, monthValue] });
       toast({
         title: 'Success',
         description: 'Office review submitted successfully',

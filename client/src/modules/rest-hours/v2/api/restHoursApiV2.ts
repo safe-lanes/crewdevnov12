@@ -203,9 +203,10 @@ export const restHoursApiV2 = {
   },
 
   vesselComments: {
-    async getAll(params?: { vesselId?: string }) {
+    async getAll(params?: { vesselId?: string; monthValue?: string }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
       const url = `${V2_BASE}/vessel-comments${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch vessel comments');
@@ -247,9 +248,10 @@ export const restHoursApiV2 = {
   },
 
   officeComments: {
-    async getAll(params?: { vesselId?: string }) {
+    async getAll(params?: { vesselId?: string; monthValue?: string }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
       const url = `${V2_BASE}/office-comments${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch office comments');

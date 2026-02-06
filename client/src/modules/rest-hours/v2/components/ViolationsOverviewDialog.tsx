@@ -165,7 +165,7 @@ export function ViolationsOverviewDialog({
     queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId, monthValue],
     queryFn: async () => {
       try {
-        const comments = await restHoursApiV2.vesselComments.getAll({ vesselId });
+        const comments = await restHoursApiV2.vesselComments.getAll({ vesselId, monthValue });
         return comments && comments.length > 0 ? { comment: comments[0].comment } : null;
       } catch (error) {
         return null;
@@ -188,6 +188,7 @@ export function ViolationsOverviewDialog({
     mutationFn: async (comment: string) => {
       return restHoursApiV2.vesselComments.create({
         vesselId,
+        monthValue,
         comment,
       });
     },
