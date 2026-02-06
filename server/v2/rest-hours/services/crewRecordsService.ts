@@ -1,13 +1,21 @@
-import { CrewRecordsRepository } from "../repositories";
+import { CrewRecordsRepository, DailyRecordsRepository } from "../repositories";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { eq, and, or, isNull } from "drizzle-orm";
+import { masterVessels } from "../../../../shared/schema";
+import { eq, and, or, isNull, inArray } from "drizzle-orm";
 import type {
   RhCrewRecordV2,
   InsertRhCrewRecordV2,
 } from "../../../../shared/v2/rest-hours/types";
+import {
+  getViolationDates,
+  countViolationDays,
+  calculateNCs,
+  calculateRecordingPercentage,
+} from "../utils/violationHelpers";
 
 const crewRecordsRepository = new CrewRecordsRepository();
+const dailyRecordsRepository = new DailyRecordsRepository();
 
 function applyAuditUser<T extends object>(
   data: T,
@@ -25,13 +33,101 @@ function applyAuditUser<T extends object>(
   return result;
 }
 
+async function resolveVesselNames(vesselIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (vesselIds.length === 0) return map;
+
+  const db = getDb();
+  const uniqueIds = Array.from(new Set(vesselIds));
+
+  try {
+    const vessels = await db
+      .select({
+        vesselUuid: masterVessels.vesselUuid,
+        vessel: masterVessels.vessel,
+      })
+      .from(masterVessels)
+      .where(inArray(masterVessels.vesselUuid, uniqueIds));
+
+    for (const v of vessels) {
+      if (v.vesselUuid && v.vessel) {
+        map.set(v.vesselUuid, v.vessel);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to resolve vessel names:', error);
+  }
+
+  return map;
+}
+
+type EnrichedCrewRecord = RhCrewRecordV2 & {
+  vesselName?: string;
+  violationDates?: string | null;
+  predictedViolationDates?: string | null;
+};
+
+async function enrichRecordsWithComputedFields(
+  records: RhCrewRecordV2[],
+  complianceMode: 'Rest' | 'Work' = 'Rest',
+  opaMode: boolean = false
+): Promise<EnrichedCrewRecord[]> {
+  if (records.length === 0) return [];
+
+  const vesselIds = Array.from(new Set(records.map(r => r.vesselId)));
+  const vesselNameMap = await resolveVesselNames(vesselIds);
+
+  const dailyRecordsMap = new Map<string, string>();
+  for (const vesselId of vesselIds) {
+    const monthValues = Array.from(new Set(
+      records
+        .filter(r => r.vesselId === vesselId)
+        .map(r => r.monthValue)
+    ));
+    for (const monthValue of monthValues) {
+      const dailyRecords = await dailyRecordsRepository.findAll({
+        vesselId,
+        monthYear: monthValue,
+      });
+      for (const dr of dailyRecords) {
+        const key = `${dr.crewMemberId}-${dr.vesselId}-${dr.monthYear}`;
+        dailyRecordsMap.set(key, dr.dailyRecords);
+      }
+    }
+  }
+
+  return records.map(record => {
+    const vesselName = vesselNameMap.get(record.vesselId) || '';
+    const key = `${record.crewMemberId}-${record.vesselId}-${record.monthValue}`;
+    const dailyRecordsJson = dailyRecordsMap.get(key);
+
+    let violationDatesJson: string | null = null;
+    let predictedViolationDatesJson: string | null = null;
+
+    if (dailyRecordsJson) {
+      const vDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, false);
+      const pDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, true);
+      violationDatesJson = vDates.length > 0 ? JSON.stringify(vDates) : null;
+      predictedViolationDatesJson = pDates.length > 0 ? JSON.stringify(pDates) : null;
+    }
+
+    return {
+      ...record,
+      vesselName,
+      violationDates: violationDatesJson,
+      predictedViolationDates: predictedViolationDatesJson,
+    };
+  });
+}
+
 export const crewRecordsService = {
   async getAll(filters?: {
     vesselId?: string;
     crewMemberId?: string;
     monthValue?: string;
-  }): Promise<RhCrewRecordV2[]> {
-    return crewRecordsRepository.findAll(filters);
+  }): Promise<EnrichedCrewRecord[]> {
+    const records = await crewRecordsRepository.findAll(filters);
+    return enrichRecordsWithComputedFields(records);
   },
 
   async getByUuid(rhCrewRecordUuid: string): Promise<RhCrewRecordV2> {
@@ -47,7 +143,7 @@ export const crewRecordsService = {
     monthValue?: string;
     ranks?: string[];
     search?: string;
-  }): Promise<RhCrewRecordV2[]> {
+  }): Promise<EnrichedCrewRecord[]> {
     const { vesselIds, monthValue, ranks, search } = params;
 
     let allRecords: RhCrewRecordV2[] = [];
@@ -64,11 +160,9 @@ export const crewRecordsService = {
       allRecords = await crewRecordsRepository.findAll({ monthValue });
     }
 
-    // For V2: If no records found and vesselIds provided, generate placeholder rows from crew_assignments
     if (allRecords.length === 0 && vesselIds && vesselIds.length > 0 && monthValue) {
       const db = getDb();
       for (const vesselId of vesselIds) {
-        // Fetch current crew members from crew_assignments joined with crew_members_v2
         const crewData = await db
           .select({
             crewUuid: crewAssignments.crewUuid,
@@ -94,10 +188,8 @@ export const crewRecordsService = {
               )
             )
           );
-        
-        // Create placeholder records for each crew member
+
         for (const crew of crewData) {
-          // Use Partial<RhCrewRecordV2> and cast to avoid strict type checking for placeholder records
           const placeholderRecord = {
             id: 0,
             rhCrewRecordUuid: `placeholder-${crew.crewUuid}-${monthValue}`,
@@ -142,7 +234,7 @@ export const crewRecordsService = {
       );
     }
 
-    return allRecords;
+    return enrichRecordsWithComputedFields(allRecords);
   },
 
   async getViolationsByRank(params: {
