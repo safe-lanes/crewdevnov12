@@ -1,7 +1,6 @@
 import { LayoutDashboard, FileText, Calendar } from 'lucide-react';
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { RestHoursVersionToggle } from './RestHoursVersionToggle';
 
 interface RestHoursSideBarProps {
     selectedRestHoursPage: string;
@@ -75,10 +74,6 @@ export default function RestHoursSideBar({ selectedRestHoursPage, setSelectedRes
                 {/* Dark blue section for rest of sidebar */}
                 <div className="w-full flex-1 bg-[#16569e]" />
 
-                {/* Version Toggle at the bottom */}
-                <div className="w-full bg-[#16569e] p-2 border-t border-[#1e5fa8]">
-                    <RestHoursVersionToggle compact={isCompact} />
-                </div>
             </aside>
         </TooltipProvider>
     );
