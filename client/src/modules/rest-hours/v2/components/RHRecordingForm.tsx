@@ -691,7 +691,9 @@ export const RHRecordingForm = ({
         if (dayCells && dayCells.length > 0) {
           for (const cellRange of dayCells) {
             for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
-              newHours[i] = 'a';
+              // Variable tasks always mark cells as work ('w')
+              // This overrides fixed task duty markers ('d') and empty cells
+              newHours[i] = 'w';
             }
           }
         }
@@ -735,7 +737,7 @@ export const RHRecordingForm = ({
             if (dayCells && dayCells.length > 0) {
               for (const cellRange of dayCells) {
                 for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
-                  newHours[i] = 'a';
+                  newHours[i] = 'w';
                 }
               }
             }
@@ -1360,15 +1362,15 @@ export const RHRecordingForm = ({
 
   // Get cell background color based on isPlan and value
   const getCellColor = (isPlan: boolean, value: string): string => {
-    if (value === 'a') {
-      return '#CCE5FF'; // Blue for variable task (always visible, Plan or Rec)
-    }
     if (isPlan && value !== '' && showPlanning) {
       return '#E5E7EB'; // Grey for plan (only when showPlanning is true)
     }
     if (!isPlan) {
       if (value === 'w' || value === 'd') {
         return '#D4EDDA'; // Green for work/duty
+      }
+      if (value === 'a') {
+        return '#CCE5FF'; // Blue for anchor watch
       }
     }
     return 'white'; // Rest (blank)
