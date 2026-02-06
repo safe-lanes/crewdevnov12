@@ -127,17 +127,16 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   // Use crewMemberId (empNo like "V2-000001") for all V2 API calls
   const crewMemberId = crewRecord.crewMemberId;
   const { data: dailyRecordContainer } = useQuery<RestHoursDailyRecord | null>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-crew', crewMemberId],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', crewMemberId, crewRecord.vesselId, crewRecord.monthValue],
     queryFn: async () => {
-      if (!crewMemberId) return null;
+      if (!crewMemberId || !crewRecord.vesselId || !crewRecord.monthValue) return null;
       try {
-        const records = await restHoursApiV2.dailyRecords.getAll({ crewMemberId });
-        return records && records.length > 0 ? records[0] : null;
+        return await restHoursApiV2.dailyRecords.getByKey(crewMemberId, crewRecord.vesselId, crewRecord.monthValue);
       } catch (error) {
         return null;
       }
     },
-    enabled: open && !!crewMemberId,
+    enabled: open && !!crewMemberId && !!crewRecord.vesselId && !!crewRecord.monthValue,
   });
 
   // Fetch existing NC report

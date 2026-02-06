@@ -45,13 +45,12 @@ export function ViolationsDetailDialog({
   opaMode,
   isPredicted = false,
 }: ViolationsDetailDialogProps) {
-  // Fetch daily records for this crew member
+  // Fetch daily records for this crew member using by-key endpoint (matches V1 pattern)
   const { data: recordContainer, isLoading } = useQuery<RestHoursDailyRecord | null>({
     queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', crewMemberId, vesselId, monthValue],
     queryFn: async () => {
       try {
-        const records = await restHoursApiV2.dailyRecords.getAll({ crewMemberId });
-        return records && records.length > 0 ? records[0] : null;
+        return await restHoursApiV2.dailyRecords.getByKey(crewMemberId, vesselId, monthValue);
       } catch (error) {
         return null;
       }
