@@ -280,9 +280,9 @@ export const RHRecordingForm = ({
     return allCrewMembers.filter((cm: any) => cm.presentVessel === selectedVesselId);
   }, [allCrewMembers, selectedVesselId]);
   
-  // Get selected crew member details
+  // Get selected crew member details (match by empNo/crewMemberId which is A-format like A000042)
   const selectedCrewMember = useMemo(() => {
-    return filteredCrewMembers.find((cm: any) => cm.id === selectedCrewMemberId);
+    return filteredCrewMembers.find((cm: any) => cm.crewMemberId === selectedCrewMemberId || cm.empNo === selectedCrewMemberId);
   }, [filteredCrewMembers, selectedCrewMemberId]);
   
   // Derived values from selections
@@ -319,7 +319,7 @@ export const RHRecordingForm = ({
     
     // When vessel changes, select the first crew member on that vessel
     if (filteredCrewMembers.length > 0) {
-      setSelectedCrewMemberId(filteredCrewMembers[0].id);
+      setSelectedCrewMemberId(filteredCrewMembers[0].crewMemberId || filteredCrewMembers[0].empNo);
     }
   }, [selectedVesselId, filteredCrewMembers, open]);
 
@@ -1180,8 +1180,8 @@ export const RHRecordingForm = ({
       const flagOfShip = selectedVessel?.countryName || selectedVessel?.country || selectedVessel?.flagState || '';
       
       // Get crew member data
-      const selectedCrewMember = filteredCrewMembers.find((cm: any) => cm.id === selectedCrewMemberId);
-      const fileNo = selectedCrewMember?.id || '';
+      const selectedCrewMember = filteredCrewMembers.find((cm: any) => cm.crewMemberId === selectedCrewMemberId || cm.empNo === selectedCrewMemberId);
+      const fileNo = selectedCrewMember?.crewMemberId || selectedCrewMember?.empNo || '';
       const firstName = selectedCrewMember?.firstName || '';
       const middleName = selectedCrewMember?.middleName || '';
       const familyName = selectedCrewMember?.familyName || '';
@@ -1513,7 +1513,7 @@ export const RHRecordingForm = ({
               </SelectTrigger>
               <SelectContent>
                 {filteredCrewMembers.map((cm: any) => (
-                  <SelectItem key={cm.id} value={cm.id}>
+                  <SelectItem key={cm.crewMemberId || cm.empNo} value={cm.crewMemberId || cm.empNo}>
                     {cm.presentRank}, {cm.firstName}{cm.middleName ? ' ' + cm.middleName : ''} {cm.familyName}
                   </SelectItem>
                 ))}
