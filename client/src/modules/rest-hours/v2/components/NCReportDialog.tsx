@@ -124,37 +124,36 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
     return officeClosureVerifiedByPositionFallback;
   }, [officeClosureVerifiedByName, officeUsers, officeClosureVerifiedByPositionFallback]);
 
-  // Fetch daily records to get violation details
-  const crewRecordUuid = (crewRecord as any).uuid;
+  // Use crewMemberId (empNo like "V2-000001") for all V2 API calls
+  const crewMemberId = crewRecord.crewMemberId;
   const { data: dailyRecordContainer } = useQuery<RestHoursDailyRecord | null>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-crew', crewRecordUuid],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-crew', crewMemberId],
     queryFn: async () => {
-      if (!crewRecordUuid) return null;
+      if (!crewMemberId) return null;
       try {
-        const records = await restHoursApiV2.dailyRecords.getAll({ crewMemberId: crewRecordUuid });
+        const records = await restHoursApiV2.dailyRecords.getAll({ crewMemberId });
         return records && records.length > 0 ? records[0] : null;
       } catch (error) {
         return null;
       }
     },
-    enabled: open && !!crewRecordUuid,
+    enabled: open && !!crewMemberId,
   });
 
   // Fetch existing NC report
   const { data: existingReport, isLoading } = useQuery<NCReport | null>({
-    queryKey: ['v2', 'rest-hours', 'nc-reports', 'by-crew', crewRecordUuid],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', 'by-crew', crewMemberId],
     queryFn: async () => {
-      if (!crewRecordUuid) return null;
+      if (!crewMemberId) return null;
       try {
-        // V1 pattern: GET /api/nc-reports/all then filter client-side
         const reports = await restHoursApiV2.ncReports.getAll();
-        const filtered = reports.filter((r: any) => r.crewMemberId === crewRecordUuid);
+        const filtered = reports.filter((r: any) => r.crewMemberId === crewMemberId);
         return filtered && filtered.length > 0 ? filtered[0] : null;
       } catch (error) {
         return null;
       }
     },
-    enabled: open && !!crewRecordUuid,
+    enabled: open && !!crewMemberId,
   });
 
   // Update form fields when existing report is loaded
@@ -212,7 +211,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       const ncStatus = submissionStatus === "office-submitted" ? "Closed" : "Open";
       
       const data = {
-        crewMemberId: crewRecordUuid,
+        crewMemberId: crewMemberId,
         vesselId: crewRecord.vesselId,
         rank: crewRecord.rank,
         monthValue: crewRecord.monthValue,
@@ -231,8 +230,9 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       };
       
       // If there's an existing report, update it; otherwise create new
-      if (existingReport && (existingReport as any).uuid) {
-        return await restHoursApiV2.ncReports.update((existingReport as any).uuid, data);
+      const reportUuid = (existingReport as any)?.ncReportUuid || (existingReport as any)?.uuid;
+      if (existingReport && reportUuid) {
+        return await restHoursApiV2.ncReports.update(reportUuid, data);
       }
       return await restHoursApiV2.ncReports.create(data);
     },
