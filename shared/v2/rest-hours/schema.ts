@@ -131,6 +131,15 @@ export const rhNcReportsV2 = pgTable("rh_nc_reports_v2", {
   ncReference: text("nc_reference").notNull().default("STCW/MLC/ILO"),
   identifiedRootCause: text("identified_root_cause"),
   immediateCorrectiveAction: text("immediate_corrective_action"),
+  preventiveAction: text("preventive_action"),
+  preventiveActionStatus: text("preventive_action_status").default("Pending"),
+  preventiveActionDueDate: timestamp("preventive_action_due_date"),
+  preventiveActionDateCompleted: timestamp("preventive_action_date_completed"),
+  officeClosureVerifiedByName: text("office_closure_verified_by_name"),
+  officeClosureVerifiedByPosition: text("office_closure_verified_by_position"),
+  officeClosureDate: timestamp("office_closure_date"),
+  status: text("status").default("Open"),
+  submissionStatus: text("submission_status").default("draft"),
   ...auditColumns,
 });
 
