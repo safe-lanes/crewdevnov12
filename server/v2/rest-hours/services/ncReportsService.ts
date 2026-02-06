@@ -6,6 +6,22 @@ import type {
 
 const ncReportsRepository = new NcReportsRepository();
 
+const TIMESTAMP_FIELDS = [
+  "preventiveActionDueDate",
+  "preventiveActionDateCompleted",
+  "officeClosureDate",
+] as const;
+
+function coerceDates<T extends Record<string, any>>(data: T): T {
+  const result: Record<string, any> = { ...data };
+  for (const field of TIMESTAMP_FIELDS) {
+    if (field in result && result[field] != null && !(result[field] instanceof Date)) {
+      result[field] = new Date(result[field]);
+    }
+  }
+  return result as T;
+}
+
 function applyAuditUser<T extends object>(
   data: T,
   isCreate = false
@@ -69,7 +85,7 @@ export const ncReportsService = {
       throw new Error("Crew member ID is required");
     }
 
-    const dataWithAudit = applyAuditUser(data, true);
+    const dataWithAudit = coerceDates(applyAuditUser(data, true));
     return ncReportsRepository.create(dataWithAudit);
   },
 
@@ -79,7 +95,7 @@ export const ncReportsService = {
   ): Promise<RhNcReportV2> {
     await this.getByUuid(ncReportUuid);
 
-    const dataWithAudit = applyAuditUser(data, false);
+    const dataWithAudit = coerceDates(applyAuditUser(data, false));
     const updated = await ncReportsRepository.update(ncReportUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update NC report: ${ncReportUuid}`);
