@@ -65,7 +65,7 @@ export const RankWiseViolationsChart = ({
       
       // Filter by vesselIds if provided
       const filteredVesselRecords = queryParams.vesselIds && queryParams.vesselIds.length > 0
-        ? vesselRecords.filter((vr: any) => queryParams.vesselIds.includes(vr.vesselUuid))
+        ? vesselRecords.filter((vr: any) => queryParams.vesselIds.includes(vr.vesselId))
         : vesselRecords;
       
       // Aggregate violations by rank across all vessel records
@@ -74,7 +74,7 @@ export const RankWiseViolationsChart = ({
       for (const vr of filteredVesselRecords) {
         try {
           const violationsByRank = await restHoursApiV2.crewRecords.getViolationsByRank({ 
-            vesselId: vr.vesselUuid 
+            vesselId: vr.vesselId 
           });
           
           violationsByRank.forEach((item: any) => {
@@ -82,7 +82,7 @@ export const RankWiseViolationsChart = ({
             rankViolationsMap.set(item.rank, currentCount + (item.violationDays || 0));
           });
         } catch (e) {
-          console.warn('Failed to fetch violations for vessel record:', vr.vesselUuid);
+          console.warn('Failed to fetch violations for vessel record:', vr.vesselId);
         }
       }
       

@@ -122,7 +122,7 @@ export function NCOverviewDialog({
       const records = await restHoursApiV2.crewRecords.getAll();
       // Filter by vessel IDs and month if needed (V2 may return all records)
       return records.filter((r: any) => 
-        (vesselIdsToUse.length === 0 || vesselIdsToUse.includes(r.vesselId) || vesselIdsToUse.includes(r.vesselUuid)) &&
+        (vesselIdsToUse.length === 0 || vesselIdsToUse.includes(r.vesselId)) &&
         r.monthValue === monthValue
       );
     },

@@ -117,14 +117,10 @@ export const VesselStatusChart = ({
       
       // Filter by vesselIds if provided
       const filteredRecords = vesselIds && vesselIds.length > 0
-        ? records.filter((vr: any) => vesselIds.includes(vr.vesselUuid))
+        ? records.filter((vr: any) => vesselIds.includes(vr.vesselId))
         : records;
       
-      // Map to expected format with vesselId property
-      return filteredRecords.map((vr: any) => ({
-        ...vr,
-        vesselId: vr.vesselUuid,
-      }));
+      return filteredRecords;
     },
     enabled: !!monthValue,
   });

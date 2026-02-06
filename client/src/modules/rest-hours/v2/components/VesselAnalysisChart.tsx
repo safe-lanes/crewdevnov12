@@ -104,17 +104,17 @@ export const VesselAnalysisChart = ({
         
         // Filter by vesselIds if provided
         const filteredVesselRecords = vesselIds && vesselIds.length > 0
-          ? vesselRecords.filter((vr: any) => vesselIds.includes(vr.vesselUuid))
+          ? vesselRecords.filter((vr: any) => vesselIds.includes(vr.vesselId))
           : vesselRecords;
         
         // Get crew records for each vessel record
         const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
           const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
-            vesselId: vr.vesselUuid 
+            vesselId: vr.vesselId 
           });
           return crewRecords.map((cr: any) => ({
             ...cr,
-            vesselId: vr.vesselUuid,
+            vesselId: vr.vesselId,
             monthValue,
           }));
         });

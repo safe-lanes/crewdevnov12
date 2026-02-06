@@ -36,7 +36,7 @@ export const DateLineAdjustmentsDialog = ({
     queryKey: ['v2', 'rest-hours', 'dateline-adjustments', vesselId, monthValue],
     queryFn: async () => {
       if (!vesselId || !monthValue) return null;
-      const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselUuid: vesselId });
+      const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselId });
       const found = adjustments.find((a: RhDatelineAdjustmentV2) => a.monthValue === monthValue);
       return found || null;
     },
@@ -58,12 +58,12 @@ export const DateLineAdjustmentsDialog = ({
   }, [existingAdjustment]);
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { vesselUuid: string; monthValue: string; adjustments: string; existingUuid?: string }) => {
+    mutationFn: async (data: { vesselId: string; monthValue: string; adjustments: string; existingUuid?: string }) => {
       if (data.existingUuid) {
         return restHoursApiV2.datelineAdjustments.update(data.existingUuid, { adjustments: data.adjustments });
       } else {
         return restHoursApiV2.datelineAdjustments.create({
-          vesselUuid: data.vesselUuid,
+          vesselId: data.vesselId,
           monthValue: data.monthValue,
           adjustments: data.adjustments,
         });
@@ -144,7 +144,7 @@ export const DateLineAdjustmentsDialog = ({
       return;
     }
     saveMutation.mutate({
-      vesselUuid: vesselId,
+      vesselId,
       monthValue,
       adjustments: JSON.stringify(adjustments),
       existingUuid: existingAdjustment?.adjustmentUuid,

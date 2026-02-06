@@ -104,7 +104,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     queryFn: async () => {
       if (!selectedVessel || !periodValue) return null;
       try {
-        const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselUuid: selectedVessel });
+        const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselId: selectedVessel });
         // Filter for the specific month
         const filtered = adjustments?.find((a: any) => a.monthYear === periodValue);
         return filtered || null;

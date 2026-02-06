@@ -53,7 +53,7 @@ export function VesselNCsDialog({
       const records = await restHoursApiV2.vesselRecords.getAll({ month, year });
       // Filter to only the requested vessel IDs if specified
       if (vesselIds.length > 0) {
-        return records.filter((r: any) => vesselIds.includes(r.vesselUuid));
+        return records.filter((r: any) => vesselIds.includes(r.vesselId));
       }
       return records;
     },
@@ -62,7 +62,7 @@ export function VesselNCsDialog({
 
   // Get actual vessel UUIDs for fetching crew records
   const vesselUuids = useMemo(() => 
-    vesselRecords.map((vr: any) => vr.vesselUuid), 
+    vesselRecords.map((vr: any) => vr.vesselId), 
     [vesselRecords]
   );
 
@@ -127,8 +127,8 @@ export function VesselNCsDialog({
 
     // Process each crew member with NCs
     crewRecordsWithNCs.forEach(crew => {
-      const vesselRecord = vesselRecords.find((vr: any) => vr.vesselUuid === (crew.vesselId || crew.vesselRecordUuid));
-      const vesselId = vesselRecord?.vesselUuid || crew.vesselUuid || '';
+      const vesselRecord = vesselRecords.find((vr: any) => vr.vesselId === (crew.vesselId || crew.vesselRecordUuid));
+      const vesselId = vesselRecord?.vesselId || crew.vesselId || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
       
       // Look up NC report by crew record UUID
