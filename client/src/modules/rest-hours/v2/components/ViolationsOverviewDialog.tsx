@@ -160,18 +160,19 @@ export function ViolationsOverviewDialog({
     enabled: open && crewIdsWithViolations.length > 0,
   });
 
-  // Fetch existing vessel comment (only for actual violations, not predicted, and single vessel view)
+  const resolvedVesselId = vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : '';
+
   const { data: vesselCommentData } = useQuery<{ comment: string } | null>({
-    queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId, monthValue],
+    queryKey: ['v2', 'rest-hours', 'vessel-comments', resolvedVesselId, monthValue],
     queryFn: async () => {
       try {
-        const comments = await restHoursApiV2.vesselComments.getAll({ vesselId, monthValue });
+        const comments = await restHoursApiV2.vesselComments.getAll({ vesselId: resolvedVesselId, monthValue });
         return comments && comments.length > 0 ? { comment: comments[0].comment } : null;
       } catch (error) {
         return null;
       }
     },
-    enabled: open && !isPredicted && !rankFilter && vesselIdsToUse.length === 1 && vesselId !== '',
+    enabled: open && !isPredicted && !rankFilter && vesselIdsToUse.length === 1 && resolvedVesselId !== '',
   });
 
   // Update local state when comment data is fetched
@@ -187,13 +188,13 @@ export function ViolationsOverviewDialog({
   const saveCommentMutation = useMutation({
     mutationFn: async (comment: string) => {
       return restHoursApiV2.vesselComments.create({
-        vesselId,
+        vesselId: resolvedVesselId,
         monthValue,
         comment,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', resolvedVesselId, monthValue] });
       toast({
         title: 'Success',
         description: 'Vessel comment saved successfully',
