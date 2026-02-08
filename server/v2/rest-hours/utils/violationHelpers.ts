@@ -92,19 +92,14 @@ export function calculateNCs(dailyRecordsJson: string, complianceMode: 'Rest' | 
     const completedViolationDays = countViolationDays(dailyRecordsJson, complianceMode, opaMode, false);
     const hasCompletedCode2 = hasCode2Violation(dailyRecordsJson, complianceMode, opaMode, false);
 
-    const hasCompletedNC = completedViolationDays >= 3 || hasCompletedCode2;
-
-    if (hasCompletedNC) {
-      return { totalNCs: 1, predictedNCs: 0 };
-    }
+    const totalNCs = (completedViolationDays >= 3 || hasCompletedCode2) ? 1 : 0;
 
     const predictedViolationDays = countViolationDays(dailyRecordsJson, complianceMode, opaMode, true);
     const hasPredictedCode2 = hasCode2Violation(dailyRecordsJson, complianceMode, opaMode, true);
 
-    const totalViolationDays = completedViolationDays + predictedViolationDays;
-    const hasPredictedNC = totalViolationDays >= 3 || hasPredictedCode2;
+    const predictedNCs = (predictedViolationDays >= 3 || hasPredictedCode2) ? 1 : 0;
 
-    return { totalNCs: 0, predictedNCs: hasPredictedNC ? 1 : 0 };
+    return { totalNCs, predictedNCs };
   } catch (error) {
     console.error('Failed to calculate NCs:', error);
     return { totalNCs: 0, predictedNCs: 0 };

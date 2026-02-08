@@ -112,4 +112,14 @@ export const dailyRecordsController = {
       res.status(500).json({ error: "Failed to backfill violations" });
     }
   },
+
+  async resyncAllRecords(req: Request, res: Response) {
+    try {
+      const result = await dailyRecordsService.resyncAllRecords();
+      res.json(result);
+    } catch (error) {
+      console.error("Error resyncing records:", error);
+      res.status(500).json({ error: "Failed to resync records" });
+    }
+  },
 };

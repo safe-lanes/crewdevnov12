@@ -260,4 +260,20 @@ export const dailyRecordsService = {
 
     return { processed, violationsFound };
   },
+
+  async resyncAllRecords(): Promise<{ processed: number }> {
+    const allDailyRecords = await dailyRecordsRepository.findAll({});
+    let processed = 0;
+
+    for (const record of allDailyRecords) {
+      try {
+        await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear);
+        processed++;
+      } catch (e) {
+        console.error(`Failed to resync record ${record.rhDailyUuid}:`, e);
+      }
+    }
+
+    return { processed };
+  },
 };

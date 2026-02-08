@@ -41,6 +41,7 @@ router.delete("/crew-records/:uuid", crewRecordsController.delete);
 router.get("/daily-records", dailyRecordsController.getAll);
 router.get("/daily-records/by-key/:crewMemberId/:vesselId/:monthYear", dailyRecordsController.getByKey);
 router.post("/daily-records/backfill-violations", dailyRecordsController.backfillViolations);
+router.post("/daily-records/resync", dailyRecordsController.resyncAllRecords);
 router.get("/daily-records/:uuid", dailyRecordsController.getByUuid);
 router.post("/daily-records", dailyRecordsController.create);
 router.patch("/daily-records/:uuid", dailyRecordsController.update);
