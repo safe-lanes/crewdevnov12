@@ -755,20 +755,24 @@ export const RHRecordingForm = ({
         const updatedRecords = parsedRecords.map((record: DailyRecord) => {
           let hours = record.hours;
           
-          if (record.isPlan && hasLatestFixedTask) {
+          if (record.isPlan) {
             const hasUserData = hours && hours.some((h: string) => h !== '');
-            if (!hasUserData) {
-              const newHours = [...latestTemplate];
-              
-              const dayCells = variableTaskCellsMap.get(record.day);
-              if (dayCells && dayCells.length > 0) {
-                for (const cellRange of dayCells) {
-                  for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
-                    newHours[i] = 'a';
-                  }
+            if (!hasUserData && hasLatestFixedTask) {
+              hours = [...latestTemplate];
+            }
+            
+            const dayCells = variableTaskCellsMap.get(record.day);
+            if (dayCells && dayCells.length > 0) {
+              if (!hours || hours.length === 0) {
+                hours = Array(48).fill('');
+              } else {
+                hours = [...hours];
+              }
+              for (const cellRange of dayCells) {
+                for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
+                  hours[i] = 'a';
                 }
               }
-              hours = newHours;
             }
           }
           
