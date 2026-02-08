@@ -127,15 +127,16 @@ export function VesselViolationsDialog({
   const vesselGroups = useMemo(() => {
     const groups = new Map<string, VesselViolationGroup>();
 
-    // Create a map of daily records for quick lookup by crew record UUID
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
-    allDailyRecords.forEach(record => {
-      const crewMemberId = record.crewMemberId;
-      if (!dailyRecordsMap.has(crewMemberId)) {
-        dailyRecordsMap.set(crewMemberId, []);
+    allDailyRecords.forEach(recordContainer => {
+      const crewMemberId = recordContainer.crewMemberId;
+      try {
+        const dailyRecords: DailyRecord[] = JSON.parse(recordContainer.dailyRecords);
+        dailyRecordsMap.set(crewMemberId, dailyRecords);
+      } catch (e) {
+        console.error('Failed to parse dailyRecords for crew:', crewMemberId, e);
       }
-      dailyRecordsMap.get(crewMemberId)!.push(record);
     });
 
     // Process each crew member with violations
