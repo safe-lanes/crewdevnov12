@@ -105,7 +105,7 @@ export function VesselViolationsDialog({
   }, [crewSummaries]);
 
   const crewMemberIdsWithViolations = useMemo(() => 
-    crewRecordsWithViolations.map(crew => crew.uuid),
+    crewRecordsWithViolations.map(crew => crew.crewMemberId),
     [crewRecordsWithViolations]
   );
 
@@ -154,7 +154,7 @@ export function VesselViolationsDialog({
       }
 
       // Filter violations based on compliance mode and OPA mode
-      const dailyRecords = dailyRecordsMap.get(crew.uuid) || [];
+      const dailyRecords = dailyRecordsMap.get(crew.crewMemberId) || [];
       const filteredViolationDays: number[] = [];
 
       violationDays.forEach(day => {
@@ -184,9 +184,9 @@ export function VesselViolationsDialog({
 
       const group = groups.get(vesselId)!;
       group.crewMembers.push({
-        crewMemberId: crew.crewUuid || crew.uuid,
-        crewMemberName: crew.crewName || crew.name,
-        rank: crew.rankName || crew.rank,
+        crewMemberId: crew.crewMemberId,
+        crewMemberName: crew.name,
+        rank: crew.rank,
         totalViolations: filteredViolationDays.length,
         violationDates: filteredViolationDays.sort((a, b) => a - b),
       });

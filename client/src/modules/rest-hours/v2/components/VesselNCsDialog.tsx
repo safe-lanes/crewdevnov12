@@ -131,8 +131,7 @@ export function VesselNCsDialog({
       const vesselId = vesselRecord?.vesselId || crew.vesselId || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
       
-      // Look up NC report by crew record UUID
-      const ncReport = ncReportsMap.get(crew.uuid) || null;
+      const ncReport = ncReportsMap.get(crew.crewMemberId) || null;
 
       // Get or create vessel group
       if (!groups.has(vesselId)) {
@@ -147,9 +146,9 @@ export function VesselNCsDialog({
       const group = groups.get(vesselId)!;
       group.totalNCs += crew.totalNCs;
       group.crewMembers.push({
-        crewMemberId: crew.crewUuid || crew.uuid,
-        crewMemberName: crew.crewName || crew.name,
-        rank: crew.rankName || crew.rank,
+        crewMemberId: crew.crewMemberId,
+        crewMemberName: crew.name,
+        rank: crew.rank,
         vesselId: vesselId,
         status: (ncReport?.status as any) || 'Open',
         ncReport,
