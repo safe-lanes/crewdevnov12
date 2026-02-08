@@ -4,11 +4,14 @@ const V2_BASE = '/api/v2/rest-hours';
 
 export const restHoursApiV2 = {
   vesselRecords: {
-    async getAll(params?: { vesselUuid?: string; month?: string; year?: string }) {
+    async getAll(params?: { vesselUuid?: string; month?: string; year?: string; monthValue?: string }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselUuid) searchParams.set('vesselUuid', params.vesselUuid);
-      if (params?.month) searchParams.set('month', params.month);
-      if (params?.year) searchParams.set('year', params.year);
+      if (params?.monthValue) {
+        searchParams.set('monthValue', params.monthValue);
+      } else if (params?.month && params?.year) {
+        searchParams.set('monthValue', `${params.year}-${params.month.padStart(2, '0')}`);
+      }
       const url = `${V2_BASE}/vessel-records${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch vessel records');
