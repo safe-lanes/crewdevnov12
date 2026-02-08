@@ -61,7 +61,13 @@ export const officeCommentsService = {
       throw new Error("Month value is required");
     }
 
-    const dataWithAudit = applyAuditUser(data, true);
+    const processedData = { ...data };
+    if (processedData.reviewDate && !(processedData.reviewDate instanceof Date)) {
+      const parsed = new Date(processedData.reviewDate as any);
+      processedData.reviewDate = isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const dataWithAudit = applyAuditUser(processedData, true);
     return officeCommentsRepository.create(dataWithAudit);
   },
 
@@ -71,7 +77,13 @@ export const officeCommentsService = {
   ): Promise<RhOfficeViolationCommentV2> {
     await this.getByUuid(officeCommentUuid);
 
-    const dataWithAudit = applyAuditUser(data, false);
+    const processedData = { ...data };
+    if (processedData.reviewDate && !(processedData.reviewDate instanceof Date)) {
+      const parsed = new Date(processedData.reviewDate as any);
+      processedData.reviewDate = isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const dataWithAudit = applyAuditUser(processedData, false);
     const updated = await officeCommentsRepository.update(officeCommentUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update office comment: ${officeCommentUuid}`);
