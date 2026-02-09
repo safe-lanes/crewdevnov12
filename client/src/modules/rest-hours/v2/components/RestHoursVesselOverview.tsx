@@ -214,14 +214,18 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     enabled: !!selectedVessel && !!periodValue,
   });
 
-  // Fetch daily records for a specific crew member using V2 API
-  // Note: In V2, we need to first find the crew record UUID, then fetch daily records
   const fetchDailyRecords = async (crewMemberId: string, vesselId: string, monthYear: string): Promise<ExtendedDailyRecord[]> => {
     try {
-      // In V2, daily records are fetched by crewRecordUuid
-      // The crewMemberId here should actually be the crewRecordUuid from the crew records export
-      const dailyRecords = await restHoursApiV2.dailyRecords.getAll({ crewMemberId });
-      if (!dailyRecords || !Array.isArray(dailyRecords)) return [];
+      const response = await fetch(`/api/v2/rest-hours/daily-records/by-key/${crewMemberId}/${vesselId}/${monthYear}`);
+      if (!response.ok) {
+        if (response.status === 404) return [];
+        throw new Error('Failed to fetch daily records');
+      }
+      const container = await response.json();
+      const dailyRecordsData = container?.dailyRecords;
+      const dailyRecords = typeof dailyRecordsData === 'string' 
+        ? JSON.parse(dailyRecordsData) 
+        : dailyRecordsData || [];
       return dailyRecords.map(ensureDailyRecordDefaults);
     } catch (error) {
       console.error('Failed to fetch daily records:', error);
@@ -244,13 +248,12 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     setExportProgress({ current: 0, total: crewRecordsForExport.length });
 
     try {
-      // For V2, use the crew record UUID for fetching daily records
       const crewData = crewRecordsForExport.map((record: any) => ({
-        crewMemberId: record.crewMemberId || record.uuid || '', // Use crew record UUID for V2 daily records API
-        vesselId: record.vesselUuid || record.vesselId || selectedVessel,
-        name: record.name || record.crewName || '',
-        rank: record.rank || record.rankName || '',
-        monthValue: record.monthYear || record.monthValue || periodValue,
+        crewMemberId: record.crewMemberId || '',
+        vesselId: record.vesselId || selectedVessel,
+        name: record.name || '',
+        rank: record.rank || '',
+        monthValue: record.monthValue || periodValue,
       }));
 
       await exportAllRestHoursPDFs(
