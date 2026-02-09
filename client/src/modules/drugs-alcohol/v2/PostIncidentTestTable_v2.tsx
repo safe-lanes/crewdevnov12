@@ -30,6 +30,9 @@ interface PostIncidentTestTableProps {
 function calculateHoursDifference(incidentDateTime: string, testDateTime: string): string {
   try {
     const parseDateTime = (dtStr: string): Date => {
+      const isoDate = new Date(dtStr);
+      if (!isNaN(isoDate.getTime())) return isoDate;
+
       const [datePart, timePart] = dtStr.split(' - ');
       const [day, month, year] = datePart.split(' ');
       const hours = timePart.replace(' Hours', '');
@@ -48,6 +51,8 @@ function calculateHoursDifference(incidentDateTime: string, testDateTime: string
     
     const incidentDate = parseDateTime(incidentDateTime);
     const testDate = parseDateTime(testDateTime);
+    
+    if (isNaN(incidentDate.getTime()) || isNaN(testDate.getTime())) return 'N/A';
     
     const diffMs = Math.abs(testDate.getTime() - incidentDate.getTime());
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
