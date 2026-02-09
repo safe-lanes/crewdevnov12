@@ -17,6 +17,7 @@ import { PostIncidentTestTable } from './PostIncidentTestTable';
 import { OtherTestsTable } from './OtherTestsTable';
 import { SummaryTable } from './SummaryTable';
 import { DrugAlcoholTestForm } from './DrugAlcoholTestForm';
+import { DrugsAlcoholVersionToggle } from './v2/components/DrugsAlcoholVersionToggle';
 import { useViewport } from '@/hooks/useViewport';
 import { useExternalVessels } from '@/hooks/useExternalVessels';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -557,7 +558,8 @@ export function DrugsAlcoholModule() {
                 return (
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Annual D& A Test">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
+                                <DrugsAlcoholVersionToggle />
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -585,7 +587,8 @@ export function DrugsAlcoholModule() {
                 return (
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Periodic Alcohol Test">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
+                                <DrugsAlcoholVersionToggle />
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -613,7 +616,8 @@ export function DrugsAlcoholModule() {
                 return (
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Monthly Alcohol test">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
+                                <DrugsAlcoholVersionToggle />
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -641,7 +645,8 @@ export function DrugsAlcoholModule() {
                 return (
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Post Incident Test">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
+                                <DrugsAlcoholVersionToggle />
                                 <Button
                                     variant="default"
                                     size="sm"
@@ -678,7 +683,8 @@ export function DrugsAlcoholModule() {
                 return (
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Other Tests">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
+                                <DrugsAlcoholVersionToggle />
                                 <Button
                                     variant="default"
                                     size="sm"
@@ -715,7 +721,7 @@ export function DrugsAlcoholModule() {
                 return (
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Summary">
-                            <div />
+                            <DrugsAlcoholVersionToggle />
                         </SectionTitleComponents>
                         {renderVesselOnlyFilterBar()}
                         {summarySelectedVessel && (
