@@ -135,6 +135,8 @@ export function VesselReviewDialog({
       return restHoursApiV2.vesselComments.getAll({ vesselId, monthValue });
     },
     enabled: open,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
   const vesselCommentData = vesselCommentsData.length > 0 ? vesselCommentsData[0] : null;
 
@@ -145,6 +147,8 @@ export function VesselReviewDialog({
       return restHoursApiV2.officeComments.getAll({ vesselId, monthValue });
     },
     enabled: open && isOfficeMode,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
   const officeCommentData = officeCommentsData.length > 0 ? officeCommentsData[0] : null;
 

@@ -173,6 +173,8 @@ export function ViolationsOverviewDialog({
       }
     },
     enabled: open && !isPredicted && !rankFilter && vesselIdsToUse.length === 1 && resolvedVesselId !== '',
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Update local state when comment data is fetched
