@@ -13,7 +13,7 @@ interface TestRecord {
   date: string;
   port: string;
   violations: number;
-  recordId?: number;
+  recordId?: number | string;
 }
 
 interface PeriodicTestData {
@@ -33,7 +33,7 @@ interface PeriodicTestTableProps {
   fleetValue: string;
   addGroupValue: string;
   onAdd?: (vesselId?: string) => void;
-  onEdit?: (recordId: number) => void;
+  onEdit?: (recordId: number | string) => void;
 }
 
 const useDrugAlcoholTests = (filters: any, apiBase: string, queryKeyBase: string[]) => {
@@ -446,7 +446,7 @@ export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
         date: formatTestDate(record.dateTimeTestCompleted),
         port: record.placeLocation || '',
         violations: calculateViolations(record.personnelTested),
-        recordId: record.id,
+        recordId: record.daUuid || record.id,
       })).filter((t: TestRecord) => t.date);
 
       const lastTest = testHistory[0];
@@ -630,7 +630,7 @@ export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
             const field = event.colDef.field;
             if (field === 'plannedComments' || field === 'plannedPort' || field === 'plannedDate') {
               try {
-                const recordId = event.data.id;
+                const recordId = event.data.daUuid || event.data.id;
                 const updateData = { [field]: event.newValue };
                 
                 await apiRequest(updateMethod, `${apiBase}/${recordId}`, updateData);

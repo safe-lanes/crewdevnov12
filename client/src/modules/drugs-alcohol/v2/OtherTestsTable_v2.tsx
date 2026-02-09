@@ -27,7 +27,7 @@ interface OtherTestsTableProps {
   selectedVessels: string[];
   fleetValue: string;
   addGroupValue: string;
-  onEdit?: (recordId: number) => void;
+  onEdit?: (recordId: number | string) => void;
 }
 
 function formatDateTime(dateTimeStr: string): string {
@@ -119,8 +119,9 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   const { onEdit } = props.context || {};
   
   const handleEdit = () => {
-    if (onEdit && props.data?.id) {
-      onEdit(props.data.id);
+    const recordId = props.data?.daUuid || props.data?.id;
+    if (onEdit && recordId) {
+      onEdit(recordId);
     }
   };
   
@@ -131,7 +132,7 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
         size="sm"
         className="h-7 w-7 p-0 hover:bg-blue-100"
         onClick={handleEdit}
-        data-testid={`button-edit-${props.data.id}`}
+        data-testid={`button-edit-${props.data?.daUuid || props.data.id}`}
       >
         <Pencil className="h-4 w-4 text-blue-600" />
       </Button>

@@ -28,7 +28,7 @@ interface TestRecord {
   date: string;
   port: string;
   violations: number;
-  recordId?: number;
+  recordId?: number | string;
 }
 
 interface SummaryRowData {
@@ -49,7 +49,7 @@ interface SummaryRowData {
 interface SummaryTableProps {
   selectedVessel: string;
   onAdd?: (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others') => void;
-  onEdit?: (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', recordId: number) => void;
+  onEdit?: (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', recordId: number | string) => void;
 }
 
 const calculateDueInStatus = (nextDueDate: string | undefined): { label: string; color: string; textColor: string } | null => {
@@ -280,7 +280,7 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
           date: testDate ? format(testDate, 'dd-MMM-yyyy') : '',
           port: record.placeLocation || '',
           violations: calculateViolations(record.personnelTested),
-          recordId: record.id,
+          recordId: (record as any).daUuid || record.id,
         };
       });
 
@@ -466,7 +466,7 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
               const field = event.colDef.field;
               if (field === 'plannedComments' || field === 'plannedPort' || field === 'plannedDate') {
                 try {
-                  const recordId = event.data.id;
+                  const recordId = event.data.daUuid || event.data.id;
                   if (!recordId) {
                     console.error('No record ID found for update');
                     return;
