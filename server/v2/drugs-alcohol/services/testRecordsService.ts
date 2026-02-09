@@ -188,6 +188,28 @@ export const testRecordsService = {
     return this.getByUuid(record.daUuid);
   },
 
+  async updatePlannedFields(daUuid: string, data: Record<string, any>): Promise<any> {
+    const existing = await testRecordsRepository.findByUuid(daUuid);
+    if (!existing) {
+      throw new Error(`Test record not found: ${daUuid}`);
+    }
+
+    const allowedFields = ['plannedPort', 'plannedDate', 'plannedComments'];
+    const updateData: Record<string, any> = {};
+    for (const key of allowedFields) {
+      if (key in data) {
+        updateData[key] = data[key];
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return this.getByUuid(daUuid);
+    }
+
+    await testRecordsRepository.update(daUuid, updateData);
+    return this.getByUuid(daUuid);
+  },
+
   async update(daUuid: string, data: any): Promise<any> {
     const existing = await testRecordsRepository.findByUuid(daUuid);
     if (!existing) {

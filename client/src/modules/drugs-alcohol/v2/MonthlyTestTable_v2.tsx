@@ -631,11 +631,11 @@ export const MonthlyTestTable_v2: React.FC<MonthlyTestTableProps> = ({
                 const recordId = event.data.daUuid || event.data.id;
                 const updateData = { [field]: event.newValue };
                 
-                await apiRequest(updateMethod, `${apiBase}/${recordId}`, updateData);
+                await apiRequest('PATCH', `${apiBase}/${recordId}/planned`, updateData);
                 
                 queryClient.invalidateQueries({ queryKey: invalidateKey });
               } catch (error) {
-                console.error('Failed to update test record:', error);
+                console.error('Failed to update planned fields:', error);
               }
             }
           },

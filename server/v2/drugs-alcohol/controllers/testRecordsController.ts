@@ -64,6 +64,20 @@ export const testRecordsController = {
     }
   },
 
+  async updatePlannedFields(req: Request, res: Response) {
+    try {
+      const { uuid } = req.params;
+      const record = await testRecordsService.updatePlannedFields(uuid, req.body);
+      res.json(record);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error updating planned fields:", error);
+      res.status(500).json({ error: "Failed to update planned fields" });
+    }
+  },
+
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
