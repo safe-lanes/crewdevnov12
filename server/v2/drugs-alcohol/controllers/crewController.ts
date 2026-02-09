@@ -50,6 +50,7 @@ export const crewController = {
         assignmentType: row.assignmentType || "",
       }));
 
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
       res.json(result);
     } catch (error) {
       console.error("Error fetching onboard crew by vessel:", error);
