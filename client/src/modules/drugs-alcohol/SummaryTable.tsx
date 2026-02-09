@@ -51,6 +51,7 @@ interface SummaryTableProps {
   selectedVessel: string;
   onAdd?: (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others') => void;
   onEdit?: (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', recordId: number) => void;
+  useV2?: boolean;
 }
 
 // Calculate "Due In" status and color
@@ -189,9 +190,13 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
   );
 };
 
-export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProps) {
+export function SummaryTable({ selectedVessel, onAdd, onEdit, useV2 }: SummaryTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const apiBase = useV2 ? '/api/v2/drugs-alcohol/test-records' : '/api/drug-alcohol-tests';
+  const queryKeyBase = useV2 ? ['v2', 'drugs-alcohol', 'test-records'] : ['/api/drug-alcohol-tests'];
+  const updateMethod = useV2 ? 'PATCH' : 'PUT';
+  const invalidateKey = useV2 ? ['v2', 'drugs-alcohol'] : ['/api/drug-alcohol-tests'];
 
   // Fetch all test records
   const { data: testRecords = [] } = useQuery<Array<{
@@ -208,7 +213,12 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
     plannedDate?: string;
     plannedComments?: string;
   }>>({
-    queryKey: ['/api/drug-alcohol-tests'],
+    queryKey: queryKeyBase,
+    queryFn: async () => {
+      const response = await fetch(apiBase);
+      if (!response.ok) throw new Error('Failed to fetch drug alcohol tests');
+      return response.json();
+    },
   });
 
   // Helper function to calculate violations from personnelTested
@@ -497,10 +507,9 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
                   }
                   const updateData = { [field]: event.newValue };
                   
-                  await apiRequest('PUT', `/api/drug-alcohol-tests/${recordId}`, updateData);
+                  await apiRequest(updateMethod, `${apiBase}/${recordId}`, updateData);
                   
-                  // Invalidate cache to refresh data
-                  queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
+                  queryClient.invalidateQueries({ queryKey: invalidateKey });
                 } catch (error) {
                   console.error('Failed to update test record:', error);
                   // Optionally show error toast to user

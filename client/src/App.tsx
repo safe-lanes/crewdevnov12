@@ -14,7 +14,7 @@ const CrewPoolModuleRouter = lazy(() => import("./modules/crew-pool").then(m => 
 const VesselRouter = lazy(() => import("./modules/vessel/index"));
 const RotationRouter = lazy(() => import("./modules/rotation/index"));
 const PromotionsModule = lazy(() => import("./modules/promotions/PromotionsModule").then(m => ({ default: m.PromotionsModule })));
-const DrugsAlcoholModule = lazy(() => import("./modules/drugs-alcohol/DrugsAlcoholModule").then(m => ({ default: m.DrugsAlcoholModule })));
+const DrugsAlcoholModule = lazy(() => import("./modules/drugs-alcohol/index").then(m => ({ default: m.DrugsAlcoholModuleRouter })));
 const RestHoursModuleRouter = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursModuleRouter })));
 const RestHoursVesselOverviewRouter = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursVesselOverviewRouter })));
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ default: m.DashboardPage })));

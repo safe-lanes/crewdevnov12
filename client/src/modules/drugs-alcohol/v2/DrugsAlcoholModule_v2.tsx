@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import MainLayout from '@/components/main/MainLayout';
-import DrugsAlcoholSideBar from './DrugsAlcoholSideBar';
+import DrugsAlcoholSideBar from '../DrugsAlcoholSideBar';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -10,50 +10,45 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, ChevronDown, Plus } from 'lucide-react';
-import { AnnualTestTable } from './AnnualTestTable';
-import { PeriodicTestTable } from './PeriodicTestTable';
-import { MonthlyTestTable } from './MonthlyTestTable';
-import { PostIncidentTestTable } from './PostIncidentTestTable';
-import { OtherTestsTable } from './OtherTestsTable';
-import { SummaryTable } from './SummaryTable';
-import { DrugAlcoholTestForm } from './DrugAlcoholTestForm';
+import { AnnualTestTable } from '../AnnualTestTable';
+import { PeriodicTestTable } from '../PeriodicTestTable';
+import { MonthlyTestTable } from '../MonthlyTestTable';
+import { PostIncidentTestTable } from '../PostIncidentTestTable';
+import { OtherTestsTable } from '../OtherTestsTable';
+import { SummaryTable } from '../SummaryTable';
+import { DrugAlcoholTestForm_v2 } from './DrugAlcoholTestForm_v2';
+import { DrugsAlcoholVersionToggle } from './components/DrugsAlcoholVersionToggle';
+import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
 import { useViewport } from '@/hooks/useViewport';
 import { useExternalVessels } from '@/hooks/useExternalVessels';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { DrugsAlcoholVersionToggle } from './v2/components/DrugsAlcoholVersionToggle';
 
-export function DrugsAlcoholModule() {
+export function DrugsAlcoholModule_v2() {
     const [selectedDrugsAlcoholPage, setSelectedDrugsAlcoholPage] = useState<string>("annual");
     const allowedPages = ["annual", "periodic", "monthly", "post-incident", "others", "summary"];
     const { toast } = useToast();
 
-    // Viewport detection for responsive layout
     const viewport = useViewport();
     const isPhone = viewport === 'phone';
     const isTablet = viewport === 'tablet';
     const isSmallScreen = isPhone || isTablet;
 
-    // Filter state
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
     const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
     const [fleetValue, setFleetValue] = useState("");
     const [addGroupValue, setAddGroupValue] = useState("");
     const [showFilters, setShowFilters] = useState(true);
     
-    // Summary page state - single vessel selection
     const [summarySelectedVessel, setSummarySelectedVessel] = useState<string>("");
     
-    // Form state
     const [showForm, setShowForm] = useState(false);
     const [formTestType, setFormTestType] = useState<'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others'>();
     const [formVesselId, setFormVesselId] = useState<string>();
-    const [editingRecordId, setEditingRecordId] = useState<number | undefined>();
+    const [editingRecordUuid, setEditingRecordUuid] = useState<string | undefined>();
 
-    // Fetch vessels from external SAIL ERP API (all 11 vessels)
     const { data: externalVessels = [], isLoading: vesselsLoading } = useExternalVessels();
     
-    // Normalize external vessels data to expected format
     const vessels = useMemo(() => {
         return externalVessels.map((v: any, index: number) => ({
             id: index + 1,
@@ -62,7 +57,6 @@ export function DrugsAlcoholModule() {
         }));
     }, [externalVessels]);
     
-    // Auto-select first vessel for summary page
     useEffect(() => {
         if (vessels.length > 0 && !summarySelectedVessel) {
             setSummarySelectedVessel(vessels[0].vesselId);
@@ -84,11 +78,10 @@ export function DrugsAlcoholModule() {
         );
     };
 
-    // Form handlers
-    const handleOpenForm = (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', vesselId?: string, recordId?: number) => {
+    const handleOpenForm = (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', vesselId?: string, recordUuid?: string) => {
         setFormTestType(testType);
         setFormVesselId(vesselId);
-        setEditingRecordId(recordId);
+        setEditingRecordUuid(recordUuid);
         setShowForm(true);
     };
 
@@ -96,17 +89,14 @@ export function DrugsAlcoholModule() {
         setShowForm(false);
         setFormTestType(undefined);
         setFormVesselId(undefined);
-        setEditingRecordId(undefined);
+        setEditingRecordUuid(undefined);
     };
 
-    // Helper function to transform form data to API format
     const transformFormDataForAPI = (data: any, status: 'draft' | 'submitted') => {
-        // Only derive frequencyMonths if not provided by the form
         const getFrequencyMonths = () => {
             if (data.frequencyMonths !== undefined && data.frequencyMonths !== null) {
                 return data.frequencyMonths;
             }
-            // Default mapping based on test type
             const frequencyMap: Record<string, number> = {
                 'annual': 12,
                 'periodic': 3,
@@ -117,10 +107,9 @@ export function DrugsAlcoholModule() {
             return frequencyMap[data.testType] ?? 12;
         };
 
-        // Helper to stringify only if value is an array/object, otherwise pass through
         const toJsonString = (value: any): string | null => {
             if (value === undefined || value === null) return null;
-            if (typeof value === 'string') return value; // Already a string
+            if (typeof value === 'string') return value;
             return JSON.stringify(value);
         };
 
@@ -150,20 +139,18 @@ export function DrugsAlcoholModule() {
         };
     };
 
-    // Mutation for saving (create or update)
     const saveMutation = useMutation({
         mutationFn: async ({ data, status }: { data: any; status: 'draft' | 'submitted' }) => {
             const payload = transformFormDataForAPI(data, status);
             
-            let response: Response;
-            if (editingRecordId) {
-                response = await apiRequest('PUT', `/api/drug-alcohol-tests/${editingRecordId}`, payload);
+            if (editingRecordUuid) {
+                return drugsAlcoholApiV2.testRecords.update(editingRecordUuid, payload);
             } else {
-                response = await apiRequest('POST', '/api/drug-alcohol-tests', payload);
+                return drugsAlcoholApiV2.testRecords.create(payload);
             }
-            return await response.json();
         },
         onSuccess: (record: any, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['v2', 'drugs-alcohol'] });
             queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
             toast({
                 title: variables.status === 'submitted' ? "Form Submitted" : "Draft Saved",
@@ -173,8 +160,8 @@ export function DrugsAlcoholModule() {
             });
             if (variables.status === 'submitted') {
                 handleCloseForm();
-            } else if (record?.id && !editingRecordId) {
-                setEditingRecordId(record.id);
+            } else if (record?.daUuid && !editingRecordUuid) {
+                setEditingRecordUuid(record.daUuid);
             }
         },
         onError: (error: any) => {
@@ -186,12 +173,12 @@ export function DrugsAlcoholModule() {
         },
     });
 
-    // Mutation for deleting
     const deleteMutation = useMutation({
-        mutationFn: async (id: number) => {
-            return await apiRequest('DELETE', `/api/drug-alcohol-tests/${id}`);
+        mutationFn: async (uuid: string) => {
+            return drugsAlcoholApiV2.testRecords.delete(uuid);
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['v2', 'drugs-alcohol'] });
             queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
             toast({
                 title: "Record Deleted",
@@ -233,14 +220,13 @@ export function DrugsAlcoholModule() {
     };
 
     const handleDeleteForm = () => {
-        if (editingRecordId) {
-            deleteMutation.mutate(editingRecordId);
+        if (editingRecordUuid) {
+            deleteMutation.mutate(editingRecordUuid);
         } else {
             handleCloseForm();
         }
     };
 
-    // Vessel multi-select popover component (shared across layouts)
     const renderVesselSelect = () => (
         <Popover>
             <PopoverTrigger asChild>
@@ -284,7 +270,6 @@ export function DrugsAlcoholModule() {
         </Popover>
     );
 
-    // Fleet select component (shared across layouts)
     const renderFleetSelect = () => (
         <Select value={fleetValue} onValueChange={setFleetValue}>
             <SelectTrigger 
@@ -300,7 +285,6 @@ export function DrugsAlcoholModule() {
         </Select>
     );
 
-    // Additional Group select component (shared across layouts)
     const renderAddGroupSelect = () => (
         <Select value={addGroupValue} onValueChange={setAddGroupValue}>
             <SelectTrigger 
@@ -316,11 +300,9 @@ export function DrugsAlcoholModule() {
         </Select>
     );
 
-    // Reusable filter bar with radio buttons (for Annual, Periodic, Monthly, Post Incident, Others)
     const renderFullFilterBar = () => {
         if (!showFilters) return null;
 
-        // Phone layout: vertical stack with full-width controls
         if (isPhone) {
             return (
                 <div className="flex flex-col gap-3 mb-4 p-3 bg-transparent rounded-lg" data-testid="filter-container">
@@ -329,7 +311,6 @@ export function DrugsAlcoholModule() {
                         onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
                         className="flex flex-col gap-3"
                     >
-                        {/* Vessel option */}
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <RadioGroupItem 
@@ -341,8 +322,6 @@ export function DrugsAlcoholModule() {
                             </div>
                             {filterType === 'vessel' && renderVesselSelect()}
                         </div>
-
-                        {/* Fleet option */}
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <RadioGroupItem 
@@ -354,8 +333,6 @@ export function DrugsAlcoholModule() {
                             </div>
                             {filterType === 'fleet' && renderFleetSelect()}
                         </div>
-
-                        {/* Additional Group option */}
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <RadioGroupItem 
@@ -368,8 +345,6 @@ export function DrugsAlcoholModule() {
                             {filterType === 'addGroup' && renderAddGroupSelect()}
                         </div>
                     </RadioGroup>
-
-                    {/* Clear Button */}
                     <Button
                         variant="outline"
                         onClick={handleClearFilters}
@@ -382,7 +357,6 @@ export function DrugsAlcoholModule() {
             );
         }
 
-        // Tablet layout: 3-column grid with stacked radio + select pairs
         if (isTablet) {
             return (
                 <div className="flex flex-col gap-3 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
@@ -391,7 +365,6 @@ export function DrugsAlcoholModule() {
                         onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
                         className="grid grid-cols-3 gap-4"
                     >
-                        {/* Vessel option */}
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <RadioGroupItem 
@@ -403,8 +376,6 @@ export function DrugsAlcoholModule() {
                             </div>
                             {renderVesselSelect()}
                         </div>
-
-                        {/* Fleet option */}
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <RadioGroupItem 
@@ -416,8 +387,6 @@ export function DrugsAlcoholModule() {
                             </div>
                             {renderFleetSelect()}
                         </div>
-
-                        {/* Additional Group option */}
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <RadioGroupItem 
@@ -430,8 +399,6 @@ export function DrugsAlcoholModule() {
                             {renderAddGroupSelect()}
                         </div>
                     </RadioGroup>
-
-                    {/* Clear Button */}
                     <Button
                         variant="outline"
                         onClick={handleClearFilters}
@@ -444,7 +411,6 @@ export function DrugsAlcoholModule() {
             );
         }
 
-        // Desktop/Laptop layout: horizontal flex (original layout)
         return (
             <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
                 <RadioGroup 
@@ -452,7 +418,6 @@ export function DrugsAlcoholModule() {
                     onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
                     className="flex items-center gap-6"
                 >
-                    {/* Vessel Radio + Multi-Select */}
                     <div className="flex items-center gap-2">
                         <RadioGroupItem 
                             value="vessel" 
@@ -462,8 +427,6 @@ export function DrugsAlcoholModule() {
                         />
                         {renderVesselSelect()}
                     </div>
-
-                    {/* Fleet Radio + Select */}
                     <div className="flex items-center gap-2">
                         <RadioGroupItem 
                             value="fleet" 
@@ -473,8 +436,6 @@ export function DrugsAlcoholModule() {
                         />
                         {renderFleetSelect()}
                     </div>
-
-                    {/* Additional Group Radio + Select */}
                     <div className="flex items-center gap-2">
                         <RadioGroupItem 
                             value="addGroup" 
@@ -485,8 +446,6 @@ export function DrugsAlcoholModule() {
                         {renderAddGroupSelect()}
                     </div>
                 </RadioGroup>
-
-                {/* Clear Button */}
                 <Button
                     variant="outline"
                     onClick={handleClearFilters}
@@ -499,7 +458,6 @@ export function DrugsAlcoholModule() {
         );
     };
 
-    // Vessel-only filter bar (for Summary) - responsive
     const renderVesselOnlyFilterBar = () => {
         if (!showFilters) return null;
 
@@ -534,7 +492,6 @@ export function DrugsAlcoholModule() {
                     </Select>
                 </div>
 
-                {/* Clear Button */}
                 <Button
                     variant="outline"
                     onClick={() => {
@@ -578,7 +535,8 @@ export function DrugsAlcoholModule() {
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onAdd={(vesselId) => handleOpenForm('annual', vesselId)}
-                            onEdit={(recordId) => handleOpenForm('annual', undefined, recordId)}
+                            onEdit={(recordId) => handleOpenForm('annual', undefined, String(recordId))}
+                            useV2={true}
                         />
                     </div>
                 );
@@ -607,7 +565,8 @@ export function DrugsAlcoholModule() {
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onAdd={(vesselId) => handleOpenForm('periodic', vesselId)}
-                            onEdit={(recordId) => handleOpenForm('periodic', undefined, recordId)}
+                            onEdit={(recordId) => handleOpenForm('periodic', undefined, String(recordId))}
+                            useV2={true}
                         />
                     </div>
                 );
@@ -636,7 +595,8 @@ export function DrugsAlcoholModule() {
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onAdd={(vesselId) => handleOpenForm('monthly', vesselId)}
-                            onEdit={(recordId) => handleOpenForm('monthly', undefined, recordId)}
+                            onEdit={(recordId) => handleOpenForm('monthly', undefined, String(recordId))}
+                            useV2={true}
                         />
                     </div>
                 );
@@ -674,7 +634,8 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onEdit={(recordId) => handleOpenForm('post-incident', undefined, recordId)}
+                            onEdit={(recordId) => handleOpenForm('post-incident', undefined, String(recordId))}
+                            useV2={true}
                         />
                     </div>
                 );
@@ -712,7 +673,8 @@ export function DrugsAlcoholModule() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onEdit={(recordId) => handleOpenForm('others', undefined, recordId)}
+                            onEdit={(recordId) => handleOpenForm('others', undefined, String(recordId))}
+                            useV2={true}
                         />
                     </div>
                 );
@@ -720,16 +682,15 @@ export function DrugsAlcoholModule() {
                 return (
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Summary">
-                            <div className="flex gap-2 items-center">
-                                <DrugsAlcoholVersionToggle />
-                            </div>
+                            <DrugsAlcoholVersionToggle />
                         </SectionTitleComponents>
                         {renderVesselOnlyFilterBar()}
                         {summarySelectedVessel && (
                             <SummaryTable 
                                 selectedVessel={summarySelectedVessel}
                                 onAdd={(testType) => handleOpenForm(testType, summarySelectedVessel)}
-                                onEdit={(testType, recordId) => handleOpenForm(testType, summarySelectedVessel, recordId)}
+                                onEdit={(testType, recordId) => handleOpenForm(testType, summarySelectedVessel, String(recordId))}
+                                useV2={true}
                             />
                         )}
                     </div>
@@ -738,7 +699,7 @@ export function DrugsAlcoholModule() {
                 return (
                     <div className="bg-white rounded-lg shadow p-6">
                         <h2 className="text-2xl font-semibold mb-4" style={{ color: '#16569e' }}>
-                            Drugs & Alcohol Testing
+                            Drugs & Alcohol Testing (V2)
                         </h2>
                         <p className="text-gray-600">
                             Select a test type from the left sidebar.
@@ -749,7 +710,7 @@ export function DrugsAlcoholModule() {
     };
 
     return (
-        <div data-testid="drugs-alcohol-container">
+        <div data-testid="drugs-alcohol-v2-container">
             <DrugsAlcoholSideBar
                 selectedDrugsAlcoholPage={selectedDrugsAlcoholPage}
                 setSelectedDrugsAlcoholPage={setSelectedDrugsAlcoholPage}
@@ -759,12 +720,11 @@ export function DrugsAlcoholModule() {
                 {renderContent()}
             </MainLayout>
             
-            {/* Drug & Alcohol Test Form */}
             {showForm && (
-                <DrugAlcoholTestForm
+                <DrugAlcoholTestForm_v2
                     testType={formTestType}
                     vesselId={formVesselId}
-                    recordId={editingRecordId}
+                    recordUuid={editingRecordUuid}
                     onClose={handleCloseForm}
                     onSave={handleSaveForm}
                     onSubmit={handleSubmitForm}

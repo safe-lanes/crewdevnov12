@@ -24,6 +24,7 @@ interface PostIncidentTestTableProps {
   fleetValue: string;
   addGroupValue: string;
   onEdit?: (recordId: number) => void;
+  useV2?: boolean;
 }
 
 // Calculate time difference in hours between two datetime strings
@@ -109,8 +110,11 @@ export function PostIncidentTestTable({
   fleetValue,
   addGroupValue,
   onEdit,
+  useV2,
 }: PostIncidentTestTableProps) {
   const gridRef = useRef<AgGridReact>(null);
+  const apiBase = useV2 ? '/api/v2/drugs-alcohol/test-records' : '/api/drug-alcohol-tests';
+  const queryKeyBase = useV2 ? ['v2', 'drugs-alcohol', 'test-records'] : ['/api/drug-alcohol-tests'];
   
   // Fetch vessel master data for name mapping
   const { data: vessels } = useQuery<Array<{ entryId: string; name: string }>>({
@@ -128,7 +132,12 @@ export function PostIncidentTestTable({
     drugTestDateTime?: string;
     violations?: number;
   }>>({
-    queryKey: ['/api/drug-alcohol-tests'],
+    queryKey: queryKeyBase,
+    queryFn: async () => {
+      const response = await fetch(apiBase);
+      if (!response.ok) throw new Error('Failed to fetch drug alcohol tests');
+      return response.json();
+    },
   });
   
   // Create vessel ID to name mapping

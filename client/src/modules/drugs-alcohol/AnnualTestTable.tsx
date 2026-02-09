@@ -35,13 +35,14 @@ interface AnnualTestTableProps {
   addGroupValue: string;
   onAdd?: (vesselId?: string) => void;
   onEdit?: (recordId: number) => void;
+  useV2?: boolean;
 }
 
-const useDrugAlcoholTests = (filters: any) => {
+const useDrugAlcoholTests = (filters: any, apiBase: string, queryKeyBase: string[]) => {
   return useQuery({
-    queryKey: ['/api/drug-alcohol-tests', filters],
+    queryKey: [...queryKeyBase, filters],
     queryFn: async () => {
-      const response = await fetch('/api/drug-alcohol-tests');
+      const response = await fetch(apiBase);
       if (!response.ok) throw new Error('Failed to fetch drug alcohol tests');
       return response.json();
     },
@@ -291,7 +292,12 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
   addGroupValue,
   onAdd,
   onEdit,
+  useV2,
 }) => {
+  const apiBase = useV2 ? '/api/v2/drugs-alcohol/test-records' : '/api/drug-alcohol-tests';
+  const queryKeyBase = useV2 ? ['v2', 'drugs-alcohol', 'test-records'] : ['/api/drug-alcohol-tests'];
+  const updateMethod = useV2 ? 'PATCH' : 'PUT';
+  const invalidateKey = useV2 ? ['v2', 'drugs-alcohol'] : ['/api/drug-alcohol-tests'];
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [globalFrequency, setGlobalFrequency] = useState<number>(12);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
@@ -369,7 +375,7 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
     selectedVessels,
     fleetValue,
     addGroupValue,
-  });
+  }, apiBase, queryKeyBase);
 
   // Use external vessels API for complete vessel list (11 vessels)
   const { data: externalVesselsData = [], isLoading: vesselsLoading } = useExternalVessels();
@@ -673,9 +679,9 @@ export const AnnualTestTable: React.FC<AnnualTestTableProps> = ({
                 const recordId = event.data.id;
                 const updateData = { [field]: event.newValue };
                 
-                await apiRequest('PUT', `/api/drug-alcohol-tests/${recordId}`, updateData);
+                await apiRequest(updateMethod, `${apiBase}/${recordId}`, updateData);
                 
-                queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
+                queryClient.invalidateQueries({ queryKey: invalidateKey });
               } catch (error) {
                 console.error('Failed to update test record:', error);
               }
