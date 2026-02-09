@@ -106,7 +106,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
       try {
         const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselId: selectedVessel });
         // Filter for the specific month
-        const filtered = adjustments?.find((a: any) => a.monthYear === periodValue);
+        const filtered = adjustments?.find((a: any) => a.monthValue === periodValue);
         return filtered || null;
       } catch (error: any) {
         if (error.message?.includes('404')) return null;
