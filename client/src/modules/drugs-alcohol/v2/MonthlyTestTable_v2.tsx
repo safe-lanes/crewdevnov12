@@ -16,7 +16,7 @@ interface TestRecord {
   recordId?: number;
 }
 
-interface PeriodicTestData {
+interface MonthlyTestData {
   id: number;
   vesselId: string;
   vesselName: string;
@@ -27,7 +27,7 @@ interface PeriodicTestData {
   plannedComments: string;
 }
 
-interface PeriodicTestTableProps {
+interface MonthlyTestTableProps {
   filterType: "vessel" | "fleet" | "addGroup";
   selectedVessels: string[];
   fleetValue: string;
@@ -36,11 +36,11 @@ interface PeriodicTestTableProps {
   onEdit?: (recordId: number) => void;
 }
 
-const useDrugAlcoholTests = (filters: any) => {
+const useDrugAlcoholTests = (filters: any, apiBase: string, queryKeyBase: string[]) => {
   return useQuery({
-    queryKey: ['/api/drug-alcohol-tests', filters],
+    queryKey: [...queryKeyBase, filters],
     queryFn: async () => {
-      const response = await fetch('/api/drug-alcohol-tests');
+      const response = await fetch(apiBase);
       if (!response.ok) throw new Error('Failed to fetch drug alcohol tests');
       return response.json();
     },
@@ -48,28 +48,26 @@ const useDrugAlcoholTests = (filters: any) => {
 };
 
 
-// Calculate "Due In" status and color
 const calculateDueInStatus = (nextDueDate: string | undefined): { label: string; color: string; textColor: string } | null => {
   if (!nextDueDate) return null;
   
   try {
-    // Parse the date string safely using date-fns parse (format: "dd-MMM-yyyy")
     const dueDate = parse(nextDueDate, 'dd-MMM-yyyy', new Date());
     const today = new Date();
     const daysUntilDue = differenceInDays(dueDate, today);
     const monthsUntilDue = differenceInMonths(dueDate, today);
     
     if (daysUntilDue < 0) {
-      return { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' }; // Red - Overdue
+      return { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' };
     } else if (monthsUntilDue < 1) {
-      return { label: '1M', color: '#F9ECEF', textColor: '#000000' }; // Light pink/cream
+      return { label: '1M', color: '#F9ECEF', textColor: '#000000' };
     } else if (monthsUntilDue < 2) {
-      return { label: '2M', color: '#FFCC00', textColor: '#000000' }; // Yellow
+      return { label: '2M', color: '#FFCC00', textColor: '#000000' };
     } else if (monthsUntilDue < 3) {
-      return { label: '3M', color: '#FFEEAA', textColor: '#000000' }; // Light yellow/cream
+      return { label: '3M', color: '#FFEEAA', textColor: '#000000' };
     }
     
-    return null; // More than 3 months - no badge needed
+    return null;
   } catch {
     return null;
   }
@@ -93,7 +91,7 @@ const HistoryHeaderComponent = (props: any) => {
 
 const FrequencyHeaderComponent = (params: any) => {
   const context = params.context || {};
-  const globalFrequency = context.globalFrequency || 3;
+  const globalFrequency = context.globalFrequency || 1;
   const setGlobalFrequency = context.setGlobalFrequency;
 
   const handleChange = (value: string) => {
@@ -126,7 +124,6 @@ const FrequencyHeaderComponent = (params: any) => {
 };
 
 const TestHistoryCellRenderer = (params: ICellRendererParams) => {
-  // Defensive guard for AG Grid initialization
   if (!params.colDef || !params.data) return null;
   
   const testData = params.value as TestRecord | undefined;
@@ -165,13 +162,11 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
 };
 
 const NextDueCellRenderer = (params: ICellRendererParams) => {
-  // Defensive guard for AG Grid initialization
   if (!params.colDef || !params.data) return null;
   
   const { globalFrequency, vesselFrequencies } = params.context;
   const vesselId = params.data?.vesselId;
 
-  // Use vessel-specific frequency if set, otherwise use global
   const currentFrequency = vesselFrequencies[vesselId] || globalFrequency;
 
   if (!params.value) return null;
@@ -185,10 +180,8 @@ const NextDueCellRenderer = (params: ICellRendererParams) => {
     const calculatedNextDue = addMonths(new Date(lastTestDate), currentFrequency);
     const formattedDate = format(calculatedNextDue, 'dd-MMM-yyyy');
 
-    // Calculate color based on urgency
     const status = calculateDueInStatus(formattedDate);
     
-    // Only apply color coding if date falls within urgency period (<3 months or overdue)
     if (status) {
       return (
         <div className="flex items-center h-full">
@@ -202,7 +195,6 @@ const NextDueCellRenderer = (params: ICellRendererParams) => {
       );
     }
     
-    // No color coding for dates >3 months away
     return (
       <div className="flex items-center h-full">
         <span className="text-xs font-medium text-gray-700">
@@ -216,13 +208,11 @@ const NextDueCellRenderer = (params: ICellRendererParams) => {
 };
 
 const FrequencyCellRenderer = (params: ICellRendererParams) => {
-  // Defensive guard for AG Grid initialization
   if (!params.colDef || !params.data) return null;
   
   const { globalFrequency, vesselFrequencies, setVesselFrequency } = params.context;
   const vesselId = params.data?.vesselId;
 
-  // Use vessel-specific frequency if set, otherwise use global
   const currentFrequency = vesselFrequencies[vesselId] || globalFrequency;
 
   const handleChange = (value: string) => {
@@ -230,7 +220,6 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
     setVesselFrequency(vesselId, months);
   };
 
-  // Generate options that are <= global frequency
   const availableOptions = [
     { value: 12, label: '(+12) M' },
     { value: 6, label: '(+6) M' },
@@ -257,7 +246,6 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
 };
 
 const ActionsCellRenderer = (params: ICellRendererParams) => {
-  // Defensive guard for AG Grid initialization
   if (!params.colDef || !params.data) return null;
   
   const { onAdd } = params.context || {};
@@ -283,7 +271,7 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
   );
 };
 
-export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
+export const MonthlyTestTable_v2: React.FC<MonthlyTestTableProps> = ({
   filterType,
   selectedVessels,
   fleetValue,
@@ -291,20 +279,22 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
   onAdd,
   onEdit,
 }) => {
+  const apiBase = '/api/v2/drugs-alcohol/test-records';
+  const queryKeyBase = ['v2', 'drugs-alcohol', 'test-records'];
+  const updateMethod = 'PATCH';
+  const invalidateKey = ['v2', 'drugs-alcohol'];
   const [showAllHistory, setShowAllHistory] = useState(false);
-  const [globalFrequency, setGlobalFrequency] = useState<number>(3);
+  const [globalFrequency, setGlobalFrequency] = useState<number>(1);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [vesselFrequencies, setVesselFrequencies] = useState<Record<string, number>>({});
   const gridApiRef = useRef<GridApi | null>(null);
 
-  // Refresh cells when frequency changes to recalculate Next Due dates
   useEffect(() => {
     if (gridApi) {
       gridApi.refreshCells({ columns: ['nextDue'], force: true });
     }
   }, [globalFrequency, gridApi]);
 
-  // Auto-size columns to fit content
   const autoSizeContentColumns = useCallback(() => {
     if (gridApiRef.current) {
       const columnsToAutoSize = [
@@ -323,12 +313,10 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
     }
   }, []);
 
-  // Re-size columns when history toggle changes
   useEffect(() => {
     autoSizeContentColumns();
   }, [showAllHistory, autoSizeContentColumns]);
 
-  // Callback to set vessel-specific frequency
   const setVesselFrequency = useCallback((vesselId: string, frequency: number) => {
     setVesselFrequencies(prev => ({
       ...prev,
@@ -336,13 +324,11 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
     }));
   }, []);
 
-  // When global frequency changes, reset any vessel frequencies that are now invalid (> global)
   const handleGlobalFrequencyChange = useCallback((newGlobal: number) => {
     setGlobalFrequency(newGlobal);
     setVesselFrequencies(prev => {
       const updated: Record<string, number> = {};
       Object.entries(prev).forEach(([vesselId, freq]) => {
-        // Only keep vessel overrides that are <= new global
         if (freq <= newGlobal) {
           updated[vesselId] = freq;
         }
@@ -350,7 +336,6 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
       return updated;
     });
 
-    // Refresh the frequency column to update dropdowns
     if (gridApiRef.current) {
       setTimeout(() => {
         gridApiRef.current?.refreshCells({
@@ -366,17 +351,14 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
     selectedVessels,
     fleetValue,
     addGroupValue,
-  });
+  }, apiBase, queryKeyBase);
 
-  // Use external vessels API for complete vessel list (11 vessels)
   const { data: externalVesselsData = [], isLoading: vesselsLoading } = useExternalVessels();
   
-  // Process external API response - hooks return arrays directly
   const externalVessels = Array.isArray(externalVesselsData) 
     ? externalVesselsData 
     : (externalVesselsData as any)?.vessels || [];
   
-  // Create vessel lookup and list from external data
   const vesselLookup = useMemo(() => {
     return externalVessels.reduce((acc: Record<string, string>, vessel: any) => {
       const vesselId = vessel.vuid || vessel.entryId || vessel.id;
@@ -392,8 +374,7 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
     }));
   }, [externalVessels]);
 
-  const tableData: PeriodicTestData[] = useMemo(() => {
-    // Helper to calculate violations from personnelTested array
+  const tableData: MonthlyTestData[] = useMemo(() => {
     const calculateViolations = (personnelTested: any): number => {
       if (!personnelTested) return 0;
       try {
@@ -405,7 +386,6 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
       }
     };
 
-    // Helper to format date for display (DD-MMM-YYYY)
     const formatTestDate = (dateStr: string | null): string => {
       if (!dateStr) return '';
       try {
@@ -416,37 +396,33 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
       }
     };
 
-    // Group periodic test records by vesselId and build testHistory from individual records
-    const periodicRecordsByVessel: Record<string, any[]> = {};
+    const monthlyRecordsByVessel: Record<string, any[]> = {};
     const orphanedVesselIds = new Set<string>();
     
     testRecords
-      .filter((record: any) => record.testType === 'periodic')
+      .filter((record: any) => record.testType === 'monthly')
       .forEach((record: any) => {
-        if (!periodicRecordsByVessel[record.vesselId]) {
-          periodicRecordsByVessel[record.vesselId] = [];
+        if (!monthlyRecordsByVessel[record.vesselId]) {
+          monthlyRecordsByVessel[record.vesselId] = [];
         }
-        periodicRecordsByVessel[record.vesselId].push(record);
+        monthlyRecordsByVessel[record.vesselId].push(record);
         orphanedVesselIds.add(record.vesselId);
       });
 
-    // Sort each vessel's records by date (newest first) to build proper history
-    Object.keys(periodicRecordsByVessel).forEach((vesselId) => {
-      periodicRecordsByVessel[vesselId].sort((a: any, b: any) => {
+    Object.keys(monthlyRecordsByVessel).forEach((vesselId) => {
+      monthlyRecordsByVessel[vesselId].sort((a: any, b: any) => {
         const dateA = a.dateTimeTestCompleted ? new Date(a.dateTimeTestCompleted).getTime() : 0;
         const dateB = b.dateTimeTestCompleted ? new Date(b.dateTimeTestCompleted).getTime() : 0;
-        return dateB - dateA; // Newest first
+        return dateB - dateA;
       });
     });
 
-    // Start with all vessels from the master list
     const vesselIdSet = new Set<string>();
     let allVessels = vesselsList.map((vessel: any) => {
       vesselIdSet.add(vessel.vesselId);
       return vessel;
     });
 
-    // Add orphaned vessels (have test records but not in Master 014)
     orphanedVesselIds.forEach((vesselId) => {
       if (!vesselIdSet.has(vesselId)) {
         allVessels.push({
@@ -456,27 +432,23 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
       }
     });
 
-    // Apply vessel filtering based on filterType
     if (filterType === 'vessel' && selectedVessels.length > 0) {
       allVessels = allVessels.filter((vessel: any) => 
         selectedVessels.includes(vessel.vesselName)
       );
     }
 
-    // Map all vessels to table data, building testHistory from individual records
     return allVessels.map((vessel: any) => {
-      const vesselRecords = periodicRecordsByVessel[vessel.vesselId] || [];
-      const latestRecord = vesselRecords[0]; // Most recent record
+      const vesselRecords = monthlyRecordsByVessel[vessel.vesselId] || [];
+      const latestRecord = vesselRecords[0];
       
-      // Build testHistory from individual records (include recordId for editing)
       const testHistory: TestRecord[] = vesselRecords.map((record: any) => ({
         date: formatTestDate(record.dateTimeTestCompleted),
         port: record.placeLocation || '',
         violations: calculateViolations(record.personnelTested),
         recordId: record.id,
-      })).filter((t: TestRecord) => t.date); // Only include records with valid dates
+      })).filter((t: TestRecord) => t.date);
 
-      // Calculate nextDue based on last test date and frequency
       const lastTest = testHistory[0];
       const currentFrequency = vesselFrequencies[vessel.vesselId] || (latestRecord?.frequencyMonths) || globalFrequency;
       let nextDue = '';
@@ -493,8 +465,8 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
         id: latestRecord?.id || `vessel-${vessel.vesselId}`,
         vesselId: vessel.vesselId,
         vesselName: vessel.vesselName,
-        testHistory: testHistory.slice(0, 3), // Keep up to 3 for history display
-        frequencyMonths: latestRecord?.frequencyMonths || 3,
+        testHistory: testHistory.slice(0, 3),
+        frequencyMonths: latestRecord?.frequencyMonths || 1,
         nextDue,
         plannedDate: latestRecord?.plannedDate || '',
         plannedComments: latestRecord?.plannedComments || '',
@@ -610,17 +582,13 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
     );
   }
 
-  // Static legend for "Due in:" labels
   const staticLegend = [
-    { label: '3M', color: '#FFEEAA', textColor: '#000000' },
-    { label: '2M', color: '#FFCC00', textColor: '#000000' },
     { label: '1M', color: '#F9ECEF', textColor: '#000000' },
     { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' },
   ];
 
   return (
     <div className="w-full flex flex-col flex-1">
-      {/* Static Due In Legend */}
       <div className="flex gap-2 items-center mb-4">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
         {staticLegend.map((item, index) => (
@@ -663,16 +631,16 @@ export const PeriodicTestTable: React.FC<PeriodicTestTableProps> = ({
                 const recordId = event.data.id;
                 const updateData = { [field]: event.newValue };
                 
-                await apiRequest('PUT', `/api/drug-alcohol-tests/${recordId}`, updateData);
+                await apiRequest(updateMethod, `${apiBase}/${recordId}`, updateData);
                 
-                queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
+                queryClient.invalidateQueries({ queryKey: invalidateKey });
               } catch (error) {
                 console.error('Failed to update test record:', error);
               }
             }
           },
         }}
-        className="periodic-test-table"
+        className="monthly-test-table"
       />
     </div>
   );

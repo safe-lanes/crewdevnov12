@@ -26,11 +26,8 @@ interface PostIncidentTestTableProps {
   onEdit?: (recordId: number) => void;
 }
 
-// Calculate time difference in hours between two datetime strings
-// Format: "31 May 2023 - 1010 Hours"
 function calculateHoursDifference(incidentDateTime: string, testDateTime: string): string {
   try {
-    // Parse the datetime string format: "31 May 2023 - 1010 Hours"
     const parseDateTime = (dtStr: string): Date => {
       const [datePart, timePart] = dtStr.split(' - ');
       const [day, month, year] = datePart.split(' ');
@@ -60,7 +57,6 @@ function calculateHoursDifference(incidentDateTime: string, testDateTime: string
   }
 }
 
-// Violations cell renderer with color coding
 const ViolationsCellRenderer = (props: ICellRendererParams) => {
   const value = props.value || 0;
   let colorClass = "text-green-600 dark:text-green-400";
@@ -78,7 +74,6 @@ const ViolationsCellRenderer = (props: ICellRendererParams) => {
   );
 };
 
-// Actions cell renderer
 const ActionsCellRenderer = (props: ICellRendererParams) => {
   const { onEdit } = props.context || {};
   
@@ -103,7 +98,7 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   );
 };
 
-export function PostIncidentTestTable({
+export function PostIncidentTestTable_v2({
   filterType,
   selectedVessels,
   fleetValue,
@@ -111,13 +106,13 @@ export function PostIncidentTestTable({
   onEdit,
 }: PostIncidentTestTableProps) {
   const gridRef = useRef<AgGridReact>(null);
+  const apiBase = '/api/v2/drugs-alcohol/test-records';
+  const queryKeyBase = ['v2', 'drugs-alcohol', 'test-records'];
   
-  // Fetch vessel master data for name mapping
   const { data: vessels } = useQuery<Array<{ entryId: string; name: string }>>({
     queryKey: ['/api/masters/014/data'],
   });
   
-  // Fetch drug alcohol test records
   const { data: testRecords } = useQuery<Array<{
     id: number;
     vesselId: string;
@@ -128,28 +123,24 @@ export function PostIncidentTestTable({
     drugTestDateTime?: string;
     violations?: number;
   }>>({
-    queryKey: ['/api/drug-alcohol-tests'],
+    queryKey: queryKeyBase,
     queryFn: async () => {
-      const response = await fetch('/api/drug-alcohol-tests');
+      const response = await fetch(apiBase);
       if (!response.ok) throw new Error('Failed to fetch drug alcohol tests');
       return response.json();
     },
   });
   
-  // Create vessel ID to name mapping
   const vesselMap = useMemo(() => {
     if (!vessels) return new Map();
     return new Map(vessels.map(v => [v.entryId, v.name]));
   }, [vessels]);
   
-  // Transform and filter data
   const tableData = useMemo<PostIncidentTestData[]>(() => {
     if (!testRecords) return [];
     
-    // Filter for post-incident tests
     const postIncidentTests = testRecords.filter(record => record.testType === 'post-incident');
     
-    // Transform to table format with calculated periods first
     const transformed = postIncidentTests.map(record => ({
       id: record.id,
       vesselId: record.vesselId,
@@ -167,24 +158,18 @@ export function PostIncidentTestTable({
       violations: record.violations || 0,
     }));
     
-    // Apply vessel/fleet filtering on transformed data
     if (filterType === "vessel") {
-      // If no vessels selected, show all
       if (selectedVessels.length === 0) return transformed;
-      // Otherwise, show only selected vessels (selectedVessels contains vessel names)
       return transformed.filter(record => selectedVessels.includes(record.vesselName));
     } else if (filterType === "fleet") {
-      // Fleet filtering (placeholder - would need fleet group data)
       return transformed;
     } else if (filterType === "addGroup") {
-      // Additional group filtering (placeholder - would need group data)
       return transformed;
     }
     
     return transformed;
   }, [testRecords, vesselMap, filterType, selectedVessels, fleetValue, addGroupValue]);
   
-  // Column definitions
   const columnDefs = useMemo<ColDef<PostIncidentTestData>[]>(() => [
     {
       headerName: "Vessel",

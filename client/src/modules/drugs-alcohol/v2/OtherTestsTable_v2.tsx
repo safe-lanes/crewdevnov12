@@ -30,7 +30,6 @@ interface OtherTestsTableProps {
   onEdit?: (recordId: number) => void;
 }
 
-// Format datetime for display
 function formatDateTime(dateTimeStr: string): string {
   if (!dateTimeStr) return '';
   try {
@@ -50,16 +49,13 @@ function formatDateTime(dateTimeStr: string): string {
   }
 }
 
-// Parse alcoholDrugType JSON array to display string
 function parseAlcoholDrugType(value: any): string {
   if (!value) return '';
   
-  // If already an array, join it
   if (Array.isArray(value)) {
     return value.join(', ');
   }
   
-  // If it's a string, try to parse as JSON
   if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
@@ -68,10 +64,9 @@ function parseAlcoholDrugType(value: any): string {
       }
       return String(parsed);
     } catch {
-      // Not valid JSON - clean up any brackets/quotes and return
       return value
-        .replace(/^\[|\]$/g, '')  // Remove surrounding brackets
-        .replace(/"/g, '')         // Remove quotes
+        .replace(/^\[|\]$/g, '')
+        .replace(/"/g, '')
         .split(',')
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0)
@@ -82,7 +77,6 @@ function parseAlcoholDrugType(value: any): string {
   return String(value);
 }
 
-// Violations cell renderer with color coding
 const ViolationsCellRenderer = (props: ICellRendererParams) => {
   const value = props.value || 0;
   let colorClass = "text-green-600 dark:text-green-400";
@@ -100,7 +94,6 @@ const ViolationsCellRenderer = (props: ICellRendererParams) => {
   );
 };
 
-// Description cell renderer with truncation and tooltip
 const DescriptionCellRenderer = (props: ICellRendererParams) => {
   const value = props.value || '';
   
@@ -122,7 +115,6 @@ const DescriptionCellRenderer = (props: ICellRendererParams) => {
   );
 };
 
-// Actions cell renderer
 const ActionsCellRenderer = (props: ICellRendererParams) => {
   const { onEdit } = props.context || {};
   
@@ -147,7 +139,7 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   );
 };
 
-export function OtherTestsTable({
+export function OtherTestsTable_v2({
   filterType,
   selectedVessels,
   fleetValue,
@@ -155,13 +147,13 @@ export function OtherTestsTable({
   onEdit,
 }: OtherTestsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
+  const apiBase = '/api/v2/drugs-alcohol/test-records';
+  const queryKeyBase = ['v2', 'drugs-alcohol', 'test-records'];
   
-  // Fetch vessel master data for name mapping
   const { data: vessels } = useQuery<Array<{ entryId: string; name: string }>>({
     queryKey: ['/api/masters/014/data'],
   });
   
-  // Fetch drug alcohol test records
   const { data: testRecords } = useQuery<Array<{
     id: number;
     vesselId: string;
@@ -173,28 +165,24 @@ export function OtherTestsTable({
     initiatedBy?: string;
     violations?: number;
   }>>({
-    queryKey: ['/api/drug-alcohol-tests'],
+    queryKey: queryKeyBase,
     queryFn: async () => {
-      const response = await fetch('/api/drug-alcohol-tests');
+      const response = await fetch(apiBase);
       if (!response.ok) throw new Error('Failed to fetch drug alcohol tests');
       return response.json();
     },
   });
   
-  // Create vessel ID to name mapping
   const vesselMap = useMemo(() => {
     if (!vessels) return new Map();
     return new Map(vessels.map(v => [v.entryId, v.name]));
   }, [vessels]);
   
-  // Transform and filter data
   const tableData = useMemo<OtherTestData[]>(() => {
     if (!testRecords) return [];
     
-    // Filter for other tests
     const otherTests = testRecords.filter(record => record.testType === 'others');
     
-    // Transform to table format first
     const transformed = otherTests.map(record => ({
       id: record.id,
       vesselId: record.vesselId,
@@ -207,24 +195,18 @@ export function OtherTestsTable({
       violations: record.violations || 0,
     }));
     
-    // Apply vessel/fleet filtering on transformed data
     if (filterType === "vessel") {
-      // If no vessels selected, show all
       if (selectedVessels.length === 0) return transformed;
-      // Otherwise, show only selected vessels (selectedVessels contains vessel names)
       return transformed.filter(record => selectedVessels.includes(record.vesselName));
     } else if (filterType === "fleet") {
-      // Fleet filtering (placeholder - would need fleet group data)
       return transformed;
     } else if (filterType === "addGroup") {
-      // Additional group filtering (placeholder - would need group data)
       return transformed;
     }
     
     return transformed;
   }, [testRecords, vesselMap, filterType, selectedVessels, fleetValue, addGroupValue]);
   
-  // Column definitions
   const columnDefs = useMemo<ColDef<OtherTestData>[]>(() => [
     {
       headerName: "Vessel",

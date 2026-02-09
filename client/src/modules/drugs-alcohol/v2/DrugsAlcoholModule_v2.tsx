@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import MainLayout from '@/components/main/MainLayout';
-import DrugsAlcoholSideBar from '../DrugsAlcoholSideBar';
+import DrugsAlcoholSideBar from './DrugsAlcoholSideBar_v2';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter, ChevronDown, Plus } from 'lucide-react';
-import { AnnualTestTable } from '../AnnualTestTable';
-import { PeriodicTestTable } from '../PeriodicTestTable';
-import { MonthlyTestTable } from '../MonthlyTestTable';
-import { PostIncidentTestTable } from '../PostIncidentTestTable';
-import { OtherTestsTable } from '../OtherTestsTable';
-import { SummaryTable } from '../SummaryTable';
+import { AnnualTestTable_v2 } from './AnnualTestTable_v2';
+import { PeriodicTestTable_v2 } from './PeriodicTestTable_v2';
+import { MonthlyTestTable_v2 } from './MonthlyTestTable_v2';
+import { PostIncidentTestTable_v2 } from './PostIncidentTestTable_v2';
+import { OtherTestsTable_v2 } from './OtherTestsTable_v2';
+import { SummaryTable_v2 } from './SummaryTable_v2';
 import { DrugAlcoholTestForm_v2 } from './DrugAlcoholTestForm_v2';
 import { DrugsAlcoholVersionToggle } from './components/DrugsAlcoholVersionToggle';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
@@ -529,14 +529,13 @@ export function DrugsAlcoholModule_v2() {
                             </div>
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
-                        <AnnualTestTable
+                        <AnnualTestTable_v2
                             filterType={filterType}
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onAdd={(vesselId) => handleOpenForm('annual', vesselId)}
                             onEdit={(recordId) => handleOpenForm('annual', undefined, String(recordId))}
-                            useV2={true}
                         />
                     </div>
                 );
@@ -559,14 +558,13 @@ export function DrugsAlcoholModule_v2() {
                             </div>
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
-                        <PeriodicTestTable
+                        <PeriodicTestTable_v2
                             filterType={filterType}
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onAdd={(vesselId) => handleOpenForm('periodic', vesselId)}
                             onEdit={(recordId) => handleOpenForm('periodic', undefined, String(recordId))}
-                            useV2={true}
                         />
                     </div>
                 );
@@ -589,14 +587,13 @@ export function DrugsAlcoholModule_v2() {
                             </div>
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
-                        <MonthlyTestTable
+                        <MonthlyTestTable_v2
                             filterType={filterType}
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onAdd={(vesselId) => handleOpenForm('monthly', vesselId)}
                             onEdit={(recordId) => handleOpenForm('monthly', undefined, String(recordId))}
-                            useV2={true}
                         />
                     </div>
                 );
@@ -629,13 +626,12 @@ export function DrugsAlcoholModule_v2() {
                             </div>
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
-                        <PostIncidentTestTable
+                        <PostIncidentTestTable_v2
                             filterType={filterType}
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onEdit={(recordId) => handleOpenForm('post-incident', undefined, String(recordId))}
-                            useV2={true}
                         />
                     </div>
                 );
@@ -668,13 +664,12 @@ export function DrugsAlcoholModule_v2() {
                             </div>
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
-                        <OtherTestsTable
+                        <OtherTestsTable_v2
                             filterType={filterType}
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
                             onEdit={(recordId) => handleOpenForm('others', undefined, String(recordId))}
-                            useV2={true}
                         />
                     </div>
                 );
@@ -686,11 +681,10 @@ export function DrugsAlcoholModule_v2() {
                         </SectionTitleComponents>
                         {renderVesselOnlyFilterBar()}
                         {summarySelectedVessel && (
-                            <SummaryTable 
+                            <SummaryTable_v2 
                                 selectedVessel={summarySelectedVessel}
                                 onAdd={(testType) => handleOpenForm(testType, summarySelectedVessel)}
                                 onEdit={(testType, recordId) => handleOpenForm(testType, summarySelectedVessel, String(recordId))}
-                                useV2={true}
                             />
                         )}
                     </div>

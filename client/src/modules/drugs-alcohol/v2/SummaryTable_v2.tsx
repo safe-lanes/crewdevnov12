@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 
-// History Header Component (matches Annual table)
 const HistoryHeaderComponent = (props: any) => {
   const { showAllHistory, setShowAllHistory } = props.context;
 
@@ -53,36 +52,32 @@ interface SummaryTableProps {
   onEdit?: (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', recordId: number) => void;
 }
 
-// Calculate "Due In" status and color
 const calculateDueInStatus = (nextDueDate: string | undefined): { label: string; color: string; textColor: string } | null => {
   if (!nextDueDate) return null;
   
   try {
-    // Parse the date string safely using date-fns parse (format: "dd-MMM-yyyy")
     const dueDate = parse(nextDueDate, 'dd-MMM-yyyy', new Date());
     const today = new Date();
     const daysUntilDue = differenceInDays(dueDate, today);
     const monthsUntilDue = differenceInMonths(dueDate, today);
     
     if (daysUntilDue < 0) {
-      return { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' }; // Red - Overdue
+      return { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' };
     } else if (monthsUntilDue < 1) {
-      return { label: '1M', color: '#F9ECEF', textColor: '#000000' }; // Light pink/cream
+      return { label: '1M', color: '#F9ECEF', textColor: '#000000' };
     } else if (monthsUntilDue < 2) {
-      return { label: '2M', color: '#FFCC00', textColor: '#000000' }; // Yellow
+      return { label: '2M', color: '#FFCC00', textColor: '#000000' };
     } else if (monthsUntilDue < 3) {
-      return { label: '3M', color: '#FFEEAA', textColor: '#000000' }; // Light yellow/cream
+      return { label: '3M', color: '#FFEEAA', textColor: '#000000' };
     }
     
-    return null; // More than 3 months - no badge needed
+    return null;
   } catch {
     return null;
   }
 };
 
-// Test History Cell Renderer (reused from Annual)
 const TestHistoryCellRenderer = (params: ICellRendererParams) => {
-  // Defensive guard for AG Grid initialization
   if (!params.colDef || !params.data) return null;
   
   const testData = params.value as TestRecord | undefined;
@@ -120,20 +115,17 @@ const TestHistoryCellRenderer = (params: ICellRendererParams) => {
   );
 };
 
-// Frequency Cell Renderer
 const FrequencyCellRenderer = (params: ICellRendererParams) => {
-  // Defensive guard for AG Grid initialization
   if (!params.colDef || !params.data) return null;
   
   if (!params.data?.hasPlanning) {
-    return null; // No frequency dropdown for Post Incident/Other
+    return null;
   }
 
   const frequency = params.value || 12;
 
   const handleChange = (value: string) => {
     console.log('Frequency changed for', params.data?.testType, 'to', value);
-    // TODO: Update frequency via API
   };
 
   const getLabel = (months: number) => {
@@ -161,9 +153,7 @@ const FrequencyCellRenderer = (params: ICellRendererParams) => {
   );
 };
 
-// Actions Cell Renderer
 const ActionsCellRenderer = (params: ICellRendererParams) => {
-  // Defensive guard for AG Grid initialization
   if (!params.colDef || !params.data) return null;
   
   const { onAdd } = params.context || {};
@@ -189,11 +179,14 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
   );
 };
 
-export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProps) {
+export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const apiBase = '/api/v2/drugs-alcohol/test-records';
+  const queryKeyBase = ['v2', 'drugs-alcohol', 'test-records'];
+  const updateMethod = 'PATCH';
+  const invalidateKey = ['v2', 'drugs-alcohol'];
 
-  // Fetch all test records
   const { data: testRecords = [] } = useQuery<Array<{
     id: number;
     vesselId: string;
@@ -208,15 +201,14 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
     plannedDate?: string;
     plannedComments?: string;
   }>>({
-    queryKey: ['/api/drug-alcohol-tests'],
+    queryKey: queryKeyBase,
     queryFn: async () => {
-      const response = await fetch('/api/drug-alcohol-tests');
+      const response = await fetch(apiBase);
       if (!response.ok) throw new Error('Failed to fetch drug alcohol tests');
       return response.json();
     },
   });
 
-  // Helper function to calculate violations from personnelTested
   const calculateViolations = (personnelTestedStr?: string): number => {
     if (!personnelTestedStr) return 0;
     try {
@@ -228,15 +220,12 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
     }
   };
 
-  // Helper function to parse date from various formats
   const parseTestDate = (dateStr?: string): Date | null => {
     if (!dateStr) return null;
     try {
-      // Handle ISO format (2025-12-20T18:30)
       if (dateStr.includes('T')) {
         return new Date(dateStr);
       }
-      // Handle "31 May 2023 - 1010 Hours" format
       const match = dateStr.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})/);
       if (match) {
         return new Date(`${match[1]} ${match[2]} ${match[3]}`);
@@ -247,7 +236,6 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
     }
   };
 
-  // Aggregate data by test type for the selected vessel
   const summaryData = useMemo<SummaryRowData[]>(() => {
     const testTypes = [
       { type: 'annual', label: 'Annual', hasPlanning: true },
@@ -257,18 +245,14 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
       { type: 'others', label: 'Other', hasPlanning: false },
     ];
 
-    // Helper to get the appropriate date field based on test type
     const getTestDateField = (record: typeof testRecords[0], testType: string): string | undefined => {
       if (testType === 'post-incident') {
-        // For post-incident, use alcoholTestDateTime as the primary date
         return record.alcoholTestDateTime;
       }
-      // For all other types, use dateTimeTestCompleted
       return record.dateTimeTestCompleted;
     };
 
     return testTypes.map(({ type, label, hasPlanning }) => {
-      // Get all records for this vessel and test type
       const records = testRecords.filter(
         r => r.testType === type && r.vesselId === selectedVessel
       );
@@ -281,7 +265,6 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
         };
       }
 
-      // Sort records by date (most recent first) to build history
       const sortedRecords = [...records].sort((a, b) => {
         const dateA = parseTestDate(getTestDateField(a, type));
         const dateB = parseTestDate(getTestDateField(b, type));
@@ -291,7 +274,6 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
         return dateB.getTime() - dateA.getTime();
       });
 
-      // Build test history from actual records
       const history: TestRecord[] = sortedRecords.map(record => {
         const testDate = parseTestDate(getTestDateField(record, type));
         return {
@@ -306,10 +288,8 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
       const secondLastTest = history[1];
       const thirdLastTest = history[2];
 
-      // Get the most recent record for frequency and planning info
       const mostRecentRecord = sortedRecords[0];
 
-      // Calculate next due date from the last test date
       let nextDueDate: string | undefined;
       if (hasPlanning && lastTest?.date && mostRecentRecord.frequencyMonths) {
         try {
@@ -338,7 +318,6 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
     });
   }, [testRecords, selectedVessel]);
 
-  // Static legend for "Due in:" labels (always shows all 4 in descending order)
   const staticLegend = [
     { label: '3M', color: '#FFEEAA', textColor: '#000000' },
     { label: '2M', color: '#FFCC00', textColor: '#000000' },
@@ -346,7 +325,6 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
     { label: 'O/D', color: '#D50A0D', textColor: '#FFFFFF' },
   ];
 
-  // Column definitions
   const columnDefs = useMemo<ColDef<SummaryRowData>[]>(() => {
     const baseCols: ColDef<SummaryRowData>[] = [
       {
@@ -390,11 +368,8 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
         cellRenderer: (params: ICellRendererParams) => {
           if (!params.value) return null;
           
-          // Calculate color based on urgency
           const status = calculateDueInStatus(params.value);
           
-          // Only apply color coding if date falls within urgency period (<3 months or overdue)
-          // Dates >3 months away have no background color
           if (status) {
             return (
               <div 
@@ -406,7 +381,6 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
             );
           }
           
-          // No color coding for dates >3 months away
           return (
             <div className="text-xs font-semibold text-gray-700">
               {params.value}
@@ -456,7 +430,6 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
 
   return (
     <div className="flex flex-col flex-1 gap-4">
-      {/* Static Due In Legend */}
       <div className="flex gap-2 items-center">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due in:</span>
         {staticLegend.map((item, index) => (
@@ -470,7 +443,6 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
         ))}
       </div>
 
-      {/* AG Grid Table */}
       <div className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
         <div className="ag-theme-alpine dark:ag-theme-alpine-dark h-full">
           <AgGridReact
@@ -491,7 +463,6 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
               onEdit,
             }}
             onCellValueChanged={async (event: CellValueChangedEvent) => {
-              // Only handle changes to plannedComments, plannedPort, or plannedDate
               const field = event.colDef.field;
               if (field === 'plannedComments' || field === 'plannedPort' || field === 'plannedDate') {
                 try {
@@ -502,12 +473,11 @@ export function SummaryTable({ selectedVessel, onAdd, onEdit }: SummaryTableProp
                   }
                   const updateData = { [field]: event.newValue };
                   
-                  await apiRequest('PUT', `/api/drug-alcohol-tests/${recordId}`, updateData);
+                  await apiRequest(updateMethod, `${apiBase}/${recordId}`, updateData);
                   
-                  queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
+                  queryClient.invalidateQueries({ queryKey: invalidateKey });
                 } catch (error) {
                   console.error('Failed to update test record:', error);
-                  // Optionally show error toast to user
                 }
               }
             }}
