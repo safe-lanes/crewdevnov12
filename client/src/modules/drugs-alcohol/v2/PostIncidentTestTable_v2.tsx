@@ -63,11 +63,14 @@ function calculateHoursDifference(incidentDateTime: string, testDateTime: string
 }
 
 function calculateViolations(personnelTested: any): number {
-  if (!personnelTested || !Array.isArray(personnelTested)) return 0;
-  return personnelTested.filter((p: any) => {
-    const result = (p.result || '').toLowerCase();
-    return result === 'positive' || result === 'fail';
-  }).length;
+  if (!personnelTested) return 0;
+  try {
+    const personnel = typeof personnelTested === 'string' ? JSON.parse(personnelTested) : personnelTested;
+    if (!Array.isArray(personnel)) return 0;
+    return personnel.filter((p: any) => p.alcoholViolation === true || p.drugViolation === true).length;
+  } catch {
+    return 0;
+  }
 }
 
 const ViolationsCellRenderer = (props: ICellRendererParams) => {
