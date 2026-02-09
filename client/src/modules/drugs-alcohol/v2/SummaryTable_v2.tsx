@@ -33,6 +33,7 @@ interface TestRecord {
 
 interface SummaryRowData {
   id?: number;
+  daUuid?: string | null;
   testType: string;
   testTypeLabel: string;
   lastTest?: TestRecord;
@@ -303,6 +304,7 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
 
       return {
         id: mostRecentRecord.id,
+        daUuid: (mostRecentRecord as any).daUuid || null,
         testType: type,
         testTypeLabel: label,
         lastTest,
@@ -466,14 +468,14 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
               const field = event.colDef.field;
               if (field === 'plannedComments' || field === 'plannedPort' || field === 'plannedDate') {
                 try {
-                  const recordId = event.data.daUuid || event.data.id;
-                  if (!recordId) {
-                    console.error('No record ID found for update');
+                  const recordUuid = event.data.daUuid;
+                  if (!recordUuid) {
+                    console.error('No record UUID found for planned fields update');
                     return;
                   }
                   const updateData = { [field]: event.newValue };
                   
-                  await apiRequest(updateMethod, `${apiBase}/${recordId}`, updateData);
+                  await apiRequest('PATCH', `${apiBase}/${recordUuid}/planned`, updateData);
                   
                   queryClient.invalidateQueries({ queryKey: invalidateKey });
                 } catch (error) {

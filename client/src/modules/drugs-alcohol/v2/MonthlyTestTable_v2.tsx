@@ -463,6 +463,7 @@ export const MonthlyTestTable_v2: React.FC<MonthlyTestTableProps> = ({
 
       return {
         id: latestRecord?.id || `vessel-${vessel.vesselId}`,
+        daUuid: latestRecord?.daUuid || null,
         vesselId: vessel.vesselId,
         vesselName: vessel.vesselName,
         testHistory: testHistory.slice(0, 3),
@@ -628,10 +629,11 @@ export const MonthlyTestTable_v2: React.FC<MonthlyTestTableProps> = ({
             const field = event.colDef.field;
             if (field === 'plannedComments' || field === 'plannedPort' || field === 'plannedDate') {
               try {
-                const recordId = event.data.daUuid || event.data.id;
+                const recordUuid = event.data.daUuid;
+                if (!recordUuid) return;
                 const updateData = { [field]: event.newValue };
                 
-                await apiRequest('PATCH', `${apiBase}/${recordId}/planned`, updateData);
+                await apiRequest('PATCH', `${apiBase}/${recordUuid}/planned`, updateData);
                 
                 queryClient.invalidateQueries({ queryKey: invalidateKey });
               } catch (error) {
