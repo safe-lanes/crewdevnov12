@@ -80,10 +80,10 @@ const drugAlcoholTestFormSchema = z.object({
     date: z.string().optional(),
   }).optional(),
   attachments: z.array(z.object({
-    id: z.union([z.string(), z.number()]),
+    id: z.union([z.string(), z.coerce.number()]),
     name: z.string(),
     type: z.string().optional(),
-    size: z.number().optional(),
+    size: z.coerce.number().optional(),
     data: z.string().optional(),
     uploadedAt: z.string().optional(),
     attUuid: z.string().optional(),
