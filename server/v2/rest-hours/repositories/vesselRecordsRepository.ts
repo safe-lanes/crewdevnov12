@@ -45,6 +45,21 @@ export class VesselRecordsRepository {
     return results[0];
   }
 
+  async findByVesselId(vesselId: string): Promise<RhVesselRecordV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(rhVesselRecordsV2)
+      .where(
+        and(
+          eq(rhVesselRecordsV2.vesselId, vesselId),
+          eq(rhVesselRecordsV2.isDeleted, false)
+        )
+      )
+      .orderBy(desc(rhVesselRecordsV2.createdAt));
+    return results[0];
+  }
+
   async create(
     data: Omit<InsertRhVesselRecordV2, "rhVesselUuid">
   ): Promise<RhVesselRecordV2> {

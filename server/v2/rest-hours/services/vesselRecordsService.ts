@@ -94,13 +94,21 @@ export const vesselRecordsService = {
     }
   },
 
+  async getByVesselId(vesselId: string): Promise<RhVesselRecordV2> {
+    const record = await vesselRecordsRepository.findByVesselId(vesselId);
+    if (!record) {
+      throw new Error(`Vessel record not found for vesselId: ${vesselId}`);
+    }
+    return record;
+  },
+
   async submitVesselReview(
-    rhVesselUuid: string,
+    vesselId: string,
     data: {
       auditUserUuid?: string;
     }
   ): Promise<RhVesselRecordV2> {
-    await this.getByUuid(rhVesselUuid);
+    const record = await this.getByVesselId(vesselId);
 
     const updateData: Partial<InsertRhVesselRecordV2> & { auditUserUuid?: string } = {
       vesselReviewStatus: "Submitted",
@@ -108,16 +116,16 @@ export const vesselRecordsService = {
       auditUserUuid: data.auditUserUuid,
     };
 
-    return this.update(rhVesselUuid, updateData);
+    return this.update(record.rhVesselUuid, updateData);
   },
 
   async submitOfficeReview(
-    rhVesselUuid: string,
+    vesselId: string,
     data: {
       auditUserUuid?: string;
     }
   ): Promise<RhVesselRecordV2> {
-    await this.getByUuid(rhVesselUuid);
+    const record = await this.getByVesselId(vesselId);
 
     const updateData: Partial<InsertRhVesselRecordV2> & { auditUserUuid?: string } = {
       officeReviewStatus: "Submitted",
@@ -125,6 +133,6 @@ export const vesselRecordsService = {
       auditUserUuid: data.auditUserUuid,
     };
 
-    return this.update(rhVesselUuid, updateData);
+    return this.update(record.rhVesselUuid, updateData);
   },
 };

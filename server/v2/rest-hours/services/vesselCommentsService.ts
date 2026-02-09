@@ -61,6 +61,21 @@ export const vesselCommentsService = {
       throw new Error("Month value is required");
     }
 
+    const existing = await vesselCommentsRepository.findAll({
+      vesselId: data.vesselId,
+      monthValue: data.monthValue,
+    });
+
+    if (existing.length > 0) {
+      const dataWithAudit = applyAuditUser(data, false);
+      const { vesselId, monthValue, ...updateFields } = dataWithAudit;
+      const updated = await vesselCommentsRepository.update(existing[0].vesselCommentUuid, updateFields);
+      if (!updated) {
+        throw new Error("Failed to update existing vessel comment");
+      }
+      return updated;
+    }
+
     const dataWithAudit = applyAuditUser(data, true);
     return vesselCommentsRepository.create(dataWithAudit);
   },

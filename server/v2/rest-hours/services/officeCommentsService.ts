@@ -67,6 +67,21 @@ export const officeCommentsService = {
       processedData.reviewDate = isNaN(parsed.getTime()) ? null : parsed;
     }
 
+    const existing = await officeCommentsRepository.findAll({
+      vesselId: data.vesselId,
+      monthValue: data.monthValue,
+    });
+
+    if (existing.length > 0) {
+      const dataWithAudit = applyAuditUser(processedData, false);
+      const { vesselId, monthValue, ...updateFields } = dataWithAudit;
+      const updated = await officeCommentsRepository.update(existing[0].officeCommentUuid, updateFields);
+      if (!updated) {
+        throw new Error("Failed to update existing office comment");
+      }
+      return updated;
+    }
+
     const dataWithAudit = applyAuditUser(processedData, true);
     return officeCommentsRepository.create(dataWithAudit);
   },
