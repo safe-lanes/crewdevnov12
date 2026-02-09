@@ -2,6 +2,35 @@ import { apiRequest } from '@/lib/queryClient';
 
 const V2_BASE = '/api/v2/rest-hours';
 
+function getCrewUserId(): string | null {
+  try {
+    return localStorage.getItem("crewUserId") || null;
+  } catch {
+    return null;
+  }
+}
+
+function withAuditUser<T>(data: T): T {
+  const auditUserUuid = getCrewUserId();
+
+  if (Array.isArray(data)) {
+    return data.map(item =>
+      typeof item === 'object' && item !== null
+        ? { ...item, auditUserUuid }
+        : item
+    ) as T;
+  }
+
+  if (typeof data === 'object' && data !== null) {
+    return {
+      ...data,
+      auditUserUuid,
+    };
+  }
+
+  return data;
+}
+
 export const restHoursApiV2 = {
   vesselRecords: {
     async getAll(params?: { vesselUuid?: string; month?: string; year?: string; monthValue?: string }) {
@@ -25,7 +54,7 @@ export const restHoursApiV2 = {
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/vessel-records`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/vessel-records`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create vessel record');
@@ -34,7 +63,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/vessel-records/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/vessel-records/${uuid}`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update vessel record');
@@ -53,7 +82,7 @@ export const restHoursApiV2 = {
 
     // V1 pattern: /api/rest-hours-vessel-records/submit-review
     async submitVesselReview(uuid: string, data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/vessel-records/${uuid}/submit-vessel-review`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/vessel-records/${uuid}/submit-vessel-review`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to submit vessel review');
@@ -63,7 +92,7 @@ export const restHoursApiV2 = {
 
     // V1 pattern: /api/rest-hours-vessel-records/submit-office-review
     async submitOfficeReview(uuid: string, data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/vessel-records/${uuid}/submit-office-review`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/vessel-records/${uuid}/submit-office-review`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to submit office review');
@@ -94,7 +123,7 @@ export const restHoursApiV2 = {
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/crew-records`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/crew-records`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create crew record');
@@ -103,7 +132,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/crew-records/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/crew-records/${uuid}`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update crew record');
@@ -169,7 +198,7 @@ export const restHoursApiV2 = {
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/daily-records`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/daily-records`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create daily record');
@@ -178,7 +207,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/daily-records/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/daily-records/${uuid}`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update daily record');
@@ -223,7 +252,7 @@ export const restHoursApiV2 = {
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/vessel-comments`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/vessel-comments`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create vessel comment');
@@ -232,7 +261,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/vessel-comments/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/vessel-comments/${uuid}`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update vessel comment');
@@ -268,7 +297,7 @@ export const restHoursApiV2 = {
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/office-comments`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/office-comments`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create office comment');
@@ -277,7 +306,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/office-comments/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/office-comments/${uuid}`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update office comment');
@@ -322,7 +351,7 @@ export const restHoursApiV2 = {
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/nc-reports`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/nc-reports`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create NC report');
@@ -331,7 +360,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/nc-reports/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/nc-reports/${uuid}`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update NC report');
@@ -373,7 +402,7 @@ export const restHoursApiV2 = {
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/fixed-tasks`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/fixed-tasks`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create fixed task');
@@ -382,7 +411,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/fixed-tasks/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/fixed-tasks/${uuid}`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update fixed task');
@@ -427,7 +456,7 @@ export const restHoursApiV2 = {
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/variable-tasks`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/variable-tasks`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create variable task');
@@ -436,7 +465,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/variable-tasks/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/variable-tasks/${uuid}`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update variable task');
@@ -454,7 +483,7 @@ export const restHoursApiV2 = {
     },
 
     async publish(uuid: string) {
-      const response = await apiRequest('POST', `${V2_BASE}/variable-tasks/${uuid}/publish`, {});
+      const response = await apiRequest('POST', `${V2_BASE}/variable-tasks/${uuid}/publish`, withAuditUser({}));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to publish variable task');
@@ -482,7 +511,7 @@ export const restHoursApiV2 = {
     },
 
     async create(data: any) {
-      const response = await apiRequest('POST', `${V2_BASE}/dateline`, data);
+      const response = await apiRequest('POST', `${V2_BASE}/dateline`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create dateline adjustment');
@@ -491,7 +520,7 @@ export const restHoursApiV2 = {
     },
 
     async update(uuid: string, data: any) {
-      const response = await apiRequest('PATCH', `${V2_BASE}/dateline/${uuid}`, data);
+      const response = await apiRequest('PATCH', `${V2_BASE}/dateline/${uuid}`, withAuditUser(data));
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to update dateline adjustment');
