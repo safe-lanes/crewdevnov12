@@ -756,8 +756,7 @@ export const RHRecordingForm = ({
           let hours = record.hours;
           
           if (record.isPlan) {
-            const hasUserData = hours && hours.some((h: string) => h !== '');
-            if (!hasUserData && hasLatestFixedTask) {
+            if (hasLatestFixedTask) {
               hours = [...latestTemplate];
             }
             
