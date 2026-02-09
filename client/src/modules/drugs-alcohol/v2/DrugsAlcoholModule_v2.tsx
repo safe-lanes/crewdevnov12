@@ -134,7 +134,7 @@ export function DrugsAlcoholModule_v2() {
             personnelTested: toJsonString(data.personnelTested),
             comments: data.comments || null,
             masterDeputySignature: toJsonString(data.masterDeputySignature),
-            attachmentFile: data.attachmentFile || null,
+            attachmentFile: data.attachments ? toJsonString(data.attachments) : (data.attachmentFile || null),
             status: status,
         };
     };

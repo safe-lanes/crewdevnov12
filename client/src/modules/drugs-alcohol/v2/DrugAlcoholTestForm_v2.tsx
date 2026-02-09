@@ -232,7 +232,7 @@ export function DrugAlcoholTestForm_v2({
           name: '',
           date: '',
         },
-        attachments: parseJsonField(existingRecord.attachments) || [],
+        attachments: parseJsonField(existingRecord.attachmentFile || existingRecord.attachments) || [],
       };
 
       form.reset(formData as DrugAlcoholTestFormData);
@@ -1811,6 +1811,9 @@ export function DrugAlcoholTestForm_v2({
         onOpenChange={setAttachmentDialogOpen}
         attachments={form.watch('attachments') || []}
         onAttachmentsChange={(attachments) => form.setValue('attachments', attachments)}
+        onDeleteAttachment={async (_id: number, attUuid: string) => {
+          await drugsAlcoholApiV2.attachments.delete(attUuid);
+        }}
         title="D&A Test Attachments"
         itemName={form.watch('vesselId') ? getVesselName(form.watch('vesselId') || '') : 'Drug & Alcohol Test'}
       />

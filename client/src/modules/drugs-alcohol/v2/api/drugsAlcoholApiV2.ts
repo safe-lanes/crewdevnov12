@@ -86,6 +86,32 @@ export const drugsAlcoholApiV2 = {
     },
   },
 
+  attachments: {
+    async getByTestRecord(testRecordUuid: string) {
+      const response = await fetch(`${V2_BASE}/attachments/${encodeURIComponent(testRecordUuid)}`);
+      if (!response.ok) throw new Error('Failed to fetch attachments');
+      return response.json();
+    },
+
+    async upload(testRecordUuid: string, data: { name: string; type: string; size: number; data: string; uploadedAt?: string }) {
+      const response = await apiRequest('POST', `${V2_BASE}/attachments/${encodeURIComponent(testRecordUuid)}`, withAuditUser(data));
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(error.message || 'Failed to upload attachment');
+      }
+      return response.json();
+    },
+
+    async delete(attUuid: string) {
+      const response = await apiRequest('DELETE', `${V2_BASE}/attachments/${encodeURIComponent(attUuid)}`);
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(error.message || 'Failed to delete attachment');
+      }
+      return response.json();
+    },
+  },
+
   crew: {
     async getOnboardByVessel(vesselUuid: string) {
       const response = await fetch(`${V2_BASE}/crew/vessel/${encodeURIComponent(vesselUuid)}`);

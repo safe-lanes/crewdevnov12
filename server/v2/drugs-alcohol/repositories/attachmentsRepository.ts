@@ -33,6 +33,35 @@ export class AttachmentsRepository {
     return results[0];
   }
 
+  async findByUuid(attUuid: string): Promise<DaAttachmentV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(daAttachmentsV2)
+      .where(
+        and(
+          eq(daAttachmentsV2.attUuid, attUuid),
+          eq(daAttachmentsV2.isDeleted, false)
+        )
+      );
+    return results[0];
+  }
+
+  async softDeleteByUuid(attUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db
+      .update(daAttachmentsV2)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(
+        and(
+          eq(daAttachmentsV2.attUuid, attUuid),
+          eq(daAttachmentsV2.isDeleted, false)
+        )
+      )
+      .returning();
+    return results.length > 0;
+  }
+
   async softDeleteByTestRecordUuid(testRecordUuid: string): Promise<boolean> {
     const db = getDb();
     const results = await db
