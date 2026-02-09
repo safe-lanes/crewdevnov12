@@ -80,13 +80,15 @@ const drugAlcoholTestFormSchema = z.object({
     date: z.string().optional(),
   }).optional(),
   attachments: z.array(z.object({
-    id: z.string(),
+    id: z.union([z.string(), z.number()]),
     name: z.string(),
-    type: z.string(),
-    size: z.number(),
-    data: z.string(),
-    uploadedAt: z.string(),
-  })).optional(),
+    type: z.string().optional(),
+    size: z.number().optional(),
+    data: z.string().optional(),
+    uploadedAt: z.string().optional(),
+    attUuid: z.string().optional(),
+    url: z.string().optional(),
+  }).passthrough()).optional(),
 });
 
 type DrugAlcoholTestFormData = z.infer<typeof drugAlcoholTestFormSchema>;
@@ -509,6 +511,31 @@ export function DrugAlcoholTestForm_v2({
       })
     };
     onSubmit(cleanedData);
+  };
+
+  const handleFormError = (errors: any) => {
+    const firstErrorKey = Object.keys(errors)[0];
+    const firstError = errors[firstErrorKey];
+    let message = 'Please fix the form errors before submitting.';
+    if (firstError?.message) {
+      message = String(firstError.message);
+    } else if (firstError?.root?.message) {
+      message = String(firstError.root.message);
+    } else if (Array.isArray(firstError) && firstError.length > 0) {
+      const nested = firstError.find((e: any) => e);
+      if (nested) {
+        const nestedKey = Object.keys(nested)[0];
+        if (nested[nestedKey]?.message) {
+          message = `${firstErrorKey}: ${String(nested[nestedKey].message)}`;
+        }
+      }
+    }
+    toast({
+      title: "Validation Error",
+      description: message,
+      variant: "destructive",
+    });
+    console.error('Form validation errors:', errors);
   };
 
   const handleDelete = () => {
@@ -1605,7 +1632,8 @@ export function DrugAlcoholTestForm_v2({
               Save
             </Button>
             <Button
-              type="submit"
+              type="button"
+              onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
               className="bg-green-600 hover:bg-green-700 text-white px-6"
               data-testid="button-submit-form"
             >
@@ -1690,7 +1718,7 @@ export function DrugAlcoholTestForm_v2({
             </Button>
             <Button 
               size="sm"
-              onClick={form.handleSubmit(handleFormSubmit)}
+              onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#16569e] hover:bg-[#16569e]/90"
               data-testid="button-submit"
             >
@@ -1699,7 +1727,7 @@ export function DrugAlcoholTestForm_v2({
             </Button>
             <Button 
               size="sm"
-              onClick={form.handleSubmit(handleFormSubmit)}
+              onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
               className="sm:hidden bg-[#16569e] hover:bg-[#16569e]/90"
               data-testid="button-submit-mobile"
             >
@@ -1796,7 +1824,7 @@ export function DrugAlcoholTestForm_v2({
           <main className="flex-1 overflow-y-auto" ref={continuousScrollContainerRef}>
             <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+                <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormError)} className="space-y-6">
                   {renderContinuousSections()}
                 </form>
               </Form>
@@ -1809,8 +1837,8 @@ export function DrugAlcoholTestForm_v2({
       <FileAttachmentDialog
         open={attachmentDialogOpen}
         onOpenChange={setAttachmentDialogOpen}
-        attachments={form.watch('attachments') || []}
-        onAttachmentsChange={(attachments) => form.setValue('attachments', attachments)}
+        attachments={(form.watch('attachments') || []) as any}
+        onAttachmentsChange={(attachments) => form.setValue('attachments', attachments as any)}
         onDeleteAttachment={async (_id: number, attUuid: string) => {
           await drugsAlcoholApiV2.attachments.delete(attUuid);
         }}
