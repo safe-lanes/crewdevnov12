@@ -505,6 +505,7 @@ export const restHoursApiV2 = {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to delete dateline adjustment');
       }
+      if (response.status === 204) return { success: true };
       return response.json();
     },
   },
