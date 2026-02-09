@@ -36,7 +36,7 @@ const drugAlcoholTestFormSchema = z.object({
   // A1. General Information
   vesselId: z.string().optional(),
   placeLocation: z.string().optional(),
-  alcoholDrugType: z.array(z.string()).optional(), // Multi-select: ["Alcohol"], ["Drug"], or both
+  alcoholDrugType: z.array(z.string()).optional(),
   initiatedBy: z.string().optional(),
   dateTimeTestCompleted: z.string().optional(),
   incidentTitle: z.string().optional(),
@@ -90,6 +90,19 @@ const drugAlcoholTestFormSchema = z.object({
     url: z.string().optional(),
   }).passthrough()).optional(),
 });
+
+function stripNulls(obj: any): any {
+  if (obj === null) return undefined;
+  if (Array.isArray(obj)) return obj.map(stripNulls);
+  if (typeof obj === 'object' && obj !== null) {
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = value === null ? undefined : stripNulls(value);
+    }
+    return result;
+  }
+  return obj;
+}
 
 type DrugAlcoholTestFormData = z.infer<typeof drugAlcoholTestFormSchema>;
 
@@ -224,17 +237,17 @@ export function DrugAlcoholTestForm_v2({
         description: existingRecord.description || '',
         externalTestResultsDate: existingRecord.externalTestResultsDate || '',
         equipmentNotApplicable: existingRecord.equipmentNotApplicable || false,
-        testingEquipment: parseJsonField(existingRecord.testingEquipment) || [
+        testingEquipment: stripNulls(parseJsonField(existingRecord.testingEquipment)) || [
           { id: `eq-${Date.now()}`, equipmentId: '', makeModel: '', serialNo: '', lastCalibrated: '' }
         ],
-        personnelTested: parseJsonField(existingRecord.personnelTested) || [],
+        personnelTested: stripNulls(parseJsonField(existingRecord.personnelTested)) || [],
         comments: existingRecord.comments || '',
-        masterDeputySignature: parseJsonField(existingRecord.masterDeputySignature) || {
+        masterDeputySignature: stripNulls(parseJsonField(existingRecord.masterDeputySignature)) || {
           confirmed: false,
           name: '',
           date: '',
         },
-        attachments: parseJsonField(existingRecord.attachmentFile || existingRecord.attachments) || [],
+        attachments: stripNulls(parseJsonField(existingRecord.attachmentFile || existingRecord.attachments)) || [],
       };
 
       form.reset(formData as DrugAlcoholTestFormData);
@@ -514,20 +527,37 @@ export function DrugAlcoholTestForm_v2({
   };
 
   const handleFormError = (errors: any) => {
-    const firstErrorKey = Object.keys(errors)[0];
-    const firstError = errors[firstErrorKey];
-    let message = 'Please fix the form errors before submitting.';
-    if (firstError?.message) {
-      message = String(firstError.message);
-    } else if (firstError?.root?.message) {
-      message = String(firstError.root.message);
-    } else if (Array.isArray(firstError) && firstError.length > 0) {
-      const nested = firstError.find((e: any) => e);
-      if (nested) {
-        const nestedKey = Object.keys(nested)[0];
-        if (nested[nestedKey]?.message) {
-          message = `${firstErrorKey}: ${String(nested[nestedKey].message)}`;
+    const extractMessage = (err: any, path: string): string | null => {
+      if (!err) return null;
+      if (err.message) return `${path}: ${err.message}`;
+      if (err.root?.message) return `${path}: ${err.root.message}`;
+      if (Array.isArray(err)) {
+        for (let i = 0; i < err.length; i++) {
+          if (err[i]) {
+            for (const key of Object.keys(err[i])) {
+              const msg = extractMessage(err[i][key], `${path}[${i}].${key}`);
+              if (msg) return msg;
+            }
+          }
         }
+      }
+      if (typeof err === 'object') {
+        for (const key of Object.keys(err)) {
+          if (key === 'ref') continue;
+          const msg = extractMessage(err[key], `${path}.${key}`);
+          if (msg) return msg;
+        }
+      }
+      return null;
+    };
+
+    let message = 'Please fix the form errors before submitting.';
+    const errorKeys = Object.keys(errors);
+    for (const key of errorKeys) {
+      const msg = extractMessage(errors[key], key);
+      if (msg) {
+        message = msg;
+        break;
       }
     }
     toast({
@@ -535,7 +565,7 @@ export function DrugAlcoholTestForm_v2({
       description: message,
       variant: "destructive",
     });
-    console.error('Form validation errors:', errors);
+    console.error('Form validation errors:', JSON.stringify(errors, null, 2));
   };
 
   const handleDelete = () => {
