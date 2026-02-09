@@ -12,6 +12,7 @@ import {
 
 interface OtherTestData {
   id: number;
+  daUuid: string | null;
   vesselId: string;
   vesselName: string;
   testDateTime: string;
@@ -77,6 +78,14 @@ function parseAlcoholDrugType(value: any): string {
   return String(value);
 }
 
+function calculateViolations(personnelTested: any): number {
+  if (!personnelTested || !Array.isArray(personnelTested)) return 0;
+  return personnelTested.filter((p: any) => {
+    const result = (p.result || '').toLowerCase();
+    return result === 'positive' || result === 'fail';
+  }).length;
+}
+
 const ViolationsCellRenderer = (props: ICellRendererParams) => {
   const value = props.value || 0;
   let colorClass = "text-green-600 dark:text-green-400";
@@ -119,7 +128,7 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   const { onEdit } = props.context || {};
   
   const handleEdit = () => {
-    const recordId = props.data?.daUuid || props.data?.id;
+    const recordId = props.data?.daUuid;
     if (onEdit && recordId) {
       onEdit(recordId);
     }
@@ -132,7 +141,7 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
         size="sm"
         className="h-7 w-7 p-0 hover:bg-blue-100"
         onClick={handleEdit}
-        data-testid={`button-edit-${props.data?.daUuid || props.data.id}`}
+        data-testid={`button-edit-${props.data?.daUuid || props.data?.id}`}
       >
         <Pencil className="h-4 w-4 text-blue-600" />
       </Button>
@@ -151,12 +160,13 @@ export function OtherTestsTable_v2({
   const apiBase = '/api/v2/drugs-alcohol/test-records';
   const queryKeyBase = ['v2', 'drugs-alcohol', 'test-records'];
   
-  const { data: vessels } = useQuery<Array<{ entryId: string; name: string }>>({
-    queryKey: ['/api/masters/014/data'],
+  const { data: vessels } = useQuery<Array<{ vesselUuid: string; vessel: string }>>({
+    queryKey: ['/api/v2/vessel/list'],
   });
   
   const { data: testRecords } = useQuery<Array<{
     id: number;
+    daUuid?: string;
     vesselId: string;
     testType: string;
     dateTimeTestCompleted?: string;
@@ -164,6 +174,7 @@ export function OtherTestsTable_v2({
     reasonForTesting?: string;
     description?: string;
     initiatedBy?: string;
+    personnelTested?: any[];
     violations?: number;
   }>>({
     queryKey: queryKeyBase,
@@ -175,8 +186,8 @@ export function OtherTestsTable_v2({
   });
   
   const vesselMap = useMemo(() => {
-    if (!vessels) return new Map();
-    return new Map(vessels.map(v => [v.entryId, v.name]));
+    if (!vessels) return new Map<string, string>();
+    return new Map(vessels.map(v => [v.vesselUuid, v.vessel]));
   }, [vessels]);
   
   const tableData = useMemo<OtherTestData[]>(() => {
@@ -186,6 +197,7 @@ export function OtherTestsTable_v2({
     
     const transformed = otherTests.map(record => ({
       id: record.id,
+      daUuid: record.daUuid || null,
       vesselId: record.vesselId,
       vesselName: vesselMap.get(record.vesselId) || record.vesselId,
       testDateTime: formatDateTime(record.dateTimeTestCompleted || ''),
@@ -193,7 +205,7 @@ export function OtherTestsTable_v2({
       reasonForTesting: record.reasonForTesting || '',
       description: record.description || '',
       initiatedBy: record.initiatedBy || '',
-      violations: record.violations || 0,
+      violations: record.violations ?? calculateViolations(record.personnelTested) ?? 0,
     }));
     
     if (filterType === "vessel") {
