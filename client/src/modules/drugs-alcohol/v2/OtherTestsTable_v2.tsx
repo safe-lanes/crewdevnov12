@@ -208,7 +208,7 @@ export function OtherTestsTable_v2({
       reasonForTesting: record.reasonForTesting || '',
       description: record.description || '',
       initiatedBy: record.initiatedBy || '',
-      violations: record.violations ?? calculateViolations(record.personnelTested) ?? 0,
+      violations: calculateViolations(record.personnelTested),
     }));
     
     if (filterType === "vessel") {

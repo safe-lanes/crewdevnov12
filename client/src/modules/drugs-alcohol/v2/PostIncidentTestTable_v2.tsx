@@ -175,7 +175,7 @@ export function PostIncidentTestTable_v2({
       drugTestPeriod: record.incidentDateTime && record.drugTestDateTime
         ? calculateHoursDifference(record.incidentDateTime, record.drugTestDateTime)
         : 'N/A',
-      violations: record.violations ?? calculateViolations(record.personnelTested) ?? 0,
+      violations: calculateViolations(record.personnelTested),
     }));
     
     if (filterType === "vessel") {
