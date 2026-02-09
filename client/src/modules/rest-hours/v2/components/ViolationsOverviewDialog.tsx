@@ -194,7 +194,7 @@ export function ViolationsOverviewDialog({
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', resolvedVesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments'] });
       toast({
         title: 'Success',
         description: 'Vessel comment saved successfully',

@@ -310,7 +310,7 @@ export function VesselReviewDialog({
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments'] });
       toast({
         title: 'Success',
         description: 'Vessel comment saved successfully',
@@ -338,7 +338,7 @@ export function VesselReviewDialog({
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments', vesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments'] });
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       toast({
         title: 'Success',
@@ -371,7 +371,7 @@ export function VesselReviewDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments', vesselId] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-comments'] });
       toast({
         title: 'Success',
         description: 'Vessel review submitted successfully',
@@ -410,7 +410,7 @@ export function VesselReviewDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
-      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments', vesselId, monthValue] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'office-comments'] });
       toast({
         title: 'Success',
         description: 'Office review submitted successfully',
