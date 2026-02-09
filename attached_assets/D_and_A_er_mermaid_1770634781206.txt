@@ -1,0 +1,122 @@
+erDiagram
+    da_test_records_v2 {
+        serial id PK
+        text da_uuid UK
+        text vessel_id
+        text test_type
+        text alcohol_drug_type
+        text place_location
+        text date_time_test_completed
+        text external_test_results_date
+        text incident_id
+        boolean equipment_not_applicable
+        text test_history
+        integer frequency_months
+        text planned_port
+        text planned_date
+        text planned_comments
+        text incident_title
+        text incident_date_time
+        text alcohol_test_date_time
+        text drug_test_date_time
+        integer violations
+        text test_date_time
+        text other_test_type
+        text reason_for_testing
+        text description
+        text initiated_by
+        text comments
+        text status
+        integer sort_order
+        timestamptz created_at
+        timestamptz updated_at
+        text created_by_uuid
+        text updated_by_uuid
+        boolean is_deleted
+        boolean is_sync
+    }
+
+    da_testing_equipment_v2 {
+        serial id PK
+        text eq_uuid UK
+        text test_record_uuid FK
+        text equipmentId
+        text makeModel
+        text serialNo
+        text lastCalibrated
+        integer sort_order
+        timestamptz created_at
+        timestamptz updated_at
+        text created_by_uuid
+        text updated_by_uuid
+        boolean is_deleted
+        boolean is_sync
+    }
+
+    da_personnel_tested_v2 {
+        serial id PK
+        text pt_uuid UK
+        text test_record_uuid FK
+        text crewId
+        text rank
+        text name
+        boolean alcoholTest_checked
+        text alcoholTest_date
+        text alcoholTest_time
+        text alcoholResults
+        boolean alcoholViolation
+        boolean drugTest_checked
+        text drugTest_date
+        text drugTest_time
+        text drugResults
+        boolean drugViolation
+        text witness
+        integer sort_order
+        timestamptz created_at
+        timestamptz updated_at
+        text created_by_uuid
+        text updated_by_uuid
+        boolean is_deleted
+        boolean is_sync
+    }
+
+    da_signatures_v2 {
+        serial id PK
+        text sig_uuid UK
+        text test_record_uuid FK
+        boolean confirmed
+        text name
+        text date
+        integer sort_order
+        timestamptz created_at
+        timestamptz updated_at
+        text created_by_uuid
+        text updated_by_uuid
+        boolean is_deleted
+        boolean is_sync
+    }
+
+    da_attachments_v2 {
+        serial id PK
+        text att_uuid UK
+        text test_record_uuid FK
+        text filename
+        text fileType
+        text uploadDate
+        text uploadedBy
+        text fileSize
+        text filePath
+        text fileData
+        integer sort_order
+        timestamptz created_at
+        timestamptz updated_at
+        text created_by_uuid
+        text updated_by_uuid
+        boolean is_deleted
+        boolean is_sync
+    }
+
+    da_test_records_v2 ||--o{ da_testing_equipment_v2 : "has many"
+    da_test_records_v2 ||--o{ da_personnel_tested_v2 : "has many"
+    da_test_records_v2 ||--o| da_signatures_v2 : "has one"
+    da_test_records_v2 ||--o{ da_attachments_v2 : "has many"
