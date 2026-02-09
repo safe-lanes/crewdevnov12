@@ -141,11 +141,6 @@ export function DrugAlcoholTestForm_v2({
   // Vessel lookup hook
   const { getVesselName, vessels } = useVesselLookup();
 
-  // Fetch crew members for the vessel
-  const { data: allCrewMembers = [] } = useQuery<any[]>({
-    queryKey: ['/api/crew-members'],
-  });
-
   // Fetch existing record for editing (V2 - uses UUID)
   const { data: existingRecord, isLoading: recordLoading, isError: recordError } = useQuery<any>({
     queryKey: ['v2', 'drugs-alcohol', recordUuid],
@@ -254,6 +249,13 @@ export function DrugAlcoholTestForm_v2({
   // Active vessel ID: prefer form selection, fallback to prop
   const activeVesselId = formVesselId || vesselId || '';
   
+  // Fetch on-board crew for the active vessel using V2 crew_assignments JOIN
+  const { data: allCrewMembers = [] } = useQuery<any[]>({
+    queryKey: ['v2', 'drugs-alcohol', 'crew', activeVesselId],
+    queryFn: () => drugsAlcoholApiV2.crew.getOnboardByVessel(activeVesselId),
+    enabled: !!activeVesselId,
+  });
+
   // Use centralized rank ordering hook (single source of truth for all modules)
   const { getSortOrder, isLoading: isLoadingRanks } = useRankOrdering(activeVesselId);
   
@@ -262,23 +264,22 @@ export function DrugAlcoholTestForm_v2({
   const showAlcoholFields = alcoholDrugType.includes('Alcohol');
   const showDrugFields = alcoholDrugType.includes('Drug');
 
-  // Filter crew by vessel, sort by rank order, and map to personnel tested format
+  // Sort V2 crew by rank order and map to personnel tested format
+  // V2 endpoint already filters by vessel (crew_assignments.vessel_uuid + is_current=true)
   const vesselCrewPersonnel = useMemo(() => {
-    if (!activeVesselId) return [];
+    if (!activeVesselId || allCrewMembers.length === 0) return [];
     
-    return allCrewMembers
-      .filter((crew: any) => crew.presentVessel === activeVesselId)
+    return [...allCrewMembers]
       .sort((a: any, b: any) => {
         const orderA = getSortOrder(a.presentRank);
         const orderB = getSortOrder(b.presentRank);
         if (orderA !== orderB) return orderA - orderB;
-        // Secondary sort by suffix number (e.g., AB_1 before AB_2)
         const aSuffix = a.presentRank?.includes('_') ? parseInt(a.presentRank.split('_')[1]) || 0 : 0;
         const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
         return aSuffix - bSuffix;
       })
       .map((crew: any) => ({
-        id: crew.id || `crew-${Date.now()}-${Math.random()}`,
+        id: crew.crewUuid || crew.id || `crew-${Date.now()}-${Math.random()}`,
         rank: crew.presentRank || '',
         name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim(),
         alcoholTest: { checked: false, date: '', time: '' },
@@ -314,14 +315,13 @@ export function DrugAlcoholTestForm_v2({
       return { type: 'no_match' as const, matches: [] };
     }
     
-    // Filter crew on current vessel matching exact rank
+    // V2: allCrewMembers is already filtered by vessel via the API endpoint
     const matchingCrew = allCrewMembers
       .filter((crew: any) => 
-        crew.presentVessel === activeVesselId && 
         crew.presentRank === loggedInUserDesignation
       )
       .map((crew: any) => ({
-        id: crew.id,
+        id: crew.crewUuid || crew.id,
         name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim(),
         rank: crew.presentRank || '',
       }));
@@ -1363,11 +1363,10 @@ export function DrugAlcoholTestForm_v2({
                                 control={form.control}
                                 name={`personnelTested.${index}.witness`}
                                 render={({ field }) => {
-                                  const vesselCrew = allCrewMembers.filter(
-                                    crew => crew.presentVessel === formVesselId || crew.presentVessel === vesselId
-                                  );
+                                  // V2: allCrewMembers is already filtered by vessel via the API endpoint
+                                  const vesselCrew = allCrewMembers;
                                   const getCrewDisplayName = (crewId: string) => {
-                                    const crew = vesselCrew.find(c => c.id === crewId);
+                                    const crew = vesselCrew.find((c: any) => c.crewUuid === crewId || c.id === crewId);
                                     if (!crew) return crewId;
                                     const name = `${crew.firstName || ''} ${crew.familyName || ''}`.trim();
                                     const rank = crew.presentRank || '';

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { testRecordsController } from "./controllers";
+import { crewController } from "./controllers/crewController";
 
 const router = Router();
 
@@ -9,5 +10,7 @@ router.get("/test-records/:uuid", testRecordsController.getByUuid);
 router.post("/test-records", testRecordsController.create);
 router.patch("/test-records/:uuid", testRecordsController.update);
 router.delete("/test-records/:uuid", testRecordsController.delete);
+
+router.get("/crew/vessel/:vesselUuid", crewController.getOnboardByVessel);
 
 export default router;

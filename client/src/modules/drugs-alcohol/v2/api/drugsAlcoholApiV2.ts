@@ -85,4 +85,12 @@ export const drugsAlcoholApiV2 = {
       return response.json();
     },
   },
+
+  crew: {
+    async getOnboardByVessel(vesselUuid: string) {
+      const response = await fetch(`${V2_BASE}/crew/vessel/${encodeURIComponent(vesselUuid)}`);
+      if (!response.ok) throw new Error('Failed to fetch onboard crew');
+      return response.json();
+    },
+  },
 };
