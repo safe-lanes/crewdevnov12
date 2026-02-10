@@ -44,6 +44,7 @@ function transformToV1Response(record: TestRecordWithChildren): any {
 
   const personnelJson = record.personnel.map((p) => ({
     id: p.ptUuid,
+    crewId: p.crewId,
     rank: p.rank,
     name: p.name,
     alcoholTest: {
@@ -311,7 +312,7 @@ export const testRecordsService = {
             promises.push(
               personnelTestedRepository.create({
                 testRecordUuid,
-                crewId: item.crewId || null,
+                crewId: item.crewId || item.id || null,
                 rank: item.rank || null,
                 name: item.name || null,
                 alcoholTestChecked: item.alcoholTest?.checked ?? false,
@@ -452,7 +453,7 @@ export const testRecordsService = {
                 keepUuids.push(itemId);
                 promises.push(
                   personnelTestedRepository.updateByUuid(itemId, {
-                    crewId: item.crewId || null,
+                    crewId: item.crewId || item.id || null,
                     rank: item.rank || null,
                     name: item.name || null,
                     alcoholTestChecked: item.alcoholTest?.checked ?? false,
@@ -475,7 +476,7 @@ export const testRecordsService = {
             }
             const created = await personnelTestedRepository.create({
               testRecordUuid,
-              crewId: item.crewId || null,
+              crewId: item.crewId || item.id || null,
               rank: item.rank || null,
               name: item.name || null,
               alcoholTestChecked: item.alcoholTest?.checked ?? false,
