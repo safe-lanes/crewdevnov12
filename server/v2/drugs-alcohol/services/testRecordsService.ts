@@ -283,7 +283,8 @@ export const testRecordsService = {
       try {
         const items = JSON.parse(testingEquipment);
         if (Array.isArray(items)) {
-          for (const item of items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             promises.push(
               equipmentRepository.create({
                 testRecordUuid,
@@ -291,7 +292,7 @@ export const testRecordsService = {
                 makeModel: item.makeModel || null,
                 serialNo: item.serialNo || null,
                 lastCalibrated: item.lastCalibrated || null,
-                sortOrder: item.sortOrder || 0,
+                sortOrder: i,
                 createdByUuid: auditUserUuid || null,
                 updatedByUuid: auditUserUuid || null,
               })
@@ -305,7 +306,8 @@ export const testRecordsService = {
       try {
         const items = JSON.parse(personnelTested);
         if (Array.isArray(items)) {
-          for (const item of items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             promises.push(
               personnelTestedRepository.create({
                 testRecordUuid,
@@ -323,7 +325,7 @@ export const testRecordsService = {
                 drugResults: item.drugResults || null,
                 drugViolation: item.drugViolation ?? false,
                 witness: item.witness || null,
-                sortOrder: item.sortOrder || 0,
+                sortOrder: i,
                 createdByUuid: auditUserUuid || null,
                 updatedByUuid: auditUserUuid || null,
               })
@@ -355,7 +357,8 @@ export const testRecordsService = {
       try {
         const items = JSON.parse(attachmentFile);
         if (Array.isArray(items)) {
-          for (const item of items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             promises.push(
               attachmentsRepository.create({
                 testRecordUuid,
@@ -366,7 +369,7 @@ export const testRecordsService = {
                 uploadDate: item.uploadedAt || null,
                 uploadedBy: auditUserUuid || null,
                 filePath: item.filePath || null,
-                sortOrder: item.sortOrder || 0,
+                sortOrder: i,
                 createdByUuid: auditUserUuid || null,
                 updatedByUuid: auditUserUuid || null,
               })
@@ -396,7 +399,8 @@ export const testRecordsService = {
         const items = JSON.parse(testingEquipment);
         if (Array.isArray(items)) {
           const keepUuids: string[] = [];
-          for (const item of items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             const itemId = item.id;
             if (itemId) {
               const existing = await equipmentRepository.findByUuid(itemId);
@@ -408,7 +412,7 @@ export const testRecordsService = {
                     makeModel: item.makeModel || null,
                     serialNo: item.serialNo || null,
                     lastCalibrated: item.lastCalibrated || null,
-                    sortOrder: item.sortOrder || 0,
+                    sortOrder: i,
                     updatedByUuid: auditUserUuid || null,
                   })
                 );
@@ -421,7 +425,7 @@ export const testRecordsService = {
               makeModel: item.makeModel || null,
               serialNo: item.serialNo || null,
               lastCalibrated: item.lastCalibrated || null,
-              sortOrder: item.sortOrder || 0,
+              sortOrder: i,
               createdByUuid: auditUserUuid || null,
               updatedByUuid: auditUserUuid || null,
             });
@@ -439,7 +443,8 @@ export const testRecordsService = {
         const items = JSON.parse(personnelTested);
         if (Array.isArray(items)) {
           const keepUuids: string[] = [];
-          for (const item of items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             const itemId = item.id;
             if (itemId) {
               const existing = await personnelTestedRepository.findByUuid(itemId);
@@ -461,7 +466,7 @@ export const testRecordsService = {
                     drugResults: item.drugResults || null,
                     drugViolation: item.drugViolation ?? false,
                     witness: item.witness || null,
-                    sortOrder: item.sortOrder || 0,
+                    sortOrder: i,
                     updatedByUuid: auditUserUuid || null,
                   })
                 );
@@ -484,7 +489,7 @@ export const testRecordsService = {
               drugResults: item.drugResults || null,
               drugViolation: item.drugViolation ?? false,
               witness: item.witness || null,
-              sortOrder: item.sortOrder || 0,
+              sortOrder: i,
               createdByUuid: auditUserUuid || null,
               updatedByUuid: auditUserUuid || null,
             });
@@ -548,7 +553,8 @@ export const testRecordsService = {
         const items = JSON.parse(attachmentFile);
         if (Array.isArray(items)) {
           const keepUuids: string[] = [];
-          for (const item of items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             const attUuid = item.id || item.attUuid;
             if (attUuid) {
               const existing = await attachmentsRepository.findByUuid(attUuid);
@@ -563,7 +569,7 @@ export const testRecordsService = {
                     uploadDate: item.uploadedAt || null,
                     uploadedBy: auditUserUuid || null,
                     filePath: item.filePath || null,
-                    sortOrder: item.sortOrder || 0,
+                    sortOrder: i,
                     updatedByUuid: auditUserUuid || null,
                   })
                 );
@@ -579,7 +585,7 @@ export const testRecordsService = {
               uploadDate: item.uploadedAt || null,
               uploadedBy: auditUserUuid || null,
               filePath: item.filePath || null,
-              sortOrder: item.sortOrder || 0,
+              sortOrder: i,
               createdByUuid: auditUserUuid || null,
               updatedByUuid: auditUserUuid || null,
             });

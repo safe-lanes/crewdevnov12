@@ -1,4 +1,4 @@
-import { eq, and, notInArray } from "drizzle-orm";
+import { eq, and, notInArray, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import { daAttachmentsV2 } from "../../../../shared/v2/drugs-alcohol/schema";
 import type {
@@ -18,7 +18,8 @@ export class AttachmentsRepository {
           eq(daAttachmentsV2.testRecordUuid, testRecordUuid),
           eq(daAttachmentsV2.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(daAttachmentsV2.sortOrder));
   }
 
   async create(data: Omit<InsertDaAttachmentV2, "attUuid">): Promise<DaAttachmentV2> {

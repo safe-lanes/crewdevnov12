@@ -1,4 +1,4 @@
-import { eq, and, notInArray } from "drizzle-orm";
+import { eq, and, notInArray, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import { daTestingEquipmentV2 } from "../../../../shared/v2/drugs-alcohol/schema";
 import type {
@@ -18,7 +18,8 @@ export class EquipmentRepository {
           eq(daTestingEquipmentV2.testRecordUuid, testRecordUuid),
           eq(daTestingEquipmentV2.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(daTestingEquipmentV2.sortOrder));
   }
 
   async findByUuid(eqUuid: string): Promise<DaTestingEquipmentV2 | null> {
