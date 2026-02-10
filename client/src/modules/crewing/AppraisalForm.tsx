@@ -3718,7 +3718,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         open={isTrainingNeedsDialogOpen}
         onClose={() => setIsTrainingNeedsDialogOpen(false)}
         onConfirm={addTrainingNeedsFromDatabase}
-        existingCourseIds={form.getValues("trainingNeeds").map(t => t.training).filter(Boolean)}
+        existingCourseIds={(form.getValues("trainingNeeds") || []).map(t => t.training).filter(Boolean)}
       />
 
       {/* Training Followup Database Selection Dialog */}
@@ -3726,7 +3726,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         open={isTrainingFollowupDialogOpen}
         onClose={() => setIsTrainingFollowupDialogOpen(false)}
         onConfirm={addTrainingFollowupsFromDatabase}
-        existingCourseIds={form.getValues("trainingFollowups").map(f => f.correspondingInDB).filter(Boolean)}
+        existingCourseIds={(form.getValues("trainingFollowups") || []).map(f => f.correspondingInDB).filter(Boolean)}
       />
     </div>
   );
