@@ -65,7 +65,7 @@ function transformToV1Response(record: TestRecordWithChildren): any {
 
   const signatureChild = record.signatures[0];
   const signatureJson = signatureChild
-    ? { confirmed: signatureChild.confirmed, name: signatureChild.name, date: signatureChild.date }
+    ? { sigUuid: signatureChild.sigUuid, confirmed: signatureChild.confirmed, name: signatureChild.name, date: signatureChild.date }
     : null;
 
   const attachmentsJson = record.attachments.map((a) => ({
@@ -249,14 +249,7 @@ export const testRecordsService = {
 
     await testRecordsRepository.update(daUuid, parentData);
 
-    await Promise.all([
-      equipmentRepository.softDeleteByTestRecordUuid(daUuid),
-      personnelTestedRepository.softDeleteByTestRecordUuid(daUuid),
-      signaturesRepository.softDeleteByTestRecordUuid(daUuid),
-      attachmentsRepository.softDeleteByTestRecordUuid(daUuid),
-    ]);
-
-    await this._createChildren(daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid);
+    await this._upsertChildren(daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid);
 
     return this.getByUuid(daUuid);
   },
@@ -381,6 +374,222 @@ export const testRecordsService = {
           }
         }
       } catch (e) {}
+    }
+
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
+  },
+
+  async _upsertChildren(
+    testRecordUuid: string,
+    testingEquipment?: string,
+    personnelTested?: string,
+    masterDeputySignature?: string,
+    attachmentFile?: string,
+    auditUserUuid?: string
+  ): Promise<void> {
+    const promises: Promise<any>[] = [];
+
+    if (testingEquipment) {
+      try {
+        const items = JSON.parse(testingEquipment);
+        if (Array.isArray(items)) {
+          const keepUuids: string[] = [];
+          for (const item of items) {
+            const itemId = item.id;
+            if (itemId) {
+              const existing = await equipmentRepository.findByUuid(itemId);
+              if (existing) {
+                keepUuids.push(itemId);
+                promises.push(
+                  equipmentRepository.updateByUuid(itemId, {
+                    equipmentId: item.equipmentId || null,
+                    makeModel: item.makeModel || null,
+                    serialNo: item.serialNo || null,
+                    lastCalibrated: item.lastCalibrated || null,
+                    sortOrder: item.sortOrder || 0,
+                    updatedByUuid: auditUserUuid || null,
+                  })
+                );
+                continue;
+              }
+            }
+            const created = await equipmentRepository.create({
+              testRecordUuid,
+              equipmentId: item.equipmentId || null,
+              makeModel: item.makeModel || null,
+              serialNo: item.serialNo || null,
+              lastCalibrated: item.lastCalibrated || null,
+              sortOrder: item.sortOrder || 0,
+              createdByUuid: auditUserUuid || null,
+              updatedByUuid: auditUserUuid || null,
+            });
+            keepUuids.push(created.eqUuid);
+          }
+          promises.push(equipmentRepository.softDeleteExcluding(testRecordUuid, keepUuids));
+        }
+      } catch (e) {}
+    } else {
+      promises.push(equipmentRepository.softDeleteByTestRecordUuid(testRecordUuid));
+    }
+
+    if (personnelTested) {
+      try {
+        const items = JSON.parse(personnelTested);
+        if (Array.isArray(items)) {
+          const keepUuids: string[] = [];
+          for (const item of items) {
+            const itemId = item.id;
+            if (itemId) {
+              const existing = await personnelTestedRepository.findByUuid(itemId);
+              if (existing) {
+                keepUuids.push(itemId);
+                promises.push(
+                  personnelTestedRepository.updateByUuid(itemId, {
+                    crewId: item.crewId || null,
+                    rank: item.rank || null,
+                    name: item.name || null,
+                    alcoholTestChecked: item.alcoholTest?.checked ?? false,
+                    alcoholTestDate: item.alcoholTest?.date || null,
+                    alcoholTestTime: item.alcoholTest?.time || null,
+                    alcoholResults: item.alcoholResults || null,
+                    alcoholViolation: item.alcoholViolation ?? false,
+                    drugTestChecked: item.drugTest?.checked ?? false,
+                    drugTestDate: item.drugTest?.date || null,
+                    drugTestTime: item.drugTest?.time || null,
+                    drugResults: item.drugResults || null,
+                    drugViolation: item.drugViolation ?? false,
+                    witness: item.witness || null,
+                    sortOrder: item.sortOrder || 0,
+                    updatedByUuid: auditUserUuid || null,
+                  })
+                );
+                continue;
+              }
+            }
+            const created = await personnelTestedRepository.create({
+              testRecordUuid,
+              crewId: item.crewId || null,
+              rank: item.rank || null,
+              name: item.name || null,
+              alcoholTestChecked: item.alcoholTest?.checked ?? false,
+              alcoholTestDate: item.alcoholTest?.date || null,
+              alcoholTestTime: item.alcoholTest?.time || null,
+              alcoholResults: item.alcoholResults || null,
+              alcoholViolation: item.alcoholViolation ?? false,
+              drugTestChecked: item.drugTest?.checked ?? false,
+              drugTestDate: item.drugTest?.date || null,
+              drugTestTime: item.drugTest?.time || null,
+              drugResults: item.drugResults || null,
+              drugViolation: item.drugViolation ?? false,
+              witness: item.witness || null,
+              sortOrder: item.sortOrder || 0,
+              createdByUuid: auditUserUuid || null,
+              updatedByUuid: auditUserUuid || null,
+            });
+            keepUuids.push(created.ptUuid);
+          }
+          promises.push(personnelTestedRepository.softDeleteExcluding(testRecordUuid, keepUuids));
+        }
+      } catch (e) {}
+    } else {
+      promises.push(personnelTestedRepository.softDeleteByTestRecordUuid(testRecordUuid));
+    }
+
+    if (masterDeputySignature) {
+      try {
+        const sig = JSON.parse(masterDeputySignature);
+        if (sig && typeof sig === "object") {
+          const keepSigUuids: string[] = [];
+          if (sig.sigUuid) {
+            const existing = await signaturesRepository.findByUuid(sig.sigUuid);
+            if (existing) {
+              keepSigUuids.push(sig.sigUuid);
+              promises.push(
+                signaturesRepository.updateByUuid(sig.sigUuid, {
+                  confirmed: sig.confirmed ?? false,
+                  name: sig.name || null,
+                  date: sig.date || null,
+                  updatedByUuid: auditUserUuid || null,
+                })
+              );
+            } else {
+              const created = await signaturesRepository.create({
+                testRecordUuid,
+                confirmed: sig.confirmed ?? false,
+                name: sig.name || null,
+                date: sig.date || null,
+                createdByUuid: auditUserUuid || null,
+                updatedByUuid: auditUserUuid || null,
+              });
+              keepSigUuids.push(created.sigUuid);
+            }
+          } else {
+            const created = await signaturesRepository.create({
+              testRecordUuid,
+              confirmed: sig.confirmed ?? false,
+              name: sig.name || null,
+              date: sig.date || null,
+              createdByUuid: auditUserUuid || null,
+              updatedByUuid: auditUserUuid || null,
+            });
+            keepSigUuids.push(created.sigUuid);
+          }
+          promises.push(signaturesRepository.softDeleteExcluding(testRecordUuid, keepSigUuids));
+        }
+      } catch (e) {}
+    } else {
+      promises.push(signaturesRepository.softDeleteByTestRecordUuid(testRecordUuid));
+    }
+
+    if (attachmentFile) {
+      try {
+        const items = JSON.parse(attachmentFile);
+        if (Array.isArray(items)) {
+          const keepUuids: string[] = [];
+          for (const item of items) {
+            const attUuid = item.id || item.attUuid;
+            if (attUuid) {
+              const existing = await attachmentsRepository.findByUuid(attUuid);
+              if (existing) {
+                keepUuids.push(attUuid);
+                promises.push(
+                  attachmentsRepository.updateByUuid(attUuid, {
+                    filename: item.name || null,
+                    fileType: item.type || null,
+                    fileSize: item.size?.toString() || null,
+                    fileData: item.data || null,
+                    uploadDate: item.uploadedAt || null,
+                    uploadedBy: auditUserUuid || null,
+                    filePath: item.filePath || null,
+                    sortOrder: item.sortOrder || 0,
+                    updatedByUuid: auditUserUuid || null,
+                  })
+                );
+                continue;
+              }
+            }
+            const created = await attachmentsRepository.create({
+              testRecordUuid,
+              filename: item.name || null,
+              fileType: item.type || null,
+              fileSize: item.size?.toString() || null,
+              fileData: item.data || null,
+              uploadDate: item.uploadedAt || null,
+              uploadedBy: auditUserUuid || null,
+              filePath: item.filePath || null,
+              sortOrder: item.sortOrder || 0,
+              createdByUuid: auditUserUuid || null,
+              updatedByUuid: auditUserUuid || null,
+            });
+            keepUuids.push(created.attUuid);
+          }
+          promises.push(attachmentsRepository.softDeleteExcluding(testRecordUuid, keepUuids));
+        }
+      } catch (e) {}
+    } else {
+      promises.push(attachmentsRepository.softDeleteByTestRecordUuid(testRecordUuid));
     }
 
     if (promises.length > 0) {

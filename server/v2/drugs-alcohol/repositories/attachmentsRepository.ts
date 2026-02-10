@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, notInArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { daAttachmentsV2 } from "../../../../shared/v2/drugs-alcohol/schema";
 import type {
@@ -47,6 +47,21 @@ export class AttachmentsRepository {
     return results[0];
   }
 
+  async updateByUuid(attUuid: string, data: Partial<InsertDaAttachmentV2>): Promise<DaAttachmentV2> {
+    const db = getDb();
+    const results = await db
+      .update(daAttachmentsV2)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(daAttachmentsV2.attUuid, attUuid),
+          eq(daAttachmentsV2.isDeleted, false)
+        )
+      )
+      .returning();
+    return results[0];
+  }
+
   async softDeleteByUuid(attUuid: string): Promise<boolean> {
     const db = getDb();
     const results = await db
@@ -73,6 +88,23 @@ export class AttachmentsRepository {
           eq(daAttachmentsV2.isDeleted, false)
         )
       )
+      .returning();
+    return results.length > 0;
+  }
+
+  async softDeleteExcluding(testRecordUuid: string, keepUuids: string[]): Promise<boolean> {
+    const db = getDb();
+    const conditions = [
+      eq(daAttachmentsV2.testRecordUuid, testRecordUuid),
+      eq(daAttachmentsV2.isDeleted, false),
+    ];
+    if (keepUuids.length > 0) {
+      conditions.push(notInArray(daAttachmentsV2.attUuid, keepUuids));
+    }
+    const results = await db
+      .update(daAttachmentsV2)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(and(...conditions))
       .returning();
     return results.length > 0;
   }
