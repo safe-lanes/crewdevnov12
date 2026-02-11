@@ -1,6 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import { getDb } from "../../db";
-import { admCompanyTrainingsV2 } from "../../../../shared/v2/admin/schema";
+import { admCompanyTrainingsV2, admTrainingMasterV2 } from "../../../../shared/v2/admin/schema";
 import type { AdmCompanyTrainingV2, InsertAdmCompanyTrainingV2 } from "../../../../shared/v2/admin/types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -50,15 +50,38 @@ export class CompanyTrainingsRepository {
     return results[0];
   }
 
-  async createFromMaster(masterId: number, trainingLabel: string, companyId: string): Promise<AdmCompanyTrainingV2> {
+  async createFromMaster(masterId: number): Promise<AdmCompanyTrainingV2 | null> {
     const db = getDb();
+
+    const existing = await db
+      .select()
+      .from(admCompanyTrainingsV2)
+      .where(and(eq(admCompanyTrainingsV2.trainingMasterId, masterId), eq(admCompanyTrainingsV2.isDeleted, false)));
+    if (existing.length > 0) return existing[0];
+
+    const masters = await db
+      .select()
+      .from(admTrainingMasterV2)
+      .where(eq(admTrainingMasterV2.id, masterId));
+    if (!masters[0]) return null;
+
+    const mt = masters[0];
+
+    const allCompanyTrainings = await db
+      .select()
+      .from(admCompanyTrainingsV2)
+      .where(eq(admCompanyTrainingsV2.isDeleted, false));
+    const maxSortOrder = allCompanyTrainings.reduce((max, ct) => Math.max(max, ct.sortOrder ?? 0), 0);
+
     const results = await db
       .insert(admCompanyTrainingsV2)
       .values({
         ctUuid: uuidv4(),
-        trainingMasterId: masterId,
-        trainingLabel,
-        companyId,
+        trainingMasterId: mt.id,
+        companyId: mt.trainingId,
+        trainingLabel: mt.trainingLabel || mt.trainingName,
+        requirement: mt.requirementReference || null,
+        sortOrder: maxSortOrder + 1,
       })
       .returning();
     return results[0];

@@ -19,11 +19,7 @@ export const trainingMasterService = {
   async create(data: Omit<InsertAdmTrainingMasterV2, "tmUuid">): Promise<AdmTrainingMasterV2> {
     const created = await trainingMasterRepo.create(data);
     if (data.applicableToCompany) {
-      await companyTrainingsRepo.createFromMaster(
-        created.id,
-        data.trainingLabel || data.trainingName,
-        "default"
-      );
+      await companyTrainingsRepo.createFromMaster(created.id);
     }
     return created;
   },
@@ -43,11 +39,7 @@ export const trainingMasterService = {
 
     if (data.applicableToCompany !== undefined && data.applicableToCompany !== existing.applicableToCompany) {
       if (data.applicableToCompany) {
-        await companyTrainingsRepo.createFromMaster(
-          updated.id,
-          data.trainingLabel || updated.trainingLabel || updated.trainingName,
-          "default"
-        );
+        await companyTrainingsRepo.createFromMaster(updated.id);
       } else {
         await companyTrainingsRepo.deleteByMasterId(updated.id);
       }
@@ -85,11 +77,7 @@ export const trainingMasterService = {
 
       if (update.data.applicableToCompany !== undefined && update.data.applicableToCompany !== existing.applicableToCompany) {
         if (update.data.applicableToCompany) {
-          await companyTrainingsRepo.createFromMaster(
-            updated.id,
-            update.data.trainingLabel || updated.trainingLabel || updated.trainingName,
-            "default"
-          );
+          await companyTrainingsRepo.createFromMaster(updated.id);
         } else {
           await companyTrainingsRepo.deleteByMasterId(updated.id);
         }
