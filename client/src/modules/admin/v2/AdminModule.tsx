@@ -786,7 +786,7 @@ const AdminModuleInner = (): JSX.Element => {
     queryFn: async ({ queryKey }) => {
       const vesselId = queryKey[1];
       if (!vesselId) return [];
-      const res = await fetch(`/api/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
+      const res = await fetch(`/api/v2/admin/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
       if (!res.ok) throw new Error('Failed to fetch revisions');
       return res.json();
     },
@@ -800,7 +800,7 @@ const AdminModuleInner = (): JSX.Element => {
     queryFn: async ({ queryKey }) => {
       const vesselId = queryKey[1];
       if (!vesselId) return { nextRevision: 'R0', currentRevisionCount: 0 };
-      const res = await fetch(`/api/training-matrix-vessel-revisions/next-revision/${vesselId}`);
+      const res = await fetch(`/api/v2/admin/training-matrix-vessel-revisions/next-revision/${vesselId}`);
       if (!res.ok) throw new Error('Failed to fetch next revision');
       return res.json();
     },
@@ -816,7 +816,7 @@ const AdminModuleInner = (): JSX.Element => {
     queryFn: async ({ queryKey }) => {
       const vesselId = queryKey[1];
       if (!vesselId) return null;
-      const res = await fetch(`/api/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
+      const res = await fetch(`/api/v2/admin/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
       if (!res.ok) {
         if (res.status === 404) return null;
         throw new Error('Failed to fetch draft');
@@ -1903,7 +1903,7 @@ const AdminModuleInner = (): JSX.Element => {
           try {
             if (revisionMode) {
               // IN REVISION MODE: Load draft data for editing
-              const draftResponse = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
+              const draftResponse = await fetch(`/api/v2/admin/vessel-drafts/by-vessel/${vesselId}`);
               if (draftResponse.ok) {
                 const drafts = await draftResponse.json();
                 if (drafts.length > 0) {
@@ -1986,7 +1986,7 @@ const AdminModuleInner = (): JSX.Element => {
               }
             } else {
               // NON-REVISION MODE: Load latest revision for display
-              const revisionResponse = await fetch(`/api/vessel-revisions/by-vessel/${vesselId}`);
+              const revisionResponse = await fetch(`/api/v2/admin/vessel-revisions/by-vessel/${vesselId}`);
               if (revisionResponse.ok) {
                 const revisions = await revisionResponse.json();
                 if (revisions.length > 0) {
@@ -2951,7 +2951,7 @@ const AdminModuleInner = (): JSX.Element => {
     // (If multiple vessels, each will get their own next revision on submit)
     if (selectedVessels.length === 1) {
       try {
-        const response = await fetch(`/api/vessel-revisions/next-revision/${selectedVessels[0]}`);
+        const response = await fetch(`/api/v2/admin/vessel-revisions/next-revision/${selectedVessels[0]}`);
         if (response.ok) {
           const data = await response.json();
           setNextRevision(data.nextRevision);
@@ -2985,7 +2985,7 @@ const AdminModuleInner = (): JSX.Element => {
 
           try {
             // Use upsert endpoint (updates if exists, creates if not)
-            const response = await fetch('/api/vessel-drafts/upsert', {
+            const response = await fetch('/api/v2/admin/vessel-drafts/upsert', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -3077,7 +3077,7 @@ const AdminModuleInner = (): JSX.Element => {
           const revisionData = JSON.stringify(validData);
 
           try {
-            const response = await fetch('/api/vessel-revisions/submit', {
+            const response = await fetch('/api/v2/admin/vessel-revisions/submit', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
