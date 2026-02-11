@@ -559,7 +559,7 @@ const AdminModuleInner = (): JSX.Element => {
   const isMastersTab = selectedAdminPage === "masters";
   const { data: rawAvailableRanksData, isLoading: rankMasterLoading, error: rankMasterError } = useAvailableRanksV2(undefined, { enabled: isRankAdminTab || isTrainingMatrixTab });
   const sharedRankMasterData = useMemo(() => {
-    if (!rawAvailableRanksData || selectedAdminPage !== "rank-admin") return [];
+    if (!rawAvailableRanksData || (selectedAdminPage !== "rank-admin" && selectedAdminPage !== "training-matrix")) return [];
     return (rawAvailableRanksData as any[]).map((ar: any) => ({
       id: ar.id?.toString() || '',
       rank: ar.name || '',
