@@ -75,7 +75,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import SideBarComponent from '../../components/Navbar/SideBarComponent';
+import SideBarComponent from '../../../components/Navbar/SideBarComponent';
 import MainLayout from "@/components/main/MainLayout";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { 

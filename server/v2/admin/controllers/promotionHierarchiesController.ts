@@ -14,10 +14,13 @@ export const promotionHierarchiesController = {
     }
   },
 
-  async getByUuid(req: Request, res: Response) {
+  async getById(req: Request, res: Response) {
     try {
-      const { phUuid } = req.params;
-      const hierarchy = await promotionHierarchiesService.getByUuid(phUuid);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid promotion hierarchy ID" });
+      }
+      const hierarchy = await promotionHierarchiesService.getById(id);
       res.json(hierarchy);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -46,7 +49,10 @@ export const promotionHierarchiesController = {
 
   async update(req: Request, res: Response) {
     try {
-      const { phUuid } = req.params;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid promotion hierarchy ID" });
+      }
       const result = insertAdmPromotionHierarchyV2Schema
         .omit({ phUuid: true })
         .partial()
@@ -54,7 +60,7 @@ export const promotionHierarchiesController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid promotion hierarchy data", details: result.error.issues });
       }
-      const hierarchy = await promotionHierarchiesService.update(phUuid, result.data);
+      const hierarchy = await promotionHierarchiesService.updateById(id, result.data);
       res.json(hierarchy);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -67,8 +73,11 @@ export const promotionHierarchiesController = {
 
   async delete(req: Request, res: Response) {
     try {
-      const { phUuid } = req.params;
-      const success = await promotionHierarchiesService.delete(phUuid);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid promotion hierarchy ID" });
+      }
+      const success = await promotionHierarchiesService.deleteById(id);
       if (!success) {
         return res.status(404).json({ error: "Promotion hierarchy not found" });
       }

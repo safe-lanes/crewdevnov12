@@ -14,6 +14,15 @@ export class FormsRepository {
       .orderBy(desc(admFormsV2.createdAt));
   }
 
+  async findById(id: number): Promise<AdmFormV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(admFormsV2)
+      .where(and(eq(admFormsV2.id, id), eq(admFormsV2.isDeleted, false)));
+    return results[0];
+  }
+
   async findByUuid(formUuid: string): Promise<AdmFormV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -32,6 +41,16 @@ export class FormsRepository {
     return results[0];
   }
 
+  async updateById(id: number, data: Partial<InsertAdmFormV2>): Promise<AdmFormV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .update(admFormsV2)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(admFormsV2.id, id), eq(admFormsV2.isDeleted, false)))
+      .returning();
+    return results[0];
+  }
+
   async update(formUuid: string, data: Partial<InsertAdmFormV2>): Promise<AdmFormV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -40,6 +59,16 @@ export class FormsRepository {
       .where(and(eq(admFormsV2.formUuid, formUuid), eq(admFormsV2.isDeleted, false)))
       .returning();
     return results[0];
+  }
+
+  async softDeleteById(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db
+      .update(admFormsV2)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(and(eq(admFormsV2.id, id), eq(admFormsV2.isDeleted, false)))
+      .returning();
+    return results.length > 0;
   }
 
   async softDelete(formUuid: string): Promise<boolean> {

@@ -12,6 +12,12 @@ export const availableRanksService = {
     return ranks;
   },
 
+  async getById(id: number): Promise<AdmAvailableRankV2> {
+    const rank = await availableRanksRepo.findById(id);
+    if (!rank) throw new Error(`Available rank not found: ${id}`);
+    return rank;
+  },
+
   async getByUuid(arUuid: string): Promise<AdmAvailableRankV2> {
     const rank = await availableRanksRepo.findByUuid(arUuid);
     if (!rank) throw new Error(`Available rank not found: ${arUuid}`);
@@ -20,6 +26,19 @@ export const availableRanksService = {
 
   async create(data: Omit<InsertAdmAvailableRankV2, "arUuid">): Promise<AdmAvailableRankV2> {
     return availableRanksRepo.create(data);
+  },
+
+  async updateById(id: number, data: Partial<InsertAdmAvailableRankV2>): Promise<AdmAvailableRankV2> {
+    const existing = await availableRanksRepo.findById(id);
+    if (!existing) throw new Error(`Available rank not found: ${id}`);
+
+    if (existing.isSystemRank && data.name && data.name !== existing.name) {
+      throw new Error("Cannot change the name of a system rank. System ranks are protected.");
+    }
+
+    const result = await availableRanksRepo.updateById(id, data);
+    if (!result) throw new Error(`Available rank not found: ${id}`);
+    return result;
   },
 
   async update(arUuid: string, data: Partial<InsertAdmAvailableRankV2>): Promise<AdmAvailableRankV2> {
@@ -35,6 +54,15 @@ export const availableRanksService = {
     return result;
   },
 
+  async deleteById(id: number): Promise<boolean> {
+    const existing = await availableRanksRepo.findById(id);
+    if (!existing) throw new Error(`Available rank not found: ${id}`);
+    if (existing.isSystemRank) {
+      throw new Error("Cannot delete a system rank. System ranks are protected and part of the starter pack.");
+    }
+    return availableRanksRepo.softDeleteById(id);
+  },
+
   async delete(arUuid: string): Promise<boolean> {
     const existing = await availableRanksRepo.findByUuid(arUuid);
     if (!existing) throw new Error(`Available rank not found: ${arUuid}`);
@@ -48,7 +76,7 @@ export const availableRanksService = {
     return availableRanksRepo.softDeleteAll();
   },
 
-  async reorder(orders: { arUuid: string; sortOrder: number }[]): Promise<boolean> {
+  async reorder(orders: { id: number; sortOrder: number }[]): Promise<boolean> {
     return availableRanksRepo.updateSortOrders(orders);
   },
 };

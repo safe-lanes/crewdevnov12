@@ -12,6 +12,12 @@ export const formsService = {
     return formsRepo.findAll();
   },
 
+  async getById(id: number): Promise<AdmFormV2> {
+    const form = await formsRepo.findById(id);
+    if (!form) throw new Error(`Form not found: ${id}`);
+    return form;
+  },
+
   async getByUuid(formUuid: string): Promise<AdmFormV2> {
     const form = await formsRepo.findByUuid(formUuid);
     if (!form) throw new Error(`Form not found: ${formUuid}`);
@@ -22,10 +28,20 @@ export const formsService = {
     return formsRepo.create(data);
   },
 
+  async updateById(id: number, data: Partial<InsertAdmFormV2>): Promise<AdmFormV2> {
+    const form = await formsRepo.updateById(id, data);
+    if (!form) throw new Error(`Form not found: ${id}`);
+    return form;
+  },
+
   async update(formUuid: string, data: Partial<InsertAdmFormV2>): Promise<AdmFormV2> {
     const form = await formsRepo.update(formUuid, data);
     if (!form) throw new Error(`Form not found: ${formUuid}`);
     return form;
+  },
+
+  async deleteById(id: number): Promise<boolean> {
+    return formsRepo.softDeleteById(id);
   },
 
   async delete(formUuid: string): Promise<boolean> {
@@ -81,17 +97,32 @@ export const formsService = {
     let deletedCount = 0;
     for (const form of duplicates) {
       if (form.id !== formToKeep.id) {
-        const success = await formsRepo.softDelete(form.formUuid);
+        const success = await formsRepo.softDeleteById(form.id);
         if (success) deletedCount++;
       }
     }
     return { message: "Cleanup completed", kept: formToKeep.id, deletedCount, totalOriginal: duplicates.length };
   },
 
+  async getVersionsByFormId(formId: number, rankGroupId?: number): Promise<AdmFormVersionV2[]> {
+    const form = await formsRepo.findById(formId);
+    if (!form) throw new Error(`Form not found: ${formId}`);
+    return formVersionsRepo.findByFormId(form.id, rankGroupId);
+  },
+
   async getVersions(formUuid: string, rankGroupId?: number): Promise<AdmFormVersionV2[]> {
     const form = await formsRepo.findByUuid(formUuid);
     if (!form) throw new Error(`Form not found: ${formUuid}`);
     return formVersionsRepo.findByFormId(form.id, rankGroupId);
+  },
+
+  async createVersionByFormId(formId: number, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {
+    const form = await formsRepo.findById(formId);
+    if (!form) throw new Error(`Form not found: ${formId}`);
+    if (!data.rankGroupId) {
+      throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
+    }
+    return formVersionsRepo.create({ ...data, formId: form.id });
   },
 
   async createVersion(formUuid: string, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {

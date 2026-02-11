@@ -14,6 +14,15 @@ export class AvailableRanksRepository {
       .orderBy(asc(admAvailableRanksV2.sortOrder));
   }
 
+  async findById(id: number): Promise<AdmAvailableRankV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(admAvailableRanksV2)
+      .where(and(eq(admAvailableRanksV2.id, id), eq(admAvailableRanksV2.isDeleted, false)));
+    return results[0];
+  }
+
   async findByUuid(arUuid: string): Promise<AdmAvailableRankV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -32,6 +41,16 @@ export class AvailableRanksRepository {
     return results[0];
   }
 
+  async updateById(id: number, data: Partial<InsertAdmAvailableRankV2>): Promise<AdmAvailableRankV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .update(admAvailableRanksV2)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(admAvailableRanksV2.id, id), eq(admAvailableRanksV2.isDeleted, false)))
+      .returning();
+    return results[0];
+  }
+
   async update(arUuid: string, data: Partial<InsertAdmAvailableRankV2>): Promise<AdmAvailableRankV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -40,6 +59,16 @@ export class AvailableRanksRepository {
       .where(and(eq(admAvailableRanksV2.arUuid, arUuid), eq(admAvailableRanksV2.isDeleted, false)))
       .returning();
     return results[0];
+  }
+
+  async softDeleteById(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db
+      .update(admAvailableRanksV2)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(and(eq(admAvailableRanksV2.id, id), eq(admAvailableRanksV2.isDeleted, false)))
+      .returning();
+    return results.length > 0;
   }
 
   async softDelete(arUuid: string): Promise<boolean> {
@@ -62,13 +91,13 @@ export class AvailableRanksRepository {
     return results.length > 0;
   }
 
-  async updateSortOrders(orders: { arUuid: string; sortOrder: number }[]): Promise<boolean> {
+  async updateSortOrders(orders: { id: number; sortOrder: number }[]): Promise<boolean> {
     const db = getDb();
-    for (const { arUuid, sortOrder } of orders) {
+    for (const { id, sortOrder } of orders) {
       await db
         .update(admAvailableRanksV2)
         .set({ sortOrder, updatedAt: new Date() })
-        .where(and(eq(admAvailableRanksV2.arUuid, arUuid), eq(admAvailableRanksV2.isDeleted, false)));
+        .where(and(eq(admAvailableRanksV2.id, id), eq(admAvailableRanksV2.isDeleted, false)));
     }
     return true;
   }

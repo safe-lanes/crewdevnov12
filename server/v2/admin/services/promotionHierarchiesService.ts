@@ -16,6 +16,12 @@ export const promotionHierarchiesService = {
     return hierarchies.map(parseRankPath);
   },
 
+  async getById(id: number): Promise<any> {
+    const hierarchy = await promotionHierarchiesRepo.findById(id);
+    if (!hierarchy) throw new Error(`Promotion hierarchy not found: ${id}`);
+    return parseRankPath(hierarchy);
+  },
+
   async getByUuid(phUuid: string): Promise<any> {
     const hierarchy = await promotionHierarchiesRepo.findByUuid(phUuid);
     if (!hierarchy) throw new Error(`Promotion hierarchy not found: ${phUuid}`);
@@ -27,10 +33,20 @@ export const promotionHierarchiesService = {
     return parseRankPath(hierarchy);
   },
 
+  async updateById(id: number, data: Partial<InsertAdmPromotionHierarchyV2>): Promise<any> {
+    const result = await promotionHierarchiesRepo.updateById(id, data);
+    if (!result) throw new Error(`Promotion hierarchy not found: ${id}`);
+    return parseRankPath(result);
+  },
+
   async update(phUuid: string, data: Partial<InsertAdmPromotionHierarchyV2>): Promise<any> {
     const result = await promotionHierarchiesRepo.update(phUuid, data);
     if (!result) throw new Error(`Promotion hierarchy not found: ${phUuid}`);
     return parseRankPath(result);
+  },
+
+  async deleteById(id: number): Promise<boolean> {
+    return promotionHierarchiesRepo.softDeleteById(id);
   },
 
   async delete(phUuid: string): Promise<boolean> {

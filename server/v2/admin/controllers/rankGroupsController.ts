@@ -6,6 +6,7 @@ import { z } from "zod";
 export const rankGroupsController = {
   async getAll(req: Request, res: Response) {
     try {
+      const includeArchived = req.query.includeArchived !== "false";
       const rankGroups = await rankGroupsService.getAll();
       res.json(rankGroups);
     } catch (error) {
@@ -14,11 +15,14 @@ export const rankGroupsController = {
     }
   },
 
-  async getByFormUuid(req: Request, res: Response) {
+  async getByFormId(req: Request, res: Response) {
     try {
-      const { formUuid } = req.params;
+      const formId = parseInt(req.params.formId);
+      if (isNaN(formId)) {
+        return res.status(400).json({ error: "Invalid form ID" });
+      }
       const includeArchived = req.query.includeArchived !== "false";
-      const rankGroups = await rankGroupsService.getByFormUuid(formUuid, includeArchived);
+      const rankGroups = await rankGroupsService.getByFormId(formId, includeArchived);
       res.json(rankGroups);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -44,10 +48,13 @@ export const rankGroupsController = {
     }
   },
 
-  async getByUuid(req: Request, res: Response) {
+  async getById(req: Request, res: Response) {
     try {
-      const { rgUuid } = req.params;
-      const rankGroup = await rankGroupsService.getByUuid(rgUuid);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid rank group ID" });
+      }
+      const rankGroup = await rankGroupsService.getById(id);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -79,7 +86,10 @@ export const rankGroupsController = {
 
   async update(req: Request, res: Response) {
     try {
-      const { rgUuid } = req.params;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid rank group ID" });
+      }
       const result = insertAdmRankGroupV2Schema
         .omit({ rgUuid: true })
         .partial()
@@ -87,7 +97,7 @@ export const rankGroupsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid rank group data", details: result.error.issues });
       }
-      const rankGroup = await rankGroupsService.update(rgUuid, result.data);
+      const rankGroup = await rankGroupsService.updateById(id, result.data);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -103,10 +113,13 @@ export const rankGroupsController = {
 
   async updateConfiguration(req: Request, res: Response) {
     try {
-      const { rgUuid } = req.params;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid rank group ID" });
+      }
       const { configuration } = req.body;
       const configStr = typeof configuration === "string" ? configuration : JSON.stringify(configuration);
-      const rankGroup = await rankGroupsService.updateConfiguration(rgUuid, configStr);
+      const rankGroup = await rankGroupsService.updateConfigurationById(id, configStr);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -119,8 +132,11 @@ export const rankGroupsController = {
 
   async archive(req: Request, res: Response) {
     try {
-      const { rgUuid } = req.params;
-      const rankGroup = await rankGroupsService.archive(rgUuid);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid rank group ID" });
+      }
+      const rankGroup = await rankGroupsService.archiveById(id);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -133,8 +149,11 @@ export const rankGroupsController = {
 
   async unarchive(req: Request, res: Response) {
     try {
-      const { rgUuid } = req.params;
-      const rankGroup = await rankGroupsService.unarchive(rgUuid);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid rank group ID" });
+      }
+      const rankGroup = await rankGroupsService.unarchiveById(id);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -147,8 +166,11 @@ export const rankGroupsController = {
 
   async delete(req: Request, res: Response) {
     try {
-      const { rgUuid } = req.params;
-      const deleted = await rankGroupsService.delete(rgUuid);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid rank group ID" });
+      }
+      const deleted = await rankGroupsService.deleteById(id);
       if (!deleted) {
         return res.status(404).json({ error: "Rank group not found" });
       }
@@ -161,9 +183,12 @@ export const rankGroupsController = {
 
   async getRankConflicts(req: Request, res: Response) {
     try {
-      const { formUuid } = req.params;
-      const excludeGroupUuid = req.query.excludeGroupUuid as string | undefined;
-      const conflicts = await rankGroupsService.getRankConflicts(formUuid, excludeGroupUuid);
+      const formId = parseInt(req.params.formId);
+      if (isNaN(formId)) {
+        return res.status(400).json({ error: "Invalid form ID" });
+      }
+      const excludeGroupId = req.query.excludeGroupId ? parseInt(req.query.excludeGroupId as string) : undefined;
+      const conflicts = await rankGroupsService.getRankConflictsByFormId(formId, excludeGroupId);
       res.json(conflicts);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

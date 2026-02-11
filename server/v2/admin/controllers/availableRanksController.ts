@@ -33,7 +33,10 @@ export const availableRanksController = {
 
   async update(req: Request, res: Response) {
     try {
-      const { arUuid } = req.params;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid rank ID" });
+      }
       const result = insertAdmAvailableRankV2Schema
         .omit({ arUuid: true })
         .partial()
@@ -41,7 +44,7 @@ export const availableRanksController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid rank data", details: result.error.issues });
       }
-      const rank = await availableRanksService.update(arUuid, result.data);
+      const rank = await availableRanksService.updateById(id, result.data);
       res.json(rank);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -57,8 +60,11 @@ export const availableRanksController = {
 
   async delete(req: Request, res: Response) {
     try {
-      const { arUuid } = req.params;
-      const deleted = await availableRanksService.delete(arUuid);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid rank ID" });
+      }
+      const deleted = await availableRanksService.deleteById(id);
       if (!deleted) {
         return res.status(404).json({ error: "Rank not found" });
       }
@@ -87,9 +93,9 @@ export const availableRanksController = {
 
   async reorder(req: Request, res: Response) {
     try {
-      const { orders } = req.body;
+      const orders = req.body;
       if (!Array.isArray(orders)) {
-        return res.status(400).json({ error: "Invalid reorder data: orders must be an array" });
+        return res.status(400).json({ error: "Invalid reorder data: body must be an array of {id, sortOrder}" });
       }
       const success = await availableRanksService.reorder(orders);
       if (!success) {

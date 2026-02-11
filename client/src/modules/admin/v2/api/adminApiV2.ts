@@ -9,8 +9,8 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async getFormByUuid(formUuid: string) {
-    const res = await fetch(`${V2_BASE}/forms/${formUuid}`);
+  async getFormById(id: number) {
+    const res = await fetch(`${V2_BASE}/forms/${id}`);
     if (!res.ok) throw new Error('Failed to fetch form');
     return res.json();
   },
@@ -20,13 +20,13 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async updateForm(formUuid: string, data: any) {
-    const res = await apiRequest('PUT', `${V2_BASE}/forms/${formUuid}`, data);
+  async updateForm(id: number, data: any) {
+    const res = await apiRequest('PUT', `${V2_BASE}/forms/${id}`, data);
     return res.json();
   },
 
-  async deleteForm(formUuid: string) {
-    const res = await apiRequest('DELETE', `${V2_BASE}/forms/${formUuid}`);
+  async deleteForm(id: number) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/forms/${id}`);
     return res.json();
   },
 
@@ -43,16 +43,16 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async getFormVersions(formUuid: string, rankGroupId?: number) {
+  async getFormVersions(formId: number, rankGroupId?: number) {
     const params = new URLSearchParams();
     if (rankGroupId !== undefined) params.set('rankGroupId', rankGroupId.toString());
-    const res = await fetch(`${V2_BASE}/forms/${formUuid}/versions?${params}`);
+    const res = await fetch(`${V2_BASE}/forms/${formId}/versions?${params}`);
     if (!res.ok) throw new Error('Failed to fetch form versions');
     return res.json();
   },
 
-  async createFormVersion(formUuid: string, data: any) {
-    const res = await apiRequest('POST', `${V2_BASE}/forms/${formUuid}/versions`, data);
+  async createFormVersion(formId: number, data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/forms/${formId}/versions`, data);
     return res.json();
   },
 
@@ -62,10 +62,10 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async getRankGroupsByFormUuid(formUuid: string, includeArchived: boolean = true) {
+  async getRankGroupsByFormId(formId: number, includeArchived: boolean = true) {
     const params = new URLSearchParams();
     if (!includeArchived) params.set('includeArchived', 'false');
-    const res = await fetch(`${V2_BASE}/rank-groups/form/${formUuid}?${params}`);
+    const res = await fetch(`${V2_BASE}/rank-groups/form/${formId}?${params}`);
     if (!res.ok) throw new Error('Failed to fetch rank groups');
     return res.json();
   },
@@ -77,8 +77,8 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async getRankGroupByUuid(rgUuid: string) {
-    const res = await fetch(`${V2_BASE}/rank-groups/${rgUuid}`);
+  async getRankGroupById(id: number) {
+    const res = await fetch(`${V2_BASE}/rank-groups/${id}`);
     if (!res.ok) throw new Error('Failed to fetch rank group');
     return res.json();
   },
@@ -88,35 +88,35 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async updateRankGroup(rgUuid: string, data: any) {
-    const res = await apiRequest('PUT', `${V2_BASE}/rank-groups/${rgUuid}`, data);
+  async updateRankGroup(id: number, data: any) {
+    const res = await apiRequest('PUT', `${V2_BASE}/rank-groups/${id}`, data);
     return res.json();
   },
 
-  async updateRankGroupConfiguration(rgUuid: string, configuration: any) {
-    const res = await apiRequest('PUT', `${V2_BASE}/rank-groups/${rgUuid}/configuration`, { configuration });
+  async updateRankGroupConfiguration(id: number, configuration: any) {
+    const res = await apiRequest('PUT', `${V2_BASE}/rank-groups/${id}/configuration`, { configuration });
     return res.json();
   },
 
-  async archiveRankGroup(rgUuid: string) {
-    const res = await apiRequest('POST', `${V2_BASE}/rank-groups/${rgUuid}/archive`);
+  async archiveRankGroup(id: number) {
+    const res = await apiRequest('POST', `${V2_BASE}/rank-groups/${id}/archive`);
     return res.json();
   },
 
-  async unarchiveRankGroup(rgUuid: string) {
-    const res = await apiRequest('POST', `${V2_BASE}/rank-groups/${rgUuid}/unarchive`);
+  async unarchiveRankGroup(id: number) {
+    const res = await apiRequest('POST', `${V2_BASE}/rank-groups/${id}/unarchive`);
     return res.json();
   },
 
-  async deleteRankGroup(rgUuid: string) {
-    const res = await apiRequest('DELETE', `${V2_BASE}/rank-groups/${rgUuid}`);
+  async deleteRankGroup(id: number) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/rank-groups/${id}`);
     return res.json();
   },
 
-  async getRankConflicts(formUuid: string, excludeGroupUuid?: string) {
+  async getRankConflicts(formId: number, excludeGroupId?: number) {
     const params = new URLSearchParams();
-    if (excludeGroupUuid) params.set('excludeGroupUuid', excludeGroupUuid);
-    const res = await fetch(`${V2_BASE}/rank-groups/form/${formUuid}/rank-conflicts?${params}`);
+    if (excludeGroupId) params.set('excludeGroupId', excludeGroupId.toString());
+    const res = await fetch(`${V2_BASE}/rank-groups/form/${formId}/rank-conflicts?${params}`);
     if (!res.ok) throw new Error('Failed to get rank conflicts');
     return res.json();
   },
@@ -134,13 +134,13 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async updateAvailableRank(arUuid: string, data: any) {
-    const res = await apiRequest('PUT', `${V2_BASE}/available-ranks/${arUuid}`, data);
+  async updateAvailableRank(id: number, data: any) {
+    const res = await apiRequest('PUT', `${V2_BASE}/available-ranks/${id}`, data);
     return res.json();
   },
 
-  async deleteAvailableRank(arUuid: string) {
-    const res = await apiRequest('DELETE', `${V2_BASE}/available-ranks/${arUuid}`);
+  async deleteAvailableRank(id: number) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/available-ranks/${id}`);
     return res.json();
   },
 
@@ -149,8 +149,8 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async reorderAvailableRanks(orders: { arUuid: string; sortOrder: number }[]) {
-    const res = await apiRequest('POST', `${V2_BASE}/available-ranks/reorder`, { orders });
+  async reorderAvailableRanks(orders: { id: number; sortOrder: number }[]) {
+    const res = await apiRequest('POST', `${V2_BASE}/available-ranks/reorder`, orders);
     return res.json();
   },
 
@@ -160,8 +160,8 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async getPromotionHierarchyByUuid(phUuid: string) {
-    const res = await fetch(`${V2_BASE}/promotion-hierarchies/${phUuid}`);
+  async getPromotionHierarchyById(id: number) {
+    const res = await fetch(`${V2_BASE}/promotion-hierarchies/${id}`);
     if (!res.ok) throw new Error('Failed to fetch promotion hierarchy');
     return res.json();
   },
@@ -171,13 +171,13 @@ export const adminApiV2 = {
     return res.json();
   },
 
-  async updatePromotionHierarchy(phUuid: string, data: any) {
-    const res = await apiRequest('PATCH', `${V2_BASE}/promotion-hierarchies/${phUuid}`, data);
+  async updatePromotionHierarchy(id: number, data: any) {
+    const res = await apiRequest('PATCH', `${V2_BASE}/promotion-hierarchies/${id}`, data);
     return res.json();
   },
 
-  async deletePromotionHierarchy(phUuid: string) {
-    const res = await apiRequest('DELETE', `${V2_BASE}/promotion-hierarchies/${phUuid}`);
+  async deletePromotionHierarchy(id: number) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/promotion-hierarchies/${id}`);
     return res.json();
   },
 };

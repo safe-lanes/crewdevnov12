@@ -14,6 +14,15 @@ export class PromotionHierarchiesRepository {
       .orderBy(desc(admPromotionHierarchiesV2.createdAt));
   }
 
+  async findById(id: number): Promise<AdmPromotionHierarchyV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(admPromotionHierarchiesV2)
+      .where(and(eq(admPromotionHierarchiesV2.id, id), eq(admPromotionHierarchiesV2.isDeleted, false)));
+    return results[0];
+  }
+
   async findByUuid(phUuid: string): Promise<AdmPromotionHierarchyV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -32,6 +41,16 @@ export class PromotionHierarchiesRepository {
     return results[0];
   }
 
+  async updateById(id: number, data: Partial<InsertAdmPromotionHierarchyV2>): Promise<AdmPromotionHierarchyV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .update(admPromotionHierarchiesV2)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(admPromotionHierarchiesV2.id, id), eq(admPromotionHierarchiesV2.isDeleted, false)))
+      .returning();
+    return results[0];
+  }
+
   async update(phUuid: string, data: Partial<InsertAdmPromotionHierarchyV2>): Promise<AdmPromotionHierarchyV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -40,6 +59,16 @@ export class PromotionHierarchiesRepository {
       .where(and(eq(admPromotionHierarchiesV2.phUuid, phUuid), eq(admPromotionHierarchiesV2.isDeleted, false)))
       .returning();
     return results[0];
+  }
+
+  async softDeleteById(id: number): Promise<boolean> {
+    const db = getDb();
+    const results = await db
+      .update(admPromotionHierarchiesV2)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(and(eq(admPromotionHierarchiesV2.id, id), eq(admPromotionHierarchiesV2.isDeleted, false)))
+      .returning();
+    return results.length > 0;
   }
 
   async softDelete(phUuid: string): Promise<boolean> {

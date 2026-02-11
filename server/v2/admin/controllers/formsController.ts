@@ -14,10 +14,13 @@ export const formsController = {
     }
   },
 
-  async getByUuid(req: Request, res: Response) {
+  async getById(req: Request, res: Response) {
     try {
-      const { formUuid } = req.params;
-      const form = await formsService.getByUuid(formUuid);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid form ID" });
+      }
+      const form = await formsService.getById(id);
       res.json(form);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -46,7 +49,10 @@ export const formsController = {
 
   async update(req: Request, res: Response) {
     try {
-      const { formUuid } = req.params;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid form ID" });
+      }
       const result = insertAdmFormV2Schema
         .omit({ formUuid: true })
         .partial()
@@ -54,7 +60,7 @@ export const formsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form data", details: result.error.issues });
       }
-      const form = await formsService.update(formUuid, result.data);
+      const form = await formsService.updateById(id, result.data);
       res.json(form);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -67,8 +73,11 @@ export const formsController = {
 
   async delete(req: Request, res: Response) {
     try {
-      const { formUuid } = req.params;
-      const deleted = await formsService.delete(formUuid);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid form ID" });
+      }
+      const deleted = await formsService.deleteById(id);
       if (!deleted) {
         return res.status(404).json({ error: "Form not found" });
       }
@@ -106,9 +115,12 @@ export const formsController = {
 
   async getVersions(req: Request, res: Response) {
     try {
-      const { formUuid } = req.params;
+      const formId = parseInt(req.params.id);
+      if (isNaN(formId)) {
+        return res.status(400).json({ error: "Invalid form ID" });
+      }
       const rankGroupId = req.query.rankGroupId ? parseInt(req.query.rankGroupId as string) : undefined;
-      const versions = await formsService.getVersions(formUuid, rankGroupId);
+      const versions = await formsService.getVersionsByFormId(formId, rankGroupId);
       res.json(versions);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -121,14 +133,17 @@ export const formsController = {
 
   async createVersion(req: Request, res: Response) {
     try {
-      const { formUuid } = req.params;
+      const formId = parseInt(req.params.id);
+      if (isNaN(formId)) {
+        return res.status(400).json({ error: "Invalid form ID" });
+      }
       const result = insertAdmFormVersionV2Schema
         .omit({ fvUuid: true, formId: true })
         .safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
       }
-      const version = await formsService.createVersion(formUuid, result.data);
+      const version = await formsService.createVersionByFormId(formId, result.data);
       res.json(version);
     } catch (error: any) {
       if (error.message?.includes("not found") || error.message?.includes("required")) {
