@@ -4,6 +4,16 @@ import {
   rankGroupsController,
   availableRanksController,
   promotionHierarchiesController,
+  trainingMasterController,
+  companyTrainingGroupsController,
+  companyTrainingsController,
+  companyTrainingRequirementsController,
+  companyRanksController,
+  vesselGroupsController,
+  vesselDraftsController,
+  vesselRevisionsController,
+  trainingMatrixVesselDraftsController,
+  trainingMatrixVesselRevisionsController,
 } from "./controllers";
 
 const router = Router();
@@ -43,5 +53,67 @@ router.get("/promotion-hierarchies/:id", promotionHierarchiesController.getById)
 router.post("/promotion-hierarchies", promotionHierarchiesController.create);
 router.patch("/promotion-hierarchies/:id", promotionHierarchiesController.update);
 router.delete("/promotion-hierarchies/:id", promotionHierarchiesController.delete);
+
+router.get("/training-master", trainingMasterController.getAll);
+router.patch("/training-master/batch", trainingMasterController.batchUpdate);
+router.post("/training-master/reorder", trainingMasterController.reorder);
+router.get("/training-master/:id", trainingMasterController.getById);
+router.post("/training-master", trainingMasterController.create);
+router.patch("/training-master/:id", trainingMasterController.update);
+router.delete("/training-master/:id", trainingMasterController.delete);
+
+router.get("/company-training-groups", companyTrainingGroupsController.getAll);
+router.patch("/company-training-groups/:code", companyTrainingGroupsController.updateByCode);
+
+router.get("/company-trainings", companyTrainingsController.getAll);
+router.post("/company-trainings/import", companyTrainingsController.import);
+router.post("/company-trainings/reorder", companyTrainingsController.reorder);
+router.get("/company-trainings/:id", companyTrainingsController.getById);
+router.post("/company-trainings", companyTrainingsController.create);
+router.patch("/company-trainings/:id", companyTrainingsController.update);
+router.delete("/company-trainings/:id", companyTrainingsController.delete);
+
+router.get("/company-training-requirements", companyTrainingRequirementsController.getAll);
+router.post("/company-training-requirements/batch", companyTrainingRequirementsController.upsertBatch);
+
+router.get("/company-ranks", companyRanksController.getAll);
+router.post("/company-ranks", companyRanksController.saveAll);
+router.get("/company-ranks/by-name/:rankName", companyRanksController.getByName);
+
+router.get("/vessel-groups", vesselGroupsController.getAll);
+router.get("/vessel-groups/:id", vesselGroupsController.getById);
+router.post("/vessel-groups", vesselGroupsController.create);
+router.patch("/vessel-groups/:id", vesselGroupsController.update);
+router.delete("/vessel-groups/:id", vesselGroupsController.delete);
+
+router.get("/vessel-drafts", vesselDraftsController.getAll);
+router.post("/vessel-drafts/upsert", vesselDraftsController.upsert);
+router.get("/vessel-drafts/by-vessel/:vesselId", vesselDraftsController.getByVesselId);
+router.get("/vessel-drafts/:id", vesselDraftsController.getById);
+router.post("/vessel-drafts", vesselDraftsController.create);
+router.patch("/vessel-drafts/:id", vesselDraftsController.update);
+router.delete("/vessel-drafts/:id", vesselDraftsController.delete);
+
+router.get("/vessel-revisions", vesselRevisionsController.getAll);
+router.post("/vessel-revisions/submit", vesselRevisionsController.submit);
+router.get("/vessel-revisions/by-vessel/:vesselId", vesselRevisionsController.getByVesselId);
+router.get("/vessel-revisions/next-revision/:vesselId", vesselRevisionsController.getNextRevision);
+router.get("/vessel-revisions/:id", vesselRevisionsController.getById);
+router.post("/vessel-revisions", vesselRevisionsController.create);
+
+router.get("/training-matrix-vessel-drafts", trainingMatrixVesselDraftsController.getAll);
+router.post("/training-matrix-vessel-drafts/upsert", trainingMatrixVesselDraftsController.upsert);
+router.get("/training-matrix-vessel-drafts/by-vessel/:vesselId", trainingMatrixVesselDraftsController.getByVesselId);
+router.get("/training-matrix-vessel-drafts/:id", trainingMatrixVesselDraftsController.getById);
+router.post("/training-matrix-vessel-drafts", trainingMatrixVesselDraftsController.create);
+router.patch("/training-matrix-vessel-drafts/:id", trainingMatrixVesselDraftsController.update);
+router.delete("/training-matrix-vessel-drafts/:id", trainingMatrixVesselDraftsController.delete);
+
+router.get("/training-matrix-vessel-revisions", trainingMatrixVesselRevisionsController.getAll);
+router.post("/training-matrix-vessel-revisions/submit", trainingMatrixVesselRevisionsController.submit);
+router.get("/training-matrix-vessel-revisions/by-vessel/:vesselId", trainingMatrixVesselRevisionsController.getByVesselId);
+router.get("/training-matrix-vessel-revisions/next-revision/:vesselId", trainingMatrixVesselRevisionsController.getNextRevision);
+router.get("/training-matrix-vessel-revisions/:id", trainingMatrixVesselRevisionsController.getById);
+router.post("/training-matrix-vessel-revisions", trainingMatrixVesselRevisionsController.create);
 
 export default router;

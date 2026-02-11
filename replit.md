@@ -5,10 +5,13 @@ A comprehensive maritime operations platform for managing seafarer performance, 
 
 ## Recent Changes
 - Memory reset on February 11, 2026
-- Admin Module V2 migration completed (February 11, 2026):
-  - Created 5 V2 tables: adm_forms_v2, adm_form_versions_v2, adm_rank_groups_v2, adm_available_ranks_v2, adm_promotion_hierarchies_v2
-  - Backend: Repository + Service + Controller pattern in server/v2/admin/
-  - Frontend: V2 API client (adminApiV2.ts), React Query hooks (useAdminV2.ts), AdminModule_v2.tsx
+- Admin Module V2 full migration completed (February 11, 2026):
+  - Phase 1: Created 5 V2 tables: adm_forms_v2, adm_form_versions_v2, adm_rank_groups_v2, adm_available_ranks_v2, adm_promotion_hierarchies_v2
+  - Phase 2: Created 10 additional V2 tables (migration 0088): adm_training_master_v2, adm_company_training_groups_v2, adm_company_trainings_v2, adm_company_training_requirements_v2, adm_company_ranks_v2, adm_vessel_groups_v2, adm_vessel_drafts_v2, adm_vessel_revisions_v2, adm_training_matrix_vessel_drafts_v2, adm_training_matrix_vessel_revisions_v2
+  - Backend: Repository + Service + Controller pattern in server/v2/admin/ for all 15 entities
+  - Frontend: V2 API client (adminApiV2.ts) with 60+ methods, React Query hooks (useAdminV2.ts) with 40+ hooks
+  - AdminModule.tsx fully migrated from V1 hooks to V2 hooks (all useExternal* → useMasterDataV2, all V1 mutation/query hooks → V2 equivalents)
+  - Masters sub-module reads from existing master_* tables via /api/master-data/external/:type
   - V1/V2 toggle: AdminVersionToggle component, useAdminVersion hook, admin/index.tsx router
   - Routes registered at /api/v2/admin/
   - Tables created via direct SQL (not drizzle-kit push) due to schema conflicts

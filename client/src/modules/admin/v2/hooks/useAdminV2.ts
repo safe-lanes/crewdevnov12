@@ -218,8 +218,8 @@ export function useCreateAvailableRankV2() {
 export function useUpdateAvailableRankV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ arUuid, data }: { arUuid: string; data: any }) =>
-      adminApiV2.updateAvailableRank(arUuid, data),
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      adminApiV2.updateAvailableRank(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'available-ranks'] });
     },
@@ -229,7 +229,7 @@ export function useUpdateAvailableRankV2() {
 export function useDeleteAvailableRankV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (arUuid: string) => adminApiV2.deleteAvailableRank(arUuid),
+    mutationFn: (id: number) => adminApiV2.deleteAvailableRank(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'available-ranks'] });
     },
@@ -249,7 +249,7 @@ export function useDeleteAllAvailableRanksV2() {
 export function useReorderAvailableRanksV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (orders: { arUuid: string; sortOrder: number }[]) =>
+    mutationFn: (orders: { id: number; sortOrder: number }[]) =>
       adminApiV2.reorderAvailableRanks(orders),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'available-ranks'] });
@@ -302,5 +302,317 @@ export function useDeletePromotionHierarchyV2() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'promotion-hierarchies'] });
     },
+  });
+}
+
+export function useTrainingMastersV2() {
+  return useQuery({
+    queryKey: [V2_KEY, 'training-master'],
+    queryFn: () => adminApiV2.getTrainingMasters(),
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useCreateTrainingMasterV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => adminApiV2.createTrainingMaster(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
+    },
+  });
+}
+
+export function useUpdateTrainingMasterV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      adminApiV2.updateTrainingMaster(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
+    },
+  });
+}
+
+export function useDeleteTrainingMasterV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => adminApiV2.deleteTrainingMaster(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
+    },
+  });
+}
+
+export function useBatchUpdateTrainingMastersV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (updates: Array<{id: number, data: any}>) =>
+      adminApiV2.batchUpdateTrainingMasters(updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
+    },
+  });
+}
+
+export function useReorderTrainingMastersV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (orders: Array<{id: number, sortOrder: number}>) =>
+      adminApiV2.reorderTrainingMasters(orders),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
+    },
+  });
+}
+
+export function useCompanyTrainingGroupsV2() {
+  return useQuery({
+    queryKey: [V2_KEY, 'company-training-groups'],
+    queryFn: () => adminApiV2.getCompanyTrainingGroups(),
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useUpdateCompanyTrainingGroupV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ code, data }: { code: string; data: any }) =>
+      adminApiV2.updateCompanyTrainingGroup(code, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-training-groups'] });
+    },
+  });
+}
+
+export function useCompanyTrainingsV2() {
+  return useQuery({
+    queryKey: [V2_KEY, 'company-trainings'],
+    queryFn: () => adminApiV2.getCompanyTrainings(),
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useUpdateCompanyTrainingV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      adminApiV2.updateCompanyTraining(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
+    },
+  });
+}
+
+export function useDeleteCompanyTrainingV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => adminApiV2.deleteCompanyTraining(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
+    },
+  });
+}
+
+export function useImportCompanyTrainingsV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => adminApiV2.importCompanyTrainings(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
+    },
+  });
+}
+
+export function useReorderCompanyTrainingsV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (orders: Array<{id: number, sortOrder: number}>) =>
+      adminApiV2.reorderCompanyTrainings(orders),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
+    },
+  });
+}
+
+export function useCompanyTrainingRequirementsV2() {
+  return useQuery({
+    queryKey: [V2_KEY, 'company-training-requirements'],
+    queryFn: () => adminApiV2.getCompanyTrainingRequirements(),
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useUpsertCompanyTrainingRequirementsV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (requirements: Array<{companyTrainingId: number, rankId: number, status: string | null}>) =>
+      adminApiV2.upsertCompanyTrainingRequirements(requirements),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-training-requirements'] });
+    },
+  });
+}
+
+export function useCompanyRanksV2() {
+  return useQuery({
+    queryKey: [V2_KEY, 'company-ranks'],
+    queryFn: () => adminApiV2.getCompanyRanks(),
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useSaveCompanyRanksV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ranks: any[]) => adminApiV2.saveCompanyRanks(ranks),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-ranks'] });
+    },
+  });
+}
+
+export function useVesselGroupsV2() {
+  return useQuery({
+    queryKey: [V2_KEY, 'vessel-groups'],
+    queryFn: () => adminApiV2.getVesselGroups(),
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useCreateVesselGroupV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => adminApiV2.createVesselGroup(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-groups'] });
+    },
+  });
+}
+
+export function useUpdateVesselGroupV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      adminApiV2.updateVesselGroup(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-groups'] });
+    },
+  });
+}
+
+export function useDeleteVesselGroupV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => adminApiV2.deleteVesselGroup(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-groups'] });
+    },
+  });
+}
+
+export function useVesselDraftsByVesselV2(vesselId: string | null) {
+  return useQuery({
+    queryKey: [V2_KEY, 'vessel-drafts', 'by-vessel', vesselId],
+    queryFn: () => adminApiV2.getVesselDraftsByVessel(vesselId!),
+    enabled: !!vesselId,
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useUpsertVesselDraftV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => adminApiV2.upsertVesselDraft(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-drafts'] });
+    },
+  });
+}
+
+export function useVesselRevisionsByVesselV2(vesselId: string | null) {
+  return useQuery({
+    queryKey: [V2_KEY, 'vessel-revisions', 'by-vessel', vesselId],
+    queryFn: () => adminApiV2.getVesselRevisionsByVessel(vesselId!),
+    enabled: !!vesselId,
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useNextVesselRevisionV2(vesselId: string | null) {
+  return useQuery({
+    queryKey: [V2_KEY, 'vessel-revisions', 'next-revision', vesselId],
+    queryFn: () => adminApiV2.getNextVesselRevision(vesselId!),
+    enabled: !!vesselId,
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useSubmitVesselRevisionV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => adminApiV2.submitVesselRevision(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-revisions'] });
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-drafts'] });
+    },
+  });
+}
+
+export function useTrainingMatrixVesselDraftsByVesselV2(vesselId: string | null) {
+  return useQuery({
+    queryKey: [V2_KEY, 'training-matrix-vessel-drafts', 'by-vessel', vesselId],
+    queryFn: () => adminApiV2.getTrainingMatrixVesselDraftsByVessel(vesselId!),
+    enabled: !!vesselId,
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useUpsertTrainingMatrixVesselDraftV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => adminApiV2.upsertTrainingMatrixVesselDraft(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-matrix-vessel-drafts'] });
+    },
+  });
+}
+
+export function useTrainingMatrixVesselRevisionsByVesselV2(vesselId: string | null) {
+  return useQuery({
+    queryKey: [V2_KEY, 'training-matrix-vessel-revisions', 'by-vessel', vesselId],
+    queryFn: () => adminApiV2.getTrainingMatrixVesselRevisionsByVessel(vesselId!),
+    enabled: !!vesselId,
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useNextTrainingMatrixVesselRevisionV2(vesselId: string | null) {
+  return useQuery({
+    queryKey: [V2_KEY, 'training-matrix-vessel-revisions', 'next-revision', vesselId],
+    queryFn: () => adminApiV2.getNextTrainingMatrixVesselRevision(vesselId!),
+    enabled: !!vesselId,
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useSubmitTrainingMatrixVesselRevisionV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => adminApiV2.submitTrainingMatrixVesselRevision(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-matrix-vessel-revisions'] });
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-matrix-vessel-drafts'] });
+    },
+  });
+}
+
+export function useMasterDataV2(type: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: [V2_KEY, 'master-data', type],
+    queryFn: () => adminApiV2.getMasterData(type),
+    enabled: options?.enabled !== false,
+    staleTime: STALE_TIME,
   });
 }

@@ -180,4 +180,295 @@ export const adminApiV2 = {
     const res = await apiRequest('DELETE', `${V2_BASE}/promotion-hierarchies/${id}`);
     return res.json();
   },
+
+  async getTrainingMasters() {
+    const res = await fetch(`${V2_BASE}/training-master`);
+    if (!res.ok) throw new Error('Failed to fetch training masters');
+    return res.json();
+  },
+
+  async getTrainingMaster(id: number) {
+    const res = await fetch(`${V2_BASE}/training-master/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch training master');
+    return res.json();
+  },
+
+  async createTrainingMaster(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/training-master`, data);
+    return res.json();
+  },
+
+  async updateTrainingMaster(id: number, data: any) {
+    const res = await apiRequest('PATCH', `${V2_BASE}/training-master/${id}`, data);
+    return res.json();
+  },
+
+  async deleteTrainingMaster(id: number) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/training-master/${id}`);
+    return res.json();
+  },
+
+  async batchUpdateTrainingMasters(updates: Array<{id: number, data: any}>) {
+    const res = await apiRequest('PATCH', `${V2_BASE}/training-master/batch`, updates);
+    return res.json();
+  },
+
+  async reorderTrainingMasters(orders: Array<{id: number, sortOrder: number}>) {
+    const res = await apiRequest('POST', `${V2_BASE}/training-master/reorder`, orders);
+    return res.json();
+  },
+
+  async getCompanyTrainingGroups() {
+    const res = await fetch(`${V2_BASE}/company-training-groups`);
+    if (!res.ok) throw new Error('Failed to fetch company training groups');
+    return res.json();
+  },
+
+  async updateCompanyTrainingGroup(code: string, data: any) {
+    const res = await apiRequest('PATCH', `${V2_BASE}/company-training-groups/${encodeURIComponent(code)}`, data);
+    return res.json();
+  },
+
+  async getCompanyTrainings() {
+    const res = await fetch(`${V2_BASE}/company-trainings`);
+    if (!res.ok) throw new Error('Failed to fetch company trainings');
+    return res.json();
+  },
+
+  async getCompanyTraining(id: number) {
+    const res = await fetch(`${V2_BASE}/company-trainings/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch company training');
+    return res.json();
+  },
+
+  async createCompanyTraining(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/company-trainings`, data);
+    return res.json();
+  },
+
+  async updateCompanyTraining(id: number, data: any) {
+    const res = await apiRequest('PATCH', `${V2_BASE}/company-trainings/${id}`, data);
+    return res.json();
+  },
+
+  async deleteCompanyTraining(id: number) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/company-trainings/${id}`);
+    return res.json();
+  },
+
+  async importCompanyTrainings() {
+    const res = await apiRequest('POST', `${V2_BASE}/company-trainings/import`);
+    return res.json();
+  },
+
+  async reorderCompanyTrainings(orders: Array<{id: number, sortOrder: number}>) {
+    const res = await apiRequest('POST', `${V2_BASE}/company-trainings/reorder`, orders);
+    return res.json();
+  },
+
+  async getCompanyTrainingRequirements() {
+    const res = await fetch(`${V2_BASE}/company-training-requirements`);
+    if (!res.ok) throw new Error('Failed to fetch company training requirements');
+    return res.json();
+  },
+
+  async upsertCompanyTrainingRequirements(requirements: Array<{companyTrainingId: number, rankId: number, status: string | null}>) {
+    const res = await apiRequest('POST', `${V2_BASE}/company-training-requirements/batch`, requirements);
+    return res.json();
+  },
+
+  async getCompanyRanks() {
+    const res = await fetch(`${V2_BASE}/company-ranks`);
+    if (!res.ok) throw new Error('Failed to fetch company ranks');
+    return res.json();
+  },
+
+  async saveCompanyRanks(ranks: any[]) {
+    const res = await apiRequest('POST', `${V2_BASE}/company-ranks`, ranks);
+    return res.json();
+  },
+
+  async getCompanyRankByName(rankName: string) {
+    const res = await fetch(`${V2_BASE}/company-ranks/by-name/${encodeURIComponent(rankName)}`);
+    if (!res.ok) throw new Error('Failed to fetch company rank by name');
+    return res.json();
+  },
+
+  async getVesselGroups() {
+    const res = await fetch(`${V2_BASE}/vessel-groups`);
+    if (!res.ok) throw new Error('Failed to fetch vessel groups');
+    return res.json();
+  },
+
+  async getVesselGroup(id: number) {
+    const res = await fetch(`${V2_BASE}/vessel-groups/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch vessel group');
+    return res.json();
+  },
+
+  async createVesselGroup(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/vessel-groups`, data);
+    return res.json();
+  },
+
+  async updateVesselGroup(id: number, data: any) {
+    const res = await apiRequest('PATCH', `${V2_BASE}/vessel-groups/${id}`, data);
+    return res.json();
+  },
+
+  async deleteVesselGroup(id: number) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/vessel-groups/${id}`);
+    return res.json();
+  },
+
+  async getVesselDrafts() {
+    const res = await fetch(`${V2_BASE}/vessel-drafts`);
+    if (!res.ok) throw new Error('Failed to fetch vessel drafts');
+    return res.json();
+  },
+
+  async getVesselDraft(id: number) {
+    const res = await fetch(`${V2_BASE}/vessel-drafts/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch vessel draft');
+    return res.json();
+  },
+
+  async getVesselDraftsByVessel(vesselId: string) {
+    const res = await fetch(`${V2_BASE}/vessel-drafts/by-vessel/${encodeURIComponent(vesselId)}`);
+    if (!res.ok) throw new Error('Failed to fetch vessel drafts by vessel');
+    return res.json();
+  },
+
+  async createVesselDraft(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/vessel-drafts`, data);
+    return res.json();
+  },
+
+  async updateVesselDraft(id: number, data: any) {
+    const res = await apiRequest('PATCH', `${V2_BASE}/vessel-drafts/${id}`, data);
+    return res.json();
+  },
+
+  async deleteVesselDraft(id: number) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/vessel-drafts/${id}`);
+    return res.json();
+  },
+
+  async upsertVesselDraft(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/vessel-drafts/upsert`, data);
+    return res.json();
+  },
+
+  async getVesselRevisions() {
+    const res = await fetch(`${V2_BASE}/vessel-revisions`);
+    if (!res.ok) throw new Error('Failed to fetch vessel revisions');
+    return res.json();
+  },
+
+  async getVesselRevision(id: number) {
+    const res = await fetch(`${V2_BASE}/vessel-revisions/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch vessel revision');
+    return res.json();
+  },
+
+  async getVesselRevisionsByVessel(vesselId: string) {
+    const res = await fetch(`${V2_BASE}/vessel-revisions/by-vessel/${encodeURIComponent(vesselId)}`);
+    if (!res.ok) throw new Error('Failed to fetch vessel revisions by vessel');
+    return res.json();
+  },
+
+  async getNextVesselRevision(vesselId: string) {
+    const res = await fetch(`${V2_BASE}/vessel-revisions/next-revision/${encodeURIComponent(vesselId)}`);
+    if (!res.ok) throw new Error('Failed to fetch next vessel revision');
+    return res.json();
+  },
+
+  async createVesselRevision(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/vessel-revisions`, data);
+    return res.json();
+  },
+
+  async submitVesselRevision(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/vessel-revisions/submit`, data);
+    return res.json();
+  },
+
+  async getTrainingMatrixVesselDrafts() {
+    const res = await fetch(`${V2_BASE}/training-matrix-vessel-drafts`);
+    if (!res.ok) throw new Error('Failed to fetch training matrix vessel drafts');
+    return res.json();
+  },
+
+  async getTrainingMatrixVesselDraft(id: number) {
+    const res = await fetch(`${V2_BASE}/training-matrix-vessel-drafts/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch training matrix vessel draft');
+    return res.json();
+  },
+
+  async getTrainingMatrixVesselDraftsByVessel(vesselId: string) {
+    const res = await fetch(`${V2_BASE}/training-matrix-vessel-drafts/by-vessel/${encodeURIComponent(vesselId)}`);
+    if (!res.ok) throw new Error('Failed to fetch training matrix vessel drafts by vessel');
+    return res.json();
+  },
+
+  async createTrainingMatrixVesselDraft(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/training-matrix-vessel-drafts`, data);
+    return res.json();
+  },
+
+  async updateTrainingMatrixVesselDraft(id: number, data: any) {
+    const res = await apiRequest('PATCH', `${V2_BASE}/training-matrix-vessel-drafts/${id}`, data);
+    return res.json();
+  },
+
+  async deleteTrainingMatrixVesselDraft(id: number) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/training-matrix-vessel-drafts/${id}`);
+    return res.json();
+  },
+
+  async upsertTrainingMatrixVesselDraft(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/training-matrix-vessel-drafts/upsert`, data);
+    return res.json();
+  },
+
+  async getTrainingMatrixVesselRevisions() {
+    const res = await fetch(`${V2_BASE}/training-matrix-vessel-revisions`);
+    if (!res.ok) throw new Error('Failed to fetch training matrix vessel revisions');
+    return res.json();
+  },
+
+  async getTrainingMatrixVesselRevision(id: number) {
+    const res = await fetch(`${V2_BASE}/training-matrix-vessel-revisions/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch training matrix vessel revision');
+    return res.json();
+  },
+
+  async getTrainingMatrixVesselRevisionsByVessel(vesselId: string) {
+    const res = await fetch(`${V2_BASE}/training-matrix-vessel-revisions/by-vessel/${encodeURIComponent(vesselId)}`);
+    if (!res.ok) throw new Error('Failed to fetch training matrix vessel revisions by vessel');
+    return res.json();
+  },
+
+  async getNextTrainingMatrixVesselRevision(vesselId: string) {
+    const res = await fetch(`${V2_BASE}/training-matrix-vessel-revisions/next-revision/${encodeURIComponent(vesselId)}`);
+    if (!res.ok) throw new Error('Failed to fetch next training matrix vessel revision');
+    return res.json();
+  },
+
+  async createTrainingMatrixVesselRevision(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/training-matrix-vessel-revisions`, data);
+    return res.json();
+  },
+
+  async submitTrainingMatrixVesselRevision(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/training-matrix-vessel-revisions/submit`, data);
+    return res.json();
+  },
+
+  async getMasterData(type: string) {
+    const res = await fetch(`/api/master-data/external/${encodeURIComponent(type)}`);
+    if (!res.ok) throw new Error(`Failed to fetch master data: ${type}`);
+    const json = await res.json();
+    return json.data;
+  },
 };

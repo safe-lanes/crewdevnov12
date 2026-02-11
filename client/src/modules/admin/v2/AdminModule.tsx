@@ -70,7 +70,7 @@ import {
   useUpdateMasterDataEntry,
   useDeleteMasterDataEntry 
 } from "@/hooks/useDataMasters";
-import { useRankMasterData, useCompanyRanks, useFetchCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, useClearAllRanks, useSaveCompanyRanks, useCreateVesselDraft, useUpdateVesselDraft, type RankMasterData } from "@/hooks/useCompanyRanks";
+import { type RankMasterData } from "@/hooks/useCompanyRanks";
 import { queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -104,14 +104,6 @@ import {
 } from "@/utils/portMasterMapping";
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
 import { 
-  useTrainingMasters, 
-  useCreateTrainingMaster, 
-  useUpdateTrainingMaster, 
-  useDeleteTrainingMaster, 
-  useReorderTrainingMasters,
-  useReorderCompanyTrainings,
-  useCompanyTrainingRequirements,
-  useUpsertCompanyTrainingRequirements,
   getCategoryLabel,
   getGroupLabel,
   generateTrainingId,
@@ -119,17 +111,11 @@ import {
   TRAINING_GROUPS
 } from "@/hooks/useTrainingMaster";
 import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTraining, CompanyTrainingRequirement } from "@shared/schema";
-import { useExternalVesselTypes } from "@/hooks/useExternalVesselTypes";
-import { useExternalVessels } from "@/hooks/useExternalVessels";
-import { useExternalNationalities } from "@/hooks/useExternalNationalities";
-import { useExternalFleetGroups } from "@/hooks/useExternalFleetGroups";
-import { useExternalAdditionalGroups } from "@/hooks/useExternalAdditionalGroups";
-import { useExternalPorts } from "@/hooks/useExternalPorts";
-import { useExternalLanguages } from "@/hooks/useExternalLanguages";
-import { useExternalCountries } from "@/hooks/useExternalCountries";
-import { useExternalUsers } from "@/hooks/useExternalUsers";
 import { useSyncAllMasterData, useLocalMasterData } from "@/hooks/useLocalMasterApi";
 import { AdminVersionToggle } from './components/AdminVersionToggle';
+import { useTrainingMastersV2, useCreateTrainingMasterV2, useUpdateTrainingMasterV2, useDeleteTrainingMasterV2, useReorderTrainingMastersV2, useCompanyTrainingGroupsV2, useUpdateCompanyTrainingGroupV2, useCompanyTrainingsV2, useUpdateCompanyTrainingV2, useDeleteCompanyTrainingV2, useReorderCompanyTrainingsV2, useCompanyTrainingRequirementsV2, useUpsertCompanyTrainingRequirementsV2, useCompanyRanksV2, useSaveCompanyRanksV2, useAvailableRanksV2, useCreateAvailableRankV2, useUpdateAvailableRankV2, useDeleteAvailableRankV2, useDeleteAllAvailableRanksV2, useVesselGroupsV2, useCreateVesselGroupV2, useUpdateVesselGroupV2, useDeleteVesselGroupV2, useVesselDraftsByVesselV2, useUpsertVesselDraftV2, useMasterDataV2, useImportCompanyTrainingsV2 } from './hooks/useAdminV2';
+
+const V2_KEY = '/api/v2/admin';
 
 // StableInput component - uses local state to prevent value loss during re-renders
 // This solves the issue where external API hook re-renders cause controlled inputs to lose their value
@@ -568,24 +554,31 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Rank Master data from shared hook (for initialization)
   // PERFORMANCE: Only fetch when on rank-admin tab
-  const { data: sharedRankMasterData, isLoading: rankMasterLoading, error: rankMasterError } = useRankMasterData({ 
-    enabled: selectedAdminPage === "rank-admin" 
-  });
+  const { data: rawAvailableRanksData, isLoading: rankMasterLoading, error: rankMasterError } = useAvailableRanksV2();
+  const sharedRankMasterData = useMemo(() => {
+    if (!rawAvailableRanksData || selectedAdminPage !== "rank-admin") return [];
+    return (rawAvailableRanksData as any[]).map((ar: any) => ({
+      id: ar.id?.toString() || '',
+      rank: ar.name || '',
+      rankId: ar.rankId || `S${ar.id}`,
+      label: ar.label || ar.name || '',
+      applicableToCompany: ar.applicableToCompany ?? false,
+      isSystemRank: ar.isSystemRank ?? false,
+    }));
+  }, [rawAvailableRanksData, selectedAdminPage]);
   // Fetch saved company rank data (including role variants)
   // STRATEGIC FIX: Use controlled refetch to prevent overwrites during editing
   // PERFORMANCE: Only fetch when on rank-admin tab
-  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useFetchCompanyRanks({ 
-    enabled: selectedAdminPage === "rank-admin" 
-  });
+  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useCompanyRanksV2();
 
   // Mutation hooks for rank management
-  const createRankMutation = useCreateRank();
-  const updateRankMutation = useUpdateRank();
-  const deleteRankMutation = useDeleteRank();
-  const saveCompanyRanksMutation = useSaveCompanyRanks();
-  const clearAllRanksMutation = useClearAllRanks();
-  const createVesselDraftMutation = useCreateVesselDraft();
-  const updateVesselDraftMutation = useUpdateVesselDraft();
+  const createRankMutation = useCreateAvailableRankV2();
+  const updateRankMutation = useUpdateAvailableRankV2();
+  const deleteRankMutation = useDeleteAvailableRankV2();
+  const saveCompanyRanksMutation = useSaveCompanyRanksV2();
+  const clearAllRanksMutation = useDeleteAllAvailableRanksV2();
+  const createVesselDraftMutation = useUpsertVesselDraftV2();
+  const updateVesselDraftMutation = useUpsertVesselDraftV2();
 
   // Rank reorder mutation
   const reorderRanksMutation = useMutation({
@@ -612,13 +605,11 @@ const AdminModuleInner = (): JSX.Element => {
   });
 
   // Training Master data hooks
-  const { data: trainingMasterData = [], isLoading: trainingMasterLoading } = useTrainingMasters({ 
-    enabled: selectedAdminPage === "training-matrix" 
-  });
-  const createTrainingMutation = useCreateTrainingMaster();
-  const updateTrainingMutation = useUpdateTrainingMaster();
-  const deleteTrainingMutation = useDeleteTrainingMaster();
-  const reorderTrainingMutation = useReorderTrainingMasters();
+  const { data: trainingMasterData = [], isLoading: trainingMasterLoading } = useTrainingMastersV2();
+  const createTrainingMutation = useCreateTrainingMasterV2();
+  const updateTrainingMutation = useUpdateTrainingMasterV2();
+  const deleteTrainingMutation = useDeleteTrainingMasterV2();
+  const reorderTrainingMutation = useReorderTrainingMastersV2();
 
   // Training Master local state
   const [localTrainingData, setLocalTrainingData] = useState<TrainingMaster[]>([]);
@@ -639,39 +630,17 @@ const AdminModuleInner = (): JSX.Element => {
   const [showConfigureGroupLabelsDialog, setShowConfigureGroupLabelsDialog] = useState(false);
 
   // Company Training data hooks
-  const { data: companyTrainingData = [], isLoading: companyTrainingLoading, refetch: refetchCompanyTrainings } = useQuery<CompanyTraining[]>({
-    queryKey: ['/api/company-trainings'],
-    enabled: selectedAdminPage === "training-matrix"
-  });
+  const { data: companyTrainingData = [], isLoading: companyTrainingLoading, refetch: refetchCompanyTrainings } = useCompanyTrainingsV2();
 
-  const { data: companyTrainingGroups = [], refetch: refetchCompanyTrainingGroups } = useQuery<{code: string; label: string | null; displayOrder: number}[]>({
-    queryKey: ['/api/company-training-groups'],
-    enabled: selectedAdminPage === "training-matrix"
-  });
+  const { data: companyTrainingGroups = [], refetch: refetchCompanyTrainingGroups } = useCompanyTrainingGroupsV2();
 
-  const updateCompanyTrainingMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<CompanyTraining> }) => {
-      return apiRequest('PATCH', `/api/company-trainings/${id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/company-trainings'] });
-    },
-    onError: (error) => {
-      console.error('Failed to update company training:', error);
-      toast({
-        title: "Update failed",
-        description: "An error occurred while updating the training.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    },
-  });
+  const updateCompanyTrainingMutation = useUpdateCompanyTrainingV2();
 
-  const reorderCompanyTrainingMutation = useReorderCompanyTrainings();
+  const reorderCompanyTrainingMutation = useReorderCompanyTrainingsV2();
 
   // Company Training Requirements (M/R matrix by rank)
-  const { data: trainingRequirements = [], isLoading: requirementsLoading } = useCompanyTrainingRequirements();
-  const upsertRequirementsMutation = useUpsertCompanyTrainingRequirements();
+  const { data: trainingRequirements = [], isLoading: requirementsLoading } = useCompanyTrainingRequirementsV2();
+  const upsertRequirementsMutation = useUpsertCompanyTrainingRequirementsV2();
   const [localTrainingRequirements, setLocalTrainingRequirements] = useState<Map<string, 'M' | 'R' | null>>(new Map());
   const [changedRequirements, setChangedRequirements] = useState<Set<string>>(new Set());
   // Select All state: tracks whether "Select All M" or "Select All R" is checked per training
@@ -952,7 +921,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Training Matrix Vessel Draft mutations
   const tmSaveDraftMutation = useMutation({
     mutationFn: async ({ vesselId, draftData }: { vesselId: string; draftData: any }) => {
-      return apiRequest('POST', '/api/training-matrix-vessel-drafts/upsert', { vesselId, draftData });
+      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-drafts/upsert', { vesselId, draftData });
     },
     onSuccess: (_data, variables) => {
       toast({
@@ -976,7 +945,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const tmSubmitRevisionMutation = useMutation({
     mutationFn: async ({ vesselId, revisionDate, revisionData }: { vesselId: string; revisionDate: string; revisionData: any }) => {
-      return apiRequest('POST', '/api/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData });
+      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData });
     },
     onSuccess: (_data, variables) => {
       toast({
@@ -1059,7 +1028,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Vessel Group Mutation
   const createVesselGroupMutation = useMutation({
     mutationFn: async (data: { name: string; vesselIds: string[] }) => {
-      return await apiRequest('POST', '/api/vessel-groups', data);
+      return await apiRequest('POST', '/api/v2/admin/vessel-groups', data);
     },
     onSuccess: () => {
       toast({
@@ -1069,7 +1038,7 @@ const AdminModuleInner = (): JSX.Element => {
       setIsVesselGroupModalOpen(false);
       vesselGroupForm.reset();
       // Invalidate vessel group queries if needed
-      queryClient.invalidateQueries({ queryKey: ['/api/vessel-groups'] });
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-groups'] });
     },
     onError: (error: any) => {
       toast({
@@ -1277,10 +1246,8 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalVesselTypeData, 
     isLoading: vesselTypeLoading,
     error: vesselTypeError 
-  } = useExternalVesselTypes({ enabled: selectedAdminPage === "masters" });
+  } = useMasterDataV2('vesselTypes', { enabled: selectedAdminPage === "masters" });
 
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
   const vesselTypeData = Array.isArray(externalVesselTypeData) 
     ? externalVesselTypeData 
     : (externalVesselTypeData as any)?.vesseltypes || [];
@@ -1304,10 +1271,8 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalVesselMasterData, 
     isLoading: vesselMasterLoading,
     error: vesselMasterError 
-  } = useExternalVessels({ enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin" });
+  } = useMasterDataV2('vessels', { enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin" });
 
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
   const vesselMasterData = Array.isArray(externalVesselMasterData) 
     ? externalVesselMasterData 
     : (externalVesselMasterData as any)?.vessels || [];
@@ -1319,10 +1284,8 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalNationalityData, 
     isLoading: nationalityLoading,
     error: nationalityError 
-  } = useExternalNationalities({ enabled: selectedAdminPage === "masters" });
+  } = useMasterDataV2('nationalities', { enabled: selectedAdminPage === "masters" });
 
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
   const nationalityData = Array.isArray(externalNationalityData) 
     ? externalNationalityData 
     : (externalNationalityData as any)?.nationalities || [];
@@ -1334,9 +1297,8 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalFleetGroupsData, 
     isLoading: fleetGroupsLoading, 
     error: fleetGroupsError 
-  } = useExternalFleetGroups({ enabled: selectedAdminPage === "masters" });
+  } = useMasterDataV2('fleetGroups', { enabled: selectedAdminPage === "masters" });
 
-  // Process external API response structure (cast to any to handle dynamic API response)
   const fleetGroupsData = (externalFleetGroupsData as any)?.fleetGroups || [];
 
 
@@ -1346,9 +1308,8 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalAdditionalGroupsData,
     isLoading: additionalGroupsLoading,
     error: additionalGroupsError,
-  } = useExternalAdditionalGroups({ enabled: selectedAdminPage === "masters" });
+  } = useMasterDataV2('additionalGroups', { enabled: selectedAdminPage === "masters" });
 
-  // Process response - some APIs return an object with `additionalGroups`, others return array directly
   const additionalGroupsData = (externalAdditionalGroupsData as any)?.additionalGroups || externalAdditionalGroupsData || [];
 
 
@@ -1358,9 +1319,8 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalPortsData,
     isLoading: portsLoading,
     error: portsError,
-  } = useExternalPorts({ enabled: selectedAdminPage === "masters" });
+  } = useMasterDataV2('ports', { enabled: selectedAdminPage === "masters" });
 
-  // Process response - some APIs return an object with `ports`, others return array directly
   const portsData = (externalPortsData as any)?.ports || externalPortsData || [];
 
 
@@ -1370,10 +1330,8 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalLanguagesData,
     isLoading: languagesLoading,
     error: languagesError,
-  } = useExternalLanguages({ enabled: selectedAdminPage === "masters" });
+  } = useMasterDataV2('languages', { enabled: selectedAdminPage === "masters" });
 
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
   const languagesData = Array.isArray(externalLanguagesData) 
     ? externalLanguagesData 
     : (externalLanguagesData as any)?.languages || [];
@@ -1385,10 +1343,8 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalCountriesData,
     isLoading: countriesLoading,
     error: countriesError,
-  } = useExternalCountries({ enabled: selectedAdminPage === "masters" });
+  } = useMasterDataV2('countries', { enabled: selectedAdminPage === "masters" });
 
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
   const countriesData = Array.isArray(externalCountriesData) 
     ? externalCountriesData 
     : (externalCountriesData as any)?.countries || [];
@@ -1400,10 +1356,8 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalUsersData,
     isLoading: externalUsersLoading,
     error: externalUsersError,
-  } = useExternalUsers({ enabled: selectedAdminPage === "masters" });
+  } = useMasterDataV2('users', { enabled: selectedAdminPage === "masters" });
 
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
   const externalUsersApiData = Array.isArray(externalUsersData) 
     ? externalUsersData 
     : (externalUsersData as any)?.users || [];
@@ -1411,10 +1365,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Vessel Groups Data (for vessel group selection)
   // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)
-  const { data: vesselGroupsData = [], isLoading: vesselGroupsLoading } = useQuery({
-    queryKey: ['/api/vessel-groups'],
-    enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin"
-  });
+  const { data: vesselGroupsData = [], isLoading: vesselGroupsLoading } = useVesselGroupsV2();
 
   // Mutations for Data Masters
   const createMasterMutation = useCreateDataMaster();
@@ -5003,8 +4954,8 @@ const AdminModuleInner = (): JSX.Element => {
       }).filter(Boolean);
 
       if (updates.length > 0) {
-        await apiRequest('PATCH', '/api/training-master/batch', updates);
-        queryClient.invalidateQueries({ queryKey: ['/api/training-master'] });
+        await apiRequest('PATCH', '/api/v2/admin/training-master/batch', updates);
+        queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
       }
 
       setIsTrainingMasterEditing(false);
@@ -6598,9 +6549,9 @@ const AdminModuleInner = (): JSX.Element => {
         onSave={async (updates) => {
           try {
             for (const update of updates) {
-              await apiRequest('PATCH', `/api/company-training-groups/${update.code}`, { label: update.label });
+              await apiRequest('PATCH', `/api/v2/admin/company-training-groups/${update.code}`, { label: update.label });
             }
-            queryClient.invalidateQueries({ queryKey: ['/api/company-training-groups'] });
+            queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-training-groups'] });
             toast({
               title: "Labels saved",
               description: "Group labels updated successfully.",
