@@ -32,9 +32,10 @@ interface PromotionHierarchy extends Omit<PromotionHierarchyDB, 'rankPath'> {
 interface PromotionHierarchyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  apiBasePath?: string;
 }
 
-export function PromotionHierarchyDialog({ open, onOpenChange }: PromotionHierarchyDialogProps) {
+export function PromotionHierarchyDialog({ open, onOpenChange, apiBasePath = '/api/promotion-hierarchies' }: PromotionHierarchyDialogProps) {
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [groupName, setGroupName] = useState("");
@@ -46,17 +47,17 @@ export function PromotionHierarchyDialog({ open, onOpenChange }: PromotionHierar
 
   // Fetch promotion hierarchies
   const { data: hierarchies = [], isLoading: hierarchiesLoading } = useQuery<PromotionHierarchy[]>({
-    queryKey: ['/api/promotion-hierarchies'],
+    queryKey: [apiBasePath],
     enabled: open,
   });
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: { groupName: string; rankPath: string[] }) => {
-      return await apiRequest('POST', '/api/promotion-hierarchies', data);
+      return await apiRequest('POST', apiBasePath, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/promotion-hierarchies'] });
+      queryClient.invalidateQueries({ queryKey: [apiBasePath] });
       toast({
         title: "Success",
         description: "Promotion hierarchy created successfully",
@@ -75,10 +76,10 @@ export function PromotionHierarchyDialog({ open, onOpenChange }: PromotionHierar
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: { groupName: string; rankPath: string[] } }) => {
-      return await apiRequest('PATCH', `/api/promotion-hierarchies/${id}`, data);
+      return await apiRequest('PATCH', `${apiBasePath}/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/promotion-hierarchies'] });
+      queryClient.invalidateQueries({ queryKey: [apiBasePath] });
       toast({
         title: "Success",
         description: "Promotion hierarchy updated successfully",
@@ -97,10 +98,10 @@ export function PromotionHierarchyDialog({ open, onOpenChange }: PromotionHierar
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest('DELETE', `/api/promotion-hierarchies/${id}`);
+      return await apiRequest('DELETE', `${apiBasePath}/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/promotion-hierarchies'] });
+      queryClient.invalidateQueries({ queryKey: [apiBasePath] });
       toast({
         title: "Success",
         description: "Promotion hierarchy deleted successfully",

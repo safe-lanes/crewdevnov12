@@ -8493,6 +8493,7 @@ const AdminModuleInner = (): JSX.Element => {
       <PromotionHierarchyDialog
         open={isPromotionHierarchyOpen}
         onOpenChange={setIsPromotionHierarchyOpen}
+        apiBasePath="/api/v2/admin/promotion-hierarchies"
       />
     </>
   );
