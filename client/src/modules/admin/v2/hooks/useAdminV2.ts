@@ -197,11 +197,12 @@ export function useRankConflictsV2(formUuid: string | null, excludeGroupUuid?: s
   });
 }
 
-export function useAvailableRanksV2(companyOnly?: boolean) {
+export function useAvailableRanksV2(companyOnly?: boolean, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [V2_KEY, 'available-ranks', companyOnly],
     queryFn: () => adminApiV2.getAvailableRanks(companyOnly),
     staleTime: STALE_TIME,
+    enabled: options?.enabled !== false,
   });
 }
 
@@ -305,11 +306,12 @@ export function useDeletePromotionHierarchyV2() {
   });
 }
 
-export function useTrainingMastersV2() {
+export function useTrainingMastersV2(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [V2_KEY, 'training-master'],
     queryFn: () => adminApiV2.getTrainingMasters(),
     staleTime: STALE_TIME,
+    enabled: options?.enabled !== false,
   });
 }
 
@@ -367,11 +369,12 @@ export function useReorderTrainingMastersV2() {
   });
 }
 
-export function useCompanyTrainingGroupsV2() {
+export function useCompanyTrainingGroupsV2(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [V2_KEY, 'company-training-groups'],
     queryFn: () => adminApiV2.getCompanyTrainingGroups(),
     staleTime: STALE_TIME,
+    enabled: options?.enabled !== false,
   });
 }
 
@@ -386,11 +389,12 @@ export function useUpdateCompanyTrainingGroupV2() {
   });
 }
 
-export function useCompanyTrainingsV2() {
+export function useCompanyTrainingsV2(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [V2_KEY, 'company-trainings'],
     queryFn: () => adminApiV2.getCompanyTrainings(),
     staleTime: STALE_TIME,
+    enabled: options?.enabled !== false,
   });
 }
 
@@ -436,11 +440,12 @@ export function useReorderCompanyTrainingsV2() {
   });
 }
 
-export function useCompanyTrainingRequirementsV2() {
+export function useCompanyTrainingRequirementsV2(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [V2_KEY, 'company-training-requirements'],
     queryFn: () => adminApiV2.getCompanyTrainingRequirements(),
     staleTime: STALE_TIME,
+    enabled: options?.enabled !== false,
   });
 }
 
@@ -455,11 +460,12 @@ export function useUpsertCompanyTrainingRequirementsV2() {
   });
 }
 
-export function useCompanyRanksV2() {
+export function useCompanyRanksV2(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [V2_KEY, 'company-ranks'],
     queryFn: () => adminApiV2.getCompanyRanks(),
     staleTime: STALE_TIME,
+    enabled: options?.enabled !== false,
   });
 }
 
@@ -473,11 +479,12 @@ export function useSaveCompanyRanksV2() {
   });
 }
 
-export function useVesselGroupsV2() {
+export function useVesselGroupsV2(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [V2_KEY, 'vessel-groups'],
     queryFn: () => adminApiV2.getVesselGroups(),
     staleTime: STALE_TIME,
+    enabled: options?.enabled !== false,
   });
 }
 

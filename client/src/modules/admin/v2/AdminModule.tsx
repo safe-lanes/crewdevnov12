@@ -554,7 +554,10 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Rank Master data from shared hook (for initialization)
   // PERFORMANCE: Only fetch when on rank-admin tab
-  const { data: rawAvailableRanksData, isLoading: rankMasterLoading, error: rankMasterError } = useAvailableRanksV2();
+  const isRankAdminTab = selectedAdminPage === "rank-admin";
+  const isTrainingMatrixTab = selectedAdminPage === "training-matrix";
+  const isMastersTab = selectedAdminPage === "masters";
+  const { data: rawAvailableRanksData, isLoading: rankMasterLoading, error: rankMasterError } = useAvailableRanksV2(undefined, { enabled: isRankAdminTab || isTrainingMatrixTab });
   const sharedRankMasterData = useMemo(() => {
     if (!rawAvailableRanksData || selectedAdminPage !== "rank-admin") return [];
     return (rawAvailableRanksData as any[]).map((ar: any) => ({
@@ -569,7 +572,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Fetch saved company rank data (including role variants)
   // STRATEGIC FIX: Use controlled refetch to prevent overwrites during editing
   // PERFORMANCE: Only fetch when on rank-admin tab
-  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useCompanyRanksV2();
+  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useCompanyRanksV2({ enabled: isRankAdminTab });
 
   // Mutation hooks for rank management
   const createRankMutation = useCreateAvailableRankV2();
@@ -605,7 +608,7 @@ const AdminModuleInner = (): JSX.Element => {
   });
 
   // Training Master data hooks
-  const { data: trainingMasterData = [], isLoading: trainingMasterLoading } = useTrainingMastersV2();
+  const { data: trainingMasterData = [], isLoading: trainingMasterLoading } = useTrainingMastersV2({ enabled: isTrainingMatrixTab });
   const createTrainingMutation = useCreateTrainingMasterV2();
   const updateTrainingMutation = useUpdateTrainingMasterV2();
   const deleteTrainingMutation = useDeleteTrainingMasterV2();
@@ -630,16 +633,16 @@ const AdminModuleInner = (): JSX.Element => {
   const [showConfigureGroupLabelsDialog, setShowConfigureGroupLabelsDialog] = useState(false);
 
   // Company Training data hooks
-  const { data: companyTrainingData = [], isLoading: companyTrainingLoading, refetch: refetchCompanyTrainings } = useCompanyTrainingsV2();
+  const { data: companyTrainingData = [], isLoading: companyTrainingLoading, refetch: refetchCompanyTrainings } = useCompanyTrainingsV2({ enabled: isTrainingMatrixTab });
 
-  const { data: companyTrainingGroups = [], refetch: refetchCompanyTrainingGroups } = useCompanyTrainingGroupsV2();
+  const { data: companyTrainingGroups = [], refetch: refetchCompanyTrainingGroups } = useCompanyTrainingGroupsV2({ enabled: isTrainingMatrixTab });
 
   const updateCompanyTrainingMutation = useUpdateCompanyTrainingV2();
 
   const reorderCompanyTrainingMutation = useReorderCompanyTrainingsV2();
 
   // Company Training Requirements (M/R matrix by rank)
-  const { data: trainingRequirements = [], isLoading: requirementsLoading } = useCompanyTrainingRequirementsV2();
+  const { data: trainingRequirements = [], isLoading: requirementsLoading } = useCompanyTrainingRequirementsV2({ enabled: isTrainingMatrixTab });
   const upsertRequirementsMutation = useUpsertCompanyTrainingRequirementsV2();
   const [localTrainingRequirements, setLocalTrainingRequirements] = useState<Map<string, 'M' | 'R' | null>>(new Map());
   const [changedRequirements, setChangedRequirements] = useState<Set<string>>(new Set());
@@ -1365,7 +1368,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Vessel Groups Data (for vessel group selection)
   // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)
-  const { data: vesselGroupsData = [], isLoading: vesselGroupsLoading } = useVesselGroupsV2();
+  const { data: vesselGroupsData = [], isLoading: vesselGroupsLoading } = useVesselGroupsV2({ enabled: isMastersTab || isTrainingMatrixTab });
 
   // Mutations for Data Masters
   const createMasterMutation = useCreateDataMaster();

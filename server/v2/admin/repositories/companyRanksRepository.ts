@@ -73,9 +73,13 @@ export class CompanyRanksRepository {
   async saveAll(ranks: InsertAdmCompanyRankV2[]): Promise<AdmCompanyRankV2[]> {
     const db = getDb();
     await db.delete(admCompanyRanksV2);
+    const ranksWithUuids = ranks.map(rank => ({
+      ...rank,
+      crUuid: rank.crUuid || uuidv4(),
+    }));
     const results = await db
       .insert(admCompanyRanksV2)
-      .values(ranks)
+      .values(ranksWithUuids)
       .returning();
     return results;
   }
