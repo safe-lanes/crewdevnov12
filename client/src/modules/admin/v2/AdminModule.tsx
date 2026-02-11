@@ -6914,7 +6914,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.cid || <em className="text-gray-400">No entry ID</em>}
+                              {item.natUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -6956,7 +6956,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.vtuid || item.entryId || item.id || <em className="text-gray-400">No entry ID</em>}
+                              {item.vtUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7008,7 +7008,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.vuid || <em className="text-gray-400">No entry ID</em>}
+                              {item.vesselUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7057,7 +7057,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.id || <em className="text-gray-400">No entry ID</em>}
+                              {item.fgUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7099,7 +7099,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.id || <em className="text-gray-400">No entry ID</em>}
+                              {item.agUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7141,7 +7141,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.puid || <em className="text-gray-400">No entry ID</em>}
+                              {item.portUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7190,7 +7190,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.luid || <em className="text-gray-400">No entry ID</em>}
+                              {item.langUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7239,8 +7239,8 @@ const AdminModuleInner = (): JSX.Element => {
                         >
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`country-entry-id-${item.nuid || index}`}>
-                              {item.nuid || <em className="text-gray-400">No entry ID</em>}
+                            <span className="text-xs text-gray-700" data-testid={`country-entry-id-${item.countryUuid || index}`}>
+                              {item.countryUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7275,8 +7275,8 @@ const AdminModuleInner = (): JSX.Element => {
                         >
                           {/* Column 1: UUID */}
                           <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`user-uuid-${item.uuid || index}`}>
-                              {item.uuid || <em className="text-gray-400">No UUID</em>}
+                            <span className="text-xs text-gray-700" data-testid={`user-uuid-${item.userUuid || index}`}>
+                              {item.userUuid || <em className="text-gray-400">No UUID</em>}
                             </span>
                           </div>
 
