@@ -1302,7 +1302,9 @@ const AdminModuleInner = (): JSX.Element => {
     error: fleetGroupsError 
   } = useMasterDataV2('fleetGroups', { enabled: selectedAdminPage === "masters" });
 
-  const fleetGroupsData = (externalFleetGroupsData as any)?.fleetGroups || [];
+  const fleetGroupsData = Array.isArray(externalFleetGroupsData) 
+    ? externalFleetGroupsData 
+    : (externalFleetGroupsData as any)?.fleetGroups || [];
 
 
   // NEW: External additional groups data from API (Master 017)
