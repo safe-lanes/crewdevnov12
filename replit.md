@@ -1,108 +1,81 @@
 # Seafarer Performance Management System
 
 ## Overview
-The Seafarer Performance Management System is a comprehensive platform designed to optimize maritime operations by streamlining seafarer and vessel management. Its primary purpose is to enhance operational efficiency through optimized crew deployment, robust compliance mechanisms, and an intuitive user experience. Key capabilities include integrated crew and appraisal functionalities, a sophisticated vessel revision system for rank assignments, advanced form configurations, and a module-first scalable architecture. The system aims to provide a centralized solution for managing all aspects of seafarer performance and vessel-related data, supporting efficient decision-making and regulatory adherence in the maritime industry.
+A comprehensive maritime operations platform for managing seafarer performance, crew deployment, vessel operations, and regulatory compliance. Built with React, Express, TypeScript, PostgreSQL, and Drizzle ORM.
+
+## Recent Changes
+- Memory reset on February 11, 2026
 
 ## User Preferences
 ### Code Style
-- Use functional components with hooks
-- Prefer TypeScript strict mode
-- Use async/await over promise chains
-- Implement consistent error handling
-- Follow naming conventions: PascalCase for components, camelCase for functions
+- Functional components with hooks
+- TypeScript strict mode
+- async/await over promise chains
+- Consistent error handling
+- PascalCase for components, camelCase for functions
 
 ### Communication Style
-- Be concise and professional
+- Concise and professional
 - Focus on technical accuracy
-- Provide clear implementation details
 - Document architectural decisions
 
 ### Database Migration Requirements
-- **ALWAYS update migrations when adding new features**: Any schema change (new columns, new tables, field modifications) MUST have a corresponding migration file in the `migrations/` folder
-- **Never assume existing data**: Migrations must check and create parent records before inserting child records (e.g., ensure `data_masters` entry exists before inserting into `master_data_entries`)
-- **Audit schema vs migrations**: When working on database-related tasks, compare `shared/schema.ts` against existing migrations to identify any gaps
-- **Migration naming**: Use sequential numbering format `NNNN_descriptive_name.sql` (e.g., `0013_add_uploaded_photo_column.sql`)
-- **Idempotent migrations**: Use `IF NOT EXISTS` / `IF EXISTS` clauses to make migrations safe to re-run
-- **Data backfill migrations**: When consolidating or renaming fields, create separate backfill migrations to ensure existing data is properly migrated (e.g., `0016_backfill_crew_sign_on_date.sql`)
+- Always update migrations when adding new features
+- Sequential numbering: `NNNN_descriptive_name.sql`
+- Use `IF NOT EXISTS` / `IF EXISTS` for idempotent migrations
+- Separate backfill migrations for data consolidation
 
-## System Architecture
-The application employs a modern web stack with a module-first architecture, prioritizing clear separation of concerns and scalability.
+## Project Architecture
 
-### UI/UX Decisions
-- Consistent layout, alignment, error handling, and loading states.
-- Adherence to SAIL Form Standards.
-- Date Display Format: DD-MMM-YYYY.
+### Tech Stack
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, AG Grid Enterprise, TanStack Query v5, React Hook Form, Zod, Wouter
+- **Backend**: Express.js, TypeScript
+- **Database**: PostgreSQL, Drizzle ORM
+- **External**: SAIL ERP API, SAIL Audits API
 
-### Technical Implementations
-- **Module-First Architecture**: Emphasizes clear separation of concerns.
-- **Vessel ID/Name Translation**: Backend uses IDs, UI displays names.
-- **Canonical Vessel Code Enforcement**: All storage backends enforce VSL-XXX format.
-- **Vessel Planning V2**: V2 architecture for vessel planning with Repository + Service + Controller pattern. Uses UUID-based vessel_planning_v2 table with attachments support. API endpoints at `/api/v2/vessel/`.
-- **Vessel Module V2 Migration**: Frontend V2 integration includes:
-    - `VesselVersionToggle` component: UI toggle switch for V1/V2 mode with localStorage persistence (key: `vessel_module_version`)
-    - `useVesselVersion` hook: Manages version state at module level in `vessel/index.tsx`
-    - Router pattern: `vessel/index.tsx` switches between `VesselModule` (V1) and `VesselModule_v2` based on version
-    - V2 components in `vessel/v2/` folder: `VesselModule_v2.tsx`, `VesselSideBar_v2.tsx`, `ComplianceMatrixDialog_v2.tsx`
-    - V2 hooks in `vessel/v2/hooks/`: `useVesselV2.ts` with planning CRUD operations
-    - V2 API client: `vessel/v2/api/vesselApiV2.ts` following Crew Pool V2 patterns
-- **Master Data System**: Centralized reference data storage.
-- **Vessel Revision System**: Manages vessel rank assignments with draft/submission workflows.
-- **Crew Modules**:
-    - **Vessel Database Module**: Displays vessel data, Officer Matrix, Planning, and Training Matrix, including "Time o/b (months)" calculation.
-    - **Crew Handover Workflow**: Manages crew transitions with primary/secondary status.
-    - **Crew Archive System**: Manages historical crew records with sign-off workflow.
-    - **Rotation Module (V1 & V2)**: Manages crew rotation planning with visual timelines. V2 features Repository + Service + Controller pattern with UUID identifiers, connecting to crew_members_v2 for crew visibility. Critical endpoint `/api/v2/rotation/crew/by-rank/:rank` enables V2 crew from Recruitment to be visible for vessel deployment. Deployments sync to both vessel_planning_v2 and crew_assignments tables. Frontend V2 integration includes:
-        - `RotationVersionToggle` component: UI toggle switch for V1/V2 mode with localStorage persistence
-        - `useRotationVersion` hook: Manages version state and provides version-aware data hooks
-        - `useRotationPlans` hook: Version-aware rotation plans fetching (V1 /api/rotation-plans, V2 /api/v2/rotation/drafts)
-        - `useCrewByRank` hook: Version-aware crew fetching by rank with V2 field mapping
-        - `useDeleteRotationPlan` hook: Version-aware plan deletion with uuid support for V2
-        - V2 API clients: `rotationApiV2.ts` and `vesselApiV2.ts` following Crew Pool V2 patterns
-    - **Crew Deployment Workflow (V2)**: Two-stage workflow for deploying crew from Rotation to Vessel:
-        - Stage 1 - Deploy from Rotation: Creates `crew_assignments` with `isCurrent=false, assignmentType="Planned"`. Crew appears in Vessel Planning Reliever Status with "Planned" joiningStatus.
-        - Stage 2 - Sign On: When status changes to "Signed On" via `/api/v2/vessel/planning/:planUuid/sign-on`, crew moves from Reliever to On Board. Transaction updates: (1) old primary crew assignment set to `isCurrent=false`, (2) vessel_planning moves relieverCrewUuid to crewUuid with crewStatus="primary", (3) crew_assignment updated to `isCurrent=true, assignmentType="OnBoard"`.
-        - Crew List/Officer Matrix use `crew_assignments.isCurrent=true` to determine on-board crew.
-    - **Crew Appraisals Module**: Manages appraisals through a 3-stage workflow.
-    - **Crew Pool Module (V1 & V2)**: Manages active crew database. V2 features a re-architected system with a Repository + Service + Controller pattern, UUID identifiers, soft deletes, and comprehensive forms. Includes a "Save-Before-Attachment" pattern (uses direct API calls via `crewPoolApiV2` to preserve unsaved rows - mutations cause query invalidation which overwrites local form state) and generates sequential 'A000001' format Crew IDs.
-    - **Crew Dashboard Timeline Card**: Canvas-based visualization of 6-month vessel assignments.
-- **Forms & Configuration**:
-    - **Forms Configuration**: Integrates company-specific rank labels for rank group creation and appraisal form matching. Features a Form Versioning System and allows admin configuration of hidden fields/sections via JSON.
-    - **Promotion Hierarchy System**: Configurable promotion paths integrated with a Promotions module, with dynamic criteria loading for review forms.
-- **Compliance & Training**:
-    - **Drugs & Alcohol Testing Module**: Tracks six test types with filtering and summary views.
-    - **Training Matrix Module**: Manages certifications and requirements, including Company Training configurations and a per-rank Training Requirement Matrix. V2 endpoint `/api/v2/vessel/training/:vesselUuid` uses crew_training_courses joined with crew_assignments for V2 crew data. Frontend training status indicators: green=valid, yellow=expiring in 2 months, red=expired.
-    - **Oil Major Compliance Engine**: Validates crew officer experience against various oil major requirements. V2 endpoint `/api/v2/vessel/compliance/matrix/:vesselUuid` uses V2 tables (crew_sea_service, crew_personal_details, crew_assignments, crew_members_v2) for compliance evaluation.
-    - **Rest Hours Module (V1 & V2)**: Manages seafarer work and rest hours compliance with Dashboard, Record, and Plan sections, including "Majority-Day Violation Assignment" logic and PDF export. V2 features:
-        - Backend: 9 tables (rh_vessels, rh_crew_records, rh_daily_records, rh_fixed_tasks, rh_variable_tasks, rh_vessel_comments, rh_office_comments, rh_nc_reports, rh_dateline_adjustments) with 54 API endpoints at `/api/v2/rest-hours/*`
-        - Repository + Service + Controller pattern with UUID identifiers, soft deletes (isDeleted: true), and audit columns (createdByUuid/updatedByUuid)
-        - `RestHoursVersionToggle` component: UI toggle switch for V1/V2 mode with localStorage persistence (key: `rest_hours_module_version`)
-        - V2 components in `rest-hours/v2/` folder with full API migration from V1 to V2 endpoints
-        - V2 API client: `rest-hours/v2/api/restHoursApiV2.ts` with methods for all resources (vesselRecords, crewRecords, dailyRecords, fixedTasks, variableTasks, vesselComments, officeComments, ncReports, datelineAdjustments)
-        - Query key pattern: `['v2', 'rest-hours', ...]` for cache management
-- **Recruitment Module (V1 & V2)**: Manages candidate applications. V2 is a complete restructure using Repository + Service + Controller pattern, serial IDs with UUID soft foreign keys, and 54 normalized tables across 4 phases (Candidate Core, Documents, Screening, Approvals). Features API endpoints following `/api/v2/recruitment/` and a feature flag system for version toggling.
-- **Core Utilities**:
-    - **Rank Designation Synchronization**: Supports company and vessel-specific rank designations.
-    - **Vessel Type Hierarchy System**: Centralized 3-level classification from Master Data 004.
-    - **Rank Ordering System**: Centralized `useRankOrdering` hook for consistent crew sorting.
-    - **Database Connection Resilience**: Production-critical connection pool management with retry logic, exponential backoff, and request queuing.
-    - **Master Data UUID Resolution**: Utility for resolving master data values to UUIDs, storing UUIDs, and using JOINs for read operations.
-- **Performance Optimization**: Achieved through route-level code splitting, memoization, and dual schema validation.
-- **Data Storage**: `PersistentFileStorage` for development, PostgreSQL/Drizzle ORM for production.
-- **Position Display Normalization**: API-level `displayRole` field provides correct display names for vessel positions.
+### Directory Structure
+- `client/src/` — Frontend source
+  - `modules/` — Feature modules (accounts, admin, crewing, crew-pool, drugs-alcohol, promotions, recruitment, recruitment-v2, rest-hours, rotation, vessel)
+  - `pages/` — Route pages (DashboardPage, ReportsComingSoon)
+  - `components/` — Shared UI components (shadcn-based)
+  - `hooks/`, `stores/`, `utils/`, `contexts/`, `types/` — Supporting code
+- `server/` — Backend source
+  - `routes.ts` — API route definitions
+  - `routes/` — Route handler modules
+  - `v2/` — V2 API implementations (Repository + Service + Controller pattern)
+  - `storage.ts`, `storage-mem.ts` — Storage interfaces
+  - `database.ts`, `db.ts` — Database configuration
+  - `migrations/` — SQL migration files
+- `shared/` — Shared types and schemas
+  - `schema.ts` — Drizzle schema definitions
+  - `v2/` — V2 shared schemas
 
-## External Dependencies
-- React 18
-- TypeScript
-- Vite
-- Express.js
-- AG Grid Enterprise
-- shadcn/ui
-- Tailwind CSS
-- TanStack Query v5
-- React Hook Form
-- Zod
-- Wouter
-- PostgreSQL
-- Drizzle ORM
-- SAIL ERP API (for Master Data 001, 004, 014, 015, 017, 018, 019, 020)
-- SAIL Audits API (for Users Master 024)
+### Key Modules
+- **Crew Pool (V1 & V2)**: Active crew database with UUID identifiers and soft deletes
+- **Vessel Management (V1 & V2)**: Vessel data, Officer Matrix, Planning, Training Matrix
+- **Recruitment (V1 & V2)**: Candidate application management
+- **Rotation (V1 & V2)**: Crew rotation planning with visual timelines
+- **Rest Hours (V1 & V2)**: Work/rest hours compliance
+- **Crew Appraisals**: 3-stage appraisal workflow
+- **Training Matrix**: Certifications and requirements tracking
+- **Drugs & Alcohol Testing**: Six test types with filtering
+- **Oil Major Compliance**: Crew experience validation
+- **Promotions**: Configurable promotion paths
+- **Forms Configuration**: Company-specific form management with versioning
+
+### Architecture Patterns
+- V2 modules use Repository + Service + Controller pattern
+- V1/V2 toggle switches with localStorage persistence
+- Module-first architecture with clear separation of concerns
+- Master Data System for centralized reference data
+- Vessel Revision System for rank assignments (draft/submission workflows)
+- Crew Deployment: Two-stage workflow (Deploy from Rotation → Sign On)
+
+### Running the Project
+- Workflow "Start application" runs `npm run dev` (Express backend + Vite frontend on same port)
+- Do not modify `server/vite.ts`, `vite.config.ts`, `package.json`, or `drizzle.config.ts`
+
+### UI/UX Standards
+- Date format: DD-MMM-YYYY
+- Consistent layout, alignment, error handling, loading states
+- SAIL Form Standards compliance
