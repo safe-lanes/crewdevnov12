@@ -7,7 +7,7 @@ import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 
-const AdminModule = lazy(() => import("./modules/admin/AdminModule").then(m => ({ default: m.AdminModule })));
+const AdminRouter = lazy(() => import("./modules/admin/index"));
 const ElementCrewAppraisals = lazy(() => import("./modules/crewing/ElementCrewAppraisals").then(m => ({ default: m.ElementCrewAppraisals })));
 const RecruitmentWrapper = lazy(() => import("./modules/recruitment/RecruitmentWrapper").then(m => ({ default: m.RecruitmentWrapper })));
 const CrewPoolModuleRouter = lazy(() => import("./modules/crew-pool").then(m => ({ default: m.CrewPoolModuleRouter })));
@@ -51,8 +51,8 @@ function App() {
                 <Route path="/rest-hours/:rest*" component={RestHoursModuleRouter} />
                 <Route path="/rest-hours" component={RestHoursModuleRouter} />
                 <Route path="/reports" component={ReportsComingSoon} />
-                <Route path="/admin/*" component={AdminModule} />
-                <Route path="/admin" component={AdminModule} />
+                <Route path="/admin/*" component={AdminRouter} />
+                <Route path="/admin" component={AdminRouter} />
                 <Route path="/accounts/:path*" component={AccountsModule} />
                 <Route path="/accounts" component={AccountsModule} />
                 <Route component={NotFound} />

@@ -5,6 +5,13 @@ A comprehensive maritime operations platform for managing seafarer performance, 
 
 ## Recent Changes
 - Memory reset on February 11, 2026
+- Admin Module V2 migration completed (February 11, 2026):
+  - Created 5 V2 tables: adm_forms_v2, adm_form_versions_v2, adm_rank_groups_v2, adm_available_ranks_v2, adm_promotion_hierarchies_v2
+  - Backend: Repository + Service + Controller pattern in server/v2/admin/
+  - Frontend: V2 API client (adminApiV2.ts), React Query hooks (useAdminV2.ts), AdminModule_v2.tsx
+  - V1/V2 toggle: AdminVersionToggle component, useAdminVersion hook, admin/index.tsx router
+  - Routes registered at /api/v2/admin/
+  - Tables created via direct SQL (not drizzle-kit push) due to schema conflicts
 
 ## User Preferences
 ### Code Style
@@ -61,7 +68,7 @@ A comprehensive maritime operations platform for managing seafarer performance, 
 - **Drugs & Alcohol Testing**: Six test types with filtering
 - **Oil Major Compliance**: Crew experience validation
 - **Promotions**: Configurable promotion paths
-- **Forms Configuration**: Company-specific form management with versioning
+- **Admin / Forms Configuration (V1 & V2)**: Company-specific form management with versioning, rank groups, available ranks, promotion hierarchies
 
 ### Architecture Patterns
 - V2 modules use Repository + Service + Controller pattern

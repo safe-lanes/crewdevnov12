@@ -589,10 +589,10 @@ const AdminModuleInner = (): JSX.Element => {
   // Rank reorder mutation
   const reorderRanksMutation = useMutation({
     mutationFn: async (rankOrders: Array<{ id: number; sortOrder: number }>) => {
-      return apiRequest('POST', '/api/available-ranks/reorder', rankOrders);
+      return apiRequest('POST', '/api/v2/admin/available-ranks/reorder', rankOrders);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/available-ranks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/available-ranks'] });
       toast({
         title: "Ranks reordered successfully",
         description: "The rank order has been updated.",
@@ -1192,7 +1192,7 @@ const AdminModuleInner = (): JSX.Element => {
           additionalAction = "The rank list will be refreshed to show current data.";
 
           // Force refresh the rank data to clear stale cache
-          rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+          rq.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
 
           // Also clear the local state to remove stale entries
           setRankMasterData(prev => prev.filter(rank => rank.id !== rankToDelete.id));
@@ -2718,7 +2718,7 @@ const AdminModuleInner = (): JSX.Element => {
       setIsCompanyEditing(false);
 
       // Refresh rank data to pick up newly created role variants
-      rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
 
       toast({
         title: "Success",
@@ -3264,10 +3264,10 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Fetch forms data from API
   const { data: formsData = [], isLoading, error } = useQuery<Form[]>({
-    queryKey: ["/api/forms"],
+    queryKey: ["/api/v2/admin/forms"],
     enabled: selectedAdminPage === "forms",
     queryFn: async () => {
-      const response = await fetch("/api/forms");
+      const response = await fetch("/api/v2/admin/forms");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -3277,9 +3277,9 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Fetch all rank groups for forms tab (must be before expandedFormsData useMemo)
   const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
-    queryKey: ["/api/rank-groups", { includeArchived: true }],
+    queryKey: ["/api/v2/admin/rank-groups", { includeArchived: true }],
     queryFn: async () => {
-      const response = await fetch("/api/rank-groups?includeArchived=true");
+      const response = await fetch("/api/v2/admin/rank-groups?includeArchived=true");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -3407,9 +3407,9 @@ const AdminModuleInner = (): JSX.Element => {
   }, [formsData, allRankGroups]);
 
   const { data: availableRanks = [] } = useQuery<AvailableRank[]>({
-    queryKey: ["/api/available-ranks"],
+    queryKey: ["/api/v2/admin/available-ranks"],
     queryFn: async () => {
-      const response = await fetch("/api/available-ranks");
+      const response = await fetch("/api/v2/admin/available-ranks");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -3419,11 +3419,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createRankGroupMutation = useMutation({
     mutationFn: async (data: { formId: number; name: string; ranks: string[] }) => {
-      return await apiRequest("POST", "/api/rank-groups", data);
+      return await apiRequest("POST", "/api/v2/admin/rank-groups", data);
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
-      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/rank-groups"] });
       setIsAddRankGroupOpen(false);
       setSelectedFormForRankGroup(null);
       setEditingRankGroupData(null);
@@ -3432,11 +3432,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const updateRankGroupMutation = useMutation({
     mutationFn: async (data: { id: number; name: string; ranks: string[] }) => {
-      return await apiRequest("PUT", `/api/rank-groups/${data.id}`, { name: data.name, ranks: data.ranks });
+      return await apiRequest("PUT", `/api/v2/admin/rank-groups/${data.id}`, { name: data.name, ranks: data.ranks });
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
-      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/rank-groups"] });
       setIsAddRankGroupOpen(false);
       setSelectedFormForRankGroup(null);
       setEditingRankGroupData(null);
@@ -3456,15 +3456,15 @@ const AdminModuleInner = (): JSX.Element => {
 
   const archiveRankGroupMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest("POST", `/api/rank-groups/${id}/archive`, {});
+      return await apiRequest("POST", `/api/v2/admin/rank-groups/${id}/archive`, {});
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       // Invalidate all rank-groups queries (including those with includeArchived param)
       rq.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey;
-          return Array.isArray(key) && key[0] === "/api/rank-groups";
+          return Array.isArray(key) && key[0] === "/api/v2/admin/rank-groups";
         }
       });
       toast({
@@ -3483,11 +3483,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const unarchiveRankGroupMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest("POST", `/api/rank-groups/${id}/unarchive`, {});
+      return await apiRequest("POST", `/api/v2/admin/rank-groups/${id}/unarchive`, {});
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
-      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/rank-groups"] });
       toast({
         title: "Success",
         description: "Rank group restored successfully",
@@ -3504,10 +3504,10 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createFormMutation = useMutation({
     mutationFn: async (data: { name: string; category: string; rankGroup: string; versionNo: string; versionDate: string }) => {
-      return await apiRequest("POST", "/api/forms", data);
+      return await apiRequest("POST", "/api/v2/admin/forms", data);
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       setShowCreateFormDialog(false);
       setNewFormName("");
       setNewFormCategory("appraisal");
@@ -3517,11 +3517,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const deleteFormMutation = useMutation({
     mutationFn: async (formId: number) => {
-      return await apiRequest("DELETE", `/api/forms/${formId}`);
+      return await apiRequest("DELETE", `/api/v2/admin/forms/${formId}`);
     },
     onSuccess: () => {
       // Invalidate cache on success
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       toast({
         title: "Success",
         description: "Form deleted successfully",
@@ -3529,7 +3529,7 @@ const AdminModuleInner = (): JSX.Element => {
     },
     onError: (error: any) => {
       // Also invalidate cache on error to refresh state
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
 
       // Extract specific error message from server response
       let errorMessage = "Failed to delete form";
@@ -3667,10 +3667,10 @@ const AdminModuleInner = (): JSX.Element => {
       const updateData: Record<string, unknown> = {};
       if (configuration) updateData.configuration = configuration;
       if (sharedConfig) updateData.sharedConfig = JSON.stringify(sharedConfig);
-      return apiRequest('PUT', `/api/forms/${formId}`, updateData);
+      return apiRequest('PUT', `/api/v2/admin/forms/${formId}`, updateData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/forms'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
       toast({
         title: "Success",
         description: "Form configuration saved successfully",
@@ -3688,10 +3688,10 @@ const AdminModuleInner = (): JSX.Element => {
 
   const updateRankGroupConfigMutation = useMutation({
     mutationFn: async ({rankGroupId, configuration}: {rankGroupId: number; configuration: string}) => {
-      return apiRequest('PUT', `/api/rank-groups/${rankGroupId}/configuration`, { configuration });
+      return apiRequest('PUT', `/api/v2/admin/rank-groups/${rankGroupId}/configuration`, { configuration });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/rank-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
       toast({
         title: "Success",
         description: "Rank group configuration saved successfully",
@@ -4231,7 +4231,7 @@ const AdminModuleInner = (): JSX.Element => {
                   <Button
                     onClick={() => {
                       // Force refresh rank data to clear any stale cache
-                      rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+                      rq.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
                       toast({
                         title: "Data refreshed",
                         description: "Rank data has been refreshed from the database.",
@@ -4331,7 +4331,7 @@ const AdminModuleInner = (): JSX.Element => {
                 <Button
                   onClick={() => {
                     // Force refresh rank data to clear any stale cache
-                    rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+                    rq.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
                     toast({
                       title: "Data refreshed",
                       description: "Rank data has been refreshed from the database.",
@@ -8597,12 +8597,12 @@ const AddRankGroupDialog = ({
 
   // Fetch rank conflicts for this form
   const { data: rankConflicts = {} } = useQuery<Record<string, string>>({
-    queryKey: ['/api/rank-groups/form', formId, 'rank-conflicts', editingRankGroup?.id],
+    queryKey: ['/api/v2/admin/rank-groups/form', formId, 'rank-conflicts', editingRankGroup?.id],
     queryFn: async () => {
       if (!formId) return {};
       const url = editingRankGroup?.id 
-        ? `/api/rank-groups/form/${formId}/rank-conflicts?excludeGroupId=${editingRankGroup.id}`
-        : `/api/rank-groups/form/${formId}/rank-conflicts`;
+        ? `/api/v2/admin/rank-groups/form/${formId}/rank-conflicts?excludeGroupId=${editingRankGroup.id}`
+        : `/api/v2/admin/rank-groups/form/${formId}/rank-conflicts`;
       const response = await fetch(url);
       if (!response.ok) return {};
       return response.json();
@@ -8775,7 +8775,7 @@ const AddRankGroupDialog = ({
 };
 
 // Wrapper component with EditSessionProvider
-export const AdminModule = (): JSX.Element => {
+export const AdminModule_v2 = (): JSX.Element => {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const updateEntryMutation = useUpdateMasterDataEntry();

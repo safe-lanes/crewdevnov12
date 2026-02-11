@@ -4,6 +4,7 @@ import { MicroFrontendWrapper } from './MicroFrontendWrapper';
 import App from '../App';
 import './micro-frontend.css';
 import { AdminModule } from '@/modules/admin/AdminModule';
+import { AdminModule_v2 } from '@/modules/admin/v2/AdminModule';
 import { FormEditor } from '@/components/FormEditor';
 import { ElementCrewAppraisals } from '@/modules/crewing/ElementCrewAppraisals';
 import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
@@ -41,6 +42,7 @@ export const bootstrap = (config?: any) => {
         ElementCrewAppraisals,
         AppraisalForm,
         AdminModule,
+        AdminModule_v2,
         FormEditor
       };
       
@@ -72,6 +74,7 @@ if (typeof window !== 'undefined') {
       ElementCrewAppraisals,
       AppraisalForm,
       AdminModule,
+      AdminModule_v2,
       FormEditor,
       App
     }
