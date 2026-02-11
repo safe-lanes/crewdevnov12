@@ -321,6 +321,7 @@ export function useCreateTrainingMasterV2() {
     mutationFn: (data: any) => adminApiV2.createTrainingMaster(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
     },
   });
 }
@@ -332,6 +333,7 @@ export function useUpdateTrainingMasterV2() {
       adminApiV2.updateTrainingMaster(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
     },
   });
 }
@@ -342,6 +344,7 @@ export function useDeleteTrainingMasterV2() {
     mutationFn: (id: number) => adminApiV2.deleteTrainingMaster(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
     },
   });
 }
