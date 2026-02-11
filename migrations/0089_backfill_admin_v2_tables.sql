@@ -20,7 +20,17 @@ SELECT
   false,
   false
 FROM forms
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  form_uuid = EXCLUDED.form_uuid,
+  name = EXCLUDED.name,
+  category = EXCLUDED.category,
+  rank_group = EXCLUDED.rank_group,
+  version_no = EXCLUDED.version_no,
+  version_date = EXCLUDED.version_date,
+  configuration = EXCLUDED.configuration,
+  shared_config = EXCLUDED.shared_config,
+  is_deleted = false,
+  updated_at = NOW();
 
 -- Reset sequence for forms
 SELECT setval(pg_get_serial_sequence('adm_forms_v2', 'id'), COALESCE((SELECT MAX(id) FROM adm_forms_v2), 0) + 1, false);
