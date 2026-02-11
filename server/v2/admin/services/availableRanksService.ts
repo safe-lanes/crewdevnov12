@@ -25,7 +25,17 @@ export const availableRanksService = {
   },
 
   async create(data: Omit<InsertAdmAvailableRankV2, "arUuid">): Promise<AdmAvailableRankV2> {
-    return availableRanksRepo.create(data);
+    let rankId = data.rankId;
+    if (!rankId || !/^R\d{3,}$/.test(rankId)) {
+      const existingRanks = await availableRanksRepo.findAll();
+      const existingRIds = existingRanks
+        .map(r => r.rankId)
+        .filter((rid): rid is string => !!rid && /^R\d{3,}$/.test(rid))
+        .map(rid => parseInt(rid.substring(1), 10));
+      const maxRId = existingRIds.length > 0 ? Math.max(...existingRIds) : 23;
+      rankId = `R${String(maxRId + 1).padStart(3, '0')}`;
+    }
+    return availableRanksRepo.create({ ...data, rankId });
   },
 
   async updateById(id: number, data: Partial<InsertAdmAvailableRankV2>): Promise<AdmAvailableRankV2> {
