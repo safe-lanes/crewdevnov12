@@ -27,7 +27,7 @@ export const availableRanksService = {
   async create(data: Omit<InsertAdmAvailableRankV2, "arUuid">): Promise<AdmAvailableRankV2> {
     let rankId = data.rankId;
     if (!rankId || !/^R\d{3,}$/.test(rankId)) {
-      const existingRanks = await availableRanksRepo.findAll();
+      const existingRanks = await availableRanksRepo.findAllIncludingDeleted();
       const existingRIds = existingRanks
         .map(r => r.rankId)
         .filter((rid): rid is string => !!rid && /^R\d{3,}$/.test(rid))

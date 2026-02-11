@@ -14,6 +14,14 @@ export class AvailableRanksRepository {
       .orderBy(asc(admAvailableRanksV2.sortOrder));
   }
 
+  async findAllIncludingDeleted(): Promise<AdmAvailableRankV2[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(admAvailableRanksV2)
+      .orderBy(asc(admAvailableRanksV2.sortOrder));
+  }
+
   async findById(id: number): Promise<AdmAvailableRankV2 | undefined> {
     const db = getDb();
     const results = await db
