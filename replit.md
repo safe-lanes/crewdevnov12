@@ -4,6 +4,7 @@
 A comprehensive maritime operations platform for managing seafarer performance, crew deployment, vessel operations, and regulatory compliance. Built with React, Express, TypeScript, PostgreSQL, and Drizzle ORM.
 
 ## Recent Changes
+- Fixed V2 rank group sync (February 11, 2026): Added syncFormRankGroup to V2 rankGroupsService so form's rank_group display field updates after create/update/archive/unarchive/delete of rank groups. Mirrors V1 behavior in database.ts.
 - Memory reset on February 11, 2026
 - Admin Module V2 full migration completed (February 11, 2026):
   - Phase 1: Created 5 V2 tables: adm_forms_v2, adm_form_versions_v2, adm_rank_groups_v2, adm_available_ranks_v2, adm_promotion_hierarchies_v2

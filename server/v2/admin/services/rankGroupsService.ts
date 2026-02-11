@@ -5,6 +5,12 @@ import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2
 const rankGroupsRepo = new RankGroupsRepository();
 const formsRepo = new FormsRepository();
 
+async function syncFormRankGroup(formId: number): Promise<void> {
+  const activeGroups = await rankGroupsRepo.findByFormId(formId, false);
+  const rankGroupNames = activeGroups.map(rg => rg.name).join(", ");
+  await formsRepo.updateById(formId, { rankGroup: rankGroupNames || "" });
+}
+
 function checkRankConflicts(
   activeGroups: AdmRankGroupV2[],
   newRanks: string[],
@@ -94,7 +100,9 @@ export const rankGroupsService = {
       throw new Error(`The following ranks are already assigned to other active rank groups: ${details}`);
     }
 
-    return rankGroupsRepo.create(data);
+    const result = await rankGroupsRepo.create(data);
+    await syncFormRankGroup(data.formId);
+    return result;
   },
 
   async updateById(id: number, data: Partial<InsertAdmRankGroupV2>): Promise<AdmRankGroupV2> {
@@ -117,6 +125,7 @@ export const rankGroupsService = {
 
     const result = await rankGroupsRepo.updateById(id, data);
     if (!result) throw new Error(`Rank group not found: ${id}`);
+    if (data.name || data.ranks) await syncFormRankGroup(existing.formId);
     return result;
   },
 
@@ -140,6 +149,7 @@ export const rankGroupsService = {
 
     const result = await rankGroupsRepo.update(rgUuid, data);
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
+    if (data.name || data.ranks) await syncFormRankGroup(existing.formId);
     return result;
   },
 
@@ -156,35 +166,53 @@ export const rankGroupsService = {
   },
 
   async archiveById(id: number): Promise<AdmRankGroupV2> {
+    const existing = await rankGroupsRepo.findById(id);
+    if (!existing) throw new Error(`Rank group not found: ${id}`);
     const result = await rankGroupsRepo.archiveById(id);
     if (!result) throw new Error(`Rank group not found: ${id}`);
+    await syncFormRankGroup(existing.formId);
     return result;
   },
 
   async archive(rgUuid: string): Promise<AdmRankGroupV2> {
+    const existing = await rankGroupsRepo.findByUuid(rgUuid);
+    if (!existing) throw new Error(`Rank group not found: ${rgUuid}`);
     const result = await rankGroupsRepo.archive(rgUuid);
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
+    await syncFormRankGroup(existing.formId);
     return result;
   },
 
   async unarchiveById(id: number): Promise<AdmRankGroupV2> {
+    const existing = await rankGroupsRepo.findById(id);
+    if (!existing) throw new Error(`Rank group not found: ${id}`);
     const result = await rankGroupsRepo.unarchiveById(id);
     if (!result) throw new Error(`Rank group not found: ${id}`);
+    await syncFormRankGroup(existing.formId);
     return result;
   },
 
   async unarchive(rgUuid: string): Promise<AdmRankGroupV2> {
+    const existing = await rankGroupsRepo.findByUuid(rgUuid);
+    if (!existing) throw new Error(`Rank group not found: ${rgUuid}`);
     const result = await rankGroupsRepo.unarchive(rgUuid);
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
+    await syncFormRankGroup(existing.formId);
     return result;
   },
 
   async deleteById(id: number): Promise<boolean> {
-    return rankGroupsRepo.softDeleteById(id);
+    const existing = await rankGroupsRepo.findById(id);
+    const deleted = await rankGroupsRepo.softDeleteById(id);
+    if (deleted && existing) await syncFormRankGroup(existing.formId);
+    return deleted;
   },
 
   async delete(rgUuid: string): Promise<boolean> {
-    return rankGroupsRepo.softDelete(rgUuid);
+    const existing = await rankGroupsRepo.findByUuid(rgUuid);
+    const deleted = await rankGroupsRepo.softDelete(rgUuid);
+    if (deleted && existing) await syncFormRankGroup(existing.formId);
+    return deleted;
   },
 
   async getRankConflictsByFormId(formId: number, excludeGroupId?: number): Promise<Record<string, string>> {
