@@ -129,6 +129,7 @@ import { useExternalLanguages } from "@/hooks/useExternalLanguages";
 import { useExternalCountries } from "@/hooks/useExternalCountries";
 import { useExternalUsers } from "@/hooks/useExternalUsers";
 import { useSyncAllMasterData, useLocalMasterData } from "@/hooks/useLocalMasterApi";
+import { AdminVersionToggle } from './components/AdminVersionToggle';
 
 // StableInput component - uses local state to prevent value loss during re-renders
 // This solves the issue where external API hook re-renders cause controlled inputs to lose their value
@@ -8193,15 +8194,18 @@ const AdminModuleInner = (): JSX.Element => {
         onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
       />
       <MainLayout hasSidebar={true}>
-        <div className="lg:hidden flex items-center gap-2 mb-4">
-          <button
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-[#16569e] bg-white border border-[#16569e] rounded hover:bg-[#16569e] hover:text-white transition-colors"
-            data-testid="mobile-sidebar-toggle"
-          >
-            <span>☰</span>
-            <span>Menu</span>
-          </button>
+        <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+          <div className="lg:hidden flex items-center gap-2">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-[#16569e] bg-white border border-[#16569e] rounded hover:bg-[#16569e] hover:text-white transition-colors"
+              data-testid="mobile-sidebar-toggle"
+            >
+              <span>☰</span>
+              <span>Menu</span>
+            </button>
+          </div>
+          <AdminVersionToggle className="ml-auto" />
         </div>
         {selectedAdminPage === "forms" && renderFormsTable()}
         {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
