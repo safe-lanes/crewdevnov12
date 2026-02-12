@@ -353,10 +353,10 @@ const useCompanyTrainingRequirements = () => {
 
 const useTrainingMatrixVesselRevisions = (vesselId: string | null) => {
     return useQuery<any[]>({
-        queryKey: ['/api/training-matrix-vessel-revisions/by-vessel', vesselId],
+        queryKey: ['/api/v2/admin/training-matrix-vessel-revisions/by-vessel', vesselId],
         queryFn: async () => {
             if (!vesselId) return [];
-            const response = await fetch(`/api/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
+            const response = await fetch(`/api/v2/admin/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
             if (!response.ok) throw new Error('Failed to fetch training matrix vessel revisions');
             return response.json();
         },
@@ -366,10 +366,10 @@ const useTrainingMatrixVesselRevisions = (vesselId: string | null) => {
 
 const useTrainingMatrixVesselDraft = (vesselId: string | null) => {
     return useQuery<any[]>({
-        queryKey: ['/api/training-matrix-vessel-drafts/by-vessel', vesselId],
+        queryKey: ['/api/v2/admin/training-matrix-vessel-drafts/by-vessel', vesselId],
         queryFn: async () => {
             if (!vesselId) return [];
-            const response = await fetch(`/api/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
+            const response = await fetch(`/api/v2/admin/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
             if (!response.ok) throw new Error('Failed to fetch training matrix vessel draft');
             return response.json();
         },
