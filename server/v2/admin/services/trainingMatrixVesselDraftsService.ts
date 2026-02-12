@@ -1,4 +1,5 @@
 import { TrainingMatrixVesselDraftsRepository } from "../repositories/trainingMatrixVesselDraftsRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmTrainingMatrixVesselDraftV2, InsertAdmTrainingMatrixVesselDraftV2 } from "../../../../shared/v2/admin/types";
 
 const tmVesselDraftsRepo = new TrainingMatrixVesselDraftsRepository();
@@ -19,11 +20,11 @@ export const trainingMatrixVesselDraftsService = {
   },
 
   async create(data: Omit<InsertAdmTrainingMatrixVesselDraftV2, "tmvdUuid">): Promise<AdmTrainingMatrixVesselDraftV2> {
-    return tmVesselDraftsRepo.create(data);
+    return tmVesselDraftsRepo.create(applyAuditUser(data, true));
   },
 
   async updateById(id: number, data: Partial<InsertAdmTrainingMatrixVesselDraftV2>): Promise<AdmTrainingMatrixVesselDraftV2> {
-    const updated = await tmVesselDraftsRepo.updateById(id, data);
+    const updated = await tmVesselDraftsRepo.updateById(id, applyAuditUser(data));
     if (!updated) throw new Error(`Training matrix vessel draft not found: ${id}`);
     return updated;
   },
@@ -37,10 +38,10 @@ export const trainingMatrixVesselDraftsService = {
   async upsert(data: Omit<InsertAdmTrainingMatrixVesselDraftV2, "tmvdUuid">): Promise<AdmTrainingMatrixVesselDraftV2> {
     const existingDrafts = await tmVesselDraftsRepo.findByVesselId(data.vesselId);
     if (existingDrafts.length > 0) {
-      const updated = await tmVesselDraftsRepo.updateById(existingDrafts[0].id, data);
+      const updated = await tmVesselDraftsRepo.updateById(existingDrafts[0].id, applyAuditUser(data));
       if (!updated) throw new Error(`Training matrix vessel draft not found for vessel: ${data.vesselId}`);
       return updated;
     }
-    return tmVesselDraftsRepo.create(data);
+    return tmVesselDraftsRepo.create(applyAuditUser(data, true));
   },
 };

@@ -1,5 +1,6 @@
 import { TrainingMatrixVesselRevisionsRepository } from "../repositories/trainingMatrixVesselRevisionsRepository";
 import { TrainingMatrixVesselDraftsRepository } from "../repositories/trainingMatrixVesselDraftsRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmTrainingMatrixVesselRevisionV2, InsertAdmTrainingMatrixVesselRevisionV2 } from "../../../../shared/v2/admin/types";
 
 const tmVesselRevisionsRepo = new TrainingMatrixVesselRevisionsRepository();
@@ -21,7 +22,7 @@ export const trainingMatrixVesselRevisionsService = {
   },
 
   async create(data: Omit<InsertAdmTrainingMatrixVesselRevisionV2, "tmvrUuid">): Promise<AdmTrainingMatrixVesselRevisionV2> {
-    return tmVesselRevisionsRepo.create(data);
+    return tmVesselRevisionsRepo.create(applyAuditUser(data, true));
   },
 
   async getNextRevision(vesselId: string): Promise<string> {
@@ -35,12 +36,12 @@ export const trainingMatrixVesselRevisionsService = {
   }> {
     const autoAssignedRevision = await tmVesselRevisionsRepo.getNextRevision(data.vesselId);
 
-    const revision = await tmVesselRevisionsRepo.create({
+    const revision = await tmVesselRevisionsRepo.create(applyAuditUser({
       vesselId: data.vesselId,
       revision: autoAssignedRevision,
       revisionDate: data.revisionDate,
       revisionData: data.revisionData,
-    });
+    }, true));
 
     const existingDrafts = await tmVesselDraftsRepo.findByVesselId(data.vesselId);
     let deletedDrafts = 0;

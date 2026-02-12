@@ -1,4 +1,5 @@
 import { PromotionHierarchiesRepository } from "../repositories/promotionHierarchiesRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmPromotionHierarchyV2, InsertAdmPromotionHierarchyV2 } from "../../../../shared/v2/admin/types";
 
 const promotionHierarchiesRepo = new PromotionHierarchiesRepository();
@@ -29,18 +30,18 @@ export const promotionHierarchiesService = {
   },
 
   async create(data: Omit<InsertAdmPromotionHierarchyV2, "phUuid">): Promise<any> {
-    const hierarchy = await promotionHierarchiesRepo.create(data);
+    const hierarchy = await promotionHierarchiesRepo.create(applyAuditUser(data, true));
     return parseRankPath(hierarchy);
   },
 
   async updateById(id: number, data: Partial<InsertAdmPromotionHierarchyV2>): Promise<any> {
-    const result = await promotionHierarchiesRepo.updateById(id, data);
+    const result = await promotionHierarchiesRepo.updateById(id, applyAuditUser(data));
     if (!result) throw new Error(`Promotion hierarchy not found: ${id}`);
     return parseRankPath(result);
   },
 
   async update(phUuid: string, data: Partial<InsertAdmPromotionHierarchyV2>): Promise<any> {
-    const result = await promotionHierarchiesRepo.update(phUuid, data);
+    const result = await promotionHierarchiesRepo.update(phUuid, applyAuditUser(data));
     if (!result) throw new Error(`Promotion hierarchy not found: ${phUuid}`);
     return parseRankPath(result);
   },

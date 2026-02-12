@@ -1,4 +1,5 @@
 import { VesselGroupsRepository } from "../repositories/vesselGroupsRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmVesselGroupV2, InsertAdmVesselGroupV2 } from "../../../../shared/v2/admin/types";
 
 const vesselGroupsRepo = new VesselGroupsRepository();
@@ -19,14 +20,14 @@ export const vesselGroupsService = {
     if (Array.isArray(normalizedData.vesselIds)) {
       normalizedData.vesselIds = JSON.stringify(normalizedData.vesselIds);
     }
-    return vesselGroupsRepo.create(normalizedData);
+    return vesselGroupsRepo.create(applyAuditUser(normalizedData, true));
   },
 
   async updateById(id: number, data: Partial<InsertAdmVesselGroupV2>): Promise<AdmVesselGroupV2> {
     if (data.vesselIds && Array.isArray(data.vesselIds)) {
       data.vesselIds = JSON.stringify(data.vesselIds);
     }
-    const updated = await vesselGroupsRepo.updateById(id, data);
+    const updated = await vesselGroupsRepo.updateById(id, applyAuditUser(data));
     if (!updated) throw new Error(`Vessel group not found: ${id}`);
     return updated;
   },

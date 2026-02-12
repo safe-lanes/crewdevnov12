@@ -1,5 +1,6 @@
 import { CompanyTrainingsRepository } from "../repositories/companyTrainingsRepository";
 import { TrainingMasterRepository } from "../repositories/trainingMasterRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmCompanyTrainingV2, InsertAdmCompanyTrainingV2 } from "../../../../shared/v2/admin/types";
 
 const companyTrainingsRepo = new CompanyTrainingsRepository();
@@ -17,11 +18,11 @@ export const companyTrainingsService = {
   },
 
   async create(data: Omit<InsertAdmCompanyTrainingV2, "ctUuid">): Promise<AdmCompanyTrainingV2> {
-    return companyTrainingsRepo.create(data);
+    return companyTrainingsRepo.create(applyAuditUser(data, true));
   },
 
   async updateById(id: number, data: Partial<InsertAdmCompanyTrainingV2>): Promise<AdmCompanyTrainingV2> {
-    const updated = await companyTrainingsRepo.updateById(id, data);
+    const updated = await companyTrainingsRepo.updateById(id, applyAuditUser(data));
     if (!updated) throw new Error(`Company training not found: ${id}`);
     return updated;
   },

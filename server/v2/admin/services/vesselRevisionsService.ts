@@ -3,6 +3,7 @@ import { VesselDraftsRepository } from "../repositories/vesselDraftsRepository";
 import { AvailableRanksRepository } from "../repositories/availableRanksRepository";
 import { CompanyRanksRepository } from "../repositories/companyRanksRepository";
 import { VesselPlanningRepository } from "../../vessel/repositories/vesselPlanningRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmVesselRevisionV2, InsertAdmVesselRevisionV2 } from "../../../../shared/v2/admin/types";
 
 const vesselRevisionsRepo = new VesselRevisionsRepository();
@@ -27,7 +28,7 @@ export const vesselRevisionsService = {
   },
 
   async create(data: Omit<InsertAdmVesselRevisionV2, "vrUuid">): Promise<AdmVesselRevisionV2> {
-    return vesselRevisionsRepo.create(data);
+    return vesselRevisionsRepo.create(applyAuditUser(data, true));
   },
 
   async getNextRevision(vesselId: string): Promise<string> {
@@ -41,12 +42,12 @@ export const vesselRevisionsService = {
   }> {
     const autoAssignedRevision = await vesselRevisionsRepo.getNextRevision(data.vesselId);
 
-    const revision = await vesselRevisionsRepo.create({
+    const revision = await vesselRevisionsRepo.create(applyAuditUser({
       vesselId: data.vesselId,
       revision: autoAssignedRevision,
       revisionDate: data.revisionDate,
       revisionData: data.revisionData,
-    });
+    }, true));
 
     const existingDrafts = await vesselDraftsRepo.findByVesselId(data.vesselId);
     let deletedDrafts = 0;

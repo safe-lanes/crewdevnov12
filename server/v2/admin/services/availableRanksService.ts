@@ -1,4 +1,5 @@
 import { AvailableRanksRepository } from "../repositories/availableRanksRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmAvailableRankV2, InsertAdmAvailableRankV2 } from "../../../../shared/v2/admin/types";
 
 const availableRanksRepo = new AvailableRanksRepository();
@@ -43,7 +44,7 @@ export const availableRanksService = {
       sortOrder = maxSortOrder + 1;
     }
 
-    return availableRanksRepo.create({ ...data, rankId, sortOrder });
+    return availableRanksRepo.create(applyAuditUser({ ...data, rankId, sortOrder }, true));
   },
 
   async updateById(id: number, data: Partial<InsertAdmAvailableRankV2>): Promise<AdmAvailableRankV2> {
@@ -54,7 +55,7 @@ export const availableRanksService = {
       throw new Error("Cannot change the name of a system rank. System ranks are protected.");
     }
 
-    const result = await availableRanksRepo.updateById(id, data);
+    const result = await availableRanksRepo.updateById(id, applyAuditUser(data));
     if (!result) throw new Error(`Available rank not found: ${id}`);
     return result;
   },
@@ -67,7 +68,7 @@ export const availableRanksService = {
       throw new Error("Cannot change the name of a system rank. System ranks are protected.");
     }
 
-    const result = await availableRanksRepo.update(arUuid, data);
+    const result = await availableRanksRepo.update(arUuid, applyAuditUser(data));
     if (!result) throw new Error(`Available rank not found: ${arUuid}`);
     return result;
   },

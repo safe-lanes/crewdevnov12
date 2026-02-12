@@ -1,4 +1,5 @@
 import { VesselDraftsRepository } from "../repositories/vesselDraftsRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmVesselDraftV2, InsertAdmVesselDraftV2 } from "../../../../shared/v2/admin/types";
 
 const vesselDraftsRepo = new VesselDraftsRepository();
@@ -19,11 +20,11 @@ export const vesselDraftsService = {
   },
 
   async create(data: Omit<InsertAdmVesselDraftV2, "vdUuid">): Promise<AdmVesselDraftV2> {
-    return vesselDraftsRepo.create(data);
+    return vesselDraftsRepo.create(applyAuditUser(data, true));
   },
 
   async updateById(id: number, data: Partial<InsertAdmVesselDraftV2>): Promise<AdmVesselDraftV2> {
-    const updated = await vesselDraftsRepo.updateById(id, data);
+    const updated = await vesselDraftsRepo.updateById(id, applyAuditUser(data));
     if (!updated) throw new Error(`Vessel draft not found: ${id}`);
     return updated;
   },
@@ -37,10 +38,10 @@ export const vesselDraftsService = {
   async upsert(data: Omit<InsertAdmVesselDraftV2, "vdUuid">): Promise<AdmVesselDraftV2> {
     const existingDrafts = await vesselDraftsRepo.findByVesselId(data.vesselId);
     if (existingDrafts.length > 0) {
-      const updated = await vesselDraftsRepo.updateById(existingDrafts[0].id, data);
+      const updated = await vesselDraftsRepo.updateById(existingDrafts[0].id, applyAuditUser(data));
       if (!updated) throw new Error(`Vessel draft not found for vessel: ${data.vesselId}`);
       return updated;
     }
-    return vesselDraftsRepo.create(data);
+    return vesselDraftsRepo.create(applyAuditUser(data, true));
   },
 };

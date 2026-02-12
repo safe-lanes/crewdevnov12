@@ -4,6 +4,29 @@ import { adminApiV2 } from '../api/adminApiV2';
 const V2_KEY = '/api/v2/admin';
 const STALE_TIME = 60 * 1000;
 
+function getCrewUserId(): string | null {
+  try {
+    return localStorage.getItem("crewUserId") || null;
+  } catch {
+    return null;
+  }
+}
+
+function withAuditUser<T>(data: T): T {
+  const auditUserUuid = getCrewUserId();
+  if (Array.isArray(data)) {
+    return data.map(item =>
+      typeof item === 'object' && item !== null
+        ? { ...item, auditUserUuid }
+        : item
+    ) as T;
+  }
+  if (typeof data === 'object' && data !== null) {
+    return { ...data, auditUserUuid };
+  }
+  return data;
+}
+
 export function useFormsV2() {
   return useQuery({
     queryKey: [V2_KEY, 'forms'],
@@ -24,7 +47,7 @@ export function useFormByUuidV2(formUuid: string | null) {
 export function useCreateFormV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.createForm(data),
+    mutationFn: (data: any) => adminApiV2.createForm(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'forms'] });
     },
@@ -35,7 +58,7 @@ export function useUpdateFormV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ formUuid, data }: { formUuid: string; data: any }) =>
-      adminApiV2.updateForm(formUuid, data),
+      adminApiV2.updateForm(formUuid, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'forms'] });
     },
@@ -84,7 +107,7 @@ export function useCreateFormVersionV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ formUuid, data }: { formUuid: string; data: any }) =>
-      adminApiV2.createFormVersion(formUuid, data),
+      adminApiV2.createFormVersion(formUuid, withAuditUser(data)),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'forms', variables.formUuid, 'versions'] });
     },
@@ -129,7 +152,7 @@ export function useRankGroupByUuidV2(rgUuid: string | null) {
 export function useCreateRankGroupV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.createRankGroup(data),
+    mutationFn: (data: any) => adminApiV2.createRankGroup(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'rank-groups'] });
     },
@@ -140,7 +163,7 @@ export function useUpdateRankGroupV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ rgUuid, data }: { rgUuid: string; data: any }) =>
-      adminApiV2.updateRankGroup(rgUuid, data),
+      adminApiV2.updateRankGroup(rgUuid, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'rank-groups'] });
     },
@@ -151,7 +174,7 @@ export function useUpdateRankGroupConfigV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ rgUuid, configuration }: { rgUuid: string; configuration: any }) =>
-      adminApiV2.updateRankGroupConfiguration(rgUuid, configuration),
+      adminApiV2.updateRankGroupConfiguration(rgUuid, withAuditUser(configuration)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'rank-groups'] });
     },
@@ -209,7 +232,7 @@ export function useAvailableRanksV2(companyOnly?: boolean, options?: { enabled?:
 export function useCreateAvailableRankV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.createAvailableRank(data),
+    mutationFn: (data: any) => adminApiV2.createAvailableRank(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'available-ranks'] });
     },
@@ -220,7 +243,7 @@ export function useUpdateAvailableRankV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) =>
-      adminApiV2.updateAvailableRank(id, data),
+      adminApiV2.updateAvailableRank(id, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'available-ranks'] });
     },
@@ -251,7 +274,7 @@ export function useReorderAvailableRanksV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (orders: { id: number; sortOrder: number }[]) =>
-      adminApiV2.reorderAvailableRanks(orders),
+      adminApiV2.reorderAvailableRanks(withAuditUser(orders)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'available-ranks'] });
     },
@@ -278,7 +301,7 @@ export function usePromotionHierarchyByUuidV2(phUuid: string | null) {
 export function useCreatePromotionHierarchyV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.createPromotionHierarchy(data),
+    mutationFn: (data: any) => adminApiV2.createPromotionHierarchy(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'promotion-hierarchies'] });
     },
@@ -289,7 +312,7 @@ export function useUpdatePromotionHierarchyV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ phUuid, data }: { phUuid: string; data: any }) =>
-      adminApiV2.updatePromotionHierarchy(phUuid, data),
+      adminApiV2.updatePromotionHierarchy(phUuid, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'promotion-hierarchies'] });
     },
@@ -318,7 +341,7 @@ export function useTrainingMastersV2(options?: { enabled?: boolean }) {
 export function useCreateTrainingMasterV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.createTrainingMaster(data),
+    mutationFn: (data: any) => adminApiV2.createTrainingMaster(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
@@ -330,7 +353,7 @@ export function useUpdateTrainingMasterV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) =>
-      adminApiV2.updateTrainingMaster(id, data),
+      adminApiV2.updateTrainingMaster(id, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
@@ -353,7 +376,7 @@ export function useBatchUpdateTrainingMastersV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (updates: Array<{id: number, data: any}>) =>
-      adminApiV2.batchUpdateTrainingMasters(updates),
+      adminApiV2.batchUpdateTrainingMasters(withAuditUser(updates)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
@@ -365,7 +388,7 @@ export function useReorderTrainingMastersV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (orders: Array<{id: number, sortOrder: number}>) =>
-      adminApiV2.reorderTrainingMasters(orders),
+      adminApiV2.reorderTrainingMasters(withAuditUser(orders)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
     },
@@ -385,7 +408,7 @@ export function useUpdateCompanyTrainingGroupV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ code, data }: { code: string; data: any }) =>
-      adminApiV2.updateCompanyTrainingGroup(code, data),
+      adminApiV2.updateCompanyTrainingGroup(code, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-training-groups'] });
     },
@@ -405,7 +428,7 @@ export function useUpdateCompanyTrainingV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) =>
-      adminApiV2.updateCompanyTraining(id, data),
+      adminApiV2.updateCompanyTraining(id, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
     },
@@ -436,7 +459,7 @@ export function useReorderCompanyTrainingsV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (orders: Array<{id: number, sortOrder: number}>) =>
-      adminApiV2.reorderCompanyTrainings(orders),
+      adminApiV2.reorderCompanyTrainings(withAuditUser(orders)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-trainings'] });
     },
@@ -456,7 +479,7 @@ export function useUpsertCompanyTrainingRequirementsV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (requirements: Array<{companyTrainingId: number, rankId: number, status: string | null}>) =>
-      adminApiV2.upsertCompanyTrainingRequirements(requirements),
+      adminApiV2.upsertCompanyTrainingRequirements(withAuditUser(requirements)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-training-requirements'] });
     },
@@ -475,7 +498,7 @@ export function useCompanyRanksV2(options?: { enabled?: boolean }) {
 export function useSaveCompanyRanksV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (ranks: any[]) => adminApiV2.saveCompanyRanks(ranks),
+    mutationFn: (ranks: any[]) => adminApiV2.saveCompanyRanks(withAuditUser(ranks)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-ranks'] });
     },
@@ -494,7 +517,7 @@ export function useVesselGroupsV2(options?: { enabled?: boolean }) {
 export function useCreateVesselGroupV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.createVesselGroup(data),
+    mutationFn: (data: any) => adminApiV2.createVesselGroup(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-groups'] });
     },
@@ -505,7 +528,7 @@ export function useUpdateVesselGroupV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) =>
-      adminApiV2.updateVesselGroup(id, data),
+      adminApiV2.updateVesselGroup(id, withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-groups'] });
     },
@@ -534,7 +557,7 @@ export function useVesselDraftsByVesselV2(vesselId: string | null) {
 export function useUpsertVesselDraftV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.upsertVesselDraft(data),
+    mutationFn: (data: any) => adminApiV2.upsertVesselDraft(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-drafts'] });
     },
@@ -562,7 +585,7 @@ export function useNextVesselRevisionV2(vesselId: string | null) {
 export function useSubmitVesselRevisionV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.submitVesselRevision(data),
+    mutationFn: (data: any) => adminApiV2.submitVesselRevision(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-revisions'] });
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-drafts'] });
@@ -582,7 +605,7 @@ export function useTrainingMatrixVesselDraftsByVesselV2(vesselId: string | null)
 export function useUpsertTrainingMatrixVesselDraftV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.upsertTrainingMatrixVesselDraft(data),
+    mutationFn: (data: any) => adminApiV2.upsertTrainingMatrixVesselDraft(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-matrix-vessel-drafts'] });
     },
@@ -610,7 +633,7 @@ export function useNextTrainingMatrixVesselRevisionV2(vesselId: string | null) {
 export function useSubmitTrainingMatrixVesselRevisionV2() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => adminApiV2.submitTrainingMatrixVesselRevision(data),
+    mutationFn: (data: any) => adminApiV2.submitTrainingMatrixVesselRevision(withAuditUser(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-matrix-vessel-revisions'] });
       queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-matrix-vessel-drafts'] });

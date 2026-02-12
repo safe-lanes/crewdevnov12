@@ -1,4 +1,5 @@
 import { CompanyTrainingGroupsRepository } from "../repositories/companyTrainingGroupsRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmCompanyTrainingGroupV2 } from "../../../../shared/v2/admin/types";
 
 const companyTrainingGroupsRepo = new CompanyTrainingGroupsRepository();
@@ -15,7 +16,7 @@ export const companyTrainingGroupsService = {
   },
 
   async updateByCode(code: string, data: { label: string }): Promise<AdmCompanyTrainingGroupV2> {
-    const updated = await companyTrainingGroupsRepo.updateByCode(code, { label: data.label });
+    const updated = await companyTrainingGroupsRepo.updateByCode(code, applyAuditUser({ label: data.label }));
     if (!updated) throw new Error(`Company training group not found: ${code}`);
     return updated;
   },

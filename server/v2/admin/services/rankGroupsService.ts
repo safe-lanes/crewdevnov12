@@ -1,6 +1,7 @@
 import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { FormsRepository } from "../repositories/formsRepository";
 import { FormVersionsRepository } from "../repositories/formVersionsRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2/admin/types";
 
 const rankGroupsRepo = new RankGroupsRepository();
@@ -139,7 +140,7 @@ export const rankGroupsService = {
       throw new Error(`The following ranks are already assigned to other active rank groups: ${details}`);
     }
 
-    const result = await rankGroupsRepo.create(data);
+    const result = await rankGroupsRepo.create(applyAuditUser(data, true));
     await syncFormRankGroup(data.formId);
     return result;
   },
@@ -162,7 +163,7 @@ export const rankGroupsService = {
       }
     }
 
-    const result = await rankGroupsRepo.updateById(id, data);
+    const result = await rankGroupsRepo.updateById(id, applyAuditUser(data));
     if (!result) throw new Error(`Rank group not found: ${id}`);
     if (data.name || data.ranks) await syncFormRankGroup(existing.formId);
     return result;
@@ -186,21 +187,21 @@ export const rankGroupsService = {
       }
     }
 
-    const result = await rankGroupsRepo.update(rgUuid, data);
+    const result = await rankGroupsRepo.update(rgUuid, applyAuditUser(data));
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
     if (data.name || data.ranks) await syncFormRankGroup(existing.formId);
     return result;
   },
 
   async updateConfigurationById(id: number, configuration: string): Promise<AdmRankGroupV2> {
-    const result = await rankGroupsRepo.updateById(id, { configuration });
+    const result = await rankGroupsRepo.updateById(id, applyAuditUser({ configuration }));
     if (!result) throw new Error(`Rank group not found: ${id}`);
     await createFormVersionOnConfigSave(result.formId, id, configuration);
     return result;
   },
 
   async updateConfiguration(rgUuid: string, configuration: string): Promise<AdmRankGroupV2> {
-    const result = await rankGroupsRepo.update(rgUuid, { configuration });
+    const result = await rankGroupsRepo.update(rgUuid, applyAuditUser({ configuration }));
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
     await createFormVersionOnConfigSave(result.formId, result.id, configuration);
     return result;

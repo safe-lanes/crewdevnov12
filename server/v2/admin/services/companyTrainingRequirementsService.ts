@@ -1,4 +1,5 @@
 import { CompanyTrainingRequirementsRepository } from "../repositories/companyTrainingRequirementsRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmCompanyTrainingRequirementV2 } from "../../../../shared/v2/admin/types";
 
 const companyTrainingRequirementsRepo = new CompanyTrainingRequirementsRepository();
@@ -20,6 +21,6 @@ export const companyTrainingRequirementsService = {
         throw new Error(`Invalid status: ${req.status}. Must be M, R, or null`);
       }
     }
-    return companyTrainingRequirementsRepo.upsertBatch(requirements);
+    return companyTrainingRequirementsRepo.upsertBatch(requirements.map(req => applyAuditUser(req)));
   },
 };

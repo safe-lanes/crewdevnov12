@@ -1,5 +1,6 @@
 import { TrainingMasterRepository } from "../repositories/trainingMasterRepository";
 import { CompanyTrainingsRepository } from "../repositories/companyTrainingsRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmTrainingMasterV2, InsertAdmTrainingMasterV2 } from "../../../../shared/v2/admin/types";
 
 const trainingMasterRepo = new TrainingMasterRepository();
@@ -17,7 +18,7 @@ export const trainingMasterService = {
   },
 
   async create(data: Omit<InsertAdmTrainingMasterV2, "tmUuid">): Promise<AdmTrainingMasterV2> {
-    const created = await trainingMasterRepo.create(data);
+    const created = await trainingMasterRepo.create(applyAuditUser(data, true));
     if (data.applicableToCompany) {
       await companyTrainingsRepo.createFromMaster(created.id);
     }
@@ -34,7 +35,7 @@ export const trainingMasterService = {
       delete (data as any).trainingGroup;
     }
 
-    const updated = await trainingMasterRepo.updateById(id, data);
+    const updated = await trainingMasterRepo.updateById(id, applyAuditUser(data));
     if (!updated) throw new Error(`Training master not found: ${id}`);
 
     if (data.applicableToCompany !== undefined && data.applicableToCompany !== existing.applicableToCompany) {
@@ -72,7 +73,7 @@ export const trainingMasterService = {
       const existing = await trainingMasterRepo.findById(update.id);
       if (!existing) continue;
 
-      const updated = await trainingMasterRepo.updateById(update.id, update.data);
+      const updated = await trainingMasterRepo.updateById(update.id, applyAuditUser(update.data));
       if (!updated) continue;
 
       if (update.data.applicableToCompany !== undefined && update.data.applicableToCompany !== existing.applicableToCompany) {

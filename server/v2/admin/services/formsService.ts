@@ -1,6 +1,7 @@
 import { FormsRepository } from "../repositories/formsRepository";
 import { FormVersionsRepository } from "../repositories/formVersionsRepository";
 import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
+import { applyAuditUser } from "../utils/auditUser";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
 
 const formsRepo = new FormsRepository();
@@ -25,17 +26,17 @@ export const formsService = {
   },
 
   async create(data: Omit<InsertAdmFormV2, "formUuid">): Promise<AdmFormV2> {
-    return formsRepo.create(data);
+    return formsRepo.create(applyAuditUser(data, true));
   },
 
   async updateById(id: number, data: Partial<InsertAdmFormV2>): Promise<AdmFormV2> {
-    const form = await formsRepo.updateById(id, data);
+    const form = await formsRepo.updateById(id, applyAuditUser(data));
     if (!form) throw new Error(`Form not found: ${id}`);
     return form;
   },
 
   async update(formUuid: string, data: Partial<InsertAdmFormV2>): Promise<AdmFormV2> {
-    const form = await formsRepo.update(formUuid, data);
+    const form = await formsRepo.update(formUuid, applyAuditUser(data));
     if (!form) throw new Error(`Form not found: ${formUuid}`);
     return form;
   },
@@ -122,7 +123,7 @@ export const formsService = {
     if (!data.rankGroupId) {
       throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
     }
-    return formVersionsRepo.create({ ...data, formId: form.id });
+    return formVersionsRepo.create(applyAuditUser({ ...data, formId: form.id }, true));
   },
 
   async createVersion(formUuid: string, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {
@@ -131,7 +132,7 @@ export const formsService = {
     if (!data.rankGroupId) {
       throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
     }
-    return formVersionsRepo.create({ ...data, formId: form.id });
+    return formVersionsRepo.create(applyAuditUser({ ...data, formId: form.id }, true));
   },
 
   async getVersionById(id: number): Promise<AdmFormVersionV2> {
@@ -141,7 +142,7 @@ export const formsService = {
   },
 
   async updateVersionById(id: number, data: Partial<InsertAdmFormVersionV2>): Promise<AdmFormVersionV2> {
-    const version = await formVersionsRepo.updateById(id, data);
+    const version = await formVersionsRepo.updateById(id, applyAuditUser(data));
     if (!version) throw new Error(`Form version not found: ${id}`);
     return version;
   },

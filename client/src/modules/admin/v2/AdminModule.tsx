@@ -3384,7 +3384,8 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createRankGroupMutation = useMutation({
     mutationFn: async (data: { formId: number; name: string; ranks: string[] }) => {
-      return await apiRequest("POST", "/api/v2/admin/rank-groups", data);
+      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      return await apiRequest("POST", "/api/v2/admin/rank-groups", { ...data, auditUserUuid });
     },
     onSuccess: () => {
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
@@ -3397,7 +3398,8 @@ const AdminModuleInner = (): JSX.Element => {
 
   const updateRankGroupMutation = useMutation({
     mutationFn: async (data: { id: number; name: string; ranks: string[] }) => {
-      return await apiRequest("PUT", `/api/v2/admin/rank-groups/${data.id}`, { name: data.name, ranks: data.ranks });
+      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      return await apiRequest("PUT", `/api/v2/admin/rank-groups/${data.id}`, { name: data.name, ranks: data.ranks, auditUserUuid });
     },
     onSuccess: () => {
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
@@ -3469,7 +3471,8 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createFormMutation = useMutation({
     mutationFn: async (data: { name: string; category: string; rankGroup: string; versionNo: string; versionDate: string }) => {
-      return await apiRequest("POST", "/api/v2/admin/forms", data);
+      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      return await apiRequest("POST", "/api/v2/admin/forms", { ...data, auditUserUuid });
     },
     onSuccess: () => {
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
