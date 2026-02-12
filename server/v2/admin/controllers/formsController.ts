@@ -153,4 +153,79 @@ export const formsController = {
       res.status(500).json({ error: "Failed to create form version" });
     }
   },
+
+  async getVersionById(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid version ID" });
+      }
+      const version = await formsService.getVersionById(id);
+      res.json(version);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error fetching form version:", error);
+      res.status(500).json({ error: "Failed to fetch form version" });
+    }
+  },
+
+  async updateVersion(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid version ID" });
+      }
+      const result = insertAdmFormVersionV2Schema
+        .omit({ fvUuid: true })
+        .partial()
+        .safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
+      }
+      const version = await formsService.updateVersionById(id, result.data);
+      res.json(version);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error updating form version:", error);
+      res.status(500).json({ error: "Failed to update form version" });
+    }
+  },
+
+  async releaseVersion(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid version ID" });
+      }
+      const version = await formsService.releaseVersionById(id);
+      res.json(version);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error releasing form version:", error);
+      res.status(500).json({ error: "Failed to release form version" });
+    }
+  },
+
+  async deleteVersion(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid version ID" });
+      }
+      const deleted = await formsService.deleteVersionById(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Form version not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting form version:", error);
+      res.status(500).json({ error: "Failed to delete form version" });
+    }
+  },
 };

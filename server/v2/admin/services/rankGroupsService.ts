@@ -1,14 +1,53 @@
 import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { FormsRepository } from "../repositories/formsRepository";
+import { FormVersionsRepository } from "../repositories/formVersionsRepository";
 import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2/admin/types";
 
 const rankGroupsRepo = new RankGroupsRepository();
 const formsRepo = new FormsRepository();
+const formVersionsRepo = new FormVersionsRepository();
 
 async function syncFormRankGroup(formId: number): Promise<void> {
   const activeGroups = await rankGroupsRepo.findByFormId(formId, false);
   const rankGroupNames = activeGroups.map(rg => rg.name).join(", ");
   await formsRepo.updateById(formId, { rankGroup: rankGroupNames || "" });
+}
+
+async function createFormVersionOnConfigSave(formId: number, rankGroupId: number, configuration: string): Promise<void> {
+  try {
+    const form = await formsRepo.findById(formId);
+    if (!form) return;
+
+    const currentVersionNo = form.versionNo || "00";
+    const nextVersionNum = parseInt(currentVersionNo, 10) + 1;
+    const nextVersionNo = String(nextVersionNum).padStart(2, "0");
+
+    const now = new Date();
+    const versionDate = now.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).replace(/ /g, "-");
+
+    await formVersionsRepo.create({
+      formId,
+      rankGroupId,
+      versionNo: nextVersionNo,
+      versionDate,
+      status: "released",
+      configuration,
+      releasedAt: now,
+    });
+
+    await formsRepo.updateById(formId, {
+      versionNo: nextVersionNo,
+      versionDate,
+    });
+
+    console.log(`✅ [V2 VERSION] Created version ${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
+  } catch (error) {
+    console.error(`⚠️ [V2 VERSION] Failed to create version for form ${formId}:`, error);
+  }
 }
 
 function checkRankConflicts(
@@ -156,12 +195,14 @@ export const rankGroupsService = {
   async updateConfigurationById(id: number, configuration: string): Promise<AdmRankGroupV2> {
     const result = await rankGroupsRepo.updateById(id, { configuration });
     if (!result) throw new Error(`Rank group not found: ${id}`);
+    await createFormVersionOnConfigSave(result.formId, id, configuration);
     return result;
   },
 
   async updateConfiguration(rgUuid: string, configuration: string): Promise<AdmRankGroupV2> {
     const result = await rankGroupsRepo.update(rgUuid, { configuration });
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
+    await createFormVersionOnConfigSave(result.formId, result.id, configuration);
     return result;
   },
 

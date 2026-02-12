@@ -133,4 +133,29 @@ export const formsService = {
     }
     return formVersionsRepo.create({ ...data, formId: form.id });
   },
+
+  async getVersionById(id: number): Promise<AdmFormVersionV2> {
+    const version = await formVersionsRepo.findById(id);
+    if (!version) throw new Error(`Form version not found: ${id}`);
+    return version;
+  },
+
+  async updateVersionById(id: number, data: Partial<InsertAdmFormVersionV2>): Promise<AdmFormVersionV2> {
+    const version = await formVersionsRepo.updateById(id, data);
+    if (!version) throw new Error(`Form version not found: ${id}`);
+    return version;
+  },
+
+  async releaseVersionById(id: number): Promise<AdmFormVersionV2> {
+    const version = await formVersionsRepo.updateById(id, {
+      status: "released",
+      releasedAt: new Date(),
+    });
+    if (!version) throw new Error(`Form version not found: ${id}`);
+    return version;
+  },
+
+  async deleteVersionById(id: number): Promise<boolean> {
+    return formVersionsRepo.softDeleteById(id);
+  },
 };

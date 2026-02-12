@@ -3649,6 +3649,7 @@ const AdminModuleInner = (): JSX.Element => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
       toast({
         title: "Success",
         description: "Rank group configuration saved successfully",
