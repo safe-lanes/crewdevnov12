@@ -15,8 +15,8 @@ export const companyTrainingGroupsService = {
     return record;
   },
 
-  async updateByCode(code: string, data: { label: string }): Promise<AdmCompanyTrainingGroupV2> {
-    const updated = await companyTrainingGroupsRepo.updateByCode(code, applyAuditUser({ label: data.label }));
+  async updateByCode(code: string, data: any): Promise<AdmCompanyTrainingGroupV2> {
+    const updated = await companyTrainingGroupsRepo.updateByCode(code, applyAuditUser({ label: data.label, auditUserUuid: data.auditUserUuid }));
     if (!updated) throw new Error(`Company training group not found: ${code}`);
     return updated;
   },

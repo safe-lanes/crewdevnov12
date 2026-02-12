@@ -17,10 +17,21 @@ export const trainingMasterService = {
     return record;
   },
 
-  async create(data: Omit<InsertAdmTrainingMasterV2, "tmUuid">): Promise<AdmTrainingMasterV2> {
-    const created = await trainingMasterRepo.create(applyAuditUser(data, true));
+  async create(data: Omit<InsertAdmTrainingMasterV2, "tmUuid"> & { auditUserUuid?: string | null }): Promise<AdmTrainingMasterV2> {
+    const auditUserUuid = (data as any).auditUserUuid || null;
+    const allRecords = await trainingMasterRepo.findAll();
+    let sortOrder = (data as any).sortOrder;
+    if (sortOrder === undefined || sortOrder === null) {
+      if (allRecords.length === 0) {
+        sortOrder = 0;
+      } else {
+        const maxSortOrder = allRecords.reduce((max: number, r: any) => Math.max(max, r.sortOrder ?? 0), 0);
+        sortOrder = maxSortOrder + 1;
+      }
+    }
+    const created = await trainingMasterRepo.create(applyAuditUser({ ...data, sortOrder }, true));
     if (data.applicableToCompany) {
-      await companyTrainingsRepo.createFromMaster(created.id);
+      await companyTrainingsRepo.createFromMaster(created.id, auditUserUuid);
     }
     return created;
   },

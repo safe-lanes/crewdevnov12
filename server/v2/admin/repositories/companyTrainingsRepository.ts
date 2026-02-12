@@ -50,7 +50,7 @@ export class CompanyTrainingsRepository {
     return results[0];
   }
 
-  async createFromMaster(masterId: number): Promise<AdmCompanyTrainingV2 | null> {
+  async createFromMaster(masterId: number, auditUserUuid?: string | null): Promise<AdmCompanyTrainingV2 | null> {
     const db = getDb();
 
     const existing = await db
@@ -73,16 +73,21 @@ export class CompanyTrainingsRepository {
       .where(eq(admCompanyTrainingsV2.isDeleted, false));
     const maxSortOrder = allCompanyTrainings.reduce((max, ct) => Math.max(max, ct.sortOrder ?? 0), 0);
 
-    const results = await db
-      .insert(admCompanyTrainingsV2)
-      .values({
+    const insertData: any = {
         ctUuid: uuidv4(),
         trainingMasterId: mt.id,
         companyId: mt.trainingId,
         trainingLabel: mt.trainingLabel || mt.trainingName,
         requirement: mt.requirementReference || null,
-        sortOrder: maxSortOrder + 1,
-      })
+        sortOrder: allCompanyTrainings.length === 0 ? 0 : maxSortOrder + 1,
+    };
+    if (auditUserUuid) {
+      insertData.createdByUuid = auditUserUuid;
+      insertData.updatedByUuid = auditUserUuid;
+    }
+    const results = await db
+      .insert(admCompanyTrainingsV2)
+      .values(insertData)
       .returning();
     return results[0];
   }

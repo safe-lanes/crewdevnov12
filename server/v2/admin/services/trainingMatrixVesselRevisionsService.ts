@@ -29,7 +29,7 @@ export const trainingMatrixVesselRevisionsService = {
     return tmVesselRevisionsRepo.getNextRevision(vesselId);
   },
 
-  async submit(data: { vesselId: string; revisionData: string; revisionDate: string }): Promise<{
+  async submit(data: { vesselId: string; revisionData: string; revisionDate: string; auditUserUuid?: string | null }): Promise<{
     success: boolean;
     revision: AdmTrainingMatrixVesselRevisionV2;
     metadata: { autoAssignedRevision: string; deletedDrafts: number };
@@ -41,6 +41,7 @@ export const trainingMatrixVesselRevisionsService = {
       revision: autoAssignedRevision,
       revisionDate: data.revisionDate,
       revisionData: data.revisionData,
+      auditUserUuid: data.auditUserUuid,
     }, true));
 
     const existingDrafts = await tmVesselDraftsRepo.findByVesselId(data.vesselId);

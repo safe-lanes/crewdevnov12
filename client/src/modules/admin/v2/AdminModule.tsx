@@ -924,7 +924,8 @@ const AdminModuleInner = (): JSX.Element => {
   // Training Matrix Vessel Draft mutations
   const tmSaveDraftMutation = useMutation({
     mutationFn: async ({ vesselId, draftData }: { vesselId: string; draftData: any }) => {
-      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-drafts/upsert', { vesselId, draftData });
+      const auditUserUuid = localStorage.getItem("crewUserId") || undefined;
+      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-drafts/upsert', { vesselId, draftData, auditUserUuid });
     },
     onSuccess: (_data, variables) => {
       toast({
@@ -948,7 +949,8 @@ const AdminModuleInner = (): JSX.Element => {
 
   const tmSubmitRevisionMutation = useMutation({
     mutationFn: async ({ vesselId, revisionDate, revisionData }: { vesselId: string; revisionDate: string; revisionData: any }) => {
-      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData });
+      const auditUserUuid = localStorage.getItem("crewUserId") || undefined;
+      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData, auditUserUuid });
     },
     onSuccess: (_data, variables) => {
       toast({
