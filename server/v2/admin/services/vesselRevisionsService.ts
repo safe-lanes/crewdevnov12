@@ -100,7 +100,7 @@ export const vesselRevisionsService = {
       const rawRankId = rank.rankId || rank.id;
       const rankName = rank.rank || rank.role;
 
-      if (!rawRankId || rank.isRoleRow) {
+      if (!rawRankId || rank.isRoleRow || !rank.actualManningFlag) {
         continue;
       }
 
