@@ -1535,37 +1535,44 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Dynamic vessel data from Vessels Master (ID 014) and Vessel Groups
   const vesselOptions = useMemo((): VesselOption[] => {
-    // Individual vessels from master data
+    const idToUuidMap = new Map<string, string>();
     const individualVessels = vesselMasterData.map((vessel: any): VesselOption => {
-      // Detect data source: external API has 'vessel' field, local DB has 'name' field
-      // Only apply mapSafeFieldsToVesselData for local DB data
       const isExternalData = !!vessel.vessel || !!vessel.vuid;
       const mappedVessel = isExternalData ? vessel : mapSafeFieldsToVesselData(vessel);
 
-      // CRITICAL FIX: Use canonical vessel ID (entryId/VSL-XXX format) for value
-      // This ensures Rank Admin saves data with the correct vessel identifier
-      const vesselValue = vessel.entryId || vessel.vuid || `VSL-${String(vessel.id).padStart(3, '0')}`;
+      const vesselValue = vessel.vesselUuid || vessel.entryId || vessel.vuid || `VSL-${String(vessel.id).padStart(3, '0')}`;
 
-      // Ensure we have a consistent label field for display
-      // External API uses 'vessel', local DB uses 'name' (mapped to 'vessel' by mapSafeFieldsToVesselData)
+      if (vessel.vesselUuid) {
+        if (vessel.id) idToUuidMap.set(String(vessel.id), vessel.vesselUuid);
+        if (vessel.entryId) idToUuidMap.set(String(vessel.entryId), vessel.vesselUuid);
+        if (vessel.vuid) idToUuidMap.set(String(vessel.vuid), vessel.vesselUuid);
+      }
+
       const vesselLabel = vessel.vessel || mappedVessel.vessel || vessel.name || `Vessel ${vesselValue}`;
 
       return {
-        value: String(vesselValue), // Use canonical vessel ID (VSL-XXX)
-        label: `🚢 ${String(vesselLabel)}`, // Individual vessel with ship icon
+        value: String(vesselValue),
+        label: `${String(vesselLabel)}`,
         type: 'vessel'
       };
     });
 
-    // Vessel groups from API
-    const vesselGroups = (vesselGroupsData as any[]).map((group: any): VesselOption => ({
-      value: `group_${group.id}`,
-      label: `📁 ${group.name}`, // Vessel group with folder icon  
-      type: 'group',
-      vesselIds: group.vesselIds
-    }));
+    const vesselGroups = (vesselGroupsData as any[]).map((group: any): VesselOption => {
+      const rawIds = group.vesselIds || [];
+      const mappedVesselIds = rawIds
+        .map((vid: string) => idToUuidMap.get(vid) || vid)
+        .filter((vid: string) => {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(vid);
+          return isUuid;
+        });
+      return {
+        value: `group_${group.id}`,
+        label: `${group.name}`,
+        type: 'group',
+        vesselIds: mappedVesselIds
+      };
+    });
 
-    // Combine groups first (at top), then individual vessels
     return [...vesselGroups, ...individualVessels];
   }, [vesselMasterData, vesselGroupsData]);
 

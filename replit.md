@@ -4,6 +4,7 @@
 A comprehensive maritime operations platform for managing seafarer performance, crew deployment, vessel operations, and regulatory compliance. Built with React, Express, TypeScript, PostgreSQL, and Drizzle ORM.
 
 ## Recent Changes
+- Fixed V2 Training Matrix vessel_id UUID issue (February 12, 2026): V2 vesselOptions builder now uses `vesselUuid` from external vessel master data API instead of V1-style `VSL-XXX` format. Vessel group IDs are mapped from numeric to UUID via idToUuidMap. Non-UUID vessel IDs are filtered from group selections. Existing bad data (VSL-001, VSL-013) corrected to proper UUIDs in V2 tables.
 - Fixed V2 rank group sync (February 11, 2026): Added syncFormRankGroup to V2 rankGroupsService so form's rank_group display field updates after create/update/archive/unarchive/delete of rank groups. Mirrors V1 behavior in database.ts.
 - Memory reset on February 11, 2026
 - Admin Module V2 full migration completed (February 11, 2026):
