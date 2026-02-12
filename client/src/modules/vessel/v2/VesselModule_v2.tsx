@@ -320,9 +320,9 @@ const usePorts = () => {
 
 const useCompanyTrainings = () => {
     return useQuery<any[]>({
-        queryKey: ['/api/company-trainings'],
+        queryKey: ['/api/v2/admin/company-trainings'],
         queryFn: async () => {
-            const response = await fetch('/api/company-trainings');
+            const response = await fetch('/api/v2/admin/company-trainings');
             if (!response.ok) throw new Error('Failed to fetch company trainings');
             return response.json();
         },
@@ -331,9 +331,9 @@ const useCompanyTrainings = () => {
 
 const useCompanyTrainingGroups = () => {
     return useQuery<any[]>({
-        queryKey: ['/api/company-training-groups'],
+        queryKey: ['/api/v2/admin/company-training-groups'],
         queryFn: async () => {
-            const response = await fetch('/api/company-training-groups');
+            const response = await fetch('/api/v2/admin/company-training-groups');
             if (!response.ok) throw new Error('Failed to fetch company training groups');
             return response.json();
         },
@@ -342,9 +342,9 @@ const useCompanyTrainingGroups = () => {
 
 const useCompanyTrainingRequirements = () => {
     return useQuery<any[]>({
-        queryKey: ['/api/company-training-requirements'],
+        queryKey: ['/api/v2/admin/company-training-requirements'],
         queryFn: async () => {
-            const response = await fetch('/api/company-training-requirements');
+            const response = await fetch('/api/v2/admin/company-training-requirements');
             if (!response.ok) throw new Error('Failed to fetch company training requirements');
             return response.json();
         },
