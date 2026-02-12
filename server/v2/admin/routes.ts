@@ -102,6 +102,7 @@ router.delete("/vessel-drafts/:id", vesselDraftsController.delete);
 router.get("/vessel-revisions", vesselRevisionsController.getAll);
 router.post("/vessel-revisions/submit", vesselRevisionsController.submit);
 router.get("/vessel-revisions/by-vessel/:vesselId", vesselRevisionsController.getByVesselId);
+router.get("/vessel-revisions/ranks/:vesselId", vesselRevisionsController.getRanks);
 router.get("/vessel-revisions/next-revision/:vesselId", vesselRevisionsController.getNextRevision);
 router.get("/vessel-revisions/:id", vesselRevisionsController.getById);
 router.post("/vessel-revisions", vesselRevisionsController.create);

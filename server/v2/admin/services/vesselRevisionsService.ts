@@ -1,12 +1,14 @@
 import { VesselRevisionsRepository } from "../repositories/vesselRevisionsRepository";
 import { VesselDraftsRepository } from "../repositories/vesselDraftsRepository";
 import { AvailableRanksRepository } from "../repositories/availableRanksRepository";
+import { CompanyRanksRepository } from "../repositories/companyRanksRepository";
 import { VesselPlanningRepository } from "../../vessel/repositories/vesselPlanningRepository";
 import type { AdmVesselRevisionV2, InsertAdmVesselRevisionV2 } from "../../../../shared/v2/admin/types";
 
 const vesselRevisionsRepo = new VesselRevisionsRepository();
 const vesselDraftsRepo = new VesselDraftsRepository();
 const availableRanksRepo = new AvailableRanksRepository();
+const companyRanksRepo = new CompanyRanksRepository();
 const vesselPlanningRepo = new VesselPlanningRepository();
 
 export const vesselRevisionsService = {
@@ -65,6 +67,92 @@ export const vesselRevisionsService = {
       revision,
       metadata: { autoAssignedRevision, deletedDrafts, createdPlanningRecords },
     };
+  },
+
+  async getRanksByVesselId(vesselId: string): Promise<any[]> {
+    const revisions = await vesselRevisionsRepo.findByVesselId(vesselId);
+
+    if (revisions.length === 0) {
+      return [];
+    }
+
+    const latestRevision = revisions[0];
+    const rankData = typeof latestRevision.revisionData === 'string'
+      ? JSON.parse(latestRevision.revisionData)
+      : latestRevision.revisionData;
+
+    const availableRanks = await availableRanksRepo.findAll();
+    const availableRanksMapById = new Map<string, any>();
+    for (const ar of availableRanks) {
+      availableRanksMapById.set(String(ar.id), ar);
+      if (ar.rankId) {
+        availableRanksMapById.set(ar.rankId, ar);
+      }
+    }
+
+    const companyRanks = await companyRanksRepo.findAll();
+    const companyRanksMapById = new Map(companyRanks.map((cr: any) => [cr.id, cr]));
+
+    const mergedRankData = rankData.map((vesselRank: any) => {
+      const companyRank: any = companyRanksMapById.get(vesselRank.id);
+      const availableRank: any = availableRanksMapById.get(String(vesselRank.id)) ||
+        availableRanksMapById.get(vesselRank.rankId);
+
+      let effectiveSortOrder = vesselRank.sortOrder ?? 0;
+      if (vesselRank.isRoleRow && vesselRank.originalRankId) {
+        const parentAvailableRank: any = availableRanksMapById.get(String(vesselRank.originalRankId));
+        effectiveSortOrder = parentAvailableRank?.sortOrder ?? vesselRank.sortOrder ?? 0;
+      } else if (availableRank) {
+        effectiveSortOrder = availableRank.sortOrder ?? vesselRank.sortOrder ?? 0;
+      }
+
+      if (companyRank || availableRank) {
+        return {
+          ...vesselRank,
+          sortOrder: effectiveSortOrder,
+          officer: companyRank?.officer ?? vesselRank.officer ?? false,
+          rating: companyRank?.rating ?? vesselRank.rating ?? false,
+          seniorOfficer: companyRank?.seniorOfficer ?? vesselRank.seniorOfficer ?? false,
+          deckOfficer: companyRank?.deckOfficer ?? vesselRank.deckOfficer ?? false,
+          engOfficer: companyRank?.engOfficer ?? vesselRank.engOfficer ?? false,
+          pettyOfficer: companyRank?.pettyOfficer ?? vesselRank.pettyOfficer ?? false,
+          deckRating: companyRank?.deckRating ?? vesselRank.deckRating ?? false,
+          engineRating: companyRank?.engineRating ?? vesselRank.engineRating ?? false,
+          generalRating: companyRank?.generalRating ?? vesselRank.generalRating ?? false,
+          cateringRating: companyRank?.cateringRating ?? vesselRank.cateringRating ?? false,
+          safetyOfficer: vesselRank.safetyOfficer ?? companyRank?.safetyOfficer ?? false,
+          sso: vesselRank.sso ?? companyRank?.sso ?? false,
+          medicalOfficer: vesselRank.medicalOfficer ?? companyRank?.medicalOfficer ?? false,
+          navigatingOfficer: vesselRank.navigatingOfficer ?? companyRank?.navigatingOfficer ?? false,
+          emtOfficer: vesselRank.emtOfficer ?? companyRank?.emtOfficer ?? false,
+        };
+      }
+      return { ...vesselRank, sortOrder: effectiveSortOrder };
+    });
+
+    const activeRanks = mergedRankData.filter((rank: any) => rank.actualManningFlag);
+
+    const sortedRanks = activeRanks.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+    const rankSlotCounts = new Map<string, number>();
+    sortedRanks.forEach((rank: any) => {
+      const baseRank = rank.rank;
+      rankSlotCounts.set(baseRank, (rankSlotCounts.get(baseRank) || 0) + 1);
+    });
+
+    const ranksWithDisplayRole = sortedRanks.map((rank: any) => {
+      const baseRank = rank.rank;
+      const slotCount = rankSlotCounts.get(baseRank) || 1;
+      let displayRole: string;
+      if (slotCount === 1) {
+        displayRole = baseRank;
+      } else {
+        displayRole = rank.role || baseRank;
+      }
+      return { ...rank, displayRole };
+    });
+
+    return ranksWithDisplayRole;
   },
 
   async syncVesselPlanningV2(vesselUuid: string, revisionData: string | any): Promise<number> {

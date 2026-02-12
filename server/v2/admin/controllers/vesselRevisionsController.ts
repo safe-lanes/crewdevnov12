@@ -70,4 +70,15 @@ export const vesselRevisionsController = {
       res.status(500).json({ error: "Failed to submit vessel revision" });
     }
   },
+
+  async getRanks(req: Request, res: Response) {
+    try {
+      const { vesselId } = req.params;
+      const ranks = await vesselRevisionsService.getRanksByVesselId(vesselId);
+      res.json(ranks);
+    } catch (error: any) {
+      console.error("Error fetching vessel ranks:", error);
+      res.status(500).json({ error: "Failed to fetch vessel ranks" });
+    }
+  },
 };

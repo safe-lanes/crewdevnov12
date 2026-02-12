@@ -268,8 +268,8 @@ const useCrewMembers = () => {
 
 const useVesselRanks = (vesselId: string | null) => {
     return useQuery({
-        queryKey: ['/api/vessel-revisions/ranks', vesselId],
-        queryFn: vesselId ? () => fetch(`/api/vessel-revisions/ranks/${vesselId}`).then(res => res.json()) : undefined,
+        queryKey: ['/api/v2/admin/vessel-revisions/ranks', vesselId],
+        queryFn: vesselId ? () => fetch(`/api/v2/admin/vessel-revisions/ranks/${vesselId}`).then(res => res.json()) : undefined,
         enabled: !!vesselId,
         select: (data: any[]) => data
     });
