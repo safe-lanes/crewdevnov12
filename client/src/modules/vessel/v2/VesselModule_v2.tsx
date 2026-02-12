@@ -785,9 +785,21 @@ export function VesselModule_v2(): JSX.Element {
     const applicableTrainingIds = useMemo(() => {
         const ids = new Set<number>();
         [...trainingMatrixRevisions, ...trainingMatrixDrafts].forEach((entry: any) => {
+            let trainingIds: number[] = [];
             if (entry.trainingIds && Array.isArray(entry.trainingIds)) {
-                entry.trainingIds.forEach((id: number) => ids.add(id));
+                trainingIds = entry.trainingIds;
             }
+            const dataField = entry.revisionData || entry.revision_data || entry.draftData || entry.draft_data;
+            if (dataField) {
+                try {
+                    const parsed = typeof dataField === 'string' ? JSON.parse(dataField) : dataField;
+                    if (parsed?.applicableTrainingIds && Array.isArray(parsed.applicableTrainingIds)) {
+                        trainingIds = [...trainingIds, ...parsed.applicableTrainingIds];
+                    }
+                } catch (e) {
+                }
+            }
+            trainingIds.forEach((id: number) => ids.add(id));
         });
         
         // V2: Also include trainings from crew training data (for V2 independence)
