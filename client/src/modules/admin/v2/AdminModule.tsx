@@ -1274,7 +1274,7 @@ const AdminModuleInner = (): JSX.Element => {
     data: externalVesselMasterData, 
     isLoading: vesselMasterLoading,
     error: vesselMasterError 
-  } = useMasterDataV2('vessels', { enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin" });
+  } = useMasterDataV2('vessels', { enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin" || selectedAdminPage === "training-matrix" });
 
   const vesselMasterData = Array.isArray(externalVesselMasterData) 
     ? externalVesselMasterData 
