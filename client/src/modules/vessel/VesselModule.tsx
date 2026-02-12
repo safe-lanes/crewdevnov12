@@ -319,101 +319,13 @@ const useVesselRanks = (vesselId: string | null) => {
     });
 };
 
-// Map V2 planning response to V1 format expected by the UI
-const mapV2PlanningToV1 = (p: any): any => ({
-    id: p.planUuid,
-    planUuid: p.planUuid,
-    vesselId: p.vesselUuid,
-    rankId: p.rankId,
-    rank: p.rank,
-    role: p.rank,
-    presentRank: p.rank,
-    crewMemberId: p.crewUuid,
-    crewUuid: p.crewUuid,
-    onBoardCrewId: p.crewUuid,
-    onBoardCrewName: p.crewMemberName || p.crewName || null,
-    crewName: p.crewMemberName || p.crewName || null,
-    crewMemberName: p.crewMemberName || p.crewName || null,
-    crewEmpNo: p.crewEmpNo || '',
-    employeeId: p.crewEmpNo || '',
-    nationality: p.nationality || '',
-    relieverNationality: p.relieverNationality || '',
-    crewStatus: p.crewStatus,
-    signOnDate: p.signOnDate,
-    joiningDate: p.signOnDate,
-    reliefDue: p.reliefDue,
-    signOffDate: p.signOffDate,
-    signOffPort: p.signOffPortUuid,
-    signOffPortUuid: p.signOffPortUuid,
-    signOffReason: p.signOffReason,
-    reliefStatus: p.reliefStatus,
-    takeOverDate: p.takeOverDate,
-    takeOverConfirmation: p.takeOverConfirmation,
-    handOverDate: p.handOverDate,
-    relieverCrewId: p.relieverCrewUuid,
-    relieverCrewUuid: p.relieverCrewUuid,
-    relieverCrewName: p.relieverName || null,
-    relieverSignOnDate: p.relieverSignOnDate,
-    relieverSignOnPort: p.joiningPortUuid,
-    joiningPort: p.joiningPortUuid,
-    joiningPortUuid: p.joiningPortUuid,
-    joiningStatus: p.joiningStatus,
-    contractPeriodMonths: p.contractPeriodMonths,
-    contractEndRangeStartMonths: p.contractEndRangeStartMonths,
-    contractEndRangeEndMonths: p.contractEndRangeEndMonths,
-    relieverContractPeriodMonths: p.relieverContractPeriodMonths,
-    relieverContractEndRangeStartMonths: p.relieverContractEndRangeStartMonths,
-    relieverContractEndRangeEndMonths: p.relieverContractEndRangeEndMonths,
-    deploymentChecklistCompleted: p.deploymentChecklistCompleted,
-    applicableDocsChecked: p.applicableDocsChecked,
-    isArchived: p.isArchived,
-    archivedDate: p.archivedDate,
-    isDeleted: p.isDeleted,
-    docExpiringCount: p.docExpiringCount || '0/0',
-    medicalExpiring: p.medicalExpiring || '-',
-});
-
-// Map V1 payload field names to V2 field names for write operations
-const mapV1PayloadToV2 = (payload: any): any => {
-    const mapped: any = { ...payload };
-    if ('vesselId' in mapped) { mapped.vesselUuid = mapped.vesselId; delete mapped.vesselId; }
-    if ('crewMemberId' in mapped) { mapped.crewUuid = mapped.crewMemberId; delete mapped.crewMemberId; }
-    if ('crewId' in mapped) { delete mapped.crewId; }
-    if ('onBoardCrewName' in mapped) { delete mapped.onBoardCrewName; }
-    if ('onBoardCrewId' in mapped) { delete mapped.onBoardCrewId; }
-    if ('relieverCrewId' in mapped) { mapped.relieverCrewUuid = mapped.relieverCrewId; delete mapped.relieverCrewId; }
-    if ('relieverCrewName' in mapped) { delete mapped.relieverCrewName; }
-    if ('relieverNationality' in mapped) { delete mapped.relieverNationality; }
-    if ('joiningPort' in mapped) { mapped.joiningPortUuid = mapped.joiningPort; delete mapped.joiningPort; }
-    if ('joiningDate' in mapped) { delete mapped.joiningDate; }
-    if ('signOffPort' in mapped) { mapped.signOffPortUuid = mapped.signOffPort; delete mapped.signOffPort; }
-    if ('relieverSignOnPort' in mapped) { mapped.joiningPortUuid = mapped.relieverSignOnPort; delete mapped.relieverSignOnPort; }
-    if ('signOnStatus' in mapped) { mapped.joiningStatus = mapped.signOnStatus; delete mapped.signOnStatus; }
-    delete mapped.crewName;
-    delete mapped.crewMemberName;
-    delete mapped.firstName;
-    delete mapped.familyName;
-    delete mapped.lastName;
-    delete mapped.employeeId;
-    delete mapped.crewEmpNo;
-    delete mapped.nationality;
-    delete mapped.role;
-    delete mapped.presentRank;
-    delete mapped.planUuid;
-    delete mapped.id;
-    delete mapped.docExpiringCount;
-    delete mapped.medicalExpiring;
-    delete mapped.vesselName;
-    return mapped;
-};
-
-// Hook to fetch vessel planning data (V2 endpoint with V1 mapping)
+// Hook to fetch vessel planning data
 const useVesselPlanning = (vesselId: string | null) => {
     return useQuery({
-        queryKey: ['/api/v2/vessel/planning', vesselId],
-        queryFn: vesselId ? () => fetch(`/api/v2/vessel/${vesselId}/planning`).then(res => res.json()) : undefined,
+        queryKey: ['/api/vessel-planning/vessel', vesselId],
+        queryFn: vesselId ? () => fetch(`/api/vessel-planning/vessel/${vesselId}`).then(res => res.json()) : undefined,
         enabled: !!vesselId,
-        select: (data: any[]) => Array.isArray(data) ? data.map(mapV2PlanningToV1) : []
+        select: (data: any[]) => data
     });
 };
 
@@ -677,7 +589,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 // Special handling for "Signed On" - check if position is vacant
                 
                 // Fetch all planning records for this vessel to check for existing crew
-                const existingRecordsResponse = await fetch(`/api/v2/vessel/${vesselId}/planning`).then(r => r.json()).then((data: any[]) => Array.isArray(data) ? data.map(mapV2PlanningToV1) : []);
+                const existingRecordsResponse = await fetch(`/api/vessel-planning/vessel/${vesselId}`).then(r => r.json());
                 
                 // Check if PRIMARY crew exists for this rank
                 const existingPrimary = existingRecordsResponse.find((p: any) => 
@@ -731,7 +643,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                         applicableDocsChecked: false,
                     };
                     
-                    return apiRequest('PATCH', `/api/v2/vessel/planning/${planningData.id}`, mapV1PayloadToV2(promoteToPrimaryPayload));
+                    return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, promoteToPrimaryPayload);
                 }
                 
                 // HANDOVER WORKFLOW: Primary crew exists, create secondary record
@@ -772,7 +684,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     contractEndRangeEndMonths: secondaryContractRangeEnd,
                 };
                 
-                await apiRequest('POST', `/api/v2/vessel/${vesselId}/planning`, mapV1PayloadToV2(secondaryCrewPayload));
+                await apiRequest('POST', '/api/vessel-planning', secondaryCrewPayload);
                 
                 // Step 2: Update existing planning record to clear reliever fields
                 // Exclude timestamp fields (createdAt, updatedAt) to avoid Date object errors
@@ -795,7 +707,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                     applicableDocsChecked: false,
                 };
                 
-                return apiRequest('PATCH', `/api/v2/vessel/planning/${planningData.id}`, mapV1PayloadToV2(clearRelieverPayload));
+                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, clearRelieverPayload);
             } else {
                 // Normal update flow - saving RELIEVER PLANNING data onto the PRIMARY crew record
                 // Dual-write strategy: Send BOTH new and legacy field names for complete transition coverage
@@ -826,14 +738,14 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
                 };
                 
                 if (planningData?.id) {
-                    return apiRequest('PATCH', `/api/v2/vessel/planning/${planningData.id}`, mapV1PayloadToV2(payload));
+                    return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, payload);
                 } else {
-                    return apiRequest('POST', `/api/v2/vessel/${vesselId}/planning`, mapV1PayloadToV2(payload));
+                    return apiRequest('POST', '/api/vessel-planning', payload);
                 }
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/planning', vesselId] });
+            queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
             toast({
                 title: "Success",
                 description: "Relief status saved successfully",
@@ -863,11 +775,16 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             // Clear all reliever fields from the planning record
             // NOTE: Only clear reliever-specific contract fields, preserve on-board crew contract
             // apiRequest throws on error, so we don't need to check response.ok
-            const response = await apiRequest('PATCH', `/api/v2/vessel/planning/${planningData.id}`, {
-                relieverCrewUuid: null,
+            const response = await apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, {
+                relieverCrewId: null,
+                relieverCrewName: null,
+                relieverNationality: null,
                 joiningStatus: null,
                 relieverSignOnDate: null,
-                joiningPortUuid: null,
+                joiningDate: null,
+                relieverSignOnPort: null,
+                joiningPort: null,
+                // Clear RELIEVER-SPECIFIC contract fields (not the on-board crew's contract)
                 relieverContractPeriodMonths: null,
                 relieverContractEndRangeStartMonths: null,
                 relieverContractEndRangeEndMonths: null,
@@ -877,7 +794,7 @@ const ReliefStatusEditDialog: React.FC<ReliefStatusEditDialogProps> = ({
             return response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/planning', vesselId] });
+            queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
             toast({
                 title: "Reliever Unassigned",
                 description: "The reliever has been removed from this vessel assignment.",
@@ -1594,9 +1511,8 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
             const dataWithReliefDue = computedReliefDue ? { ...data, reliefDue: computedReliefDue } : data;
             
             // Fetch all planning records for this vessel for validation
-            const response = await apiRequest('GET', `/api/v2/vessel/${vesselId}/planning`);
-            const rawPlanning = await response.json() as any[];
-            const allPlanning = Array.isArray(rawPlanning) ? rawPlanning.map(mapV2PlanningToV1) : [];
+            const response = await apiRequest('GET', `/api/vessel-planning/vessel/${vesselId}`);
+            const allPlanning = await response.json() as any[];
             
             if (isTakeover && planningData?.crewStatus === "secondary") {
                 // TAKEOVER LOGIC: Secondary crew is taking over as Primary
@@ -1628,9 +1544,9 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 
                 // Step 2: If primary exists, demote them to secondary and set handover date
                 if (primaryCrew) {
-                    await apiRequest('PATCH', `/api/v2/vessel/planning/${primaryCrew.id}`, {
+                    await apiRequest('PATCH', `/api/vessel-planning/${primaryCrew.id}`, {
                         crewStatus: "secondary",
-                        handOverDate: data.takeOverDate,
+                        handOverDate: data.takeOverDate, // Auto-fill handover date
                     });
                 } else {
                     console.warn(`[Takeover] No primary crew found to demote for rank: ${rank}`);
@@ -1655,7 +1571,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                     joiningDate: signOnDateForPromotion || cleanPlanningDataForTakeover.joiningDate,
                 };
                 
-                return apiRequest('PATCH', `/api/v2/vessel/planning/${planningData.id}`, mapV1PayloadToV2(promotePayload));
+                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, promotePayload);
             } else if (isSignOff && planningData?.id) {
                 // SIGN-OFF LOGIC: Crew is signing off from the vessel
                 
@@ -1703,7 +1619,7 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                     await apiRequest('POST', `/api/crew-members/${crewMemberId}/sign-off`, signOffPayload);
                 }
                 
-                return apiRequest('PATCH', `/api/v2/vessel/planning/${planningData.id}`, mapV1PayloadToV2(archivePayload));
+                return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, archivePayload);
             } else {
                 // Normal update flow
                 // Filter out reliever fields from BOTH planningData AND form data to prevent stale data
@@ -1725,14 +1641,14 @@ const OnBoardStatusEditDialog: React.FC<OnBoardStatusEditDialogProps> = ({
                 };
                 
                 if (planningData?.id) {
-                    return apiRequest('PATCH', `/api/v2/vessel/planning/${planningData.id}`, mapV1PayloadToV2(payload));
+                    return apiRequest('PATCH', `/api/vessel-planning/${planningData.id}`, payload);
                 } else {
-                    return apiRequest('POST', `/api/v2/vessel/${vesselId}/planning`, mapV1PayloadToV2(payload));
+                    return apiRequest('POST', '/api/vessel-planning', payload);
                 }
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/planning', vesselId] });
+            queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', vesselId] });
             // Also invalidate crew members cache to reflect sign-off changes in Crew Pool
             queryClient.invalidateQueries({ queryKey: ['/api/crew-members'] });
             toast({
@@ -4367,7 +4283,7 @@ export const VesselModule = (): JSX.Element => {
                 crewName={handoverDialogData.crewName}
                 rank={handoverDialogData.rank}
                 onAttachmentsChanged={() => {
-                    queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/planning', handoverDialogData.vesselId] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/vessel-planning/vessel', handoverDialogData.vesselId] });
                 }}
             />
         </div>
