@@ -1558,7 +1558,8 @@ const AdminModuleInner = (): JSX.Element => {
     });
 
     const vesselGroups = (vesselGroupsData as any[]).map((group: any): VesselOption => {
-      const rawIds = group.vesselIds || [];
+      const parsed = group.vesselIds;
+      const rawIds = Array.isArray(parsed) ? parsed : (typeof parsed === 'string' ? (() => { try { return JSON.parse(parsed); } catch { return []; } })() : []);
       const mappedVesselIds = rawIds
         .map((vid: string) => idToUuidMap.get(vid) || vid)
         .filter((vid: string) => {
