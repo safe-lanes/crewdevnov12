@@ -581,10 +581,7 @@ export const vesselPlanningService = {
       throw new Error(`Planning record not found: ${planUuid}`);
     }
 
-    if (planning.crewStatus !== 'primary') {
-      throw new Error(`Only primary crew can be signed off. Current status: ${planning.crewStatus}`);
-    }
-
+    const isPrimary = planning.crewStatus === 'primary';
     const crewUuid = planning.crewUuid;
     const vesselUuid = planning.vesselUuid;
     const rankId = planning.rankId;
@@ -593,13 +590,13 @@ export const vesselPlanningService = {
       ? await resolvePortToUuid(data.signOffPortUuid) 
       : undefined;
 
-    const secondaryCrew = (vesselUuid && rankId)
+    const secondaryCrew = (isPrimary && vesselUuid && rankId)
       ? await vesselPlanningRepository.findSecondaryByVesselAndRank(vesselUuid, rankId, planUuid)
       : null;
 
     await db.transaction(async (tx) => {
       if (crewUuid && vesselUuid) {
-        console.log(`📋 [VESSEL-PLANNING-V2] Sign-off (tx): crewUuid=${crewUuid}, signOffDate=${data.signOffDate}`);
+        console.log(`📋 [VESSEL-PLANNING-V2] Sign-off (tx): crewUuid=${crewUuid}, crewStatus=${planning.crewStatus}, signOffDate=${data.signOffDate}`);
         
         await tx
           .update(crewAssignments)
@@ -619,7 +616,7 @@ export const vesselPlanningService = {
           );
       }
 
-      console.log(`📋 [VESSEL-PLANNING-V2] Sign-off + archive primary (tx): planUuid=${planUuid}`);
+      console.log(`📋 [VESSEL-PLANNING-V2] Sign-off + archive ${planning.crewStatus} (tx): planUuid=${planUuid}`);
       await tx
         .update(vesselPlanningV2)
         .set({
