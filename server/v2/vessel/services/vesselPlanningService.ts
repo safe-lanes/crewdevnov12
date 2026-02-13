@@ -619,6 +619,7 @@ export const vesselPlanningService = {
           );
       }
 
+      console.log(`📋 [VESSEL-PLANNING-V2] Sign-off + archive primary (tx): planUuid=${planUuid}`);
       await tx
         .update(vesselPlanningV2)
         .set({
@@ -628,19 +629,10 @@ export const vesselPlanningService = {
           reliefStatus: "Signed Off",
           takeOverDate: null,
           takeOverConfirmation: false,
-          updatedByUuid: data.auditUserUuid || null,
-          updatedAt: new Date(),
-        })
-        .where(eq(vesselPlanningV2.planUuid, planUuid));
-
-      console.log(`📋 [VESSEL-PLANNING-V2] Archiving primary (tx): planUuid=${planUuid}`);
-      await tx
-        .update(vesselPlanningV2)
-        .set({
           isArchived: true,
           archivedDate: new Date().toISOString().split("T")[0],
-          updatedAt: new Date(),
           updatedByUuid: data.auditUserUuid || null,
+          updatedAt: new Date(),
         })
         .where(eq(vesselPlanningV2.planUuid, planUuid));
 
