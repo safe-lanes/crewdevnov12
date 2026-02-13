@@ -2213,13 +2213,14 @@ export function VesselModule_v2(): JSX.Element {
                                                             };
                                                         }
                                                         
-                                                        const isSignedOnSecondary = secondaryCrew
+                                                        const hasBothOnBoard = primaryCrew
+                                                            && secondaryCrew
                                                             && !secondaryCrew._isSynthesizedReliever
-                                                            && secondaryCrew.planUuid !== primaryCrew?.planUuid
+                                                            && secondaryCrew.planUuid !== primaryCrew.planUuid
                                                             && secondaryCrew.crewStatus === 'secondary'
                                                             && secondaryCrew.crewUuid;
 
-                                                        if (isSignedOnSecondary) {
+                                                        if (hasBothOnBoard) {
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
@@ -2245,6 +2246,24 @@ export function VesselModule_v2(): JSX.Element {
                                                                 relieverData: null,
                                                                 crewLabel: '(S)',
                                                                 hasBothOnBoard: true,
+                                                            });
+                                                        } else if (!primaryCrew && secondaryCrew && !secondaryCrew._isSynthesizedReliever) {
+                                                            normalizedRows.push({
+                                                                serialNumber: rankIndex + 1,
+                                                                rank,
+                                                                rankName: fullRankName,
+                                                                onBoardCrew: {
+                                                                    ...secondaryCrew,
+                                                                    crewName: secondaryCrew.crewName,
+                                                                    reliefDue: secondaryCrew.reliefDue || null,
+                                                                    signOnDate: secondaryCrew.signOnDate || secondaryCrew.relieverSignOnDate,
+                                                                    signOffDate: secondaryCrew.signOffDate || null,
+                                                                    signOffPortName: secondaryCrew.signOffPortName || '',
+                                                                    reliefStatus: secondaryCrew.reliefStatus || '',
+                                                                },
+                                                                relieverData: null,
+                                                                crewLabel: '',
+                                                                hasBothOnBoard: false,
                                                             });
                                                         } else {
                                                             normalizedRows.push({

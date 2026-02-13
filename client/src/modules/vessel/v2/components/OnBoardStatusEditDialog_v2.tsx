@@ -270,6 +270,50 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         contractEndRangeEndMonths: cleanFormData.contractEndRangeEndMonths,
                     }
                 });
+            } else if (isTakeover && planningData?.crewStatus === "primary") {
+                let secondaryCrew = allPlanning.find((p: any) => 
+                    p.rankId === rankId && 
+                    p.crewStatus === "secondary" && 
+                    !p.isArchived &&
+                    p.planUuid !== planningData?.planUuid
+                );
+                
+                if (!secondaryCrew) {
+                    secondaryCrew = allPlanning.find((p: any) => 
+                        p.vesselUuid === vesselUuid && 
+                        p.rank === rank && 
+                        p.crewStatus === "secondary" && 
+                        !p.isArchived &&
+                        p.planUuid !== planningData?.planUuid
+                    );
+                }
+                
+                if (!secondaryCrew) {
+                    throw new Error("No secondary crew (reliever) found for this rank. Take over requires a secondary crew member.");
+                }
+                
+                const secondarySignOnDate = secondaryCrew.signOnDate || secondaryCrew.relieverSignOnDate;
+                
+                await vesselApiV2.updatePlanning(secondaryCrew.planUuid, {
+                    crewStatus: "primary",
+                    signOnDate: secondarySignOnDate,
+                    takeOverDate: data.takeOverDate,
+                    takeOverConfirmation: true,
+                    contractPeriodMonths: secondaryCrew.contractPeriodMonths || secondaryCrew.relieverContractPeriodMonths,
+                    contractEndRangeStartMonths: secondaryCrew.contractEndRangeStartMonths || secondaryCrew.relieverContractEndRangeStartMonths,
+                    contractEndRangeEndMonths: secondaryCrew.contractEndRangeEndMonths || secondaryCrew.relieverContractEndRangeEndMonths,
+                });
+                
+                const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
+                
+                await updatePlanningV2.mutateAsync({
+                    planUuid: planningData.planUuid,
+                    data: {
+                        ...cleanFormData,
+                        crewStatus: "secondary",
+                        handOverDate: data.takeOverDate,
+                    }
+                });
             } else if (isSignOff && planningData?.planUuid) {
                 if (planningData?.crewStatus === "primary") {
                     const secondaryCrew = allPlanning.find((p: any) => 
