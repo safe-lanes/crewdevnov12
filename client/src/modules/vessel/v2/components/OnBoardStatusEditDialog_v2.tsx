@@ -248,10 +248,18 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 }
                 
                 if (primaryCrew) {
-                    await vesselApiV2.updatePlanning(primaryCrew.planUuid, {
-                        crewStatus: "secondary",
-                        handOverDate: data.takeOverDate,
-                    });
+                    if (primaryCrew.signOffDate || primaryCrew.reliefStatus === "Signed Off") {
+                        await apiRequest('POST', `/api/v2/vessel/planning/${primaryCrew.planUuid}/sign-off`, {
+                            signOffDate: primaryCrew.signOffDate || new Date().toISOString().split('T')[0],
+                            signOffReason: primaryCrew.signOffReason || 'Take Over',
+                            signOffPortUuid: primaryCrew.signOffPortUuid,
+                        });
+                    } else {
+                        await vesselApiV2.updatePlanning(primaryCrew.planUuid, {
+                            crewStatus: "secondary",
+                            handOverDate: data.takeOverDate,
+                        });
+                    }
                 }
                 
                 const cleanPlanningDataForTakeover = filterOutRelieverFields(planningData || {});
@@ -304,16 +312,24 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     contractEndRangeEndMonths: secondaryCrew.contractEndRangeEndMonths || secondaryCrew.relieverContractEndRangeEndMonths,
                 });
                 
-                const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
-                
-                await updatePlanningV2.mutateAsync({
-                    planUuid: planningData.planUuid,
-                    data: {
-                        ...cleanFormData,
-                        crewStatus: "secondary",
-                        handOverDate: data.takeOverDate,
-                    }
-                });
+                if (isSignOff) {
+                    const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
+                    await apiRequest('POST', `/api/v2/vessel/planning/${planningData.planUuid}/sign-off`, {
+                        signOffDate: data.signOffDate,
+                        signOffReason: data.signOffReason,
+                        signOffPortUuid: cleanFormData.signOffPort,
+                    });
+                } else {
+                    const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
+                    await updatePlanningV2.mutateAsync({
+                        planUuid: planningData.planUuid,
+                        data: {
+                            ...cleanFormData,
+                            crewStatus: "secondary",
+                            handOverDate: data.takeOverDate,
+                        }
+                    });
+                }
             } else if (isSignOff && planningData?.planUuid) {
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 
