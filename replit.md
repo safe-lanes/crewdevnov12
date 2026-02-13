@@ -4,6 +4,7 @@
 A comprehensive maritime operations platform for managing seafarer performance, crew deployment, vessel operations, and regulatory compliance. Built with React, Express, TypeScript, PostgreSQL, and Drizzle ORM.
 
 ## Recent Changes
+- Created V2 Masters API module (February 13, 2026): Common REST endpoints at `/api/v2/masters/` for all 9 master tables (vessels, vessel-types, nationalities, countries, ports, languages, users, fleet-groups, additional-groups). Backend: Repository + Service + Controller in `server/v2/masters/`. Frontend: Shared React Query hooks in `client/src/hooks/v2/useMasterDataV2.ts`. All V2 modules can now use these instead of V1 `/api/masters/:id/data` pattern.
 - Fixed V2 audit user tracking gaps and sortOrder auto-increment (February 12, 2026): Fixed companyTrainingGroupsService.updateByCode() to preserve auditUserUuid instead of discarding it. Fixed createFromMaster() to accept and pass auditUserUuid for created_by_uuid/updated_by_uuid columns. Added sortOrder auto-increment to trainingMasterService.create() (0 for first, max+1 for subsequent). Fixed training matrix submit/draft inline mutations in AdminModule.tsx to include auditUserUuid from localStorage. Fixed trainingMatrixVesselRevisionsService.submit() to pass auditUserUuid through to applyAuditUser.
 - Fully migrated V2 Vessel Training Matrix data sources to V2 (February 12, 2026): Switched VesselModule_v2.tsx company trainings, company training groups, and company training requirements hooks from V1 endpoints to V2 (`/api/v2/admin/company-trainings`, `/api/v2/admin/company-training-groups`, `/api/v2/admin/company-training-requirements`). Training matrix revisions/drafts already used V2 endpoints. This ensures trainings created in V2 Admin (e.g., "Test security" SA011) are visible in V2 Vessel Training Matrix.
 - Migrated V2 Vessel Training Matrix & Officer Matrix to V2 endpoints (February 12, 2026): Updated VesselModule_v2.tsx Training Matrix hooks to call `/api/v2/admin/training-matrix-vessel-revisions/by-vessel` and `/api/v2/admin/training-matrix-vessel-drafts/by-vessel` (reading from `adm_training_matrix_vessel_revisions_v2` and `adm_training_matrix_vessel_drafts_v2`). Officer Matrix confirmed already fully V2 via `/api/v2/vessel/officer-matrix`. No V1 files modified.
@@ -78,6 +79,7 @@ A comprehensive maritime operations platform for managing seafarer performance, 
 - **Oil Major Compliance**: Crew experience validation
 - **Promotions**: Configurable promotion paths
 - **Admin / Forms Configuration (V1 & V2)**: Company-specific form management with versioning, rank groups, available ranks, promotion hierarchies
+- **Masters (V2)**: Common REST API at `/api/v2/masters/` for 9 master tables (vessels, vessel-types, nationalities, countries, ports, languages, users, fleet-groups, additional-groups). Shared hooks in `client/src/hooks/v2/useMasterDataV2.ts`
 
 ### Architecture Patterns
 - V2 modules use Repository + Service + Controller pattern
