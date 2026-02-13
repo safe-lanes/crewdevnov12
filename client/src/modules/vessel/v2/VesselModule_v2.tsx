@@ -2215,7 +2215,7 @@ export function VesselModule_v2(): JSX.Element {
                                                         normalizedRows.push({
                                                             serialNumber: rankIndex + 1,
                                                             rank,
-                                                            rankName: baseRankName,
+                                                            rankName: fullRankName,
                                                             primaryCrew,
                                                             secondaryCrew
                                                         });
