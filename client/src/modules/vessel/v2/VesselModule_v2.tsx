@@ -1040,7 +1040,7 @@ export function VesselModule_v2(): JSX.Element {
         
         // V2: Crew count from crew_assignments table (is_current = true)
         // Match using vesselId (vuid from external API) which is the UUID used in V2 tables
-        return filteredVessels.map((vessel: any) => {
+        return [...filteredVessels].sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')).map((vessel: any) => {
             const vesselUuid = vessel.vesselId || vessel.id;
             return {
                 id: vessel.id,
