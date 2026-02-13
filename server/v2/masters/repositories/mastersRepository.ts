@@ -1,4 +1,4 @@
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   masterNationalities,
@@ -36,7 +36,7 @@ export class MastersRepository {
     return db
       .select()
       .from(masterVessels)
-      .orderBy(asc(masterVessels.vessel));
+      .orderBy(sql`LOWER(${masterVessels.vessel})`);
   }
 
   async findVesselByUuid(vesselUuid: string) {

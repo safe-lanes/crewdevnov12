@@ -17,7 +17,7 @@ export const masterDataController = {
           vesselType: masterVessels.vesselType,
         })
         .from(masterVessels)
-        .orderBy(masterVessels.vessel);
+        .orderBy(sql`LOWER(${masterVessels.vessel})`);
 
       res.json(vessels);
     } catch (error) {

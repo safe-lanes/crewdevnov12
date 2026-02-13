@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { getDb } from "../../db";
 import { masterVessels } from "../../../../shared/schema";
+import { sql } from "drizzle-orm";
 
 export const vesselListController = {
   async getAll(req: Request, res: Response) {
@@ -16,7 +17,7 @@ export const vesselListController = {
           imoNumber: masterVessels.imoNumber,
         })
         .from(masterVessels)
-        .orderBy(masterVessels.vessel);
+        .orderBy(sql`LOWER(${masterVessels.vessel})`);
 
       res.json(vessels);
     } catch (error) {
