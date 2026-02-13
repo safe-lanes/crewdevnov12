@@ -2209,16 +2209,54 @@ export function VesselModule_v2(): JSX.Element {
                                                                 relieverContractPeriodMonths: primaryCrew.relieverContractPeriodMonths,
                                                                 relieverContractEndRangeStartMonths: primaryCrew.relieverContractEndRangeStartMonths,
                                                                 relieverContractEndRangeEndMonths: primaryCrew.relieverContractEndRangeEndMonths,
+                                                                _isSynthesizedReliever: true,
                                                             };
                                                         }
                                                         
-                                                        normalizedRows.push({
-                                                            serialNumber: rankIndex + 1,
-                                                            rank,
-                                                            rankName: fullRankName,
-                                                            primaryCrew,
-                                                            secondaryCrew
-                                                        });
+                                                        const isSignedOnSecondary = secondaryCrew
+                                                            && !secondaryCrew._isSynthesizedReliever
+                                                            && secondaryCrew.planUuid !== primaryCrew?.planUuid
+                                                            && secondaryCrew.crewStatus === 'secondary'
+                                                            && secondaryCrew.crewUuid;
+
+                                                        if (isSignedOnSecondary) {
+                                                            normalizedRows.push({
+                                                                serialNumber: rankIndex + 1,
+                                                                rank,
+                                                                rankName: fullRankName,
+                                                                onBoardCrew: primaryCrew,
+                                                                relieverData: null,
+                                                                crewLabel: '(P)',
+                                                                hasBothOnBoard: true,
+                                                            });
+                                                            normalizedRows.push({
+                                                                serialNumber: '',
+                                                                rank,
+                                                                rankName: fullRankName,
+                                                                onBoardCrew: {
+                                                                    ...secondaryCrew,
+                                                                    crewName: secondaryCrew.crewName,
+                                                                    reliefDue: secondaryCrew.reliefDue || null,
+                                                                    signOnDate: secondaryCrew.signOnDate || secondaryCrew.relieverSignOnDate,
+                                                                    signOffDate: secondaryCrew.signOffDate || null,
+                                                                    signOffPortName: secondaryCrew.signOffPortName || '',
+                                                                    reliefStatus: secondaryCrew.reliefStatus || '',
+                                                                },
+                                                                relieverData: null,
+                                                                crewLabel: '(S)',
+                                                                hasBothOnBoard: true,
+                                                            });
+                                                        } else {
+                                                            normalizedRows.push({
+                                                                serialNumber: rankIndex + 1,
+                                                                rank,
+                                                                rankName: fullRankName,
+                                                                onBoardCrew: primaryCrew,
+                                                                relieverData: secondaryCrew,
+                                                                crewLabel: '',
+                                                                hasBothOnBoard: false,
+                                                            });
+                                                        }
                                                     });
                                                     
                                                     if (normalizedRows.length === 0) {
@@ -2232,22 +2270,24 @@ export function VesselModule_v2(): JSX.Element {
                                                     }
                                                     
                                                     return normalizedRows.map((row: any, index: number) => (
-                                                        <TableRow key={row.rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
-                                                            <TableCell className="text-xs text-gray-700">{row.serialNumber}.</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{row.rankName}</TableCell>
+                                                        <TableRow key={`${row.rank.id || index}-${row.crewLabel}`} className="hover:bg-gray-50 border-b border-gray-100">
+                                                            <TableCell className="text-xs text-gray-700">{row.serialNumber ? `${row.serialNumber}.` : ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">
+                                                                {row.hasBothOnBoard ? `${row.rankName} ${row.crewLabel}` : row.rankName}
+                                                            </TableCell>
                                                             
                                                             {/* On Board Status */}
-                                                            <TableCell className="text-xs text-gray-700">{row.primaryCrew?.crewName || ''}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.primaryCrew?.reliefDue)}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.primaryCrew?.signOffDate)}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{row.primaryCrew?.signOffPortName || ''}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{row.primaryCrew?.reliefStatus || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.onBoardCrew?.crewName || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.onBoardCrew?.reliefDue)}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.onBoardCrew?.signOffDate)}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.onBoardCrew?.signOffPortName || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.onBoardCrew?.reliefStatus || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">
                                                                 <Button 
                                                                     variant="ghost" 
                                                                     size="sm" 
                                                                     className="h-6 w-6 p-0"
-                                                                    onClick={() => handleOpenOnBoardEdit(row.primaryCrew, row.rankName, row.rank.id || row.rank.rankId || '')}
+                                                                    onClick={() => handleOpenOnBoardEdit(row.onBoardCrew, row.rankName, row.rank.id || row.rank.rankId || '')}
                                                                     data-testid={`button-edit-onboard-${index}`}
                                                                 >
                                                                     <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
@@ -2255,20 +2295,22 @@ export function VesselModule_v2(): JSX.Element {
                                                             </TableCell>
                                                             
                                                             {/* Reliever Status */}
-                                                            <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.crewName || ''}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.secondaryCrew?.relieverSignOnDate)}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.signOnPortName || ''}</TableCell>
-                                                            <TableCell className="text-xs text-gray-700">{row.secondaryCrew?.signOnStatus || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.relieverData?.crewName || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{formatDateOnly(row.relieverData?.relieverSignOnDate)}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.relieverData?.signOnPortName || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">{row.relieverData?.signOnStatus || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="sm" 
-                                                                    className="h-6 w-6 p-0"
-                                                                    onClick={() => handleOpenReliefEdit(row.secondaryCrew, row.rankName, row.rank.id || row.rank.rankId || '')}
-                                                                    data-testid={`button-edit-reliever-${index}`}
-                                                                >
-                                                                    <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
-                                                                </Button>
+                                                                {!row.hasBothOnBoard && (
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="sm" 
+                                                                        className="h-6 w-6 p-0"
+                                                                        onClick={() => handleOpenReliefEdit(row.relieverData, row.rankName, row.rank.id || row.rank.rankId || '')}
+                                                                        data-testid={`button-edit-reliever-${index}`}
+                                                                    >
+                                                                        <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
+                                                                    </Button>
+                                                                )}
                                                             </TableCell>
                                                         </TableRow>
                                                     ));
