@@ -181,6 +181,25 @@ export class VesselPlanningRepository {
     return results[0];
   }
 
+  async findSecondaryByVesselAndRank(vesselUuid: string, rankId: string, excludePlanUuid?: string): Promise<VesselPlanningV2 | undefined> {
+    const db = getDb();
+    const conditions = [
+      eq(vesselPlanningV2.vesselUuid, vesselUuid),
+      eq(vesselPlanningV2.rankId, rankId),
+      eq(vesselPlanningV2.crewStatus, 'secondary'),
+      eq(vesselPlanningV2.isDeleted, false),
+      eq(vesselPlanningV2.isArchived, false),
+    ];
+    const results = await db
+      .select()
+      .from(vesselPlanningV2)
+      .where(and(...conditions));
+    if (excludePlanUuid) {
+      return results.find(r => r.planUuid !== excludePlanUuid);
+    }
+    return results[0];
+  }
+
   async create(data: Omit<InsertVesselPlanningV2, "planUuid">): Promise<VesselPlanningV2> {
     const db = getDb();
     const results = await db

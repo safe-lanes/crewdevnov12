@@ -564,8 +564,9 @@ export const vesselPlanningService = {
   },
 
   /**
-   * Sign off crew from vessel - updates both vessel_planning_v2 and crew_assignments
-   * This should be called instead of just update() when signing off crew
+   * Sign off crew from vessel - updates vessel_planning_v2, crew_assignments,
+   * archives the primary, and auto-promotes any secondary to primary.
+   * All steps run inside a single database transaction.
    */
   async signOffCrew(planUuid: string, data: {
     signOffDate: string;
@@ -580,44 +581,81 @@ export const vesselPlanningService = {
       throw new Error(`Planning record not found: ${planUuid}`);
     }
 
-    const crewUuid = planning.crewUuid;
-    const vesselUuid = planning.vesselUuid;
-    
-    // Update crew_assignments if we have a crew member
-    if (crewUuid && vesselUuid) {
-      console.log(`📋 [VESSEL-PLANNING-V2] Updating crew_assignments for sign-off: crewUuid=${crewUuid}, signOffDate=${data.signOffDate}, reason=${data.signOffReason}`);
-      
-      await db
-        .update(crewAssignments)
-        .set({
-          signOffDate: data.signOffDate,
-          reason: data.signOffReason || null,
-          isCurrent: false,
-          updatedAt: sql`NOW()`,
-          updatedByUuid: data.auditUserUuid || null,
-        })
-        .where(
-          and(
-            eq(crewAssignments.crewUuid, crewUuid),
-            eq(crewAssignments.vesselUuid, vesselUuid),
-            eq(crewAssignments.isCurrent, true)
-          )
-        );
+    if (planning.crewStatus !== 'primary') {
+      throw new Error(`Only primary crew can be signed off. Current status: ${planning.crewStatus}`);
     }
 
-    // Resolve port value to UUID if provided
+    const crewUuid = planning.crewUuid;
+    const vesselUuid = planning.vesselUuid;
+    const rankId = planning.rankId;
+
     const resolvedPortUuid = data.signOffPortUuid 
       ? await resolvePortToUuid(data.signOffPortUuid) 
       : undefined;
 
-    // Update the vessel planning record
-    return vesselPlanningRepository.update(planUuid, {
-      signOffDate: data.signOffDate,
-      signOffReason: data.signOffReason,
-      signOffPortUuid: resolvedPortUuid,
-      reliefStatus: "Signed Off",
-      updatedByUuid: data.auditUserUuid || null,
+    const secondaryCrew = (vesselUuid && rankId)
+      ? await vesselPlanningRepository.findSecondaryByVesselAndRank(vesselUuid, rankId, planUuid)
+      : null;
+
+    await db.transaction(async (tx) => {
+      if (crewUuid && vesselUuid) {
+        console.log(`📋 [VESSEL-PLANNING-V2] Sign-off (tx): crewUuid=${crewUuid}, signOffDate=${data.signOffDate}`);
+        
+        await tx
+          .update(crewAssignments)
+          .set({
+            signOffDate: data.signOffDate,
+            reason: data.signOffReason || null,
+            isCurrent: false,
+            updatedAt: sql`NOW()`,
+            updatedByUuid: data.auditUserUuid || null,
+          })
+          .where(
+            and(
+              eq(crewAssignments.crewUuid, crewUuid),
+              eq(crewAssignments.vesselUuid, vesselUuid),
+              eq(crewAssignments.isCurrent, true)
+            )
+          );
+      }
+
+      await tx
+        .update(vesselPlanningV2)
+        .set({
+          signOffDate: data.signOffDate,
+          signOffReason: data.signOffReason,
+          signOffPortUuid: resolvedPortUuid,
+          reliefStatus: "Signed Off",
+          updatedByUuid: data.auditUserUuid || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(vesselPlanningV2.planUuid, planUuid));
+
+      console.log(`📋 [VESSEL-PLANNING-V2] Archiving primary (tx): planUuid=${planUuid}`);
+      await tx
+        .update(vesselPlanningV2)
+        .set({
+          isArchived: true,
+          archivedDate: new Date().toISOString().split("T")[0],
+          updatedAt: new Date(),
+          updatedByUuid: data.auditUserUuid || null,
+        })
+        .where(eq(vesselPlanningV2.planUuid, planUuid));
+
+      if (secondaryCrew) {
+        console.log(`📋 [VESSEL-PLANNING-V2] Promoting secondary to primary (tx): planUuid=${secondaryCrew.planUuid}`);
+        await tx
+          .update(vesselPlanningV2)
+          .set({
+            crewStatus: 'primary',
+            updatedByUuid: data.auditUserUuid || null,
+            updatedAt: new Date(),
+          })
+          .where(eq(vesselPlanningV2.planUuid, secondaryCrew.planUuid));
+      }
     });
+
+    return vesselPlanningRepository.findByPlanUuid(planUuid);
   },
 
   async getAttachments(planUuid: string) {

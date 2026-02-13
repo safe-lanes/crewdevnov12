@@ -315,30 +315,13 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     }
                 });
             } else if (isSignOff && planningData?.planUuid) {
-                if (planningData?.crewStatus === "primary") {
-                    const secondaryCrew = allPlanning.find((p: any) => 
-                        p.rankId === rankId && 
-                        p.crewStatus === "secondary" && 
-                        p.planUuid !== planningData.planUuid &&
-                        !p.isArchived
-                    );
-                    
-                    if (secondaryCrew) {
-                        throw new Error("Cannot sign off primary crew when a secondary (reliever) exists. The reliever must take over first.");
-                    }
-                }
-                
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 
-                // Use the new V2 sign-off endpoint that updates BOTH vessel_planning_v2 AND crew_assignments
                 await apiRequest('POST', `/api/v2/vessel/planning/${planningData.planUuid}/sign-off`, {
                     signOffDate: data.signOffDate,
                     signOffReason: data.signOffReason,
                     signOffPortUuid: cleanFormData.signOffPort,
                 });
-                
-                // Archive the planning record after sign-off
-                await vesselApiV2.archivePlanning(planningData.planUuid, 'user');
             } else {
                 const cleanFormData = filterOutRelieverFields(dataWithReliefDue as Record<string, any>);
                 
