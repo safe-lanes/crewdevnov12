@@ -626,6 +626,8 @@ export const vesselPlanningService = {
           signOffReason: data.signOffReason,
           signOffPortUuid: resolvedPortUuid,
           reliefStatus: "Signed Off",
+          takeOverDate: null,
+          takeOverConfirmation: false,
           updatedByUuid: data.auditUserUuid || null,
           updatedAt: new Date(),
         })
