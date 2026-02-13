@@ -660,25 +660,28 @@ export const vesselPlanningService = {
   },
 
   /**
-   * Handle reliever sign-on: moves crew from Reliever Status to On Board Status
-   * When joiningStatus changes to "Signed On":
-   * 1. Move relieverCrewUuid to crewUuid (reliever becomes on-board crew)
-   * 2. Set signOnDate from relieverSignOnDate
-   * 3. Clear reliever fields  
-   * 4. Set crewStatus to "primary" for on-board display
-   * 5. Update crew_assignments to set isCurrent: true, assignmentType: "OnBoard"
+   * Handle reliever sign-on (matching V1 workflow):
    * 
+   * CASE A: Primary crew EXISTS → create NEW secondary planning record for reliever.
+   *   Both (P) and (S) appear stacked in On Board section.
+   *   Primary is NOT archived — that only happens on explicit sign-off.
+   *   Secondary becomes primary only via Take Over Confirmation.
+   *
+   * CASE B: Position is VACANT (no primary crew) → promote reliever directly to primary.
+   *   Reliever fields are cleared, reliever becomes on-board primary crew.
+   *
    * All operations are wrapped in a transaction for consistency.
    */
   async signOnReliever(planUuid: string, data: {
     signOnDate?: string;
     signOnPort?: string;
     contractPeriodMonths?: number;
+    contractEndRangeStartMonths?: number;
+    contractEndRangeEndMonths?: number;
     auditUserUuid?: string;
   }) {
     const db = getDb();
     
-    // Get current planning record first (outside transaction for validation)
     const planning = await vesselPlanningRepository.findByPlanUuid(planUuid);
     if (!planning) {
       throw new Error(`Planning record not found: ${planUuid}`);
@@ -692,11 +695,11 @@ export const vesselPlanningService = {
     const vesselUuid = planning.vesselUuid;
     const signOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
     const effectiveContractPeriod = data.contractPeriodMonths || planning.relieverContractPeriodMonths;
+    const effectiveContractRangeStart = data.contractEndRangeStartMonths ?? planning.relieverContractEndRangeStartMonths;
+    const effectiveContractRangeEnd = data.contractEndRangeEndMonths ?? planning.relieverContractEndRangeEndMonths;
     
-    // Resolve port value to UUID (handles both UUID and port name inputs)
     const resolvedPortUuid = await resolvePortToUuid(data.signOnPort) || planning.joiningPortUuid;
     
-    // AUTO-CALCULATE RELIEF DUE: signOnDate + contractPeriodMonths (matching V1 logic)
     let calculatedReliefDue: string | null = null;
     if (signOnDate && effectiveContractPeriod) {
       try {
@@ -709,76 +712,159 @@ export const vesselPlanningService = {
       }
     }
 
-    // Execute all operations in a transaction for consistency
+    const hasPrimaryCrew = !!planning.crewUuid;
+
     const result = await db.transaction(async (tx: typeof db) => {
-      // 1. Archive old primary crew if exists
-      if (planning.crewUuid) {
+      if (hasPrimaryCrew) {
+        console.log(`🔄 [VESSEL-PLANNING-V2] CASE A: Primary crew exists (${planning.crewUuid}) — creating secondary record for reliever ${relieverCrewUuid}`);
+
+        const existingSecondary = await tx
+          .select()
+          .from(vesselPlanningV2)
+          .where(
+            and(
+              eq(vesselPlanningV2.vesselUuid, vesselUuid),
+              eq(vesselPlanningV2.rankId, planning.rankId),
+              eq(vesselPlanningV2.crewStatus, "secondary"),
+              eq(vesselPlanningV2.isDeleted, false),
+              eq(vesselPlanningV2.isArchived, false)
+            )
+          );
+
+        if (existingSecondary.length > 0) {
+          throw new Error(`A secondary crew member is already assigned to rank ${planning.rank}. Only one secondary crew is allowed per rank.`);
+        }
+
+        const { v4: uuidv4 } = await import("uuid");
+        const secondaryPlanUuid = uuidv4();
+        await tx
+          .insert(vesselPlanningV2)
+          .values({
+            planUuid: secondaryPlanUuid,
+            vesselUuid,
+            activeRevisionUuid: planning.activeRevisionUuid,
+            rankId: planning.rankId,
+            rank: planning.rank,
+            crewUuid: relieverCrewUuid,
+            crewStatus: "secondary",
+            signOnDate,
+            reliefDue: calculatedReliefDue,
+            contractPeriodMonths: effectiveContractPeriod,
+            contractEndRangeStartMonths: effectiveContractRangeStart,
+            contractEndRangeEndMonths: effectiveContractRangeEnd,
+            signOffDate: null,
+            signOffPortUuid: null,
+            signOffReason: null,
+            reliefStatus: null,
+            takeOverDate: null,
+            takeOverConfirmation: false,
+            handOverDate: null,
+            relieverCrewUuid: null,
+            relieverSignOnDate: null,
+            joiningPortUuid: resolvedPortUuid,
+            joiningStatus: null,
+            relieverContractPeriodMonths: null,
+            relieverContractEndRangeStartMonths: null,
+            relieverContractEndRangeEndMonths: null,
+            deploymentChecklistCompleted: false,
+            applicableDocsChecked: false,
+            isArchived: false,
+            archivedDate: null,
+            isDeleted: false,
+            isSync: false,
+            createdByUuid: data.auditUserUuid || null,
+            updatedByUuid: data.auditUserUuid || null,
+          });
+
+        console.log(`✅ [VESSEL-PLANNING-V2] Created secondary planning record: ${secondaryPlanUuid}`);
+
+        const [updated] = await tx
+          .update(vesselPlanningV2)
+          .set({
+            relieverCrewUuid: null,
+            relieverSignOnDate: null,
+            relieverContractPeriodMonths: null,
+            relieverContractEndRangeStartMonths: null,
+            relieverContractEndRangeEndMonths: null,
+            joiningStatus: null,
+            joiningPortUuid: null,
+            deploymentChecklistCompleted: false,
+            applicableDocsChecked: false,
+            updatedAt: sql`NOW()`,
+            updatedByUuid: data.auditUserUuid || null,
+          })
+          .where(eq(vesselPlanningV2.planUuid, planUuid))
+          .returning();
+
         await tx
           .update(crewAssignments)
-          .set({ 
-            isCurrent: false,
-            signOffDate: signOnDate,
+          .set({
+            isCurrent: true,
+            assignmentType: "OnBoard",
+            signOnDate,
+            contractPeriod: effectiveContractPeriod ? String(effectiveContractPeriod) : null,
+            reliefDue: calculatedReliefDue,
             updatedByUuid: data.auditUserUuid || null,
           })
           .where(
             and(
-              eq(crewAssignments.crewUuid, planning.crewUuid),
+              eq(crewAssignments.crewUuid, relieverCrewUuid),
               eq(crewAssignments.vesselUuid, vesselUuid),
-              eq(crewAssignments.isCurrent, true)
+              eq(crewAssignments.isCurrent, false),
+              eq(crewAssignments.assignmentType, "Planned")
             )
           );
+
+        return updated;
+      } else {
+        console.log(`🔄 [VESSEL-PLANNING-V2] CASE B: Position vacant — promoting reliever ${relieverCrewUuid} to primary`);
+
+        const [updated] = await tx
+          .update(vesselPlanningV2)
+          .set({
+            crewUuid: relieverCrewUuid,
+            crewStatus: "primary",
+            signOnDate,
+            contractPeriodMonths: effectiveContractPeriod,
+            contractEndRangeStartMonths: effectiveContractRangeStart,
+            contractEndRangeEndMonths: effectiveContractRangeEnd,
+            reliefDue: calculatedReliefDue,
+            relieverCrewUuid: null,
+            relieverSignOnDate: null,
+            relieverContractPeriodMonths: null,
+            relieverContractEndRangeStartMonths: null,
+            relieverContractEndRangeEndMonths: null,
+            joiningStatus: null,
+            joiningPortUuid: null,
+            deploymentChecklistCompleted: false,
+            applicableDocsChecked: false,
+            updatedAt: sql`NOW()`,
+            updatedByUuid: data.auditUserUuid || null,
+          })
+          .where(eq(vesselPlanningV2.planUuid, planUuid))
+          .returning();
+
+        await tx
+          .update(crewAssignments)
+          .set({
+            isCurrent: true,
+            assignmentType: "OnBoard",
+            signOnDate,
+            contractPeriod: effectiveContractPeriod ? String(effectiveContractPeriod) : null,
+            reliefDue: calculatedReliefDue,
+            updatedByUuid: data.auditUserUuid || null,
+          })
+          .where(
+            and(
+              eq(crewAssignments.crewUuid, relieverCrewUuid),
+              eq(crewAssignments.vesselUuid, vesselUuid),
+              eq(crewAssignments.isCurrent, false),
+              eq(crewAssignments.assignmentType, "Planned")
+            )
+          );
+
+        return updated;
       }
-
-      // 2. Update vessel planning: move reliever to primary crew
-      const [updated] = await tx
-        .update(vesselPlanningV2)
-        .set({
-          // Move reliever to on-board crew
-          crewUuid: relieverCrewUuid,
-          crewStatus: "primary", // Explicitly set to primary for on-board
-          signOnDate,
-          contractPeriodMonths: effectiveContractPeriod,
-          reliefDue: calculatedReliefDue, // Auto-calculated from signOnDate + contractPeriodMonths
-          // Clear reliever fields
-          relieverCrewUuid: null,
-          relieverSignOnDate: null,
-          relieverContractPeriodMonths: null,
-          relieverContractEndRangeStartMonths: null,
-          relieverContractEndRangeEndMonths: null,
-          // Update status
-          joiningStatus: "Signed On",
-          joiningPortUuid: resolvedPortUuid,
-          deploymentChecklistCompleted: false,
-          applicableDocsChecked: false,
-          updatedAt: sql`NOW()`,
-          updatedByUuid: data.auditUserUuid || null,
-        })
-        .where(eq(vesselPlanningV2.planUuid, planUuid))
-        .returning();
-
-      // 3. Update crew_assignments: target only the specific "Planned" assignment
-      // Filter by isCurrent=false and assignmentType="Planned" to avoid updating old/wrong records
-      // Include contractPeriod and reliefDue so Current Assignment columns display in Crew Pool grid
-      await tx
-        .update(crewAssignments)
-        .set({ 
-          isCurrent: true,
-          assignmentType: "OnBoard",
-          signOnDate,
-          contractPeriod: effectiveContractPeriod ? String(effectiveContractPeriod) : null,
-          reliefDue: calculatedReliefDue,
-          updatedByUuid: data.auditUserUuid || null,
-        })
-        .where(
-          and(
-            eq(crewAssignments.crewUuid, relieverCrewUuid),
-            eq(crewAssignments.vesselUuid, vesselUuid),
-            eq(crewAssignments.isCurrent, false),
-            eq(crewAssignments.assignmentType, "Planned")
-          )
-        );
-
-      return updated;
     });
 
     return result;

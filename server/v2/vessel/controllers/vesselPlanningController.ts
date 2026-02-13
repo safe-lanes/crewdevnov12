@@ -142,12 +142,14 @@ export const vesselPlanningController = {
   async signOnReliever(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
-      const { signOnDate, signOnPort, contractPeriodMonths } = req.body;
+      const { signOnDate, signOnPort, contractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths } = req.body;
       
       const planning = await vesselPlanningService.signOnReliever(planUuid, {
         signOnDate,
         signOnPort,
         contractPeriodMonths,
+        contractEndRangeStartMonths,
+        contractEndRangeEndMonths,
       });
       
       res.json(planning);
@@ -155,7 +157,7 @@ export const vesselPlanningController = {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
-      if (error.message?.includes("No reliever")) {
+      if (error.message?.includes("No reliever") || error.message?.includes("secondary crew")) {
         return res.status(400).json({ error: error.message });
       }
       console.error("Error signing on reliever:", error);
@@ -170,18 +172,19 @@ export const vesselPlanningController = {
   async updateRelieverStatus(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
-      const { joiningStatus, relieverSignOnDate, joiningPortUuid, relieverContractPeriodMonths } = req.body;
+      const { joiningStatus, relieverSignOnDate, joiningPortUuid, relieverContractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths } = req.body;
       
       if (!joiningStatus) {
         return res.status(400).json({ error: "joiningStatus is required" });
       }
 
-      // If status is "Signed On", use the sign-on endpoint instead
       if (joiningStatus === "Signed On") {
         const planning = await vesselPlanningService.signOnReliever(planUuid, {
           signOnDate: relieverSignOnDate,
           signOnPort: joiningPortUuid,
           contractPeriodMonths: relieverContractPeriodMonths,
+          contractEndRangeStartMonths,
+          contractEndRangeEndMonths,
         });
         return res.json(planning);
       }

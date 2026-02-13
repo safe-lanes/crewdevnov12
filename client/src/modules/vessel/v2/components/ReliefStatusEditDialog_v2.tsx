@@ -180,6 +180,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     signOnDate,
                     signOnPort,
                     contractPeriodMonths,
+                    contractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? planningData.relieverContractEndRangeStartMonths,
+                    contractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? planningData.relieverContractEndRangeEndMonths,
                 });
             } else {
                 const payload = {
