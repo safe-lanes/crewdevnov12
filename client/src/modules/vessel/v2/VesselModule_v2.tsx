@@ -1613,7 +1613,7 @@ export function VesselModule_v2(): JSX.Element {
                                                     const rankBase = planning.rank?.split('_')[0] || planning.rank;
                                                     const rankEntry = rankCrewMap.get(rankBase);
                                                     const hasBothCrewTypes = !!(rankEntry?.primary && rankEntry?.secondary);
-                                                    const statusBadge = hasBothCrewTypes ? (planning.crewStatus === 'secondary' ? ' (S)' : ' (P)') : '';
+                                                    const statusBadge = (!showArchived && hasBothCrewTypes) ? (planning.crewStatus === 'secondary' ? ' (S)' : ' (P)') : '';
                                                     const displayRank = rankBase + statusBadge;
                                                     
                                                     return (
