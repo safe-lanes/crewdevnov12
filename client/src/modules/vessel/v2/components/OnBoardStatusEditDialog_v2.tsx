@@ -313,8 +313,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 await vesselApiV2.updatePlanning(secondaryCrew.planUuid, {
                     crewStatus: "primary",
                     signOnDate: secondarySignOnDate,
-                    takeOverDate: data.takeOverDate,
-                    takeOverConfirmation: true,
+                    takeOverDate: null,
+                    takeOverConfirmation: false,
                     contractPeriodMonths: secondaryCrew.contractPeriodMonths || secondaryCrew.relieverContractPeriodMonths,
                     contractEndRangeStartMonths: secondaryCrew.contractEndRangeStartMonths || secondaryCrew.relieverContractEndRangeStartMonths,
                     contractEndRangeEndMonths: secondaryCrew.contractEndRangeEndMonths || secondaryCrew.relieverContractEndRangeEndMonths,
