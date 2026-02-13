@@ -2,5 +2,6 @@ export {
   rotationCrewController, 
   rotationDraftsController, 
   rotationEntriesController,
-  rotationArchiveController 
+  rotationArchiveController,
+  rotationDueCrewController 
 } from "./rotationController";

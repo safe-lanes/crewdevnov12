@@ -4,7 +4,8 @@ import {
   rotationDeployService, 
   rotationDraftsService, 
   rotationEntriesService,
-  rotationArchiveService 
+  rotationArchiveService,
+  dueCrewService 
 } from "../services";
 import { 
   insertRotationDraftsV2Schema, 
@@ -294,6 +295,26 @@ export const rotationEntriesController = {
     } catch (error) {
       console.error("Error deleting entry:", error);
       res.status(500).json({ error: "Failed to delete entry" });
+    }
+  },
+};
+
+export const rotationDueCrewController = {
+  async getDueCrew(req: Request, res: Response) {
+    try {
+      const { filterType, vessels, fleet, addGroup, dueIn, rank } = req.query;
+      const crew = await dueCrewService.getDueCrew({
+        filterType: filterType as string,
+        vessels: vessels ? (Array.isArray(vessels) ? vessels : [vessels]) as string[] : [],
+        fleet: fleet as string,
+        addGroup: addGroup as string,
+        dueIn: dueIn as string,
+        rank: rank as string,
+      });
+      res.json(crew);
+    } catch (error) {
+      console.error("Error fetching due crew:", error);
+      res.status(500).json({ error: "Failed to fetch due crew" });
     }
   },
 };

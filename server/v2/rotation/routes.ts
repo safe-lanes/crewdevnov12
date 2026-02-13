@@ -3,7 +3,8 @@ import {
   rotationCrewController, 
   rotationDraftsController, 
   rotationEntriesController,
-  rotationArchiveController 
+  rotationArchiveController,
+  rotationDueCrewController 
 } from "./controllers";
 
 const router = Router();
@@ -29,6 +30,8 @@ router.patch("/entries/:entryUuid", rotationEntriesController.update);
 router.post("/entries/:entryUuid/deploy", rotationEntriesController.deploy);
 router.post("/entries/:entryUuid/reject", rotationEntriesController.reject);
 router.delete("/entries/:entryUuid", rotationEntriesController.delete);
+
+router.get("/due-crew", rotationDueCrewController.getDueCrew);
 
 router.get("/archive", rotationArchiveController.getAll);
 
