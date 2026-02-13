@@ -314,7 +314,7 @@ export function RotationModule_v2() {
     const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
     const [fleetValue, setFleetValue] = useState("");
     const [addGroupValue, setAddGroupValue] = useState("");
-    const [dueInValue, setDueInValue] = useState("1m");
+    const [dueInValue, setDueInValue] = useState("all");
     const [rankValue, setRankValue] = useState("");
     const [showFilters, setShowFilters] = useState(true);
 
@@ -338,7 +338,7 @@ export function RotationModule_v2() {
         setSelectedVessels([]);
         setFleetValue("");
         setAddGroupValue("");
-        setDueInValue("1m");
+        setDueInValue("all");
         setRankValue("");
     };
 
@@ -398,6 +398,7 @@ export function RotationModule_v2() {
                                     <SelectValue placeholder="Due in" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="all">All</SelectItem>
                                     <SelectItem value="3m">Due in 3M</SelectItem>
                                     <SelectItem value="2m">Due in 2M</SelectItem>
                                     <SelectItem value="1m">Due in 1M</SelectItem>
