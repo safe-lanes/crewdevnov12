@@ -1167,7 +1167,7 @@ export function VesselModule_v2(): JSX.Element {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="_all">All Vessels</SelectItem>
-                                    {[...vessels].sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')).map((vessel: any) => (
+                                    {[...vessels].sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })).map((vessel: any) => (
                                         <SelectItem key={vessel.id} value={vessel.name}>
                                             {vessel.name}
                                         </SelectItem>
@@ -1455,7 +1455,7 @@ export function VesselModule_v2(): JSX.Element {
                                 <SelectValue>{selectedVessel.name}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                {[...vessels].sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')).map((vessel: any) => (
+                                {[...vessels].sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })).map((vessel: any) => (
                                     <SelectItem key={vessel.id} value={vessel.name}>
                                         {vessel.name}
                                     </SelectItem>
