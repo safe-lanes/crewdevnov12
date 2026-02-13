@@ -23,7 +23,6 @@ import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { NATIONALITIES } from '@/utils/data/nationalities';
 import { useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 import { useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
 import { useCrewListV2, useDeleteCrewV2 } from './hooks/useCrewPoolV2';
@@ -91,15 +90,11 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
     const { data: externalVesselsData, isLoading: vesselsLoading } = useVesselsV2();
     
-    // Extract nationality names with fallback to static data
-    // Use static list if external API returns fewer than 20 entries (incomplete data)
-    // External API uses 'nationality' field for name
     const nationalityMasterData = useMemo(() => {
-        if (externalNationalitiesData && Array.isArray(externalNationalitiesData) && externalNationalitiesData.length >= 20) {
+        if (externalNationalitiesData && Array.isArray(externalNationalitiesData) && externalNationalitiesData.length > 0) {
             return externalNationalitiesData.map((n: any) => n.nationality || n.name).filter(Boolean).sort();
         }
-        // Fallback to comprehensive static NATIONALITIES list
-        return [...NATIONALITIES];
+        return [];
     }, [externalNationalitiesData]);
     
     // Extract vessel entries (id and name) for dropdown - sorted by name
