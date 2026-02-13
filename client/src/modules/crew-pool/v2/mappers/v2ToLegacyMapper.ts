@@ -599,6 +599,7 @@ export function mapLegacyTrainingCourseToV2(legacy: LegacyTrainingCourse): any {
 }
 
 export interface LegacySeaService {
+  id?: string;
   seaUuid?: string;
   isCompanyService: boolean;
   vesselName: string;
@@ -620,6 +621,7 @@ export interface LegacySeaService {
 
 export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
   return {
+    id: v2?.seaUuid || `SEA-${v2?.id || Math.random().toString(36).slice(2, 9)}`,
     seaUuid: v2?.seaUuid,
     isCompanyService: v2?.serviceType === 'company',
     // Use resolved vessel name if available, otherwise fall back to vesselName field

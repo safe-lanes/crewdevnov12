@@ -524,6 +524,17 @@ export const dashboardService = {
       if (cert.includes("tanker") || abbr.includes("BTOC") || abbr.includes("ATOT")) {
         endorsements.push("Tanker");
       }
+      if (cert.includes("dce") || abbr.includes("DC_") || abbr.includes("DCE")) {
+        if (cert.includes("oil") || abbr.includes("DC_O")) {
+          endorsements.push("DCE Oil");
+        }
+        if (cert.includes("chem") || abbr.includes("DC_C")) {
+          endorsements.push("DCE Chemical");
+        }
+        if (!cert.includes("oil") && !cert.includes("chem") && !abbr.includes("DC_O") && !abbr.includes("DC_C")) {
+          endorsements.push("DCE");
+        }
+      }
     }
 
     const unique = Array.from(new Set(endorsements));
