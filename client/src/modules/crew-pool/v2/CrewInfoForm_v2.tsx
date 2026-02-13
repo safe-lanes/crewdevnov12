@@ -20,11 +20,7 @@ import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@share
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
-import { useExternalNationalities } from '@/hooks/useExternalNationalities';
-import { useExternalCountries } from '@/hooks/useExternalCountries';
-import { useExternalLanguages } from '@/hooks/useExternalLanguages';
-import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
-import { useExternalVessels } from '@/hooks/useExternalVessels';
+import { useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
 import { NATIONALITIES as STATIC_NATIONALITIES } from '@/utils/data/nationalities';
 import { LicenseSelectionDialog } from '../LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from '../TrainingCourseSelectionDialog';
@@ -502,11 +498,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const sectionFRef = useRef<HTMLDivElement>(null);
 
   // External API hooks for master data with 5-minute cache and 2 retry attempts
-  const { data: externalVesselTypesData, isLoading: vesselTypesLoading } = useExternalVesselTypes();
-  const { data: externalVesselsData, isLoading: vesselsLoading } = useExternalVessels();
-  const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useExternalNationalities();
-  const { data: externalCountriesData, isLoading: countriesLoading } = useExternalCountries();
-  const { data: externalLanguagesData, isLoading: languagesLoading } = useExternalLanguages();
+  const { data: externalVesselTypesData, isLoading: vesselTypesLoading } = useVesselTypesV2();
+  const { data: externalVesselsData, isLoading: vesselsLoading } = useVesselsV2();
+  const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
+  const { data: externalCountriesData, isLoading: countriesLoading } = useCountriesV2();
+  const { data: externalLanguagesData, isLoading: languagesLoading } = useLanguagesV2();
 
   // Static fallback data for countries (used when API is unavailable)
   const STATIC_COUNTRIES = [

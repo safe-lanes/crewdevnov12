@@ -1,131 +1,161 @@
 import { useQuery } from "@tanstack/react-query";
-import type {
-  MasterNationality,
-  MasterVessel,
-  MasterVesselType,
-  MasterAdditionalGroup,
-  MasterPort,
-  MasterFleetGroup,
-  MasterLanguage,
-  MasterCountry,
-  MasterUser,
-} from "@shared/schema";
 
 const V2_MASTERS_BASE = "/api/v2/masters";
+const STALE_TIME = 30 * 60 * 1000;
 
-export function useNationalitiesV2() {
-  return useQuery<MasterNationality[]>({
-    queryKey: [`${V2_MASTERS_BASE}/nationalities`],
-  });
+interface UseMasterOptions {
+  enabled?: boolean;
 }
 
-export function useNationalityByUuidV2(uuid: string | undefined) {
-  return useQuery<MasterNationality>({
+export const useNationalitiesV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
+    queryKey: [`${V2_MASTERS_BASE}/nationalities`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
+export const useNationalityByUuidV2 = (uuid: string | undefined) => {
+  return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/nationalities`, uuid],
     enabled: !!uuid,
+    staleTime: STALE_TIME,
   });
-}
+};
 
-export function useVesselsV2() {
-  return useQuery<MasterVessel[]>({
+export const useVesselsV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
     queryKey: [`${V2_MASTERS_BASE}/vessels`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
   });
-}
+};
 
-export function useVesselByUuidV2(uuid: string | undefined) {
-  return useQuery<MasterVessel>({
+export const useVesselByUuidV2 = (uuid: string | undefined) => {
+  return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/vessels`, uuid],
     enabled: !!uuid,
+    staleTime: STALE_TIME,
   });
-}
+};
 
-export function useVesselTypesV2() {
-  return useQuery<MasterVesselType[]>({
+export const useVesselTypesV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
     queryKey: [`${V2_MASTERS_BASE}/vessel-types`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
   });
-}
+};
 
-export function useVesselTypeByUuidV2(uuid: string | undefined) {
-  return useQuery<MasterVesselType>({
+export const useVesselTypeByUuidV2 = (uuid: string | undefined) => {
+  return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/vessel-types`, uuid],
     enabled: !!uuid,
+    staleTime: STALE_TIME,
   });
-}
+};
 
-export function useAdditionalGroupsV2() {
-  return useQuery<MasterAdditionalGroup[]>({
+export const useAdditionalGroupsV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
     queryKey: [`${V2_MASTERS_BASE}/additional-groups`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
   });
-}
+};
 
-export function useAdditionalGroupByUuidV2(uuid: string | undefined) {
-  return useQuery<MasterAdditionalGroup>({
+export const useAdditionalGroupByUuidV2 = (uuid: string | undefined) => {
+  return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/additional-groups`, uuid],
     enabled: !!uuid,
+    staleTime: STALE_TIME,
   });
-}
+};
 
-export function usePortsV2() {
-  return useQuery<MasterPort[]>({
+export const usePortsV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
     queryKey: [`${V2_MASTERS_BASE}/ports`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
   });
-}
+};
 
-export function usePortByUuidV2(uuid: string | undefined) {
-  return useQuery<MasterPort>({
+export const usePortByUuidV2 = (uuid: string | undefined) => {
+  return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/ports`, uuid],
     enabled: !!uuid,
+    staleTime: STALE_TIME,
   });
-}
+};
 
-export function useFleetGroupsV2() {
-  return useQuery<MasterFleetGroup[]>({
+export const useFleetGroupsV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
     queryKey: [`${V2_MASTERS_BASE}/fleet-groups`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
   });
-}
+};
 
-export function useFleetGroupByUuidV2(uuid: string | undefined) {
-  return useQuery<MasterFleetGroup>({
+export const useFleetGroupByUuidV2 = (uuid: string | undefined) => {
+  return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/fleet-groups`, uuid],
     enabled: !!uuid,
+    staleTime: STALE_TIME,
   });
-}
+};
 
-export function useLanguagesV2() {
-  return useQuery<MasterLanguage[]>({
+export const useLanguagesV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
     queryKey: [`${V2_MASTERS_BASE}/languages`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
   });
-}
+};
 
-export function useLanguageByUuidV2(uuid: string | undefined) {
-  return useQuery<MasterLanguage>({
+export const useLanguageByUuidV2 = (uuid: string | undefined) => {
+  return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/languages`, uuid],
     enabled: !!uuid,
+    staleTime: STALE_TIME,
   });
-}
+};
 
-export function useCountriesV2() {
-  return useQuery<MasterCountry[]>({
+export const useCountriesV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
     queryKey: [`${V2_MASTERS_BASE}/countries`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
   });
-}
+};
 
-export function useCountryByUuidV2(uuid: string | undefined) {
-  return useQuery<MasterCountry>({
+export const useCountryByUuidV2 = (uuid: string | undefined) => {
+  return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/countries`, uuid],
     enabled: !!uuid,
+    staleTime: STALE_TIME,
   });
-}
+};
 
-export function useUsersV2() {
-  return useQuery<MasterUser[]>({
+export const useUsersV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
     queryKey: [`${V2_MASTERS_BASE}/users`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
   });
-}
+};
 
-export function useUserByUuidV2(uuid: string | undefined) {
-  return useQuery<MasterUser>({
+export const useUserByUuidV2 = (uuid: string | undefined) => {
+  return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/users`, uuid],
     enabled: !!uuid,
+    staleTime: STALE_TIME,
   });
-}
+};

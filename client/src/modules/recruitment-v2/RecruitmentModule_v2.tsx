@@ -20,8 +20,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useExternalNationalities } from '@/hooks/useExternalNationalities';
-import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
+import { useNationalitiesV2, useVesselTypesV2 } from '@/hooks/v2/useMasterDataV2';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { useV2Candidates, useV2DeleteCandidate } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
@@ -49,7 +48,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   const isTablet = viewport === 'tablet';
   const isSmallScreen = isPhone || isTablet;
 
-  const { data: externalVesselTypesData, isLoading: vesselTypesLoading } = useExternalVesselTypes();
+  const { data: externalVesselTypesData, isLoading: vesselTypesLoading } = useVesselTypesV2();
   
   const vesselTypeMasterData = useMemo(() => {
     const vesselTypes = (externalVesselTypesData as any)?.vesseltypes || (externalVesselTypesData as any)?.vesselTypes || externalVesselTypesData || [];
@@ -75,7 +74,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     return lookup;
   }, [externalVesselTypesData]);
 
-  const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useExternalNationalities();
+  const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
 
   const nationalityMasterData = useMemo(() => {
     const nationalities = (externalNationalitiesData as any)?.nationalities || externalNationalitiesData || [];

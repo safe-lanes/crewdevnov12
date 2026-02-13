@@ -24,8 +24,8 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { NATIONALITIES } from '@/utils/data/nationalities';
-import { useExternalNationalities } from '@/hooks/useExternalNationalities';
-import { useExternalVessels } from '@/hooks/useExternalVessels';
+import { useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
+import { useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
 import { useCrewListV2, useDeleteCrewV2 } from './hooks/useCrewPoolV2';
 import { useCrewPoolVersion } from '../hooks/useCrewPoolVersion';
 
@@ -88,8 +88,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const { normalizeRank } = useRankNormalization();
     
     // External API hooks for master data with 5-minute cache and 2 retry attempts
-    const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useExternalNationalities();
-    const { data: externalVesselsData, isLoading: vesselsLoading } = useExternalVessels();
+    const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
+    const { data: externalVesselsData, isLoading: vesselsLoading } = useVesselsV2();
     
     // Extract nationality names with fallback to static data
     // Use static list if external API returns fewer than 20 entries (incomplete data)

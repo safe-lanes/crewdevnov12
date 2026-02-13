@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import type { NCReport, RestHoursCrewRecord, RestHoursDailyRecord, MasterDataEntry } from "@shared/schema";
 import { filterViolations } from '../violationFilters';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
-import { useExternalUsers, type ExternalUser } from '@/hooks/useExternalUsers';
+import { useUsersV2 } from '@/hooks/v2/useMasterDataV2';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface NCReportDialogProps {
@@ -101,11 +101,11 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   }, [masterData, crewRecord.vesselId]);
 
   // Fetch external users and filter to Office users only
-  const { data: allExternalUsers, isLoading: usersLoading } = useExternalUsers({ enabled: open });
+  const { data: allExternalUsers, isLoading: usersLoading } = useUsersV2({ enabled: open });
   
   const officeUsers = useMemo(() => {
     if (!allExternalUsers) return [];
-    return (allExternalUsers as ExternalUser[]).filter(
+    return (allExternalUsers as any[]).filter(
       (user) => user.userType === 'Office'
     );
   }, [allExternalUsers]);
@@ -193,7 +193,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
       if (currentUser) {
         // Try to find matching user in office users list by name
         const matchingUser = officeUsers.find(
-          (u: ExternalUser) => u.userName === currentUser.name || 
+          (u: any) => u.userName === currentUser.name || 
                               u.userName.toLowerCase() === currentUser.name.toLowerCase()
         );
         if (matchingUser) {
@@ -572,7 +572,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
                       ) : officeUsers.length === 0 ? (
                         <SelectItem value="none" disabled>No office users found</SelectItem>
                       ) : (
-                        officeUsers.map((user: ExternalUser) => (
+                        officeUsers.map((user: any) => (
                           <SelectItem key={user.uuid} value={user.userName}>
                             {user.userName}
                           </SelectItem>

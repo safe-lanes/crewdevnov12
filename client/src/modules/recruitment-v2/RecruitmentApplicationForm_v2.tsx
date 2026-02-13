@@ -21,13 +21,7 @@ import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAtta
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
-import { useExternalNationalities } from '@/hooks/useExternalNationalities';
-import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
-import { useExternalCountries } from '@/hooks/useExternalCountries';
-import { useExternalLanguages } from '@/hooks/useExternalLanguages';
-import { useExternalUsers } from '@/hooks/useExternalUsers';
-import { useExternalVessels } from '@/hooks/useExternalVessels';
-import { useExternalFleetGroups } from '@/hooks/useExternalFleetGroups';
+import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2 } from '@/hooks/v2/useMasterDataV2';
 import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 import {
   useV2Candidate,
@@ -795,11 +789,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     createB8AttachmentMutation.isPending;
 
   const { data: companyRanks, isLoading: ranksLoading, rankOptions } = useCompanyRanks();
-  const { data: externalNationalitiesData } = useExternalNationalities();
-  const { data: externalVesselTypesData } = useExternalVesselTypes();
-  const { data: externalCountriesData } = useExternalCountries();
-  const { data: externalLanguagesData } = useExternalLanguages();
-  const { data: externalUsersData, isLoading: isLoadingUsers } = useExternalUsers();
+  const { data: externalNationalitiesData } = useNationalitiesV2();
+  const { data: externalVesselTypesData } = useVesselTypesV2();
+  const { data: externalCountriesData } = useCountriesV2();
+  const { data: externalLanguagesData } = useLanguagesV2();
+  const { data: externalUsersData, isLoading: isLoadingUsers } = useUsersV2();
 
   // Filter users by userType === "Office" and extract userUuid + displayName for approver/interviewer dropdown
   const approverMasterData = useMemo(() => {
@@ -876,8 +870,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [manningAgentsData]);
 
   // Fetch vessels and fleet groups for C2/C3 dropdowns
-  const { data: externalVesselsData, isLoading: isLoadingVessels } = useExternalVessels();
-  const { data: externalFleetGroupsData, isLoading: isLoadingFleetGroups } = useExternalFleetGroups();
+  const { data: externalVesselsData, isLoading: isLoadingVessels } = useVesselsV2();
+  const { data: externalFleetGroupsData, isLoading: isLoadingFleetGroups } = useFleetGroupsV2();
 
   const isLoadingVesselFleetData = isLoadingVessels || isLoadingFleetGroups;
 

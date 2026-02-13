@@ -20,7 +20,7 @@ import { DrugAlcoholTestForm_v2 } from './DrugAlcoholTestForm_v2';
 import { DrugsAlcoholVersionToggle } from './components/DrugsAlcoholVersionToggle';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
 import { useViewport } from '@/hooks/useViewport';
-import { useExternalVessels } from '@/hooks/useExternalVessels';
+import { useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
 import { queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -47,7 +47,7 @@ export function DrugsAlcoholModule_v2() {
     const [formVesselId, setFormVesselId] = useState<string>();
     const [editingRecordUuid, setEditingRecordUuid] = useState<string | undefined>();
 
-    const { data: externalVessels = [], isLoading: vesselsLoading } = useExternalVessels();
+    const { data: externalVessels = [], isLoading: vesselsLoading } = useVesselsV2();
     
     const vessels = useMemo(() => {
         return externalVessels.map((v: any, index: number) => ({

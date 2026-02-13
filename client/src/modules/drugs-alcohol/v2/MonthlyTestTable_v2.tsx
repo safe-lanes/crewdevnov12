@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
 import { queryClient, apiRequest } from '@/lib/queryClient';
-import { useExternalVessels } from '@/hooks/useExternalVessels';
+import { useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
 
 interface TestRecord {
   date: string;
@@ -353,7 +353,7 @@ export const MonthlyTestTable_v2: React.FC<MonthlyTestTableProps> = ({
     addGroupValue,
   }, apiBase, queryKeyBase);
 
-  const { data: externalVesselsData = [], isLoading: vesselsLoading } = useExternalVessels();
+  const { data: externalVesselsData = [], isLoading: vesselsLoading } = useVesselsV2();
   
   const externalVessels = Array.isArray(externalVesselsData) 
     ? externalVesselsData 
