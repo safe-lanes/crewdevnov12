@@ -6988,12 +6988,12 @@ const AdminModuleInner = (): JSX.Element => {
                             <span className="text-xs text-gray-700">
                               {(() => {
                                 const classifications = [];
-                                if (item.tanker === 1) classifications.push('Tanker');
-                                if (item.oilTanker === 1) classifications.push('Oil');
-                                if (item.gasTanker === 1) classifications.push('Gas');
-                                if (item.chemicalTanker === 1) classifications.push('Chemical');
-                                if (item.dry === 1) classifications.push('Dry');
-                                if (item.container === 1) classifications.push('Container');
+                                if (item.tanker === true || item.tanker === 1) classifications.push('Tanker');
+                                if (item.oilTanker === true || item.oilTanker === 1) classifications.push('Oil');
+                                if (item.gasTanker === true || item.gasTanker === 1) classifications.push('Gas');
+                                if (item.chemicalTanker === true || item.chemicalTanker === 1) classifications.push('Chemical');
+                                if (item.dry === true || item.dry === 1) classifications.push('Dry');
+                                if (item.container === true || item.container === 1) classifications.push('Container');
 
                                 return classifications.length > 0 ? classifications.join(', ') : <em className="text-gray-400">No classification</em>;
                               })()}
