@@ -1135,6 +1135,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     });
     
     reviewData.approvalData = JSON.stringify(newApprovers);
+    reviewData.selectedApproversForSubmission = JSON.stringify([]);
     reviewData.status = 'submitted';
     
     const approverCount = selectedApproversForSubmission.length;
