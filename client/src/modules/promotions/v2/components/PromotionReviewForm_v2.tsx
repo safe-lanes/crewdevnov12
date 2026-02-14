@@ -11,8 +11,7 @@ import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplate
 import type { Form, RankGroup, CrewDashboardSummary, PromotionReview } from '@shared/schema';
 import type { PromotionA2Config } from '@shared/schema';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
-import { useExternalUsers } from '@/hooks/useExternalUsers';
+import { useVesselTypesV2, useUsersV2 } from '@/hooks/v2/useMasterDataV2';
 import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -115,13 +114,13 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     enabled: !!crewMemberId,
   });
 
-  const { data: externalVesselTypesData } = useExternalVesselTypes();
+  const { data: vesselTypesV2Data } = useVesselTypesV2();
   const { normalizeRank } = useRankNormalization();
   
-  const { data: externalUsersData, isLoading: isLoadingUsers } = useExternalUsers();
+  const { data: usersV2Data, isLoading: isLoadingUsers } = useUsersV2();
   
   const approverMasterData = useMemo(() => {
-    const users = (externalUsersData as any)?.users || externalUsersData || [];
+    const users = usersV2Data || [];
     if (users.length > 0) {
       const displayNames = users
         .filter((user: any) => user.userType?.toLowerCase() === 'office')
@@ -130,7 +129,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       return displayNames;
     }
     return [];
-  }, [externalUsersData]);
+  }, [usersV2Data]);
   
   const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<string[]>([]);
 
@@ -359,11 +358,11 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   }, [dashboardData]);
 
   const vesselTypeOptions = useMemo(() => {
-    if (externalVesselTypesData && externalVesselTypesData.length > 0) {
-      return externalVesselTypesData.map((vt: any) => vt.name || vt.vesselType || String(vt));
+    if (vesselTypesV2Data && vesselTypesV2Data.length > 0) {
+      return vesselTypesV2Data.map((vt: any) => vt.name || vt.vesselType || String(vt));
     }
     return getVesselTypesForDropdown();
-  }, [externalVesselTypesData]);
+  }, [vesselTypesV2Data]);
 
   const a2_3b_vesselTypeExperienceResult = useMemo(() => {
     if (!selectedVesselTypeForA2_3b) return '';
