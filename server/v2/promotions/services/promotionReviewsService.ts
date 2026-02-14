@@ -91,7 +91,7 @@ function assembleV1Response(
   }
   const a3Comments: Record<string, any[]> = {};
   for (const tc of trainingComments) {
-    const key = `a3_${tc.trainingRowId}`;
+    const key = tc.trainingRowId;
     if (!a3Comments[key]) a3Comments[key] = [];
     a3Comments[key].push({
       id: tc.commentId || tc.tcUuid,
