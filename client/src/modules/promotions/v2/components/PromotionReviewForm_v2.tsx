@@ -17,6 +17,7 @@ import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { calculateChecklistProgressFromJson } from '@/modules/promotions/checklistProgressUtils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -907,17 +908,13 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     if (parentId === 'a2.5') {
       if (existingReviewData?.checklistProgressData) {
         try {
-          const progressData = typeof existingReviewData.checklistProgressData === 'string'
-            ? JSON.parse(existingReviewData.checklistProgressData)
-            : existingReviewData.checklistProgressData;
-          
-          const completedCount = Object.values(progressData).filter((v: any) => v === true).length;
-          const totalCount = Object.keys(progressData).length;
-          const minPercent = a2Config?.minChecklistCompletionPercent ?? 85;
-          
-          if (totalCount > 0) {
-            const percent = (completedCount / totalCount) * 100;
-            return percent >= minPercent ? 'yes' : 'pending';
+          const progressResult = calculateChecklistProgressFromJson(
+            existingReviewData.checklistProgressData,
+            a2Config?.minChecklistVerifications ?? 1,
+            a2Config?.minChecklistCompletionPercent ?? 85
+          );
+          if (progressResult.totalRequired > 0) {
+            return progressResult.meetsThreshold ? 'yes' : 'pending';
           }
         } catch {
         }

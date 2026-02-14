@@ -83,8 +83,15 @@ export class ChecklistProgressRepository {
         const updated = await db
           .update(promoChecklistProgressV2)
           .set({
+            completed: item.completed ?? false,
+            sectionTitle: item.sectionTitle ?? null,
+            assessmentPointText: item.assessmentPointText ?? null,
             verifierName: item.verifierName,
+            verifierRank: item.verifierRank ?? null,
             date: item.date,
+            verificationsData: item.verificationsData ?? null,
+            commentsData: item.commentsData ?? null,
+            attachmentsData: item.attachmentsData ?? null,
             sortOrder: i,
             updatedAt: new Date(),
           })

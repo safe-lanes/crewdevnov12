@@ -120,14 +120,55 @@ function assembleV1Response(
     .filter(a => a.isSelectedForSubmission)
     .map(a => a.approver || '');
 
-  const checklistProgressData: Record<string, any> = {};
+  const sectionsMap = new Map<string, { id: string; title: string; assessmentPoints: any[] }>();
   for (const cp of checklistProgress) {
-    if (!checklistProgressData[cp.sectionId]) checklistProgressData[cp.sectionId] = {};
-    checklistProgressData[cp.sectionId][cp.assessmentPointId] = {
-      verifierName: cp.verifierName || '',
-      date: cp.date || '',
-    };
+    if (!sectionsMap.has(cp.sectionId)) {
+      sectionsMap.set(cp.sectionId, {
+        id: cp.sectionId,
+        title: (cp as any).sectionTitle || '',
+        assessmentPoints: [],
+      });
+    }
+    const section = sectionsMap.get(cp.sectionId)!;
+    let verifications: any[] = [];
+    let comments: any[] = [];
+    let attachments: any[] = [];
+    try { verifications = (cp as any).verificationsData ? JSON.parse((cp as any).verificationsData) : []; } catch {}
+    try { comments = (cp as any).commentsData ? JSON.parse((cp as any).commentsData) : []; } catch {}
+    try { attachments = (cp as any).attachmentsData ? JSON.parse((cp as any).attachmentsData) : []; } catch {}
+    section.assessmentPoints.push({
+      id: cp.assessmentPointId,
+      text: (cp as any).assessmentPointText || '',
+      completed: (cp as any).completed ?? false,
+      verifications,
+      comments,
+      attachments,
+    });
   }
+  const reconstructedSections = Array.from(sectionsMap.values());
+
+  let completedVerifications = 0;
+  let totalPoints = 0;
+  for (const section of reconstructedSections) {
+    for (const point of section.assessmentPoints) {
+      totalPoints++;
+      completedVerifications += Math.min(point.verifications?.length ?? 0, 1);
+    }
+  }
+  const totalRequired = totalPoints;
+  const percentage = totalRequired > 0 ? Math.round((completedVerifications / totalRequired) * 100) : 0;
+
+  const checklistProgressDataObj = {
+    sections: reconstructedSections,
+    progress: {
+      percentage,
+      meetsThreshold: percentage >= 100,
+      completedVerifications,
+      totalRequired,
+      thresholdPercent: 100,
+      requiredPerPoint: 1,
+    }
+  };
 
   return {
     id: review.id,
@@ -149,7 +190,7 @@ function assembleV1Response(
     partANotes: review.partANotes || null,
     partBNotes: review.partBNotes || null,
     partCNotes: review.partCNotes || null,
-    checklistProgressData: JSON.stringify(checklistProgressData),
+    checklistProgressData: JSON.stringify(checklistProgressDataObj),
     status: review.status,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
@@ -473,15 +514,42 @@ export class PromotionReviewsService {
     if (data.checklistProgressData !== undefined) {
       const progressObj = this.parseJson(data.checklistProgressData, {});
       const items: any[] = [];
-      for (const [sectionId, assessments] of Object.entries(progressObj)) {
-        if (typeof assessments !== 'object' || assessments === null) continue;
-        for (const [apId, val] of Object.entries(assessments as Record<string, any>)) {
-          items.push({
-            sectionId,
-            assessmentPointId: apId,
-            verifierName: val?.verifierName || null,
-            date: val?.date || null,
-          });
+
+      if (progressObj.sections && Array.isArray(progressObj.sections)) {
+        let sortIdx = 0;
+        for (const section of progressObj.sections) {
+          if (!section.assessmentPoints || !Array.isArray(section.assessmentPoints)) continue;
+          for (const point of section.assessmentPoints) {
+            const latestVerification = point.verifications?.length > 0
+              ? point.verifications[point.verifications.length - 1]
+              : null;
+            items.push({
+              sectionId: section.id,
+              assessmentPointId: point.id,
+              completed: point.completed ?? false,
+              sectionTitle: section.title || null,
+              assessmentPointText: point.text || null,
+              verifierName: latestVerification?.verifierName || null,
+              verifierRank: latestVerification?.rank || null,
+              date: latestVerification?.date || null,
+              verificationsData: point.verifications?.length > 0 ? JSON.stringify(point.verifications) : null,
+              commentsData: point.comments?.length > 0 ? JSON.stringify(point.comments) : null,
+              attachmentsData: point.attachments?.length > 0 ? JSON.stringify(point.attachments) : null,
+              sortOrder: sortIdx++,
+            });
+          }
+        }
+      } else {
+        for (const [sectionId, assessments] of Object.entries(progressObj)) {
+          if (typeof assessments !== 'object' || assessments === null) continue;
+          for (const [apId, val] of Object.entries(assessments as Record<string, any>)) {
+            items.push({
+              sectionId,
+              assessmentPointId: apId,
+              verifierName: val?.verifierName || null,
+              date: val?.date || null,
+            });
+          }
         }
       }
       tasks.push(checklistProgressRepo.replaceForReview(reviewUuid, items));
