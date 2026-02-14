@@ -126,7 +126,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
         .filter((user: any) => user.userType?.toLowerCase() === 'office')
         .map((user: any) => user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`)
         .filter((name: string) => name && name.trim());
-      return displayNames;
+      return [...new Set(displayNames)];
     }
     return [];
   }, [usersV2Data]);
