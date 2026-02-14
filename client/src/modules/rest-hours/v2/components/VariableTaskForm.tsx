@@ -87,7 +87,7 @@ export const VariableTaskForm = ({
 
   // Fetch company ranks with designation flags
   const { data: companyRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/company-ranks'],
+    queryKey: ['/api/v2/admin/company-ranks'],
     enabled: open,
   });
 

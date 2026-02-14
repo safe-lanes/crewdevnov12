@@ -280,7 +280,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
 
   // Fetch available ranks to get sortOrder
   const { data: availableRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/available-ranks'],
+    queryKey: ['/api/v2/admin/available-ranks'],
   });
 
   // Create a map of rank name to sortOrder for sorting

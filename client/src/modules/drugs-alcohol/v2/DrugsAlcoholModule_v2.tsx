@@ -151,7 +151,7 @@ export function DrugsAlcoholModule_v2() {
         },
         onSuccess: (record: any, variables) => {
             queryClient.invalidateQueries({ queryKey: ['v2', 'drugs-alcohol'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/drugs-alcohol/test-records'] });
             toast({
                 title: variables.status === 'submitted' ? "Form Submitted" : "Draft Saved",
                 description: variables.status === 'submitted' 
@@ -179,7 +179,7 @@ export function DrugsAlcoholModule_v2() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['v2', 'drugs-alcohol'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/drug-alcohol-tests'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/drugs-alcohol/test-records'] });
             toast({
                 title: "Record Deleted",
                 description: "The Drug & Alcohol test record has been deleted.",

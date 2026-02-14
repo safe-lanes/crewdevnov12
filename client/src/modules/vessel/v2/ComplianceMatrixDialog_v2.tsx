@@ -177,7 +177,7 @@ export function ComplianceMatrixDialog_v2({
     const isSimulatedMode = simulatedCrew && simulatedCrew.length > 0;
 
     const { data: oilMajorRules = [], isLoading: isLoadingRules } = useQuery<OilMajorRule[]>({
-        queryKey: ['/api/oil-major-rules'],
+        queryKey: ['/api/v2/vessel/oil-major-rules'],
         enabled: open
     });
 

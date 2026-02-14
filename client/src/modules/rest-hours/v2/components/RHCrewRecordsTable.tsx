@@ -369,15 +369,15 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
 
   // Fetch available ranks to get sortOrder
   const { data: availableRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/available-ranks'],
+    queryKey: ['/api/v2/admin/available-ranks'],
   });
 
   // Fetch vessel-specific ranks (includes variants with correct sortOrder)
   const { data: vesselRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/vessel-revisions/ranks', vesselId],
+    queryKey: ['/api/v2/admin/vessel-revisions/ranks', vesselId],
     queryFn: async () => {
       if (!vesselId) return [];
-      const res = await fetch(`/api/vessel-revisions/ranks/${vesselId}`);
+      const res = await fetch(`/api/v2/admin/vessel-revisions/ranks/${vesselId}`);
       if (!res.ok) return [];
       return res.json();
     },

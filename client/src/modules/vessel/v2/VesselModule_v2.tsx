@@ -47,7 +47,6 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
-import { API_BASE_URL } from '@/config/api';
 import { vesselApiV2, OfficerMatrixData } from './api/vesselApiV2';
 import { generateFALForm5Document } from '@/lib/generateFALForm5';
 import { generateUSCrewListDocument } from '@/lib/generateUSCrewList';
@@ -284,22 +283,7 @@ const useAppraisals = () => {
 
 const usePorts = () => {
     return useQuery({
-        queryKey: ['/api/external/ports'],
-        queryFn: async () => {
-            const domain = localStorage.getItem('domain') || 'rsms';
-            const response = await fetch(
-                `${API_BASE_URL}/crewmasterdata/getallmasterdata/ports?domain=${domain}`,
-                {
-                    method: 'GET',
-                    headers: { 'accept': '*/*' }
-                }
-            );
-            if (!response.ok) {
-                throw new Error(`Failed to fetch ports: ${response.status}`);
-            }
-            const data = await response.json();
-            return data.ports || [];
-        },
+        queryKey: ['/api/v2/masters/ports'],
         staleTime: 5 * 60 * 1000,
         retry: 2,
         select: (data: any[]) => {
@@ -307,7 +291,7 @@ const usePorts = () => {
                 .filter((port: any) => !port.isDeleted && port.isActive)
                 .map((port: any) => ({
                     id: port.id,
-                    puid: port.puid || '',
+                    puid: port.portUuid || port.uuid || '',
                     name: port.name || '',
                     country: port.country || '',
                     code: port.portcode || '',
@@ -685,7 +669,7 @@ export function VesselModule_v2(): JSX.Element {
     const { getSortOrder, sortCrewByRank } = useRankOrdering(selectedVessel?.vesselId || null);
     
     const { data: availableRanks = [] } = useQuery<any[]>({
-        queryKey: ['/api/available-ranks'],
+        queryKey: ['/api/v2/admin/available-ranks'],
     });
 
     const baseRankOrderMap = useMemo(() => {
@@ -1275,7 +1259,7 @@ export function VesselModule_v2(): JSX.Element {
         const crewRank = crew.presentRank || crew.rank || '';
         
         try {
-            const response = await fetch(`/api/rank-groups/check-assignment?rank=${encodeURIComponent(crewRank)}&formName=${encodeURIComponent('Crew Appraisal Form')}`);
+            const response = await fetch(`/api/v2/admin/rank-groups/check-assignment?rank=${encodeURIComponent(crewRank)}&formName=${encodeURIComponent('Crew Appraisal Form')}`);
             const result = await response.json();
             
             if (!result.hasAssignment) {
