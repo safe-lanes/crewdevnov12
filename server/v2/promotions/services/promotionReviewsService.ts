@@ -120,15 +120,6 @@ function assembleV1Response(
     .filter(a => a.isSelectedForSubmission)
     .map(a => a.approver || '');
 
-  const checklistProgressData: Record<string, any> = {};
-  for (const cp of checklistProgress) {
-    if (!checklistProgressData[cp.sectionId]) checklistProgressData[cp.sectionId] = {};
-    checklistProgressData[cp.sectionId][cp.assessmentPointId] = {
-      verifierName: cp.verifierName || '',
-      date: cp.date || '',
-    };
-  }
-
   return {
     id: review.id,
     reviewUuid: review.reviewUuid,
@@ -149,7 +140,7 @@ function assembleV1Response(
     partANotes: review.partANotes || null,
     partBNotes: review.partBNotes || null,
     partCNotes: review.partCNotes || null,
-    checklistProgressData: JSON.stringify(checklistProgressData),
+    checklistProgressData: review.checklistProgressData || null,
     status: review.status,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
