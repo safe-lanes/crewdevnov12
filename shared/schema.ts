@@ -2463,6 +2463,107 @@ export const insertMasterUserSchema = createInsertSchema(masterUsers).omit({
 });
 export type InsertMasterUser = z.infer<typeof insertMasterUserSchema>;
 export type MasterUser = typeof masterUsers.$inferSelect;
+
+export const masterLicensesDce = pgTable(
+  "master_licenses_dce",
+  {
+    id: text("id").primaryKey(),
+    entryId: text("entry_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    shortCode: text("short_code"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => ({
+    entryIdIdx: index("idx_master_licenses_dce_entry_id").on(t.entryId),
+    shortCodeIdx: index("idx_master_licenses_dce_short_code").on(t.shortCode),
+  })
+);
+
+export const insertMasterLicenseDceSchema = createInsertSchema(masterLicensesDce).omit({
+  id: true,
+});
+export type InsertMasterLicenseDce = z.infer<typeof insertMasterLicenseDceSchema>;
+export type MasterLicenseDce = typeof masterLicensesDce.$inferSelect;
+
+export const masterManningAgents = pgTable(
+  "master_manning_agents",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    country: text("country"),
+    email: text("email"),
+    phone: text("phone"),
+    address: text("address"),
+    contactPerson: text("contact_person"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => ({
+    nameIdx: index("idx_master_manning_agents_name").on(t.name),
+  })
+);
+
+export const insertMasterManningAgentSchema = createInsertSchema(masterManningAgents).omit({
+  id: true,
+});
+export type InsertMasterManningAgent = z.infer<typeof insertMasterManningAgentSchema>;
+export type MasterManningAgent = typeof masterManningAgents.$inferSelect;
+
+export const masterCrewPools = pgTable(
+  "master_crew_pools",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => ({
+    nameIdx: index("idx_master_crew_pools_name").on(t.name),
+  })
+);
+
+export const insertMasterCrewPoolSchema = createInsertSchema(masterCrewPools).omit({
+  id: true,
+});
+export type InsertMasterCrewPool = z.infer<typeof insertMasterCrewPoolSchema>;
+export type MasterCrewPool = typeof masterCrewPools.$inferSelect;
+
+export const masterAppraisalTypes = pgTable(
+  "master_appraisal_types",
+  {
+    id: text("id").primaryKey(),
+    entryId: text("entry_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => ({
+    entryIdIdx: index("idx_master_appraisal_types_entry_id").on(t.entryId),
+  })
+);
+
+export const insertMasterAppraisalTypeSchema = createInsertSchema(masterAppraisalTypes).omit({
+  id: true,
+});
+export type InsertMasterAppraisalType = z.infer<typeof insertMasterAppraisalTypeSchema>;
+export type MasterAppraisalType = typeof masterAppraisalTypes.$inferSelect;
+
 // Type exports
 export type CbaTable = typeof cbaTables.$inferSelect;
 export type InsertCbaTable = z.infer<typeof insertCbaTableSchema>;

@@ -38,6 +38,22 @@ function addUserAliases(row: any) {
   return { ...row, uuid: row.userUuid, userName: row.displayName };
 }
 
+function addLicenseDceAliases(row: any) {
+  return { ...row, uuid: row.id };
+}
+
+function addManningAgentAliases(row: any) {
+  return { ...row, uuid: row.id };
+}
+
+function addCrewPoolAliases(row: any) {
+  return { ...row, uuid: row.id };
+}
+
+function addAppraisalTypeAliases(row: any) {
+  return { ...row, uuid: row.id };
+}
+
 export const mastersService = {
   async getNationalities() {
     const rows = await mastersRepo.findAllNationalities();
@@ -136,5 +152,49 @@ export const mastersService = {
     const result = await mastersRepo.findUserByUuid(userUuid);
     if (!result) throw new Error(`User not found: ${userUuid}`);
     return addUserAliases(result);
+  },
+
+  async getLicensesDce() {
+    const rows = await mastersRepo.findAllLicensesDce();
+    return rows.map(addLicenseDceAliases);
+  },
+
+  async getLicenseDceById(id: string) {
+    const result = await mastersRepo.findLicenseDceById(id);
+    if (!result) throw new Error(`License/DCE not found: ${id}`);
+    return addLicenseDceAliases(result);
+  },
+
+  async getManningAgents() {
+    const rows = await mastersRepo.findAllManningAgents();
+    return rows.map(addManningAgentAliases);
+  },
+
+  async getManningAgentById(id: string) {
+    const result = await mastersRepo.findManningAgentById(id);
+    if (!result) throw new Error(`Manning agent not found: ${id}`);
+    return addManningAgentAliases(result);
+  },
+
+  async getCrewPools() {
+    const rows = await mastersRepo.findAllCrewPools();
+    return rows.map(addCrewPoolAliases);
+  },
+
+  async getCrewPoolById(id: string) {
+    const result = await mastersRepo.findCrewPoolById(id);
+    if (!result) throw new Error(`Crew pool not found: ${id}`);
+    return addCrewPoolAliases(result);
+  },
+
+  async getAppraisalTypes() {
+    const rows = await mastersRepo.findAllAppraisalTypes();
+    return rows.map(addAppraisalTypeAliases);
+  },
+
+  async getAppraisalTypeById(id: string) {
+    const result = await mastersRepo.findAppraisalTypeById(id);
+    if (!result) throw new Error(`Appraisal type not found: ${id}`);
+    return addAppraisalTypeAliases(result);
   },
 };

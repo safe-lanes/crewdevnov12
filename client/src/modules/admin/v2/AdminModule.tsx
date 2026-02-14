@@ -112,6 +112,7 @@ import {
 } from "@/hooks/useTrainingMaster";
 import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTraining, CompanyTrainingRequirement } from "@shared/schema";
 import { useSyncAllMasterData, useLocalMasterData } from "@/hooks/useLocalMasterApi";
+import { useLicensesDceV2, useManningAgentsV2, useCrewPoolsV2, useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
 import { AdminVersionToggle } from './components/AdminVersionToggle';
 import { useTrainingMastersV2, useCreateTrainingMasterV2, useUpdateTrainingMasterV2, useDeleteTrainingMasterV2, useReorderTrainingMastersV2, useCompanyTrainingGroupsV2, useUpdateCompanyTrainingGroupV2, useCompanyTrainingsV2, useUpdateCompanyTrainingV2, useDeleteCompanyTrainingV2, useReorderCompanyTrainingsV2, useCompanyTrainingRequirementsV2, useUpsertCompanyTrainingRequirementsV2, useCompanyRanksV2, useSaveCompanyRanksV2, useAvailableRanksV2, useCreateAvailableRankV2, useUpdateAvailableRankV2, useDeleteAvailableRankV2, useDeleteAllAvailableRanksV2, useVesselGroupsV2, useCreateVesselGroupV2, useUpdateVesselGroupV2, useDeleteVesselGroupV2, useVesselDraftsByVesselV2, useUpsertVesselDraftV2, useMasterDataV2, useImportCompanyTrainingsV2 } from './hooks/useAdminV2';
 
@@ -1236,8 +1237,57 @@ const AdminModuleInner = (): JSX.Element => {
     if (isPortMaster(selectedMaster)) {
       return rawMasterData.map((item: any) => mapSafeFieldsToPortData(item));
     }
+    if (selectedMaster === "016" && licensesDceData) {
+      return (licensesDceData as any[]).map((item: any) => ({
+        id: item.id,
+        entryId: item.entryId,
+        name: item.name,
+        description: item.description,
+        shortCode: item.shortCode,
+        sortOrder: item.sortOrder,
+        isActive: item.isActive,
+        isDeleted: item.isDeleted,
+      }));
+    }
+    if (selectedMaster === "021" && manningAgentsData) {
+      return (manningAgentsData as any[]).map((item: any) => ({
+        id: item.id,
+        entryId: item.id,
+        name: item.name,
+        country: item.country,
+        email: item.email,
+        phone: item.phone,
+        address: item.address,
+        contactPerson: item.contactPerson,
+        sortOrder: item.sortOrder,
+        isActive: item.isActive,
+        isDeleted: item.isDeleted,
+      }));
+    }
+    if (selectedMaster === "022" && crewPoolsData) {
+      return (crewPoolsData as any[]).map((item: any) => ({
+        id: item.id,
+        entryId: item.id,
+        name: item.name,
+        description: item.description,
+        sortOrder: item.sortOrder,
+        isActive: item.isActive,
+        isDeleted: item.isDeleted,
+      }));
+    }
+    if (selectedMaster === "023" && appraisalTypesData) {
+      return (appraisalTypesData as any[]).map((item: any) => ({
+        id: item.id,
+        entryId: item.entryId,
+        name: item.name,
+        description: item.description,
+        sortOrder: item.sortOrder,
+        isActive: item.isActive,
+        isDeleted: item.isDeleted,
+      }));
+    }
     return rawMasterData;
-  }, [rawMasterData, selectedMaster, selectedAdminPage]);
+  }, [rawMasterData, selectedMaster, selectedAdminPage, licensesDceData, manningAgentsData, crewPoolsData, appraisalTypesData]);
 
   // Vessel Type Master Data (for vessel master dropdown)
   // COMMENTED OUT: Using external API instead
@@ -1369,6 +1419,27 @@ const AdminModuleInner = (): JSX.Element => {
     ? externalUsersData 
     : (externalUsersData as any)?.users || [];
 
+
+  // V2 Masters: License & DCE (016), Manning Agents (021), Crew Pool (022), Appraisal Type (023)
+  const {
+    data: licensesDceData,
+    isLoading: licensesDceLoading,
+  } = useLicensesDceV2({ enabled: selectedAdminPage === "masters" });
+
+  const {
+    data: manningAgentsData,
+    isLoading: manningAgentsLoading,
+  } = useManningAgentsV2({ enabled: selectedAdminPage === "masters" });
+
+  const {
+    data: crewPoolsData,
+    isLoading: crewPoolsLoading,
+  } = useCrewPoolsV2({ enabled: selectedAdminPage === "masters" });
+
+  const {
+    data: appraisalTypesData,
+    isLoading: appraisalTypesLoading,
+  } = useAppraisalTypesV2({ enabled: selectedAdminPage === "masters" });
 
   // Vessel Groups Data (for vessel group selection)
   // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)

@@ -30,4 +30,16 @@ router.get("/countries/:uuid", mastersController.getCountryByUuid);
 router.get("/users", mastersController.getUsers);
 router.get("/users/:uuid", mastersController.getUserByUuid);
 
+router.get("/licenses-dce", mastersController.getLicensesDce);
+router.get("/licenses-dce/:id", mastersController.getLicenseDceById);
+
+router.get("/manning-agents", mastersController.getManningAgents);
+router.get("/manning-agents/:id", mastersController.getManningAgentById);
+
+router.get("/crew-pools", mastersController.getCrewPools);
+router.get("/crew-pools/:id", mastersController.getCrewPoolById);
+
+router.get("/appraisal-types", mastersController.getAppraisalTypes);
+router.get("/appraisal-types/:id", mastersController.getAppraisalTypeById);
+
 export default router;

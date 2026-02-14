@@ -159,3 +159,71 @@ export const useUserByUuidV2 = (uuid: string | undefined) => {
     staleTime: STALE_TIME,
   });
 };
+
+export const useLicensesDceV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
+    queryKey: [`${V2_MASTERS_BASE}/licenses-dce`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
+export const useLicenseDceByIdV2 = (id: string | undefined) => {
+  return useQuery<any>({
+    queryKey: [`${V2_MASTERS_BASE}/licenses-dce`, id],
+    enabled: !!id,
+    staleTime: STALE_TIME,
+  });
+};
+
+export const useManningAgentsV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
+    queryKey: [`${V2_MASTERS_BASE}/manning-agents`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
+export const useManningAgentByIdV2 = (id: string | undefined) => {
+  return useQuery<any>({
+    queryKey: [`${V2_MASTERS_BASE}/manning-agents`, id],
+    enabled: !!id,
+    staleTime: STALE_TIME,
+  });
+};
+
+export const useCrewPoolsV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
+    queryKey: [`${V2_MASTERS_BASE}/crew-pools`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
+export const useCrewPoolByIdV2 = (id: string | undefined) => {
+  return useQuery<any>({
+    queryKey: [`${V2_MASTERS_BASE}/crew-pools`, id],
+    enabled: !!id,
+    staleTime: STALE_TIME,
+  });
+};
+
+export const useAppraisalTypesV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
+    queryKey: [`${V2_MASTERS_BASE}/appraisal-types`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
+export const useAppraisalTypeByIdV2 = (id: string | undefined) => {
+  return useQuery<any>({
+    queryKey: [`${V2_MASTERS_BASE}/appraisal-types`, id],
+    enabled: !!id,
+    staleTime: STALE_TIME,
+  });
+};

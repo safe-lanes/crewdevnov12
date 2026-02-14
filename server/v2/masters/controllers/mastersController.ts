@@ -208,4 +208,96 @@ export const mastersController = {
       res.status(500).json({ error: "Failed to fetch user" });
     }
   },
+
+  async getLicensesDce(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getLicensesDce();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching licenses/DCE:", error);
+      res.status(500).json({ error: "Failed to fetch licenses/DCE" });
+    }
+  },
+
+  async getLicenseDceById(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getLicenseDceById(req.params.id);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error fetching license/DCE:", error);
+      res.status(500).json({ error: "Failed to fetch license/DCE" });
+    }
+  },
+
+  async getManningAgents(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getManningAgents();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching manning agents:", error);
+      res.status(500).json({ error: "Failed to fetch manning agents" });
+    }
+  },
+
+  async getManningAgentById(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getManningAgentById(req.params.id);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error fetching manning agent:", error);
+      res.status(500).json({ error: "Failed to fetch manning agent" });
+    }
+  },
+
+  async getCrewPools(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getCrewPools();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching crew pools:", error);
+      res.status(500).json({ error: "Failed to fetch crew pools" });
+    }
+  },
+
+  async getCrewPoolById(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getCrewPoolById(req.params.id);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error fetching crew pool:", error);
+      res.status(500).json({ error: "Failed to fetch crew pool" });
+    }
+  },
+
+  async getAppraisalTypes(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getAppraisalTypes();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching appraisal types:", error);
+      res.status(500).json({ error: "Failed to fetch appraisal types" });
+    }
+  },
+
+  async getAppraisalTypeById(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getAppraisalTypeById(req.params.id);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error fetching appraisal type:", error);
+      res.status(500).json({ error: "Failed to fetch appraisal type" });
+    }
+  },
 };

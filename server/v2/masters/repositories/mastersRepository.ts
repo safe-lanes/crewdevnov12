@@ -10,6 +10,10 @@ import {
   masterLanguages,
   masterCountries,
   masterUsers,
+  masterLicensesDce,
+  masterManningAgents,
+  masterCrewPools,
+  masterAppraisalTypes,
 } from "../../../../shared/schema";
 
 export class MastersRepository {
@@ -168,6 +172,96 @@ export class MastersRepository {
       .select()
       .from(masterUsers)
       .where(eq(masterUsers.userUuid, userUuid));
+    return results[0];
+  }
+
+  async findAllLicensesDce() {
+    const db = getDb();
+    return db
+      .select()
+      .from(masterLicensesDce)
+      .where(and(eq(masterLicensesDce.isDeleted, false), eq(masterLicensesDce.isActive, true)))
+      .orderBy(asc(masterLicensesDce.sortOrder));
+  }
+
+  async findLicenseDceById(id: string) {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(masterLicensesDce)
+      .where(and(eq(masterLicensesDce.id, id), eq(masterLicensesDce.isDeleted, false)));
+    return results[0];
+  }
+
+  async findLicenseDceByEntryId(entryId: string) {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(masterLicensesDce)
+      .where(and(eq(masterLicensesDce.entryId, entryId), eq(masterLicensesDce.isDeleted, false)));
+    return results[0];
+  }
+
+  async findAllManningAgents() {
+    const db = getDb();
+    return db
+      .select()
+      .from(masterManningAgents)
+      .where(and(eq(masterManningAgents.isDeleted, false), eq(masterManningAgents.isActive, true)))
+      .orderBy(asc(masterManningAgents.sortOrder));
+  }
+
+  async findManningAgentById(id: string) {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(masterManningAgents)
+      .where(and(eq(masterManningAgents.id, id), eq(masterManningAgents.isDeleted, false)));
+    return results[0];
+  }
+
+  async findAllCrewPools() {
+    const db = getDb();
+    return db
+      .select()
+      .from(masterCrewPools)
+      .where(and(eq(masterCrewPools.isDeleted, false), eq(masterCrewPools.isActive, true)))
+      .orderBy(asc(masterCrewPools.sortOrder));
+  }
+
+  async findCrewPoolById(id: string) {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(masterCrewPools)
+      .where(and(eq(masterCrewPools.id, id), eq(masterCrewPools.isDeleted, false)));
+    return results[0];
+  }
+
+  async findAllAppraisalTypes() {
+    const db = getDb();
+    return db
+      .select()
+      .from(masterAppraisalTypes)
+      .where(and(eq(masterAppraisalTypes.isDeleted, false), eq(masterAppraisalTypes.isActive, true)))
+      .orderBy(asc(masterAppraisalTypes.sortOrder));
+  }
+
+  async findAppraisalTypeById(id: string) {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(masterAppraisalTypes)
+      .where(and(eq(masterAppraisalTypes.id, id), eq(masterAppraisalTypes.isDeleted, false)));
+    return results[0];
+  }
+
+  async findAppraisalTypeByEntryId(entryId: string) {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(masterAppraisalTypes)
+      .where(and(eq(masterAppraisalTypes.entryId, entryId), eq(masterAppraisalTypes.isDeleted, false)));
     return results[0];
   }
 }
