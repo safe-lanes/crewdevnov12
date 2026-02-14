@@ -74,12 +74,18 @@ const StatusIndicatorRenderer = (params: ICellRendererParams) => {
   );
 };
 
-const ProgressBarRenderer = (params: ICellRendererParams) => {
+const ProgressBarRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void }) => {
   const progressData = params.data?.checklistProgressData;
   const meetsThreshold = progressData?.meetsThreshold ?? false;
   const percentage = progressData?.percentage ?? 0;
   
   const barColor = meetsThreshold ? 'bg-green-500' : 'bg-[#EAB308]';
+
+  const handleClick = () => {
+    if (params.onEdit) {
+      params.onEdit({ ...params.data, initialSection: 'checklist' });
+    }
+  };
 
   return (
     <Tooltip>
@@ -87,6 +93,7 @@ const ProgressBarRenderer = (params: ICellRendererParams) => {
         <div 
           className="flex items-center justify-center h-full px-2 cursor-pointer"
           data-testid={`progress-bar-tooltip-${params.data?.crewId}`}
+          onClick={handleClick}
         >
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
@@ -564,6 +571,9 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
       minWidth: 120,
       flex: 1.5,
       cellRenderer: ProgressBarRenderer,
+      cellRendererParams: {
+        onEdit: handleEditPromotion
+      },
       sortable: true,
       resizable: true
     },
@@ -662,6 +672,7 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
 
       {selectedPromotion && (
         <PromotionReviewForm_v2
+          key={`${selectedPromotion.crewId}-${selectedPromotion.promotionToRank}-${selectedPromotion.initialSection || 'default'}`}
           promotionData={selectedPromotion}
           onClose={handleCloseForm}
         />

@@ -575,7 +575,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   const [promotionDate, setPromotionDate] = useState<string>('');
   const [promotionTiming, setPromotionTiming] = useState<string>('on-board');
 
-  const [showChecklistForm, setShowChecklistForm] = useState(false);
+  const [showChecklistForm, setShowChecklistForm] = useState(promotionData?.initialSection === 'checklist');
 
   const defaultValues: PromotionReviewFormData = {
     partANotes: '',
