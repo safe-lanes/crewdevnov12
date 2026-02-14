@@ -187,6 +187,7 @@ export const dashboardService = {
       ),
       serviceTimeline,
       compliance: this.getComplianceStatus(crew, licenses),
+      licenses: licenses,
       careerProgression: [],
       appraisals: [],
     };

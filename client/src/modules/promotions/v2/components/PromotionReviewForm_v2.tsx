@@ -302,9 +302,9 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   }, [a2Config?.ageMin, a2Config?.ageMax]);
 
   const a2_1_licenseResult = useMemo(() => {
-    if (!crewMemberData) return '';
+    if (!crewMemberData && !dashboardData) return '';
     let licenses: LicenseRecord[] = [];
-    const rawLicenses = (crewMemberData as any).licenses;
+    const rawLicenses = (dashboardData as any)?.licenses || (crewMemberData as any)?.licenses;
     if (Array.isArray(rawLicenses)) {
       licenses = rawLicenses;
     } else if (typeof rawLicenses === 'string' && rawLicenses.trim()) {
@@ -335,7 +335,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       });
     });
     return hasAnyLicense ? 'Yes' : 'No';
-  }, [crewMemberData, a2Config?.higherLicenseIds, licenseDataByEntryId]);
+  }, [crewMemberData, dashboardData, a2Config?.higherLicenseIds, licenseDataByEntryId]);
 
   const a2_2_ageResult = useMemo(() => {
     const dobValue = crewMemberData?.dob || crewMemberData?.dateOfBirth;
@@ -348,10 +348,10 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       age--;
     }
     return `${age} Years`;
-  }, [crewMemberData?.dateOfBirth]);
+  }, [crewMemberData?.dob, crewMemberData?.dateOfBirth]);
 
   const a2_3a_rankExperienceResult = useMemo(() => {
-    if (!dashboardData?.experience?.rank) return '';
+    if (dashboardData?.experience?.rank == null) return '';
     const rankYears = dashboardData.experience.rank;
     const rankMonths = Math.round(rankYears * 12);
     return `${rankMonths} Months`;
@@ -385,14 +385,14 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   }, [selectedVesselTypeForA2_3b, dashboardData?.rankExperienceByVesselType]);
 
   const a2_3c_companyServiceResult = useMemo(() => {
-    if (!dashboardData?.experience?.company) return '';
+    if (dashboardData?.experience?.company == null) return '';
     const companyYears = dashboardData.experience.company;
     const companyMonths = Math.round(companyYears * 12);
     return `${companyMonths} Months`;
   }, [dashboardData]);
 
   const a2_3d_tankerExperienceResult = useMemo(() => {
-    if (!dashboardData?.experience?.tankers) return '';
+    if (dashboardData?.experience?.tankers == null) return '';
     const tankerYears = dashboardData.experience.tankers;
     const tankerMonths = Math.round(tankerYears * 12);
     return `${tankerMonths} Months`;

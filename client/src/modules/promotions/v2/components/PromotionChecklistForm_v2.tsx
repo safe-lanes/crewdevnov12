@@ -803,7 +803,7 @@ export const PromotionChecklistForm_v2: React.FC<PromotionChecklistFormProps> = 
   );
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[210] bg-black/50 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl w-[90vw] max-w-5xl max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center px-6 py-4 border-b">
           <h2 className="text-lg font-semibold text-[#16569e]">Promotion Checklist</h2>
