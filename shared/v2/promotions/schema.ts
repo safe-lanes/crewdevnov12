@@ -33,7 +33,6 @@ export const promotionReviewsV2 = pgTable("promotion_reviews_v2", {
   partANotes: text("part_a_notes"),
   partBNotes: text("part_b_notes"),
   partCNotes: text("part_c_notes"),
-  checklistProgressData: text("checklist_progress_data"),
   status: text("status").notNull().default("draft"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
