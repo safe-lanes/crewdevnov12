@@ -570,264 +570,369 @@ export const PromotionChecklistForm_v2: React.FC<PromotionChecklistFormProps> = 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {seaServiceData.length > 0 ? seaServiceData.map((entry, idx) => (
-                  <TableRow key={entry.id || idx}>
-                    <TableCell className="text-xs">{entry.vesselName || entry.vessel || '-'}</TableCell>
-                    <TableCell className="text-xs">{entry.vesselType || '-'}</TableCell>
-                    <TableCell className="text-xs">{entry.deadweight || '-'}</TableCell>
-                    <TableCell className="text-xs">{entry.engineType ? `${entry.engineType}${entry.enginePower ? ` / ${entry.enginePower}` : ''}` : '-'}</TableCell>
-                    <TableCell className="text-xs">{entry.fromDate || entry.from || '-'}</TableCell>
-                    <TableCell className="text-xs">{entry.toDate || entry.to || '-'}</TableCell>
-                    <TableCell className="text-xs">{entry.period || entry.duration || '-'}</TableCell>
-                  </TableRow>
-                )) : (
+                {seaServiceData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-xs text-gray-400 py-4">No sea service records found</TableCell>
+                    <TableCell colSpan={7} className="text-sm text-gray-500 text-center py-4">
+                      No sea service records found
+                    </TableCell>
                   </TableRow>
+                ) : (
+                  seaServiceData.map((service: SeaServiceEntry, index: number) => (
+                    <TableRow key={service.id || index}>
+                      <TableCell className="text-sm" data-testid={`cell-vessel-name-${service.id || index}`}>{service.vessel || service.vesselName || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-vessel-type-${service.id || index}`}>{service.vesselType || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-deadweight-${service.id || index}`}>{service.deadweight || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-engine-power-${service.id || index}`}>{service.engineType || service.enginePower || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-from-${service.id || index}`}>{service.fromDate || service.from || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-to-${service.id || index}`}>{service.toDate || service.to || 'N/A'}</TableCell>
+                      <TableCell className="text-sm" data-testid={`cell-period-${service.id || index}`}>{service.period || service.duration || 'N/A'}</TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
           </div>
         )}
       </div>
+
+      <div className="border border-[#EAEBEF] rounded-lg p-4">
+        <h3 className="text-base font-medium text-[#16569e] mb-4">A3. Checklist Progress</h3>
+        
+        <div className="space-y-3">
+          <div className="text-sm text-gray-600 mb-3">
+            Note: No of verifications required for each question: <span className="text-green-600 font-medium">{checklistConfig?.minChecklistVerifications ?? 'N/A'}</span>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div 
+                  className={`h-3 rounded-full ${checklistProgress.meetsThreshold ? 'bg-green-500' : 'bg-[#EAB308]'}`}
+                  style={{ width: `${checklistProgress.percentage}%` }}
+                  data-testid="progress-bar-fill"
+                ></div>
+              </div>
+            </div>
+            <div className="text-sm font-medium text-gray-700 whitespace-nowrap" data-testid="progress-status-text">
+              {checklistProgress.percentage}% ({checklistProgress.completedVerifications}/{checklistProgress.totalRequired} Verifications)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showNameInput && (
+        <div className={`border border-[#EAEBEF] rounded-lg p-4 ${hasValidName ? 'bg-green-50 dark:bg-green-950/20' : 'bg-amber-50 dark:bg-amber-950/20'}`}>
+          <h3 className="text-base font-medium text-[#16569e] mb-4">A4. Verifier Information</h3>
+          
+          <div className="space-y-3">
+            <div className="text-sm text-gray-600 mb-2">
+              {hasValidName 
+                ? 'Your name has been saved. You can edit it if needed.'
+                : 'Your name was not found in the system. Please enter your name below for verification records.'}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <Label className="text-xs text-gray-500">Your Name <span className="text-red-500">*</span></Label>
+                <Input
+                  value={userName}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="Enter your name"
+                  className="mt-1"
+                  data-testid="input-verifier-name"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">Position / Rank</Label>
+                <div className="text-sm font-medium mt-2" data-testid="text-verifier-rank">
+                  {storedDesignation || 'Unknown Position'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   const renderPartB = () => (
-    <div className="space-y-4">
-      <div className="border border-[#EAEBEF] rounded-lg p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium text-[#16569e]">A3. Promotion Checklist</h3>
-          <div className="flex items-center gap-4">
-            <div className="text-sm">
-              Progress: <span className={checklistProgress.meetsThreshold ? 'text-green-600 font-medium' : 'text-yellow-600 font-medium'}>
-                {checklistProgress.percentage}%
-              </span>
-              <span className="text-gray-400 ml-1">
-                ({checklistProgress.completedVerifications}/{checklistProgress.totalRequired} verifications, threshold: {checklistProgress.thresholdPercent}%)
-              </span>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {checklistSections.length === 0 ? (
+        <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+          <p className="text-sm font-medium">No checklist sections configured</p>
+          <p className="text-xs mt-1">Please configure Part B in Admin &gt; Forms Configuration &gt; Promotion Review Form</p>
         </div>
+      ) : null}
+      {checklistSections.map((section) => (
+        <div key={section.id} className="border border-[#EAEBEF] rounded-lg p-4">
+          <h3 className="text-base font-medium text-[#16569e] mb-4" data-testid={`section-title-${section.id}`}>
+            {section.number}. {section.title}
+          </h3>
 
-        {showNameInput && (
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <Label className="text-xs text-blue-700 font-medium">Verifier Information</Label>
-            <div className="flex items-center gap-2 mt-1">
-              <Input
-                className="h-8 text-sm max-w-xs"
-                placeholder="Enter your name"
-                value={userName}
-                onChange={(e) => handleNameChange(e.target.value)}
-                data-testid="input-verifier-name"
-              />
-              {storedDesignation && (
-                <span className="text-xs text-gray-500">{storedDesignation}</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {checklistSections.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p className="text-sm">No checklist sections configured.</p>
-            <p className="text-xs mt-1">Please configure promotion checklist sections in Admin Module.</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {checklistSections.map((section) => (
-              <div key={section.id} className="border border-gray-200 rounded-lg">
-                <div className="bg-gray-50 px-4 py-2 rounded-t-lg">
-                  <h4 className="text-sm font-medium text-gray-700">{section.number}. {section.title}</h4>
-                </div>
-                <div className="p-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10 text-xs">Done</TableHead>
-                        <TableHead className="text-xs">Assessment Point</TableHead>
-                        <TableHead className="w-24 text-xs text-center">Verify</TableHead>
-                        <TableHead className="w-20 text-xs text-center">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {section.assessmentPoints.map((point) => (
-                        <React.Fragment key={point.id}>
-                          <TableRow>
-                            <TableCell>
-                              <Checkbox
-                                checked={point.completed}
-                                onCheckedChange={() => handleToggleComplete(section.id, point.id)}
-                                data-testid={`checkbox-point-${point.id}`}
-                              />
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              <span className="font-medium">{point.number}</span> {point.text}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs gap-1"
-                                onClick={() => handleVerify(section.id, point.id)}
-                                disabled={!point.completed || !hasValidName}
-                                data-testid={`button-verify-${point.id}`}
-                              >
-                                <CheckCircle2 className="h-3 w-3" />
-                                Verify ({point.verifications.length})
-                              </Button>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => handleAddAttachment(section.id, point.id)}
-                                  data-testid={`button-attach-${point.id}`}
-                                >
-                                  <Paperclip className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => handleToggleCommentBox(point.id)}
-                                  data-testid={`button-comment-${point.id}`}
-                                >
-                                  <MessageSquare className="h-3 w-3" />
-                                </Button>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">S.No</TableHead>
+                <TableHead>Assessment Point</TableHead>
+                <TableHead className="w-24 text-center">Completed</TableHead>
+                <TableHead className="w-32 text-center">Verified<br/>(No of times)</TableHead>
+                <TableHead className="w-24 text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {section.assessmentPoints.map((point) => (
+                <React.Fragment key={point.id}>
+                  <TableRow>
+                    <TableCell className="font-medium">{point.number}</TableCell>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <div>{point.text}</div>
+                        
+                        {point.comments.map((comment) => {
+                          const isVerificationComment = comment.text === '';
+                          const associatedVerification = isVerificationComment 
+                            ? point.verifications.find(v => 
+                                v.verifierName === comment.userName && v.date === comment.date
+                              )
+                            : null;
+                          const canCancel = isVerificationComment && 
+                            associatedVerification && 
+                            currentUser.name.trim().toLowerCase() === comment.userName.trim().toLowerCase();
+                          
+                          return (
+                            <div key={comment.id} className="text-sm text-blue-600 italic flex items-start gap-2">
+                              <div className="flex-1">
+                                {comment.text ? (
+                                  <>
+                                    <span className="font-medium">Comment by:</span> {comment.userName}, {comment.rank}, {comment.date}
+                                    <br />
+                                    <span className="font-medium">Comment:</span> {comment.text}
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="font-medium">Verified by:</span> {comment.userName}, {comment.rank}, {comment.date}
+                                  </>
+                                )}
                               </div>
-                            </TableCell>
-                          </TableRow>
-                          {point.verifications.length > 0 && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="py-1 px-8">
-                                <div className="flex flex-wrap gap-1">
-                                  {point.verifications.map((v) => (
-                                    <Badge 
-                                      key={v.id} 
-                                      variant="secondary" 
-                                      className="text-xs cursor-pointer"
-                                      onClick={() => handleCancelVerification(section.id, point.id, v.id)}
-                                      data-testid={`badge-verification-${v.id}`}
-                                    >
-                                      {v.verifierName} ({v.date})
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                          {point.comments.length > 0 && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="py-1 px-8">
-                                <div className="space-y-1">
-                                  {point.comments.map((c) => (
-                                    <div key={c.id} className="flex items-start gap-2 text-xs">
-                                      <span className="font-medium text-gray-600">{c.userName}:</span>
-                                      {c.text ? (
-                                        <span className="text-gray-500">{c.text}</span>
-                                      ) : (
-                                        <span className="text-green-600 italic">Verified by: {c.userName}, {c.rank}, {c.date}</span>
-                                      )}
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-4 w-4 p-0 ml-auto"
-                                        onClick={() => handleDeleteComment(section.id, point.id, c.id)}
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                          {point.attachments.length > 0 && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="py-1 px-8">
-                                <div className="flex flex-wrap gap-1">
-                                  {point.attachments.map((a) => (
-                                    <Badge key={a.id} variant="outline" className="text-xs">
-                                      <Paperclip className="h-3 w-3 mr-1" />
-                                      {a.fileName}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                          {activeCommentBox === point.id && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="py-2 px-8">
-                                <div className="flex items-start gap-2">
-                                  <Textarea
-                                    className="text-xs min-h-[60px]"
-                                    placeholder="Add a comment..."
-                                    value={commentText}
-                                    onChange={(e) => setCommentText(e.target.value)}
-                                    data-testid={`textarea-comment-${point.id}`}
-                                  />
-                                  <Button
-                                    size="sm"
-                                    className="h-8"
-                                    onClick={() => handleAddComment(section.id, point.id)}
-                                    data-testid={`button-submit-comment-${point.id}`}
+                              {isVerificationComment && associatedVerification ? (
+                                canCancel ? (
+                                  <button
+                                    onClick={() => handleCancelVerification(section.id, point.id, associatedVerification.id)}
+                                    className="text-gray-400 hover:text-red-600"
+                                    title="Cancel your verification"
+                                    data-testid={`button-cancel-verification-${associatedVerification.id}`}
                                   >
-                                    Add
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-300 cursor-not-allowed" title="Only the verifier can cancel">
+                                    <X className="h-3 w-3" />
+                                  </span>
+                                )
+                              ) : (
+                                <button
+                                  onClick={() => handleDeleteComment(section.id, point.id, comment.id)}
+                                  className="text-gray-400 hover:text-red-600"
+                                  title="Delete comment"
+                                  data-testid={`button-delete-comment-${comment.id}`}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div 
+                        className="flex items-center justify-center cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleToggleComplete(section.id, point.id);
+                        }}
+                      >
+                        <Checkbox
+                          checked={point.completed}
+                          className="pointer-events-none"
+                          data-testid={`checkbox-completed-${point.id}`}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        className={`${
+                          point.verifications.length === 0
+                            ? 'bg-gray-200 text-gray-700'
+                            : point.verifications.length === 1
+                            ? 'bg-yellow-200 text-yellow-800'
+                            : 'bg-green-200 text-green-800'
+                        }`}
+                        data-testid={`badge-verified-${point.id}`}
+                      >
+                        {point.verifications.length}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleAddAttachment(section.id, point.id)}
+                          className="text-gray-500 hover:text-blue-600"
+                          title="Add Attachment"
+                          data-testid={`button-attachment-${point.id}`}
+                        >
+                          <Paperclip className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleCommentBox(point.id)}
+                          className="text-gray-500 hover:text-blue-600"
+                          title="Add Comment"
+                          data-testid={`button-comment-${point.id}`}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handleVerify(section.id, point.id)}
+                              className={`${
+                                point.completed && hasValidName
+                                  ? 'text-gray-500 hover:text-green-600'
+                                  : 'text-gray-300 cursor-not-allowed'
+                              }`}
+                              disabled={!point.completed || !hasValidName}
+                              data-testid={`button-verify-${point.id}`}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {!hasValidName 
+                              ? 'Enter your name first'
+                              : !point.completed 
+                              ? 'Mark as completed first'
+                              : 'Verify this point'}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  
+                  {activeCommentBox === point.id && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="bg-gray-50">
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-700">{currentUser.name}</div>
+                          <Textarea
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="Add your comment..."
+                            className="w-full"
+                            rows={3}
+                            data-testid={`textarea-comment-${point.id}`}
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setActiveCommentBox(null);
+                                setCommentText('');
+                              }}
+                              data-testid={`button-cancel-comment-${point.id}`}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleAddComment(section.id, point.id)}
+                              data-testid={`button-submit-comment-${point.id}`}
+                            >
+                              Add Comment
+                            </Button>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {point.attachments.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="bg-blue-50">
+                        <div className="text-sm">
+                          <span className="font-medium">Attachments: </span>
+                          {point.attachments.map((att, idx) => (
+                            <span key={att.id}>
+                              {att.fileName}
+                              {idx < point.attachments.length - 1 && ', '}
+                            </span>
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ))}
     </div>
   );
 
   return (
-    <div className="fixed inset-0 z-[210] bg-black/50 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-xl w-[90vw] max-w-5xl max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center px-6 py-4 border-b">
-          <h2 className="text-lg font-semibold text-[#16569e]">Promotion Checklist</h2>
-          <Button variant="ghost" size="sm" onClick={onClose} data-testid="button-close-checklist">
-            <X className="h-4 w-4" />
-          </Button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[210] p-4">
+      <div className="bg-white rounded-lg w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
+        <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
+          <h2 className="text-xl font-semibold text-gray-900">Promotion Checklist</h2>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleSave}
+              className="bg-[#60a5fa] hover:bg-[#3b82f6] text-white"
+              data-testid="button-save-checklist"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save'
+              )}
+            </Button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              data-testid="button-close-checklist"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
-        
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {renderPartA()}
-          {renderPartB()}
-        </div>
-        
-        <div className="flex justify-end gap-3 px-6 py-4 border-t">
-          <Button variant="outline" onClick={onClose} data-testid="button-cancel-checklist">
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSave} 
-            disabled={isSaving}
-            data-testid="button-save-checklist"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save Checklist'
-            )}
-          </Button>
+
+        <div className="flex-1 overflow-y-auto p-6 bg-[#f9fafb] space-y-6">
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="border-b pb-4 mb-6">
+              <h3 className="text-lg font-semibold text-[#16569e]">Part A: General</h3>
+              <p className="text-sm text-[#60a5fa] mt-1">This section is read only & provides information on the seafarer and summary of progress</p>
+            </div>
+            {renderPartA()}
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="border-b pb-4 mb-6">
+              <h3 className="text-lg font-semibold text-[#16569e]">Part B: Promotion Checklist</h3>
+              <p className="text-sm text-[#60a5fa] mt-1">
+                {checklistConfig?.minChecklistVerifications 
+                  ? `At least ${checklistConfig.minChecklistVerifications} verification${checklistConfig.minChecklistVerifications !== 1 ? 's' : ''} required for each question`
+                  : 'Verifications required as per configuration'
+                }
+              </p>
+            </div>
+            {renderPartB()}
+          </div>
         </div>
       </div>
     </div>
