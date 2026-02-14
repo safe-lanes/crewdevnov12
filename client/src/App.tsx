@@ -13,7 +13,7 @@ const RecruitmentWrapper = lazy(() => import("./modules/recruitment/RecruitmentW
 const CrewPoolModuleRouter = lazy(() => import("./modules/crew-pool").then(m => ({ default: m.CrewPoolModuleRouter })));
 const VesselRouter = lazy(() => import("./modules/vessel/index"));
 const RotationRouter = lazy(() => import("./modules/rotation/index"));
-const PromotionsModule = lazy(() => import("./modules/promotions/PromotionsModule").then(m => ({ default: m.PromotionsModule })));
+const PromotionsRouter = lazy(() => import("./modules/promotions/index"));
 const DrugsAlcoholModule = lazy(() => import("./modules/drugs-alcohol/index").then(m => ({ default: m.DrugsAlcoholModuleRouter })));
 const RestHoursModuleRouter = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursModuleRouter })));
 const RestHoursVesselOverviewRouter = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursVesselOverviewRouter })));
@@ -45,7 +45,7 @@ function App() {
                 <Route path="/crew-pool" component={CrewPoolModuleRouter} />
                 <Route path="/vessel" component={VesselRouter} />
                 <Route path="/rotation" component={RotationRouter} />
-                <Route path="/promotions" component={PromotionsModule} />
+                <Route path="/promotions" component={PromotionsRouter} />
                 <Route path="/drugs-alcohol" component={DrugsAlcoholModule} />
                 <Route path="/rest-hours/vessel/:vesselId/:month" component={RestHoursVesselOverviewRouter} />
                 <Route path="/rest-hours/:rest*" component={RestHoursModuleRouter} />

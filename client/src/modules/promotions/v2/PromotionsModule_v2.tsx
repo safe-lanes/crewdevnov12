@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import PromotionsSideBar from './PromotionsSideBar';
-import { PromotionsTable } from './PromotionsTable';
+import { useState, useMemo } from 'react';
+import PromotionsSideBar from '../PromotionsSideBar';
+import { PromotionsTable_v2 } from './components/PromotionsTable_v2';
 import MainLayout from '@/components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,14 +10,13 @@ import { Filter, Search as SearchIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
-import { useCompanyRanks } from '@/hooks/useCompanyRanks';
-import { PromotionsVersionToggle } from './v2/components/PromotionsVersionToggle';
+import { PromotionsVersionToggle } from './components/PromotionsVersionToggle';
+import { useVesselTypesV2, useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 
-export function PromotionsModule() {
+export function PromotionsModule_v2() {
     const [selectedPromotionsPage, setSelectedPromotionsPage] = useState('all');
     const [showFilters, setShowFilters] = useState(true);
-    
-    // Filter states
+
     const [searchName, setSearchName] = useState('');
     const [promotionToRank, setPromotionToRank] = useState('');
     const [vessel, setVessel] = useState('');
@@ -25,27 +24,27 @@ export function PromotionsModule() {
     const [nationality, setNationality] = useState('');
     const [criteria, setCriteria] = useState('');
     const [status, setStatus] = useState('');
-    
-    // Fetch vessel options from vessel master
+
     const { vessels: vesselOptions } = useVesselLookup();
-    
-    // Fetch company ranks for dynamic rank dropdown
-    const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
-    
-    // Fetch vessel types from Master 004 API with fallback to static data
-    const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
-        queryKey: ["/api/masters/004/data"],
+
+    const { data: companyRanksData = [] } = useQuery<any[]>({
+        queryKey: ['/api/v2/admin/company-ranks'],
     });
-    
-    // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
+    const rankOptions = useMemo(() => {
+        return companyRanksData
+            .filter((r: any) => !r.isDeleted && !r.archivedAt)
+            .map((r: any) => ({ value: r.rankName || r.name, label: r.rankName || r.name }));
+    }, [companyRanksData]);
+
+    const { data: vesselTypesV2 = [] } = useVesselTypesV2();
     const vesselTypeOptions = useMemo(() => {
-        if (vesselTypeMasterDataRaw.length > 0) {
-            const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
-            if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
+        if (vesselTypesV2.length > 0) {
+            return vesselTypesV2.map((vt: any) => vt.name || vt.vesselTypeName);
         }
-        // Fallback to static data
         return DEFAULT_DROPDOWN_VESSEL_TYPES;
-    }, [vesselTypeMasterDataRaw]);
+    }, [vesselTypesV2]);
+
+    const { data: nationalitiesV2 = [] } = useNationalitiesV2();
 
     const handleClearFilters = () => {
         setSearchName('');
@@ -58,7 +57,7 @@ export function PromotionsModule() {
     };
 
     return (
-        <div data-testid="promotions-container">
+        <div data-testid="promotions-v2-container">
             <PromotionsSideBar
                 selectedPromotionsPage={selectedPromotionsPage}
                 setSelectedPromotionsPage={setSelectedPromotionsPage}
@@ -74,7 +73,7 @@ export function PromotionsModule() {
                             size="sm"
                             onClick={() => setShowFilters(!showFilters)}
                             className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
-                            data-testid="button-toggle-filters"
+                            data-testid="button-toggle-filters-v2"
                         >
                             <Filter className="h-4 w-4" />
                             Filters
@@ -83,77 +82,75 @@ export function PromotionsModule() {
                 </SectionTitleComponents>
 
                 {showFilters && (
-                    <div className="flex flex-wrap gap-2 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-                        {/* Search Name */}
+                    <div className="flex flex-wrap gap-2 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container-v2">
                         <div className="relative w-[180px]">
                             <Input
                                 className="h-8 pl-10 text-[#8798ad] text-xs"
                                 placeholder="Search Name"
                                 value={searchName}
                                 onChange={(e) => setSearchName(e.target.value)}
-                                data-testid="input-search-name"
+                                data-testid="input-search-name-v2"
                             />
                             <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
                         </div>
 
-                        {/* Promotion to Rank */}
                         <Select value={promotionToRank} onValueChange={setPromotionToRank}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-promotion-rank">
+                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-promotion-rank-v2">
                                 <SelectValue placeholder="Promotion to Rank" />
                             </SelectTrigger>
                             <SelectContent>
-                                {ranksLoading ? (
-                                    <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
-                                ) : (
-                                    rankOptions.map(option => (
-                                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                                    ))
-                                )}
+                                {rankOptions.map((option: any) => (
+                                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
 
-                        {/* Vessel */}
                         <Select value={vessel} onValueChange={setVessel}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel">
+                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel-v2">
                                 <SelectValue placeholder="Vessel" />
                             </SelectTrigger>
                             <SelectContent>
-                                {vesselOptions.map((v) => (
+                                {vesselOptions.map((v: any) => (
                                     <SelectItem key={v.entryId} value={v.entryId}>{v.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
 
-                        {/* Vessel Type */}
                         <Select value={vesselType} onValueChange={setVesselType}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel-type">
+                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel-type-v2">
                                 <SelectValue placeholder="Vessel Type" />
                             </SelectTrigger>
                             <SelectContent>
-                                {vesselTypeOptions.map((type) => (
+                                {vesselTypeOptions.map((type: any) => (
                                     <SelectItem key={type} value={type}>{type}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
 
-                        {/* Nationality */}
                         <Select value={nationality} onValueChange={setNationality}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-nationality">
+                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-nationality-v2">
                                 <SelectValue placeholder="Nationality" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="British">British</SelectItem>
-                                <SelectItem value="Indian">Indian</SelectItem>
-                                <SelectItem value="Philippines">Philippines</SelectItem>
-                                <SelectItem value="Ukrainian">Ukrainian</SelectItem>
-                                <SelectItem value="Romanian">Romanian</SelectItem>
-                                <SelectItem value="Polish">Polish</SelectItem>
+                                {nationalitiesV2.length > 0 ? (
+                                    nationalitiesV2.map((n: any) => (
+                                        <SelectItem key={n.natUuid || n.nationality} value={n.nationality}>{n.nationality}</SelectItem>
+                                    ))
+                                ) : (
+                                    <>
+                                        <SelectItem value="British">British</SelectItem>
+                                        <SelectItem value="Indian">Indian</SelectItem>
+                                        <SelectItem value="Philippines">Philippines</SelectItem>
+                                        <SelectItem value="Ukrainian">Ukrainian</SelectItem>
+                                        <SelectItem value="Romanian">Romanian</SelectItem>
+                                        <SelectItem value="Polish">Polish</SelectItem>
+                                    </>
+                                )}
                             </SelectContent>
                         </Select>
 
-                        {/* Criteria */}
                         <Select value={criteria} onValueChange={setCriteria}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-criteria">
+                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-criteria-v2">
                                 <SelectValue placeholder="Criteria" />
                             </SelectTrigger>
                             <SelectContent>
@@ -163,9 +160,8 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        {/* Status */}
                         <Select value={status} onValueChange={setStatus}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-status">
+                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-status-v2">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -175,21 +171,19 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        {/* Clear Button */}
                         <Button
                             variant="outline"
                             className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
                             onClick={handleClearFilters}
-                            data-testid="button-clear"
+                            data-testid="button-clear-v2"
                         >
                             Clear
                         </Button>
                     </div>
                 )}
 
-                {/* Promotions Table */}
                 <div className="flex-1 px-4">
-                    <PromotionsTable
+                    <PromotionsTable_v2
                         searchName={searchName}
                         promotionToRank={promotionToRank}
                         vessel={vessel}

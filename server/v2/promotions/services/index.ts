@@ -1,0 +1,1 @@
+export { PromotionReviewsService } from "./promotionReviewsService";

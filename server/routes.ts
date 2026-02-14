@@ -9,6 +9,7 @@ import restHoursV2Routes from "./v2/rest-hours/routes";
 import drugsAlcoholV2Routes from "./v2/drugs-alcohol/routes";
 import { adminV2Routes } from "./v2/admin";
 import mastersV2Routes from "./v2/masters/routes";
+import promotionsV2Routes from "./v2/promotions/routes";
 import { vesselPlanningRepository } from "./v2/vessel/repositories/vesselPlanningRepository";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience, deriveEndorsementCode } from "./storage";
 import { storageAccount } from "./storage-accounts";
@@ -1489,6 +1490,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount v2 masters routes
   app.use("/api/v2/masters", mastersV2Routes);
+
+  // Mount v2 promotions routes
+  app.use("/api/v2/promotions", promotionsV2Routes);
 
   // Health check endpoint for database connectivity
   app.get("/api/health", async (req, res) => {
