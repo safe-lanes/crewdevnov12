@@ -20,7 +20,7 @@ import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@share
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
-import { useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
 import { LicenseSelectionDialog } from '../LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from '../TrainingCourseSelectionDialog';
 import { TravelDocumentSelectionDialog } from '../TravelDocumentSelectionDialog';
@@ -617,15 +617,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return [];
   }, [externalCountriesData]);
 
-  // Fetch Manning Agents from Master 021
-  const { data: manningAgentsData } = useQuery<any[]>({
-    queryKey: ['/api/masters/021/data'],
-  });
+  // Fetch Manning Agents from V2 dedicated table
+  const { data: manningAgentsData } = useManningAgentsV2();
   
-  // Fetch Crew Pool from Master 022
-  const { data: crewPoolData } = useQuery<any[]>({
-    queryKey: ['/api/masters/022/data'],
-  });
+  // Fetch Crew Pool from V2 dedicated table
+  const { data: crewPoolData } = useCrewPoolsV2();
   
   // Extract manning agent names from master data
   const manningAgentOptions = useMemo(() => {

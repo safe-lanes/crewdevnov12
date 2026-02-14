@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { FilterIcon, PlusIcon, EditIcon, ToggleLeft, ToggleRight } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
@@ -23,8 +23,7 @@ import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
-import { useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useVesselsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
 import { useCrewListV2, useDeleteCrewV2 } from './hooks/useCrewPoolV2';
 import { useCrewPoolVersion } from '../hooks/useCrewPoolVersion';
 
@@ -124,17 +123,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         pool: ""
     });
     
-    // Fetch Crew Pool master data (Master 022)
-    const { data: crewPoolMasterData = [], isLoading: poolLoading } = useQuery<any[]>({
-        queryKey: ['/api/masters/022/data'],
-        queryFn: async () => {
-            const response = await fetch('/api/masters/022/data');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        },
-    });
+    // Fetch Crew Pool master data from V2 dedicated table
+    const { data: crewPoolMasterData = [], isLoading: poolLoading } = useCrewPoolsV2();
 
     // Fetch crew members from V2 API (returns legacy-formatted data via mapper)
     const { data: rawCrewData = [], isLoading: isCrewLoading, error: crewError } = useCrewListV2();

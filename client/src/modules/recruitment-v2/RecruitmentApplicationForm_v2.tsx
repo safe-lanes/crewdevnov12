@@ -21,7 +21,7 @@ import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAtta
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
-import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 import {
   useV2Candidate,
@@ -850,10 +850,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return [];
   }, [externalLanguagesData]);
 
-  // Fetch Manning Agents from Master 021
-  const { data: manningAgentsData } = useQuery<any[]>({
-    queryKey: ['/api/masters/021/data'],
-  });
+  // Fetch Manning Agents from V2 dedicated table
+  const { data: manningAgentsData } = useManningAgentsV2();
   
   // Extract manning agent names from master data
   const manningAgentOptions = useMemo(() => {

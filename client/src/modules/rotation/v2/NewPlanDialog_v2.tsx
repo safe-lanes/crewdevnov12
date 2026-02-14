@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
+import { useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
 
 // Format date as DD-MMM-YY (e.g., "15 Dec 25")
 function formatAvailabilityDate(dateString: string | null | undefined): string {
@@ -409,15 +410,11 @@ function CrewColumn({
     queryKey: [`/api/v2/rotation/crew/by-rank/${normalizedRank}`],
   });
 
-  // Fetch Manning Agents from Master 021
-  const { data: manningAgentsData } = useQuery<any[]>({
-    queryKey: ['/api/masters/021/data'],
-  });
+  // Fetch Manning Agents from V2 dedicated table
+  const { data: manningAgentsData } = useManningAgentsV2();
 
-  // Fetch Crew Pools from Master 022
-  const { data: crewPoolsData } = useQuery<any[]>({
-    queryKey: ['/api/masters/022/data'],
-  });
+  // Fetch Crew Pools from V2 dedicated table
+  const { data: crewPoolsData } = useCrewPoolsV2();
 
   // Extract unique values for filter options
   const availableOptions = useMemo(() => {
