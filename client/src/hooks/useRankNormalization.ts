@@ -96,7 +96,7 @@ export function useRankNormalization() {
   }, [companyRanks]);
 
   const normalizeRank = (rankOrRole: string): string => {
-    if (!rankOrRole) return rankOrRole;
+    if (!rankOrRole || typeof rankOrRole !== 'string') return rankOrRole || '';
 
     // First check if exact match exists in roleToParentMap (for role variants)
     if (roleToParentMap.has(rankOrRole)) {
