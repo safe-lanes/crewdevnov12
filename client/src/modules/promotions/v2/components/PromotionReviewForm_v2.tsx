@@ -105,12 +105,12 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   const promotionToRank = promotionData?.promotionToRank ?? '';
 
   const { data: crewMemberData } = useQuery<any>({
-    queryKey: ['/api/v2/crew-pool/crew/by-emp-no', crewMemberId],
+    queryKey: [`/api/v2/crew-pool/crew/by-emp-no/${crewMemberId}`],
     enabled: !!crewMemberId,
   });
 
   const { data: dashboardData } = useQuery<CrewDashboardSummary>({
-    queryKey: ['/api/v2/crew-pool/crew/by-emp-no', crewMemberId, 'dashboard'],
+    queryKey: [`/api/v2/crew-pool/crew/by-emp-no/${crewMemberId}/dashboard`],
     enabled: !!crewMemberId,
   });
 
