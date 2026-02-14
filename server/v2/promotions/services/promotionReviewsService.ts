@@ -71,6 +71,7 @@ function assembleV1Response(
   }
 
   const cesTestsData = cesTests.map(t => ({
+    id: t.testId || t.ctUuid || '',
     testId: t.testId || '',
     description: t.description || '',
     date: t.date || '',
@@ -433,7 +434,7 @@ export class PromotionReviewsService {
     if (data.cesTestsData !== undefined) {
       const tests = this.parseJson(data.cesTestsData, []);
       tasks.push(cesTestsRepo.replaceForReview(reviewUuid, tests.map((t: any) => ({
-        testId: t.testId || t.test_id || null,
+        testId: t.testId || t.test_id || t.id || null,
         description: t.description || null,
         date: t.date || null,
         minScore: t.minScore || t.min_score || null,
