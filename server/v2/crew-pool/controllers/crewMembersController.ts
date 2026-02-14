@@ -38,6 +38,20 @@ export const crewMembersController = {
     }
   },
 
+  async getByEmpNo(req: Request, res: Response) {
+    try {
+      const { empNo } = req.params;
+      const crew = await crewMembersService.getByEmpNo(empNo);
+      res.json(crew);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error fetching crew by empNo:", error);
+      res.status(500).json({ error: "Failed to fetch crew member" });
+    }
+  },
+
   async getByUuid(req: Request, res: Response) {
     try {
       const { crewUuid } = req.params;

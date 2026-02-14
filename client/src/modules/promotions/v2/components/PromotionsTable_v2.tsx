@@ -173,7 +173,7 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
   const { normalizeRank, isLoading: isLoadingRanks } = useRankNormalization();
 
   const { data: crewMembers = [], isLoading } = useQuery({
-    queryKey: ['/api/crew-members'],
+    queryKey: ['/api/v2/crew-pool/crew'],
     staleTime: REVIEW_DATA_STALE_TIME,
   });
 
@@ -357,20 +357,12 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
 
         const { nextRank } = findNextPromotionRank(normalizedRank, hierarchies);
         
-        let vesselId = crew.presentVessel || crew.vessel;
-        if (typeof vesselId === 'object' && vesselId !== null) {
-          vesselId = vesselId.id || vesselId.entryId || '';
-        }
-        
-        const vesselName = vesselId ? getVesselName(vesselId) : null;
-        
         const statusVal = crew.status || '';
         const isOnLeave = statusVal.toLowerCase().includes('leave') || 
-                          statusVal.toLowerCase().includes('available') ||
-                          !vesselId;
-        const vesselLeave = isOnLeave ? 'On Leave' : (vesselName || vesselId || '-');
+                          statusVal.toLowerCase().includes('available');
+        const vesselLeave = isOnLeave ? 'On Leave' : '-';
         
-        const dobString = crew.dateOfBirth || crew.dob || '-';
+        const dobString = crew.dob || crew.dateOfBirth || '-';
         const calculatedAge = calculateAge(dobString);
         
         let ageStatus: 'met' | 'pending' | 'not-met' = 'pending';
@@ -384,7 +376,8 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
           }
         }
         
-        const reviewKey = `${crew.id}__${nextRank}`;
+        const crewId = crew.empNo || crew.id;
+        const reviewKey = `${crewId}__${nextRank}`;
         const review = reviewLookup.get(reviewKey);
         
         const licenseStatus = computeCriteriaStatus(review, 'a2.1');
@@ -408,18 +401,18 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
         const reviewStatus = review?.status || 'In Progress';
         
         return {
-          crewId: crew.employeeId || crew.id || '-',
-          crewMemberId: crew.id,
+          crewId: crew.employeeId || crew.empNo || '-',
+          crewMemberId: crewId,
           promotionReviewId: review?.id || null,
-          name: `${crew.firstName || 'Unknown'} ${crew.middleInitial || ''} ${crew.familyName || ''}`.trim(),
+          name: `${crew.firstName || 'Unknown'} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
           dob: dobString,
           ageValue: calculatedAge !== null ? calculatedAge : '-',
           age: ageStatus,
-          nationality: crew.nationality || 'Unknown',
+          nationality: crew.nationality || crew.nationalityUuid || 'Unknown',
           currentRank: currentRank,
           promotionToRank: nextRank || '-',
           vesselLeave: vesselLeave,
-          presentVessel: vesselId || null,
+          presentVessel: null,
           license: licenseStatus,
           sea: seaStatus,
           reco: recoStatus,
@@ -432,7 +425,7 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
         };
       })
       .filter(item => item !== null);
-  }, [crewMembers, hierarchies, getVesselName, normalizeRank, ageRequirementsByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus]);
+  }, [crewMembers, hierarchies, normalizeRank, ageRequirementsByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus]);
 
   const filteredData = useMemo(() => {
     return promotionData.filter(item => {

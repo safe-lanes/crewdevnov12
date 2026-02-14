@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import type { CrewMember, PromotionA2Config } from '@shared/schema';
+import type { PromotionA2Config } from '@shared/schema';
 import { calculateChecklistProgress } from '../../checklistProgressUtils';
 
 interface PromotionData {
@@ -100,8 +100,8 @@ export const PromotionChecklistForm_v2: React.FC<PromotionChecklistFormProps> = 
   const { toast } = useToast();
   const [isSaving, setIsSaving] = React.useState(false);
 
-  const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery<CrewMember>({
-    queryKey: [`/api/crew-members/${promotionData.crewMemberId}`],
+  const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery<any>({
+    queryKey: ['/api/v2/crew-pool/crew/by-emp-no', promotionData.crewMemberId],
     enabled: !!promotionData.crewMemberId,
   });
 

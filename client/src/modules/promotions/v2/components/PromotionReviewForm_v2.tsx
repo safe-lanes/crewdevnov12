@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { PromotionChecklistForm_v2 } from './PromotionChecklistForm_v2';
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
-import type { Form, RankGroup, CrewMember, CrewDashboardSummary, PromotionReview } from '@shared/schema';
+import type { Form, RankGroup, CrewDashboardSummary, PromotionReview } from '@shared/schema';
 import type { PromotionA2Config } from '@shared/schema';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
@@ -104,13 +104,13 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   const crewMemberId = promotionData?.crewMemberId ?? '';
   const promotionToRank = promotionData?.promotionToRank ?? '';
 
-  const { data: crewMemberData } = useQuery<CrewMember>({
-    queryKey: [`/api/crew-members/${crewMemberId}`],
+  const { data: crewMemberData } = useQuery<any>({
+    queryKey: ['/api/v2/crew-pool/crew/by-emp-no', crewMemberId],
     enabled: !!crewMemberId,
   });
 
   const { data: dashboardData } = useQuery<CrewDashboardSummary>({
-    queryKey: [`/api/crew-members/${crewMemberId}/dashboard`],
+    queryKey: ['/api/v2/crew-pool/crew/by-emp-no', crewMemberId, 'dashboard'],
     enabled: !!crewMemberId,
   });
 
@@ -331,8 +331,9 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   }, [crewMemberData, a2Config?.higherLicenseIds, licenseDataByEntryId]);
 
   const a2_2_ageResult = useMemo(() => {
-    if (!crewMemberData?.dateOfBirth) return '';
-    const dob = new Date(crewMemberData.dateOfBirth);
+    const dobValue = crewMemberData?.dob || crewMemberData?.dateOfBirth;
+    if (!dobValue) return '';
+    const dob = new Date(dobValue);
     const today = new Date();
     let age = today.getFullYear() - dob.getFullYear();
     const monthDiff = today.getMonth() - dob.getMonth();

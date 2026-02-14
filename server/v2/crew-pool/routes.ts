@@ -25,6 +25,8 @@ router.get("/crew", crewMembersController.getAll);
 router.get("/crew/details", crewMembersController.getAllWithDetails);
 router.post("/crew", crewMembersController.create);
 router.post("/crew/with-data", crewMembersController.createWithRelatedData);
+router.get("/crew/by-emp-no/:empNo", crewMembersController.getByEmpNo);
+router.get("/crew/by-emp-no/:empNo/dashboard", dashboardController.getDashboardByEmpNo);
 router.get("/crew/:crewUuid", crewMembersController.getByUuid);
 router.get("/crew/:crewUuid/profile", crewMembersController.getFullProfile);
 router.get("/crew/:crewUuid/dashboard", dashboardController.getDashboardSummary);
