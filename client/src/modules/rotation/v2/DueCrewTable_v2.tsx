@@ -234,7 +234,7 @@ export const DueCrewTable_v2: FC<DueCrewTableV2Props> = ({
   });
   
   const { data: availableRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/available-ranks'],
+    queryKey: ['/api/v2/admin/available-ranks'],
   });
   
   const rankOrderMap = useMemo(() => {

@@ -35,7 +35,7 @@ const useVessels = () => {
 
 const useCompanyRanks = () => {
     return useQuery({
-        queryKey: ['/api/company-ranks'],
+        queryKey: ['/api/v2/admin/company-ranks'],
         select: (data: any[]) => {
             return data.filter((rank: any) => !rank.isRoleRow && !rank.is_role_row);
         }

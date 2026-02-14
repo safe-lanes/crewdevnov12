@@ -1034,8 +1034,8 @@ function VesselTimelineView({
   
   // Fetch existing crew for selected vessels and ALL ranks (including base ranks)
   const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
-    queryKey: ['/api/rotation/due-crew', queryParams.toString()],
-    queryFn: () => fetch(`/api/rotation/due-crew?${queryParams.toString()}`).then(res => res.json()),
+    queryKey: ['/api/v2/rotation/due-crew', queryParams.toString()],
+    queryFn: () => fetch(`/api/v2/rotation/due-crew?${queryParams.toString()}`).then(res => res.json()),
     enabled: vessels.length > 0 && queryRanks.length > 0,
   });
   
@@ -1493,7 +1493,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
 
   // Fetch company ranks
   const { data: companyRanks = [], isLoading: ranksLoading } = useQuery<any[]>({
-    queryKey: ['/api/company-ranks'],
+    queryKey: ['/api/v2/admin/company-ranks'],
   });
 
   // Fetch vessel-specific ranks for selected vessels
@@ -1505,7 +1505,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   // Fetch vessel ranks for ALL selected vessels and combine them
   // Each rank entry includes vesselId for per-vessel slot counting
   const { data: vesselSpecificRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/vessel-revisions/ranks', selectedVesselIdsForRanks],
+    queryKey: ['/api/v2/admin/vessel-revisions/ranks', selectedVesselIdsForRanks],
     queryFn: async () => {
       if (selectedVesselIdsForRanks.length === 0) return [];
       
@@ -1513,7 +1513,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       const allRanks: any[] = [];
       for (const vesselId of selectedVesselIdsForRanks) {
         try {
-          const response = await fetch(`/api/vessel-revisions/ranks/${vesselId}`);
+          const response = await fetch(`/api/v2/admin/vessel-revisions/ranks/${vesselId}`);
           if (response.ok) {
             const ranks = await response.json();
             // Tag each rank with its source vesselId for per-vessel slot counting
@@ -1681,8 +1681,8 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   }, [selectedVessels, selectedRoleVariants, getVesselIds]);
 
   const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
-    queryKey: ['/api/rotation/due-crew', queryParams.toString()],
-    queryFn: () => fetch(`/api/rotation/due-crew?${queryParams.toString()}`).then(res => res.json()),
+    queryKey: ['/api/v2/rotation/due-crew', queryParams.toString()],
+    queryFn: () => fetch(`/api/v2/rotation/due-crew?${queryParams.toString()}`).then(res => res.json()),
     enabled: selectedVessels.length > 0 && selectedRanks.length > 0,
   });
 
