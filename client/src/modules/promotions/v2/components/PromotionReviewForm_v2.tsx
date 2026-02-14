@@ -147,6 +147,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     return '';
   }, [promotionRecommendationsData]);
 
+  const [savedReviewUuid, setSavedReviewUuid] = useState<string | null>(null);
   const [savedReviewId, setSavedReviewId] = useState<number | null>(
     promotionData?.promotionReviewId ?? null
   );
@@ -155,18 +156,24 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReview>({
     queryKey: [`/api/v2/promotions/reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`],
     enabled: !!crewMemberId && !!promotionToRank,
+    retry: false,
   });
+
+  const effectiveReviewUuid = savedReviewUuid ?? existingReviewData?.reviewUuid ?? null;
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
-      const endpoint = savedReviewId
-        ? `/api/v2/promotions/reviews/${savedReviewId}`
+      const endpoint = effectiveReviewUuid
+        ? `/api/v2/promotions/reviews/${effectiveReviewUuid}`
         : '/api/v2/promotions/reviews';
-      const method = savedReviewId ? 'PATCH' : 'POST';
+      const method = effectiveReviewUuid ? 'PATCH' : 'POST';
       const response = await apiRequest(method, endpoint, data);
       return response;
     },
     onSuccess: (data: any) => {
+      if (data?.reviewUuid) {
+        setSavedReviewUuid(data.reviewUuid);
+      }
       if (data?.id) {
         setSavedReviewId(data.id);
       }
@@ -1130,14 +1137,17 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     
     const approverCount = selectedApproversForSubmission.length;
     
-    const effectiveReviewId = savedReviewId ?? existingReviewData?.id;
-    const endpoint = effectiveReviewId
-      ? `/api/v2/promotions/reviews/${effectiveReviewId}`
+    const submitReviewUuid = effectiveReviewUuid;
+    const endpoint = submitReviewUuid
+      ? `/api/v2/promotions/reviews/${submitReviewUuid}`
       : '/api/v2/promotions/reviews';
-    const method = effectiveReviewId ? 'PATCH' : 'POST';
+    const method = submitReviewUuid ? 'PATCH' : 'POST';
     
     apiRequest(method, endpoint, reviewData)
       .then((data: any) => {
+        if (data?.reviewUuid) {
+          setSavedReviewUuid(data.reviewUuid);
+        }
         if (data?.id) {
           setSavedReviewId(data.id);
         }
@@ -1160,7 +1170,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, savedReviewId, existingReviewData?.id, isSubmittingForApproval]);
+  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
