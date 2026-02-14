@@ -356,6 +356,7 @@ export class PromotionReviewsService {
     const auditedData = applyAuditUser(data);
     const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+      id: _id, reviewUuid: _ruuid, createdAt: _ca, updatedAt: _ua, isDeleted: _del,
       ...coreFields } = auditedData;
 
     const review = await reviewsRepo.update(reviewUuid, coreFields);

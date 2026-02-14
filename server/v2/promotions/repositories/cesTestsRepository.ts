@@ -1,4 +1,4 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, notInArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { promoCesTestsV2 } from "../../../../shared/v2/promotions/schema";
 import type { PromoCesTestV2, InsertPromoCesTestV2 } from "../../../../shared/v2/promotions/types";
@@ -55,15 +55,55 @@ export class CesTestsRepository {
 
   async replaceForReview(reviewUuid: string, tests: Omit<InsertPromoCesTestV2, "ctUuid" | "reviewUuid">[]): Promise<PromoCesTestV2[]> {
     const db = getDb();
-    await db
-      .update(promoCesTestsV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
+    const existing = await db
+      .select()
+      .from(promoCesTestsV2)
       .where(and(eq(promoCesTestsV2.reviewUuid, reviewUuid), eq(promoCesTestsV2.isDeleted, false)));
-    if (tests.length === 0) return [];
-    const results = await db
-      .insert(promoCesTestsV2)
-      .values(tests.map((t, i) => ({ ...t, ctUuid: uuidv4(), reviewUuid, sortOrder: i })))
-      .returning();
+
+    if (tests.length === 0) {
+      if (existing.length > 0) {
+        await db
+          .update(promoCesTestsV2)
+          .set({ isDeleted: true, updatedAt: new Date() })
+          .where(and(eq(promoCesTestsV2.reviewUuid, reviewUuid), eq(promoCesTestsV2.isDeleted, false)));
+      }
+      return [];
+    }
+
+    const results: PromoCesTestV2[] = [];
+    const usedExistingIds: number[] = [];
+
+    for (let i = 0; i < tests.length; i++) {
+      const t = tests[i];
+      const match = t.testId
+        ? existing.find(e => e.testId === t.testId && !usedExistingIds.includes(e.id))
+        : existing[i] && !usedExistingIds.includes(existing[i].id) ? existing[i] : undefined;
+
+      if (match) {
+        usedExistingIds.push(match.id);
+        const updated = await db
+          .update(promoCesTestsV2)
+          .set({ ...t, sortOrder: i, updatedAt: new Date() })
+          .where(eq(promoCesTestsV2.id, match.id))
+          .returning();
+        results.push(updated[0]);
+      } else {
+        const inserted = await db
+          .insert(promoCesTestsV2)
+          .values({ ...t, ctUuid: uuidv4(), reviewUuid, sortOrder: i })
+          .returning();
+        results.push(inserted[0]);
+      }
+    }
+
+    const unusedIds = existing.filter(e => !usedExistingIds.includes(e.id)).map(e => e.id);
+    if (unusedIds.length > 0) {
+      await db
+        .update(promoCesTestsV2)
+        .set({ isDeleted: true, updatedAt: new Date() })
+        .where(inArray(promoCesTestsV2.id, unusedIds));
+    }
+
     return results;
   }
 }

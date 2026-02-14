@@ -52,15 +52,62 @@ export class ChecklistProgressRepository {
 
   async replaceForReview(reviewUuid: string, items: Omit<InsertPromoChecklistProgressV2, "cpUuid" | "reviewUuid">[]): Promise<PromoChecklistProgressV2[]> {
     const db = getDb();
-    await db
-      .update(promoChecklistProgressV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
+    const existing = await db
+      .select()
+      .from(promoChecklistProgressV2)
       .where(and(eq(promoChecklistProgressV2.reviewUuid, reviewUuid), eq(promoChecklistProgressV2.isDeleted, false)));
-    if (items.length === 0) return [];
-    const results = await db
-      .insert(promoChecklistProgressV2)
-      .values(items.map((item, i) => ({ ...item, cpUuid: uuidv4(), reviewUuid, sortOrder: i })))
-      .returning();
+
+    if (items.length === 0) {
+      if (existing.length > 0) {
+        await db
+          .update(promoChecklistProgressV2)
+          .set({ isDeleted: true, updatedAt: new Date() })
+          .where(and(eq(promoChecklistProgressV2.reviewUuid, reviewUuid), eq(promoChecklistProgressV2.isDeleted, false)));
+      }
+      return [];
+    }
+
+    const results: PromoChecklistProgressV2[] = [];
+    const usedExistingIds: number[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const match = existing.find(e =>
+        e.sectionId === item.sectionId &&
+        e.assessmentPointId === item.assessmentPointId &&
+        !usedExistingIds.includes(e.id)
+      );
+
+      if (match) {
+        usedExistingIds.push(match.id);
+        const updated = await db
+          .update(promoChecklistProgressV2)
+          .set({
+            verifierName: item.verifierName,
+            date: item.date,
+            sortOrder: i,
+            updatedAt: new Date(),
+          })
+          .where(eq(promoChecklistProgressV2.id, match.id))
+          .returning();
+        results.push(updated[0]);
+      } else {
+        const inserted = await db
+          .insert(promoChecklistProgressV2)
+          .values({ ...item, cpUuid: uuidv4(), reviewUuid, sortOrder: i })
+          .returning();
+        results.push(inserted[0]);
+      }
+    }
+
+    const unusedIds = existing.filter(e => !usedExistingIds.includes(e.id)).map(e => e.id);
+    if (unusedIds.length > 0) {
+      await db
+        .update(promoChecklistProgressV2)
+        .set({ isDeleted: true, updatedAt: new Date() })
+        .where(inArray(promoChecklistProgressV2.id, unusedIds));
+    }
+
     return results;
   }
 }
