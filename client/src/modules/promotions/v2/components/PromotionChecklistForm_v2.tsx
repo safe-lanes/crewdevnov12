@@ -102,8 +102,8 @@ export const PromotionChecklistForm_v2: React.FC<PromotionChecklistFormProps> = 
   const { toast } = useToast();
   const [isSaving, setIsSaving] = React.useState(false);
 
-  const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery<any>({
-    queryKey: ['/api/v2/crew-pool/crew/by-emp-no', promotionData.crewMemberId],
+  const { data: dashboardData, isLoading: isLoadingCrew, error: crewError } = useQuery<any>({
+    queryKey: [`/api/v2/crew-pool/crew/by-emp-no/${promotionData.crewMemberId}/dashboard`],
     enabled: !!promotionData.crewMemberId,
   });
 
@@ -118,16 +118,9 @@ export const PromotionChecklistForm_v2: React.FC<PromotionChecklistFormProps> = 
   };
 
   const seaServiceData = React.useMemo<SeaServiceEntry[]>(() => {
-    if (!crewMember?.currentCompanySeaService) return [];
-    try {
-      const parsed = typeof crewMember.currentCompanySeaService === 'string'
-        ? JSON.parse(crewMember.currentCompanySeaService)
-        : crewMember.currentCompanySeaService;
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }, [crewMember]);
+    if (!dashboardData?.seaService) return [];
+    return Array.isArray(dashboardData.seaService) ? dashboardData.seaService : [];
+  }, [dashboardData]);
 
   const storedDesignation = sessionStorage.getItem('crewDesignation');
   const [userName, setUserName] = React.useState<string>(() => {

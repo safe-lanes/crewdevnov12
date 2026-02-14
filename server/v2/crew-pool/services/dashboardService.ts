@@ -75,6 +75,19 @@ export interface AppraisalSummaryItem {
   score: number;
 }
 
+export interface SeaServiceRecord {
+  id: string;
+  vesselName: string;
+  vesselType: string;
+  deadweight: string;
+  engineType: string;
+  enginePower: string;
+  fromDate: string;
+  toDate: string;
+  period: string;
+  rank: string;
+}
+
 export interface CrewDashboardSummary {
   status: CrewDashboardStatus;
   experience: CrewDashboardExperience;
@@ -91,6 +104,8 @@ export interface CrewDashboardSummary {
   rankExperienceByVesselType: Record<string, number>;
   serviceTimeline: ServiceTimelineItem[];
   compliance: ComplianceItem[];
+  licenses: any[];
+  seaService: SeaServiceRecord[];
   careerProgression: CareerProgressionItem[];
   appraisals: AppraisalSummaryItem[];
 }
@@ -188,6 +203,21 @@ export const dashboardService = {
       serviceTimeline,
       compliance: this.getComplianceStatus(crew, licenses),
       licenses: licenses,
+      seaService: companySeaService.map((s: any) => {
+        const etpParts = s.engineTypePower ? s.engineTypePower.split('/').map((p: string) => p.trim()) : ['', ''];
+        return {
+          id: s.seaUuid,
+          vesselName: s.vesselName || '',
+          vesselType: s.vesselTypeName || '',
+          deadweight: s.deadweight || '',
+          engineType: etpParts[0] || '',
+          enginePower: etpParts[1] || '',
+          fromDate: s.fromDate ? this.formatDate(s.fromDate) : '',
+          toDate: s.toDate ? this.formatDate(s.toDate) : '',
+          period: s.periodMonths != null ? String(s.periodMonths) : '',
+          rank: s.rank || '',
+        };
+      }),
       careerProgression: [],
       appraisals: [],
     };
@@ -268,6 +298,8 @@ export const dashboardService = {
         fromDate: crewSeaService.fromDate,
         toDate: crewSeaService.toDate,
         periodMonths: crewSeaService.periodMonths,
+        deadweight: crewSeaService.deadweight,
+        engineTypePower: crewSeaService.engineTypePower,
       })
       .from(crewSeaService)
       .leftJoin(
