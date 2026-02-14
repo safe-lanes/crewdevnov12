@@ -80,7 +80,7 @@ function assembleV1Response(
     result: t.result || '',
   }));
 
-  const criteriaCommentsObj: Record<string, any[]> = {};
+  const criteriaCommentsObj: Record<string, any> = {};
   for (const cc of criteriaComments) {
     if (!criteriaCommentsObj[cc.criteriaCode]) criteriaCommentsObj[cc.criteriaCode] = [];
     criteriaCommentsObj[cc.criteriaCode].push({
@@ -89,14 +89,18 @@ function assembleV1Response(
       text: cc.commentText || '',
     });
   }
+  const a3Comments: Record<string, any[]> = {};
   for (const tc of trainingComments) {
     const key = `a3_${tc.trainingRowId}`;
-    if (!criteriaCommentsObj[key]) criteriaCommentsObj[key] = [];
-    criteriaCommentsObj[key].push({
+    if (!a3Comments[key]) a3Comments[key] = [];
+    a3Comments[key].push({
       id: tc.commentId || tc.tcUuid,
       user: tc.commentUser || '',
       text: tc.commentText || '',
     });
+  }
+  if (Object.keys(a3Comments).length > 0) {
+    criteriaCommentsObj['a3'] = a3Comments;
   }
 
   const trainingNeedsData = trainingNeeds.map(tn => ({
@@ -448,8 +452,21 @@ export class PromotionReviewsService {
       const criteriaCommentRows: any[] = [];
       const trainingCommentRows: any[] = [];
 
-      for (const [key, comments] of Object.entries(commentsObj)) {
-        if (!Array.isArray(comments)) continue;
+      const flatComments: Record<string, any[]> = {};
+      for (const [key, value] of Object.entries(commentsObj)) {
+        if (key === 'a3' && value && typeof value === 'object' && !Array.isArray(value)) {
+          for (const [subKey, subValue] of Object.entries(value as Record<string, any>)) {
+            if (Array.isArray(subValue)) {
+              const normalizedKey = subKey.startsWith('a3_') ? subKey : `a3_${subKey}`;
+              flatComments[normalizedKey] = subValue;
+            }
+          }
+        } else if (Array.isArray(value)) {
+          flatComments[key] = value;
+        }
+      }
+
+      for (const [key, comments] of Object.entries(flatComments)) {
         if (key.startsWith('a3_')) {
           const trainingRowId = key.replace('a3_', '');
           for (const c of comments) {
