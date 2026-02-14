@@ -87,6 +87,7 @@ interface PromotionChecklistFormProps {
   onClose: () => void;
   checklistConfig?: PromotionA2Config | null;
   promotionReviewId?: number | null;
+  promotionReviewUuid?: string | null;
   existingChecklistData?: string | null;
 }
 
@@ -95,6 +96,7 @@ export const PromotionChecklistForm_v2: React.FC<PromotionChecklistFormProps> = 
   onClose,
   checklistConfig,
   promotionReviewId,
+  promotionReviewUuid,
   existingChecklistData,
 }) => {
   const { toast } = useToast();
@@ -253,7 +255,8 @@ export const PromotionChecklistForm_v2: React.FC<PromotionChecklistFormProps> = 
   const [commentText, setCommentText] = React.useState<string>('');
 
   const handleSave = async () => {
-    if (!promotionReviewId) {
+    const reviewIdentifier = promotionReviewUuid || promotionReviewId;
+    if (!reviewIdentifier) {
       toast({
         title: 'Cannot save',
         description: 'No promotion review ID found. Please save the promotion review form first.',
@@ -280,7 +283,7 @@ export const PromotionChecklistForm_v2: React.FC<PromotionChecklistFormProps> = 
         }
       });
       
-      await apiRequest('PATCH', `/api/v2/promotions/reviews/${promotionReviewId}`, { checklistProgressData });
+      await apiRequest('PATCH', `/api/v2/promotions/reviews/${reviewIdentifier}`, { checklistProgressData });
       
       queryClient.invalidateQueries({ queryKey: ['/api/v2/promotions/reviews'] });
       queryClient.invalidateQueries({ 

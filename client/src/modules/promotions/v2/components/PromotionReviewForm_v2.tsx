@@ -490,17 +490,23 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       { id: 'a2.8', criteria: 'A2.8 Training & Other Documents Verification?', required: '', resultFromDb: '', verified: '', hasInfo: true }
     );
 
+    let savedVerifiedStatus: Record<string, string> = {};
+    if (existingReviewData?.criteriaVerifiedStatus) {
+      try {
+        savedVerifiedStatus = typeof existingReviewData.criteriaVerifiedStatus === 'string'
+          ? JSON.parse(existingReviewData.criteriaVerifiedStatus)
+          : existingReviewData.criteriaVerifiedStatus;
+      } catch {}
+    }
+
     setCriteriaData(prev => {
-      if (prev.length === 0) {
-        return baseCriteria;
-      }
       const existingVerifiedMap = new Map(prev.map(row => [row.id, row.verified]));
       return baseCriteria.map(row => ({
         ...row,
-        verified: existingVerifiedMap.get(row.id) || row.verified,
+        verified: existingVerifiedMap.get(row.id) || savedVerifiedStatus[row.id] || row.verified,
       }));
     });
-  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult, a2_4_recommendationsResult]);
+  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult, a2_4_recommendationsResult, existingReviewData?.criteriaVerifiedStatus]);
 
   const [cesTests, setCesTests] = useState<CesTest[]>([]);
 
@@ -1469,6 +1475,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
           onClose={() => setShowChecklistForm(false)}
           checklistConfig={a2Config}
           promotionReviewId={savedReviewId ?? existingReviewData?.id ?? null}
+          promotionReviewUuid={effectiveReviewUuid}
           existingChecklistData={existingReviewData?.checklistProgressData}
         />
       )}
