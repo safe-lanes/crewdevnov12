@@ -1409,6 +1409,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
 
                   <div className="flex justify-end gap-3">
                     <Button 
+                      type="button"
                       variant="outline" 
                       className="px-8"
                       onClick={handleSaveDraft}
@@ -1417,6 +1418,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
                       Save
                     </Button>
                     <Button 
+                      type="button"
                       className="px-8 bg-green-600 hover:bg-green-700"
                       onClick={handleSubmitForApproval}
                       disabled={isSubmittingForApproval}
