@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Plus, Info, X } from 'lucide-react';
 import type { Approver } from './types';
-import { useExternalUsers } from '@/hooks/useExternalUsers';
 
 interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
   approvers: Approver[];
@@ -19,6 +18,7 @@ interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
   onRemoveVesselClass: (cls: string) => void;
   onSave?: () => void;
   onSubmit?: () => void;
+  approverNames?: string[];
 }
 
 export const PartBApproval = memo(function PartBApproval({
@@ -32,9 +32,9 @@ export const PartBApproval = memo(function PartBApproval({
   onRemoveVesselClass,
   onSave,
   onSubmit,
+  approverNames = [],
   ...restProps
 }: PartBApprovalProps) {
-  const { data: externalUsers = [] } = useExternalUsers();
 
   return (
     <div className="bg-white rounded-lg p-6" {...restProps}>
@@ -90,9 +90,9 @@ export const PartBApproval = memo(function PartBApproval({
                       <SelectValue placeholder="Select Approver" />
                     </SelectTrigger>
                     <SelectContent>
-                      {externalUsers.map((user: any) => (
-                        <SelectItem key={user.uuid} value={user.userName}>
-                          {user.userName}
+                      {approverNames.map((name: string) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
                         </SelectItem>
                       ))}
                     </SelectContent>

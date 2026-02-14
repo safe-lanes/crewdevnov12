@@ -1444,6 +1444,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
               onRemoveVesselClass={removeVesselClass}
               onSave={handleSaveDraft}
               onSubmit={handleSubmitPartB}
+              approverNames={approverMasterData}
             />
           )}
 
