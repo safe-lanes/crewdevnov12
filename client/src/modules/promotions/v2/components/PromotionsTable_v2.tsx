@@ -357,10 +357,7 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
 
         const { nextRank } = findNextPromotionRank(normalizedRank, hierarchies);
         
-        const statusVal = crew.status || '';
-        const isOnLeave = statusVal.toLowerCase().includes('leave') || 
-                          statusVal.toLowerCase().includes('available');
-        const vesselLeave = crew.vesselName ? crew.vesselName : (isOnLeave ? 'On Leave' : '-');
+        const vesselLeave = crew.vesselName ? crew.vesselName : 'On Leave';
         
         const dobString = crew.dob || crew.dateOfBirth || '-';
         const calculatedAge = calculateAge(dobString);
