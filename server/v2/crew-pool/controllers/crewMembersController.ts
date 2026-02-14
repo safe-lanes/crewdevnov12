@@ -19,6 +19,21 @@ export const crewMembersController = {
     }
   },
 
+  async getAllEnriched(req: Request, res: Response) {
+    try {
+      const { status, isActive, search } = req.query;
+      const crew = await crewMembersService.getAllEnriched({
+        status: status as string | undefined,
+        isActive: isActive !== undefined ? isActive === "true" : undefined,
+        search: search as string | undefined,
+      });
+      res.json(crew);
+    } catch (error) {
+      console.error("Error fetching enriched crew:", error);
+      res.status(500).json({ error: "Failed to fetch enriched crew members" });
+    }
+  },
+
   async getAllWithDetails(req: Request, res: Response) {
     try {
       const { rank, nationality, status, search, vesselUuid, limit, offset } = req.query;

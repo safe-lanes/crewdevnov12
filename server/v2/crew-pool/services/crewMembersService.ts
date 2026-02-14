@@ -106,6 +106,87 @@ export const crewMembersService = {
     return crewMembersRepository.findAll(filters);
   },
 
+  async getAllEnriched(filters?: {
+    status?: string;
+    isActive?: boolean;
+    search?: string;
+  }): Promise<any[]> {
+    const db = getDb();
+    const { vesselPlanningV2 } = await import("../../../../shared/v2/vessel/schema");
+
+    const conditions: any[] = [
+      eq(crewMembersV2.isDeleted, false),
+      isNull(crewMembersV2.archivedAt),
+    ];
+    if (filters?.status) {
+      conditions.push(eq(crewMembersV2.status, filters.status));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(crewMembersV2.isActive, filters.isActive));
+    }
+
+    const results = await db
+      .select({
+        id: crewMembersV2.id,
+        crewUuid: crewMembersV2.crewUuid,
+        empNo: crewMembersV2.empNo,
+        employeeId: crewMembersV2.employeeId,
+        firstName: crewMembersV2.firstName,
+        middleName: crewMembersV2.middleName,
+        familyName: crewMembersV2.familyName,
+        gender: crewMembersV2.gender,
+        dob: crewMembersV2.dob,
+        nationalityUuid: crewMembersV2.nationalityUuid,
+        nationalityName: masterNationalities.nationality,
+        presentRank: crewMembersV2.presentRank,
+        rankAppliedFor: crewMembersV2.rankAppliedFor,
+        status: crewMembersV2.status,
+        isActive: crewMembersV2.isActive,
+        uploadedPhoto: crewMembersV2.uploadedPhoto,
+        vesselTypeUuid: crewMembersV2.vesselTypeUuid,
+        availability: crewMembersV2.availability,
+        nextAvailability: crewMembersV2.nextAvailability,
+        vesselUuid: vesselPlanningV2.vesselUuid,
+        vesselName: masterVessels.vessel,
+      })
+      .from(crewMembersV2)
+      .leftJoin(masterNationalities, eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid))
+      .leftJoin(
+        vesselPlanningV2,
+        and(
+          eq(vesselPlanningV2.crewUuid, crewMembersV2.crewUuid),
+          eq(vesselPlanningV2.isDeleted, false),
+          eq(vesselPlanningV2.isArchived, false),
+        )
+      )
+      .leftJoin(masterVessels, eq(vesselPlanningV2.vesselUuid, masterVessels.vesselUuid))
+      .where(and(...conditions))
+      .orderBy(desc(crewMembersV2.createdAt));
+
+    const uniqueByEmpNo = new Map<string, any>();
+    for (const row of results) {
+      const key = row.empNo || row.crewUuid || String(row.id);
+      if (!uniqueByEmpNo.has(key)) {
+        uniqueByEmpNo.set(key, row);
+      }
+    }
+
+    let enriched = Array.from(uniqueByEmpNo.values());
+
+    if (filters?.search) {
+      const searchLower = filters.search.toLowerCase();
+      enriched = enriched.filter(
+        (crew: any) =>
+          crew.firstName?.toLowerCase().includes(searchLower) ||
+          crew.familyName?.toLowerCase().includes(searchLower) ||
+          crew.empNo?.toLowerCase().includes(searchLower) ||
+          crew.employeeId?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return enriched;
+  },
+
   async getById(id: number): Promise<CrewMemberV2> {
     const crew = await crewMembersRepository.findById(id);
     if (!crew) {

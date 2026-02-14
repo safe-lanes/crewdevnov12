@@ -22,6 +22,7 @@ const router = Router();
 // CREW MEMBERS
 // ============================================
 router.get("/crew", crewMembersController.getAll);
+router.get("/crew/enriched", crewMembersController.getAllEnriched);
 router.get("/crew/details", crewMembersController.getAllWithDetails);
 router.post("/crew", crewMembersController.create);
 router.post("/crew/with-data", crewMembersController.createWithRelatedData);

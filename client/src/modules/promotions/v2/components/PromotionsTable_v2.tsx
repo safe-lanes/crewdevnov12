@@ -173,7 +173,7 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
   const { normalizeRank, isLoading: isLoadingRanks } = useRankNormalization();
 
   const { data: crewMembers = [], isLoading } = useQuery({
-    queryKey: ['/api/v2/crew-pool/crew'],
+    queryKey: ['/api/v2/crew-pool/crew/enriched'],
     staleTime: REVIEW_DATA_STALE_TIME,
   });
 
@@ -360,7 +360,7 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
         const statusVal = crew.status || '';
         const isOnLeave = statusVal.toLowerCase().includes('leave') || 
                           statusVal.toLowerCase().includes('available');
-        const vesselLeave = isOnLeave ? 'On Leave' : '-';
+        const vesselLeave = crew.vesselName ? crew.vesselName : (isOnLeave ? 'On Leave' : '-');
         
         const dobString = crew.dob || crew.dateOfBirth || '-';
         const calculatedAge = calculateAge(dobString);
@@ -408,11 +408,11 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
           dob: dobString,
           ageValue: calculatedAge !== null ? calculatedAge : '-',
           age: ageStatus,
-          nationality: crew.nationality || crew.nationalityUuid || 'Unknown',
+          nationality: crew.nationalityName || crew.nationality || 'Unknown',
           currentRank: currentRank,
           promotionToRank: nextRank || '-',
           vesselLeave: vesselLeave,
-          presentVessel: null,
+          presentVessel: crew.vesselUuid || null,
           license: licenseStatus,
           sea: seaStatus,
           reco: recoStatus,
