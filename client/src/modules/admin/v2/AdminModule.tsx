@@ -1227,6 +1227,27 @@ const AdminModuleInner = (): JSX.Element => {
   };
   const { data: rawMasterData = [], isLoading: masterDataLoading, error: masterDataError } = useMasterDataEntries(selectedMaster);
 
+  // V2 Masters: License & DCE (016), Manning Agents (021), Crew Pool (022), Appraisal Type (023)
+  const {
+    data: licensesDceData,
+    isLoading: licensesDceLoading,
+  } = useLicensesDceV2({ enabled: selectedAdminPage === "masters" });
+
+  const {
+    data: manningAgentsData,
+    isLoading: manningAgentsLoading,
+  } = useManningAgentsV2({ enabled: selectedAdminPage === "masters" });
+
+  const {
+    data: crewPoolsData,
+    isLoading: crewPoolsLoading,
+  } = useCrewPoolsV2({ enabled: selectedAdminPage === "masters" });
+
+  const {
+    data: appraisalTypesData,
+    isLoading: appraisalTypesLoading,
+  } = useAppraisalTypesV2({ enabled: selectedAdminPage === "masters" });
+
   // Apply vessel/port master field mapping if needed
   // PERFORMANCE: Only transform when on masters tab to avoid expensive map operations on every render
   const masterData = useMemo(() => {
@@ -1419,27 +1440,6 @@ const AdminModuleInner = (): JSX.Element => {
     ? externalUsersData 
     : (externalUsersData as any)?.users || [];
 
-
-  // V2 Masters: License & DCE (016), Manning Agents (021), Crew Pool (022), Appraisal Type (023)
-  const {
-    data: licensesDceData,
-    isLoading: licensesDceLoading,
-  } = useLicensesDceV2({ enabled: selectedAdminPage === "masters" });
-
-  const {
-    data: manningAgentsData,
-    isLoading: manningAgentsLoading,
-  } = useManningAgentsV2({ enabled: selectedAdminPage === "masters" });
-
-  const {
-    data: crewPoolsData,
-    isLoading: crewPoolsLoading,
-  } = useCrewPoolsV2({ enabled: selectedAdminPage === "masters" });
-
-  const {
-    data: appraisalTypesData,
-    isLoading: appraisalTypesLoading,
-  } = useAppraisalTypesV2({ enabled: selectedAdminPage === "masters" });
 
   // Vessel Groups Data (for vessel group selection)
   // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)
