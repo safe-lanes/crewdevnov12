@@ -294,19 +294,16 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
     if (!review) return 'no-info';
     
     const meetsStatus = review._parsedMeetsStatus || {};
-    const verifiedStatus = review._parsedVerifiedStatus || {};
     const meetsRaw = meetsStatus[criteriaId];
     const meets = typeof meetsRaw === 'string' ? meetsRaw.toLowerCase() : meetsRaw;
     
     if (meets === 'yes') return 'met';
+    if (meets === 'no' || meets === 'pending') return 'pending';
     
+    const verifiedStatus = review._parsedVerifiedStatus || {};
     const verified = verifiedStatus[criteriaId];
     if (verified === 'yes') return 'met';
     if (verified === 'na') return 'met';
-    
-    if (meets === 'no') return 'not-met';
-    if (meets === 'pending') return 'pending';
-    
     if (Object.keys(verifiedStatus).length > 0 || Object.keys(meetsStatus).length > 0) return 'pending';
     
     return 'no-info';
@@ -334,36 +331,22 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
       return 'no-info';
     }
     
-    const verifiedStatus = review._parsedVerifiedStatus || {};
-    
-    const parentMeets = normalize(meetsStatus[parentId]);
-    if (parentMeets === 'yes') return 'met';
-    
-    const childMeetsIds = Object.keys(meetsStatus).filter(
-      id => id.startsWith(parentId) && id.length > parentId.length
-    );
-    const childVerifiedIds = Object.keys(verifiedStatus).filter(
+    const childIds = Object.keys(meetsStatus).filter(
       id => id.startsWith(parentId) && id.length > parentId.length
     );
     
-    const allChildIds = [...new Set([...childMeetsIds, ...childVerifiedIds])];
-    
-    if (allChildIds.length > 0) {
-      const allMet = allChildIds.every(id => {
-        const m = normalize(meetsStatus[id]);
-        if (m === 'yes') return true;
-        const v = verifiedStatus[id];
-        if (v === 'yes' || v === 'na') return true;
-        return false;
-      });
-      if (allMet) return 'met';
-      return 'pending';
+    if (childIds.length === 0) {
+      const parentValue = normalize(meetsStatus[parentId]);
+      if (parentValue === 'yes') return 'met';
+      if (parentValue === 'no' || parentValue === 'pending') return 'pending';
+      
+      if (Object.keys(meetsStatus).length > 0) return 'pending';
+      return 'no-info';
     }
     
-    if (parentMeets === 'no' || parentMeets === 'pending') return 'pending';
-    
-    if (Object.keys(meetsStatus).length > 0) return 'pending';
-    return 'no-info';
+    const childValues = childIds.map(id => normalize(meetsStatus[id]) || '');
+    if (childValues.every(v => v === 'yes')) return 'met';
+    return 'pending';
   }, []);
 
   const promotionData = useMemo(() => {
