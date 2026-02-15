@@ -464,7 +464,19 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
         id: 'a2.5a', 
         criteria: 'A2.5a Promotion Checklist Completed?', 
         required: a2Config?.minChecklistCompletionPercent != null ? `${a2Config.minChecklistCompletionPercent}%` : '', 
-        resultFromDb: '', 
+        resultFromDb: (() => {
+          if (existingReviewData?.checklistProgressData) {
+            try {
+              const prog = calculateChecklistProgressFromJson(
+                existingReviewData.checklistProgressData,
+                a2Config?.minChecklistVerifications ?? 1,
+                a2Config?.minChecklistCompletionPercent ?? 85
+              );
+              if (prog.totalRequired > 0) return `${prog.percentage}%`;
+            } catch {}
+          }
+          return '';
+        })(), 
         verified: '', 
         hasInfo: true 
       },
@@ -506,7 +518,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
         verified: existingVerifiedMap.get(row.id) || savedVerifiedStatus[row.id] || row.verified,
       }));
     });
-  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult, a2_4_recommendationsResult, existingReviewData?.criteriaVerifiedStatus]);
+  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult, a2_4_recommendationsResult, existingReviewData?.criteriaVerifiedStatus, existingReviewData?.checklistProgressData]);
 
   const [cesTests, setCesTests] = useState<CesTest[]>([]);
 
