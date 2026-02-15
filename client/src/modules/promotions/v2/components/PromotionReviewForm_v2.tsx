@@ -773,24 +773,9 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       return required.trim().toLowerCase() === result.trim().toLowerCase() ? 'yes' : 'no';
     };
     
-    const otherCriteriaChildIds = new Set(
-      criteriaData.filter(row => row.id.startsWith('a2.6') && row.id.length > 4).map(row => row.id)
-    );
-    
     criteriaData.forEach(row => {
       criteriaVerifiedStatus[row.id] = row.verified;
-      
-      if (otherCriteriaChildIds.has(row.id) || row.id === 'a2.8') {
-        if (row.verified === 'yes') {
-          criteriaMeetsStatus[row.id] = 'yes';
-        } else if (row.verified === 'na') {
-          criteriaMeetsStatus[row.id] = 'yes';
-        } else {
-          criteriaMeetsStatus[row.id] = 'pending';
-        }
-      } else {
-        criteriaMeetsStatus[row.id] = computeMeetsStatus(row.required, row.resultFromDb);
-      }
+      criteriaMeetsStatus[row.id] = computeMeetsStatus(row.required, row.resultFromDb);
     });
     
     const parentIds = ['a2.3', 'a2.6'];
@@ -800,8 +785,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       );
       if (childIds.length > 0) {
         const childValues = childIds.map(id => criteriaMeetsStatus[id]);
-        const allYesOrNa = childValues.every(v => v === 'yes');
-        if (allYesOrNa) {
+        if (childValues.some(v => v === 'yes')) {
           criteriaMeetsStatus[parentId] = 'yes';
         } else {
           criteriaMeetsStatus[parentId] = 'pending';
