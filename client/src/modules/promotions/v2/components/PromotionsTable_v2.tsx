@@ -298,10 +298,16 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
     const meets = typeof meetsRaw === 'string' ? meetsRaw.toLowerCase() : meetsRaw;
     
     if (meets === 'yes') return 'met';
-    if (meets === 'no' || meets === 'pending') return 'pending';
+    if (meets === 'no') return 'pending';
     
     const verifiedStatus = review._parsedVerifiedStatus || {};
     const verified = verifiedStatus[criteriaId];
+    if (meets === 'pending') {
+      if (verified === 'yes') return 'met';
+      if (verified === 'na') return 'met';
+      return 'pending';
+    }
+    
     if (verified === 'yes') return 'met';
     if (verified === 'na') return 'met';
     if (Object.keys(verifiedStatus).length > 0 || Object.keys(meetsStatus).length > 0) return 'pending';
@@ -344,8 +350,17 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
       return 'no-info';
     }
     
-    const childValues = childIds.map(id => normalize(meetsStatus[id]) || '');
-    if (childValues.every(v => v === 'yes')) return 'met';
+    const verifiedStatus = review._parsedVerifiedStatus || {};
+    const childStatuses = childIds.map(id => {
+      const m = normalize(meetsStatus[id]) || '';
+      if (m === 'yes') return 'met';
+      if (m === 'no') return 'not-met';
+      const v = verifiedStatus[id];
+      if (v === 'yes' || v === 'na') return 'met';
+      return 'pending';
+    });
+    if (childStatuses.every(s => s === 'met')) return 'met';
+    if (childStatuses.some(s => s === 'not-met')) return 'pending';
     return 'pending';
   }, []);
 

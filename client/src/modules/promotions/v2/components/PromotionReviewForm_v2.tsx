@@ -747,7 +747,12 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     const criteriaVerifiedStatus: Record<string, string> = {};
     const criteriaMeetsStatus: Record<string, string> = {};
     
-    const computeMeetsStatus = (required: string, result: string): string => {
+    const computeMeetsStatus = (required: string, result: string, verified: string): string => {
+      if (!required && !result) {
+        if (verified === 'yes') return 'yes';
+        if (verified === 'no') return 'no';
+        return 'na';
+      }
       if (!required || !result) return 'pending';
       
       const resultLower = result.trim().toLowerCase();
@@ -775,7 +780,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     
     criteriaData.forEach(row => {
       criteriaVerifiedStatus[row.id] = row.verified;
-      criteriaMeetsStatus[row.id] = computeMeetsStatus(row.required, row.resultFromDb);
+      criteriaMeetsStatus[row.id] = computeMeetsStatus(row.required, row.resultFromDb, row.verified);
     });
     
     const parentIds = ['a2.3', 'a2.6'];
