@@ -523,6 +523,20 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   const [cesTests, setCesTests] = useState<CesTest[]>([]);
 
   useEffect(() => {
+    if (cesTests.length > 0) {
+      const results = cesTests.map(t => t.result || '');
+      const allPassOrNa = results.every(r => {
+        const rl = r.trim().toLowerCase();
+        return rl === 'pass' || rl === 'na' || rl === 'n/a';
+      });
+      const cesResult = allPassOrNa ? 'Pass' : '';
+      setCriteriaData(prev => prev.map(row =>
+        row.id === 'a2.7' ? { ...row, resultFromDb: cesResult } : row
+      ));
+    }
+  }, [cesTests]);
+
+  useEffect(() => {
     setCesTests(prev => {
       if (a2Config?.cesTests?.length) {
         const existingValuesMap = new Map(prev.map(test => [test.id, { date: test.date, score: test.score, result: test.result }]));
@@ -787,8 +801,8 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     }
     
     if (cesTests.length > 0) {
-      const results = cesTests.map(t => t.result || '');
-      if (results.every(r => r === 'Pass' || r === 'NA')) {
+      const results = cesTests.map(t => (t.result || '').trim().toLowerCase());
+      if (results.every(r => r === 'pass' || r === 'na' || r === 'n/a')) {
         criteriaMeetsStatus['a2.7'] = 'yes';
       } else {
         criteriaMeetsStatus['a2.7'] = 'pending';
@@ -862,9 +876,11 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   };
 
   const getMeetsCriterion = useCallback((required: string, result: string) => {
-    if (!required || !result) return 'pending';
-    
+    if (!result) return 'pending';
     const resultLower = result.trim().toLowerCase();
+    if (resultLower === 'pass') return 'met';
+    if (!required) return 'pending';
+    
     if (resultLower === 'yes') return 'met';
     if (resultLower === 'no') return 'not-met';
     
