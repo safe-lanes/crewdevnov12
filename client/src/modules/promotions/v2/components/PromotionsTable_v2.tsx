@@ -319,15 +319,16 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
     if (parentId === 'a2.7') {
       const cesStatus = normalize(meetsStatus['a2.7']);
       if (cesStatus === 'yes') return 'met';
-      if (cesStatus === 'no' || cesStatus === 'pending') return 'pending';
       
       const cesTests = review._parsedCesTests || [];
+      if (cesTests.length > 0) {
+        const results = cesTests.map((t: any) => ((t.result || '') as string).trim().toLowerCase());
+        if (results.every((r: string) => r === 'pass' || r === 'na' || r === 'n/a')) return 'met';
+        return 'pending';
+      }
       
-      if (cesTests.length === 0) return 'no-info';
-      
-      const results = cesTests.map((t: any) => t.result || '');
-      if (results.every((r: string) => r === 'Pass' || r === 'NA')) return 'met';
-      return 'pending';
+      if (cesStatus === 'no' || cesStatus === 'pending') return 'pending';
+      return 'no-info';
     }
     
     const childIds = Object.keys(meetsStatus).filter(
