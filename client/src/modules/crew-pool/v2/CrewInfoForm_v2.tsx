@@ -2831,12 +2831,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       {experienceData?.ocw ?? '—'}
                     </div>
                   </div>
-                  <div className="text-center flex flex-col items-center h-16 justify-between">
+                  <div className="text-center flex flex-col items-center h-16 justify-between overflow-hidden">
                     <div>
                       <div className="text-xs text-gray-500">Endors</div>
                       <div className="text-xs text-gray-500">&nbsp;</div>
                     </div>
-                    <div className="text-2xl font-medium text-black" data-testid="text-endorsements-count">
+                    <div 
+                      className="text-xs font-medium text-black w-full overflow-hidden text-ellipsis line-clamp-2" 
+                      title={typeof experienceData?.endorsements === 'string' ? experienceData.endorsements : ''}
+                      data-testid="text-endorsements-count"
+                    >
                       {experienceData?.endorsements ?? '—'}
                     </div>
                   </div>
