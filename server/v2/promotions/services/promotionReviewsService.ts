@@ -386,7 +386,12 @@ export class PromotionReviewsService {
     const auditedData = applyAuditUser(data, true);
     const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+      selectedVesselTypeForA2_3b: _svt,
       ...coreFields } = auditedData;
+
+    if (_svt !== undefined && coreFields.selectedVesselTypeForA23b === undefined) {
+      coreFields.selectedVesselTypeForA23b = _svt;
+    }
 
     const review = await reviewsRepo.create(coreFields);
 
@@ -403,7 +408,12 @@ export class PromotionReviewsService {
     const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       id: _id, reviewUuid: _ruuid, createdAt: _ca, updatedAt: _ua, isDeleted: _del,
+      selectedVesselTypeForA2_3b: _svt2,
       ...coreFields } = auditedData;
+
+    if (_svt2 !== undefined && coreFields.selectedVesselTypeForA23b === undefined) {
+      coreFields.selectedVesselTypeForA23b = _svt2;
+    }
 
     const review = await reviewsRepo.update(reviewUuid, coreFields);
     if (!review) return null;
