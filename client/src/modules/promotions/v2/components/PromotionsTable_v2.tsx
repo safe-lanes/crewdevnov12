@@ -294,16 +294,17 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
     if (!review) return 'no-info';
     
     const meetsStatus = review._parsedMeetsStatus || {};
+    const verifiedStatus = review._parsedVerifiedStatus || {};
     const meetsRaw = meetsStatus[criteriaId];
     const meets = typeof meetsRaw === 'string' ? meetsRaw.toLowerCase() : meetsRaw;
     
     if (meets === 'yes') return 'met';
-    if (meets === 'no' || meets === 'pending') return 'pending';
     
-    const verifiedStatus = review._parsedVerifiedStatus || {};
     const verified = verifiedStatus[criteriaId];
     if (verified === 'yes') return 'met';
     if (verified === 'na') return 'met';
+    
+    if (meets === 'no' || meets === 'pending') return 'pending';
     if (Object.keys(verifiedStatus).length > 0 || Object.keys(meetsStatus).length > 0) return 'pending';
     
     return 'no-info';
@@ -331,11 +332,19 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
       return 'no-info';
     }
     
+    const verifiedStatus = review._parsedVerifiedStatus || {};
+    
     const childIds = Object.keys(meetsStatus).filter(
       id => id.startsWith(parentId) && id.length > parentId.length
     );
     
-    if (childIds.length === 0) {
+    const verifiedChildIds = Object.keys(verifiedStatus).filter(
+      id => id.startsWith(parentId) && id.length > parentId.length
+    );
+    
+    const allChildIds = [...new Set([...childIds, ...verifiedChildIds])];
+    
+    if (allChildIds.length === 0) {
       const parentValue = normalize(meetsStatus[parentId]);
       if (parentValue === 'yes') return 'met';
       if (parentValue === 'no' || parentValue === 'pending') return 'pending';
@@ -344,8 +353,14 @@ export const PromotionsTable_v2: React.FC<PromotionsTableProps> = ({
       return 'no-info';
     }
     
-    const childValues = childIds.map(id => normalize(meetsStatus[id]) || '');
-    if (childValues.every(v => v === 'yes')) return 'met';
+    const allChildrenMet = allChildIds.every(id => {
+      const meetsVal = normalize(meetsStatus[id]);
+      if (meetsVal === 'yes') return true;
+      const verifiedVal = verifiedStatus[id];
+      if (verifiedVal === 'yes' || verifiedVal === 'na') return true;
+      return false;
+    });
+    if (allChildrenMet) return 'met';
     return 'pending';
   }, []);
 
