@@ -956,9 +956,10 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     
     if (parentId === 'a2.7') {
       cesTests.forEach(test => {
-        if (test.result === 'Pass') {
+        const rl = (test.result || '').trim().toLowerCase();
+        if (rl === 'pass') {
           childVerifiedValues.push('yes');
-        } else if (test.result === 'NA') {
+        } else if (rl === 'na' || rl === 'n/a') {
           childVerifiedValues.push('na');
         } else {
           childVerifiedValues.push('');
