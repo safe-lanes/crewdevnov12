@@ -1635,20 +1635,25 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 });
                                                                             const hasAppraisal = crewAppraisals.length > 0;
                                                                             const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
-                                                                            const isDraft = latestAppraisal?.status === 'draft' || latestAppraisal?.status === 'preliminary';
-                                                                            const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'View') : 'Add';
-                                                                            const buttonConfig = {
+                                                                            const status = latestAppraisal?.status?.toLowerCase();
+                                                                            const isDraft = status === 'draft' || status === 'preliminary';
+                                                                            const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
+                                                                            const buttonConfig = isDraft ? {
                                                                                 text: buttonText,
                                                                                 appraisalId: latestAppraisal?.id,
                                                                                 status: latestAppraisal?.status
+                                                                            } : {
+                                                                                text: 'Add',
+                                                                                appraisalId: undefined,
+                                                                                status: undefined
                                                                             };
                                                                             return (
                                                                                 <Button
-                                                                                    variant="link"
+                                                                                    variant="ghost"
                                                                                     size="sm"
+                                                                                    className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                                                     onClick={() => handleAppraisalClick(planning, buttonConfig)}
-                                                                                    className={hasAppraisal ? 'text-green-600' : 'text-blue-600'}
-                                                                                    data-testid={`button-appraisal-${index + 1}`}
+                                                                                    data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
                                                                                 >
                                                                                     {buttonText}
                                                                                 </Button>
@@ -1759,20 +1764,25 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 });
                                                                             const hasAppraisal = crewAppraisals.length > 0;
                                                                             const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
-                                                                            const isDraft = latestAppraisal?.status === 'draft' || latestAppraisal?.status === 'preliminary';
-                                                                            const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'View') : 'Add';
-                                                                            const buttonConfig = {
+                                                                            const status = latestAppraisal?.status?.toLowerCase();
+                                                                            const isDraft = status === 'draft' || status === 'preliminary';
+                                                                            const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
+                                                                            const buttonConfig = isDraft ? {
                                                                                 text: buttonText,
                                                                                 appraisalId: latestAppraisal?.id,
                                                                                 status: latestAppraisal?.status
+                                                                            } : {
+                                                                                text: 'Add',
+                                                                                appraisalId: undefined,
+                                                                                status: undefined
                                                                             };
                                                                             return (
                                                                                 <Button
-                                                                                    variant="link"
+                                                                                    variant="ghost"
                                                                                     size="sm"
+                                                                                    className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                                                     onClick={() => handleAppraisalClick(planning, buttonConfig)}
-                                                                                    className={hasAppraisal ? 'text-green-600' : 'text-blue-600'}
-                                                                                    data-testid={`button-appraisal-${index + 1}`}
+                                                                                    data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
                                                                                 >
                                                                                     {buttonText}
                                                                                 </Button>
