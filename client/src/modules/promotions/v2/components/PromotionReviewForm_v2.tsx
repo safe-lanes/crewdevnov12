@@ -122,16 +122,24 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
   const approverMasterData = useMemo(() => {
     const users = usersV2Data || [];
     if (users.length > 0) {
-      const displayNames = users
+      const seen = new Set<string>();
+      return users
         .filter((user: any) => user.userType?.toLowerCase() === 'office')
-        .map((user: any) => user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`)
-        .filter((name: string) => name && name.trim());
-      return [...new Set(displayNames)];
+        .map((user: any) => ({
+          userUuid: user.userUuid || user.uuid,
+          displayName: user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`,
+        }))
+        .filter((item: { userUuid: string; displayName: string }) => {
+          if (!item.userUuid || !item.displayName?.trim()) return false;
+          if (seen.has(item.userUuid)) return false;
+          seen.add(item.userUuid);
+          return true;
+        });
     }
     return [];
   }, [usersV2Data]);
   
-  const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<string[]>([]);
+  const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<{ userUuid: string; displayName: string }[]>([]);
 
   const presentRank = crewMemberData?.presentRank ?? '';
 
@@ -710,7 +718,16 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
             ? JSON.parse((existingReviewData as any).selectedApproversForSubmission)
             : (existingReviewData as any).selectedApproversForSubmission;
           if (Array.isArray(selectedApprovers)) {
-            setSelectedApproversForSubmission(selectedApprovers);
+            const normalized = selectedApprovers.map((item: any) => {
+              if (typeof item === 'string') {
+                const match = approverMasterData.find(
+                  (a: { userUuid: string; displayName: string }) => a.displayName === item
+                );
+                return { userUuid: match?.userUuid || '', displayName: item };
+              }
+              return { userUuid: item.userUuid || '', displayName: item.displayName || item.approver || '' };
+            });
+            setSelectedApproversForSubmission(normalized);
           }
         } catch {}
       }
@@ -729,6 +746,19 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       }
     }
   }, [existingReviewData]);
+
+  useEffect(() => {
+    if (approverMasterData.length === 0) return;
+    setSelectedApproversForSubmission(prev => {
+      const hasEmpty = prev.some(a => !a.userUuid);
+      if (!hasEmpty) return prev;
+      return prev.map(a => {
+        if (a.userUuid) return a;
+        const match = approverMasterData.find(m => m.displayName === a.displayName);
+        return match ? { userUuid: match.userUuid, displayName: a.displayName } : a;
+      });
+    });
+  }, [approverMasterData]);
 
   useEffect(() => {
     if (!isLoadingReview && !existingReviewData && !hasLoadedA4Ref.current) {
@@ -1122,12 +1152,12 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
     setComments(prev => prev.filter(c => c.id !== id));
   }, []);
 
-  const toggleApproverSelection = useCallback((approverName: string) => {
+  const toggleApproverSelection = useCallback((approver: { userUuid: string; displayName: string }) => {
     setSelectedApproversForSubmission(prev => {
-      if (prev.includes(approverName)) {
-        return prev.filter(a => a !== approverName);
+      if (prev.some(a => a.userUuid === approver.userUuid)) {
+        return prev.filter(a => a.userUuid !== approver.userUuid);
       } else {
-        return [...prev, approverName];
+        return [...prev, approver];
       }
     });
   }, []);
@@ -1146,14 +1176,31 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       return;
     }
 
+    const resolvedApprovers = selectedApproversForSubmission.map(a => {
+      if (a.userUuid) return a;
+      const match = approverMasterData.find(m => m.displayName === a.displayName);
+      return match ? { userUuid: match.userUuid, displayName: a.displayName } : a;
+    });
+    
+    const unresolved = resolvedApprovers.filter(a => !a.userUuid);
+    if (unresolved.length > 0) {
+      toast({
+        title: "Approver Data Issue",
+        description: `Could not resolve identity for: ${unresolved.map(a => a.displayName).join(', ')}. Please re-select approvers.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmittingForApproval(true);
+    setSelectedApproversForSubmission(resolvedApprovers);
     
     const currentDate = new Date().toISOString().split('T')[0];
     
-    const newApprovers: Approver[] = selectedApproversForSubmission.map((approverName, index) => ({
-      id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+    const newApprovers: Approver[] = resolvedApprovers.map((approverObj) => ({
+      id: approverObj.userUuid,
       date: currentDate,
-      approver: approverName,
+      approver: approverObj.displayName,
       status: 'pending',
       approval: '',
       comments: '',
@@ -1206,7 +1253,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval]);
+  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
@@ -1408,7 +1455,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
                             {selectedApproversForSubmission.length === 0
                               ? "Approver"
                               : selectedApproversForSubmission.length === 1
-                                ? selectedApproversForSubmission[0]
+                                ? selectedApproversForSubmission[0].displayName
                                 : `${selectedApproversForSubmission.length} Approvers Selected`}
                             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
@@ -1420,18 +1467,18 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
                             ) : approverMasterData.length === 0 ? (
                               <div className="px-3 py-4 text-sm text-gray-500 text-center">No office users found</div>
                             ) : (
-                              approverMasterData.map((approverName: string) => (
+                              approverMasterData.map((approverItem: { userUuid: string; displayName: string }) => (
                                 <div
-                                  key={approverName}
+                                  key={approverItem.userUuid}
                                   className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                  onClick={() => toggleApproverSelection(approverName)}
-                                  data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                                  onClick={() => toggleApproverSelection(approverItem)}
+                                  data-testid={`checkbox-approver-${approverItem.displayName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
                                 >
                                   <Checkbox
-                                    checked={selectedApproversForSubmission.includes(approverName)}
+                                    checked={selectedApproversForSubmission.some(a => a.userUuid === approverItem.userUuid)}
                                     className="mr-3"
                                   />
-                                  <span className="text-sm">{approverName}</span>
+                                  <span className="text-sm">{approverItem.displayName}</span>
                                 </div>
                               ))
                             )}
@@ -1478,7 +1525,7 @@ export const PromotionReviewForm_v2: React.FC<PromotionReviewFormProps> = ({
               onRemoveVesselClass={removeVesselClass}
               onSave={handleSaveDraft}
               onSubmit={handleSubmitPartB}
-              approverNames={approverMasterData}
+              approverNames={approverMasterData.map(a => a.displayName)}
             />
           )}
 

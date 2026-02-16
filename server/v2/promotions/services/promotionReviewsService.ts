@@ -125,7 +125,10 @@ function assembleV1Response(
   }));
   const selectedApproversForSubmission = approvals
     .filter(a => a.isSelectedForSubmission)
-    .map(a => a.approver || '');
+    .map(a => ({
+      userUuid: a.approverId || '',
+      displayName: a.approver || '',
+    }));
 
   const sectionsMap = new Map<string, { id: string; title: string; assessmentPoints: any[] }>();
   for (const cp of checklistProgress) {
@@ -542,11 +545,19 @@ export class PromotionReviewsService {
         });
       }
       const selectedApprovers = this.parseJson(data.selectedApproversForSubmission, []);
-      for (const name of selectedApprovers) {
-        approvalRows.push({
-          approver: name,
-          isSelectedForSubmission: true,
-        });
+      for (const item of selectedApprovers) {
+        if (typeof item === 'string') {
+          approvalRows.push({
+            approver: item,
+            isSelectedForSubmission: true,
+          });
+        } else {
+          approvalRows.push({
+            approverId: item.userUuid || null,
+            approver: item.displayName || item.approver || '',
+            isSelectedForSubmission: true,
+          });
+        }
       }
       tasks.push(approvalsRepo.replaceForReview(reviewUuid, approvalRows));
     }

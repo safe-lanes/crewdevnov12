@@ -58,6 +58,7 @@ export class ApprovalsRepository {
       const match = existing.find(e => {
         if (usedExistingIds.includes(e.id)) return false;
         if (a.isSelectedForSubmission && e.isSelectedForSubmission) {
+          if (a.approverId && e.approverId) return e.approverId === a.approverId;
           return e.approver === a.approver;
         }
         if (!a.isSelectedForSubmission && !e.isSelectedForSubmission) {
