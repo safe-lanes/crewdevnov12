@@ -35,10 +35,13 @@ export class ApprovalsRepository {
 
   async replaceForReview(reviewUuid: string, approvals: Omit<InsertPromoApprovalV2, "apUuid" | "reviewUuid">[]): Promise<PromoApprovalV2[]> {
     const db = getDb();
-    const existing = await db
+    const allRows = await db
       .select()
       .from(promoApprovalsV2)
-      .where(and(eq(promoApprovalsV2.reviewUuid, reviewUuid), eq(promoApprovalsV2.isDeleted, false)));
+      .where(eq(promoApprovalsV2.reviewUuid, reviewUuid));
+
+    const existing = allRows.filter(e => !e.isDeleted);
+    const softDeleted = allRows.filter(e => e.isDeleted);
 
     if (approvals.length === 0) {
       if (existing.length > 0) {
@@ -50,13 +53,9 @@ export class ApprovalsRepository {
       return [];
     }
 
-    const results: PromoApprovalV2[] = [];
-    const usedExistingIds: number[] = [];
-
-    for (let i = 0; i < approvals.length; i++) {
-      const a = approvals[i];
-      const match = existing.find(e => {
-        if (usedExistingIds.includes(e.id)) return false;
+    const matchRow = (a: any, candidates: PromoApprovalV2[], usedIds: number[]): PromoApprovalV2 | undefined => {
+      return candidates.find(e => {
+        if (usedIds.includes(e.id)) return false;
         if (a.isSelectedForSubmission && e.isSelectedForSubmission) {
           if (a.approverId && e.approverId) return e.approverId === a.approverId;
           return e.approver === a.approver;
@@ -67,6 +66,23 @@ export class ApprovalsRepository {
         }
         return false;
       });
+    };
+
+    const results: PromoApprovalV2[] = [];
+    const usedExistingIds: number[] = [];
+
+    for (let i = 0; i < approvals.length; i++) {
+      const a = approvals[i];
+      let match = matchRow(a, existing, usedExistingIds);
+
+      if (!match) {
+        match = softDeleted.find(e => {
+          if (usedExistingIds.includes(e.id)) return false;
+          if (a.approverId && e.approverId) return e.approverId === a.approverId;
+          if (a.approver && e.approver) return e.approver === a.approver;
+          return false;
+        });
+      }
 
       if (match) {
         usedExistingIds.push(match.id);
@@ -82,6 +98,7 @@ export class ApprovalsRepository {
             isFromPartA: a.isFromPartA ?? match.isFromPartA,
             isSelectedForSubmission: a.isSelectedForSubmission ?? match.isSelectedForSubmission,
             sortOrder: i,
+            isDeleted: false,
             updatedAt: new Date(),
           })
           .where(eq(promoApprovalsV2.id, match.id))
@@ -96,12 +113,12 @@ export class ApprovalsRepository {
       }
     }
 
-    const unusedIds = existing.filter(e => !usedExistingIds.includes(e.id)).map(e => e.id);
-    if (unusedIds.length > 0) {
+    const unusedActiveIds = existing.filter(e => !usedExistingIds.includes(e.id)).map(e => e.id);
+    if (unusedActiveIds.length > 0) {
       await db
         .update(promoApprovalsV2)
         .set({ isDeleted: true, updatedAt: new Date() })
-        .where(inArray(promoApprovalsV2.id, unusedIds));
+        .where(inArray(promoApprovalsV2.id, unusedActiveIds));
     }
 
     return results;
