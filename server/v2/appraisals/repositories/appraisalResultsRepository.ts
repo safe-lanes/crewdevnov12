@@ -1,4 +1,4 @@
-import { eq, and, inArray, desc, ne } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { getDb } from "../../db";
 import { appraisalResultsV2 } from "../../../../shared/v2/appraisals/schema";
 import type { AppraisalResultV2, InsertAppraisalResultV2 } from "../../../../shared/v2/appraisals/types";
@@ -10,10 +10,7 @@ export class AppraisalResultsRepository {
     return db
       .select()
       .from(appraisalResultsV2)
-      .where(and(
-        eq(appraisalResultsV2.isDeleted, false),
-        ne(appraisalResultsV2.status, "draft")
-      ))
+      .where(eq(appraisalResultsV2.isDeleted, false))
       .orderBy(desc(appraisalResultsV2.createdAt));
   }
 
