@@ -280,7 +280,7 @@ export const PromotionChecklistForm_v2: React.FC<PromotionChecklistFormProps> = 
       
       queryClient.invalidateQueries({ queryKey: ['/api/v2/promotions/reviews'] });
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/v2/promotions/reviews/crew/${promotionData.crewMemberId}/rank/${promotionData.promotionToRank}`] 
+        queryKey: [`/api/v2/promotions/reviews/crew/${promotionData.crewMemberId}/rank/${encodeURIComponent(promotionData.promotionToRank)}`] 
       });
       
       toast({
