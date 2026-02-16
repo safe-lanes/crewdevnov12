@@ -1635,7 +1635,8 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 });
                                                                             const hasAppraisal = crewAppraisals.length > 0;
                                                                             const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
-                                                                            const buttonText = hasAppraisal ? 'View' : 'Add';
+                                                                            const isDraft = latestAppraisal?.status === 'draft' || latestAppraisal?.status === 'preliminary';
+                                                                            const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'View') : 'Add';
                                                                             const buttonConfig = {
                                                                                 text: buttonText,
                                                                                 appraisalId: latestAppraisal?.id,
@@ -1758,7 +1759,8 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 });
                                                                             const hasAppraisal = crewAppraisals.length > 0;
                                                                             const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
-                                                                            const buttonText = hasAppraisal ? 'View' : 'Add';
+                                                                            const isDraft = latestAppraisal?.status === 'draft' || latestAppraisal?.status === 'preliminary';
+                                                                            const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'View') : 'Add';
                                                                             const buttonConfig = {
                                                                                 text: buttonText,
                                                                                 appraisalId: latestAppraisal?.id,
