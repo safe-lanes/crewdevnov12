@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 
 const AdminRouter = lazy(() => import("./modules/admin/index"));
-const ElementCrewAppraisals = lazy(() => import("./modules/crewing/ElementCrewAppraisals").then(m => ({ default: m.ElementCrewAppraisals })));
+const AppraisalsRouter = lazy(() => import("./modules/crewing/AppraisalsRouter"));
 const RecruitmentWrapper = lazy(() => import("./modules/recruitment/RecruitmentWrapper").then(m => ({ default: m.RecruitmentWrapper })));
 const CrewPoolModuleRouter = lazy(() => import("./modules/crew-pool").then(m => ({ default: m.CrewPoolModuleRouter })));
 const VesselRouter = lazy(() => import("./modules/vessel/index"));
@@ -39,7 +39,7 @@ function App() {
             <HeaderComponent />
             <Suspense fallback={<PageLoader />}>
               <Switch>
-                <Route path="/" component={ElementCrewAppraisals} />
+                <Route path="/" component={AppraisalsRouter} />
                 <Route path="/dashboard" component={DashboardPage} />
                 <Route path="/recruitment" component={RecruitmentWrapper} />
                 <Route path="/crew-pool" component={CrewPoolModuleRouter} />

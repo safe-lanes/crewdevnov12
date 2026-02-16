@@ -10,7 +10,7 @@ import { useViewport } from "@/hooks/useViewport";
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
-import { AppraisalForm } from "./AppraisalForm";
+import { AppraisalForm } from "./AppraisalForm_v2";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,10 +28,9 @@ import SectionTitleComponents from "@/components/Section/SectionTitleComponents"
 import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
-import { useExternalVessels } from "@/hooks/useExternalVessels";
-import { useCompanyRanks } from "@/hooks/useCompanyRanks";
-import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
-import { AppraisalsVersionToggle } from "./v2/components/AppraisalsVersionToggle";
+import { useVesselsV2, useVesselTypesV2 } from "@/hooks/v2/useMasterDataV2";
+import { useCompanyRanksV2 } from "@/modules/admin/v2/hooks/useAdminV2";
+import { AppraisalsVersionToggle } from "./components/AppraisalsVersionToggle";
 
 // Interface for combined crew member and appraisal data
 interface CrewAppraisalData {
@@ -153,7 +152,7 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
   );
 };
 
-export const ElementCrewAppraisals = (): JSX.Element => {
+export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   const viewport = useViewport();
   const isPhone = viewport === 'phone';
   const isTablet = viewport === 'tablet';
@@ -193,9 +192,9 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   });
 
   const { data: appraisalResults = [], isLoading: isLoadingAppraisals } = useQuery<AppraisalResult[]>({
-    queryKey: ["/api/appraisals"],
+    queryKey: ["/api/v2/appraisals"],
     queryFn: async () => {
-      const response = await fetch("/api/appraisals");
+      const response = await fetch("/api/v2/appraisals");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -203,36 +202,44 @@ export const ElementCrewAppraisals = (): JSX.Element => {
     },
   });
 
-  // Fetch company ranks for filters (uses labels from Admin > Rank Admin)
-  const { rankOptions: availableRankOptions = [], isLoading: ranksLoading } = useCompanyRanks();
+  // Fetch company ranks for filters from V2 admin endpoint
+  const { data: companyRanksV2Data = [] } = useCompanyRanksV2();
+  const availableRankOptions = useMemo(() => {
+    return (companyRanksV2Data as any[]).map((rank: any) => ({
+      value: rank.label || rank.name,
+      label: rank.label || rank.name,
+    }));
+  }, [companyRanksV2Data]);
 
-  // Use external SAIL ERP API for vessels (Master 014) - consistent with other modules
-  const { data: externalVessels = [] } = useExternalVessels();
-  
-  // Transform external vessels data to match the expected format for dropdown
+  // Use V2 Masters for vessels
+  const { data: vesselsV2Data = [] } = useVesselsV2();
+
   const vesselMasterData = useMemo(() => {
-    if (externalVessels && externalVessels.length > 0) {
-      return externalVessels.map((v: any, index: number) => ({
-        // Use deterministic ID: vuid > id > vessel name > index (for stable React keys)
-        entryId: v.vuid || v.id || v.vessel || `vessel-${index}`,
-        name: v.vessel || v.name || 'Unknown Vessel'
+    if (vesselsV2Data && vesselsV2Data.length > 0) {
+      return (vesselsV2Data as any[]).map((v: any, index: number) => ({
+        entryId: v.uuid || v.vuid || v.id || `vessel-${index}`,
+        name: v.name || v.vessel || 'Unknown Vessel'
       }));
     }
     return [];
-  }, [externalVessels]);
+  }, [vesselsV2Data]);
 
-  const { data: vesselTypeMasterData = [] } = useQuery<Array<{ entryId: string; name: string; level?: number; parentId?: string | null; code?: string }>>({
-    queryKey: ["/api/masters/004/data"],
-  });
+  // Use V2 Masters for vessel types
+  const { data: vesselTypesV2Data = [] } = useVesselTypesV2();
 
   const { data: nationalityMasterData = [] } = useQuery<Array<{ entryId: string; name: string; countryName?: string }>>({
-    queryKey: ["/api/masters/001/data"],
+    queryKey: ["/api/v2/masters/nationalities"],
   });
 
-  // Extract unique values from crew data for filters that have empty master data
   const uniqueNationalities = useMemo(() => {
-    if (nationalityMasterData.length > 0) return nationalityMasterData;
-    
+    if (nationalityMasterData.length > 0) {
+      return (nationalityMasterData as any[]).map((entry: any) => ({
+        entryId: entry.uuid || entry.entryId || entry.entry_id,
+        name: entry.name,
+        countryName: entry.name
+      }));
+    }
+
     const nationalities = new Set<string>();
     crewMembers.forEach(crew => {
       const crewDTO = fromStorageCrew(crew);
@@ -248,18 +255,14 @@ export const ElementCrewAppraisals = (): JSX.Element => {
   }, [nationalityMasterData, crewMembers]);
 
   const uniqueVesselTypes = useMemo(() => {
-    // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
-    if (vesselTypeMasterData.length > 0) {
-      const filteredTypes = vesselTypeMasterData.filter(vt => vt.level && vt.level >= 2);
-      if (filteredTypes.length > 0) return filteredTypes;
+    if ((vesselTypesV2Data as any[]).length > 0) {
+      return (vesselTypesV2Data as any[]).map((vt: any) => ({
+        entryId: vt.uuid || vt.entryId || vt.id,
+        name: vt.name
+      }));
     }
-    
-    // Fallback to static data
-    return DEFAULT_DROPDOWN_VESSEL_TYPES.map((vt, index) => ({
-      entryId: `VT-${index}`,
-      name: vt
-    }));
-  }, [vesselTypeMasterData]);
+    return [];
+  }, [vesselTypesV2Data]);
 
   const handleEditClick = useCallback((crewMember: CrewAppraisalData) => {
     setSelectedCrewMember(crewMember);
