@@ -1,0 +1,11 @@
+export { AppraisalResultsRepository } from "./appraisalResultsRepository";
+export { ApprTrainingsRepository } from "./apprTrainingsRepository";
+export { ApprTargetsRepository } from "./apprTargetsRepository";
+export { ApprCompetenceAssessmentsRepository } from "./apprCompetenceAssessmentsRepository";
+export { ApprBehaviouralAssessmentsRepository } from "./apprBehaviouralAssessmentsRepository";
+export { ApprTrainingNeedsRepository } from "./apprTrainingNeedsRepository";
+export { ApprRecommendationsRepository } from "./apprRecommendationsRepository";
+export { ApprAppraiserCommentsRepository } from "./apprAppraiserCommentsRepository";
+export { ApprSeafarerCommentsRepository } from "./apprSeafarerCommentsRepository";
+export { ApprOfficeReviewsRepository } from "./apprOfficeReviewsRepository";
+export { ApprTrainingFollowupsRepository } from "./apprTrainingFollowupsRepository";
