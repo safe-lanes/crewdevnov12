@@ -391,7 +391,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Fetch existing appraisal data when editing
   // Note: queryKey must include full URL since default fetcher uses queryKey[0] as the URL
   const { data: existingAppraisal } = useQuery<ExistingAppraisal | undefined>({
-    queryKey: ['/api/v2/appraisals', appraisalId],
+    queryKey: [`/api/v2/appraisals/${appraisalId}`],
     enabled: !!appraisalId,
   });
 
