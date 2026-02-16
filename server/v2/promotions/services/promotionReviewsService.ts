@@ -12,7 +12,9 @@ import {
 import { PromotionHierarchiesRepository } from "../../admin/repositories/promotionHierarchiesRepository";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import type { PromotionReviewV2, InsertPromotionReviewV2 } from "../../../../shared/v2/promotions/types";
-import { storage } from "../../../storage";
+import { getDb } from "../../db";
+import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { eq, and, isNull, or } from "drizzle-orm";
 
 const reviewsRepo = new PromotionReviewsRepository();
 const criteriaStatusRepo = new CriteriaStatusRepository();
@@ -212,8 +214,18 @@ export class PromotionReviewsService {
     let existing = 0;
 
     try {
-      const [crewMembers, hierarchies, existingReviews] = await Promise.all([
-        storage.getCrewMembers(),
+      const db = getDb();
+      const [v2CrewMembers, hierarchies, existingReviews] = await Promise.all([
+        db.select({
+          empNo: crewMembersV2.empNo,
+          presentRank: crewMembersV2.presentRank,
+        })
+        .from(crewMembersV2)
+        .where(
+          and(
+            or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
+          )
+        ),
         hierarchiesRepo.findAll(),
         reviewsRepo.findAll(),
       ]);
@@ -232,17 +244,17 @@ export class PromotionReviewsService {
 
       const reviewsToCreate: { crewMemberId: string; promotionToRank: string }[] = [];
 
-      for (const crew of crewMembers) {
+      for (const crew of v2CrewMembers) {
         const currentRank = crew.presentRank || '';
         if (!currentRank || !ranksInHierarchies.has(currentRank)) continue;
         const nextRank = findNextPromotionRank(currentRank, hierarchies);
         if (!nextRank) continue;
-        const key = `${crew.id}__${nextRank}`;
+        const key = `${crew.empNo}__${nextRank}`;
         if (existingKeys.has(key)) {
           existing++;
           continue;
         }
-        reviewsToCreate.push({ crewMemberId: crew.id, promotionToRank: nextRank });
+        reviewsToCreate.push({ crewMemberId: crew.empNo, promotionToRank: nextRank });
       }
 
       for (const reviewData of reviewsToCreate) {
