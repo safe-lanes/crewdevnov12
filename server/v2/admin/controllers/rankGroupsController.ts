@@ -35,10 +35,10 @@ export const rankGroupsController = {
 
   async checkAssignment(req: Request, res: Response) {
     try {
-      const rankLabel = req.query.rankLabel as string;
+      const rankLabel = (req.query.rankLabel || req.query.rank) as string;
       const formName = req.query.formName as string;
       if (!rankLabel || !formName) {
-        return res.status(400).json({ error: "rankLabel and formName query parameters are required" });
+        return res.status(400).json({ error: "rank and formName query parameters are required" });
       }
       const result = await rankGroupsService.checkAssignment(rankLabel, formName);
       res.json(result);
