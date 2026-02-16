@@ -40,7 +40,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon } from "lucide-react";
 import { format, addMonths, parseISO } from "date-fns";
 import { ComplianceMatrixDialog_v2 } from './ComplianceMatrixDialog_v2';
-import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
+import { AppraisalForm } from '@/modules/crewing/v2/AppraisalForm_v2';
 import { CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm';
 import { HandoverAttachmentsDialog, getHandoverAttachmentCount } from '@/components/HandoverAttachmentsDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
@@ -276,7 +276,7 @@ const useVesselRanks = (vesselId: string | null) => {
 
 const useAppraisals = () => {
     return useQuery({
-        queryKey: ['/api/appraisals'],
+        queryKey: ['/api/v2/appraisals'],
         select: (data: any[]) => data
     });
 };
