@@ -222,13 +222,20 @@ export default function HeaderComponent({
     }, []);
 
     const handleLogout = () => {
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        let portNumber = window.location.port;
+        portNumber = portNumber ? `:${portNumber}` : ''
+        const fullUrl = `${protocol}//${hostname}${portNumber}`;
         setIsProfileOpen(false);
         const authKeys = ['crewUserName', 'crewUserId', 'userName', 'domain', 'token', 'accessToken', 'refreshToken', 'authToken', 'sessionId'];
-        authKeys.forEach(key => {
-            localStorage.removeItem(key);
-            sessionStorage.removeItem(key);
-        });
-        window.location.href = '/';
+        // authKeys.forEach(key => {
+        //     localStorage.removeItem(key);
+        //     sessionStorage.removeItem(key);
+        // });
+        sessionStorage.clear();
+        localStorage.clear();
+        window.location.assign(`${fullUrl}/login`)
     };
 
     const handleModuleChange = useCallback((moduleId: string) => {
