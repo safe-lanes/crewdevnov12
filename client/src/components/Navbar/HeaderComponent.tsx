@@ -177,6 +177,12 @@ export default function HeaderComponent({
     useEffect(() => {
         const resolveUserName = (): string => {
             try {
+                const profile = getDecryptedLocalStorageItem('userProfile', true);
+                if (profile && typeof profile === 'object') {
+                    const first = profile.firstname || profile.firstName || '';
+                    const last = profile.lastname || profile.lastName || '';
+                    if (first || last) return `${first} ${last}`.trim();
+                }
                 const decrypted = getDecryptedSessionStorageItem('crewUserName', true);
                 if (decrypted) return extractStringValue(decrypted);
                 const plain = sessionStorage.getItem('crewUserName');
