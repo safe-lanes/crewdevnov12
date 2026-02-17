@@ -291,13 +291,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [activeContinuousSection2, setActiveContinuousSection2] = useState('C'); // For C-F continuous scroll
   const [editingTraining, setEditingTraining] = useState<string | null>(null);
   const [editingTarget, setEditingTarget] = useState<string | null>(null);
-  const [trainingComments, setTrainingComments] = useState<{[key: string]: string}>({});
-  const [targetComments, setTargetComments] = useState<{[key: string]: string}>({});
-  const [competenceComments, setCompetenceComments] = useState<{[key: string]: string}>({});
-  const [behaviouralComments, setBehaviouralComments] = useState<{[key: string]: string}>({});
-  const [trainingNeedsComments, setTrainingNeedsComments] = useState<{[key: string]: string}>({});
-  const [recommendationComments, setRecommendationComments] = useState<{[key: string]: string}>({});
-  const [trainingFollowupComments, setTrainingFollowupComments] = useState<{[key: string]: string}>({});
+  const [trainingComments, setTrainingComments] = useState<{[key: string]: string | null}>({});
+  const [targetComments, setTargetComments] = useState<{[key: string]: string | null}>({});
+  const [competenceComments, setCompetenceComments] = useState<{[key: string]: string | null}>({});
+  const [behaviouralComments, setBehaviouralComments] = useState<{[key: string]: string | null}>({});
+  const [trainingNeedsComments, setTrainingNeedsComments] = useState<{[key: string]: string | null}>({});
+  const [recommendationComments, setRecommendationComments] = useState<{[key: string]: string | null}>({});
+  const [trainingFollowupComments, setTrainingFollowupComments] = useState<{[key: string]: string | null}>({});
   const [isTrainingNeedsDialogOpen, setIsTrainingNeedsDialogOpen] = useState(false);
   const [isTrainingFollowupDialogOpen, setIsTrainingFollowupDialogOpen] = useState(false);
   const [editingAppraiserComment, setEditingAppraiserComment] = useState<string | null>(null);
@@ -1134,7 +1134,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setTrainingComments(prev => ({ ...prev, [id]: "" }));
+        setTrainingComments(prev => ({ ...prev, [id]: null }));
         setEditingTrainingComment(null);
         closeConfirmDialog();
       }
@@ -1146,7 +1146,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setTargetComments(prev => ({ ...prev, [id]: "" }));
+        setTargetComments(prev => ({ ...prev, [id]: null }));
         setEditingTargetComment(null);
         closeConfirmDialog();
       }
@@ -1158,7 +1158,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setCompetenceComments(prev => ({ ...prev, [id]: "" }));
+        setCompetenceComments(prev => ({ ...prev, [id]: null }));
         setEditingCompetenceComment(null);
         closeConfirmDialog();
       }
@@ -1170,7 +1170,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setBehaviouralComments(prev => ({ ...prev, [id]: "" }));
+        setBehaviouralComments(prev => ({ ...prev, [id]: null }));
         setEditingBehaviouralComment(null);
         closeConfirmDialog();
       }
@@ -1182,7 +1182,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setTrainingNeedsComments(prev => ({ ...prev, [id]: "" }));
+        setTrainingNeedsComments(prev => ({ ...prev, [id]: null }));
         setEditingTrainingNeedsComment(null);
         closeConfirmDialog();
       }
@@ -1194,7 +1194,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setRecommendationComments(prev => ({ ...prev, [id]: "" }));
+        setRecommendationComments(prev => ({ ...prev, [id]: null }));
         setEditingRecommendationComment(null);
         closeConfirmDialog();
       }
@@ -1206,7 +1206,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setTrainingFollowupComments(prev => ({ ...prev, [id]: "" }));
+        setTrainingFollowupComments(prev => ({ ...prev, [id]: null }));
         setEditingTrainingFollowupComment(null);
         closeConfirmDialog();
       }
@@ -1219,46 +1219,46 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const getFormDataWithSyncedComments = (): AppraisalFormData => {
     const data = form.getValues();
     
-    // Merge training comments (with null guard for hidden sections)
+    const resolveComment = (map: {[key: string]: string | null}, id: string, fallback: string) => {
+      if (id in map) {
+        return map[id] ?? "";
+      }
+      return fallback || "";
+    };
+
     const updatedTrainings = (data.trainings ?? []).map(t => ({
       ...t,
-      comment: trainingComments[t.id] !== undefined ? trainingComments[t.id] : (t.comment || "")
+      comment: resolveComment(trainingComments, t.id, t.comment)
     }));
 
-    // Merge target comments (with null guard for hidden sections)
     const updatedTargets = (data.targets ?? []).map(t => ({
       ...t,
-      comment: targetComments[t.id] !== undefined ? targetComments[t.id] : (t.comment || "")
+      comment: resolveComment(targetComments, t.id, t.comment)
     }));
 
-    // Merge competence assessment comments (with null guard for hidden sections)
     const updatedCompetenceAssessments = (data.competenceAssessments ?? []).map(c => ({
       ...c,
-      comment: competenceComments[c.id] !== undefined ? competenceComments[c.id] : (c.comment || "")
+      comment: resolveComment(competenceComments, c.id, c.comment)
     }));
 
-    // Merge behavioural assessment comments (with null guard for hidden sections)
     const updatedBehaviouralAssessments = (data.behaviouralAssessments ?? []).map(b => ({
       ...b,
-      comment: behaviouralComments[b.id] !== undefined ? behaviouralComments[b.id] : (b.comment || "")
+      comment: resolveComment(behaviouralComments, b.id, b.comment)
     }));
 
-    // Merge training needs comments (with null guard for hidden sections)
     const updatedTrainingNeeds = (data.trainingNeeds ?? []).map(t => ({
       ...t,
-      comment: trainingNeedsComments[t.id] !== undefined ? trainingNeedsComments[t.id] : (t.comment || "")
+      comment: resolveComment(trainingNeedsComments, t.id, t.comment)
     }));
 
-    // Merge recommendation comments (with null guard for hidden sections)
     const updatedRecommendations = (data.recommendations ?? []).map(r => ({
       ...r,
-      comment: recommendationComments[r.id] !== undefined ? recommendationComments[r.id] : (r.comment || "")
+      comment: resolveComment(recommendationComments, r.id, r.comment)
     }));
 
-    // Merge training followup comments (with null guard for hidden sections)
     const updatedTrainingFollowups = (data.trainingFollowups ?? []).map(f => ({
       ...f,
-      comment: trainingFollowupComments[f.id] !== undefined ? trainingFollowupComments[f.id] : (f.comment || "")
+      comment: resolveComment(trainingFollowupComments, f.id, f.comment)
     }));
 
     return {
@@ -2472,13 +2472,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       </div>
                                     </td>
                                   </tr>
-                                  {!!trainingComments[training.id] && (
+                                  {training.id in trainingComments && trainingComments[training.id] !== null && (
                                     <tr>
                                       <td></td>
                                       <td colSpan={3} className="p-3">
                                         {editingTrainingComment === training.id ? (
                                           <Textarea
-                                            value={trainingComments[training.id]}
+                                            value={trainingComments[training.id] ?? ""}
                                             onChange={(e) => {
                                               setTrainingComments(prev => ({
                                                 ...prev,
@@ -2505,7 +2505,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => deleteTrainingComment(training.id)}
+                                                onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }}
                                               >
                                                 <Trash2 className="h-4 w-4" />
                                               </Button>
@@ -2615,13 +2615,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       </div>
                                     </td>
                                   </tr>
-                                  {!!targetComments[target.id] && (
+                                  {target.id in targetComments && targetComments[target.id] !== null && (
                                     <tr>
                                       <td></td>
                                       <td colSpan={3} className="p-3">
                                         {editingTargetComment === target.id ? (
                                           <Textarea
-                                            value={targetComments[target.id]}
+                                            value={targetComments[target.id] ?? ""}
                                             onChange={(e) => {
                                               setTargetComments(prev => ({
                                                 ...prev,
@@ -2648,7 +2648,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => deleteTargetComment(target.id)}
+                                                onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }}
                                               >
                                                 <Trash2 className="h-4 w-4" />
                                               </Button>
@@ -2760,13 +2760,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     </div>
                                   </td>
                                 </tr>
-                                {!!competenceComments[assessment.id] && (
+                                {assessment.id in competenceComments && competenceComments[assessment.id] !== null && (
                                   <tr>
                                     <td></td>
                                     <td colSpan={4} className="p-3">
                                       {editingCompetenceComment === assessment.id ? (
                                         <Textarea
-                                          value={competenceComments[assessment.id]}
+                                          value={competenceComments[assessment.id] ?? ""}
                                           onChange={(e) => {
                                             setCompetenceComments(prev => ({
                                               ...prev,
@@ -2793,7 +2793,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                               type="button"
                                               variant="ghost"
                                               size="sm"
-                                              onClick={() => deleteCompetenceComment(assessment.id)}
+                                              onClick={(e) => { e.stopPropagation(); deleteCompetenceComment(assessment.id); }}
                                             >
                                               <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -2896,13 +2896,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   </div>
                                 </td>
                               </tr>
-                              {!!behaviouralComments[assessment.id] && (
+                              {assessment.id in behaviouralComments && behaviouralComments[assessment.id] !== null && (
                                 <tr>
                                   <td></td>
                                   <td colSpan={4} className="p-3">
                                     {editingBehaviouralComment === assessment.id ? (
                                       <Textarea
-                                        value={behaviouralComments[assessment.id]}
+                                        value={behaviouralComments[assessment.id] ?? ""}
                                         onChange={(e) => {
                                           setBehaviouralComments(prev => ({
                                             ...prev,
@@ -2929,7 +2929,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             type="button"
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => deleteBehaviouralComment(assessment.id)}
+                                            onClick={(e) => { e.stopPropagation(); deleteBehaviouralComment(assessment.id); }}
                                           >
                                             <Trash2 className="h-4 w-4" />
                                           </Button>
@@ -3042,13 +3042,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   </div>
                                 </td>
                               </tr>
-                              {!!trainingNeedsComments[trainingNeed.id] && (
+                              {trainingNeed.id in trainingNeedsComments && trainingNeedsComments[trainingNeed.id] !== null && (
                                 <tr>
                                   <td></td>
                                   <td colSpan={2} className="p-3">
                                     {editingTrainingNeedsComment === trainingNeed.id ? (
                                       <Textarea
-                                        value={trainingNeedsComments[trainingNeed.id]}
+                                        value={trainingNeedsComments[trainingNeed.id] ?? ""}
                                         onChange={(e) => {
                                           setTrainingNeedsComments(prev => ({
                                             ...prev,
@@ -3075,7 +3075,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             type="button"
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => deleteTrainingNeedsComment(trainingNeed.id)}
+                                            onClick={(e) => { e.stopPropagation(); deleteTrainingNeedsComment(trainingNeed.id); }}
                                           >
                                             <Trash2 className="h-4 w-4" />
                                           </Button>
@@ -3208,13 +3208,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         </div>
                                       </td>
                                     </tr>
-                                    {!!recommendationComments[recommendation.id] && (
+                                    {recommendation.id in recommendationComments && recommendationComments[recommendation.id] !== null && (
                                       <tr>
                                         <td></td>
                                         <td colSpan={5} className="p-3">
                                           {editingRecommendationComment === recommendation.id ? (
                                             <Textarea
-                                              value={recommendationComments[recommendation.id]}
+                                              value={recommendationComments[recommendation.id] ?? ""}
                                               onChange={(e) => {
                                                 setRecommendationComments(prev => ({
                                                   ...prev,
@@ -3241,7 +3241,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                   type="button"
                                                   variant="ghost"
                                                   size="sm"
-                                                  onClick={() => deleteRecommendationComment(recommendation.id)}
+                                                  onClick={(e) => { e.stopPropagation(); deleteRecommendationComment(recommendation.id); }}
                                                 >
                                                   <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -3309,7 +3309,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => deleteAppraiserComment(appraiser.id)}
+                                        onClick={(e) => { e.stopPropagation(); deleteAppraiserComment(appraiser.id); }}
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
@@ -3617,13 +3617,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         </div>
                                       </td>
                                     </tr>
-                                    {!!trainingFollowupComments[followup.id] && (
+                                    {followup.id in trainingFollowupComments && trainingFollowupComments[followup.id] !== null && (
                                       <tr>
                                         <td></td>
                                         <td colSpan={6} className="p-3">
                                           {editingTrainingFollowupComment === followup.id ? (
                                             <Textarea
-                                              value={trainingFollowupComments[followup.id]}
+                                              value={trainingFollowupComments[followup.id] ?? ""}
                                               onChange={(e) => {
                                                 setTrainingFollowupComments(prev => ({
                                                   ...prev,
@@ -3650,7 +3650,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                   type="button"
                                                   variant="ghost"
                                                   size="sm"
-                                                  onClick={() => deleteTrainingFollowupComment(followup.id)}
+                                                  onClick={(e) => { e.stopPropagation(); deleteTrainingFollowupComment(followup.id); }}
                                                 >
                                                   <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -3698,7 +3698,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         </div>
         
         {/* Confirmation Dialog */}
-        <AlertDialog open={confirmDialog.isOpen} onOpenChange={closeConfirmDialog}>
+        <AlertDialog open={confirmDialog.isOpen} onOpenChange={(open) => { if (!open) closeConfirmDialog(); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
