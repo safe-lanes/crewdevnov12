@@ -22,13 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CrewMember, AppraisalResult } from "@shared/schema";
-import { fromStorageCrew, CrewMemberDTO } from "@shared/crew-mapping";
+import { AppraisalResult } from "@shared/schema";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
-import { useVesselsV2, useVesselTypesV2 } from "@/hooks/v2/useMasterDataV2";
+import { useVesselsV2, useVesselTypesV2, useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import { useCompanyRanksV2 } from "@/modules/admin/v2/hooks/useAdminV2";
 import { AppraisalsVersionToggle } from "./components/AppraisalsVersionToggle";
 
@@ -179,18 +178,6 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   // Vessel lookup for ID to name translation
   const { getVesselName } = useVesselLookup();
 
-  // Fetch crew members and appraisal results
-  const { data: crewMembers = [], isLoading: isLoadingCrew } = useQuery<CrewMember[]>({
-    queryKey: ["/api/crew-members"],
-    queryFn: async () => {
-      const response = await fetch("/api/crew-members");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    },
-  });
-
   const { data: appraisalResults = [], isLoading: isLoadingAppraisals } = useQuery<AppraisalResult[]>({
     queryKey: ["/api/v2/appraisals"],
     queryFn: async () => {
@@ -227,32 +214,18 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   // Use V2 Masters for vessel types
   const { data: vesselTypesV2Data = [] } = useVesselTypesV2();
 
-  const { data: nationalityMasterData = [] } = useQuery<Array<{ entryId: string; name: string; countryName?: string }>>({
-    queryKey: ["/api/v2/masters/nationalities"],
-  });
+  const { data: nationalitiesV2Data = [] } = useNationalitiesV2();
 
   const uniqueNationalities = useMemo(() => {
-    if (nationalityMasterData.length > 0) {
-      return (nationalityMasterData as any[]).map((entry: any) => ({
-        entryId: entry.uuid || entry.entryId || entry.entry_id,
+    if ((nationalitiesV2Data as any[]).length > 0) {
+      return (nationalitiesV2Data as any[]).map((entry: any) => ({
+        entryId: entry.uuid || entry.natUuid || entry.id,
         name: entry.name,
         countryName: entry.name
       }));
     }
-
-    const nationalities = new Set<string>();
-    crewMembers.forEach(crew => {
-      const crewDTO = fromStorageCrew(crew);
-      if (crewDTO.nationality) {
-        nationalities.add(crewDTO.nationality);
-      }
-    });
-    return Array.from(nationalities).sort().map((nat, index) => ({
-      entryId: `NAT-${index}`,
-      name: nat,
-      countryName: nat
-    }));
-  }, [nationalityMasterData, crewMembers]);
+    return [];
+  }, [nationalitiesV2Data]);
 
   const uniqueVesselTypes = useMemo(() => {
     if ((vesselTypesV2Data as any[]).length > 0) {
@@ -284,49 +257,55 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     return "bg-red-600 text-white"; // Dark Red
   }, []);
 
-  // Combine crew member and appraisal data
   const allCrewData: CrewAppraisalData[] = useMemo(() =>
-    crewMembers.map((crewMember) => {
-      // Transform raw database data to frontend DTO format
-      const crewDTO = fromStorageCrew(crewMember);
-      const appraisal = appraisalResults.find(ar => ar.crewMemberId === crewMember.id);
+    appraisalResults.map((appraisal) => {
+      let appraisalData: any = {};
+      try {
+        appraisalData = typeof appraisal.appraisalData === 'string'
+          ? JSON.parse(appraisal.appraisalData || '{}')
+          : (appraisal.appraisalData || {});
+      } catch { appraisalData = {}; }
 
-      // Extract vessel ID and translate to vessel name
-      const vesselId = crewDTO.vessel || crewDTO.presentVessel || "";
-      const vesselName = vesselId ? getVesselName(vesselId) : "";
+      const seafarerName = appraisalData.seafarersName || "";
+      const nameParts = seafarerName.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+      const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "";
+
+      const vesselName = appraisalData.vessel ? getVesselName(appraisalData.vessel) || appraisalData.vessel : "";
 
       return {
-        id: crewDTO.id,
-        employeeId: crewDTO.employeeId || "", // Add employeeId for crew ID display
+        id: appraisal.crewMemberId || String(appraisal.id),
+        employeeId: appraisal.crewMemberId || "",
         name: {
-          first: crewDTO.firstName,
-          middle: crewDTO.middleName || "",
-          last: crewDTO.lastName || crewDTO.familyName || "",
+          first: firstName,
+          middle: middleName,
+          last: lastName,
         },
-        rank: crewDTO.rank || crewDTO.presentRank || "",
-        nationality: crewDTO.nationality || "",
-        age: crewDTO.ageInYears || crewDTO.age || "",
-        vessel: vesselName || vesselId || "",
-        vesselType: crewDTO.vesselType || "",
-        signOn: crewDTO.signOnDate || crewDTO.joiningDate || "",
-        appraisalType: appraisal?.appraisalType || "Not Started",
-        appraisalDate: appraisal?.appraisalDate || "N/A",
-        status: appraisal?.status || "N/A",
+        rank: appraisalData.seafarersRank || "",
+        nationality: appraisalData.nationality || "",
+        age: "",
+        vessel: vesselName,
+        vesselType: "",
+        signOn: appraisalData.signOn || "",
+        appraisalType: appraisal.appraisalType || appraisalData.appraisalType || "",
+        appraisalDate: appraisal.appraisalDate || "",
+        status: appraisal.status || "draft",
         competenceRating: {
-          value: appraisal?.competenceRating || "N/A",
-          color: appraisal?.competenceRating ? getRatingColor(appraisal.competenceRating) : "bg-gray-400 text-white",
+          value: appraisal.competenceRating || "N/A",
+          color: appraisal.competenceRating ? getRatingColor(appraisal.competenceRating) : "bg-gray-400 text-white",
         },
         behavioralRating: {
-          value: appraisal?.behavioralRating || "N/A",
-          color: appraisal?.behavioralRating ? getRatingColor(appraisal.behavioralRating) : "bg-gray-400 text-white",
+          value: appraisal.behavioralRating || "N/A",
+          color: appraisal.behavioralRating ? getRatingColor(appraisal.behavioralRating) : "bg-gray-400 text-white",
         },
         overallRating: {
-          value: appraisal?.overallRating || "N/A",
-          color: appraisal?.overallRating ? getRatingColor(appraisal.overallRating) : "bg-gray-400 text-white",
+          value: appraisal.overallRating || "N/A",
+          color: appraisal.overallRating ? getRatingColor(appraisal.overallRating) : "bg-gray-400 text-white",
         },
-        appraisalId: appraisal?.id,
+        appraisalId: appraisal.id,
       };
-    }), [crewMembers, appraisalResults, getRatingColor, getVesselName]);
+    }), [appraisalResults, getRatingColor, getVesselName]);
 
   // Filter crew data based on filter state
   const crewData = useMemo(() =>
@@ -560,7 +539,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   }, []);
 
   // Early return after all hooks
-  if (isLoadingCrew || isLoadingAppraisals) {
+  if (isLoadingAppraisals) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-lg">Loading crew appraisals...</div>
