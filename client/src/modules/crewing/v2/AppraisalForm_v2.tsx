@@ -1134,13 +1134,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setTrainingComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        const currentTrainings = form.getValues("trainings");
-        form.setValue("trainings", currentTrainings.map(t => t.id === id ? { ...t, comment: "" } : t));
+        setTrainingComments(prev => ({ ...prev, [id]: "" }));
         setEditingTrainingComment(null);
         closeConfirmDialog();
       }
@@ -1152,13 +1146,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setTargetComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        const currentTargets = form.getValues("targets");
-        form.setValue("targets", currentTargets.map(t => t.id === id ? { ...t, comment: "" } : t));
+        setTargetComments(prev => ({ ...prev, [id]: "" }));
         setEditingTargetComment(null);
         closeConfirmDialog();
       }
@@ -1170,13 +1158,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setCompetenceComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        const currentAssessments = form.getValues("competenceAssessments");
-        form.setValue("competenceAssessments", currentAssessments.map(c => c.id === id ? { ...c, comment: "" } : c));
+        setCompetenceComments(prev => ({ ...prev, [id]: "" }));
         setEditingCompetenceComment(null);
         closeConfirmDialog();
       }
@@ -1188,13 +1170,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setBehaviouralComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        const currentAssessments = form.getValues("behaviouralAssessments");
-        form.setValue("behaviouralAssessments", currentAssessments.map(b => b.id === id ? { ...b, comment: "" } : b));
+        setBehaviouralComments(prev => ({ ...prev, [id]: "" }));
         setEditingBehaviouralComment(null);
         closeConfirmDialog();
       }
@@ -1206,13 +1182,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setTrainingNeedsComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        const currentNeeds = form.getValues("trainingNeeds");
-        form.setValue("trainingNeeds", currentNeeds.map(t => t.id === id ? { ...t, comment: "" } : t));
+        setTrainingNeedsComments(prev => ({ ...prev, [id]: "" }));
         setEditingTrainingNeedsComment(null);
         closeConfirmDialog();
       }
@@ -1224,13 +1194,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setRecommendationComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        const currentRecs = form.getValues("recommendations");
-        form.setValue("recommendations", currentRecs.map(r => r.id === id ? { ...r, comment: "" } : r));
+        setRecommendationComments(prev => ({ ...prev, [id]: "" }));
         setEditingRecommendationComment(null);
         closeConfirmDialog();
       }
@@ -1242,13 +1206,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       "Delete Comment",
       "Are you sure you want to delete this comment?",
       () => {
-        setTrainingFollowupComments(prev => {
-          const newComments = { ...prev };
-          delete newComments[id];
-          return newComments;
-        });
-        const currentFollowups = form.getValues("trainingFollowups");
-        form.setValue("trainingFollowups", currentFollowups.map(f => f.id === id ? { ...f, comment: "" } : f));
+        setTrainingFollowupComments(prev => ({ ...prev, [id]: "" }));
         setEditingTrainingFollowupComment(null);
         closeConfirmDialog();
       }
@@ -2514,7 +2472,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       </div>
                                     </td>
                                   </tr>
-                                  {trainingComments[training.id] !== undefined && (
+                                  {!!trainingComments[training.id] && (
                                     <tr>
                                       <td></td>
                                       <td colSpan={3} className="p-3">
@@ -2657,7 +2615,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       </div>
                                     </td>
                                   </tr>
-                                  {targetComments[target.id] !== undefined && (
+                                  {!!targetComments[target.id] && (
                                     <tr>
                                       <td></td>
                                       <td colSpan={3} className="p-3">
@@ -2802,7 +2760,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     </div>
                                   </td>
                                 </tr>
-                                {competenceComments[assessment.id] !== undefined && (
+                                {!!competenceComments[assessment.id] && (
                                   <tr>
                                     <td></td>
                                     <td colSpan={4} className="p-3">
@@ -2938,7 +2896,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   </div>
                                 </td>
                               </tr>
-                              {behaviouralComments[assessment.id] !== undefined && (
+                              {!!behaviouralComments[assessment.id] && (
                                 <tr>
                                   <td></td>
                                   <td colSpan={4} className="p-3">
@@ -3084,7 +3042,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   </div>
                                 </td>
                               </tr>
-                              {trainingNeedsComments[trainingNeed.id] !== undefined && (
+                              {!!trainingNeedsComments[trainingNeed.id] && (
                                 <tr>
                                   <td></td>
                                   <td colSpan={2} className="p-3">
@@ -3250,7 +3208,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         </div>
                                       </td>
                                     </tr>
-                                    {recommendationComments[recommendation.id] !== undefined && (
+                                    {!!recommendationComments[recommendation.id] && (
                                       <tr>
                                         <td></td>
                                         <td colSpan={5} className="p-3">
@@ -3659,7 +3617,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         </div>
                                       </td>
                                     </tr>
-                                    {trainingFollowupComments[followup.id] !== undefined && (
+                                    {!!trainingFollowupComments[followup.id] && (
                                       <tr>
                                         <td></td>
                                         <td colSpan={6} className="p-3">

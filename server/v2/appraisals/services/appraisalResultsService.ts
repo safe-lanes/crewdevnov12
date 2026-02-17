@@ -179,6 +179,13 @@ export class AppraisalResultsService {
         : JSON.parse(auditData.appraisalData || "{}"))
       : null;
 
+    if (appraisalData?.competenceAssessments) {
+      console.log('[DEBUG] competence comments in PUT payload:', appraisalData.competenceAssessments.map((c: any) => ({ id: c.id, comment: c.comment })));
+    }
+    if (appraisalData?.behaviouralAssessments) {
+      console.log('[DEBUG] behavioural comments in PUT payload:', appraisalData.behaviouralAssessments.map((b: any) => ({ id: b.id, comment: b.comment })));
+    }
+
     const updateFields: any = {};
     if (auditData.crewMemberId !== undefined) updateFields.crewMemberId = auditData.crewMemberId;
     if (auditData.formId !== undefined) {
