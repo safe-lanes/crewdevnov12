@@ -424,17 +424,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   // Compute next version number and available options dynamically
   const { nextVersionNo, availableVersionOptions } = React.useMemo(() => {
     const existingVersions = versionsData || [];
+    const existingNos = existingVersions
+      .map(v => v.versionNo)
+      .sort();
     const maxVersionNo = existingVersions.reduce((max, v) => {
       const vNo = parseInt(v.versionNo, 10);
       return isNaN(vNo) ? max : Math.max(max, vNo);
     }, 0);
     const next = String(maxVersionNo + 1).padStart(2, '0');
     
-    // Generate options from 01 to at least maxVersionNo + 2 (for flexibility)
-    const optionCount = Math.max(3, maxVersionNo + 2);
-    const options = Array.from({ length: optionCount }, (_, i) => 
-      String(i + 1).padStart(2, '0')
-    );
+    const options = [...new Set([...existingNos, next])].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
     
     return { nextVersionNo: next, availableVersionOptions: options };
   }, [versionsData]);
