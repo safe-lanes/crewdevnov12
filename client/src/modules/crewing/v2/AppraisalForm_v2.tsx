@@ -377,7 +377,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Fetch form configuration based on crew member's rank
   // Note: queryKey[0] is used as the URL by the default fetcher, so include full URL path
   const { data: formConfig, isLoading: isLoadingFormConfig } = useQuery({
-    queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(crewMember?.rank || '')}`],
+    queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(crewMember?.rank || '')}?category=appraisal`],
     enabled: !!crewMember?.rank,
   });
 

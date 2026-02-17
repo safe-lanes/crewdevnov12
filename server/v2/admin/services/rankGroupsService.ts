@@ -194,8 +194,10 @@ export const rankGroupsService = {
   },
 
   async updateConfigurationById(id: number, configuration: string): Promise<AdmRankGroupV2> {
+    console.log(`📝 [V2 CONFIG SAVE] Saving configuration for rank group id=${id}, config length=${configuration.length}`);
     const result = await rankGroupsRepo.updateById(id, applyAuditUser({ configuration }));
     if (!result) throw new Error(`Rank group not found: ${id}`);
+    console.log(`✅ [V2 CONFIG SAVE] Configuration saved for rank group "${result.name}" (id=${id}, formId=${result.formId})`);
     await createFormVersionOnConfigSave(result.formId, id, configuration);
     return result;
   },

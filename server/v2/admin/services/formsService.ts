@@ -71,6 +71,10 @@ export const formsService = {
       } catch (e) {}
     }
 
+    if (matchingGroups.length > 1) {
+      console.warn(`⚠️ [V2 getFormForRank] Rank "${rankLabel}" found in ${matchingGroups.length} ACTIVE rank groups: ${matchingGroups.map(g => `"${g.name}" (id:${g.id}, hasConfig:${!!g.configuration})`).join(', ')}`);
+    }
+
     if (matchingGroups.length > 0) {
       const groupsWithConfig = matchingGroups.filter(g => g.configuration);
       const groupsWithoutConfig = matchingGroups.filter(g => !g.configuration);
@@ -79,10 +83,14 @@ export const formsService = {
       if (groupsWithConfig.length > 0) {
         selectedGroup = groupsWithConfig.sort((a, b) => a.id - b.id)[0];
         rankGroupConfig = JSON.parse(selectedGroup.configuration!);
+        console.log(`✅ [V2 getFormForRank] Using rank group "${selectedGroup.name}" (id:${selectedGroup.id}) with configuration for rank "${rankLabel}"`);
       } else {
         selectedGroup = groupsWithoutConfig.sort((a, b) => a.id - b.id)[0];
+        console.log(`ℹ️ [V2 getFormForRank] Using rank group "${selectedGroup.name}" (id:${selectedGroup.id}) - no configuration saved yet for rank "${rankLabel}"`);
       }
       rankGroupName = selectedGroup.name;
+    } else {
+      console.log(`❌ [V2 getFormForRank] No active rank groups found for rank "${rankLabel}"`);
     }
 
     return { ...form, rankGroupName, rankGroupConfig };
