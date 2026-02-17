@@ -76,19 +76,56 @@ export const formsService = {
     }
 
     if (matchingGroups.length > 0) {
-      const groupsWithConfig = matchingGroups.filter(g => g.configuration);
-      const groupsWithoutConfig = matchingGroups.filter(g => !g.configuration);
-
-      let selectedGroup;
-      if (groupsWithConfig.length > 0) {
-        selectedGroup = groupsWithConfig.sort((a, b) => a.id - b.id)[0];
-        rankGroupConfig = JSON.parse(selectedGroup.configuration!);
-        console.log(`✅ [V2 getFormForRank] Using rank group "${selectedGroup.name}" (id:${selectedGroup.id}) with configuration for rank "${rankLabel}"`);
-      } else {
-        selectedGroup = groupsWithoutConfig.sort((a, b) => a.id - b.id)[0];
-        console.log(`ℹ️ [V2 getFormForRank] Using rank group "${selectedGroup.name}" (id:${selectedGroup.id}) - no configuration saved yet for rank "${rankLabel}"`);
+      // Try each matching group to find one with a released version config
+      let selectedGroup = null;
+      let latestReleasedVersion = null;
+      
+      // Sort by id (lowest first) for consistent selection
+      const sortedGroups = matchingGroups.sort((a, b) => a.id - b.id);
+      
+      // First pass: prefer groups with released version configurations
+      for (const group of sortedGroups) {
+        const releasedVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(group.id);
+        if (releasedVersion?.configuration) {
+          selectedGroup = group;
+          latestReleasedVersion = releasedVersion;
+          break;
+        }
       }
+      
+      // Second pass: fall back to groups with rank group configuration
+      if (!selectedGroup) {
+        const groupsWithConfig = sortedGroups.filter(g => g.configuration);
+        selectedGroup = groupsWithConfig.length > 0 ? groupsWithConfig[0] : sortedGroups[0];
+      }
+      
       rankGroupName = selectedGroup.name;
+
+      // Load from latest released version first
+      if (latestReleasedVersion?.configuration) {
+        try {
+          rankGroupConfig = typeof latestReleasedVersion.configuration === 'string'
+            ? JSON.parse(latestReleasedVersion.configuration)
+            : latestReleasedVersion.configuration;
+          console.log(`✅ [V2 getFormForRank] Using latest released version ${latestReleasedVersion.versionNo} config for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), rank "${rankLabel}"`);
+        } catch (e) {
+          console.warn(`⚠️ [V2 getFormForRank] Failed to parse version config, falling back to rank group config:`, e);
+        }
+      }
+
+      // Fall back to rank group's own configuration if no version config available
+      if (!rankGroupConfig && selectedGroup.configuration) {
+        try {
+          rankGroupConfig = JSON.parse(selectedGroup.configuration);
+          console.log(`ℹ️ [V2 getFormForRank] Fallback to rank group config for "${selectedGroup.name}" (id:${selectedGroup.id}), rank "${rankLabel}"`);
+        } catch (e) {
+          console.warn(`⚠️ [V2 getFormForRank] Failed to parse rank group config:`, e);
+        }
+      }
+
+      if (!rankGroupConfig) {
+        console.log(`ℹ️ [V2 getFormForRank] No configuration found for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), rank "${rankLabel}"`);
+      }
     } else {
       console.log(`❌ [V2 getFormForRank] No active rank groups found for rank "${rankLabel}"`);
     }

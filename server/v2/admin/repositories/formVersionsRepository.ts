@@ -78,6 +78,21 @@ export class FormVersionsRepository {
     return results.length > 0;
   }
 
+  async findLatestReleasedByRankGroupId(rankGroupId: number): Promise<AdmFormVersionV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(admFormVersionsV2)
+      .where(and(
+        eq(admFormVersionsV2.rankGroupId, rankGroupId),
+        eq(admFormVersionsV2.status, 'released'),
+        eq(admFormVersionsV2.isDeleted, false),
+      ))
+      .orderBy(desc(admFormVersionsV2.createdAt))
+      .limit(1);
+    return results[0];
+  }
+
   async softDelete(fvUuid: string): Promise<boolean> {
     const db = getDb();
     const results = await db
