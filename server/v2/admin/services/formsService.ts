@@ -51,39 +51,42 @@ export const formsService = {
 
   async getFormForRank(rankLabel: string, category?: string): Promise<any> {
     const allForms = await formsRepo.findAll();
-    const form = allForms.find(f => {
+    const candidateForms = allForms.filter(f => {
       if (category && f.category !== category) return false;
       return true;
     });
-    if (!form) return null;
+    if (candidateForms.length === 0) return null;
 
-    const activeRankGroups = await rankGroupsRepo.findByFormId(form.id, false);
+    let matchedForm = null;
     let rankGroupConfig = null;
     let rankGroupName = null;
 
-    const matchingGroups: Array<{ id: number; name: string; configuration: string | null; rgUuid: string }> = [];
-    for (const rg of activeRankGroups) {
-      try {
-        const ranks = JSON.parse(rg.ranks);
-        if (Array.isArray(ranks) && ranks.includes(rankLabel)) {
-          matchingGroups.push({ id: rg.id, name: rg.name, configuration: rg.configuration, rgUuid: rg.rgUuid });
-        }
-      } catch (e) {}
-    }
+    for (const form of candidateForms) {
+      const activeRankGroups = await rankGroupsRepo.findByFormId(form.id, false);
 
-    if (matchingGroups.length > 1) {
-      console.warn(`⚠️ [V2 getFormForRank] Rank "${rankLabel}" found in ${matchingGroups.length} ACTIVE rank groups: ${matchingGroups.map(g => `"${g.name}" (id:${g.id}, hasConfig:${!!g.configuration})`).join(', ')}`);
-    }
+      const matchingGroups: Array<{ id: number; name: string; configuration: string | null; rgUuid: string }> = [];
+      for (const rg of activeRankGroups) {
+        try {
+          const ranks = JSON.parse(rg.ranks);
+          if (Array.isArray(ranks) && ranks.includes(rankLabel)) {
+            matchingGroups.push({ id: rg.id, name: rg.name, configuration: rg.configuration, rgUuid: rg.rgUuid });
+          }
+        } catch (e) {}
+      }
 
-    if (matchingGroups.length > 0) {
-      // Try each matching group to find one with a released version config
+      if (matchingGroups.length === 0) continue;
+
+      matchedForm = form;
+
+      if (matchingGroups.length > 1) {
+        console.warn(`⚠️ [V2 getFormForRank] Rank "${rankLabel}" found in ${matchingGroups.length} ACTIVE rank groups under form "${form.name}" (id:${form.id}): ${matchingGroups.map(g => `"${g.name}" (id:${g.id}, hasConfig:${!!g.configuration})`).join(', ')}`);
+      }
+
       let selectedGroup = null;
       let latestReleasedVersion = null;
-      
-      // Sort by id (lowest first) for consistent selection
+
       const sortedGroups = matchingGroups.sort((a, b) => a.id - b.id);
-      
-      // First pass: prefer groups with released version configurations
+
       for (const group of sortedGroups) {
         const releasedVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(group.id);
         if (releasedVersion?.configuration) {
@@ -92,45 +95,47 @@ export const formsService = {
           break;
         }
       }
-      
-      // Second pass: fall back to groups with rank group configuration
+
       if (!selectedGroup) {
         const groupsWithConfig = sortedGroups.filter(g => g.configuration);
         selectedGroup = groupsWithConfig.length > 0 ? groupsWithConfig[0] : sortedGroups[0];
       }
-      
+
       rankGroupName = selectedGroup.name;
 
-      // Load from latest released version first
       if (latestReleasedVersion?.configuration) {
         try {
           rankGroupConfig = typeof latestReleasedVersion.configuration === 'string'
             ? JSON.parse(latestReleasedVersion.configuration)
             : latestReleasedVersion.configuration;
-          console.log(`✅ [V2 getFormForRank] Using latest released version ${latestReleasedVersion.versionNo} config for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), rank "${rankLabel}"`);
+          console.log(`✅ [V2 getFormForRank] Using latest released version ${latestReleasedVersion.versionNo} config for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}"`);
         } catch (e) {
           console.warn(`⚠️ [V2 getFormForRank] Failed to parse version config, falling back to rank group config:`, e);
         }
       }
 
-      // Fall back to rank group's own configuration if no version config available
       if (!rankGroupConfig && selectedGroup.configuration) {
         try {
           rankGroupConfig = JSON.parse(selectedGroup.configuration);
-          console.log(`ℹ️ [V2 getFormForRank] Fallback to rank group config for "${selectedGroup.name}" (id:${selectedGroup.id}), rank "${rankLabel}"`);
+          console.log(`ℹ️ [V2 getFormForRank] Fallback to rank group config for "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}"`);
         } catch (e) {
           console.warn(`⚠️ [V2 getFormForRank] Failed to parse rank group config:`, e);
         }
       }
 
       if (!rankGroupConfig) {
-        console.log(`ℹ️ [V2 getFormForRank] No configuration found for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), rank "${rankLabel}"`);
+        console.log(`ℹ️ [V2 getFormForRank] No configuration found for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}"`);
       }
-    } else {
-      console.log(`❌ [V2 getFormForRank] No active rank groups found for rank "${rankLabel}"`);
+
+      break;
     }
 
-    return { ...form, rankGroupName, rankGroupConfig };
+    if (!matchedForm) {
+      console.log(`ℹ️ [V2 getFormForRank] No active rank groups found for rank "${rankLabel}" across ${candidateForms.length} form(s)`);
+      return { ...candidateForms[0], rankGroupName: null, rankGroupConfig: null };
+    }
+
+    return { ...matchedForm, rankGroupName, rankGroupConfig };
   },
 
   async cleanupDuplicates(): Promise<{ message: string; kept?: number; deletedCount?: number; totalOriginal?: number }> {
