@@ -684,6 +684,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       console.log('🎉 Mutation onSuccess called', data);
       if (data && data.id) {
         setAppraisalId(data.id);
+        queryClient.setQueryData([`/api/v2/appraisals/${data.id}`], data);
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
       toast({
@@ -692,7 +693,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           ? 'Your appraisal draft has been saved successfully. You can now submit stages.' 
           : 'Your appraisal has been submitted successfully.',
       });
-      // Don't close on draft save, allow stage submissions
       if (variables.status !== 'draft') {
         onClose();
       }
@@ -731,14 +731,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       });
       return response.json();
     },
-    onSuccess: () => {
-      // Only advance to 'preliminary' if current status is 'draft'
-      // If status is already 'preliminary', 'submitted', or 'reviewed', preserve it (acts as save-only)
+    onSuccess: (responseData) => {
       if (appraisalStatus === 'draft') {
         setAppraisalStatus('preliminary');
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals', appraisalId] });
+      if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
       toast({ title: appraisalStatus === 'draft' ? 'Stage 1 submitted' : 'Stage 1 saved' });
       onClose();
     },
@@ -765,14 +763,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       });
       return response.json();
     },
-    onSuccess: () => {
-      // Only advance to 'submitted' if current status is 'draft' or 'preliminary'
-      // If status is already 'submitted' or 'reviewed', preserve it (acts as save-only)
+    onSuccess: (responseData) => {
       if (appraisalStatus === 'draft' || appraisalStatus === 'preliminary') {
         setAppraisalStatus('submitted');
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals', appraisalId] });
+      if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
       toast({ title: (appraisalStatus === 'draft' || appraisalStatus === 'preliminary') ? 'Stage 2 Submitted' : 'Stage 2 saved', description: 'Performance assessment (Parts C-F) saved successfully.' });
       onClose();
     },
@@ -795,10 +791,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (responseData) => {
       setAppraisalStatus('reviewed');
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals', appraisalId] });
+      if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
       toast({ title: 'Stage 3 Submitted', description: 'Office review (Part G) submitted successfully. Form is now locked.' });
       onClose();
     },
@@ -817,6 +813,38 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         
         // Reset form with existing data
         form.reset(parsedData);
+        
+        // Explicitly set nested array fields after reset to ensure Select components bind correctly
+        if (parsedData.competenceAssessments) {
+          form.setValue('competenceAssessments', parsedData.competenceAssessments, { shouldDirty: false });
+        }
+        if (parsedData.behaviouralAssessments) {
+          form.setValue('behaviouralAssessments', parsedData.behaviouralAssessments, { shouldDirty: false });
+        }
+        if (parsedData.recommendations) {
+          form.setValue('recommendations', parsedData.recommendations, { shouldDirty: false });
+        }
+        if (parsedData.trainings) {
+          form.setValue('trainings', parsedData.trainings, { shouldDirty: false });
+        }
+        if (parsedData.targets) {
+          form.setValue('targets', parsedData.targets, { shouldDirty: false });
+        }
+        if (parsedData.trainingNeeds) {
+          form.setValue('trainingNeeds', parsedData.trainingNeeds, { shouldDirty: false });
+        }
+        if (parsedData.trainingFollowups) {
+          form.setValue('trainingFollowups', parsedData.trainingFollowups, { shouldDirty: false });
+        }
+        if (parsedData.appraiserComments) {
+          form.setValue('appraiserComments', parsedData.appraiserComments, { shouldDirty: false });
+        }
+        if (parsedData.seafarerComments) {
+          form.setValue('seafarerComments', parsedData.seafarerComments, { shouldDirty: false });
+        }
+        if (parsedData.officeReviews) {
+          form.setValue('officeReviews', parsedData.officeReviews, { shouldDirty: false });
+        }
         
         // Load comments from form data into useState hooks for persistence
         loadCommentsFromFormData(parsedData);
