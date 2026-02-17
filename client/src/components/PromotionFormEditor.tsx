@@ -97,6 +97,12 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     // Normalize legacy configs to ensure new fields have proper null values
     const normalizeConfig = (config: any) => ({
       ...config,
+      experienceMonths: {
+        rankVessel: config.experienceMonths?.rankVessel ?? null,
+        rankVesselType: config.experienceMonths?.rankVesselType ?? null,
+        companyService: config.experienceMonths?.companyService ?? null,
+        tankerExperience: config.experienceMonths?.tankerExperience ?? null,
+      },
       minChecklistCompletionPercent: config.minChecklistCompletionPercent ?? null,
     });
     
@@ -126,7 +132,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
   const otherCriteria = watch('otherCriteria') ?? [];
   const cesTests = watch('cesTests') ?? [];
-  const experienceMonths = watch('experienceMonths');
+  const experienceMonths = watch('experienceMonths') ?? { rankVessel: null, rankVesselType: null, companyService: null, tankerExperience: null };
   const checklistSections = watch('checklistSections') ?? [];
 
   const onSubmit = (data: PromotionA2Config) => {
