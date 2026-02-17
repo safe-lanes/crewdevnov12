@@ -1139,6 +1139,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           delete newComments[id];
           return newComments;
         });
+        const currentTrainings = form.getValues("trainings");
+        form.setValue("trainings", currentTrainings.map(t => t.id === id ? { ...t, comment: "" } : t));
         setEditingTrainingComment(null);
         closeConfirmDialog();
       }
@@ -1155,6 +1157,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           delete newComments[id];
           return newComments;
         });
+        const currentTargets = form.getValues("targets");
+        form.setValue("targets", currentTargets.map(t => t.id === id ? { ...t, comment: "" } : t));
         setEditingTargetComment(null);
         closeConfirmDialog();
       }
@@ -1171,6 +1175,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           delete newComments[id];
           return newComments;
         });
+        const currentAssessments = form.getValues("competenceAssessments");
+        form.setValue("competenceAssessments", currentAssessments.map(c => c.id === id ? { ...c, comment: "" } : c));
         setEditingCompetenceComment(null);
         closeConfirmDialog();
       }
@@ -1187,6 +1193,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           delete newComments[id];
           return newComments;
         });
+        const currentAssessments = form.getValues("behaviouralAssessments");
+        form.setValue("behaviouralAssessments", currentAssessments.map(b => b.id === id ? { ...b, comment: "" } : b));
         setEditingBehaviouralComment(null);
         closeConfirmDialog();
       }
@@ -1203,6 +1211,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           delete newComments[id];
           return newComments;
         });
+        const currentNeeds = form.getValues("trainingNeeds");
+        form.setValue("trainingNeeds", currentNeeds.map(t => t.id === id ? { ...t, comment: "" } : t));
         setEditingTrainingNeedsComment(null);
         closeConfirmDialog();
       }
@@ -1219,6 +1229,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           delete newComments[id];
           return newComments;
         });
+        const currentRecs = form.getValues("recommendations");
+        form.setValue("recommendations", currentRecs.map(r => r.id === id ? { ...r, comment: "" } : r));
         setEditingRecommendationComment(null);
         closeConfirmDialog();
       }
@@ -1235,6 +1247,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           delete newComments[id];
           return newComments;
         });
+        const currentFollowups = form.getValues("trainingFollowups");
+        form.setValue("trainingFollowups", currentFollowups.map(f => f.id === id ? { ...f, comment: "" } : f));
         setEditingTrainingFollowupComment(null);
         closeConfirmDialog();
       }
