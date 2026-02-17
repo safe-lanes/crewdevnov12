@@ -217,11 +217,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     partB: true,
     partB1: true,
     partB2: true,
-    partC: true,
     partD: true,
-    partE: true,
-    partF: true,
-    partG: true,
   });
 
   // Continuous scroll refs for all sections A-G
@@ -1501,11 +1497,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     if (isConfigMode) return true;
     // Outside config mode, filter out hidden sections
     if (section.id === "B" && !sectionVisibility.partB) return false;
-    if (section.id === "C" && !sectionVisibility.partC) return false;
     if (section.id === "D" && !sectionVisibility.partD) return false;
-    if (section.id === "E" && !sectionVisibility.partE) return false;
-    if (section.id === "F" && !sectionVisibility.partF) return false;
-    if (section.id === "G" && !sectionVisibility.partG) return false;
     return true;
   }).map((section, index) => ({
     ...section,
@@ -1672,15 +1664,13 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         )}
 
         {/* Part C: Competence Assessment */}
-        {(sectionVisibility.partC || isConfigMode) && (
-          <div ref={partCRef} data-section-id="C">
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                {renderPartC()}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <div ref={partCRef} data-section-id="C">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              {renderPartC()}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Part D: Behavioural Assessment */}
         {(sectionVisibility.partD || isConfigMode) && (
@@ -1694,37 +1684,31 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         )}
 
         {/* Part E: Training Needs & Development */}
-        {(sectionVisibility.partE || isConfigMode) && (
-          <div ref={partERef} data-section-id="E">
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                {renderPartE()}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <div ref={partERef} data-section-id="E">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              {renderPartE()}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Part F: Summary & Recommendations */}
-        {(sectionVisibility.partF || isConfigMode) && (
-          <div ref={partFRef} data-section-id="F">
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                {renderPartF()}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <div ref={partFRef} data-section-id="F">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              {renderPartF()}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Part G: Office Review & Followup */}
-        {(sectionVisibility.partG || isConfigMode) && (
-          <div ref={partGRef} data-section-id="G">
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                {renderPartG()}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <div ref={partGRef} data-section-id="G">
+          <Card className="bg-white">
+            <CardContent className="p-6">
+              {renderPartG()}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   };
@@ -1733,11 +1717,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     switch (activeSection) {
       case "A": return renderPartA();
       case "B": return (sectionVisibility.partB || isConfigMode) ? renderPartB() : renderPartA();
-      case "C": return (sectionVisibility.partC || isConfigMode) ? renderPartC() : renderPartA();
+      case "C": return renderPartC();
       case "D": return (sectionVisibility.partD || isConfigMode) ? renderPartD() : renderPartA();
-      case "E": return (sectionVisibility.partE || isConfigMode) ? renderPartE() : renderPartA();
-      case "F": return (sectionVisibility.partF || isConfigMode) ? renderPartF() : renderPartA();
-      case "G": return (sectionVisibility.partG || isConfigMode) ? renderPartG() : renderPartA();
+      case "E": return renderPartE();
+      case "F": return renderPartF();
+      case "G": return renderPartG();
       default: return renderPartA();
     }
   };

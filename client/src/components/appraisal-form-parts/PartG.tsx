@@ -17,7 +17,6 @@ const PartGComponent: React.FC<PartGProps> = ({
   form,
   partRef,
   appraisalStatus,
-  isSectionVisible,
   showConfirmDialog,
   trainingFollowupComments,
   setTrainingFollowupComments,
@@ -38,8 +37,6 @@ const PartGComponent: React.FC<PartGProps> = ({
   stage3Mutation,
   saveAppraisalMutation,
 }) => {
-  if (!isSectionVisible('partG')) return null;
-
   const deleteTrainingFollowupComment = (id: string) => {
     showConfirmDialog(
       "Delete Comment",

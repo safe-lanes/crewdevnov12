@@ -15,7 +15,6 @@ import { PartCProps } from "./types";
 const PartCComponent: React.FC<PartCProps> = ({
   form,
   partRef,
-  isSectionVisible,
   showConfirmDialog,
   competenceComments,
   setCompetenceComments,
@@ -25,8 +24,6 @@ const PartCComponent: React.FC<PartCProps> = ({
   competenceSectionScore,
   getScoreColors,
 }) => {
-  if (!isSectionVisible('partC')) return null;
-
   const deleteCompetenceComment = (id: string) => {
     showConfirmDialog(
       "Delete Comment",

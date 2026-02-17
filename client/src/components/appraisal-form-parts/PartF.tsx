@@ -17,7 +17,6 @@ const PartFComponent: React.FC<PartFProps> = ({
   form,
   partRef,
   appraisalStatus,
-  isSectionVisible,
   showConfirmDialog,
   recommendationComments,
   setRecommendationComments,
@@ -43,8 +42,6 @@ const PartFComponent: React.FC<PartFProps> = ({
   saveAppraisalMutation,
   handleSaveDraft,
 }) => {
-  if (!isSectionVisible('partF')) return null;
-
   const overallScoreValue = parseFloat(overallScore) || 0;
   const { bgColor: overallBgColor, textColor: overallTextColor } = getScoreColors(overallScoreValue);
 
