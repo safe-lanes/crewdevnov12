@@ -1855,10 +1855,17 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   appraisalTypeOptions: appraisalTypeOptions,
                 };
                 
+                const hiddenFields = Object.entries(fieldVisibility)
+                  .filter(([, visible]) => !visible)
+                  .map(([field]) => field);
+                const hiddenSections = Object.entries(sectionVisibility)
+                  .filter(([, visible]) => !visible)
+                  .map(([section]) => section);
+                
                 createDraftMutation.mutate({
                   versionNo,
                   versionDate,
-                  configuration: JSON.stringify(formData),
+                  configuration: JSON.stringify({ ...formData, hiddenFields, hiddenSections }),
                   sharedConfig: JSON.stringify(sharedConfig),
                 });
                 
