@@ -3313,7 +3313,6 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
-  // Fetch all rank groups for forms tab (must be before expandedFormsData useMemo)
   const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
     queryKey: ["/api/v2/admin/rank-groups", { includeArchived: true }],
     queryFn: async () => {
@@ -3326,15 +3325,44 @@ const AdminModuleInner = (): JSX.Element => {
     enabled: selectedAdminPage === "forms",
   });
 
+  const formIds = useMemo(() => (formsData || []).map(f => f.id), [formsData]);
+  const { data: allFormVersions = [] } = useQuery<Array<{ id: number; formId: number; rankGroupId: number | null; versionNo: string; versionDate: string; status: string }>>({
+    queryKey: ["/api/v2/admin/form-versions-all", formIds],
+    queryFn: async () => {
+      if (formIds.length === 0) return [];
+      const results = await Promise.all(
+        formIds.map(async (fid) => {
+          const response = await fetch(`/api/v2/admin/forms/${fid}/versions`);
+          if (!response.ok) return [];
+          return response.json();
+        })
+      );
+      return results.flat();
+    },
+    enabled: selectedAdminPage === "forms" && formIds.length > 0,
+  });
+
   // Transform forms data to create separate rows for each rank group with category grouping
   // Filters out archived rank groups but keeps form rows visible even when all rank groups are archived
   const expandedFormsData = useMemo(() => {
     if (!formsData) return [];
 
-    // Helper to check if a rank group is archived
     const isRankGroupArchivedByName = (rankGroupName: string, formId: number) => {
       const rankGroup = allRankGroups.find(rg => rg.name === rankGroupName && rg.formId === formId);
       return rankGroup?.archivedAt != null;
+    };
+
+    const getLatestVersionForRankGroup = (rankGroupName: string, formId: number): { versionNo: string; versionDate: string } | null => {
+      const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
+      if (!rg) return null;
+      const versions = allFormVersions.filter(v => v.formId === formId && v.rankGroupId === rg.id);
+      if (versions.length === 0) return null;
+      const latest = versions.reduce((max, v) => {
+        const vNo = parseInt(v.versionNo, 10);
+        const maxNo = parseInt(max.versionNo, 10);
+        return vNo > maxNo ? v : max;
+      }, versions[0]);
+      return { versionNo: latest.versionNo, versionDate: latest.versionDate };
     };
 
     // Group forms by category first
@@ -3387,16 +3415,18 @@ const AdminModuleInner = (): JSX.Element => {
           const activeRankGroups = rankGroups.filter(rg => !isRankGroupArchivedByName(rg, form.id));
 
           if (activeRankGroups.length > 0) {
-            // Add rows for active (non-archived) rank groups only
             activeRankGroups.forEach((rankGroup, index) => {
+              const rgVersion = getLatestVersionForRankGroup(rankGroup, form.id);
               expanded.push({
                 ...form,
-                id: form.id * 1000 + index, // Create unique numeric ID for each expanded row
-                originalFormId: form.id, // Keep reference to original form ID
+                id: form.id * 1000 + index,
+                originalFormId: form.id,
                 expandedRankGroup: rankGroup,
-                rankGroup: rankGroup, // Override the concatenated rankGroup with individual group
-                isFirstInGroup: index === 0, // Mark first row for this form
-                groupSize: activeRankGroups.length, // Track how many rows this form spans
+                rankGroup: rankGroup,
+                versionNo: rgVersion?.versionNo || form.versionNo,
+                versionDate: rgVersion?.versionDate || form.versionDate,
+                isFirstInGroup: index === 0,
+                groupSize: activeRankGroups.length,
                 category: form.category || 'appraisal',
                 isFirstInCategory: isFirstRowInCategory,
                 categoryRowSpan: totalCategoryRows,
@@ -3442,7 +3472,7 @@ const AdminModuleInner = (): JSX.Element => {
     });
 
     return expanded;
-  }, [formsData, allRankGroups]);
+  }, [formsData, allRankGroups, allFormVersions]);
 
   const { data: availableRanks = [] } = useQuery<AvailableRank[]>({
     queryKey: ["/api/v2/admin/available-ranks"],
@@ -3736,7 +3766,10 @@ const AdminModuleInner = (): JSX.Element => {
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
       queryClient.invalidateQueries({ predicate: (query) => {
         const key = query.queryKey[0];
-        return typeof key === 'string' && key.startsWith('/api/v2/admin/forms/for-rank');
+        return typeof key === 'string' && (
+          key.startsWith('/api/v2/admin/forms/for-rank') ||
+          key === '/api/v2/admin/form-versions-all'
+        );
       }});
       toast({
         title: "Success",
@@ -8270,7 +8303,6 @@ const AdminModuleInner = (): JSX.Element => {
           form={editingForm}
           rankGroupName={editingRankGroup || undefined}
           rankGroupConfig={(() => {
-            // Find the rank group configuration for loading saved data
             const rg = allRankGroups.find(
               r => r.name === editingRankGroup && r.formId === ('originalFormId' in editingForm ? (editingForm as any).originalFormId : editingForm.id)
             );
@@ -8283,6 +8315,7 @@ const AdminModuleInner = (): JSX.Element => {
             }
             return null;
           })()}
+          useV2={true}
           onClose={handleCloseEditor}
           onSave={handleFormSave}
         />

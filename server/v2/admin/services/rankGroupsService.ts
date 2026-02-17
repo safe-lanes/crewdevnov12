@@ -19,9 +19,13 @@ async function createFormVersionOnConfigSave(formId: number, rankGroupId: number
     const form = await formsRepo.findById(formId);
     if (!form) return;
 
-    const currentVersionNo = form.versionNo || "00";
-    const nextVersionNum = parseInt(currentVersionNo, 10) + 1;
-    const nextVersionNo = String(nextVersionNum).padStart(2, "0");
+    const existingVersions = await formVersionsRepo.findByFormId(formId);
+    const rgVersions = existingVersions.filter(v => v.rankGroupId === rankGroupId);
+    const maxVersionNo = rgVersions.reduce((max, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      return isNaN(vNo) ? max : Math.max(max, vNo);
+    }, 0);
+    const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
 
     const now = new Date();
     const versionDate = now.toLocaleDateString("en-GB", {
@@ -40,12 +44,17 @@ async function createFormVersionOnConfigSave(formId: number, rankGroupId: number
       releasedAt: now,
     });
 
+    const globalMax = existingVersions.reduce((max, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      return isNaN(vNo) ? max : Math.max(max, vNo);
+    }, 0);
+    const globalNextVersion = String(Math.max(globalMax + 1, parseInt(nextVersionNo, 10))).padStart(2, "0");
     await formsRepo.updateById(formId, {
-      versionNo: nextVersionNo,
+      versionNo: globalNextVersion,
       versionDate,
     });
 
-    console.log(`✅ [V2 VERSION] Created version ${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
+    console.log(`✅ [V2 VERSION] Created version ${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId} (global form version: ${globalNextVersion})`);
   } catch (error) {
     console.error(`⚠️ [V2 VERSION] Failed to create version for form ${formId}:`, error);
   }

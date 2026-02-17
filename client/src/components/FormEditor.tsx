@@ -178,11 +178,13 @@ interface ExtendedForm extends Form {
 interface FormEditorProps {
   form: ExtendedForm;
   rankGroupName?: string;
+  rankGroupConfig?: RankGroupConfiguration | null;
+  useV2?: boolean;
   onClose: () => void;
   onSave: (data: any) => void;
 }
 
-export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onClose, onSave }) => {
+export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, rankGroupConfig: rankGroupConfigProp, useV2, onClose, onSave }) => {
   const { toast } = useToast();
   
   // Use originalFormId (real DB ID) when available, otherwise fall back to form.id
@@ -382,33 +384,33 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     });
   };
 
-  // Query to fetch rank groups for this form (must fetch first to get currentRankGroup for versions query)
-  // Note: queryKey[0] is used as the URL by the default fetcher, so include full URL path
+  const rankGroupsApiPath = useV2 
+    ? `/api/v2/admin/rank-groups/form/${realFormId}`
+    : `/api/rank-groups/form/${realFormId}`;
   const { data: rankGroupsData } = useQuery<RankGroup[]>({
-    queryKey: [`/api/rank-groups/form/${realFormId}`],
+    queryKey: [rankGroupsApiPath],
     enabled: !!realFormId,
   });
   
-  // Find the current rank group and parse its configuration
   const currentRankGroup = React.useMemo(() => {
     if (!rankGroupsData || !rankGroupName) return null;
     return rankGroupsData.find(rg => rg.name === rankGroupName) || null;
   }, [rankGroupsData, rankGroupName]);
   
   const rankGroupConfig = React.useMemo((): RankGroupConfiguration | null => {
+    if (rankGroupConfigProp) return rankGroupConfigProp;
     if (!currentRankGroup?.configuration) return null;
     try {
       return JSON.parse(currentRankGroup.configuration) as RankGroupConfiguration;
     } catch {
       return null;
     }
-  }, [currentRankGroup]);
+  }, [rankGroupConfigProp, currentRankGroup]);
   
-  // Query to fetch form versions from API - filtered by rank group for isolation
-  // Each rank group has its own independent version history
+  const versionsApiBase = useV2 ? `/api/v2/admin/forms/${realFormId}/versions` : `/api/forms/${realFormId}/versions`;
   const versionsQueryKey = currentRankGroup?.id 
-    ? `/api/forms/${realFormId}/versions?rankGroupId=${currentRankGroup.id}`
-    : `/api/forms/${realFormId}/versions`;
+    ? `${versionsApiBase}?rankGroupId=${currentRankGroup.id}`
+    : versionsApiBase;
   const { data: versionsData } = useQuery<FormVersion[]>({
     queryKey: [versionsQueryKey],
     enabled: !!realFormId,
@@ -437,35 +439,47 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, onC
     return { nextVersionNo: next, availableVersionOptions: options };
   }, [versionsData]);
   
-  // Create draft version mutation
+  const versionsPostUrl = useV2 ? `/api/v2/admin/forms/${realFormId}/versions` : `/api/forms/${realFormId}/versions`;
   const createDraftMutation = useMutation({
     mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string }) => {
-      const response = await apiRequest('POST', `/api/forms/${realFormId}/versions`, {
+      const response = await apiRequest('POST', versionsPostUrl, {
         ...versionData,
         status: 'draft',
-        rankGroupId: currentRankGroup?.id, // Link version to specific rank group
+        rankGroupId: currentRankGroup?.id,
       });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
+      if (useV2) {
+        queryClient.invalidateQueries({ predicate: (q) => {
+          const key = q.queryKey[0];
+          return typeof key === 'string' && key === '/api/v2/admin/form-versions-all';
+        }});
+      }
       setHasSavedDraft(true);
       toast({ title: "Draft saved", description: "Your changes have been saved as a draft." });
     },
     onError: (error: Error) => {
-      setHasSavedDraft(false); // Reset on error
+      setHasSavedDraft(false);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   });
   
-  // Release version mutation
   const releaseVersionMutation = useMutation({
     mutationFn: async (versionId: number) => {
-      const response = await apiRequest('POST', `/api/form-versions/${versionId}/release`);
+      const releaseUrl = useV2 ? `/api/v2/admin/form-versions/${versionId}/release` : `/api/form-versions/${versionId}/release`;
+      const response = await apiRequest('POST', releaseUrl);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
+      if (useV2) {
+        queryClient.invalidateQueries({ predicate: (q) => {
+          const key = q.queryKey[0];
+          return typeof key === 'string' && key === '/api/v2/admin/form-versions-all';
+        }});
+      }
       setHasSavedDraft(false);
       setActiveVersion("00");
       toast({ title: "Version released", description: "The version has been released successfully." });
