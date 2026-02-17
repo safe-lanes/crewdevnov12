@@ -189,6 +189,10 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     },
   });
 
+  const { data: crewPoolData = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/crew-pool/crew"],
+  });
+
   // Fetch company ranks for filters from V2 admin endpoint
   const { data: companyRanksV2Data = [] } = useCompanyRanksV2();
   const availableRankOptions = useMemo(() => {
@@ -257,6 +261,30 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     return "bg-red-600 text-white"; // Dark Red
   }, []);
 
+  const crewByUuid = useMemo(() => {
+    const map = new Map<string, any>();
+    crewPoolData.forEach((c: any) => { if (c.crewUuid) map.set(c.crewUuid, c); });
+    return map;
+  }, [crewPoolData]);
+
+  const vesselTypeByName = useMemo(() => {
+    const map = new Map<string, string>();
+    (vesselsV2Data as any[]).forEach((v: any) => {
+      if (v.name && v.vesselType) map.set(v.name, v.vesselType);
+    });
+    return map;
+  }, [vesselsV2Data]);
+
+  const calculateAge = useCallback((dob: string): string => {
+    if (!dob) return "";
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+    return age > 0 ? String(age) : "";
+  }, []);
+
   const allCrewData: CrewAppraisalData[] = useMemo(() =>
     appraisalResults.map((appraisal) => {
       let appraisalData: any = {};
@@ -274,6 +302,10 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
 
       const vesselName = appraisalData.vessel ? getVesselName(appraisalData.vessel) || appraisalData.vessel : "";
 
+      const crew = crewByUuid.get(appraisal.crewMemberId || "");
+      const age = crew?.dob ? calculateAge(crew.dob) : "";
+      const vesselType = vesselTypeByName.get(vesselName) || "";
+
       return {
         id: appraisal.crewMemberId || String(appraisal.id),
         employeeId: appraisal.crewMemberId || "",
@@ -284,9 +316,9 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
         },
         rank: appraisalData.seafarersRank || "",
         nationality: appraisalData.nationality || "",
-        age: "",
+        age,
         vessel: vesselName,
-        vesselType: "",
+        vesselType,
         signOn: appraisalData.signOn || "",
         appraisalType: appraisal.appraisalType || appraisalData.appraisalType || "",
         appraisalDate: appraisal.appraisalDate || "",
@@ -305,7 +337,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
         },
         appraisalId: appraisal.id,
       };
-    }), [appraisalResults, getRatingColor, getVesselName]);
+    }), [appraisalResults, getRatingColor, getVesselName, crewByUuid, vesselTypeByName, calculateAge]);
 
   // Filter crew data based on filter state
   const crewData = useMemo(() =>
