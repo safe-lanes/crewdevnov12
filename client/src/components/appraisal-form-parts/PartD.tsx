@@ -16,6 +16,7 @@ const PartDComponent: React.FC<PartDProps> = ({
   form,
   partRef,
   isSectionVisible,
+  showConfirmDialog,
   behaviouralComments,
   setBehaviouralComments,
   editingBehaviouralComment,
@@ -25,11 +26,14 @@ const PartDComponent: React.FC<PartDProps> = ({
   getScoreColors,
 }) => {
   const deleteBehaviouralComment = (id: string) => {
-    setBehaviouralComments(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    showConfirmDialog(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      () => {
+        setBehaviouralComments(prev => ({ ...prev, [id]: null }));
+        setEditingBehaviouralComment(null);
+      }
+    );
   };
 
   if (!isSectionVisible('partD')) return null;
@@ -86,13 +90,13 @@ const PartDComponent: React.FC<PartDProps> = ({
                         </div>
                       </td>
                     </tr>
-                    {behaviouralComments[assessment.id] !== undefined && (
+                    {assessment.id in behaviouralComments && behaviouralComments[assessment.id] !== null && (
                       <tr>
                         <td></td>
                         <td colSpan={4} className="p-3">
                           {editingBehaviouralComment === assessment.id ? (
                             <Textarea
-                              value={behaviouralComments[assessment.id]}
+                              value={behaviouralComments[assessment.id] ?? ""}
                               onChange={(e) => { setBehaviouralComments(prev => ({ ...prev, [assessment.id]: e.target.value })); updateBehaviouralAssessment(assessment.id, "comment", e.target.value); }}
                               onBlur={() => setEditingBehaviouralComment(null)}
                               placeholder="Comment: Add your observations here..."
@@ -106,7 +110,7 @@ const PartDComponent: React.FC<PartDProps> = ({
                                 {behaviouralComments[assessment.id] || "Click to add comment..."}
                               </div>
                               <div className="ml-2">
-                                <Button type="button" variant="ghost" size="sm" onClick={() => deleteBehaviouralComment(assessment.id)}>
+                                <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteBehaviouralComment(assessment.id); }}>
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>

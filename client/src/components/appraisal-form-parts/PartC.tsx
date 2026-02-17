@@ -15,6 +15,7 @@ import { PartCProps } from "./types";
 const PartCComponent: React.FC<PartCProps> = ({
   form,
   partRef,
+  showConfirmDialog,
   competenceComments,
   setCompetenceComments,
   editingCompetenceComment,
@@ -24,11 +25,14 @@ const PartCComponent: React.FC<PartCProps> = ({
   getScoreColors,
 }) => {
   const deleteCompetenceComment = (id: string) => {
-    setCompetenceComments(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    showConfirmDialog(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      () => {
+        setCompetenceComments(prev => ({ ...prev, [id]: null }));
+        setEditingCompetenceComment(null);
+      }
+    );
   };
 
   const scoreValue = parseFloat(competenceSectionScore) || 0;
@@ -83,13 +87,13 @@ const PartCComponent: React.FC<PartCProps> = ({
                         </div>
                       </td>
                     </tr>
-                    {competenceComments[assessment.id] !== undefined && (
+                    {assessment.id in competenceComments && competenceComments[assessment.id] !== null && (
                       <tr>
                         <td></td>
                         <td colSpan={4} className="p-3">
                           {editingCompetenceComment === assessment.id ? (
                             <Textarea
-                              value={competenceComments[assessment.id]}
+                              value={competenceComments[assessment.id] ?? ""}
                               onChange={(e) => { setCompetenceComments(prev => ({ ...prev, [assessment.id]: e.target.value })); updateCompetenceAssessment(assessment.id, "comment", e.target.value); }}
                               onBlur={() => setEditingCompetenceComment(null)}
                               placeholder="Comment: Add your observations here..."
@@ -103,7 +107,7 @@ const PartCComponent: React.FC<PartCProps> = ({
                                 {competenceComments[assessment.id] || "Click to add comment..."}
                               </div>
                               <div className="ml-2">
-                                <Button type="button" variant="ghost" size="sm" onClick={() => deleteCompetenceComment(assessment.id)}>
+                                <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteCompetenceComment(assessment.id); }}>
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>

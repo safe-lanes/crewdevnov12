@@ -9,6 +9,7 @@ import { PartEProps } from "./types";
 const PartEComponent: React.FC<PartEProps> = ({
   form,
   partRef,
+  showConfirmDialog,
   trainingNeedsComments,
   setTrainingNeedsComments,
   editingTrainingNeedsComment,
@@ -21,11 +22,14 @@ const PartEComponent: React.FC<PartEProps> = ({
   handleTrainingNeedsSelect,
 }) => {
   const deleteTrainingNeedsComment = (id: string) => {
-    setTrainingNeedsComments(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    showConfirmDialog(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      () => {
+        setTrainingNeedsComments(prev => ({ ...prev, [id]: null }));
+        setEditingTrainingNeedsComment(null);
+      }
+    );
   };
 
   return (
@@ -95,13 +99,13 @@ const PartEComponent: React.FC<PartEProps> = ({
                           </div>
                         </td>
                       </tr>
-                      {trainingNeedsComments[need.id] !== undefined && (
+                      {need.id in trainingNeedsComments && trainingNeedsComments[need.id] !== null && (
                         <tr>
                           <td></td>
                           <td colSpan={2} className="p-3">
                             {editingTrainingNeedsComment === need.id ? (
                               <Textarea
-                                value={trainingNeedsComments[need.id]}
+                                value={trainingNeedsComments[need.id] ?? ""}
                                 onChange={(e) => { setTrainingNeedsComments(prev => ({ ...prev, [need.id]: e.target.value })); updateTrainingNeed(need.id, "comment", e.target.value); }}
                                 onBlur={() => setEditingTrainingNeedsComment(null)}
                                 placeholder="Comment: Add your observations here..."
@@ -115,7 +119,7 @@ const PartEComponent: React.FC<PartEProps> = ({
                                   {trainingNeedsComments[need.id] || "Click to add comment..."}
                                 </div>
                                 <div className="ml-2">
-                                  <Button type="button" variant="ghost" size="sm" onClick={() => deleteTrainingNeedsComment(need.id)}>
+                                  <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingNeedsComment(need.id); }}>
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>

@@ -135,6 +135,7 @@ export interface AppraisalFormSectionBaseProps {
   appraisalStatus: AppraisalStatus;
   isFieldVisible: (fieldName: string) => boolean;
   isSectionVisible: (sectionName: string) => boolean;
+  showConfirmDialog: (title: string, description: string, onConfirm: () => void) => void;
 }
 
 export interface PartAProps extends AppraisalFormSectionBaseProps {
@@ -151,10 +152,10 @@ export interface PartBProps extends AppraisalFormSectionBaseProps {
   setEditingTraining: (id: string | null) => void;
   editingTarget: string | null;
   setEditingTarget: (id: string | null) => void;
-  trainingComments: Record<string, string>;
-  setTrainingComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  targetComments: Record<string, string>;
-  setTargetComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  trainingComments: Record<string, string | null>;
+  setTrainingComments: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
+  targetComments: Record<string, string | null>;
+  setTargetComments: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
   editingTrainingComment: string | null;
   setEditingTrainingComment: (id: string | null) => void;
   editingTargetComment: string | null;
@@ -169,8 +170,8 @@ export interface PartBProps extends AppraisalFormSectionBaseProps {
 
 export interface PartCProps extends AppraisalFormSectionBaseProps {
   partRef: RefObject<HTMLDivElement>;
-  competenceComments: Record<string, string>;
-  setCompetenceComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  competenceComments: Record<string, string | null>;
+  setCompetenceComments: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
   editingCompetenceComment: string | null;
   setEditingCompetenceComment: (id: string | null) => void;
   updateCompetenceAssessment: (id: string, field: string, value: string | number) => void;
@@ -180,8 +181,8 @@ export interface PartCProps extends AppraisalFormSectionBaseProps {
 
 export interface PartDProps extends AppraisalFormSectionBaseProps {
   partRef: RefObject<HTMLDivElement>;
-  behaviouralComments: Record<string, string>;
-  setBehaviouralComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  behaviouralComments: Record<string, string | null>;
+  setBehaviouralComments: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
   editingBehaviouralComment: string | null;
   setEditingBehaviouralComment: (id: string | null) => void;
   updateBehaviouralAssessment: (id: string, field: string, value: string | number) => void;
@@ -191,8 +192,8 @@ export interface PartDProps extends AppraisalFormSectionBaseProps {
 
 export interface PartEProps extends AppraisalFormSectionBaseProps {
   partRef: RefObject<HTMLDivElement>;
-  trainingNeedsComments: Record<string, string>;
-  setTrainingNeedsComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  trainingNeedsComments: Record<string, string | null>;
+  setTrainingNeedsComments: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
   editingTrainingNeedsComment: string | null;
   setEditingTrainingNeedsComment: (id: string | null) => void;
   isTrainingNeedsDialogOpen: boolean;
@@ -205,8 +206,8 @@ export interface PartEProps extends AppraisalFormSectionBaseProps {
 
 export interface PartFProps extends AppraisalFormSectionBaseProps {
   partRef: RefObject<HTMLDivElement>;
-  recommendationComments: Record<string, string>;
-  setRecommendationComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  recommendationComments: Record<string, string | null>;
+  setRecommendationComments: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
   editingRecommendationComment: string | null;
   setEditingRecommendationComment: (id: string | null) => void;
   editingAppraiserComment: string | null;
@@ -232,8 +233,8 @@ export interface PartFProps extends AppraisalFormSectionBaseProps {
 
 export interface PartGProps extends AppraisalFormSectionBaseProps {
   partRef: RefObject<HTMLDivElement>;
-  trainingFollowupComments: Record<string, string>;
-  setTrainingFollowupComments: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  trainingFollowupComments: Record<string, string | null>;
+  setTrainingFollowupComments: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
   editingTrainingFollowupComment: string | null;
   setEditingTrainingFollowupComment: (id: string | null) => void;
   editingOfficeReview: string | null;

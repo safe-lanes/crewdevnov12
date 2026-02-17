@@ -17,6 +17,7 @@ const PartGComponent: React.FC<PartGProps> = ({
   form,
   partRef,
   appraisalStatus,
+  showConfirmDialog,
   trainingFollowupComments,
   setTrainingFollowupComments,
   editingTrainingFollowupComment,
@@ -37,11 +38,14 @@ const PartGComponent: React.FC<PartGProps> = ({
   saveAppraisalMutation,
 }) => {
   const deleteTrainingFollowupComment = (id: string) => {
-    setTrainingFollowupComments(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    showConfirmDialog(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      () => {
+        setTrainingFollowupComments(prev => ({ ...prev, [id]: null }));
+        setEditingTrainingFollowupComment(null);
+      }
+    );
   };
 
   return (
@@ -184,13 +188,13 @@ const PartGComponent: React.FC<PartGProps> = ({
                             </div>
                           </td>
                         </tr>
-                        {trainingFollowupComments[followup.id] !== undefined && (
+                        {followup.id in trainingFollowupComments && trainingFollowupComments[followup.id] !== null && (
                           <tr>
                             <td></td>
                             <td colSpan={6} className="p-3">
                               {editingTrainingFollowupComment === followup.id ? (
                                 <Textarea
-                                  value={trainingFollowupComments[followup.id]}
+                                  value={trainingFollowupComments[followup.id] ?? ""}
                                   onChange={(e) => { setTrainingFollowupComments(prev => ({ ...prev, [followup.id]: e.target.value })); updateTrainingFollowup(followup.id, "comment", e.target.value); }}
                                   onBlur={() => setEditingTrainingFollowupComment(null)}
                                   placeholder="Comment: Add your observations here..."
@@ -204,7 +208,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                                     {trainingFollowupComments[followup.id] || "Click to add comment..."}
                                   </div>
                                   <div className="ml-2">
-                                    <Button type="button" variant="ghost" size="sm" onClick={() => deleteTrainingFollowupComment(followup.id)}>
+                                    <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingFollowupComment(followup.id); }}>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>

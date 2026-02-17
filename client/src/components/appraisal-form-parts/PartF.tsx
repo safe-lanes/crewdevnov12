@@ -17,6 +17,7 @@ const PartFComponent: React.FC<PartFProps> = ({
   form,
   partRef,
   appraisalStatus,
+  showConfirmDialog,
   recommendationComments,
   setRecommendationComments,
   editingRecommendationComment,
@@ -159,13 +160,13 @@ const PartFComponent: React.FC<PartFProps> = ({
                             </Button>
                           </td>
                         </tr>
-                        {recommendationComments[rec.id] !== undefined && (
+                        {rec.id in recommendationComments && recommendationComments[rec.id] !== null && (
                           <tr>
                             <td></td>
                             <td colSpan={5} className="p-3">
                               {editingRecommendationComment === rec.id ? (
                                 <Textarea
-                                  value={recommendationComments[rec.id]}
+                                  value={recommendationComments[rec.id] ?? ""}
                                   onChange={(e) => {
                                     setRecommendationComments(prev => ({ ...prev, [rec.id]: e.target.value }));
                                     updateRecommendation(rec.id, "comment", e.target.value);
@@ -189,13 +190,17 @@ const PartFComponent: React.FC<PartFProps> = ({
                                       type="button"
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => {
-                                        setRecommendationComments(prev => {
-                                          const newComments = { ...prev };
-                                          delete newComments[rec.id];
-                                          return newComments;
-                                        });
-                                        updateRecommendation(rec.id, "comment", "");
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        showConfirmDialog(
+                                          "Delete Comment",
+                                          "Are you sure you want to delete this comment?",
+                                          () => {
+                                            setRecommendationComments(prev => ({ ...prev, [rec.id]: null }));
+                                            setEditingRecommendationComment(null);
+                                            updateRecommendation(rec.id, "comment", "");
+                                          }
+                                        );
                                       }}
                                     >
                                       <Trash2 className="h-4 w-4" />

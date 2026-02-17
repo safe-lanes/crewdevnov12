@@ -18,6 +18,7 @@ const PartBComponent: React.FC<PartBProps> = ({
   partRef,
   isSectionVisible,
   showEvaluation,
+  showConfirmDialog,
   trainingComments,
   setTrainingComments,
   targetComments,
@@ -34,19 +35,25 @@ const PartBComponent: React.FC<PartBProps> = ({
   deleteTarget,
 }) => {
   const deleteTrainingComment = (id: string) => {
-    setTrainingComments(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    showConfirmDialog(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      () => {
+        setTrainingComments(prev => ({ ...prev, [id]: null }));
+        setEditingTrainingComment(null);
+      }
+    );
   };
 
   const deleteTargetComment = (id: string) => {
-    setTargetComments(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    showConfirmDialog(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      () => {
+        setTargetComments(prev => ({ ...prev, [id]: null }));
+        setEditingTargetComment(null);
+      }
+    );
   };
 
   if (!isSectionVisible('partB')) return null;
@@ -121,13 +128,13 @@ const PartBComponent: React.FC<PartBProps> = ({
                               </div>
                             </td>
                           </tr>
-                          {trainingComments[training.id] !== undefined && (
+                          {training.id in trainingComments && trainingComments[training.id] !== null && (
                             <tr>
                               <td></td>
                               <td colSpan={3} className="p-3">
                                 {editingTrainingComment === training.id ? (
                                   <Textarea
-                                    value={trainingComments[training.id]}
+                                    value={trainingComments[training.id] ?? ""}
                                     onChange={(e) => { setTrainingComments(prev => ({ ...prev, [training.id]: e.target.value })); updateTraining(training.id, "comment", e.target.value); }}
                                     onBlur={() => setEditingTrainingComment(null)}
                                     placeholder="Comment: Add your observations here..."
@@ -141,7 +148,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                       {trainingComments[training.id] || "Click to add comment..."}
                                     </div>
                                     <div className="ml-2">
-                                      <Button type="button" variant="ghost" size="sm" onClick={() => deleteTrainingComment(training.id)}>
+                                      <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }}>
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
                                     </div>
@@ -224,13 +231,13 @@ const PartBComponent: React.FC<PartBProps> = ({
                             </div>
                           </td>
                         </tr>
-                        {targetComments[target.id] !== undefined && (
+                        {target.id in targetComments && targetComments[target.id] !== null && (
                           <tr>
                             <td></td>
                             <td colSpan={3} className="p-3">
                               {editingTargetComment === target.id ? (
                                 <Textarea
-                                  value={targetComments[target.id]}
+                                  value={targetComments[target.id] ?? ""}
                                   onChange={(e) => { setTargetComments(prev => ({ ...prev, [target.id]: e.target.value })); updateTarget(target.id, "comment", e.target.value); }}
                                   onBlur={() => setEditingTargetComment(null)}
                                   placeholder="Comment: Add your observations here..."
@@ -244,7 +251,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                     {targetComments[target.id] || "Click to add comment..."}
                                   </div>
                                   <div className="ml-2">
-                                    <Button type="button" variant="ghost" size="sm" onClick={() => deleteTargetComment(target.id)}>
+                                    <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }}>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>
