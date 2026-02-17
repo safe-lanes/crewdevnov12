@@ -412,57 +412,18 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       primaryAppraiser: "",
       trainings: [],
       targets: [],
-      competenceAssessments: [
-        { id: "1", assessmentCriteria: "Safety Performance and Open Reporting", weight: 10, effectiveness: "", comment: "" },
-        { id: "2", assessmentCriteria: "Shipboard operational performance & technical skills - Navigation", weight: 10, effectiveness: "", comment: "" },
-        { id: "3", assessmentCriteria: "Assessment Criteria 3", weight: 10, effectiveness: "", comment: "" },
-        { id: "4", assessmentCriteria: "Assessment Criteria 4", weight: 10, effectiveness: "", comment: "" },
-        { id: "5", assessmentCriteria: "Assessment Criteria 5", weight: 10, effectiveness: "", comment: "" },
-        { id: "6", assessmentCriteria: "Assessment Criteria 6", weight: 10, effectiveness: "", comment: "" },
-        { id: "7", assessmentCriteria: "Assessment Criteria 7", weight: 10, effectiveness: "", comment: "" },
-        { id: "8", assessmentCriteria: "Assessment Criteria 8", weight: 10, effectiveness: "", comment: "" },
-        { id: "9", assessmentCriteria: "Assessment Criteria 9", weight: 10, effectiveness: "", comment: "" },
-        { id: "10", assessmentCriteria: "Assessment Criteria 10", weight: 10, effectiveness: "", comment: "" }
-      ],
-
-      behaviouralAssessments: [
-        { id: "1", assessmentCriteria: "Leadership", weight: 10, effectiveness: "", comment: "" },
-        { id: "2", assessmentCriteria: "Attitude", weight: 10, effectiveness: "", comment: "" },
-        { id: "3", assessmentCriteria: "Emotional Intelligence", weight: 10, effectiveness: "", comment: "" },
-        { id: "4", assessmentCriteria: "Work Ethics", weight: 10, effectiveness: "", comment: "" },
-        { id: "5", assessmentCriteria: "Situational Awareness", weight: 10, effectiveness: "", comment: "" },
-        { id: "6", assessmentCriteria: "Decision Making", weight: 10, effectiveness: "", comment: "" },
-        { id: "7", assessmentCriteria: "Teamwork", weight: 10, effectiveness: "", comment: "" },
-        { id: "8", assessmentCriteria: "Assessment Criteria 8", weight: 10, effectiveness: "", comment: "" },
-        { id: "9", assessmentCriteria: "Assessment Criteria 9", weight: 10, effectiveness: "", comment: "" },
-        { id: "10", assessmentCriteria: "Assessment Criteria 10", weight: 10, effectiveness: "", comment: "" }
-      ],
-
+      competenceAssessments: [],
+      behaviouralAssessments: [],
       trainingNeeds: [],
-      
-      // Part F: Comments & Recommendations
-      recommendations: [
-        { id: "1", question: "Recommended for continued service on board?", answer: "", comment: "" },
-        { id: "2", question: "Recommended for re-employment?", answer: "", comment: "" },
-        { id: "3", question: "Recommended for promotion?", answer: "", comment: "" },
-        { id: "4", question: "Career Development recommendations (If Any)?", answer: "", comment: "" },
-      ],
+      recommendations: [],
       appraiserComments: [
         { id: "primary", name: "", rank: "", comment: "" }
       ],
       seafarerComments: [
         { id: "seafarer", name: "", rank: "", comment: "" }
       ],
-      
-      // Part G: Office Review & Followup - Start with empty reviews (use Add Reviewer to add)
       officeReviews: [],
-      trainingFollowups: [
-        { id: "1", training: "Training 1", correspondingInDB: "Select Training from DB", category: "Select Rating", status: "Proposed", targetDate: "", comment: "" },
-        { id: "2", training: "Training 2", correspondingInDB: "Select Training from DB", category: "1. Competence", status: "Approved", targetDate: "", comment: "" },
-        { id: "3", training: "Training 3", correspondingInDB: "Select Training from DB", category: "2- Soft Skills", status: "Planned", targetDate: "", comment: "" },
-        { id: "4", training: "Training 4", correspondingInDB: "Select Training from DB", category: "1. Competence", status: "Declined", targetDate: "", comment: "The officer will no longer be sent on this type of vessel, so this training is not required." },
-        { id: "5", training: "Training 5", correspondingInDB: "Select Training from DB", category: "2- Soft Skills", status: "Completed", targetDate: "", comment: "" }
-      ],
+      trainingFollowups: [],
     },
   });
 
