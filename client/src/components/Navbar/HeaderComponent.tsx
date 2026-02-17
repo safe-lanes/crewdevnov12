@@ -350,18 +350,14 @@ export default function HeaderComponent({
                                 className="absolute right-0 top-[50px] w-[220px] bg-white rounded-md shadow-lg border border-gray-200 z-[200] py-2"
                                 data-testid="dropdown-user-profile"
                             >
-                                {userName && (
-                                    <div className="px-4 py-2 border-b border-gray-100">
-                                        <span className="text-xs text-gray-500">User Name : </span>
-                                        <span className="text-sm font-semibold text-gray-800" data-testid="text-user-name">{userName}</span>
-                                    </div>
-                                )}
-                                {domain && (
-                                    <div className="px-4 py-2 border-b border-gray-100">
-                                        <span className="text-xs text-gray-500">Domain Name : </span>
-                                        <span className="text-sm font-semibold text-gray-800" data-testid="text-domain-name">{domain}</span>
-                                    </div>
-                                )}
+                                <div className="px-4 py-2 border-b border-gray-100">
+                                    <span className="text-xs text-gray-500">User Name : </span>
+                                    <span className="text-sm font-semibold text-gray-800" data-testid="text-user-name">{userName || '-'}</span>
+                                </div>
+                                <div className="px-4 py-2 border-b border-gray-100">
+                                    <span className="text-xs text-gray-500">Domain Name : </span>
+                                    <span className="text-sm font-semibold text-gray-800" data-testid="text-domain-name">{domain || '-'}</span>
+                                </div>
                                 <button
                                     className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                                     onClick={handleLogout}
