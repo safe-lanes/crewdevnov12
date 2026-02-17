@@ -39,23 +39,25 @@ interface PromotionFormEditorProps {
   form: Form;
   rankGroupName?: string;
   rankGroupConfig?: any;
+  useV2?: boolean;
   onClose: () => void;
   onSave: (data: any) => void;
 }
 
 interface LicenseEntry {
-  id: number;
+  id: number | string;
   entryId: string;
   name: string;
   shortCode: string;
   description: string;
-  officerMatrixLabel: string;
+  officerMatrixLabel?: string;
 }
 
 export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   form,
   rankGroupName,
   rankGroupConfig,
+  useV2,
   onClose,
   onSave
 }) => {
@@ -64,9 +66,9 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   const [selectedLicenseIds, setSelectedLicenseIds] = useState<string[]>([]);
   const [licenseSearchTerm, setLicenseSearchTerm] = useState("");
 
-  // Fetch licenses from Master 016
+  const licensesEndpoint = useV2 ? '/api/v2/masters/licenses-dce' : '/api/masters/016/data';
   const { data: licenses = [] } = useQuery<LicenseEntry[]>({
-    queryKey: ['/api/masters/016/data'],
+    queryKey: [licensesEndpoint],
   });
 
   const formMethods = useForm<PromotionA2Config>({
@@ -1085,7 +1087,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                       <TableCell className="text-xs">{license.name}</TableCell>
                       <TableCell className="text-xs">{license.shortCode}</TableCell>
                       <TableCell className="text-xs">{license.description}</TableCell>
-                      <TableCell className="text-xs">{license.officerMatrixLabel}</TableCell>
+                      <TableCell className="text-xs">{license.officerMatrixLabel || '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
