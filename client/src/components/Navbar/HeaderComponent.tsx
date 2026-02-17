@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'wouter'
 import { ModuleNavigator } from '../ModuleNavigator'
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
+import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem } from '@/lib/encryptionService';
 import { 
     LayoutGrid, 
     UserPlus,
@@ -17,7 +18,8 @@ import {
     Settings,
     Menu,
     X,
-    PanelLeft
+    PanelLeft,
+    LogOut
 } from "lucide-react";
 
 const navItems = [
@@ -146,9 +148,83 @@ export default function HeaderComponent({
 }: HeaderComponentProps) {
     const [location, navigate] = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const profileRef = useRef<HTMLDivElement>(null);
     const viewport = useViewport();
     const layoutConfig = getLayoutConfig(viewport);
-    
+
+    const extractStringValue = (val: any): string => {
+        if (!val) return '';
+        if (typeof val === 'string') return val;
+        if (typeof val === 'object') {
+            return val.name || val.userName || val.fullName || val.displayName || JSON.stringify(val);
+        }
+        return String(val);
+    };
+
+    const getInitials = (name: string): string => {
+        if (!name) return 'U';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    };
+
+    const [userName, setUserName] = useState('');
+    const [domain, setDomain] = useState('');
+
+    useEffect(() => {
+        const resolveUserName = (): string => {
+            try {
+                const decrypted = getDecryptedSessionStorageItem('crewUserName', true);
+                if (decrypted) return extractStringValue(decrypted);
+                const plain = sessionStorage.getItem('crewUserName');
+                if (plain) return plain;
+                const decryptedLS = getDecryptedLocalStorageItem('userName', true);
+                if (decryptedLS) return extractStringValue(decryptedLS);
+                return localStorage.getItem('userName') || '';
+            } catch {
+                return sessionStorage.getItem('crewUserName') || localStorage.getItem('userName') || '';
+            }
+        };
+
+        const resolveDomain = (): string => {
+            try {
+                const decrypted = getDecryptedLocalStorageItem('domain', true);
+                if (decrypted) return extractStringValue(decrypted);
+                return localStorage.getItem('domain') || '';
+            } catch {
+                return localStorage.getItem('domain') || '';
+            }
+        };
+
+        setUserName(resolveUserName());
+        setDomain(resolveDomain());
+    }, [isProfileOpen]);
+
+    const initials = getInitials(userName);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+                setIsProfileOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleLogout = () => {
+        setIsProfileOpen(false);
+        const authKeys = ['crewUserName', 'crewUserId', 'userName', 'domain', 'token', 'accessToken', 'refreshToken', 'authToken', 'sessionId'];
+        authKeys.forEach(key => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        });
+        window.location.href = '/';
+    };
+
     const handleModuleChange = useCallback((moduleId: string) => {
         switch (moduleId) {
             case "crewing":
@@ -257,6 +333,46 @@ export default function HeaderComponent({
                             })}
                         </div>
                     </nav>
+
+                    {/* User Profile Avatar */}
+                    <div className="relative flex items-center mr-2 sm:mr-4" ref={profileRef}>
+                        <button
+                            className="flex items-center justify-center w-10 h-10 rounded-full bg-[#16569e] text-white text-sm font-semibold cursor-pointer border-2 border-transparent hover:border-[#51baf4] transition-colors"
+                            onClick={() => setIsProfileOpen(!isProfileOpen)}
+                            data-testid="button-user-profile"
+                            aria-label="User profile menu"
+                        >
+                            {initials}
+                        </button>
+
+                        {isProfileOpen && (
+                            <div
+                                className="absolute right-0 top-[50px] w-[220px] bg-white rounded-md shadow-lg border border-gray-200 z-[200] py-2"
+                                data-testid="dropdown-user-profile"
+                            >
+                                {userName && (
+                                    <div className="px-4 py-2 border-b border-gray-100">
+                                        <span className="text-xs text-gray-500">User Name : </span>
+                                        <span className="text-sm font-semibold text-gray-800" data-testid="text-user-name">{userName}</span>
+                                    </div>
+                                )}
+                                {domain && (
+                                    <div className="px-4 py-2 border-b border-gray-100">
+                                        <span className="text-xs text-gray-500">Domain Name : </span>
+                                        <span className="text-sm font-semibold text-gray-800" data-testid="text-domain-name">{domain}</span>
+                                    </div>
+                                )}
+                                <button
+                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                                    onClick={handleLogout}
+                                    data-testid="button-logout"
+                                >
+                                    <LogOut size={16} />
+                                    Logout
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Hamburger menu button - phone only (below 768px) */}
                     <button
