@@ -26,21 +26,60 @@ export class ApprSeafarerCommentsRepository {
 
   async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string): Promise<void> {
     const db = getDb();
-    await db.update(apprSeafarerCommentsV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(and(eq(apprSeafarerCommentsV2.appraisalUuid, appraisalUuid), eq(apprSeafarerCommentsV2.isDeleted, false)));
-    if (rows.length > 0) {
-      const values = rows.map((row, i) => ({
-        seafarerCommentUuid: uuidv4(),
-        appraisalUuid,
-        name: row.name || null,
-        rank: row.rank || null,
-        comment: row.comment || null,
-        sortOrder: i,
-        createdByUuid: auditUserUuid || null,
-        updatedByUuid: auditUserUuid || null,
-      }));
-      await db.insert(apprSeafarerCommentsV2).values(values);
+    const now = new Date();
+
+    const existing = await db
+      .select()
+      .from(apprSeafarerCommentsV2)
+      .where(and(
+        eq(apprSeafarerCommentsV2.appraisalUuid, appraisalUuid),
+        eq(apprSeafarerCommentsV2.isDeleted, false)
+      ))
+      .orderBy(apprSeafarerCommentsV2.sortOrder);
+
+    const updates: Promise<any>[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (i < existing.length) {
+        updates.push(
+          db.update(apprSeafarerCommentsV2)
+            .set({
+              name: row.name || null,
+              rank: row.rank || null,
+              comment: row.comment || null,
+              sortOrder: i,
+              updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
+              updatedAt: now,
+            })
+            .where(eq(apprSeafarerCommentsV2.id, existing[i].id))
+        );
+      } else {
+        updates.push(
+          db.insert(apprSeafarerCommentsV2).values({
+            seafarerCommentUuid: uuidv4(),
+            appraisalUuid,
+            name: row.name || null,
+            rank: row.rank || null,
+            comment: row.comment || null,
+            sortOrder: i,
+            createdByUuid: auditUserUuid || null,
+            updatedByUuid: auditUserUuid || null,
+          })
+        );
+      }
+    }
+
+    for (let i = rows.length; i < existing.length; i++) {
+      updates.push(
+        db.update(apprSeafarerCommentsV2)
+          .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
+          .where(eq(apprSeafarerCommentsV2.id, existing[i].id))
+      );
+    }
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
     }
   }
 }

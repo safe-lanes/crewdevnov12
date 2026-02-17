@@ -26,20 +26,58 @@ export class ApprTrainingNeedsRepository {
 
   async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string): Promise<void> {
     const db = getDb();
-    await db.update(apprTrainingNeedsV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(and(eq(apprTrainingNeedsV2.appraisalUuid, appraisalUuid), eq(apprTrainingNeedsV2.isDeleted, false)));
-    if (rows.length > 0) {
-      const values = rows.map((row, i) => ({
-        trainingNeedUuid: uuidv4(),
-        appraisalUuid,
-        training: row.training || null,
-        comment: row.comment || null,
-        sortOrder: i,
-        createdByUuid: auditUserUuid || null,
-        updatedByUuid: auditUserUuid || null,
-      }));
-      await db.insert(apprTrainingNeedsV2).values(values);
+    const now = new Date();
+
+    const existing = await db
+      .select()
+      .from(apprTrainingNeedsV2)
+      .where(and(
+        eq(apprTrainingNeedsV2.appraisalUuid, appraisalUuid),
+        eq(apprTrainingNeedsV2.isDeleted, false)
+      ))
+      .orderBy(apprTrainingNeedsV2.sortOrder);
+
+    const updates: Promise<any>[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (i < existing.length) {
+        updates.push(
+          db.update(apprTrainingNeedsV2)
+            .set({
+              training: row.training || null,
+              comment: row.comment || null,
+              sortOrder: i,
+              updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
+              updatedAt: now,
+            })
+            .where(eq(apprTrainingNeedsV2.id, existing[i].id))
+        );
+      } else {
+        updates.push(
+          db.insert(apprTrainingNeedsV2).values({
+            trainingNeedUuid: uuidv4(),
+            appraisalUuid,
+            training: row.training || null,
+            comment: row.comment || null,
+            sortOrder: i,
+            createdByUuid: auditUserUuid || null,
+            updatedByUuid: auditUserUuid || null,
+          })
+        );
+      }
+    }
+
+    for (let i = rows.length; i < existing.length; i++) {
+      updates.push(
+        db.update(apprTrainingNeedsV2)
+          .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
+          .where(eq(apprTrainingNeedsV2.id, existing[i].id))
+      );
+    }
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
     }
   }
 }

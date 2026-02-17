@@ -26,21 +26,60 @@ export class ApprRecommendationsRepository {
 
   async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string): Promise<void> {
     const db = getDb();
-    await db.update(apprRecommendationsV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(and(eq(apprRecommendationsV2.appraisalUuid, appraisalUuid), eq(apprRecommendationsV2.isDeleted, false)));
-    if (rows.length > 0) {
-      const values = rows.map((row, i) => ({
-        recommendationUuid: uuidv4(),
-        appraisalUuid,
-        question: row.question || null,
-        answer: row.answer || null,
-        comment: row.comment || null,
-        sortOrder: i,
-        createdByUuid: auditUserUuid || null,
-        updatedByUuid: auditUserUuid || null,
-      }));
-      await db.insert(apprRecommendationsV2).values(values);
+    const now = new Date();
+
+    const existing = await db
+      .select()
+      .from(apprRecommendationsV2)
+      .where(and(
+        eq(apprRecommendationsV2.appraisalUuid, appraisalUuid),
+        eq(apprRecommendationsV2.isDeleted, false)
+      ))
+      .orderBy(apprRecommendationsV2.sortOrder);
+
+    const updates: Promise<any>[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (i < existing.length) {
+        updates.push(
+          db.update(apprRecommendationsV2)
+            .set({
+              question: row.question || null,
+              answer: row.answer || null,
+              comment: row.comment || null,
+              sortOrder: i,
+              updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
+              updatedAt: now,
+            })
+            .where(eq(apprRecommendationsV2.id, existing[i].id))
+        );
+      } else {
+        updates.push(
+          db.insert(apprRecommendationsV2).values({
+            recommendationUuid: uuidv4(),
+            appraisalUuid,
+            question: row.question || null,
+            answer: row.answer || null,
+            comment: row.comment || null,
+            sortOrder: i,
+            createdByUuid: auditUserUuid || null,
+            updatedByUuid: auditUserUuid || null,
+          })
+        );
+      }
+    }
+
+    for (let i = rows.length; i < existing.length; i++) {
+      updates.push(
+        db.update(apprRecommendationsV2)
+          .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
+          .where(eq(apprRecommendationsV2.id, existing[i].id))
+      );
+    }
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
     }
   }
 }

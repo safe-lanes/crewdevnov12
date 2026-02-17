@@ -26,22 +26,62 @@ export class ApprBehaviouralAssessmentsRepository {
 
   async syncForAppraisal(appraisalUuid: string, rows: any[], auditUserUuid?: string): Promise<void> {
     const db = getDb();
-    await db.update(apprBehaviouralAssessmentsV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
-      .where(and(eq(apprBehaviouralAssessmentsV2.appraisalUuid, appraisalUuid), eq(apprBehaviouralAssessmentsV2.isDeleted, false)));
-    if (rows.length > 0) {
-      const values = rows.map((row, i) => ({
-        behaviouralUuid: uuidv4(),
-        appraisalUuid,
-        assessmentCriteria: row.assessmentCriteria || null,
-        weight: row.weight != null ? Number(row.weight) : null,
-        effectiveness: row.effectiveness || null,
-        comment: row.comment || null,
-        sortOrder: i,
-        createdByUuid: auditUserUuid || null,
-        updatedByUuid: auditUserUuid || null,
-      }));
-      await db.insert(apprBehaviouralAssessmentsV2).values(values);
+    const now = new Date();
+
+    const existing = await db
+      .select()
+      .from(apprBehaviouralAssessmentsV2)
+      .where(and(
+        eq(apprBehaviouralAssessmentsV2.appraisalUuid, appraisalUuid),
+        eq(apprBehaviouralAssessmentsV2.isDeleted, false)
+      ))
+      .orderBy(apprBehaviouralAssessmentsV2.sortOrder);
+
+    const updates: Promise<any>[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (i < existing.length) {
+        updates.push(
+          db.update(apprBehaviouralAssessmentsV2)
+            .set({
+              assessmentCriteria: row.assessmentCriteria || null,
+              weight: row.weight != null ? Number(row.weight) : null,
+              effectiveness: row.effectiveness || null,
+              comment: row.comment || null,
+              sortOrder: i,
+              updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
+              updatedAt: now,
+            })
+            .where(eq(apprBehaviouralAssessmentsV2.id, existing[i].id))
+        );
+      } else {
+        updates.push(
+          db.insert(apprBehaviouralAssessmentsV2).values({
+            behaviouralUuid: uuidv4(),
+            appraisalUuid,
+            assessmentCriteria: row.assessmentCriteria || null,
+            weight: row.weight != null ? Number(row.weight) : null,
+            effectiveness: row.effectiveness || null,
+            comment: row.comment || null,
+            sortOrder: i,
+            createdByUuid: auditUserUuid || null,
+            updatedByUuid: auditUserUuid || null,
+          })
+        );
+      }
+    }
+
+    for (let i = rows.length; i < existing.length; i++) {
+      updates.push(
+        db.update(apprBehaviouralAssessmentsV2)
+          .set({ isDeleted: true, updatedAt: now, updatedByUuid: auditUserUuid || existing[i].updatedByUuid })
+          .where(eq(apprBehaviouralAssessmentsV2.id, existing[i].id))
+      );
+    }
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
     }
   }
 }
