@@ -423,7 +423,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         { id: "seafarer", name: "", rank: "", comment: "" }
       ],
       officeReviews: [],
-      trainingFollowups: [],
+      trainingFollowups: [
+        { id: "1", training: "Training 1", correspondingInDB: "Select Training from DB", category: "Select Rating", status: "Proposed", targetDate: "", comment: "" },
+        { id: "2", training: "Training 2", correspondingInDB: "Select Training from DB", category: "1. Competence", status: "Approved", targetDate: "", comment: "" },
+        { id: "3", training: "Training 3", correspondingInDB: "Select Training from DB", category: "2- Soft Skills", status: "Planned", targetDate: "", comment: "" },
+        { id: "4", training: "Training 4", correspondingInDB: "Select Training from DB", category: "1. Competence", status: "Declined", targetDate: "", comment: "The officer will no longer be sent on this type of vessel, so this training is not required." },
+        { id: "5", training: "Training 5", correspondingInDB: "Select Training from DB", category: "2- Soft Skills", status: "Completed", targetDate: "", comment: "" }
+      ],
     },
   });
 
