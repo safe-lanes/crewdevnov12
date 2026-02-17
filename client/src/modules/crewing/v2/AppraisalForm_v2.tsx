@@ -1582,7 +1582,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Mapping section IDs to hiddenSections keys
   const sectionIdToHiddenKey: Record<string, string> = {
     "B": "partB",
+    "C": "partC",
     "D": "partD",
+    "E": "partE",
+    "F": "partF",
+    "G": "partG",
   };
   
   const allSections = useMemo(() => [
@@ -2698,7 +2702,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 )}
 
                 {/* Part C: Competence Assessment */}
-                {activeSection === "competenceAssessment" && (
+                {activeSection === "competenceAssessment" && isSectionVisible('partC') && (
                   <Card className="bg-white">
                     <CardContent className="p-6">
                       <div className="pb-4 mb-6">
@@ -2969,7 +2973,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 )}
 
                 {/* Part E: Training Needs & Development */}
-                {activeSection === "trainingNeeds" && (
+                {activeSection === "trainingNeeds" && isSectionVisible('partE') && (
                   <Card className="bg-white">
                     <CardContent className="p-6">
                       <div className="pb-4 mb-6">
@@ -3115,7 +3119,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 )}
 
                 {/* Part F: Comments & Recommendations */}
-                {activeSection === "summary" && (
+                {activeSection === "summary" && isSectionVisible('partF') && (
                   <div className="space-y-6">
                     <Card className="bg-white">
                       <CardContent className="p-6">
@@ -3431,7 +3435,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 )}
 
                 {/* Part G: Office Review & Followup */}
-                {activeSection === "officeReview" && (
+                {activeSection === "officeReview" && isSectionVisible('partG') && (
                   <div className="space-y-6">
                     <Card className="bg-white">
                       <CardContent className="p-6">

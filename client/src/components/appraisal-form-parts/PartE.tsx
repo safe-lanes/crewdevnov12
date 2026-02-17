@@ -9,6 +9,7 @@ import { PartEProps } from "./types";
 const PartEComponent: React.FC<PartEProps> = ({
   form,
   partRef,
+  isSectionVisible,
   showConfirmDialog,
   trainingNeedsComments,
   setTrainingNeedsComments,
@@ -21,6 +22,8 @@ const PartEComponent: React.FC<PartEProps> = ({
   deleteTrainingNeed,
   handleTrainingNeedsSelect,
 }) => {
+  if (!isSectionVisible('partE')) return null;
+
   const deleteTrainingNeedsComment = (id: string) => {
     showConfirmDialog(
       "Delete Comment",
