@@ -292,11 +292,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     const visibleSections = sections.filter(section => {
       if (isConfigMode) return true;
       if (section.id === "B" && !sectionVisibility.partB) return false;
-      if (section.id === "C" && !sectionVisibility.partC) return false;
       if (section.id === "D" && !sectionVisibility.partD) return false;
-      if (section.id === "E" && !sectionVisibility.partE) return false;
-      if (section.id === "F" && !sectionVisibility.partF) return false;
-      if (section.id === "G" && !sectionVisibility.partG) return false;
       return true;
     });
     
@@ -334,11 +330,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     
     visibleSections.push('A');
     if (sectionVisibility.partB) visibleSections.push('B');
-    if (sectionVisibility.partC) visibleSections.push('C');
+    visibleSections.push('C');
     if (sectionVisibility.partD) visibleSections.push('D');
-    if (sectionVisibility.partE) visibleSections.push('E');
-    if (sectionVisibility.partF) visibleSections.push('F');
-    if (sectionVisibility.partG) visibleSections.push('G');
+    visibleSections.push('E');
+    visibleSections.push('F');
+    visibleSections.push('G');
     
     const originalIndex = sectionOrder.indexOf(originalLetter);
     const visibleIndex = visibleSections.indexOf(originalLetter);
@@ -354,6 +350,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     form.versionDate ? new Date(form.versionDate) : undefined
   );
   const [activeVersion, setActiveVersion] = useState<string>(form.versionNo || "00"); // Track which version is currently being viewed
+  const [versionExplicitlySelected, setVersionExplicitlySelected] = useState(false); // Track if user explicitly clicked a version
   
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -617,9 +614,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const recommendations = useWatch({ control: formMethods.control, name: "recommendations" });
   const trainingFollowups = useWatch({ control: formMethods.control, name: "trainingFollowups" });
 
-  // Load rank group configuration when available
+  // Load rank group configuration when available (only if no version explicitly selected)
   useEffect(() => {
-    if (rankGroupConfig) {
+    if (rankGroupConfig && !versionExplicitlySelected) {
       console.log('[FormEditor] Loading rank group configuration:', rankGroupConfig);
       
       // Load competence assessments from rank group config
@@ -672,7 +669,94 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         setSectionVisibility(newSectionVisibility);
       }
     }
-  }, [rankGroupConfig]);
+  }, [rankGroupConfig, versionExplicitlySelected]);
+
+  // Load version configuration when activeVersion changes
+  useEffect(() => {
+    if (!versionsData || !activeVersion) return;
+    const version = versionsData.find(v => v.versionNo === activeVersion);
+    if (!version?.configuration) return;
+    
+    try {
+      const config = typeof version.configuration === 'string' 
+        ? JSON.parse(version.configuration) 
+        : version.configuration;
+      
+      if (config.seafarersName !== undefined) formMethods.setValue('seafarersName', config.seafarersName || '');
+      if (config.seafarersRank !== undefined) formMethods.setValue('seafarersRank', config.seafarersRank || '');
+      if (config.nationality !== undefined) formMethods.setValue('nationality', config.nationality || '');
+      if (config.vessel !== undefined) formMethods.setValue('vessel', config.vessel || '');
+      if (config.signOn !== undefined) formMethods.setValue('signOn', config.signOn || '');
+      if (config.appraisalType !== undefined) formMethods.setValue('appraisalType', config.appraisalType || '');
+      if (config.appraisalPeriodFrom !== undefined) formMethods.setValue('appraisalPeriodFrom', config.appraisalPeriodFrom || '');
+      if (config.appraisalPeriodTo !== undefined) formMethods.setValue('appraisalPeriodTo', config.appraisalPeriodTo || '');
+      if (config.personalityIndexCategory !== undefined) formMethods.setValue('personalityIndexCategory', config.personalityIndexCategory || '');
+      if (config.primaryAppraiser !== undefined) formMethods.setValue('primaryAppraiser', config.primaryAppraiser || '');
+      if (config.officeReviewComments !== undefined) formMethods.setValue('officeReviewComments', config.officeReviewComments || '');
+      
+      if (config.trainings && Array.isArray(config.trainings)) {
+        formMethods.setValue('trainings', config.trainings);
+      }
+      if (config.targets && Array.isArray(config.targets)) {
+        formMethods.setValue('targets', config.targets);
+      }
+      if (config.competenceAssessments && Array.isArray(config.competenceAssessments)) {
+        formMethods.setValue('competenceAssessments', config.competenceAssessments.map((ca: any) => ({
+          ...ca,
+          effectiveness: ca.effectiveness || '',
+          comment: ca.comment || '',
+        })));
+      }
+      if (config.behaviouralAssessments && Array.isArray(config.behaviouralAssessments)) {
+        formMethods.setValue('behaviouralAssessments', config.behaviouralAssessments.map((ba: any) => ({
+          ...ba,
+          effectiveness: ba.effectiveness || '',
+          comment: ba.comment || '',
+        })));
+      }
+      if (config.trainingNeeds && Array.isArray(config.trainingNeeds)) {
+        formMethods.setValue('trainingNeeds', config.trainingNeeds);
+      }
+      if (config.recommendations && Array.isArray(config.recommendations)) {
+        formMethods.setValue('recommendations', config.recommendations.map((rec: any) => ({
+          id: rec.id,
+          question: rec.question || rec.recommendation || '',
+          answer: rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes'),
+          comment: rec.comment || '',
+          isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+        })));
+      }
+      if (config.trainingFollowups && Array.isArray(config.trainingFollowups)) {
+        formMethods.setValue('trainingFollowups', config.trainingFollowups);
+      }
+      
+      // Restore field visibility - reset to defaults then apply hidden from config
+      const defaultFieldVis = { personalityIndexCategory: true };
+      if (config.hiddenFields && Array.isArray(config.hiddenFields)) {
+        config.hiddenFields.forEach((field: string) => {
+          if (field in defaultFieldVis) {
+            (defaultFieldVis as Record<string, boolean>)[field] = false;
+          }
+        });
+      }
+      setFieldVisibility(defaultFieldVis);
+      
+      // Restore section visibility - reset to defaults then apply hidden from config
+      const defaultSectionVis = { partB: true, partB1: true, partB2: true, partD: true };
+      if (config.hiddenSections && Array.isArray(config.hiddenSections)) {
+        config.hiddenSections.forEach((section: string) => {
+          if (section in defaultSectionVis) {
+            (defaultSectionVis as Record<string, boolean>)[section] = false;
+          }
+        });
+      }
+      setSectionVisibility(defaultSectionVis);
+      
+      console.log('[FormEditor] Loaded version', activeVersion, 'configuration with hiddenFields:', config.hiddenFields, 'hiddenSections:', config.hiddenSections);
+    } catch (e) {
+      console.warn('[FormEditor] Failed to parse version configuration:', e);
+    }
+  }, [activeVersion, versionsData]);
 
   const onSubmit = (data: AppraisalFormData) => {
     // Check if we're in config mode and need to validate weights
@@ -1948,7 +2032,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                     ? 'bg-blue-50 border-l-4 border-blue-500' 
                     : 'bg-gray-50'
                 } ${index < versions.length - 1 ? 'border-b border-gray-200' : ''}`}
-                onClick={() => setActiveVersion(version.versionNo)}
+                onClick={() => { setActiveVersion(version.versionNo); setVersionExplicitlySelected(true); }}
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6 w-full sm:w-auto">
