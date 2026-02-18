@@ -173,10 +173,12 @@ export const restHoursApiV2 = {
   },
 
   dailyRecords: {
-    async getAll(params?: { crewMemberId?: string; date?: string }) {
+    async getAll(params?: { crewMemberId?: string; date?: string; vesselId?: string; monthYear?: string }) {
       const searchParams = new URLSearchParams();
       if (params?.crewMemberId) searchParams.set('crewMemberId', params.crewMemberId);
       if (params?.date) searchParams.set('date', params.date);
+      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.monthYear) searchParams.set('monthYear', params.monthYear);
       const url = `${V2_BASE}/daily-records${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch daily records');

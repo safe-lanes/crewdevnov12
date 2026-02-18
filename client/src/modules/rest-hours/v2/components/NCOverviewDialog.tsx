@@ -119,12 +119,10 @@ export function NCOverviewDialog({
     queryFn: async () => {
       // For V2 API, we fetch crew records - the API may need vessel record UUID instead of vessel IDs
       // If vesselIdsToUse contains vessel UUIDs, we can use them
-      const records = await restHoursApiV2.crewRecords.getAll();
-      // Filter by vessel IDs and month if needed (V2 may return all records)
-      return records.filter((r: any) => 
-        (vesselIdsToUse.length === 0 || vesselIdsToUse.includes(r.vesselId)) &&
-        r.monthValue === monthValue
-      );
+      return restHoursApiV2.crewRecords.getAll({
+        vesselId: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
+        monthValue,
+      });
     },
     enabled: open,
   });
@@ -167,10 +165,12 @@ export function NCOverviewDialog({
 
   // Fetch daily records only for crew members with NCs
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', crewIdsWithNCs],
+    queryKey: ['v2', 'rest-hours', 'daily-records', crewIdsWithNCs, vesselIdsToUse, monthValue],
     queryFn: async () => {
-      const records = await restHoursApiV2.dailyRecords.getAll();
-      return records;
+      return restHoursApiV2.dailyRecords.getAll({
+        vesselId: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
+        monthYear: monthValue,
+      });
     },
     enabled: open && crewIdsWithNCs.length > 0,
   });

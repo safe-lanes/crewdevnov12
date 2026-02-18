@@ -117,6 +117,7 @@ export function ViolationsOverviewDialog({
     queryFn: async () => {
       return restHoursApiV2.crewRecords.getAll({
         vesselId: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
+        monthValue,
       });
     },
     enabled: open,
@@ -153,9 +154,12 @@ export function ViolationsOverviewDialog({
 
   // Fetch daily records only for crew members with violations
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', { crewIds: crewIdsWithViolations }],
+    queryKey: ['v2', 'rest-hours', 'daily-records', { crewIds: crewIdsWithViolations, vesselIds: vesselIdsToUse, monthValue }],
     queryFn: async () => {
-      return restHoursApiV2.dailyRecords.getAll({});
+      return restHoursApiV2.dailyRecords.getAll({
+        vesselId: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
+        monthYear: monthValue,
+      });
     },
     enabled: open && crewIdsWithViolations.length > 0,
   });
@@ -291,19 +295,6 @@ export function ViolationsOverviewDialog({
             filteredViolations: filteredViolations.sort((a, b) => a - b),
             filteredDiagnostics,
             comments: dayRecord.comments || '',
-          });
-        } else {
-          // If we can't find the daily record, still show the violation date
-          allViolations.push({
-            crewMemberId: crew.crewMemberId,
-            crewMemberName: crew.name,
-            rank: crew.rank,
-            vesselId: crew.vesselId,
-            vesselName: vesselNameMap.get(crew.vesselId) || crew.vesselId,
-            day: day,
-            filteredViolations: [],
-            filteredDiagnostics: [],
-            comments: '',
           });
         }
       });
