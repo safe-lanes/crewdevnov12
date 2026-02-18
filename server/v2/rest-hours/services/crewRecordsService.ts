@@ -160,7 +160,11 @@ export const crewRecordsService = {
       allRecords = await crewRecordsRepository.findAll({ monthValue });
     }
 
-    if (allRecords.length === 0 && vesselIds && vesselIds.length > 0 && monthValue) {
+    if (vesselIds && vesselIds.length > 0 && monthValue) {
+      const existingCrewIds = new Set(
+        allRecords.map(r => r.crewMemberId)
+      );
+
       const db = getDb();
       for (const vesselId of vesselIds) {
         const crewData = await db
@@ -190,11 +194,16 @@ export const crewRecordsService = {
           );
 
         for (const crew of crewData) {
+          const crewId = crew.empNo || crew.crewUuid;
+          if (existingCrewIds.has(crewId)) {
+            continue;
+          }
+
           const placeholderRecord = {
             id: 0,
             rhCrewRecordUuid: `placeholder-${crew.crewUuid}-${monthValue}`,
             vesselId: vesselId,
-            crewMemberId: crew.empNo || crew.crewUuid,
+            crewMemberId: crewId,
             rank: crew.presentRank || 'Unknown',
             name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim() || 'Unknown',
             month: monthValue,
