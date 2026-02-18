@@ -21,6 +21,17 @@ interface RHRecordsTableProps {
   opaMode: boolean;
 }
 
+function calculateVesselReviewStatusClient(monthValue: string): string {
+  const [year, month] = monthValue.split('-').map(Number);
+  const nextMonth = new Date(year, month, 1);
+  const overdueDate = new Date(year, month, 7);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  if (now < nextMonth) return '';
+  if (now >= overdueDate) return 'Overdue';
+  return 'Due';
+}
+
 // Extended type with computed vesselName for display
 type RestHoursVesselRecordWithName = RestHoursVesselRecord & { vesselName: string };
 
@@ -733,9 +744,9 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
         predictedNCs: 0,
         crewWithPredictedNCs: 0,
         crewWithPredictedNCsDetails: null,
-        vesselReviewStatus: 'Due',
+        vesselReviewStatus: calculateVesselReviewStatusClient(selectedMonth),
         vesselReviewSubmittedDate: null,
-        officeReviewStatus: 'Due',
+        officeReviewStatus: '',
         officeReviewSubmittedDate: null,
         createdAt: null,
         updatedAt: null,

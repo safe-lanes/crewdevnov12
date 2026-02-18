@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { vesselRecordsService } from "../services";
+import { enrichRecordWithReviewStatuses } from "../utils/reviewStatusUtils";
 
 export const vesselRecordsController = {
   async getAll(req: Request, res: Response) {
@@ -15,14 +16,14 @@ export const vesselRecordsController = {
           vesselIds,
           monthValue as string | undefined
         );
-        return res.json(records);
+        return res.json(records.map(enrichRecordWithReviewStatuses));
       }
 
       const records = await vesselRecordsService.getAll({
         vesselId: undefined,
         monthValue: monthValue as string | undefined,
       });
-      res.json(records);
+      res.json(records.map(enrichRecordWithReviewStatuses));
     } catch (error) {
       console.error("Error fetching vessel records:", error);
       res.status(500).json({ error: "Failed to fetch vessel records" });
@@ -33,7 +34,7 @@ export const vesselRecordsController = {
     try {
       const { uuid } = req.params;
       const record = await vesselRecordsService.getByUuid(uuid);
-      res.json(record);
+      res.json(enrichRecordWithReviewStatuses(record));
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
@@ -46,7 +47,7 @@ export const vesselRecordsController = {
   async create(req: Request, res: Response) {
     try {
       const record = await vesselRecordsService.create(req.body);
-      res.status(201).json(record);
+      res.status(201).json(enrichRecordWithReviewStatuses(record));
     } catch (error: any) {
       if (error.message?.includes("required")) {
         return res.status(400).json({ error: error.message });
@@ -88,7 +89,7 @@ export const vesselRecordsController = {
     try {
       const { uuid } = req.params;
       const record = await vesselRecordsService.submitVesselReview(uuid, req.body);
-      res.json(record);
+      res.json(enrichRecordWithReviewStatuses(record));
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
@@ -102,7 +103,7 @@ export const vesselRecordsController = {
     try {
       const { uuid } = req.params;
       const record = await vesselRecordsService.submitOfficeReview(uuid, req.body);
-      res.json(record);
+      res.json(enrichRecordWithReviewStatuses(record));
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });

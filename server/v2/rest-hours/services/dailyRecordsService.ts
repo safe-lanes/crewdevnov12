@@ -141,7 +141,7 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         crewWithNCs,
         predictedViolations,
         predictedNCs,
-        officeReviewStatus: 'Due',
+        officeReviewStatus: '',
       });
     }
   } catch (error) {
