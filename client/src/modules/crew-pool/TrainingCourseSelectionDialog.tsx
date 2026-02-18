@@ -44,7 +44,7 @@ export function TrainingCourseSelectionDialog({
 
   // Fetch company trainings from Admin > Training Matrix > Company
   const { data: companyTrainings = [], isLoading, isError } = useQuery<CompanyTraining[]>({
-    queryKey: ['/api/company-trainings'],
+    queryKey: ['/api/v2/admin/company-trainings'],
     enabled: open,
     retry: false,
   });

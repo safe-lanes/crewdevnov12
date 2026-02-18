@@ -4,9 +4,9 @@ import { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTrai
 
 export function useTrainingMasters(options?: { enabled?: boolean }) {
   return useQuery<TrainingMaster[]>({
-    queryKey: ['/api/training-master'],
+    queryKey: ['/api/v2/admin/training-master'],
     queryFn: async () => {
-      const response = await fetch('/api/training-master');
+      const response = await fetch('/api/v2/admin/training-master');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -18,9 +18,9 @@ export function useTrainingMasters(options?: { enabled?: boolean }) {
 
 export function useTrainingMaster(id: number) {
   return useQuery<TrainingMaster>({
-    queryKey: ['/api/training-master', id],
+    queryKey: ['/api/v2/admin/training-master', id],
     queryFn: async () => {
-      const response = await fetch(`/api/training-master/${id}`);
+      const response = await fetch(`/api/v2/admin/training-master/${id}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -35,11 +35,11 @@ export function useCreateTrainingMaster() {
   
   return useMutation({
     mutationFn: async (data: InsertTrainingMaster) => {
-      const response = await apiRequest('POST', '/api/training-master', data);
+      const response = await apiRequest('POST', '/api/v2/admin/training-master', data);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/training-master'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/training-master'] });
     },
   });
 }
@@ -49,11 +49,11 @@ export function useUpdateTrainingMaster() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: UpdateTrainingMaster }) => {
-      const response = await apiRequest('PATCH', `/api/training-master/${id}`, data);
+      const response = await apiRequest('PATCH', `/api/v2/admin/training-master/${id}`, data);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/training-master'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/training-master'] });
     },
   });
 }
@@ -63,11 +63,11 @@ export function useDeleteTrainingMaster() {
   
   return useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest('DELETE', `/api/training-master/${id}`);
+      const response = await apiRequest('DELETE', `/api/v2/admin/training-master/${id}`);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/training-master'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/training-master'] });
     },
   });
 }
@@ -77,11 +77,11 @@ export function useReorderTrainingMasters() {
   
   return useMutation({
     mutationFn: async (orders: Array<{ id: number; sortOrder: number }>) => {
-      const response = await apiRequest('POST', '/api/training-master/reorder', orders);
+      const response = await apiRequest('POST', '/api/v2/admin/training-master/reorder', orders);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/training-master'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/training-master'] });
     },
   });
 }
@@ -91,11 +91,11 @@ export function useReorderCompanyTrainings() {
   
   return useMutation({
     mutationFn: async (orders: Array<{ id: number; sortOrder: number }>) => {
-      const response = await apiRequest('POST', '/api/company-trainings/reorder', orders);
+      const response = await apiRequest('POST', '/api/v2/admin/company-trainings/reorder', orders);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/company-trainings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/company-trainings'] });
     },
   });
 }
@@ -141,9 +141,9 @@ export function generateTrainingId(category: string, group: string, existingIds:
 // Hooks for Company Training Requirements (M/R matrix by rank)
 export function useCompanyTrainingRequirements() {
   return useQuery<CompanyTrainingRequirement[]>({
-    queryKey: ['/api/company-training-requirements'],
+    queryKey: ['/api/v2/admin/company-training-requirements'],
     queryFn: async () => {
-      const response = await fetch('/api/company-training-requirements');
+      const response = await fetch('/api/v2/admin/company-training-requirements');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -157,11 +157,11 @@ export function useUpsertCompanyTrainingRequirements() {
   
   return useMutation({
     mutationFn: async (requirements: UpsertCompanyTrainingRequirement[]) => {
-      const response = await apiRequest('POST', '/api/company-training-requirements/batch', requirements);
+      const response = await apiRequest('POST', '/api/v2/admin/company-training-requirements/batch', requirements);
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/company-training-requirements'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/company-training-requirements'] });
     },
   });
 }

@@ -68,7 +68,7 @@ export function addRankAliasesToMap(map: Map<string, number>, rankName: string, 
 
 export function useRankNormalization() {
   const { data: companyRanks = [], isLoading } = useQuery<CompanyRank[]>({
-    queryKey: ['/api/company-ranks'],
+    queryKey: ['/api/v2/admin/company-ranks'],
   });
 
   const { roleToParentMap, rankIdToParentMap, ranksWithVariants } = useMemo(() => {

@@ -18,13 +18,13 @@ interface AvailableRank {
 
 export function useRankOrdering(vesselId: string | null | undefined) {
   const { data: availableRanks = [] } = useQuery<AvailableRank[]>({
-    queryKey: ['/api/available-ranks'],
+    queryKey: ['/api/v2/admin/available-ranks'],
   });
 
   const { data: vesselRanks = [], isLoading: isLoadingVessel, isFetched: isVesselFetched } = useQuery<VesselRank[]>({
-    queryKey: ['/api/vessel-revisions/ranks', vesselId],
+    queryKey: ['/api/v2/admin/vessel-revisions/ranks', vesselId],
     queryFn: vesselId
-      ? () => fetch(`/api/vessel-revisions/ranks/${vesselId}`).then(res => res.json())
+      ? () => fetch(`/api/v2/admin/vessel-revisions/ranks/${vesselId}`).then(res => res.json())
       : undefined,
     enabled: !!vesselId,
   });

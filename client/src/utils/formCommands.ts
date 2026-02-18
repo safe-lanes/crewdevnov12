@@ -36,7 +36,7 @@ export class FormCommands {
   static async createFormWithEditor(formName: string, templateName?: string): Promise<void> {
     try {
       // Create form in database
-      const response = await fetch('/api/forms', {
+      const response = await fetch('/api/v2/admin/forms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -60,9 +60,9 @@ const mapAvailableRankToRankMasterData = (availableRank: AvailableRank): RankMas
 // Hook to get all rank master data from database
 export const useRankMasterData = (options?: { enabled?: boolean }) => {
   const query = useQuery<AvailableRank[]>({
-    queryKey: ["/api/available-ranks"],
+    queryKey: ["/api/v2/admin/available-ranks"],
     queryFn: async () => {
-      const response = await fetch("/api/available-ranks");
+      const response = await fetch("/api/v2/admin/available-ranks");
       if (!response.ok) {
         throw new Error("Failed to fetch available ranks");
       }
@@ -90,9 +90,9 @@ export const useRankMasterData = (options?: { enabled?: boolean }) => {
 // Hook to get company-applicable ranks (server-filtered)
 export const useCompanyRanks = () => {
   const query = useQuery<AvailableRank[]>({
-    queryKey: ["/api/available-ranks", "companyOnly"],
+    queryKey: ["/api/v2/admin/available-ranks", "companyOnly"],
     queryFn: async () => {
-      const response = await fetch("/api/available-ranks?companyOnly=true");
+      const response = await fetch("/api/v2/admin/available-ranks?companyOnly=true");
       if (!response.ok) {
         throw new Error("Failed to fetch company ranks");
       }
@@ -125,9 +125,9 @@ export const useCompanyRanks = () => {
 // Hook to fetch saved company rank data (including role variants)
 export const useFetchCompanyRanks = (options?: { enabled?: boolean }) => {
   return useQuery<any[]>({
-    queryKey: ["/api/company-ranks"],
+    queryKey: ["/api/v2/admin/company-ranks"],
     queryFn: async () => {
-      const response = await fetch("/api/company-ranks");
+      const response = await fetch("/api/v2/admin/company-ranks");
       if (!response.ok) {
         throw new Error("Failed to fetch company ranks");
       }
@@ -154,10 +154,10 @@ export const useCreateRank = () => {
   
   return useMutation({
     mutationFn: async (data: InsertAvailableRank) => {
-      return await apiRequest("POST", "/api/available-ranks", data);
+      return await apiRequest("POST", "/api/v2/admin/available-ranks", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
     },
   });
 };
@@ -170,7 +170,7 @@ export const useUpdateRank = () => {
       return await apiRequest("PUT", `/api/available-ranks/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
     },
   });
 };
@@ -184,11 +184,11 @@ export const useDeleteRank = () => {
     },
     onSuccess: () => {
       // Refresh cache after successful deletion
-      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
     },
     onError: (error: any) => {
       // Force cache refresh on error to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
       
       // Only show error to user if it's a genuine failure (not a 404 after successful deletion)
       if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('not found')) {
@@ -206,17 +206,17 @@ export const useClearAllRanks = () => {
   
   return useMutation({
     mutationFn: async () => {
-      return await apiRequest("DELETE", "/api/available-ranks");
+      return await apiRequest("DELETE", "/api/v2/admin/available-ranks");
     },
     onSuccess: () => {
       // Force refresh of all rank-related queries
-      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
       // Clear cache completely to ensure fresh start
-      queryClient.resetQueries({ queryKey: ["/api/available-ranks"] });
+      queryClient.resetQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
     },
     onError: (error: any) => {
       // Still refresh cache on error
-      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
       throw error;
     },
   });
@@ -228,12 +228,12 @@ export const useSaveCompanyRanks = () => {
   
   return useMutation({
     mutationFn: async (ranks: any[]) => {
-      return await apiRequest("POST", "/api/company-ranks", ranks);
+      return await apiRequest("POST", "/api/v2/admin/company-ranks", ranks);
     },
     onSuccess: () => {
       // Refresh company ranks cache after successful save
-      queryClient.invalidateQueries({ queryKey: ["/api/company-ranks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/company-ranks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
     },
     onError: (error: any) => {
       throw error;
@@ -247,10 +247,10 @@ export const useCreateVesselDraft = () => {
   
   return useMutation({
     mutationFn: async (data: InsertVesselDraft) => {
-      return await apiRequest("POST", "/api/vessel-drafts", data);
+      return await apiRequest("POST", "/api/v2/admin/vessel-drafts", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vessel-drafts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/vessel-drafts"] });
     },
   });
 };
@@ -263,16 +263,16 @@ export const useUpdateVesselDraft = () => {
       return await apiRequest("PATCH", `/api/vessel-drafts/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vessel-drafts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/admin/vessel-drafts"] });
     },
   });
 };
 
 export const useVesselDraftsByVessel = (vesselId: string) => {
   return useQuery<VesselDraft[]>({
-    queryKey: ["/api/vessel-drafts", "by-vessel", vesselId],
+    queryKey: ["/api/v2/admin/vessel-drafts", "by-vessel", vesselId],
     queryFn: async () => {
-      const response = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
+      const response = await fetch(`/api/v2/admin/vessel-drafts/by-vessel/${vesselId}`);
       if (!response.ok) throw new Error("Failed to fetch vessel drafts");
       return response.json();
     },
