@@ -1,5 +1,4 @@
 import { Users } from 'lucide-react';
-import React from 'react';
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -62,7 +61,6 @@ export default function PromotionsSideBar({ selectedPromotionsPage, setSelectedP
                     ))
                 }
 
-                {/* Dark blue section for rest of sidebar */}
                 <div className="w-full flex-1 bg-[#16569e]" />
             </aside>
         </TooltipProvider>

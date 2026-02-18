@@ -2,14 +2,14 @@ import { useLocation } from 'wouter';
 import { useState, useEffect } from 'react';
 import MainLayout from '@/components/main/MainLayout';
 import RestHoursSideBar from './RestHoursSideBar';
-import { RestHoursDashboard } from './RestHoursDashboard';
-import { RestHoursRecord } from './RestHoursRecord';
-import { RestHoursPlan } from './RestHoursPlan';
+import { RestHoursDashboard } from './components/RestHoursDashboard';
+import { RestHoursRecord } from './components/RestHoursRecord';
+import { RestHoursPlan } from './components/RestHoursPlan';
+import { restHoursApiV2 } from './api/restHoursApiV2';
 
 export const RestHoursModule = (): JSX.Element => {
   const [location, setLocation] = useLocation();
   
-  // Determine selected page based on route
   const getPageFromLocation = () => {
     if (location.includes('/rest-hours/dashboard')) return 'dashboard';
     if (location.includes('/rest-hours/record')) return 'record';
@@ -19,7 +19,6 @@ export const RestHoursModule = (): JSX.Element => {
   
   const [selectedRestHoursPage, setSelectedRestHoursPageState] = useState(getPageFromLocation());
   
-  // Update selected page when location changes
   useEffect(() => {
     setSelectedRestHoursPageState(getPageFromLocation());
   }, [location]);
@@ -27,7 +26,6 @@ export const RestHoursModule = (): JSX.Element => {
   const allowedPages = ["dashboard", "record", "plan"];
 
   const setSelectedRestHoursPage = (page: string) => {
-    // Navigate using wouter's setLocation
     switch (page) {
       case 'dashboard':
         setLocation('/rest-hours/dashboard');
@@ -67,3 +65,5 @@ export const RestHoursModule = (): JSX.Element => {
     </div>
   );
 };
+
+export { restHoursApiV2 };

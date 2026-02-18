@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import type { CrewMember, PromotionA2Config } from '@shared/schema';
+import type { PromotionA2Config } from '@shared/schema';
 import { calculateChecklistProgress } from './checklistProgressUtils';
 
 interface PromotionData {
@@ -87,6 +87,7 @@ interface PromotionChecklistFormProps {
   onClose: () => void;
   checklistConfig?: PromotionA2Config | null;
   promotionReviewId?: number | null;
+  promotionReviewUuid?: string | null;
   existingChecklistData?: string | null;
 }
 
@@ -95,18 +96,17 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   onClose,
   checklistConfig,
   promotionReviewId,
+  promotionReviewUuid,
   existingChecklistData,
 }) => {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = React.useState(false);
 
-  // Fetch crew member data including sea service
-  const { data: crewMember, isLoading: isLoadingCrew, error: crewError } = useQuery<CrewMember>({
-    queryKey: [`/api/crew-members/${promotionData.crewMemberId}`],
+  const { data: dashboardData, isLoading: isLoadingCrew, error: crewError } = useQuery<any>({
+    queryKey: [`/api/v2/crew-pool/crew/by-emp-no/${promotionData.crewMemberId}/dashboard`],
     enabled: !!promotionData.crewMemberId,
   });
 
-  // Use promotion data passed from parent
   const seafarerData = {
     name: promotionData?.name || 'N/A',
     rank: promotionData?.currentRank || 'N/A',
@@ -117,20 +117,11 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     nationality: promotionData?.nationality || 'N/A',
   };
 
-  // Parse sea service data from crew member
   const seaServiceData = React.useMemo<SeaServiceEntry[]>(() => {
-    if (!crewMember?.currentCompanySeaService) return [];
-    try {
-      const parsed = typeof crewMember.currentCompanySeaService === 'string'
-        ? JSON.parse(crewMember.currentCompanySeaService)
-        : crewMember.currentCompanySeaService;
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }, [crewMember]);
+    if (!dashboardData?.seaService) return [];
+    return Array.isArray(dashboardData.seaService) ? dashboardData.seaService : [];
+  }, [dashboardData]);
 
-  // Check if user name is available in sessionStorage
   const storedDesignation = sessionStorage.getItem('crewDesignation');
   const [userName, setUserName] = React.useState<string>(() => {
     return sessionStorage.getItem('crewUserName') || '';
@@ -139,14 +130,10 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     return !!sessionStorage.getItem('crewUserName');
   });
   
-  // Show the name input section for users who didn't have a name in storage initially
-  // Keep it visible throughout the session so they can enter and edit their name
   const showNameInput = !wasNameFromStorage;
   
-  // Check if name is valid for verification actions
   const hasValidName = !!userName.trim();
   
-  // Function to get current user with the latest name
   const getCurrentUser = React.useCallback(() => {
     return {
       name: userName.trim() || 'Unknown User',
@@ -155,32 +142,26 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     };
   }, [userName, storedDesignation]);
   
-  // For backward compatibility, keep currentUser reference
   const currentUser = getCurrentUser();
   
-  // Handler to save manually entered name to sessionStorage
   const handleNameChange = (newName: string) => {
-    setUserName(newName); // Keep raw value for input display
+    setUserName(newName);
     const trimmedName = newName.trim();
     if (trimmedName) {
       sessionStorage.setItem('crewUserName', trimmedName);
-      // Dispatch custom event to notify same-tab listeners of the change
       window.dispatchEvent(new CustomEvent('crewUserUpdated'));
     }
   };
 
-  // Parse existing checklist data if available (handles both legacy and new format)
   const parsedExistingData = React.useMemo((): ChecklistSection[] | null => {
     if (!existingChecklistData) return null;
     try {
       const parsed = typeof existingChecklistData === 'string' 
         ? JSON.parse(existingChecklistData) 
         : existingChecklistData;
-      // New format: { sections: [...], progress: {...} }
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.sections) {
         return Array.isArray(parsed.sections) ? parsed.sections : null;
       }
-      // Legacy format: direct array of sections
       return Array.isArray(parsed) ? parsed : null;
     } catch {
       console.error('Failed to parse existing checklist data');
@@ -188,12 +169,9 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   }, [existingChecklistData]);
 
-  // Initialize checklist sections from configuration, merging with existing saved data
   const initializeSectionsFromConfig = React.useCallback((): ChecklistSection[] => {
     if (checklistConfig?.checklistSections?.length) {
-      // Transform configuration sections into runtime format with completed/verifications/comments/attachments
       return checklistConfig.checklistSections.map((configSection) => {
-        // Check if we have saved data for this section
         const savedSection = parsedExistingData?.find(s => s.id === configSection.id);
         
         return {
@@ -201,7 +179,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           number: configSection.id,
           title: configSection.title,
           assessmentPoints: configSection.assessmentPoints.map((configPoint) => {
-            // Check if we have saved data for this assessment point
             const savedPoint = savedSection?.assessmentPoints?.find(p => p.id === configPoint.id);
             
             return {
@@ -217,25 +194,21 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         };
       });
     }
-    // Return empty array if no configuration - admin needs to configure Part B
     return [];
   }, [checklistConfig, parsedExistingData]);
 
   const [checklistSections, setChecklistSections] = React.useState<ChecklistSection[]>(initializeSectionsFromConfig);
 
-  // Calculate A3 Checklist Progress
   const checklistProgress = React.useMemo(() => {
     const requiredPerPoint = checklistConfig?.minChecklistVerifications ?? 0;
     const thresholdPercent = checklistConfig?.minChecklistCompletionPercent ?? 100;
     
-    // Count total assessment points and completed verifications (capped at required)
     let totalPoints = 0;
     let completedVerifications = 0;
     
     checklistSections.forEach(section => {
       section.assessmentPoints.forEach(point => {
         totalPoints++;
-        // Cap verifications at the required number per point
         const pointVerifications = Math.min(point.verifications.length, requiredPerPoint);
         completedVerifications += pointVerifications;
       });
@@ -254,13 +227,11 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     };
   }, [checklistSections, checklistConfig?.minChecklistVerifications, checklistConfig?.minChecklistCompletionPercent]);
 
-  // Track config ID and existing data to reset when either changes
   const configIdRef = React.useRef<string | null>(null);
   const existingDataRef = React.useRef<string | null>(null);
   const currentConfigId = checklistConfig?.checklistSections?.map(s => s.id).join(',') ?? null;
   const currentExistingData = existingChecklistData ?? null;
 
-  // Update sections when checklistConfig structure OR existing data changes
   React.useEffect(() => {
     const configChanged = configIdRef.current !== currentConfigId;
     const existingDataChanged = existingDataRef.current !== currentExistingData;
@@ -273,12 +244,12 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   }, [currentConfigId, currentExistingData, initializeSectionsFromConfig]);
 
-  // State for managing UI interactions
   const [activeCommentBox, setActiveCommentBox] = React.useState<string | null>(null);
   const [commentText, setCommentText] = React.useState<string>('');
 
   const handleSave = async () => {
-    if (!promotionReviewId) {
+    const reviewIdentifier = promotionReviewUuid || promotionReviewId;
+    if (!reviewIdentifier) {
       toast({
         title: 'Cannot save',
         description: 'No promotion review ID found. Please save the promotion review form first.',
@@ -289,13 +260,10 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     
     setIsSaving(true);
     try {
-      // Calculate progress using the shared utility with actual config values
       const minVerifications = checklistConfig?.minChecklistVerifications ?? 1;
       const minCompletionPercent = checklistConfig?.minChecklistCompletionPercent ?? 100;
       const progressResult = calculateChecklistProgress(checklistSections, minVerifications, minCompletionPercent);
       
-      // Store both sections and calculated progress in the JSON
-      // This allows the table to display progress without needing rank-specific config
       const checklistProgressData = JSON.stringify({
         sections: checklistSections,
         progress: {
@@ -308,12 +276,11 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         }
       });
       
-      await apiRequest('PATCH', `/api/promotion-reviews/${promotionReviewId}`, { checklistProgressData });
+      await apiRequest('PATCH', `/api/v2/promotions/reviews/${reviewIdentifier}`, { checklistProgressData });
       
-      // Invalidate the query cache to refresh the data
-      queryClient.invalidateQueries({ queryKey: ['/api/promotion-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/promotions/reviews'] });
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/promotion-reviews/crew/${promotionData.crewMemberId}/rank/${promotionData.promotionToRank}`] 
+        queryKey: [`/api/v2/promotions/reviews/crew/${promotionData.crewMemberId}/rank/${encodeURIComponent(promotionData.promotionToRank)}`] 
       });
       
       toast({
@@ -334,13 +301,10 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   };
 
-  // Handler for toggling completion checkbox
   const handleToggleComplete = (sectionId: string, pointId: string) => {
-    // Find the point to check if it has verifications
     const section = checklistSections.find(s => s.id === sectionId);
     const point = section?.assessmentPoints.find(p => p.id === pointId);
     
-    // Block unchecking if there are verifications
     if (point?.completed && point.verifications.length > 0) {
       toast({
         title: 'Cannot uncheck',
@@ -364,7 +328,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     ));
   };
 
-  // Handler for adding attachment
   const handleAddAttachment = (sectionId: string, pointId: string) => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -394,7 +357,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     input.click();
   };
 
-  // Handler for toggling comment box
   const handleToggleCommentBox = (pointId: string) => {
     if (activeCommentBox === pointId) {
       setActiveCommentBox(null);
@@ -405,7 +367,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     }
   };
 
-  // Handler for adding comment
   const handleAddComment = (sectionId: string, pointId: string) => {
     if (!commentText.trim()) return;
 
@@ -434,9 +395,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     setActiveCommentBox(null);
   };
 
-  // Handler for verification badge click
   const handleVerify = (sectionId: string, pointId: string) => {
-    // Check if user has a valid name
     if (!hasValidName) {
       toast({
         title: 'Name required',
@@ -446,7 +405,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
       return;
     }
     
-    // Check if point is completed
     const section = checklistSections.find(s => s.id === sectionId);
     const point = section?.assessmentPoints.find(p => p.id === pointId);
     
@@ -469,12 +427,11 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
       date: formattedDate
     };
 
-    // Create verification comment with the verification text
     const verificationComment: ChecklistComment = {
       id: `vcomment-${Date.now()}`,
       userName: currentUser.name,
       rank: currentUser.rank,
-      text: '', // Empty text, will display as "Verified by: [name], [rank], [date]"
+      text: '',
       date: formattedDate
     };
 
@@ -496,16 +453,13 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     ));
   };
   
-  // Handler for canceling a verification (only by the user who created it)
   const handleCancelVerification = (sectionId: string, pointId: string, verificationId: string) => {
-    // Find the verification
     const section = checklistSections.find(s => s.id === sectionId);
     const point = section?.assessmentPoints.find(p => p.id === pointId);
     const verification = point?.verifications.find(v => v.id === verificationId);
     
     if (!verification) return;
     
-    // Check if current user is the one who created this verification
     const currentUserName = currentUser.name.trim().toLowerCase();
     const verifierName = verification.verifierName.trim().toLowerCase();
     
@@ -518,7 +472,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
       return;
     }
     
-    // Remove the verification and its associated comment
     setChecklistSections(prev => prev.map(section =>
       section.id === sectionId
         ? {
@@ -528,7 +481,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                 ? {
                     ...p,
                     verifications: p.verifications.filter(v => v.id !== verificationId),
-                    // Also remove the associated comment (matches by userName and date)
                     comments: p.comments.filter(c => 
                       !(c.userName === verification.verifierName && 
                         c.date === verification.date && 
@@ -547,7 +499,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     });
   };
 
-  // Handler for deleting comment
   const handleDeleteComment = (sectionId: string, pointId: string, commentId: string) => {
     setChecklistSections(prev => prev.map(section =>
       section.id === sectionId
@@ -565,12 +516,10 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
 
   const renderPartA = () => (
     <div className="space-y-4">
-      {/* A1: Seafarer's Information */}
       <div className="border border-[#EAEBEF] rounded-lg p-4">
         <h3 className="text-base font-medium text-[#16569e] mb-4">A1. Seafarer's Information</h3>
         
         <div className="space-y-4">
-          {/* Row 1: Name, DOB/Age, Nationality */}
           <div className="grid grid-cols-3 gap-6">
             <div>
               <Label className="text-xs text-gray-500">Name</Label>
@@ -586,7 +535,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
             </div>
           </div>
           
-          {/* Row 2: Present Rank, Promotion to Rank */}
           <div className="grid grid-cols-3 gap-6">
             <div>
               <Label className="text-xs text-gray-500">Present Rank</Label>
@@ -600,7 +548,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         </div>
       </div>
 
-      {/* A2: Details of Sea Service */}
       <div className="border border-[#EAEBEF] rounded-lg p-4">
         <h3 className="text-base font-medium text-[#16569e] mb-4">A2. Details of Sea Service (in Current Rank in the Company)</h3>
         
@@ -648,7 +595,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         )}
       </div>
 
-      {/* A3: Checklist Progress */}
       <div className="border border-[#EAEBEF] rounded-lg p-4">
         <h3 className="text-base font-medium text-[#16569e] mb-4">A3. Checklist Progress</h3>
         
@@ -674,7 +620,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         </div>
       </div>
 
-      {/* A4: Verifier Information - Show input when name not available in storage */}
       {showNameInput && (
         <div className={`border border-[#EAEBEF] rounded-lg p-4 ${hasValidName ? 'bg-green-50 dark:bg-green-950/20' : 'bg-amber-50 dark:bg-amber-950/20'}`}>
           <h3 className="text-base font-medium text-[#16569e] mb-4">A4. Verifier Information</h3>
@@ -743,17 +688,13 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                       <div className="space-y-2">
                         <div>{point.text}</div>
                         
-                        {/* Display existing comments */}
                         {point.comments.map((comment) => {
-                          // Check if this is a verification comment (empty text means it's a verification record)
                           const isVerificationComment = comment.text === '';
-                          // Find the associated verification for this comment
                           const associatedVerification = isVerificationComment 
                             ? point.verifications.find(v => 
                                 v.verifierName === comment.userName && v.date === comment.date
                               )
                             : null;
-                          // Only show cancel button if current user owns this verification
                           const canCancel = isVerificationComment && 
                             associatedVerification && 
                             currentUser.name.trim().toLowerCase() === comment.userName.trim().toLowerCase();
@@ -878,7 +819,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                     </TableCell>
                   </TableRow>
                   
-                  {/* Comment box row */}
                   {activeCommentBox === point.id && (
                     <TableRow>
                       <TableCell colSpan={5} className="bg-gray-50">
@@ -917,7 +857,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                     </TableRow>
                   )}
 
-                  {/* Attachments display */}
                   {point.attachments.length > 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="bg-blue-50">
@@ -943,9 +882,8 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[210] p-4">
       <div className="bg-white rounded-lg w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
           <h2 className="text-xl font-semibold text-gray-900">Promotion Checklist</h2>
           <div className="flex items-center gap-3">
@@ -974,9 +912,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           </div>
         </div>
 
-        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-[#f9fafb] space-y-6">
-          {/* Part A: General */}
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <div className="border-b pb-4 mb-6">
               <h3 className="text-lg font-semibold text-[#16569e]">Part A: General</h3>
@@ -985,7 +921,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
             {renderPartA()}
           </div>
 
-          {/* Part B: Promotion Checklist */}
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <div className="border-b pb-4 mb-6">
               <h3 className="text-lg font-semibold text-[#16569e]">Part B: Promotion Checklist</h3>

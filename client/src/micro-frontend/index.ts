@@ -3,11 +3,11 @@ import React from 'react';
 import { MicroFrontendWrapper } from './MicroFrontendWrapper';
 import App from '../App';
 import './micro-frontend.css';
-import { AdminModule } from '@/modules/admin/AdminModule';
-import { AdminModule_v2 } from '@/modules/admin/v2/AdminModule';
+import { AdminModule_v2 } from '@/modules/admin/AdminModule';
+const AdminModule = AdminModule_v2;
 import { FormEditor } from '@/components/FormEditor';
-import { ElementCrewAppraisals } from '@/modules/crewing/ElementCrewAppraisals';
-import { AppraisalForm } from '@/modules/crewing/AppraisalForm';
+import { ElementCrewAppraisals_v2 as ElementCrewAppraisals } from '@/modules/crewing/ElementCrewAppraisals_v2';
+import { AppraisalForm } from '@/modules/crewing/AppraisalForm_v2';
 // Main app export for standalone mode
 export { default as App } from '../App';
 

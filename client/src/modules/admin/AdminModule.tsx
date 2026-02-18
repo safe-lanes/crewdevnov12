@@ -70,7 +70,7 @@ import {
   useUpdateMasterDataEntry,
   useDeleteMasterDataEntry 
 } from "@/hooks/useDataMasters";
-import { useRankMasterData, useCompanyRanks, useFetchCompanyRanks, useCreateRank, useUpdateRank, useDeleteRank, useClearAllRanks, useSaveCompanyRanks, useCreateVesselDraft, useUpdateVesselDraft, type RankMasterData } from "@/hooks/useCompanyRanks";
+import { type RankMasterData } from "@/hooks/useCompanyRanks";
 import { queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -104,14 +104,6 @@ import {
 } from "@/utils/portMasterMapping";
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
 import { 
-  useTrainingMasters, 
-  useCreateTrainingMaster, 
-  useUpdateTrainingMaster, 
-  useDeleteTrainingMaster, 
-  useReorderTrainingMasters,
-  useReorderCompanyTrainings,
-  useCompanyTrainingRequirements,
-  useUpsertCompanyTrainingRequirements,
   getCategoryLabel,
   getGroupLabel,
   generateTrainingId,
@@ -119,17 +111,11 @@ import {
   TRAINING_GROUPS
 } from "@/hooks/useTrainingMaster";
 import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTraining, CompanyTrainingRequirement } from "@shared/schema";
-import { useExternalVesselTypes } from "@/hooks/useExternalVesselTypes";
-import { useExternalVessels } from "@/hooks/useExternalVessels";
-import { useExternalNationalities } from "@/hooks/useExternalNationalities";
-import { useExternalFleetGroups } from "@/hooks/useExternalFleetGroups";
-import { useExternalAdditionalGroups } from "@/hooks/useExternalAdditionalGroups";
-import { useExternalPorts } from "@/hooks/useExternalPorts";
-import { useExternalLanguages } from "@/hooks/useExternalLanguages";
-import { useExternalCountries } from "@/hooks/useExternalCountries";
-import { useExternalUsers } from "@/hooks/useExternalUsers";
 import { useSyncAllMasterData, useLocalMasterData } from "@/hooks/useLocalMasterApi";
-import { AdminVersionToggle } from './v2/components/AdminVersionToggle';
+import { useLicensesDceV2, useManningAgentsV2, useCrewPoolsV2, useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
+import { useTrainingMastersV2, useCreateTrainingMasterV2, useUpdateTrainingMasterV2, useDeleteTrainingMasterV2, useReorderTrainingMastersV2, useCompanyTrainingGroupsV2, useUpdateCompanyTrainingGroupV2, useCompanyTrainingsV2, useUpdateCompanyTrainingV2, useDeleteCompanyTrainingV2, useReorderCompanyTrainingsV2, useCompanyTrainingRequirementsV2, useUpsertCompanyTrainingRequirementsV2, useCompanyRanksV2, useSaveCompanyRanksV2, useAvailableRanksV2, useCreateAvailableRankV2, useUpdateAvailableRankV2, useDeleteAvailableRankV2, useDeleteAllAvailableRanksV2, useVesselGroupsV2, useCreateVesselGroupV2, useUpdateVesselGroupV2, useDeleteVesselGroupV2, useVesselDraftsByVesselV2, useUpsertVesselDraftV2, useMasterDataV2, useImportCompanyTrainingsV2 } from './hooks/useAdminV2';
+
+const V2_KEY = '/api/v2/admin';
 
 // StableInput component - uses local state to prevent value loss during re-renders
 // This solves the issue where external API hook re-renders cause controlled inputs to lose their value
@@ -146,7 +132,7 @@ function StableInput({ value, onChange, className, placeholder, autoFocus, "data
   // Use local state for immediate responsiveness
   const [localValue, setLocalValue] = useState(value);
   const isInternalChange = useRef(false);
-  
+
   // Sync local state with external value changes (e.g., when switching entries or on mount)
   // But only if the change came from outside (not from typing)
   useEffect(() => {
@@ -155,14 +141,14 @@ function StableInput({ value, onChange, className, placeholder, autoFocus, "data
     }
     isInternalChange.current = false;
   }, [value]);
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     isInternalChange.current = true;
     setLocalValue(newValue);
     onChange(newValue);
   };
-  
+
   return (
     <Input
       value={localValue}
@@ -213,7 +199,7 @@ function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoadin
 
   const watchCategory = form.watch('category');
   const watchGroup = form.watch('trainingGroup');
-  
+
   const generatedId = useMemo(() => {
     return generateTrainingId(watchCategory, watchGroup, existingIds);
   }, [watchCategory, watchGroup, existingIds]);
@@ -402,9 +388,9 @@ interface ConfigureGroupLabelsDialogProps {
 function ConfigureGroupLabelsDialog({ open, onOpenChange, companyTrainingGroups, onSave }: ConfigureGroupLabelsDialogProps) {
   const [localLabels, setLocalLabels] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const GROUP_CODES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
-  
+
   useEffect(() => {
     if (open) {
       const initial: Record<string, string> = {};
@@ -415,7 +401,7 @@ function ConfigureGroupLabelsDialog({ open, onOpenChange, companyTrainingGroups,
       setLocalLabels(initial);
     }
   }, [open, companyTrainingGroups]);
-  
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -429,7 +415,7 @@ function ConfigureGroupLabelsDialog({ open, onOpenChange, companyTrainingGroups,
       setIsSaving(false);
     }
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -565,35 +551,45 @@ const AdminModuleInner = (): JSX.Element => {
   const [newFormCategory, setNewFormCategory] = useState<"appraisal" | "promotion">("appraisal");
   const [createFormType, setCreateFormType] = useState<"template" | "blank">("template");
   const [selectedTemplate, setSelectedTemplate] = useState("");
-  
+
   // Rank Master data from shared hook (for initialization)
   // PERFORMANCE: Only fetch when on rank-admin tab
-  const { data: sharedRankMasterData, isLoading: rankMasterLoading, error: rankMasterError } = useRankMasterData({ 
-    enabled: selectedAdminPage === "rank-admin" 
-  });
+  const isRankAdminTab = selectedAdminPage === "rank-admin";
+  const isTrainingMatrixTab = selectedAdminPage === "training-matrix";
+  const isMastersTab = selectedAdminPage === "masters";
+  const { data: rawAvailableRanksData, isLoading: rankMasterLoading, error: rankMasterError } = useAvailableRanksV2(undefined, { enabled: isRankAdminTab || isTrainingMatrixTab });
+  const sharedRankMasterData = useMemo(() => {
+    if (!rawAvailableRanksData || (selectedAdminPage !== "rank-admin" && selectedAdminPage !== "training-matrix")) return [];
+    return (rawAvailableRanksData as any[]).map((ar: any) => ({
+      id: ar.id?.toString() || '',
+      rank: ar.name || '',
+      rankId: ar.rankId || `S${ar.id}`,
+      label: ar.label || ar.name || '',
+      applicableToCompany: ar.applicableToCompany ?? false,
+      isSystemRank: ar.isSystemRank ?? false,
+    }));
+  }, [rawAvailableRanksData, selectedAdminPage]);
   // Fetch saved company rank data (including role variants)
   // STRATEGIC FIX: Use controlled refetch to prevent overwrites during editing
   // PERFORMANCE: Only fetch when on rank-admin tab
-  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useFetchCompanyRanks({ 
-    enabled: selectedAdminPage === "rank-admin" 
-  });
-  
+  const { data: savedCompanyRanks = [], isLoading: isCompanyRanksLoading, refetch: refetchCompanyRanks } = useCompanyRanksV2({ enabled: isRankAdminTab });
+
   // Mutation hooks for rank management
-  const createRankMutation = useCreateRank();
-  const updateRankMutation = useUpdateRank();
-  const deleteRankMutation = useDeleteRank();
-  const saveCompanyRanksMutation = useSaveCompanyRanks();
-  const clearAllRanksMutation = useClearAllRanks();
-  const createVesselDraftMutation = useCreateVesselDraft();
-  const updateVesselDraftMutation = useUpdateVesselDraft();
-  
+  const createRankMutation = useCreateAvailableRankV2();
+  const updateRankMutation = useUpdateAvailableRankV2();
+  const deleteRankMutation = useDeleteAvailableRankV2();
+  const saveCompanyRanksMutation = useSaveCompanyRanksV2();
+  const clearAllRanksMutation = useDeleteAllAvailableRanksV2();
+  const createVesselDraftMutation = useUpsertVesselDraftV2();
+  const updateVesselDraftMutation = useUpsertVesselDraftV2();
+
   // Rank reorder mutation
   const reorderRanksMutation = useMutation({
     mutationFn: async (rankOrders: Array<{ id: number; sortOrder: number }>) => {
-      return apiRequest('POST', '/api/available-ranks/reorder', rankOrders);
+      return apiRequest('POST', '/api/v2/admin/available-ranks/reorder', rankOrders);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/available-ranks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/available-ranks'] });
       toast({
         title: "Ranks reordered successfully",
         description: "The rank order has been updated.",
@@ -610,16 +606,14 @@ const AdminModuleInner = (): JSX.Element => {
       });
     },
   });
-  
+
   // Training Master data hooks
-  const { data: trainingMasterData = [], isLoading: trainingMasterLoading } = useTrainingMasters({ 
-    enabled: selectedAdminPage === "training-matrix" 
-  });
-  const createTrainingMutation = useCreateTrainingMaster();
-  const updateTrainingMutation = useUpdateTrainingMaster();
-  const deleteTrainingMutation = useDeleteTrainingMaster();
-  const reorderTrainingMutation = useReorderTrainingMasters();
-  
+  const { data: trainingMasterData = [], isLoading: trainingMasterLoading } = useTrainingMastersV2({ enabled: isTrainingMatrixTab });
+  const createTrainingMutation = useCreateTrainingMasterV2();
+  const updateTrainingMutation = useUpdateTrainingMasterV2();
+  const deleteTrainingMutation = useDeleteTrainingMasterV2();
+  const reorderTrainingMutation = useReorderTrainingMastersV2();
+
   // Training Master local state
   const [localTrainingData, setLocalTrainingData] = useState<TrainingMaster[]>([]);
   const [changedTrainings, setChangedTrainings] = useState<Set<number>>(new Set());
@@ -628,7 +622,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [trainingToDelete, setTrainingToDelete] = useState<TrainingMaster | null>(null);
   const [trainingCategoryFilter, setTrainingCategoryFilter] = useState<string>("all");
   const [trainingGroupFilter, setTrainingGroupFilter] = useState<string>("all");
-  
+
   // Company Training tab state
   const [isCompanyTrainingEditing, setIsCompanyTrainingEditing] = useState(false);
   const [showCompanyTrainingFilters, setShowCompanyTrainingFilters] = useState(true);
@@ -637,46 +631,24 @@ const AdminModuleInner = (): JSX.Element => {
   const [localCompanyTrainingData, setLocalCompanyTrainingData] = useState<CompanyTraining[]>([]);
   const [changedCompanyTrainings, setChangedCompanyTrainings] = useState<Set<number>>(new Set());
   const [showConfigureGroupLabelsDialog, setShowConfigureGroupLabelsDialog] = useState(false);
-  
+
   // Company Training data hooks
-  const { data: companyTrainingData = [], isLoading: companyTrainingLoading, refetch: refetchCompanyTrainings } = useQuery<CompanyTraining[]>({
-    queryKey: ['/api/company-trainings'],
-    enabled: selectedAdminPage === "training-matrix"
-  });
-  
-  const { data: companyTrainingGroups = [], refetch: refetchCompanyTrainingGroups } = useQuery<{code: string; label: string | null; displayOrder: number}[]>({
-    queryKey: ['/api/company-training-groups'],
-    enabled: selectedAdminPage === "training-matrix"
-  });
-  
-  const updateCompanyTrainingMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<CompanyTraining> }) => {
-      return apiRequest('PATCH', `/api/company-trainings/${id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/company-trainings'] });
-    },
-    onError: (error) => {
-      console.error('Failed to update company training:', error);
-      toast({
-        title: "Update failed",
-        description: "An error occurred while updating the training.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    },
-  });
-  
-  const reorderCompanyTrainingMutation = useReorderCompanyTrainings();
-  
+  const { data: companyTrainingData = [], isLoading: companyTrainingLoading, refetch: refetchCompanyTrainings } = useCompanyTrainingsV2({ enabled: isTrainingMatrixTab });
+
+  const { data: companyTrainingGroups = [], refetch: refetchCompanyTrainingGroups } = useCompanyTrainingGroupsV2({ enabled: isTrainingMatrixTab });
+
+  const updateCompanyTrainingMutation = useUpdateCompanyTrainingV2();
+
+  const reorderCompanyTrainingMutation = useReorderCompanyTrainingsV2();
+
   // Company Training Requirements (M/R matrix by rank)
-  const { data: trainingRequirements = [], isLoading: requirementsLoading } = useCompanyTrainingRequirements();
-  const upsertRequirementsMutation = useUpsertCompanyTrainingRequirements();
+  const { data: trainingRequirements = [], isLoading: requirementsLoading } = useCompanyTrainingRequirementsV2({ enabled: isTrainingMatrixTab });
+  const upsertRequirementsMutation = useUpsertCompanyTrainingRequirementsV2();
   const [localTrainingRequirements, setLocalTrainingRequirements] = useState<Map<string, 'M' | 'R' | null>>(new Map());
   const [changedRequirements, setChangedRequirements] = useState<Set<string>>(new Set());
   // Select All state: tracks whether "Select All M" or "Select All R" is checked per training
   const [selectAllState, setSelectAllState] = useState<Map<number, { M: boolean; R: boolean }>>(new Map());
-  
+
   // Sync training requirements with local state
   useEffect(() => {
     if (trainingRequirements.length > 0 && !isCompanyTrainingEditing) {
@@ -689,7 +661,7 @@ const AdminModuleInner = (): JSX.Element => {
       setSelectAllState(new Map()); // Reset select all state when exiting edit mode
     }
   }, [trainingRequirements, isCompanyTrainingEditing]);
-  
+
   // Sync company training data with local state
   useEffect(() => {
     if (companyTrainingData.length > 0 && !isCompanyTrainingEditing) {
@@ -697,7 +669,7 @@ const AdminModuleInner = (): JSX.Element => {
       setChangedCompanyTrainings(new Set());
     }
   }, [companyTrainingData, isCompanyTrainingEditing]);
-  
+
   // Sync training master data with local state
   useEffect(() => {
     if (trainingMasterData.length > 0 && !isTrainingMasterEditing) {
@@ -705,58 +677,58 @@ const AdminModuleInner = (): JSX.Element => {
       setChangedTrainings(new Set());
     }
   }, [trainingMasterData, isTrainingMasterEditing]);
-  
+
   // Local state for editing (initialized from shared data)
   const [rankMasterData, setRankMasterData] = useState<RankMasterData[]>([]);
   const [changedRanks, setChangedRanks] = useState<Set<string>>(new Set());
   const [newRanks, setNewRanks] = useState<Set<string>>(new Set());
   const [deletedRanks, setDeletedRanks] = useState<Set<string>>(new Set());
-  
+
   // Use ref to track previous server data to prevent unnecessary re-syncs (stable ID-based)
   const prevServerDataKeyRef = useRef<string>('');
-  
+
   // Sync local state with shared data while preserving unsaved changes
   useEffect(() => {
     if (!sharedRankMasterData || sharedRankMasterData.length === 0) return;
-    
+
     // Don't sync if we're currently editing to avoid losing unsaved changes
     if (isRankMasterEditing || isCompanyEditing) {
       return;
     }
-    
+
     // Skip if data hasn't actually changed (use stable IDs to prevent infinite loop from new object references)
     const currentDataKey = sharedRankMasterData.map(r => `${r.id}:${r.applicableToCompany}`).sort().join(',');
     if (prevServerDataKeyRef.current === currentDataKey) {
       return;
     }
-    
+
     prevServerDataKeyRef.current = currentDataKey;
     const serverRankIds = new Set(sharedRankMasterData.map(rank => rank.id));
-    
+
     setRankMasterData(prev => {
       // Preserve any new ranks that haven't been saved yet
       const currentNewRanks = Array.from(newRanks);
       const newUnsavedRanks = prev.filter(rank => 
         rank.id.startsWith('new_') && currentNewRanks.includes(rank.id)
       );
-      
+
       // Merge server data with unsaved new ranks
       return [...sharedRankMasterData, ...newUnsavedRanks];
     });
-    
+
     // Only clear tracking for ranks that now exist on server
     setChangedRanks(prev => {
       const filtered = Array.from(prev).filter(rankId => !serverRankIds.has(rankId));
       return filtered.length === prev.size ? prev : new Set(filtered);
     });
-    
+
     // Keep new ranks that haven't been saved to server
     setNewRanks(prev => {
       const filtered = Array.from(prev).filter(rankId => !serverRankIds.has(rankId));
       return filtered.length === prev.size ? prev : new Set(filtered);
     });
   }, [sharedRankMasterData]);
-  
+
   // Context callback functions for cell renderers
   const handleRankDataChange = (id: string, field: string, value: any) => {
     setRankMasterData(prev => {
@@ -764,7 +736,7 @@ const AdminModuleInner = (): JSX.Element => {
       const rowIndex = newData.findIndex(row => row.id === id);
       if (rowIndex !== -1) {
         newData[rowIndex] = { ...newData[rowIndex], [field]: value };
-        
+
         // Track changes for save functionality
         if (!id.startsWith('new_')) {
           setChangedRanks(prev => new Set(prev).add(id));
@@ -780,19 +752,19 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const [isRankMasterEditing, setIsRankMasterEditing] = useState(false);
-  
+
   // Company state
   const [companyRankData, setCompanyRankData] = useState<CompanyRankData[]>([]);
   const [isCompanyEditing, setIsCompanyEditing] = useState(false);
   const [changedCompanyRanks, setChangedCompanyRanks] = useState<Set<string>>(new Set());
-  
+
   // Company Ranks Form (React Hook Form integration)
   const companyForm = useForm<{ ranks: CompanyRankData[] }>({
     defaultValues: { ranks: [] },
     mode: 'onChange'
   });
   const { watch: watchCompany, setValue: setCompanyValue, reset: resetCompany } = companyForm;
-  
+
   // Vessel state
   const [vesselRankDataMap, setVesselRankDataMap] = useState<Map<string, VesselRankData[]>>(new Map());
   const [isVesselEditing, setIsVesselEditing] = useState(false);
@@ -800,24 +772,24 @@ const AdminModuleInner = (): JSX.Element => {
   const [nextRevision, setNextRevision] = useState<string>("R0"); // Auto-assigned next revision
   const [flexDate, setFlexDate] = useState("");
   const [revisionMode, setRevisionMode] = useState(false);
-  
+
   // Training Matrix Vessel state (separate from Rank Admin Vessel)
   const [tmSelectedVessels, setTmSelectedVessels] = useState<string[]>([]);
   const [tmNextRevision, setTmNextRevision] = useState<string>("R0");
   const [tmFlexDate, setTmFlexDate] = useState("");
   const [tmRevisionMode, setTmRevisionMode] = useState(false);
   const [tmApplicableTrainings, setTmApplicableTrainings] = useState<Map<string, Set<number>>>(new Map()); // vesselId -> Set of applicable training IDs
-  
+
   // Training Matrix Vessel revision queries - use queryFn with explicit URL
   const tmCurrentVesselId = tmSelectedVessels[0];
   const tmQueryEnabled = selectedAdminPage === "training-matrix" && selectedTrainingMatrixTab === "vessel" && !!tmCurrentVesselId;
-  
+
   const { data: tmVesselRevisions = [] } = useQuery<any[]>({
     queryKey: ['tm-vessel-revisions', tmCurrentVesselId],
     queryFn: async ({ queryKey }) => {
       const vesselId = queryKey[1];
       if (!vesselId) return [];
-      const res = await fetch(`/api/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
+      const res = await fetch(`/api/v2/admin/training-matrix-vessel-revisions/by-vessel/${vesselId}`);
       if (!res.ok) throw new Error('Failed to fetch revisions');
       return res.json();
     },
@@ -825,13 +797,13 @@ const AdminModuleInner = (): JSX.Element => {
     staleTime: 0,
     refetchOnMount: 'always'
   });
-  
+
   const { data: tmNextRevisionData } = useQuery<{ nextRevision: string; currentRevisionCount: number }>({
     queryKey: ['tm-next-revision', tmCurrentVesselId],
     queryFn: async ({ queryKey }) => {
       const vesselId = queryKey[1];
       if (!vesselId) return { nextRevision: 'R0', currentRevisionCount: 0 };
-      const res = await fetch(`/api/training-matrix-vessel-revisions/next-revision/${vesselId}`);
+      const res = await fetch(`/api/v2/admin/training-matrix-vessel-revisions/next-revision/${vesselId}`);
       if (!res.ok) throw new Error('Failed to fetch next revision');
       return res.json();
     },
@@ -839,7 +811,7 @@ const AdminModuleInner = (): JSX.Element => {
     staleTime: 0,
     refetchOnMount: 'always'
   });
-  
+
   // Training Matrix Vessel draft query - use queryFn with explicit URL
   // API returns an array of drafts, we take the first one (should be only one per vessel)
   const { data: tmVesselDraft } = useQuery<{ id: number; vesselId: string; draftData: any; updatedAt: string } | null>({
@@ -847,7 +819,7 @@ const AdminModuleInner = (): JSX.Element => {
     queryFn: async ({ queryKey }) => {
       const vesselId = queryKey[1];
       if (!vesselId) return null;
-      const res = await fetch(`/api/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
+      const res = await fetch(`/api/v2/admin/training-matrix-vessel-drafts/by-vessel/${vesselId}`);
       if (!res.ok) {
         if (res.status === 404) return null;
         throw new Error('Failed to fetch draft');
@@ -872,23 +844,23 @@ const AdminModuleInner = (): JSX.Element => {
     staleTime: 0,
     refetchOnMount: 'always'
   });
-  
+
   // Update tmNextRevision when query data changes
   useEffect(() => {
     if (tmNextRevisionData?.nextRevision) {
       setTmNextRevision(tmNextRevisionData.nextRevision);
     }
   }, [tmNextRevisionData]);
-  
+
   // Hydrate tmApplicableTrainings from draft or latest revision when vessel changes or data loads
   useEffect(() => {
     if (!tmCurrentVesselId) {
       return;
     }
-    
+
     const vesselId = tmCurrentVesselId;
     const applicableSet = new Set<number>();
-    
+
     // Priority: draft data first, then latest revision
     let sourceData: any = null;
     if (tmVesselDraft?.draftData) {
@@ -912,7 +884,7 @@ const AdminModuleInner = (): JSX.Element => {
       }
       sourceData = revData;
     }
-    
+
     // Parse the source data - supports multiple formats for compatibility
     if (sourceData) {
       if (Array.isArray(sourceData)) {
@@ -940,7 +912,7 @@ const AdminModuleInner = (): JSX.Element => {
         });
       }
     }
-    
+
     // Always update state for this vessel (even if empty - clears stale data)
     setTmApplicableTrainings(prev => {
       const newMap = new Map(prev);
@@ -948,11 +920,12 @@ const AdminModuleInner = (): JSX.Element => {
       return newMap;
     });
   }, [tmCurrentVesselId, tmVesselDraft, tmVesselRevisions]);
-  
+
   // Training Matrix Vessel Draft mutations
   const tmSaveDraftMutation = useMutation({
     mutationFn: async ({ vesselId, draftData }: { vesselId: string; draftData: any }) => {
-      return apiRequest('POST', '/api/training-matrix-vessel-drafts/upsert', { vesselId, draftData });
+      const auditUserUuid = localStorage.getItem("crewUserId") || undefined;
+      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-drafts/upsert', { vesselId, draftData, auditUserUuid });
     },
     onSuccess: (_data, variables) => {
       toast({
@@ -973,10 +946,11 @@ const AdminModuleInner = (): JSX.Element => {
       });
     },
   });
-  
+
   const tmSubmitRevisionMutation = useMutation({
     mutationFn: async ({ vesselId, revisionDate, revisionData }: { vesselId: string; revisionDate: string; revisionData: any }) => {
-      return apiRequest('POST', '/api/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData });
+      const auditUserUuid = localStorage.getItem("crewUserId") || undefined;
+      return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData, auditUserUuid });
     },
     onSuccess: (_data, variables) => {
       toast({
@@ -1009,42 +983,42 @@ const AdminModuleInner = (): JSX.Element => {
       });
     },
   });
-  
+
   // Track which vessels have been loaded to prevent duplicate fetches
   const loadedVesselsRef = React.useRef<Set<string>>(new Set());
-  
+
   // PERFORMANCE FIX: Track previous data to prevent infinite loops
   // Only sync when data actually changes (not just reference)
   const prevVesselOptionsRef = React.useRef<string>('');
   const prevCompanyRankSyncRef = React.useRef<string>('');
-  
+
   // FIX: Gate initial sync to prevent render loop during first mount
   const isInitialSyncCompleted = React.useRef(false);
-  
+
   // PERFORMANCE OPTIMIZATION: Only build lookup for the CURRENT vessel being displayed
   // This avoids rebuilding Maps for all vessels on every checkbox click
   const currentVesselRankLookup = useMemo(() => {
     const currentVesselData = selectedVessels.length > 0 
       ? vesselRankDataMap.get(selectedVessels[0]) || []
       : [];
-    
+
     return new Map(currentVesselData.map(rank => [rank.id, rank]));
   }, [vesselRankDataMap, selectedVessels]);
-  
+
   // Data Masters state
   const [searchDataMaster, setSearchDataMaster] = useState("");
   const [selectedMaster, setSelectedMaster] = useState<string>("001");
   const [masterDataSource, setMasterDataSource] = useState<'external' | 'local'>('local');
-  
+
   // Sync All Master Data mutation
   const syncAllMasterDataMutation = useSyncAllMasterData();
-  
+
   // Vessel Group Modal state
   const [isVesselGroupModalOpen, setIsVesselGroupModalOpen] = useState(false);
-  
+
   // Promotion Hierarchy Dialog state
   const [isPromotionHierarchyOpen, setIsPromotionHierarchyOpen] = useState(false);
-  
+
   // Vessel Group Form setup
   const vesselGroupForm = useForm({
     resolver: zodResolver(insertVesselGroupSchema.extend({
@@ -1059,7 +1033,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Vessel Group Mutation
   const createVesselGroupMutation = useMutation({
     mutationFn: async (data: { name: string; vesselIds: string[] }) => {
-      return await apiRequest('POST', '/api/vessel-groups', data);
+      return await apiRequest('POST', '/api/v2/admin/vessel-groups', data);
     },
     onSuccess: () => {
       toast({
@@ -1069,7 +1043,7 @@ const AdminModuleInner = (): JSX.Element => {
       setIsVesselGroupModalOpen(false);
       vesselGroupForm.reset();
       // Invalidate vessel group queries if needed
-      queryClient.invalidateQueries({ queryKey: ['/api/vessel-groups'] });
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'vessel-groups'] });
     },
     onError: (error: any) => {
       toast({
@@ -1079,14 +1053,14 @@ const AdminModuleInner = (): JSX.Element => {
       });
     }
   });
-  
+
   // Unsaved changes dialog state
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
-  
+
   // Delete confirmation dialog state
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [rankToDelete, setRankToDelete] = useState<{ id: string; name: string } | null>(null);
-  
+
   // Dialog handler functions
   const handleSaveChanges = async () => {
     try {
@@ -1094,7 +1068,7 @@ const AdminModuleInner = (): JSX.Element => {
       const currentPendingTarget = pendingTarget;
       await resolvePendingNavigation('save');
       setShowUnsavedChangesDialog(false);
-      
+
       // Handle rank admin tab switching after save
       if (currentPendingTarget && currentPendingTarget.startsWith('rank-admin-tab-')) {
         const tabId = currentPendingTarget.replace('rank-admin-tab-', '');
@@ -1107,14 +1081,14 @@ const AdminModuleInner = (): JSX.Element => {
       // Keep dialog open on error
     }
   };
-  
+
   const handleDiscardChanges = async () => {
     try {
       // Store pendingTarget before resolving navigation
       const currentPendingTarget = pendingTarget;
       await resolvePendingNavigation('discard');
       setShowUnsavedChangesDialog(false);
-      
+
       // Handle rank admin tab switching after discard
       if (currentPendingTarget && currentPendingTarget.startsWith('rank-admin-tab-')) {
         const tabId = currentPendingTarget.replace('rank-admin-tab-', '');
@@ -1126,21 +1100,21 @@ const AdminModuleInner = (): JSX.Element => {
       }
     }
   };
-  
+
   const handleCancelNavigation = () => {
     resolvePendingNavigation('cancel');
     setShowUnsavedChangesDialog(false);
   };
-  
+
   // Delete rank handlers
   const handleDeleteRankClick = (rankId: string, rankName: string) => {
     setRankToDelete({ id: rankId, name: rankName });
     setShowDeleteConfirmDialog(true);
   };
-  
+
   const handleConfirmDeleteRank = async () => {
     if (!rankToDelete) return;
-    
+
     try {
       // Check if this is a new rank that hasn't been saved to server yet
       if (rankToDelete.id.startsWith('new_')) {
@@ -1151,50 +1125,50 @@ const AdminModuleInner = (): JSX.Element => {
           newSet.delete(rankToDelete.id);
           return newSet;
         });
-        
+
         toast({
           title: "Rank deleted successfully",
           description: `${rankToDelete.name} has been removed.`,
           duration: 3000,
         });
-        
+
         setShowDeleteConfirmDialog(false);
         setRankToDelete(null);
         return;
       }
-      
+
       // Convert string ID to number for the API call (existing ranks only)
       const numericId = parseInt(rankToDelete.id, 10);
       if (isNaN(numericId)) {
         throw new Error('Invalid rank ID');
       }
-      
+
       await deleteRankMutation.mutateAsync(numericId);
-      
+
       toast({
         title: "Rank deleted successfully",
         description: `${rankToDelete.name} has been removed from the system.`,
         duration: 3000,
       });
-      
+
       setShowDeleteConfirmDialog(false);
       setRankToDelete(null);
     } catch (error) {
       console.error('Failed to delete rank:', error);
-      
+
       // Handle specific error types
       let errorMessage = "An unexpected error occurred. Please try again.";
       let additionalAction = "";
-      
+
       if (error instanceof Error) {
         // Check if it's a 404 error (rank not found)
         if (error.message.includes('404') || error.message.includes('not found') || error.message.includes('Rank not found')) {
           errorMessage = `Rank "${rankToDelete.name}" no longer exists in the database. This may be due to stale cache data.`;
           additionalAction = "The rank list will be refreshed to show current data.";
-          
+
           // Force refresh the rank data to clear stale cache
-          rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
-          
+          rq.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
+
           // Also clear the local state to remove stale entries
           setRankMasterData(prev => prev.filter(rank => rank.id !== rankToDelete.id));
           setDeletedRanks(prev => {
@@ -1202,7 +1176,7 @@ const AdminModuleInner = (): JSX.Element => {
             newSet.delete(rankToDelete.id);
             return newSet;
           });
-          
+
           // Close the dialog since the rank doesn't exist anyway
           setShowDeleteConfirmDialog(false);
           setRankToDelete(null);
@@ -1210,7 +1184,7 @@ const AdminModuleInner = (): JSX.Element => {
           errorMessage = error.message;
         }
       }
-      
+
       toast({
         title: "Failed to delete rank",
         description: `${errorMessage}${additionalAction ? ` ${additionalAction}` : ''}`,
@@ -1219,30 +1193,30 @@ const AdminModuleInner = (): JSX.Element => {
       });
     }
   };
-  
+
   const handleCancelDeleteRank = () => {
     setShowDeleteConfirmDialog(false);
     setRankToDelete(null);
   };
-  
+
   // CSS Constants for consistent grid layouts
   const USERS_MASTER_GRID_CLASSES = "grid grid-cols-5 gap-0";
 
-  
+
 
   // Data Masters API hooks
   // PERFORMANCE: Only fetch when on masters tab
   const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters({ 
     enabled: selectedAdminPage === "masters" 
   });
-  
+
   // PERFORMANCE: Removed debug logging to avoid re-renders on every masters change
-  
+
   // Function to force refresh masters data
   const refreshMastersData = () => {
     rq.invalidateQueries({ queryKey: ['/api/masters'] });
   };
-  
+
   // Function to navigate directly to Port Master
   const navigateToPortMaster = () => {
     setSelectedAdminPage('masters');
@@ -1251,7 +1225,28 @@ const AdminModuleInner = (): JSX.Element => {
     navigate('/admin/masters/018');
   };
   const { data: rawMasterData = [], isLoading: masterDataLoading, error: masterDataError } = useMasterDataEntries(selectedMaster);
-  
+
+  // V2 Masters: License & DCE (016), Manning Agents (021), Crew Pool (022), Appraisal Type (023)
+  const {
+    data: licensesDceData,
+    isLoading: licensesDceLoading,
+  } = useLicensesDceV2({ enabled: selectedAdminPage === "masters" });
+
+  const {
+    data: manningAgentsData,
+    isLoading: manningAgentsLoading,
+  } = useManningAgentsV2({ enabled: selectedAdminPage === "masters" });
+
+  const {
+    data: crewPoolsData,
+    isLoading: crewPoolsLoading,
+  } = useCrewPoolsV2({ enabled: selectedAdminPage === "masters" });
+
+  const {
+    data: appraisalTypesData,
+    isLoading: appraisalTypesLoading,
+  } = useAppraisalTypesV2({ enabled: selectedAdminPage === "masters" });
+
   // Apply vessel/port master field mapping if needed
   // PERFORMANCE: Only transform when on masters tab to avoid expensive map operations on every render
   const masterData = useMemo(() => {
@@ -1262,165 +1257,198 @@ const AdminModuleInner = (): JSX.Element => {
     if (isPortMaster(selectedMaster)) {
       return rawMasterData.map((item: any) => mapSafeFieldsToPortData(item));
     }
+    if (selectedMaster === "016" && licensesDceData) {
+      return (licensesDceData as any[]).map((item: any) => ({
+        id: item.id,
+        entryId: item.entryId,
+        name: item.name,
+        description: item.description,
+        shortCode: item.shortCode,
+        sortOrder: item.sortOrder,
+        isActive: item.isActive,
+        isDeleted: item.isDeleted,
+      }));
+    }
+    if (selectedMaster === "021" && manningAgentsData) {
+      return (manningAgentsData as any[]).map((item: any) => ({
+        id: item.id,
+        entryId: item.id,
+        name: item.name,
+        country: item.country,
+        email: item.email,
+        phone: item.phone,
+        address: item.address,
+        contactPerson: item.contactPerson,
+        sortOrder: item.sortOrder,
+        isActive: item.isActive,
+        isDeleted: item.isDeleted,
+      }));
+    }
+    if (selectedMaster === "022" && crewPoolsData) {
+      return (crewPoolsData as any[]).map((item: any) => ({
+        id: item.id,
+        entryId: item.id,
+        name: item.name,
+        description: item.description,
+        sortOrder: item.sortOrder,
+        isActive: item.isActive,
+        isDeleted: item.isDeleted,
+      }));
+    }
+    if (selectedMaster === "023" && appraisalTypesData) {
+      return (appraisalTypesData as any[]).map((item: any) => ({
+        id: item.id,
+        entryId: item.entryId,
+        name: item.name,
+        description: item.description,
+        sortOrder: item.sortOrder,
+        isActive: item.isActive,
+        isDeleted: item.isDeleted,
+      }));
+    }
     return rawMasterData;
-  }, [rawMasterData, selectedMaster, selectedAdminPage]);
-  
+  }, [rawMasterData, selectedMaster, selectedAdminPage, licensesDceData, manningAgentsData, crewPoolsData, appraisalTypesData]);
+
   // Vessel Type Master Data (for vessel master dropdown)
   // COMMENTED OUT: Using external API instead
   // const { data: vesselTypeData = [], isLoading: vesselTypeLoading } = useMasterDataEntries('004', { 
   //   enabled: selectedAdminPage === "masters" 
   // });
-  
+
   // NEW: External vessel type data from API
   // PERFORMANCE: Only load when on masters tab
   const { 
     data: externalVesselTypeData, 
     isLoading: vesselTypeLoading,
     error: vesselTypeError 
-  } = useExternalVesselTypes({ enabled: selectedAdminPage === "masters" });
-  
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
+  } = useMasterDataV2('vesselTypes', { enabled: selectedAdminPage === "masters" });
+
   const vesselTypeData = Array.isArray(externalVesselTypeData) 
     ? externalVesselTypeData 
     : (externalVesselTypeData as any)?.vesseltypes || [];
-  
-  
+
+
   // Designation Master Data (for users master dropdown)
   // PERFORMANCE: Only fetch when on masters tab
   const { data: designationData = [], isLoading: designationLoading } = useMasterDataEntries('012', { 
     enabled: selectedAdminPage === "masters" 
   });
-  
+
   // Vessels Master Data (for vessel selection dropdown - ID 014)
   // COMMENTED OUT: Using external API instead
   // const { data: vesselMasterData = [], isLoading: vesselMasterLoading } = useMasterDataEntries('014', { 
   //   enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin"
   // });
-  
+
   // NEW: External vessel master data from API
   // PERFORMANCE: Only load when on masters or rank-admin tab
   const { 
     data: externalVesselMasterData, 
     isLoading: vesselMasterLoading,
     error: vesselMasterError 
-  } = useExternalVessels({ enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin" });
-  
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
+  } = useMasterDataV2('vessels', { enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin" || selectedAdminPage === "training-matrix" });
+
   const vesselMasterData = Array.isArray(externalVesselMasterData) 
     ? externalVesselMasterData 
     : (externalVesselMasterData as any)?.vessels || [];
-  
-  
+
+
   // NEW: External nationality data from API
   // PERFORMANCE: Only load when on masters tab
   const { 
     data: externalNationalityData, 
     isLoading: nationalityLoading,
     error: nationalityError 
-  } = useExternalNationalities({ enabled: selectedAdminPage === "masters" });
-  
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
+  } = useMasterDataV2('nationalities', { enabled: selectedAdminPage === "masters" });
+
   const nationalityData = Array.isArray(externalNationalityData) 
     ? externalNationalityData 
     : (externalNationalityData as any)?.nationalities || [];
-  
-  
+
+
   // NEW: External fleet groups data from API
   // PERFORMANCE: Only load when on masters tab
   const { 
     data: externalFleetGroupsData, 
     isLoading: fleetGroupsLoading, 
     error: fleetGroupsError 
-  } = useExternalFleetGroups({ enabled: selectedAdminPage === "masters" });
-  
-  // Process external API response structure (cast to any to handle dynamic API response)
-  const fleetGroupsData = (externalFleetGroupsData as any)?.fleetGroups || [];
-  
-  
+  } = useMasterDataV2('fleetGroups', { enabled: selectedAdminPage === "masters" });
+
+  const fleetGroupsData = Array.isArray(externalFleetGroupsData) 
+    ? externalFleetGroupsData 
+    : (externalFleetGroupsData as any)?.fleetGroups || [];
+
+
   // NEW: External additional groups data from API (Master 017)
   // PERFORMANCE: Only load when on masters tab
   const {
     data: externalAdditionalGroupsData,
     isLoading: additionalGroupsLoading,
     error: additionalGroupsError,
-  } = useExternalAdditionalGroups({ enabled: selectedAdminPage === "masters" });
-  
-  // Process response - some APIs return an object with `additionalGroups`, others return array directly
+  } = useMasterDataV2('additionalGroups', { enabled: selectedAdminPage === "masters" });
+
   const additionalGroupsData = (externalAdditionalGroupsData as any)?.additionalGroups || externalAdditionalGroupsData || [];
-  
-  
+
+
   // NEW: External ports data from API (Master 018)
   // PERFORMANCE: Only load when on masters tab
   const {
     data: externalPortsData,
     isLoading: portsLoading,
     error: portsError,
-  } = useExternalPorts({ enabled: selectedAdminPage === "masters" });
-  
-  // Process response - some APIs return an object with `ports`, others return array directly
+  } = useMasterDataV2('ports', { enabled: selectedAdminPage === "masters" });
+
   const portsData = (externalPortsData as any)?.ports || externalPortsData || [];
-  
-  
+
+
   // NEW: External languages data from API (Master 019)
   // PERFORMANCE: Only load when on masters tab
   const {
     data: externalLanguagesData,
     isLoading: languagesLoading,
     error: languagesError,
-  } = useExternalLanguages({ enabled: selectedAdminPage === "masters" });
-  
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
+  } = useMasterDataV2('languages', { enabled: selectedAdminPage === "masters" });
+
   const languagesData = Array.isArray(externalLanguagesData) 
     ? externalLanguagesData 
     : (externalLanguagesData as any)?.languages || [];
-  
-  
+
+
   // NEW: External countries data from API (Master 020)
   // PERFORMANCE: Only load when on masters tab
   const {
     data: externalCountriesData,
     isLoading: countriesLoading,
     error: countriesError,
-  } = useExternalCountries({ enabled: selectedAdminPage === "masters" });
-  
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
+  } = useMasterDataV2('countries', { enabled: selectedAdminPage === "masters" });
+
   const countriesData = Array.isArray(externalCountriesData) 
     ? externalCountriesData 
     : (externalCountriesData as any)?.countries || [];
-  
-  
+
+
   // NEW: External users data from API (Master 024)
   // PERFORMANCE: Only load when on masters tab
   const {
     data: externalUsersData,
     isLoading: externalUsersLoading,
     error: externalUsersError,
-  } = useExternalUsers({ enabled: selectedAdminPage === "masters" });
-  
-  // Process external API response structure - hooks now return arrays directly
-  // Also handle legacy wrapper format for backwards compatibility
+  } = useMasterDataV2('users', { enabled: selectedAdminPage === "masters" });
+
   const externalUsersApiData = Array.isArray(externalUsersData) 
     ? externalUsersData 
     : (externalUsersData as any)?.users || [];
-  
-  
+
+
   // Vessel Groups Data (for vessel group selection)
   // PERFORMANCE: Only fetch when on masters or rank-admin tab (Rank Admin needs vessel dropdown)
-  const { data: vesselGroupsData = [], isLoading: vesselGroupsLoading } = useQuery({
-    queryKey: ['/api/vessel-groups'],
-    enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin"
-  });
-  
+  const { data: vesselGroupsData = [], isLoading: vesselGroupsLoading } = useVesselGroupsV2({ enabled: isMastersTab || isTrainingMatrixTab });
+
   // Mutations for Data Masters
   const createMasterMutation = useCreateDataMaster();
   const updateMasterMutation = useUpdateDataMaster(selectedMaster);
   const deleteMasterMutation = useDeleteDataMaster();
-  
+
   // Toast for notifications
   const { toast } = useToast();
 
@@ -1428,17 +1456,17 @@ const AdminModuleInner = (): JSX.Element => {
   const createEntryMutation = useCreateMasterDataEntry(selectedMaster);
   const updateEntryMutation = useUpdateMasterDataEntry();
   const deleteEntryMutation = useDeleteMasterDataEntry(selectedMaster);
-  
+
   // Responsive breakpoint detection
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
-  
+
   // Breakpoint thresholds
   const breakpoints = {
     mobile: 768,
     tablet: 1024,
     laptop: 1200
   };
-  
+
   // Current breakpoint detection
   const currentBreakpoint = useMemo(() => {
     if (windowWidth >= breakpoints.laptop) return 'desktop';
@@ -1446,15 +1474,15 @@ const AdminModuleInner = (): JSX.Element => {
     if (windowWidth >= breakpoints.mobile) return 'tablet';
     return 'mobile';
   }, [windowWidth]);
-  
+
   // Window resize handler
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -1464,7 +1492,7 @@ const AdminModuleInner = (): JSX.Element => {
     // Parse the URL path to extract admin page and parameters
     const path = location.replace(/^\//, ''); // Remove leading slash
     const pathParts = path.split('/');
-    
+
     if (pathParts[0] === 'admin') {
       if (pathParts.length === 1) {
         // /admin - show default page (forms)
@@ -1490,7 +1518,7 @@ const AdminModuleInner = (): JSX.Element => {
       }
     }
   }, [location]);
-  
+
   // Responsive configuration
   const responsiveConfig = useMemo(() => ({
     mobile: {
@@ -1534,10 +1562,10 @@ const AdminModuleInner = (): JSX.Element => {
       maxVisibleColumns: 12
     }
   }), []);
-  
+
   // Current responsive settings
   const responsive = responsiveConfig[currentBreakpoint];
-  
+
   // Current vessel rank data (derived from selected vessels)
   const vesselRankData = selectedVessels.length > 0 
     ? vesselRankDataMap.get(selectedVessels[0]) || []
@@ -1552,17 +1580,17 @@ const AdminModuleInner = (): JSX.Element => {
 
     setVesselRankDataMap(prev => {
       const newMap = new Map(prev);
-      
+
       selectedVessels.forEach(vesselId => {
         const currentData = newMap.get(vesselId) || [];
         const updatedData = updater(currentData);
         newMap.set(vesselId, updatedData);
       });
-      
+
       return newMap;
     });
   };
-  
+
   // Sample seafarer data
   const [seafarerData] = useState<SeafarerData[]>([
     { id: "SF001", firstName: "John", lastName: "Smith", rank: "Master", nationality: "Philippines", status: "Available" },
@@ -1576,43 +1604,51 @@ const AdminModuleInner = (): JSX.Element => {
     { id: "SF009", firstName: "Jose", lastName: "Santos", rank: "Deck Cadet", nationality: "Philippines", status: "Available" },
     { id: "SF010", firstName: "Robert", lastName: "Chen", rank: "Chief Engineer", nationality: "China", status: "Available" },
   ]);
-  
+
   // Dynamic vessel data from Vessels Master (ID 014) and Vessel Groups
   const vesselOptions = useMemo((): VesselOption[] => {
-    // Individual vessels from master data
+    const idToUuidMap = new Map<string, string>();
     const individualVessels = vesselMasterData.map((vessel: any): VesselOption => {
-      // Detect data source: external API has 'vessel' field, local DB has 'name' field
-      // Only apply mapSafeFieldsToVesselData for local DB data
       const isExternalData = !!vessel.vessel || !!vessel.vuid;
       const mappedVessel = isExternalData ? vessel : mapSafeFieldsToVesselData(vessel);
-      
-      // CRITICAL FIX: Use canonical vessel ID (entryId/VSL-XXX format) for value
-      // This ensures Rank Admin saves data with the correct vessel identifier
-      const vesselValue = vessel.entryId || vessel.vuid || `VSL-${String(vessel.id).padStart(3, '0')}`;
-      
-      // Ensure we have a consistent label field for display
-      // External API uses 'vessel', local DB uses 'name' (mapped to 'vessel' by mapSafeFieldsToVesselData)
+
+      const vesselValue = vessel.vesselUuid || vessel.entryId || vessel.vuid || `VSL-${String(vessel.id).padStart(3, '0')}`;
+
+      if (vessel.vesselUuid) {
+        if (vessel.id) idToUuidMap.set(String(vessel.id), vessel.vesselUuid);
+        if (vessel.entryId) idToUuidMap.set(String(vessel.entryId), vessel.vesselUuid);
+        if (vessel.vuid) idToUuidMap.set(String(vessel.vuid), vessel.vesselUuid);
+      }
+
       const vesselLabel = vessel.vessel || mappedVessel.vessel || vessel.name || `Vessel ${vesselValue}`;
-      
+
       return {
-        value: String(vesselValue), // Use canonical vessel ID (VSL-XXX)
-        label: `🚢 ${String(vesselLabel)}`, // Individual vessel with ship icon
+        value: String(vesselValue),
+        label: `${String(vesselLabel)}`,
         type: 'vessel'
       };
     });
-    
-    // Vessel groups from API
-    const vesselGroups = (vesselGroupsData as any[]).map((group: any): VesselOption => ({
-      value: `group_${group.id}`,
-      label: `📁 ${group.name}`, // Vessel group with folder icon  
-      type: 'group',
-      vesselIds: group.vesselIds
-    }));
-    
-    // Combine groups first (at top), then individual vessels
+
+    const vesselGroups = (vesselGroupsData as any[]).map((group: any): VesselOption => {
+      const parsed = group.vesselIds;
+      const rawIds = Array.isArray(parsed) ? parsed : (typeof parsed === 'string' ? (() => { try { return JSON.parse(parsed); } catch { return []; } })() : []);
+      const mappedVesselIds = rawIds
+        .map((vid: string) => idToUuidMap.get(vid) || vid)
+        .filter((vid: string) => {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(vid);
+          return isUuid;
+        });
+      return {
+        value: `group_${group.id}`,
+        label: `${group.name}`,
+        type: 'group',
+        vesselIds: mappedVesselIds
+      };
+    });
+
     return [...vesselGroups, ...individualVessels];
   }, [vesselMasterData, vesselGroupsData]);
-  
+
   const rq = useQueryClient();
 
 
@@ -1622,20 +1658,20 @@ const AdminModuleInner = (): JSX.Element => {
     if (isCompanyEditing || isRankMasterEditing) {
       return;
     }
-    
+
     // Don't run until queries have fully resolved (prevents initial render loop)
     if (isCompanyRanksLoading || rankMasterLoading) {
       return;
     }
-    
+
     // Only show ranks that have applicableToCompany checked in Rank Master
     const allRanks = rankMasterData.filter(rank => rank.applicableToCompany === true);
-    
+
     // Don't run if no applicable ranks
     if (allRanks.length === 0) {
       return;
     }
-    
+
     // PERFORMANCE FIX: Only sync if data actually changed (prevent infinite loops)
     // Use stable IDs instead of full objects to prevent new array references from triggering re-syncs
     const allRankIds = allRanks.map(r => r.id).sort().join(',');
@@ -1645,13 +1681,13 @@ const AdminModuleInner = (): JSX.Element => {
       return; // No change and initial sync done, skip sync
     }
     prevCompanyRankSyncRef.current = syncKey;
-    
+
     // Create a map of existing company data from saved backend data
     const existingCompanyData = new Map<string, CompanyRankData>();
     savedCompanyRanks.forEach(item => {
       existingCompanyData.set(item.id, item);
     });
-    
+
     // Preserve existing role variants from saved data (only if their parent rank is applicable)
     // Build a set of applicable rank IDs to filter variants
     const applicableRankIds = new Set(allRanks.map(r => r.id));
@@ -1661,11 +1697,11 @@ const AdminModuleInner = (): JSX.Element => {
       const parentId = item.originalRankId || item.parentId || item.id;
       return applicableRankIds.has(parentId);
     });
-    
+
     // Build the new company rank data from ALL ranks
     const newCompanyRanks: CompanyRankData[] = allRanks.map(rank => {
       const existing = existingCompanyData.get(rank.id);
-      
+
       // If we have existing data, preserve company-specific fields
       if (existing) {
         return {
@@ -1677,7 +1713,7 @@ const AdminModuleInner = (): JSX.Element => {
           hasMultiple: existing.isRoleRow ? false : true,
         };
       }
-      
+
       // For new ranks, create default company data with NO auto-detection
       // User must manually select officer/rating checkboxes
       // (Starter pack ranks have flags pre-set via database migration)
@@ -1703,21 +1739,21 @@ const AdminModuleInner = (): JSX.Element => {
         hasMultiple: true // All ranks can have role variants including Master
       };
     });
-    
+
     // Properly insert role variants after their parent ranks to maintain hierarchy
     const finalCompanyRanks: CompanyRankData[] = [];
-    
+
     // Group role variants by their original rank ID (with fallbacks for legacy data)
     const roleVariantsByOriginal = new Map<string, CompanyRankData[]>();
     const unmatchedVariants: CompanyRankData[] = [];
-    
+
     existingRoleVariants.forEach(variant => {
       // Use originalRankId, then legacy parentId, then variant's own id as fallback
       const originalId = variant.originalRankId || variant.parentId || variant.id;
-      
+
       // Check if we have a matching parent rank in newCompanyRanks
       const hasMatchingParent = newCompanyRanks.some(rank => rank.id === originalId);
-      
+
       if (hasMatchingParent) {
         if (!roleVariantsByOriginal.has(originalId)) {
           roleVariantsByOriginal.set(originalId, []);
@@ -1734,7 +1770,7 @@ const AdminModuleInner = (): JSX.Element => {
         unmatchedVariants.push(variant);
       }
     });
-    
+
     // Sort role variants within each group by their numeric suffix
     roleVariantsByOriginal.forEach((variants) => {
       variants.sort((a, b) => {
@@ -1743,29 +1779,29 @@ const AdminModuleInner = (): JSX.Element => {
         return aNum - bNum;
       });
     });
-    
+
     // Insert each rank followed by its role variants (if any) to maintain hierarchy
     newCompanyRanks.forEach(rank => {
       finalCompanyRanks.push(rank);
-      
+
       // Add role variants for this rank immediately after it
       const variants = roleVariantsByOriginal.get(rank.id);
       if (variants) {
         finalCompanyRanks.push(...variants);
       }
     });
-    
+
     // Append any unmatched variants at the end to prevent data loss
     if (unmatchedVariants.length > 0) {
       console.warn('🚨 [RANK_ORDER] Appending unmatched role variants at end to prevent data loss:', unmatchedVariants.length);
       finalCompanyRanks.push(...unmatchedVariants);
     }
-    
+
     // Only update if there's a meaningful change
     if (JSON.stringify(companyRankData) !== JSON.stringify(finalCompanyRanks)) {
       setCompanyRankData(finalCompanyRanks);
     }
-    
+
     // Mark initial sync as complete to prevent re-running on same data
     isInitialSyncCompleted.current = true;
   }, [rankMasterData, savedCompanyRanks, isCompanyEditing, isCompanyRanksLoading, rankMasterLoading, isRankMasterEditing]);
@@ -1784,20 +1820,20 @@ const AdminModuleInner = (): JSX.Element => {
 
     setVesselRankDataMap(prev => {
       const newMap = new Map();
-      
+
       vesselOptions.forEach((vessel: VesselOption) => {
         const existingVesselData = prev.get(vessel.value) || [];
-        
+
         // CRITICAL FIX: Check loadedVesselsRef.current INSIDE the setter to use current state
         // This prevents stale closures from overwriting freshly loaded API data
         const isLoadedFromAPI = loadedVesselsRef.current.has(vessel.value);
-        
+
         // If vessel has been loaded from API, preserve it completely - never overwrite
         if (isLoadedFromAPI && existingVesselData.length > 0) {
           newMap.set(vessel.value, existingVesselData);
           return;
         }
-        
+
         // Also preserve vessels with client-side edits (any checkbox is true)
         const hasLoadedData = existingVesselData.some(rank => 
           rank.actualManningFlag || 
@@ -1806,12 +1842,12 @@ const AdminModuleInner = (): JSX.Element => {
           rank.highWorkloadManning ||
           rank.actualManning.length > 0
         );
-        
+
         if (hasLoadedData && existingVesselData.length > 0) {
           newMap.set(vessel.value, existingVesselData);
           return;
         }
-        
+
         // Otherwise, create fresh structure from company data (for new vessels or unloaded vessels)
         const preservedManningData = new Map<string, {
           actualManning: string[];
@@ -1820,7 +1856,7 @@ const AdminModuleInner = (): JSX.Element => {
           optimumManning: boolean;
           highWorkloadManning: boolean;
         }>();
-        
+
         // Preserve existing vessel-specific manning data by rank/role ID
         existingVesselData.forEach(existingRank => {
           const key = existingRank.originalRankId || existingRank.id;
@@ -1833,13 +1869,13 @@ const AdminModuleInner = (): JSX.Element => {
             highWorkloadManning: existingRank.highWorkloadManning
           });
         });
-        
+
         // Create fresh vessel data structure based on current company structure
         const vesselRanks: VesselRankData[] = companyRankData.map(companyRank => {
           const key = companyRank.originalRankId || companyRank.id;
           const roleKey = companyRank.role ? `${key}_${companyRank.role}` : key;
           const preservedData = preservedManningData.get(roleKey);
-          
+
           return {
             id: companyRank.id,
             rank: companyRank.rank,
@@ -1873,43 +1909,43 @@ const AdminModuleInner = (): JSX.Element => {
             hasMultiple: companyRank.hasMultiple
           };
         });
-        
+
         // Each vessel gets its own deep copy
         newMap.set(vessel.value, vesselRanks);
       });
-      
+
       // Only update if there's a meaningful change to prevent infinite loops
       const hasChanged = Array.from(newMap.entries()).some(([key, value]) => {
         const prevValue = prev.get(key);
         return !prevValue || JSON.stringify(value) !== JSON.stringify(prevValue);
       });
-      
+
       return hasChanged ? newMap : prev;
     });
   }, [companyRankData, vesselOptions]);
 
   // Track previous company rank data to prevent infinite form sync loops
   const prevCompanyFormSyncRef = React.useRef<string>('');
-  
+
   // CRITICAL: Sync React Hook Form with companyRankData changes (Fix dual source of truth)
   React.useEffect(() => {
     // STRATEGIC FIX: Prevent overwrite during editing - critical guard condition
     if (isCompanyEditing || companyRankData.length === 0) return;
-    
+
     // PERFORMANCE FIX: Only sync if data actually changed (prevent infinite loops)
     const syncKey = JSON.stringify(companyRankData);
     if (prevCompanyFormSyncRef.current === syncKey) {
       return; // No change, skip sync
     }
     prevCompanyFormSyncRef.current = syncKey;
-    
+
     if (companyRankData.length > 0) {
       const displayRows = companyRankData.filter(rank => {
         if (rank.isRoleRow) return true;
         const hasRoleRows = companyRankData.some(r => r.originalRankId === rank.id && r.isRoleRow);
         return !hasRoleRows;
       });
-      
+
       // Sync form data with display rows, ensuring boolean values
       resetCompany({ 
         ranks: displayRows.map(rank => ({
@@ -1941,7 +1977,7 @@ const AdminModuleInner = (): JSX.Element => {
     const loadVesselData = async () => {
       // Determine which vessels need to be loaded (haven't been loaded yet)
       const vesselsToLoad = selectedVessels.filter(vesselId => !loadedVesselsRef.current.has(vesselId));
-      
+
       if (vesselsToLoad.length === 0) {
         return;
       }
@@ -1952,13 +1988,13 @@ const AdminModuleInner = (): JSX.Element => {
           try {
             if (revisionMode) {
               // IN REVISION MODE: Load draft data for editing
-              const draftResponse = await fetch(`/api/vessel-drafts/by-vessel/${vesselId}`);
+              const draftResponse = await fetch(`/api/v2/admin/vessel-drafts/by-vessel/${vesselId}`);
               if (draftResponse.ok) {
                 const drafts = await draftResponse.json();
                 if (drafts.length > 0) {
                   const latestDraft = drafts[0];
                   const loadedData: VesselRankData[] = JSON.parse(latestDraft.draftData);
-                  
+
                   // Create a lookup map for loaded vessel data by ID and role
                   const loadedDataMap = new Map<string, VesselRankData>();
                   loadedData.forEach(vesselRank => {
@@ -1967,14 +2003,14 @@ const AdminModuleInner = (): JSX.Element => {
                       : vesselRank.id;
                     loadedDataMap.set(key, vesselRank);
                   });
-                  
+
                   // Merge: Start with company ranks and overlay vessel-specific data from loaded draft
                   const mergedData = companyRankData.map(companyRank => {
                     const key = companyRank.isRoleRow && companyRank.role 
                       ? `${companyRank.id}_${companyRank.role}`
                       : companyRank.id;
                     const vesselRank = loadedDataMap.get(key);
-                    
+
                     if (vesselRank) {
                       // Vessel data exists - merge it with company data
                       return {
@@ -2005,13 +2041,13 @@ const AdminModuleInner = (): JSX.Element => {
                       };
                     }
                   });
-                  
+
                   setVesselRankDataMap(prev => {
                     const newMap = new Map(prev);
                     newMap.set(vesselId, mergedData);
                     return newMap;
                   });
-                  
+
                   loadedVesselsRef.current.add(vesselId);
                 } else {
                   // CRITICAL FIX: Initialize vessel data from company structure when no draft exists
@@ -2023,19 +2059,19 @@ const AdminModuleInner = (): JSX.Element => {
                     optimumManning: false,
                     highWorkloadManning: false
                   }));
-                  
+
                   setVesselRankDataMap(prev => {
                     const newMap = new Map(prev);
                     newMap.set(vesselId, freshData);
                     return newMap;
                   });
-                  
+
                   loadedVesselsRef.current.add(vesselId);
                 }
               }
             } else {
               // NON-REVISION MODE: Load latest revision for display
-              const revisionResponse = await fetch(`/api/vessel-revisions/by-vessel/${vesselId}`);
+              const revisionResponse = await fetch(`/api/v2/admin/vessel-revisions/by-vessel/${vesselId}`);
               if (revisionResponse.ok) {
                 const revisions = await revisionResponse.json();
                 if (revisions.length > 0) {
@@ -2045,10 +2081,10 @@ const AdminModuleInner = (): JSX.Element => {
                     const bNum = parseInt(b.revision.replace('R', ''));
                     return bNum - aNum;
                   });
-                  
+
                   const latestRevision = sortedRevisions[0];
                   const loadedData: VesselRankData[] = JSON.parse(latestRevision.revisionData);
-                  
+
                   // Create a lookup map for loaded vessel data by ID and role
                   const loadedDataMap = new Map<string, VesselRankData>();
                   loadedData.forEach(vesselRank => {
@@ -2057,14 +2093,14 @@ const AdminModuleInner = (): JSX.Element => {
                       : vesselRank.id;
                     loadedDataMap.set(key, vesselRank);
                   });
-                  
+
                   // Merge: Start with company ranks and overlay vessel-specific data from loaded revision
                   const mergedData = companyRankData.map(companyRank => {
                     const key = companyRank.isRoleRow && companyRank.role 
                       ? `${companyRank.id}_${companyRank.role}`
                       : companyRank.id;
                     const vesselRank = loadedDataMap.get(key);
-                    
+
                     if (vesselRank) {
                       // Vessel data exists - merge it with company data
                       return {
@@ -2095,13 +2131,13 @@ const AdminModuleInner = (): JSX.Element => {
                       };
                     }
                   });
-                  
+
                   setVesselRankDataMap(prev => {
                     const newMap = new Map(prev);
                     newMap.set(vesselId, mergedData);
                     return newMap;
                   });
-                  
+
                   // Convert date from dd/mm/yyyy (storage) to yyyy-mm-dd (HTML date input format)
                   const dateParts = latestRevision.revisionDate.split('/');
                   if (dateParts.length === 3) {
@@ -2111,11 +2147,11 @@ const AdminModuleInner = (): JSX.Element => {
                   } else {
                     setFlexDate(latestRevision.revisionDate); // Fallback to original if format unexpected
                   }
-                  
+
                   loadedVesselsRef.current.add(vesselId);
                 } else {
                   setFlexDate(''); // Clear date when no revisions exist
-                  
+
                   // CRITICAL FIX: Initialize vessel data from company structure when no revisions exist
                   const freshData = companyRankData.map(companyRank => ({
                     ...companyRank,
@@ -2125,13 +2161,13 @@ const AdminModuleInner = (): JSX.Element => {
                     optimumManning: false,
                     highWorkloadManning: false
                   }));
-                  
+
                   setVesselRankDataMap(prev => {
                     const newMap = new Map(prev);
                     newMap.set(vesselId, freshData);
                     return newMap;
                   });
-                  
+
                   loadedVesselsRef.current.add(vesselId);
                 }
               }
@@ -2190,13 +2226,13 @@ const AdminModuleInner = (): JSX.Element => {
   // Rank reordering handlers
   const handleMoveRankUp = (currentIndex: number) => {
     if (currentIndex === 0) return; // Can't move up if already at top
-    
+
     const newData = [...rankMasterData];
     // Swap current item with the one above it
     [newData[currentIndex - 1], newData[currentIndex]] = [newData[currentIndex], newData[currentIndex - 1]];
-    
+
     setRankMasterData(newData);
-    
+
     // Create rank order updates
     const rankOrderUpdates = newData.map((rank, index) => ({
       id: parseInt(rank.id),
@@ -2209,13 +2245,13 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleMoveRankDown = (currentIndex: number) => {
     if (currentIndex === rankMasterData.length - 1) return; // Can't move down if already at bottom
-    
+
     const newData = [...rankMasterData];
     // Swap current item with the one below it
     [newData[currentIndex], newData[currentIndex + 1]] = [newData[currentIndex + 1], newData[currentIndex]];
-    
+
     setRankMasterData(newData);
-    
+
     // Create rank order updates
     const rankOrderUpdates = newData.map((rank, index) => ({
       id: parseInt(rank.id),
@@ -2231,20 +2267,20 @@ const AdminModuleInner = (): JSX.Element => {
     try {
       // Clear all ranks from database
       await clearAllRanksMutation.mutateAsync();
-      
+
       // Reset all local state
       setRankMasterData([]);
       setChangedRanks(new Set());
       setNewRanks(new Set());
       setDeletedRanks(new Set());
       setIsRankMasterEditing(false);
-      
+
       toast({
         title: "Database Cleanup Complete",
         description: "All rank data has been cleared from the database and cache has been reset.",
         duration: 5000,
       });
-      
+
     } catch (error) {
       console.error('Error during cleanup:', error);
       toast({
@@ -2258,14 +2294,14 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleSaveRank = async () => {
     try {
-      
+
       // Process deletions first
       for (const deletedId of Array.from(deletedRanks)) {
         if (!deletedId.startsWith('new_')) { // Don't try to delete new ranks that haven't been saved yet
           await deleteRankMutation.mutateAsync(parseInt(deletedId));
         }
       }
-      
+
       // Process new ranks
       for (const newId of Array.from(newRanks)) {
         const rankData = rankMasterData.find(r => r.id === newId);
@@ -2281,7 +2317,7 @@ const AdminModuleInner = (): JSX.Element => {
           });
         }
       }
-      
+
       // Process updates to existing ranks
       for (const changedId of Array.from(changedRanks)) {
         if (!changedId.startsWith('new_') && !deletedRanks.has(changedId)) {
@@ -2305,18 +2341,18 @@ const AdminModuleInner = (): JSX.Element => {
           }
         }
       }
-      
+
       // Clear change tracking
       setChangedRanks(new Set());
       setNewRanks(new Set());
       setDeletedRanks(new Set());
       setIsRankMasterEditing(false);
-      
+
       toast({
         title: "Success",
         description: "Rank changes saved successfully",
       });
-      
+
     } catch (error) {
       console.error('Error saving ranks:', error);
       toast({
@@ -2377,7 +2413,7 @@ const AdminModuleInner = (): JSX.Element => {
       // 3. Reset dirty state
       // 4. Keep edit mode active until successful
       await commitSave();
-      
+
       // After successful save, show toast
       const isVesselMasterSave = isVesselMaster(selectedMaster);
       const isPortMasterSave = isPortMaster(selectedMaster);
@@ -2386,15 +2422,15 @@ const AdminModuleInner = (): JSX.Element => {
         : isPortMasterSave
         ? `Port data saved successfully (safe mode)`
         : `Changes saved successfully`;
-        
+
       toast({
         title: "Success",
         description: successMessage,
       });
-      
+
       // Stop edit mode after successful save
       stopEdit();
-      
+
     } catch (error) {
       toast({
         title: "Error",
@@ -2419,7 +2455,7 @@ const AdminModuleInner = (): JSX.Element => {
       });
       return;
     }
-    
+
     deleteEntryMutation.mutate(itemId);
   };
 
@@ -2433,9 +2469,9 @@ const AdminModuleInner = (): JSX.Element => {
       });
       return;
     }
-    
+
     const newEntryId = Date.now().toString(); // Generate unique entry ID
-    
+
     const newEntryData: Omit<InsertMasterDataEntry, 'masterId'> = (() => {
       if (selectedMaster === "001") {
         // Nationality master - create entry with nationality-specific fields
@@ -2492,15 +2528,15 @@ const AdminModuleInner = (): JSX.Element => {
           isActive: true,
           isDeleted: false
         };
-        
+
         // Apply safe field mapping before creating entry
         const safeData = mapVesselDataToSafeFields(vesselData, selectedMaster);
-        
+
         // Ensure name field is set (required for vessel master)
         if (!safeData.name) {
           safeData.name = 'New Vessel';
         }
-        
+
         return safeData as Omit<InsertMasterDataEntry, 'masterId'>;
       } else if (selectedMaster === "021") {
         // Manning Agents master - create entry with name, country, email fields
@@ -2544,7 +2580,7 @@ const AdminModuleInner = (): JSX.Element => {
           title: "Success",
           description: "New entry created successfully",
         });
-        
+
         // Wait for query to refetch with new entry, then auto-start edit mode
         // This ensures fresh baseline data when entering edit mode
         (async () => {
@@ -2555,10 +2591,10 @@ const AdminModuleInner = (): JSX.Element => {
               queryKey: [`/api/masters/${selectedMaster}/data`],
               exact: true
             });
-            
+
             // Get fresh data directly from the query cache
             const freshRawData = (rq.getQueryData([`/api/masters/${selectedMaster}/data`]) as any[]) || [];
-            
+
             // Apply field mapping if needed (same logic as masterData useMemo)
             const freshMasterData = (() => {
               if (isVesselMaster(selectedMaster)) {
@@ -2569,7 +2605,7 @@ const AdminModuleInner = (): JSX.Element => {
               }
               return freshRawData;
             })();
-            
+
             // Start edit with fresh data directly (not using handleEditMaster)
             startEdit(selectedMaster, freshMasterData);
           } catch (error) {
@@ -2589,14 +2625,14 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   // Company handlers
-  
+
   const handleCompanyRankDataChange = (id: string, field: keyof CompanyRankData, value: any) => {
     setCompanyRankData(prev => {
       const newData = [...prev];
       const rowIndex = newData.findIndex(row => row.id === id);
       if (rowIndex !== -1) {
         newData[rowIndex] = { ...newData[rowIndex], [field]: value };
-        
+
         // Track changes that affect the main rank database
         if (field === 'rank' || field === 'rankId') {
           setChangedCompanyRanks(prev => new Set(prev).add(id));
@@ -2605,7 +2641,7 @@ const AdminModuleInner = (): JSX.Element => {
       return newData;
     });
   };
-  
+
   const handleAddMultipleCompanyRole = (rankId: string) => {
     handleMultiple(rankId);
   };
@@ -2618,14 +2654,14 @@ const AdminModuleInner = (): JSX.Element => {
     try {
       // First, save role variants as new ranks in the database
       const roleVariants = companyRankData.filter(rank => rank.isRoleRow);
-      
+
       for (const roleVariant of roleVariants) {
         // Check if this role variant doesn't have a numeric ID (needs to be created)
         const numericId = parseInt(roleVariant.id, 10);
         if (isNaN(numericId)) {
           // Find the original rank to get category and other info
           const originalRank = sharedRankMasterData?.find(rank => rank.id.toString() === roleVariant.originalRankId);
-          
+
           if (originalRank) {
             await createRankMutation.mutateAsync({
               name: roleVariant.role || roleVariant.rank,
@@ -2644,18 +2680,18 @@ const AdminModuleInner = (): JSX.Element => {
         if (changedId.startsWith('new_')) {
           continue;
         }
-        
+
         // Guard against invalid IDs
         const numericId = parseInt(changedId, 10);
         if (isNaN(numericId)) {
           continue;
         }
-        
+
         const companyRank = companyRankData.find(rank => rank.id === changedId);
         if (companyRank) {
           // Find the original rank data to preserve its structure
           const originalRank = sharedRankMasterData?.find(rank => rank.id.toString() === changedId);
-          
+
           if (originalRank) {
             // Get the updated applicableToCompany value from rank master data
             const updatedRankMasterData = rankMasterData.find(r => r.id.toString() === changedId);
@@ -2717,15 +2753,15 @@ const AdminModuleInner = (): JSX.Element => {
         return newSet;
       });
       setIsCompanyEditing(false);
-      
+
       // Refresh rank data to pick up newly created role variants
-      rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
-      
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
+
       toast({
         title: "Success",
         description: "Company rank data and settings saved to persistent storage successfully",
       });
-      
+
     } catch (error) {
       console.error('Error saving company changes:', error);
       toast({
@@ -2740,25 +2776,25 @@ const AdminModuleInner = (): JSX.Element => {
     // Find the rank to multiply - could be original rank or originalRankId from role
     let originalRankId = rankId;
     let rankToMultiply = companyRankData.find(rank => rank.id === rankId);
-    
+
     // If this is a role row, get the original rank ID
     if (rankToMultiply?.isRoleRow && rankToMultiply.originalRankId) {
       originalRankId = rankToMultiply.originalRankId;
       // Get the parent rank data for creating new roles
       rankToMultiply = companyRankData.find(rank => rank.id === originalRankId);
     }
-    
+
     if (rankToMultiply) {
       setCompanyRankData(prev => {
         const currentData = [...prev];
-        
+
         // Check if this rank already has role rows
         const existingRoles = currentData.filter(row => row.originalRankId === originalRankId);
-        
+
         if (existingRoles.length === 0) {
           // First time creating roles - keep parent but add 2 role rows
           const parentIndex = currentData.findIndex(rank => rank.id === originalRankId);
-          
+
           const role1: CompanyRankData = {
             ...rankToMultiply,
             id: `${originalRankId}_role_1_${Date.now()}`,
@@ -2767,7 +2803,7 @@ const AdminModuleInner = (): JSX.Element => {
             isRoleRow: true,
             hasMultiple: false
           };
-          
+
           const role2: CompanyRankData = {
             ...rankToMultiply,
             id: `${originalRankId}_role_2_${Date.now()}`,
@@ -2776,7 +2812,7 @@ const AdminModuleInner = (): JSX.Element => {
             isRoleRow: true,
             hasMultiple: false
           };
-          
+
           // Insert role rows after parent (parent will be filtered from display)
           currentData.splice(parentIndex + 1, 0, role1, role2);
         } else {
@@ -2788,7 +2824,7 @@ const AdminModuleInner = (): JSX.Element => {
             })
             .filter(num => num > 0)
             .sort((a, b) => a - b);
-          
+
           // Find the next sequential number (gap-filling)
           let nextRoleNumber = 1;
           for (const num of roleNumbers) {
@@ -2798,7 +2834,7 @@ const AdminModuleInner = (): JSX.Element => {
               break;
             }
           }
-          
+
           const newRole: CompanyRankData = {
             ...rankToMultiply,
             id: `${originalRankId}_role_${nextRoleNumber}_${Date.now()}`,
@@ -2807,14 +2843,14 @@ const AdminModuleInner = (): JSX.Element => {
             isRoleRow: true,
             hasMultiple: false
           };
-          
+
           // Add the new role after the last existing role for this rank
           const lastRoleIndex = Math.max(...existingRoles.map(role => 
             currentData.findIndex(row => row.id === role.id)
           ));
           currentData.splice(lastRoleIndex + 1, 0, newRole);
         }
-        
+
         return currentData;
       });
     }
@@ -2824,11 +2860,11 @@ const AdminModuleInner = (): JSX.Element => {
     setCompanyRankData(prev => {
       const rankToDelete = prev.find(rank => rank.id === rankId);
       let filteredData = prev.filter(rank => rank.id !== rankId);
-      
+
       // If deleting a role row, implement gap-filling logic
       if (rankToDelete?.isRoleRow && rankToDelete.originalRankId) {
         const remainingRoles = filteredData.filter(row => row.originalRankId === rankToDelete.originalRankId);
-        
+
         // If only 1 role remains, remove it and show parent again
         if (remainingRoles.length === 1) {
           filteredData = filteredData.filter(row => row.id !== remainingRoles[0].id);
@@ -2840,7 +2876,7 @@ const AdminModuleInner = (): JSX.Element => {
               const bNum = parseInt(b.role?.match(/_(\d+)$/)?.[1] || '0', 10);
               return aNum - bNum;
             });
-          
+
           // Update role numbers sequentially
           sortedRoles.forEach((role, index) => {
             const roleIndex = filteredData.findIndex(row => row.id === role.id);
@@ -2854,7 +2890,7 @@ const AdminModuleInner = (): JSX.Element => {
           });
         }
       }
-      
+
       return filteredData;
     });
   };
@@ -2864,7 +2900,7 @@ const AdminModuleInner = (): JSX.Element => {
   const handleVesselMultiple = (rankId: string) => {
     // Find the rank to multiply from vessel data
     let rankToMultiply = vesselRankData.find(rank => rank.id === rankId);
-    
+
     // If not found directly, look for it by originalRankId (could be a role's parent)
     if (!rankToMultiply) {
       const existingRole = vesselRankData.find(row => row.originalRankId === rankId);
@@ -2879,26 +2915,26 @@ const AdminModuleInner = (): JSX.Element => {
         };
       }
     }
-    
+
     if (!rankToMultiply) {
       console.warn(`No rank found for id: ${rankId}`);
       return;
     }
-    
+
     updateVesselRankData(prev => {
       try {
         const currentData = [...prev];
         const existingRoles = currentData.filter(row => row.originalRankId === rankId);
-        
+
         if (existingRoles.length === 0) {
           // First time creating roles - find the parent rank to replace
           const rankIndex = currentData.findIndex(rank => rank.id === rankId);
-          
+
           if (rankIndex === -1) {
             console.warn(`Parent rank with id ${rankId} not found in current data`);
             return prev; // Return unchanged data
           }
-          
+
           const role1: VesselRankData = {
             ...rankToMultiply,
             id: `${rankToMultiply.id}_role_1_${Date.now()}`,
@@ -2907,7 +2943,7 @@ const AdminModuleInner = (): JSX.Element => {
             isRoleRow: true,
             hasMultiple: false
           };
-          
+
           const role2: VesselRankData = {
             ...rankToMultiply,
             id: `${rankToMultiply.id}_role_2_${Date.now()}`,
@@ -2916,7 +2952,7 @@ const AdminModuleInner = (): JSX.Element => {
             isRoleRow: true,
             hasMultiple: false
           };
-          
+
           // Safe splice: replace the parent rank with 2 role rows
           currentData.splice(rankIndex, 1, role1, role2);
         } else {
@@ -2927,9 +2963,9 @@ const AdminModuleInner = (): JSX.Element => {
               return match ? parseInt(match[1], 10) : 0;
             })
             .filter(num => num > 0);
-          
+
           const nextRoleNumber = Math.max(...roleNumbers, 0) + 1;
-          
+
           const newRole: VesselRankData = {
             ...rankToMultiply,
             id: `${rankToMultiply.id}_role_${nextRoleNumber}_${Date.now()}`,
@@ -2938,21 +2974,21 @@ const AdminModuleInner = (): JSX.Element => {
             isRoleRow: true,
             hasMultiple: false
           };
-          
+
           // Find the position to insert the new role (after the last existing role)
           const roleIndexes = existingRoles
             .map(role => currentData.findIndex(row => row.id === role.id))
             .filter(idx => idx !== -1);
-          
+
           if (roleIndexes.length === 0) {
             console.warn(`No valid role indexes found for originalRankId: ${rankId}`);
             return prev;
           }
-          
+
           const insertIndex = Math.max(...roleIndexes) + 1;
           currentData.splice(insertIndex, 0, newRole);
         }
-        
+
         return currentData;
       } catch (error) {
         console.error('Error in handleVesselMultiple:', error);
@@ -2965,10 +3001,10 @@ const AdminModuleInner = (): JSX.Element => {
     updateVesselRankData(prev => {
       const rankToDelete = prev.find(rank => rank.id === rankId);
       const filteredData = prev.filter(rank => rank.id !== rankId);
-      
+
       if (rankToDelete?.isRoleRow && rankToDelete.originalRankId) {
         const remainingRoles = filteredData.filter(row => row.originalRankId === rankToDelete.originalRankId);
-        
+
         if (remainingRoles.length === 1) {
           const lastRoleIndex = filteredData.findIndex(row => row.id === remainingRoles[0].id);
           if (lastRoleIndex !== -1) {
@@ -2983,7 +3019,7 @@ const AdminModuleInner = (): JSX.Element => {
           }
         }
       }
-      
+
       return filteredData;
     });
   };
@@ -2995,12 +3031,12 @@ const AdminModuleInner = (): JSX.Element => {
     }
     setRevisionMode(true);
     setIsVesselEditing(true);
-    
+
     // Fetch next revision number for the first selected vessel
     // (If multiple vessels, each will get their own next revision on submit)
     if (selectedVessels.length === 1) {
       try {
-        const response = await fetch(`/api/vessel-revisions/next-revision/${selectedVessels[0]}`);
+        const response = await fetch(`/api/v2/admin/vessel-revisions/next-revision/${selectedVessels[0]}`);
         if (response.ok) {
           const data = await response.json();
           setNextRevision(data.nextRevision);
@@ -3019,22 +3055,22 @@ const AdminModuleInner = (): JSX.Element => {
     if (selectedVessels.length === 0) {
       return;
     }
-    
+
     try {
       // Save draft for all selected vessels using upsert endpoint
       const savedVessels: string[] = [];
       const failedVessels: string[] = [];
       const revision = "R1"; // Use R1 for draft revision
-      
+
       for (const vesselId of selectedVessels) {
         const vesselData = vesselRankDataMap.get(vesselId);
         if (vesselData) {
           // Convert vessel data to JSON string for storage
           const draftData = JSON.stringify([...vesselData]);
-          
+
           try {
             // Use upsert endpoint (updates if exists, creates if not)
-            const response = await fetch('/api/vessel-drafts/upsert', {
+            const response = await fetch('/api/v2/admin/vessel-drafts/upsert', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -3043,7 +3079,7 @@ const AdminModuleInner = (): JSX.Element => {
                 draftData
               })
             });
-            
+
             if (response.ok) {
               const result = await response.json();
               savedVessels.push(vesselId);
@@ -3063,7 +3099,7 @@ const AdminModuleInner = (): JSX.Element => {
           description: `Saved draft for ${savedVessels.length} vessel(s)`,
         });
       }
-      
+
       if (failedVessels.length > 0) {
         toast({
           title: failedVessels.length === selectedVessels.length ? "Failed to save drafts" : "Some drafts failed to save",
@@ -3083,19 +3119,19 @@ const AdminModuleInner = (): JSX.Element => {
   const handleCancel = () => {
     // Stop any ongoing editing
     // vesselGridApi?.stopEditing(); // Commented out - vesselGridApi not defined
-    
+
     // Clear selected vessels and reset states
     setSelectedVessels([]);
     setRevisionMode(false);
     setIsVesselEditing(false);
-    
+
     // Clear loaded vessels tracking to allow fresh load next time
     loadedVesselsRef.current.clear();
   };
 
   const handleSubmit = async () => {
     if (selectedVessels.length === 0) return;
-    
+
     // Validate that flexDate is provided
     if (!flexDate) {
       toast({
@@ -3105,28 +3141,28 @@ const AdminModuleInner = (): JSX.Element => {
       });
       return;
     }
-    
+
     // Convert date from yyyy-mm-dd to dd/mm/yyyy format
     const dateObj = new Date(flexDate);
     const day = String(dateObj.getDate()).padStart(2, '0');
     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
     const year = dateObj.getFullYear();
     const formattedDate = `${day}/${month}/${year}`;
-    
+
     try {
       // Submit revisions for all selected vessels
       const submittedVessels: string[] = [];
       const failedVessels: string[] = [];
-      
+
       for (const vesselId of selectedVessels) {
         const vesselData = vesselRankDataMap.get(vesselId);
         if (vesselData) {
           // Filter out invalid data and convert to JSON string
           const validData = vesselData.filter(row => row.rank && row.rank.trim() !== '');
           const revisionData = JSON.stringify(validData);
-          
+
           try {
-            const response = await fetch('/api/vessel-revisions/submit', {
+            const response = await fetch('/api/v2/admin/vessel-revisions/submit', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -3135,7 +3171,7 @@ const AdminModuleInner = (): JSX.Element => {
                 revisionData
               })
             });
-            
+
             if (response.ok) {
               const result = await response.json();
               submittedVessels.push(vesselId);
@@ -3148,24 +3184,24 @@ const AdminModuleInner = (): JSX.Element => {
           }
         }
       }
-      
+
       // Show feedback
       if (submittedVessels.length > 0) {
         toast({
           title: "Revisions submitted successfully",
           description: `Submitted revisions for ${submittedVessels.length} vessel(s). Drafts have been cleaned up.`
         });
-        
+
         // Reset states after successful submission
         setSelectedVessels([]);
         setRevisionMode(false);
         setIsVesselEditing(false);
         setFlexDate("");
-        
+
         // Clear loaded vessels tracking to allow fresh load next time
         loadedVesselsRef.current.clear();
       }
-      
+
       if (failedVessels.length > 0) {
         toast({
           title: "Some submissions failed",
@@ -3173,7 +3209,7 @@ const AdminModuleInner = (): JSX.Element => {
           variant: "destructive"
         });
       }
-      
+
     } catch (error) {
       console.error("Error submitting changes:", error);
       toast({
@@ -3265,10 +3301,10 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Fetch forms data from API
   const { data: formsData = [], isLoading, error } = useQuery<Form[]>({
-    queryKey: ["/api/forms"],
+    queryKey: ["/api/v2/admin/forms"],
     enabled: selectedAdminPage === "forms",
     queryFn: async () => {
-      const response = await fetch("/api/forms");
+      const response = await fetch("/api/v2/admin/forms");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -3276,30 +3312,58 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
-  // Fetch all rank groups for forms tab (must be before expandedFormsData useMemo)
   const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
-    queryKey: ["/api/rank-groups", { includeArchived: true }],
+    queryKey: ["/api/v2/admin/rank-groups", { includeArchived: true }],
     queryFn: async () => {
-      const response = await fetch("/api/rank-groups?includeArchived=true");
+      const response = await fetch("/api/v2/admin/rank-groups?includeArchived=true");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       return response.json();
     },
     enabled: selectedAdminPage === "forms",
+  });
+
+  const formIds = useMemo(() => (formsData || []).map(f => f.id), [formsData]);
+  const { data: allFormVersions = [] } = useQuery<Array<{ id: number; formId: number; rankGroupId: number | null; versionNo: string; versionDate: string; status: string }>>({
+    queryKey: ["/api/v2/admin/form-versions-all", formIds],
+    queryFn: async () => {
+      if (formIds.length === 0) return [];
+      const results = await Promise.all(
+        formIds.map(async (fid) => {
+          const response = await fetch(`/api/v2/admin/forms/${fid}/versions`);
+          if (!response.ok) return [];
+          return response.json();
+        })
+      );
+      return results.flat();
+    },
+    enabled: selectedAdminPage === "forms" && formIds.length > 0,
   });
 
   // Transform forms data to create separate rows for each rank group with category grouping
   // Filters out archived rank groups but keeps form rows visible even when all rank groups are archived
   const expandedFormsData = useMemo(() => {
     if (!formsData) return [];
-    
-    // Helper to check if a rank group is archived
+
     const isRankGroupArchivedByName = (rankGroupName: string, formId: number) => {
       const rankGroup = allRankGroups.find(rg => rg.name === rankGroupName && rg.formId === formId);
       return rankGroup?.archivedAt != null;
     };
-    
+
+    const getLatestVersionForRankGroup = (rankGroupName: string, formId: number): { versionNo: string; versionDate: string } | null => {
+      const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
+      if (!rg) return null;
+      const versions = allFormVersions.filter(v => v.formId === formId && v.rankGroupId === rg.id);
+      if (versions.length === 0) return null;
+      const latest = versions.reduce((max, v) => {
+        const vNo = parseInt(v.versionNo, 10);
+        const maxNo = parseInt(max.versionNo, 10);
+        return vNo > maxNo ? v : max;
+      }, versions[0]);
+      return { versionNo: latest.versionNo, versionDate: latest.versionDate };
+    };
+
     // Group forms by category first
     const formsByCategory = formsData.reduce((acc, form) => {
       const category = form.category || 'appraisal';
@@ -3307,7 +3371,7 @@ const AdminModuleInner = (): JSX.Element => {
       acc[category].push(form);
       return acc;
     }, {} as Record<string, Form[]>);
-    
+
     const expanded: Array<Form & { 
       expandedRankGroup: string; 
       originalFormId: number; 
@@ -3319,12 +3383,12 @@ const AdminModuleInner = (): JSX.Element => {
       isFirstInCategory?: boolean;
       isPlaceholderRow?: boolean;
     }> = [];
-    
+
     // Process each category in order (appraisal first, then promotion)
     const categoryOrder = ['appraisal', 'promotion'];
     categoryOrder.forEach(category => {
       const categoryForms = formsByCategory[category] || [];
-      
+
       // Calculate total row count for this category (excluding archived rank groups)
       let totalCategoryRows = 0;
       categoryForms.forEach(form => {
@@ -3338,28 +3402,30 @@ const AdminModuleInner = (): JSX.Element => {
           totalCategoryRows += 1;
         }
       });
-      
+
       // Track if this is the first row in the category
       let isFirstRowInCategory = true;
-      
+
       categoryForms.forEach((form) => {
         if (form.rankGroup && form.rankGroup.trim()) {
           // Split the concatenated rank groups and create separate rows
           const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
           // Filter out archived rank groups
           const activeRankGroups = rankGroups.filter(rg => !isRankGroupArchivedByName(rg, form.id));
-          
+
           if (activeRankGroups.length > 0) {
-            // Add rows for active (non-archived) rank groups only
             activeRankGroups.forEach((rankGroup, index) => {
+              const rgVersion = getLatestVersionForRankGroup(rankGroup, form.id);
               expanded.push({
                 ...form,
-                id: form.id * 1000 + index, // Create unique numeric ID for each expanded row
-                originalFormId: form.id, // Keep reference to original form ID
+                id: form.id * 1000 + index,
+                originalFormId: form.id,
                 expandedRankGroup: rankGroup,
-                rankGroup: rankGroup, // Override the concatenated rankGroup with individual group
-                isFirstInGroup: index === 0, // Mark first row for this form
-                groupSize: activeRankGroups.length, // Track how many rows this form spans
+                rankGroup: rankGroup,
+                versionNo: rgVersion?.versionNo || form.versionNo,
+                versionDate: rgVersion?.versionDate || form.versionDate,
+                isFirstInGroup: index === 0,
+                groupSize: activeRankGroups.length,
                 category: form.category || 'appraisal',
                 isFirstInCategory: isFirstRowInCategory,
                 categoryRowSpan: totalCategoryRows,
@@ -3403,14 +3469,14 @@ const AdminModuleInner = (): JSX.Element => {
         }
       });
     });
-    
+
     return expanded;
-  }, [formsData, allRankGroups]);
+  }, [formsData, allRankGroups, allFormVersions]);
 
   const { data: availableRanks = [] } = useQuery<AvailableRank[]>({
-    queryKey: ["/api/available-ranks"],
+    queryKey: ["/api/v2/admin/available-ranks"],
     queryFn: async () => {
-      const response = await fetch("/api/available-ranks");
+      const response = await fetch("/api/v2/admin/available-ranks");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -3420,11 +3486,12 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createRankGroupMutation = useMutation({
     mutationFn: async (data: { formId: number; name: string; ranks: string[] }) => {
-      return await apiRequest("POST", "/api/rank-groups", data);
+      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      return await apiRequest("POST", "/api/v2/admin/rank-groups", { ...data, auditUserUuid });
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
-      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/rank-groups"] });
       setIsAddRankGroupOpen(false);
       setSelectedFormForRankGroup(null);
       setEditingRankGroupData(null);
@@ -3433,11 +3500,12 @@ const AdminModuleInner = (): JSX.Element => {
 
   const updateRankGroupMutation = useMutation({
     mutationFn: async (data: { id: number; name: string; ranks: string[] }) => {
-      return await apiRequest("PUT", `/api/rank-groups/${data.id}`, { name: data.name, ranks: data.ranks });
+      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      return await apiRequest("PUT", `/api/v2/admin/rank-groups/${data.id}`, { name: data.name, ranks: data.ranks, auditUserUuid });
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
-      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/rank-groups"] });
       setIsAddRankGroupOpen(false);
       setSelectedFormForRankGroup(null);
       setEditingRankGroupData(null);
@@ -3457,15 +3525,15 @@ const AdminModuleInner = (): JSX.Element => {
 
   const archiveRankGroupMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest("POST", `/api/rank-groups/${id}/archive`, {});
+      return await apiRequest("POST", `/api/v2/admin/rank-groups/${id}/archive`, {});
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       // Invalidate all rank-groups queries (including those with includeArchived param)
       rq.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey;
-          return Array.isArray(key) && key[0] === "/api/rank-groups";
+          return Array.isArray(key) && key[0] === "/api/v2/admin/rank-groups";
         }
       });
       toast({
@@ -3484,11 +3552,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const unarchiveRankGroupMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest("POST", `/api/rank-groups/${id}/unarchive`, {});
+      return await apiRequest("POST", `/api/v2/admin/rank-groups/${id}/unarchive`, {});
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
-      rq.invalidateQueries({ queryKey: ["/api/rank-groups"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/rank-groups"] });
       toast({
         title: "Success",
         description: "Rank group restored successfully",
@@ -3505,10 +3573,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createFormMutation = useMutation({
     mutationFn: async (data: { name: string; category: string; rankGroup: string; versionNo: string; versionDate: string }) => {
-      return await apiRequest("POST", "/api/forms", data);
+      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      return await apiRequest("POST", "/api/v2/admin/forms", { ...data, auditUserUuid });
     },
     onSuccess: () => {
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       setShowCreateFormDialog(false);
       setNewFormName("");
       setNewFormCategory("appraisal");
@@ -3518,11 +3587,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const deleteFormMutation = useMutation({
     mutationFn: async (formId: number) => {
-      return await apiRequest("DELETE", `/api/forms/${formId}`);
+      return await apiRequest("DELETE", `/api/v2/admin/forms/${formId}`);
     },
     onSuccess: () => {
       // Invalidate cache on success
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       toast({
         title: "Success",
         description: "Form deleted successfully",
@@ -3530,8 +3599,8 @@ const AdminModuleInner = (): JSX.Element => {
     },
     onError: (error: any) => {
       // Also invalidate cache on error to refresh state
-      rq.invalidateQueries({ queryKey: ["/api/forms"] });
-      
+      rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
+
       // Extract specific error message from server response
       let errorMessage = "Failed to delete form";
       if (error?.response?.data?.error) {
@@ -3539,7 +3608,7 @@ const AdminModuleInner = (): JSX.Element => {
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -3604,7 +3673,7 @@ const AdminModuleInner = (): JSX.Element => {
     const rankGroup = allRankGroups.find(rg => 
       rg.name === rankGroupName && (!formId || rg.formId === formId)
     );
-    
+
     if (rankGroup) {
       try {
         const ranks = typeof rankGroup.ranks === 'string' 
@@ -3617,7 +3686,7 @@ const AdminModuleInner = (): JSX.Element => {
         console.error('Error parsing ranks:', e);
       }
     }
-    
+
     // Fallback for legacy hardcoded values
     switch (rankGroupName) {
       case "Senior Officers":
@@ -3668,10 +3737,10 @@ const AdminModuleInner = (): JSX.Element => {
       const updateData: Record<string, unknown> = {};
       if (configuration) updateData.configuration = configuration;
       if (sharedConfig) updateData.sharedConfig = JSON.stringify(sharedConfig);
-      return apiRequest('PUT', `/api/forms/${formId}`, updateData);
+      return apiRequest('PUT', `/api/v2/admin/forms/${formId}`, updateData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/forms'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
       toast({
         title: "Success",
         description: "Form configuration saved successfully",
@@ -3689,10 +3758,18 @@ const AdminModuleInner = (): JSX.Element => {
 
   const updateRankGroupConfigMutation = useMutation({
     mutationFn: async ({rankGroupId, configuration}: {rankGroupId: number; configuration: string}) => {
-      return apiRequest('PUT', `/api/rank-groups/${rankGroupId}/configuration`, { configuration });
+      return apiRequest('PUT', `/api/v2/admin/rank-groups/${rankGroupId}/configuration`, { configuration });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/rank-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
+      queryClient.invalidateQueries({ predicate: (query) => {
+        const key = query.queryKey[0];
+        return typeof key === 'string' && (
+          key.startsWith('/api/v2/admin/forms/for-rank') ||
+          key === '/api/v2/admin/form-versions-all'
+        );
+      }});
       toast({
         title: "Success",
         description: "Rank group configuration saved successfully",
@@ -3711,11 +3788,11 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleFormSave = (formData: any) => {
     if (!formData.formId) return;
-    
+
     const rankGroup = allRankGroups.find(
       rg => rg.name === editingRankGroup && rg.formId === formData.formId
     );
-    
+
     // Check if this is a Promotion form (has pre-serialized configuration)
     if (formData.configuration && typeof formData.configuration === 'string') {
       // Promotion form data - save directly to rank group
@@ -3732,7 +3809,7 @@ const AdminModuleInner = (): JSX.Element => {
       }
       return;
     }
-    
+
     // Appraisal form data - assemble rank group config
     const rankGroupConfig = {
       competenceAssessments: formData.competenceAssessments || [],
@@ -3741,14 +3818,14 @@ const AdminModuleInner = (): JSX.Element => {
       hiddenFields: formData.hiddenFields || [],
       hiddenSections: formData.hiddenSections || [],
     };
-    
+
     if (rankGroup) {
       updateRankGroupConfigMutation.mutate({
         rankGroupId: rankGroup.id,
         configuration: JSON.stringify(rankGroupConfig),
       });
     }
-    
+
     if (formData.sharedConfig) {
       updateFormMutation.mutate({
         formId: formData.formId,
@@ -3794,7 +3871,7 @@ const AdminModuleInner = (): JSX.Element => {
           </Button>
         </div>
       </div>
-      
+
       {/* Company Table with Vertical Scroll */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
         <ScrollArea className="flex-1 w-full">
@@ -4053,7 +4130,7 @@ const AdminModuleInner = (): JSX.Element => {
                           return aNum - bNum;
                         });
                         const isFirstVariant = sortedVariants[0]?.id === rank.id;
-                        
+
                         return isFirstVariant ? (
                           // First role variant shows Multiple button to create more variants
                           <Button
@@ -4144,7 +4221,7 @@ const AdminModuleInner = (): JSX.Element => {
             Rank Administration
           </h1>
         </div>
-        
+
         {/* Desktop/Laptop Tab Switcher */}
         {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
           <div className="flex justify-center">
@@ -4178,7 +4255,7 @@ const AdminModuleInner = (): JSX.Element => {
             </div>
           </div>
         )}
-        
+
         {/* Tablet/Mobile Tab Switcher and Action Buttons Row */}
         {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
           <div className={`${currentBreakpoint === 'mobile' ? 'space-y-2' : 'flex items-center justify-between'}`}>
@@ -4213,7 +4290,7 @@ const AdminModuleInner = (): JSX.Element => {
                 ))}
               </div>
             </div>
-            
+
             {/* Action Buttons for Tablet/Mobile */}
             <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-end'}`}>
               {selectedRankAdminTab === "rank-master" && (
@@ -4232,7 +4309,7 @@ const AdminModuleInner = (): JSX.Element => {
                   <Button
                     onClick={() => {
                       // Force refresh rank data to clear any stale cache
-                      rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+                      rq.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
                       toast({
                         title: "Data refreshed",
                         description: "Rank data has been refreshed from the database.",
@@ -4312,7 +4389,7 @@ const AdminModuleInner = (): JSX.Element => {
             </div>
           </div>
         )}
-        
+
         {/* Desktop/Laptop Action Buttons */}
         {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
           <div className="flex justify-end">
@@ -4332,7 +4409,7 @@ const AdminModuleInner = (): JSX.Element => {
                 <Button
                   onClick={() => {
                     // Force refresh rank data to clear any stale cache
-                    rq.invalidateQueries({ queryKey: ["/api/available-ranks"] });
+                    rq.invalidateQueries({ queryKey: ["/api/v2/admin/available-ranks"] });
                     toast({
                       title: "Data refreshed",
                       description: "Rank data has been refreshed from the database.",
@@ -4442,7 +4519,7 @@ const AdminModuleInner = (): JSX.Element => {
                             {rank.id.startsWith('new_') ? 'Auto' : (rank.rankId || '')}
                           </span>
                         </TableCell>
-                        
+
                         <TableCell className="py-3 text-center border-r">
                           {isRankMasterEditing && !rank.isSystemRank ? (
                             <input
@@ -4457,7 +4534,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <span className={`text-sm ${rank.isSystemRank ? 'text-gray-700' : ''}`} data-testid={`text-rank-${rank.id}`} title={rank.isSystemRank ? 'System rank - cannot be edited' : ''}>{rank.rank || ''}</span>
                           )}
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3 border-r">
                           <Checkbox
                             checked={rank.applicableToCompany}
@@ -4467,7 +4544,7 @@ const AdminModuleInner = (): JSX.Element => {
                             data-testid={`checkbox-applicable-company-${rank.id}`}
                           />
                         </TableCell>
-                        
+
                         <TableCell className="py-3 text-center border-r">
                           {!rank.applicableToCompany ? (
                             <span className="text-gray-400 text-xs" data-testid={`text-rank-label-na-${rank.id}`}>N/A</span>
@@ -4484,7 +4561,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <span className="text-sm" data-testid={`text-rank-label-${rank.id}`}>{rank.label || ''}</span>
                           )}
                         </TableCell>
-                        
+
                         <TableCell className="text-center py-3">
                           <div className="flex items-center justify-center gap-1">
                             {isRankMasterEditing && (
@@ -4534,7 +4611,7 @@ const AdminModuleInner = (): JSX.Element => {
                 </div>
               </div>
             )}
-            
+
             {selectedRankAdminTab === "company" && renderCompanyTab()}
             {selectedRankAdminTab === "vessel" && (
               <div className="h-full flex flex-col">
@@ -4575,7 +4652,7 @@ const AdminModuleInner = (): JSX.Element => {
                                       ? vessel.vesselIds 
                                       : JSON.parse(vessel.vesselIds || '[]');
                                     const allGroupVesselsSelected = groupVesselIds.every((id: string) => selectedVessels.includes(id));
-                                    
+
                                     if (allGroupVesselsSelected) {
                                       // Deselect all vessels in the group
                                       setSelectedVessels(selectedVessels.filter(v => !groupVesselIds.includes(v)));
@@ -5003,8 +5080,8 @@ const AdminModuleInner = (): JSX.Element => {
       }).filter(Boolean);
 
       if (updates.length > 0) {
-        await apiRequest('PATCH', '/api/training-master/batch', updates);
-        queryClient.invalidateQueries({ queryKey: ['/api/training-master'] });
+        await apiRequest('PATCH', '/api/v2/admin/training-master/batch', updates);
+        queryClient.invalidateQueries({ queryKey: [V2_KEY, 'training-master'] });
       }
 
       setIsTrainingMasterEditing(false);
@@ -5089,15 +5166,15 @@ const AdminModuleInner = (): JSX.Element => {
     const sameGroupTrainings = localTrainingData
       .filter(t => t.category === training.category && t.trainingGroup === training.trainingGroup)
       .sort((a, b) => a.sortOrder - b.sortOrder);
-    
+
     const currentIndex = sameGroupTrainings.findIndex(t => t.id === training.id);
     if (currentIndex === -1) return;
-    
+
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (targetIndex < 0 || targetIndex >= sameGroupTrainings.length) return;
-    
+
     const swapTraining = sameGroupTrainings[targetIndex];
-    
+
     try {
       await reorderTrainingMutation.mutateAsync([
         { id: training.id, sortOrder: swapTraining.sortOrder },
@@ -5116,7 +5193,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleTrainingFieldChange = (id: number, field: keyof TrainingMaster, value: any) => {
     const protectedFields: (keyof TrainingMaster)[] = ['trainingName', 'category', 'trainingGroup'];
-    
+
     setLocalTrainingData(prev => prev.map(t => {
       if (t.id !== id) return t;
       if (t.isDefault && protectedFields.includes(field)) {
@@ -5124,7 +5201,7 @@ const AdminModuleInner = (): JSX.Element => {
       }
       return { ...t, [field]: value };
     }));
-    
+
     const training = localTrainingData.find(t => t.id === id);
     if (training?.isDefault && protectedFields.includes(field)) {
       return;
@@ -5156,7 +5233,7 @@ const AdminModuleInner = (): JSX.Element => {
     companyTrainingGroups.forEach(g => {
       groupDisplayOrder[g.code] = g.displayOrder;
     });
-    
+
     return localCompanyTrainingData.filter(training => {
       const matchesSearch = companyTrainingSearchFilter === '' || 
         (training.trainingLabel || '').toLowerCase().includes(companyTrainingSearchFilter.toLowerCase()) ||
@@ -5166,23 +5243,23 @@ const AdminModuleInner = (): JSX.Element => {
       // Sort by: 1) Group (A-J first by displayOrder, NULL/unassigned last), 2) sortOrder within group
       const aGroup = a.groupCode;
       const bGroup = b.groupCode;
-      
+
       // If one has group and other doesn't, group comes first
       if (aGroup && !bGroup) return -1;
       if (!aGroup && bGroup) return 1;
-      
+
       // If both have groups, sort by displayOrder
       if (aGroup && bGroup) {
         const aOrder = groupDisplayOrder[aGroup] ?? 99;
         const bOrder = groupDisplayOrder[bGroup] ?? 99;
         if (aOrder !== bOrder) return aOrder - bOrder;
       }
-      
+
       // Within same group (or both unassigned), sort by sortOrder
       return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     });
   }, [localCompanyTrainingData, companyTrainingSearchFilter, companyTrainingGroups]);
-  
+
   // Handler for company training field changes
   const handleCompanyTrainingFieldChange = (id: number, field: keyof CompanyTraining, value: any) => {
     setLocalCompanyTrainingData(prev => prev.map(t => {
@@ -5191,15 +5268,15 @@ const AdminModuleInner = (): JSX.Element => {
     }));
     setChangedCompanyTrainings(prev => new Set(prev).add(id));
   };
-  
+
   // Handler for M/R requirement changes
   const handleRequirementChange = (trainingId: number, rankId: number, newStatus: 'M' | 'R' | null) => {
     const key = `${trainingId}-${rankId}`;
     const currentStatus = localTrainingRequirements.get(key);
-    
+
     // Toggle logic: clicking same status = unchecked
     const finalStatus = currentStatus === newStatus ? null : newStatus;
-    
+
     setLocalTrainingRequirements(prev => {
       const newMap = new Map(prev);
       if (finalStatus === null) {
@@ -5211,17 +5288,17 @@ const AdminModuleInner = (): JSX.Element => {
     });
     setChangedRequirements(prev => new Set(prev).add(key));
   };
-  
+
   // Get applicable ranks for the training requirements matrix
   const applicableRanksForTraining = useMemo(() => {
     return rankMasterData.filter(rank => rank.applicableToCompany === true);
   }, [rankMasterData]);
-  
+
   // Handler for "Select All" M/R - applies to all ranks for a training
   const handleSelectAll = (trainingId: number, type: 'M' | 'R') => {
     const currentState = selectAllState.get(trainingId) || { M: false, R: false };
     const isCurrentlyChecked = currentState[type];
-    
+
     // Toggle the select all state
     setSelectAllState(prev => {
       const newMap = new Map(prev);
@@ -5234,14 +5311,14 @@ const AdminModuleInner = (): JSX.Element => {
       });
       return newMap;
     });
-    
+
     // Update all rank requirements for this training
     setLocalTrainingRequirements(prev => {
       const newMap = new Map(prev);
       applicableRanksForTraining.forEach(rank => {
         const rankId = parseInt(rank.id);
         const key = `${trainingId}-${rankId}`;
-        
+
         if (!isCurrentlyChecked) {
           // Checking "Select All" - set all ranks to this type
           newMap.set(key, type);
@@ -5255,7 +5332,7 @@ const AdminModuleInner = (): JSX.Element => {
       });
       return newMap;
     });
-    
+
     // Mark all as changed
     setChangedRequirements(prev => {
       const newSet = new Set(prev);
@@ -5266,17 +5343,17 @@ const AdminModuleInner = (): JSX.Element => {
       return newSet;
     });
   };
-  
+
   // Handler for saving company training changes
   const handleSaveCompanyTraining = async () => {
     const hasTrainingChanges = changedCompanyTrainings.size > 0;
     const hasRequirementChanges = changedRequirements.size > 0;
-    
+
     if (!hasTrainingChanges && !hasRequirementChanges) {
       setIsCompanyTrainingEditing(false);
       return;
     }
-    
+
     try {
       // Save company training changes
       if (hasTrainingChanges) {
@@ -5295,7 +5372,7 @@ const AdminModuleInner = (): JSX.Element => {
         });
         await Promise.all(updatePromises);
       }
-      
+
       // Save M/R requirements changes
       if (hasRequirementChanges) {
         const requirementsToUpsert = Array.from(changedRequirements).map(key => {
@@ -5309,7 +5386,7 @@ const AdminModuleInner = (): JSX.Element => {
         });
         await upsertRequirementsMutation.mutateAsync(requirementsToUpsert);
       }
-      
+
       setChangedCompanyTrainings(new Set());
       setChangedRequirements(new Set());
       setIsCompanyTrainingEditing(false);
@@ -5322,37 +5399,37 @@ const AdminModuleInner = (): JSX.Element => {
       console.error('Failed to save company training changes:', error);
     }
   };
-  
+
   // Handler for moving company training up/down within its group
   const handleMoveCompanyTraining = async (training: CompanyTraining, direction: 'up' | 'down') => {
     // Get trainings in the same group (including null for unassigned)
     const sameGroupTrainings = localCompanyTrainingData
       .filter(t => t.groupCode === training.groupCode)
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-    
+
     const currentIndex = sameGroupTrainings.findIndex(t => t.id === training.id);
     if (currentIndex === -1) return;
-    
+
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (targetIndex < 0 || targetIndex >= sameGroupTrainings.length) return;
-    
+
     // Reindex the entire group with new sort orders to ensure unique values
     const reorderedList = [...sameGroupTrainings];
     const [movedItem] = reorderedList.splice(currentIndex, 1);
     reorderedList.splice(targetIndex, 0, movedItem);
-    
+
     // Create update array with new sequential sort orders
     const updates = reorderedList.map((t, idx) => ({
       id: t.id,
       sortOrder: idx
     }));
-    
+
     // Create a map of new sortOrder values for quick lookup
     const sortOrderMap = new Map(updates.map(u => [u.id, u.sortOrder]));
-    
+
     try {
       await reorderCompanyTrainingMutation.mutateAsync(updates);
-      
+
       // Update local state with new sortOrder values so UI reflects changes immediately
       setLocalCompanyTrainingData(prev => prev.map(t => {
         const newSortOrder = sortOrderMap.get(t.id);
@@ -5371,7 +5448,7 @@ const AdminModuleInner = (): JSX.Element => {
       });
     }
   };
-  
+
   const renderTrainingMatrixModule = () => (
     <div className="h-full flex flex-col">
       {/* Responsive Header Layout */}
@@ -5382,7 +5459,7 @@ const AdminModuleInner = (): JSX.Element => {
             Training Matrix
           </h1>
         </div>
-        
+
         {/* Desktop/Laptop Tab Switcher */}
         {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
           <div className="flex justify-center">
@@ -5408,7 +5485,7 @@ const AdminModuleInner = (): JSX.Element => {
             </div>
           </div>
         )}
-        
+
         {/* Desktop/Laptop Action Buttons */}
         {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
           <div className="flex justify-end">
@@ -5486,7 +5563,7 @@ const AdminModuleInner = (): JSX.Element => {
             )}
           </div>
         )}
-        
+
         {/* Tablet/Mobile Tab Switcher and Action Buttons Row */}
         {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
           <div className={`${currentBreakpoint === 'mobile' ? 'space-y-2' : 'flex items-center justify-between'}`}>
@@ -5513,7 +5590,7 @@ const AdminModuleInner = (): JSX.Element => {
                 ))}
               </div>
             </div>
-            
+
             {/* Action Buttons for Tablet/Mobile */}
             <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-end'}`}>
               {selectedTrainingMatrixTab === "training-master" && (
@@ -5721,7 +5798,7 @@ const AdminModuleInner = (): JSX.Element => {
                           const groupIndex = sameGroupTrainings.findIndex(t => t.id === training.id);
                           const isFirstInGroup = groupIndex === 0;
                           const isLastInGroup = groupIndex === sameGroupTrainings.length - 1;
-                          
+
                           return (
                             <TableRow 
                               key={training.id} 
@@ -6034,7 +6111,7 @@ const AdminModuleInner = (): JSX.Element => {
                           const isFirstInGroup = indexInGroup === 0;
                           const isLastInGroup = indexInGroup === sameGroupTrainings.length - 1;
                           const isReordering = reorderCompanyTrainingMutation.isPending;
-                          
+
                           return (
                             <TableCell className="text-center">
                               <div className="flex justify-center gap-1">
@@ -6098,7 +6175,7 @@ const AdminModuleInner = (): JSX.Element => {
                           const key = `${training.id}-${rankIdNum}`;
                           const status = localTrainingRequirements.get(key);
                           const isChanged = changedRequirements.has(key);
-                          
+
                           return (
                             <TableCell 
                               key={rank.id} 
@@ -6181,7 +6258,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   ? vessel.vesselIds 
                                   : JSON.parse(vessel.vesselIds || '[]');
                                 const allGroupVesselsSelected = groupVesselIds.every((id: string) => tmSelectedVessels.includes(id));
-                                
+
                                 if (allGroupVesselsSelected) {
                                   setTmSelectedVessels(tmSelectedVessels.filter(v => !groupVesselIds.includes(v)));
                                 } else {
@@ -6259,7 +6336,7 @@ const AdminModuleInner = (): JSX.Element => {
                   disabled={!tmRevisionMode}
                   data-testid="tm-flex-date-input"
                 />
-                
+
                 {/* Revision control buttons */}
                 <div className="flex gap-2 ml-auto">
                   {!tmRevisionMode ? (
@@ -6441,7 +6518,7 @@ const AdminModuleInner = (): JSX.Element => {
                       const vesselId = tmSelectedVessels[0];
                       const applicableSet = tmApplicableTrainings.get(vesselId) || new Set<number>();
                       const isApplicable = applicableSet.has(training.id);
-                      
+
                       return (
                         <TableRow 
                           key={training.id} 
@@ -6512,7 +6589,7 @@ const AdminModuleInner = (): JSX.Element => {
                             const rankIdNum = parseInt(rank.id);
                             const key = `${training.id}-${rankIdNum}`;
                             const status = localTrainingRequirements.get(key);
-                            
+
                             return (
                               <TableCell 
                                 key={rank.id} 
@@ -6598,9 +6675,9 @@ const AdminModuleInner = (): JSX.Element => {
         onSave={async (updates) => {
           try {
             for (const update of updates) {
-              await apiRequest('PATCH', `/api/company-training-groups/${update.code}`, { label: update.label });
+              await apiRequest('PATCH', `/api/v2/admin/company-training-groups/${update.code}`, { label: update.label });
             }
-            queryClient.invalidateQueries({ queryKey: ['/api/company-training-groups'] });
+            queryClient.invalidateQueries({ queryKey: [V2_KEY, 'company-training-groups'] });
             toast({
               title: "Labels saved",
               description: "Group labels updated successfully.",
@@ -6662,12 +6739,12 @@ const AdminModuleInner = (): JSX.Element => {
             Data Masters
           </h1>
         </div>
-        
+
         {/* Desktop/Laptop - Middle Grid Cell (Empty) */}
         {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
           <div></div>
         )}
-        
+
         {/* Desktop/Laptop - Right Grid Cell (Action Buttons) */}
         {(currentBreakpoint === 'desktop' || currentBreakpoint === 'laptop') && (
           <div className="flex justify-end">
@@ -6724,7 +6801,7 @@ const AdminModuleInner = (): JSX.Element => {
             </div>
           </div>
         )}
-        
+
         {/* Tablet/Mobile Action Buttons */}
         {(currentBreakpoint === 'tablet' || currentBreakpoint === 'mobile') && (
           <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-center'}`}>
@@ -6787,7 +6864,7 @@ const AdminModuleInner = (): JSX.Element => {
       <div className="pb-4 pl-0 -mt-8">
         <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
           <CardContent className="pt-4 pb-4 pl-0">
-            
+
             {/* Filters Bar */}
             <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'flex-wrap gap-4'} mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg`}>
               <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'gap-4 flex-wrap'}`}>
@@ -6824,7 +6901,7 @@ const AdminModuleInner = (): JSX.Element => {
                             setShowUnsavedChangesDialog(true);
                             return;
                           }
-                          
+
                           setSelectedMaster(master.id);
                           setSelectedAdminPage('masters');
                           // Use wouter's navigate for proper routing
@@ -6960,7 +7037,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.cid || <em className="text-gray-400">No entry ID</em>}
+                              {item.natUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7002,7 +7079,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.vtuid || item.entryId || item.id || <em className="text-gray-400">No entry ID</em>}
+                              {item.vtUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7018,12 +7095,12 @@ const AdminModuleInner = (): JSX.Element => {
                             <span className="text-xs text-gray-700">
                               {(() => {
                                 const classifications = [];
-                                if (item.tanker === 1) classifications.push('Tanker');
-                                if (item.oilTanker === 1) classifications.push('Oil');
-                                if (item.gasTanker === 1) classifications.push('Gas');
-                                if (item.chemicalTanker === 1) classifications.push('Chemical');
-                                if (item.dry === 1) classifications.push('Dry');
-                                if (item.container === 1) classifications.push('Container');
+                                if (item.tanker === true || item.tanker === 1) classifications.push('Tanker');
+                                if (item.oilTanker === true || item.oilTanker === 1) classifications.push('Oil');
+                                if (item.gasTanker === true || item.gasTanker === 1) classifications.push('Gas');
+                                if (item.chemicalTanker === true || item.chemicalTanker === 1) classifications.push('Chemical');
+                                if (item.dry === true || item.dry === 1) classifications.push('Dry');
+                                if (item.container === true || item.container === 1) classifications.push('Container');
 
                                 return classifications.length > 0 ? classifications.join(', ') : <em className="text-gray-400">No classification</em>;
                               })()}
@@ -7054,7 +7131,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.vuid || <em className="text-gray-400">No entry ID</em>}
+                              {item.vesselUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7103,7 +7180,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.id || <em className="text-gray-400">No entry ID</em>}
+                              {item.fgUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7145,7 +7222,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.id || <em className="text-gray-400">No entry ID</em>}
+                              {item.agUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7187,7 +7264,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.puid || <em className="text-gray-400">No entry ID</em>}
+                              {item.portUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7236,7 +7313,7 @@ const AdminModuleInner = (): JSX.Element => {
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">
-                              {item.luid || <em className="text-gray-400">No entry ID</em>}
+                              {item.langUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7285,8 +7362,8 @@ const AdminModuleInner = (): JSX.Element => {
                         >
                           {/* Column 1: Entry ID */}
                           <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`country-entry-id-${item.nuid || index}`}>
-                              {item.nuid || <em className="text-gray-400">No entry ID</em>}
+                            <span className="text-xs text-gray-700" data-testid={`country-entry-id-${item.countryUuid || index}`}>
+                              {item.countryUuid || <em className="text-gray-400">No entry ID</em>}
                             </span>
                           </div>
 
@@ -7321,8 +7398,8 @@ const AdminModuleInner = (): JSX.Element => {
                         >
                           {/* Column 1: UUID */}
                           <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`user-uuid-${item.uuid || index}`}>
-                              {item.uuid || <em className="text-gray-400">No UUID</em>}
+                            <span className="text-xs text-gray-700" data-testid={`user-uuid-${item.userUuid || index}`}>
+                              {item.userUuid || <em className="text-gray-400">No UUID</em>}
                             </span>
                           </div>
 
@@ -7399,7 +7476,7 @@ const AdminModuleInner = (): JSX.Element => {
                         : selectedMaster === "023"
                         ? !item.name    // For appraisal type master (only name field)
                         : !item.name && !item.description;   // For other masters
-                      
+
                       // Special handling for Users Master (013) - Always render exactly 5 columns
                       if (selectedMaster === "013") {
                         return (
@@ -7410,7 +7487,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <div className="p-3 border-r border-gray-200">
                               <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
                             </div>
-                            
+
                             {/* Column 2: First Name (firstname field) */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
@@ -7426,7 +7503,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.firstname || <em className="text-gray-400">No first name</em>}</span>
                               )}
                             </div>
-                            
+
                             {/* Column 3: Last Name (lastname field) */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
@@ -7441,7 +7518,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.lastname || <em className="text-gray-400">No last name</em>}</span>
                               )}
                             </div>
-                            
+
                             {/* Column 4: Designation (designation dropdown) */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
@@ -7482,7 +7559,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 </span>
                               )}
                             </div>
-                            
+
                             {/* Column 5: Actions (delete button) */}
                             <div className="p-3 flex justify-center">
                               <button
@@ -7514,7 +7591,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <div className="p-3 border-r border-gray-200">
                               <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
                             </div>
-                            
+
                             {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
@@ -7530,7 +7607,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
                               )}
                             </div>
-                            
+
                             {/* Column 3: Country - Using StableInput to prevent value loss during re-renders */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
@@ -7545,7 +7622,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.country || <em className="text-gray-400">No country</em>}</span>
                               )}
                             </div>
-                            
+
                             {/* Column 4: Email - Using StableInput to prevent value loss during re-renders */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
@@ -7560,7 +7637,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.email || <em className="text-gray-400">No email</em>}</span>
                               )}
                             </div>
-                            
+
                             {/* Column 5: Actions */}
                             <div className="p-3 flex justify-center">
                               <button
@@ -7592,7 +7669,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <div className="p-3 border-r border-gray-200">
                               <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
                             </div>
-                            
+
                             {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
@@ -7608,7 +7685,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
                               )}
                             </div>
-                            
+
                             {/* Column 3: Actions */}
                             <div className="p-3 flex justify-center">
                               <button
@@ -7640,7 +7717,7 @@ const AdminModuleInner = (): JSX.Element => {
                             <div className="p-3 border-r border-gray-200">
                               <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
                             </div>
-                            
+
                             {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
                             <div className="p-3 border-r border-gray-200">
                               {isMasterInEditMode ? (
@@ -7656,7 +7733,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
                               )}
                             </div>
-                            
+
                             {/* Column 3: Actions */}
                             <div className="p-3 flex justify-center">
                               <button
@@ -7686,7 +7763,7 @@ const AdminModuleInner = (): JSX.Element => {
                           <div className="p-3 border-r border-gray-200">
                             <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
                           </div>
-                          
+
                           {/* Second column - conditional based on master type */}
                           <div className="p-3 border-r border-gray-200">
                             {selectedMaster === "001" ? (
@@ -7803,7 +7880,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             )}
                           </div>
-                          
+
                           {/* Third column - conditional based on master type */}
                           <div className="p-3 border-r border-gray-200">
                             {selectedMaster === "001" ? (
@@ -7944,7 +8021,7 @@ const AdminModuleInner = (): JSX.Element => {
                               )
                             )}
                           </div>
-                          
+
                           {/* Fourth column - only for Vessel Master (014) */}
                           {selectedMaster === "014" && (
                             <div className="p-3 border-r border-gray-200">
@@ -7978,7 +8055,7 @@ const AdminModuleInner = (): JSX.Element => {
                               </Select>
                             </div>
                           )}
-                          
+
                           <div className="p-3 flex justify-center">
                             <button
                               className={`transition-colors ${
@@ -8205,7 +8282,6 @@ const AdminModuleInner = (): JSX.Element => {
               <span>Menu</span>
             </button>
           </div>
-          <AdminVersionToggle className="ml-auto" />
         </div>
         {selectedAdminPage === "forms" && renderFormsTable()}
         {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
@@ -8215,7 +8291,7 @@ const AdminModuleInner = (): JSX.Element => {
 
       {/* Main content */}
       {/* <main className="absolute top-[67px] left-[67px] w-[calc(100%-67px)] h-[calc(100%-67px)]">
-       
+
         </main> */}
 
       {/* Form Editor Modal */}
@@ -8225,7 +8301,6 @@ const AdminModuleInner = (): JSX.Element => {
           form={editingForm}
           rankGroupName={editingRankGroup || undefined}
           rankGroupConfig={(() => {
-            // Find the rank group configuration for loading saved data
             const rg = allRankGroups.find(
               r => r.name === editingRankGroup && r.formId === ('originalFormId' in editingForm ? (editingForm as any).originalFormId : editingForm.id)
             );
@@ -8238,6 +8313,7 @@ const AdminModuleInner = (): JSX.Element => {
             }
             return null;
           })()}
+          useV2={true}
           onClose={handleCloseEditor}
           onSave={handleFormSave}
         />
@@ -8328,7 +8404,7 @@ const AdminModuleInner = (): JSX.Element => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={vesselGroupForm.control}
                 name="vesselIds"
@@ -8364,7 +8440,7 @@ const AdminModuleInner = (): JSX.Element => {
               />
             </form>
           </FormComponent>
-          
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -8485,7 +8561,7 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Unsaved Changes Dialog */}
       <UnsavedChangesDialog
         isOpen={showUnsavedChangesDialog}
@@ -8495,7 +8571,7 @@ const AdminModuleInner = (): JSX.Element => {
         title="Unsaved Changes"
         description="You have unsaved changes that will be lost if you continue. What would you like to do?"
       />
-      
+
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
         <DialogContent className="sm:max-w-[425px]" data-testid="dialog-delete-rank-confirm">
@@ -8532,11 +8608,12 @@ const AdminModuleInner = (): JSX.Element => {
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Promotion Hierarchy Dialog */}
       <PromotionHierarchyDialog
         open={isPromotionHierarchyOpen}
         onOpenChange={setIsPromotionHierarchyOpen}
+        apiBasePath="/api/v2/admin/promotion-hierarchies"
       />
     </>
   );
@@ -8563,7 +8640,7 @@ const AddRankGroupDialog = ({
   forms: Form[];
 }) => {
   const isEditMode = !!editingRankGroup;
-  
+
   // Parse ranks from editing rank group
   const getInitialRanks = (): string[] => {
     if (!editingRankGroup) return [];
@@ -8601,12 +8678,12 @@ const AddRankGroupDialog = ({
 
   // Fetch rank conflicts for this form
   const { data: rankConflicts = {} } = useQuery<Record<string, string>>({
-    queryKey: ['/api/rank-groups/form', formId, 'rank-conflicts', editingRankGroup?.id],
+    queryKey: ['/api/v2/admin/rank-groups/form', formId, 'rank-conflicts', editingRankGroup?.id],
     queryFn: async () => {
       if (!formId) return {};
       const url = editingRankGroup?.id 
-        ? `/api/rank-groups/form/${formId}/rank-conflicts?excludeGroupId=${editingRankGroup.id}`
-        : `/api/rank-groups/form/${formId}/rank-conflicts`;
+        ? `/api/v2/admin/rank-groups/form/${formId}/rank-conflicts?excludeGroupId=${editingRankGroup.id}`
+        : `/api/v2/admin/rank-groups/form/${formId}/rank-conflicts`;
       const response = await fetch(url);
       if (!response.ok) return {};
       return response.json();
@@ -8708,7 +8785,7 @@ const AddRankGroupDialog = ({
                       const rankLabel = rank.label || rank.name;
                       const conflictingGroup = isRankConflicting(rankLabel);
                       const isDisabled = !!conflictingGroup;
-                      
+
                       return (
                         <div key={rank.id} className="flex items-center space-x-2">
                           <Checkbox
@@ -8779,7 +8856,7 @@ const AddRankGroupDialog = ({
 };
 
 // Wrapper component with EditSessionProvider
-export const AdminModule = (): JSX.Element => {
+export const AdminModule_v2 = (): JSX.Element => {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const updateEntryMutation = useUpdateMasterDataEntry();
@@ -8791,60 +8868,60 @@ export const AdminModule = (): JSX.Element => {
     const isPortMasterSave = isPortMaster(masterId);
 
     const promises: Promise<any>[] = [];
-    
+
     changes.forEach((entryChanges, entryId) => {
       let processedChanges = entryChanges;
-      
+
       // Apply safe field mapping for vessel master
       if (isVesselMasterSave) {
         // Ensure name field is populated if vessel field exists
         if (entryChanges.vessel && !entryChanges.name) {
           entryChanges.name = entryChanges.vessel;
         }
-        
+
         // Map imoNumber to description temporarily
         if (entryChanges.imoNumber && !entryChanges.description) {
           entryChanges.description = entryChanges.imoNumber;
         }
-        
+
         // Filter to only include safe fields for database
         processedChanges = filterToSafeFields(entryChanges);
-        
+
         // Validate that name field is populated
         if (!processedChanges.name && entryChanges.vessel) {
           processedChanges.name = entryChanges.vessel;
         }
       }
-      
+
       // Apply safe field mapping for port master
       if (isPortMasterSave) {
         // Ensure name field is populated if portName field exists
         if (entryChanges.portName && !entryChanges.name) {
           entryChanges.name = entryChanges.portName;
         }
-        
+
         // Map coordinates to description temporarily
         if ((entryChanges.latitude || entryChanges.longitude) && !entryChanges.description) {
           const coords = { lat: entryChanges.latitude || '', lng: entryChanges.longitude || '' };
           entryChanges.description = JSON.stringify(coords);
         }
-        
+
         // Filter to only include safe fields for database
         processedChanges = filterToPortSafeFields(entryChanges);
-        
+
         // Validate that name field is populated
         if (!processedChanges.name && entryChanges.portName) {
           processedChanges.name = entryChanges.portName;
         }
       }
-      
+
       // Create save promise
       const promise = updateEntryMutation.mutateAsync({ 
         id: entryId as number, 
         data: processedChanges, 
         masterId 
       });
-      
+
       promises.push(promise);
     });
 
@@ -8856,7 +8933,7 @@ export const AdminModule = (): JSX.Element => {
       : isPortMasterSave
       ? `Saved port data for ${changes.size} entries (safe mode)`
       : `Saved changes for ${changes.size} entries`;
-      
+
     toast({
       title: "Success",
       description: successMessage,

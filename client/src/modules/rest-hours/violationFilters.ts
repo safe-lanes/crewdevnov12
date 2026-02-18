@@ -1,5 +1,5 @@
 /**
- * Violation Filtering Helper Functions
+ * Violation Filtering Helper Functions for V2
  * 
  * Compliance Modes:
  * - Rest Mode (MLC Option 2): Shows violations 1, 2, 3, 4

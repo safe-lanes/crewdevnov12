@@ -1,5 +1,5 @@
 /**
- * Shared types for Rest Hours module
+ * Shared types for Rest Hours V2 module
  * Centralized to avoid duplication across components
  */
 

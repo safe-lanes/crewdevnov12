@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { BaseSubmoduleForm, FormSection } from '@/components/BaseSubmoduleForm';
 import { Button } from '@/components/ui/button';
@@ -8,15 +8,15 @@ import { z } from 'zod';
 import { PromotionChecklistForm } from './PromotionChecklistForm';
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
-import type { Form, RankGroup, CrewMember, CrewDashboardSummary, PromotionReview } from '@shared/schema';
+import type { Form, RankGroup, CrewDashboardSummary, PromotionReview } from '@shared/schema';
 import type { PromotionA2Config } from '@shared/schema';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useExternalVesselTypes } from '@/hooks/useExternalVesselTypes';
-import { useExternalUsers } from '@/hooks/useExternalUsers';
+import { useVesselTypesV2, useUsersV2 } from '@/hooks/v2/useMasterDataV2';
 import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { calculateChecklistProgressFromJson } from '@/modules/promotions/checklistProgressUtils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -64,19 +64,19 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   ];
 
   const { data: formsData } = useQuery<Form[]>({
-    queryKey: ['/api/forms'],
+    queryKey: ['/api/v2/admin/forms'],
   });
 
   const { data: rankGroupsData } = useQuery<RankGroup[]>({
-    queryKey: ['/api/rank-groups'],
+    queryKey: ['/api/v2/admin/rank-groups'],
   });
 
   const { data: licenseEntriesData } = useQuery<any[]>({
-    queryKey: ['/api/masters/016/data'],
+    queryKey: ['/api/v2/masters/licenses-dce'],
   });
 
   const { data: vesselMasterData } = useQuery<any[]>({
-    queryKey: ['/api/masters/014/data'],
+    queryKey: ['/api/v2/masters/vessels'],
   });
 
   const vesselOptions = useMemo(() => {
@@ -93,9 +93,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const updateCurrentUser = () => {
       setCurrentUserDisplay(getCurrentUserDisplay());
     };
-    // Listen for cross-tab storage events
     window.addEventListener('storage', updateCurrentUser);
-    // Listen for same-tab custom event (dispatched when sessionStorage is updated)
     window.addEventListener('crewUserUpdated', updateCurrentUser);
     return () => {
       window.removeEventListener('storage', updateCurrentUser);
@@ -106,38 +104,45 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const crewMemberId = promotionData?.crewMemberId ?? '';
   const promotionToRank = promotionData?.promotionToRank ?? '';
 
-  const { data: crewMemberData } = useQuery<CrewMember>({
-    queryKey: [`/api/crew-members/${crewMemberId}`],
+  const { data: crewMemberData } = useQuery<any>({
+    queryKey: [`/api/v2/crew-pool/crew/by-emp-no/${crewMemberId}`],
     enabled: !!crewMemberId,
   });
 
   const { data: dashboardData } = useQuery<CrewDashboardSummary>({
-    queryKey: [`/api/crew-members/${crewMemberId}/dashboard`],
+    queryKey: [`/api/v2/crew-pool/crew/by-emp-no/${crewMemberId}/dashboard`],
     enabled: !!crewMemberId,
   });
 
-  const { data: externalVesselTypesData } = useExternalVesselTypes();
+  const { data: vesselTypesV2Data } = useVesselTypesV2();
   const { normalizeRank } = useRankNormalization();
   
-  const { data: externalUsersData, isLoading: isLoadingUsers } = useExternalUsers();
+  const { data: usersV2Data, isLoading: isLoadingUsers } = useUsersV2();
   
   const approverMasterData = useMemo(() => {
-    const users = (externalUsersData as any)?.users || externalUsersData || [];
+    const users = usersV2Data || [];
     if (users.length > 0) {
-      const displayNames = users
+      const seen = new Set<string>();
+      return users
         .filter((user: any) => user.userType?.toLowerCase() === 'office')
-        .map((user: any) => user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`)
-        .filter((name: string) => name && name.trim());
-      return displayNames;
+        .map((user: any) => ({
+          userUuid: user.userUuid || user.uuid,
+          displayName: user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`,
+        }))
+        .filter((item: { userUuid: string; displayName: string }) => {
+          if (!item.userUuid || !item.displayName?.trim()) return false;
+          if (seen.has(item.userUuid)) return false;
+          seen.add(item.userUuid);
+          return true;
+        });
     }
     return [];
-  }, [externalUsersData]);
+  }, [usersV2Data]);
   
-  const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<string[]>([]);
+  const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<{ userUuid: string; displayName: string }[]>([]);
 
   const presentRank = crewMemberData?.presentRank ?? '';
 
-  // Fetch promotion recommendations count from completed appraisals at current rank
   const { data: promotionRecommendationsData } = useQuery<{ count: number; rank: string; crewMemberId: string }>({
     queryKey: [`/api/appraisals/crew/${crewMemberId}/promotion-recommendations?rank=${encodeURIComponent(presentRank)}`],
     enabled: !!crewMemberId && !!presentRank,
@@ -150,27 +155,33 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return '';
   }, [promotionRecommendationsData]);
 
-  // Initialize savedReviewId from promotionData if available (from table's persisted review)
+  const [savedReviewUuid, setSavedReviewUuid] = useState<string | null>(null);
   const [savedReviewId, setSavedReviewId] = useState<number | null>(
     promotionData?.promotionReviewId ?? null
   );
   const [isSubmittingForApproval, setIsSubmittingForApproval] = useState(false);
 
   const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReview>({
-    queryKey: [`/api/promotion-reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`],
+    queryKey: [`/api/v2/promotions/reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`],
     enabled: !!crewMemberId && !!promotionToRank,
+    retry: false,
   });
+
+  const effectiveReviewUuid = savedReviewUuid ?? existingReviewData?.reviewUuid ?? null;
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
-      const endpoint = savedReviewId
-        ? `/api/promotion-reviews/${savedReviewId}`
-        : '/api/promotion-reviews';
-      const method = savedReviewId ? 'PATCH' : 'POST';
+      const endpoint = effectiveReviewUuid
+        ? `/api/v2/promotions/reviews/${effectiveReviewUuid}`
+        : '/api/v2/promotions/reviews';
+      const method = effectiveReviewUuid ? 'PATCH' : 'POST';
       const response = await apiRequest(method, endpoint, data);
       return response;
     },
     onSuccess: (data: any) => {
+      if (data?.reviewUuid) {
+        setSavedReviewUuid(data.reviewUuid);
+      }
       if (data?.id) {
         setSavedReviewId(data.id);
       }
@@ -178,10 +189,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         title: "Draft Saved",
         description: "Your promotion review progress has been saved.",
       });
-      // Invalidate both list and detail queries to ensure UI reflects saved state
-      queryClient.invalidateQueries({ queryKey: ['/api/promotion-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/promotions/reviews'] });
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/promotion-reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`] 
+        queryKey: [`/api/v2/promotions/reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`] 
       });
     },
     onError: (error: any) => {
@@ -253,9 +263,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       const config = matchingRankGroup.configuration;
       if (!config) return null;
       const parsed = typeof config === 'string' ? JSON.parse(config) : config;
-      // Support both nested format (promotionA2) and flat format (direct config)
       const promotionConfig = parsed?.promotionA2 ?? parsed;
-      // Validate it's a PromotionA2Config by checking for any known schema field
       if (promotionConfig && typeof promotionConfig === 'object') {
         const knownFields = ['higherLicenseIds', 'ageMin', 'ageMax', 'experienceMonths', 
           'minRecommendations', 'minChecklistVerifications', 'minChecklistCompletionPercent', 
@@ -302,10 +310,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [a2Config?.ageMin, a2Config?.ageMax]);
 
   const a2_1_licenseResult = useMemo(() => {
-    if (!crewMemberData) return '';
-    // Parse licenses - handle both array and JSON string formats
+    if (!crewMemberData && !dashboardData) return '';
     let licenses: LicenseRecord[] = [];
-    const rawLicenses = (crewMemberData as any).licenses;
+    const rawLicenses = (dashboardData as any)?.licenses || (crewMemberData as any)?.licenses;
     if (Array.isArray(rawLicenses)) {
       licenses = rawLicenses;
     } else if (typeof rawLicenses === 'string' && rawLicenses.trim()) {
@@ -336,11 +343,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       });
     });
     return hasAnyLicense ? 'Yes' : 'No';
-  }, [crewMemberData, a2Config?.higherLicenseIds, licenseDataByEntryId]);
+  }, [crewMemberData, dashboardData, a2Config?.higherLicenseIds, licenseDataByEntryId]);
 
   const a2_2_ageResult = useMemo(() => {
-    if (!crewMemberData?.dateOfBirth) return '';
-    const dob = new Date(crewMemberData.dateOfBirth);
+    const dobValue = crewMemberData?.dob || crewMemberData?.dateOfBirth;
+    if (!dobValue) return '';
+    const dob = new Date(dobValue);
     const today = new Date();
     let age = today.getFullYear() - dob.getFullYear();
     const monthDiff = today.getMonth() - dob.getMonth();
@@ -348,21 +356,21 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       age--;
     }
     return `${age} Years`;
-  }, [crewMemberData?.dateOfBirth]);
+  }, [crewMemberData?.dob, crewMemberData?.dateOfBirth]);
 
   const a2_3a_rankExperienceResult = useMemo(() => {
-    if (!dashboardData?.experience?.rank) return '';
+    if (dashboardData?.experience?.rank == null) return '';
     const rankYears = dashboardData.experience.rank;
     const rankMonths = Math.round(rankYears * 12);
     return `${rankMonths} Months`;
   }, [dashboardData]);
 
   const vesselTypeOptions = useMemo(() => {
-    if (externalVesselTypesData && externalVesselTypesData.length > 0) {
-      return externalVesselTypesData.map((vt: any) => vt.name || vt.vesselType || String(vt));
+    if (vesselTypesV2Data && vesselTypesV2Data.length > 0) {
+      return vesselTypesV2Data.map((vt: any) => vt.name || vt.vesselType || String(vt));
     }
     return getVesselTypesForDropdown();
-  }, [externalVesselTypesData]);
+  }, [vesselTypesV2Data]);
 
   const a2_3b_vesselTypeExperienceResult = useMemo(() => {
     if (!selectedVesselTypeForA2_3b) return '';
@@ -385,14 +393,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [selectedVesselTypeForA2_3b, dashboardData?.rankExperienceByVesselType]);
 
   const a2_3c_companyServiceResult = useMemo(() => {
-    if (!dashboardData?.experience?.company) return '';
+    if (dashboardData?.experience?.company == null) return '';
     const companyYears = dashboardData.experience.company;
     const companyMonths = Math.round(companyYears * 12);
     return `${companyMonths} Months`;
   }, [dashboardData]);
 
   const a2_3d_tankerExperienceResult = useMemo(() => {
-    if (!dashboardData?.experience?.tankers) return '';
+    if (dashboardData?.experience?.tankers == null) return '';
     const tankerYears = dashboardData.experience.tankers;
     const tankerMonths = Math.round(tankerYears * 12);
     return `${tankerMonths} Months`;
@@ -464,7 +472,19 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         id: 'a2.5a', 
         criteria: 'A2.5a Promotion Checklist Completed?', 
         required: a2Config?.minChecklistCompletionPercent != null ? `${a2Config.minChecklistCompletionPercent}%` : '', 
-        resultFromDb: '', 
+        resultFromDb: (() => {
+          if (existingReviewData?.checklistProgressData) {
+            try {
+              const prog = calculateChecklistProgressFromJson(
+                existingReviewData.checklistProgressData,
+                a2Config?.minChecklistVerifications ?? 1,
+                a2Config?.minChecklistCompletionPercent ?? 85
+              );
+              if (prog.totalRequired > 0) return `${prog.percentage}%`;
+            } catch {}
+          }
+          return '';
+        })(), 
         verified: '', 
         hasInfo: true 
       },
@@ -490,19 +510,39 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       { id: 'a2.8', criteria: 'A2.8 Training & Other Documents Verification?', required: '', resultFromDb: '', verified: '', hasInfo: true }
     );
 
+    let savedVerifiedStatus: Record<string, string> = {};
+    if (existingReviewData?.criteriaVerifiedStatus) {
+      try {
+        savedVerifiedStatus = typeof existingReviewData.criteriaVerifiedStatus === 'string'
+          ? JSON.parse(existingReviewData.criteriaVerifiedStatus)
+          : existingReviewData.criteriaVerifiedStatus;
+      } catch {}
+    }
+
     setCriteriaData(prev => {
-      if (prev.length === 0) {
-        return baseCriteria;
-      }
       const existingVerifiedMap = new Map(prev.map(row => [row.id, row.verified]));
       return baseCriteria.map(row => ({
         ...row,
-        verified: existingVerifiedMap.get(row.id) || row.verified,
+        verified: existingVerifiedMap.get(row.id) || savedVerifiedStatus[row.id] || row.verified,
       }));
     });
-  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult, a2_4_recommendationsResult]);
+  }, [a2Config, requiredLicenseDisplay, requiredAgeDisplay, a2_1_licenseResult, a2_2_ageResult, a2_3a_rankExperienceResult, a2_3b_vesselTypeExperienceResult, a2_3c_companyServiceResult, a2_3d_tankerExperienceResult, a2_4_recommendationsResult, existingReviewData?.criteriaVerifiedStatus, existingReviewData?.checklistProgressData]);
 
   const [cesTests, setCesTests] = useState<CesTest[]>([]);
+
+  useEffect(() => {
+    if (cesTests.length > 0) {
+      const results = cesTests.map(t => t.result || '');
+      const allPassOrNa = results.every(r => {
+        const rl = r.trim().toLowerCase();
+        return rl === 'pass' || rl === 'na' || rl === 'n/a';
+      });
+      const cesResult = allPassOrNa ? 'Pass' : '';
+      setCriteriaData(prev => prev.map(row =>
+        row.id === 'a2.7' ? { ...row, resultFromDb: cesResult } : row
+      ));
+    }
+  }, [cesTests]);
 
   useEffect(() => {
     setCesTests(prev => {
@@ -543,17 +583,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [newTrainingComment, setNewTrainingComment] = useState<Record<string, string>>({});
   const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
 
-  // A4 comments state - initialized empty, defaults applied only when no existing data
   const [comments, setComments] = useState<Comment[]>([]);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   
-  // Ref to always have fresh comments state for saves (avoids stale closure issues)
   const commentsRef = useRef<Comment[]>([]);
   
-  // Track whether A4 comments have been loaded/initialized to prevent default overwriting
   const hasLoadedA4Ref = useRef<boolean>(false);
   
-  // Keep commentsRef in sync with comments state
   useEffect(() => {
     commentsRef.current = comments;
   }, [comments]);
@@ -573,7 +609,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [promotionDate, setPromotionDate] = useState<string>('');
   const [promotionTiming, setPromotionTiming] = useState<string>('on-board');
 
-  const [showChecklistForm, setShowChecklistForm] = useState(false);
+  const [showChecklistForm, setShowChecklistForm] = useState(promotionData?.initialSection === 'checklist');
 
   const defaultValues: PromotionReviewFormData = {
     partANotes: '',
@@ -618,11 +654,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             ? JSON.parse(existingReviewData.criteriaComments)
             : existingReviewData.criteriaComments;
           
-          // Extract A4 reviewer comments if they exist (even if empty array - respects user deletion)
           if (commentData.hasOwnProperty('a4') && Array.isArray(commentData.a4)) {
             setComments(commentData.a4);
             hasLoadedA4Ref.current = true;
-            // Update nextCommentIdRef to avoid ID collisions
             if (commentData.a4.length > 0) {
               const maxId = Math.max(...commentData.a4.map((c: Comment) => parseInt(c.id) || 0));
               nextCommentIdRef.current = maxId + 1;
@@ -630,30 +664,23 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               nextCommentIdRef.current = 1;
             }
           } else {
-            // Existing review data exists but a4 key is missing (older entry saved before fix)
-            // Set to empty array to prevent defaults from appearing
             setComments([]);
             hasLoadedA4Ref.current = true;
             nextCommentIdRef.current = 1;
           }
           
-          // Extract A3 training comments if they exist
           if (commentData.hasOwnProperty('a3') && typeof commentData.a3 === 'object') {
             setTrainingComments(commentData.a3);
           }
           
-          // Set criteria comments (excluding a3 and a4 to avoid duplication in state)
           const { a3, a4, ...restComments } = commentData;
           setCriteriaComments(restComments);
         } catch {
-          // Parse error - treat as existing entry with no A4 data
           setComments([]);
           hasLoadedA4Ref.current = true;
           nextCommentIdRef.current = 1;
         }
       } else {
-        // existingReviewData exists but criteriaComments is null/undefined
-        // This is an existing entry with no saved comments - don't show defaults
         setComments([]);
         hasLoadedA4Ref.current = true;
         nextCommentIdRef.current = 1;
@@ -691,7 +718,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             ? JSON.parse((existingReviewData as any).selectedApproversForSubmission)
             : (existingReviewData as any).selectedApproversForSubmission;
           if (Array.isArray(selectedApprovers)) {
-            setSelectedApproversForSubmission(selectedApprovers);
+            const normalized = selectedApprovers.map((item: any) => {
+              if (typeof item === 'string') {
+                const match = approverMasterData.find(
+                  (a: { userUuid: string; displayName: string }) => a.displayName === item
+                );
+                return { userUuid: match?.userUuid || '', displayName: item };
+              }
+              return { userUuid: item.userUuid || '', displayName: item.displayName || item.approver || '' };
+            });
+            setSelectedApproversForSubmission(normalized);
           }
         } catch {}
       }
@@ -711,12 +747,20 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }
   }, [existingReviewData]);
 
-  // Apply default A4 comments ONLY for new entries (no existing review data after query completes)
   useEffect(() => {
-    // Only run once, and only if:
-    // 1. Query has finished loading (isLoadingReview is false)
-    // 2. No existing review data was found (truly a new entry)
-    // 3. We haven't already loaded/initialized A4 comments
+    if (approverMasterData.length === 0) return;
+    setSelectedApproversForSubmission(prev => {
+      const hasEmpty = prev.some(a => !a.userUuid);
+      if (!hasEmpty) return prev;
+      return prev.map(a => {
+        if (a.userUuid) return a;
+        const match = approverMasterData.find(m => m.displayName === a.displayName);
+        return match ? { userUuid: match.userUuid, displayName: a.displayName } : a;
+      });
+    });
+  }, [approverMasterData]);
+
+  useEffect(() => {
     if (!isLoadingReview && !existingReviewData && !hasLoadedA4Ref.current) {
       hasLoadedA4Ref.current = true;
       const user = getCurrentUserDisplay();
@@ -733,11 +777,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const criteriaVerifiedStatus: Record<string, string> = {};
     const criteriaMeetsStatus: Record<string, string> = {};
     
-    // Helper function to compute meets status (inlined to avoid dependency issues)
-    const computeMeetsStatus = (required: string, result: string): string => {
+    const computeMeetsStatus = (required: string, result: string, verified: string): string => {
+      if (!required && !result) {
+        if (verified === 'yes') return 'yes';
+        if (verified === 'no') return 'no';
+        return 'na';
+      }
       if (!required || !result) return 'pending';
       
-      // Handle cases where result is already 'Yes' or 'No' (e.g., license criteria)
       const resultLower = result.trim().toLowerCase();
       if (resultLower === 'yes') return 'yes';
       if (resultLower === 'no') return 'no';
@@ -763,12 +810,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     
     criteriaData.forEach(row => {
       criteriaVerifiedStatus[row.id] = row.verified;
-      criteriaMeetsStatus[row.id] = computeMeetsStatus(row.required, row.resultFromDb);
+      criteriaMeetsStatus[row.id] = computeMeetsStatus(row.required, row.resultFromDb, row.verified);
     });
     
-    // Compute parent criteria aggregation for A2.3 and A2.6
-    // Rule: If ANY child is 'yes' → parent is 'yes'
-    //       If ALL children are 'n/a', empty, or pending → parent stays 'pending'
     const parentIds = ['a2.3', 'a2.6'];
     parentIds.forEach(parentId => {
       const childIds = Object.keys(criteriaMeetsStatus).filter(
@@ -776,18 +820,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       );
       if (childIds.length > 0) {
         const childValues = childIds.map(id => criteriaMeetsStatus[id]);
-        // If ANY child is 'yes', parent becomes 'yes' (even if others are N/A)
         if (childValues.some(v => v === 'yes')) {
           criteriaMeetsStatus[parentId] = 'yes';
         } else {
-          // All children are N/A, empty, or pending → parent stays 'pending'
           criteriaMeetsStatus[parentId] = 'pending';
         }
       }
     });
     
-    // Compute A2.5 parent status from a2.5a checklist completion percentage
-    // Rule: If checklist percentage >= 85% (minChecklistCompletionPercent threshold) → 'yes'
     const a2_5a_status = criteriaMeetsStatus['a2.5a'];
     if (a2_5a_status === 'yes') {
       criteriaMeetsStatus['a2.5'] = 'yes';
@@ -795,18 +835,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       criteriaMeetsStatus['a2.5'] = 'pending';
     }
     
-    // Compute CES tests meets status (a2.7)
-    // Rule: If all tests pass/NA → 'yes', otherwise → 'pending'
     if (cesTests.length > 0) {
-      const results = cesTests.map(t => t.result || '');
-      if (results.every(r => r === 'Pass' || r === 'NA')) {
+      const results = cesTests.map(t => (t.result || '').trim().toLowerCase());
+      if (results.every(r => r === 'pass' || r === 'na' || r === 'n/a')) {
         criteriaMeetsStatus['a2.7'] = 'yes';
       } else {
-        // Any empty, Fail, or other result → pending (Yellow per user spec)
         criteriaMeetsStatus['a2.7'] = 'pending';
       }
     } else {
-      // No CES tests defined yet → pending
       criteriaMeetsStatus['a2.7'] = 'pending';
     }
 
@@ -817,8 +853,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       criteriaVerifiedStatus: JSON.stringify(criteriaVerifiedStatus),
       criteriaMeetsStatus: JSON.stringify(criteriaMeetsStatus),
       cesTestsData: JSON.stringify(cesTests),
-      // Use commentsRef.current for guaranteed fresh state (avoids stale closure issues)
-      // Include a3 (training comments) and a4 (reviewer comments)
       criteriaComments: JSON.stringify({ ...criteriaComments, a3: trainingComments, a4: commentsRef.current }),
       trainingNeeds: JSON.stringify(trainingNeeds),
       approvalData: JSON.stringify(approvers),
@@ -877,10 +911,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   };
 
   const getMeetsCriterion = useCallback((required: string, result: string) => {
-    if (!required || !result) return 'pending';
-    
-    // Handle cases where result is already 'Yes' or 'No' (e.g., license criteria)
+    if (!result) return 'pending';
     const resultLower = result.trim().toLowerCase();
+    if (resultLower === 'pass') return 'met';
+    if (!required) return 'pending';
+    
     if (resultLower === 'yes') return 'met';
     if (resultLower === 'no') return 'not-met';
     
@@ -932,26 +967,18 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [cesTests, criteriaData]);
 
   const computeParentStatus = useCallback((parentId: string): 'yes' | 'na' | 'pending' => {
-    // Special handling for A2.5 - based on checklist completion percentage
     if (parentId === 'a2.5') {
-      // Check if checklist progress data exists and meets threshold
       if (existingReviewData?.checklistProgressData) {
         try {
-          const progressData = typeof existingReviewData.checklistProgressData === 'string'
-            ? JSON.parse(existingReviewData.checklistProgressData)
-            : existingReviewData.checklistProgressData;
-          
-          // Calculate completion percentage from progress data
-          const completedCount = Object.values(progressData).filter((v: any) => v === true).length;
-          const totalCount = Object.keys(progressData).length;
-          const minPercent = a2Config?.minChecklistCompletionPercent ?? 85;
-          
-          if (totalCount > 0) {
-            const percent = (completedCount / totalCount) * 100;
-            return percent >= minPercent ? 'yes' : 'pending';
+          const progressResult = calculateChecklistProgressFromJson(
+            existingReviewData.checklistProgressData,
+            a2Config?.minChecklistVerifications ?? 1,
+            a2Config?.minChecklistCompletionPercent ?? 85
+          );
+          if (progressResult.totalRequired > 0) {
+            return progressResult.meetsThreshold ? 'yes' : 'pending';
           }
         } catch {
-          // Parse error - stay pending
         }
       }
       return 'pending';
@@ -964,9 +991,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     
     if (parentId === 'a2.7') {
       cesTests.forEach(test => {
-        if (test.result === 'Pass') {
+        const rl = (test.result || '').trim().toLowerCase();
+        if (rl === 'pass') {
           childVerifiedValues.push('yes');
-        } else if (test.result === 'NA') {
+        } else if (rl === 'na' || rl === 'n/a') {
           childVerifiedValues.push('na');
         } else {
           childVerifiedValues.push('');
@@ -1124,12 +1152,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     setComments(prev => prev.filter(c => c.id !== id));
   }, []);
 
-  const toggleApproverSelection = useCallback((approverName: string) => {
+  const toggleApproverSelection = useCallback((approver: { userUuid: string; displayName: string }) => {
     setSelectedApproversForSubmission(prev => {
-      if (prev.includes(approverName)) {
-        return prev.filter(a => a !== approverName);
+      if (prev.some(a => a.userUuid === approver.userUuid)) {
+        return prev.filter(a => a.userUuid !== approver.userUuid);
       } else {
-        return [...prev, approverName];
+        return [...prev, approver];
       }
     });
   }, []);
@@ -1148,14 +1176,31 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       return;
     }
 
+    const resolvedApprovers = selectedApproversForSubmission.map(a => {
+      if (a.userUuid) return a;
+      const match = approverMasterData.find(m => m.displayName === a.displayName);
+      return match ? { userUuid: match.userUuid, displayName: a.displayName } : a;
+    });
+    
+    const unresolved = resolvedApprovers.filter(a => !a.userUuid);
+    if (unresolved.length > 0) {
+      toast({
+        title: "Approver Data Issue",
+        description: `Could not resolve identity for: ${unresolved.map(a => a.displayName).join(', ')}. Please re-select approvers.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmittingForApproval(true);
+    setSelectedApproversForSubmission(resolvedApprovers);
     
     const currentDate = new Date().toISOString().split('T')[0];
     
-    const newApprovers: Approver[] = selectedApproversForSubmission.map((approverName, index) => ({
-      id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+    const newApprovers: Approver[] = resolvedApprovers.map((approverObj) => ({
+      id: approverObj.userUuid,
       date: currentDate,
-      approver: approverName,
+      approver: approverObj.displayName,
       status: 'pending',
       approval: '',
       comments: '',
@@ -1175,14 +1220,17 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     
     const approverCount = selectedApproversForSubmission.length;
     
-    const effectiveReviewId = savedReviewId ?? existingReviewData?.id;
-    const endpoint = effectiveReviewId
-      ? `/api/promotion-reviews/${effectiveReviewId}`
-      : '/api/promotion-reviews';
-    const method = effectiveReviewId ? 'PATCH' : 'POST';
+    const submitReviewUuid = effectiveReviewUuid;
+    const endpoint = submitReviewUuid
+      ? `/api/v2/promotions/reviews/${submitReviewUuid}`
+      : '/api/v2/promotions/reviews';
+    const method = submitReviewUuid ? 'PATCH' : 'POST';
     
     apiRequest(method, endpoint, reviewData)
       .then((data: any) => {
+        if (data?.reviewUuid) {
+          setSavedReviewUuid(data.reviewUuid);
+        }
         if (data?.id) {
           setSavedReviewId(data.id);
         }
@@ -1190,10 +1238,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           title: "Submitted for Approval",
           description: `Promotion review has been submitted to ${approverCount} approver(s).`,
         });
-        // Invalidate both list and detail queries to ensure UI reflects saved state
-        queryClient.invalidateQueries({ queryKey: ['/api/promotion-reviews'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/v2/promotions/reviews'] });
         queryClient.invalidateQueries({ 
-          queryKey: [`/api/promotion-reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`] 
+          queryKey: [`/api/v2/promotions/reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`] 
         });
       })
       .catch((error: any) => {
@@ -1206,7 +1253,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, savedReviewId, existingReviewData?.id, isSubmittingForApproval]);
+  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
@@ -1408,7 +1455,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                             {selectedApproversForSubmission.length === 0
                               ? "Approver"
                               : selectedApproversForSubmission.length === 1
-                                ? selectedApproversForSubmission[0]
+                                ? selectedApproversForSubmission[0].displayName
                                 : `${selectedApproversForSubmission.length} Approvers Selected`}
                             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
@@ -1420,18 +1467,18 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                             ) : approverMasterData.length === 0 ? (
                               <div className="px-3 py-4 text-sm text-gray-500 text-center">No office users found</div>
                             ) : (
-                              approverMasterData.map((approverName: string) => (
+                              approverMasterData.map((approverItem: { userUuid: string; displayName: string }) => (
                                 <div
-                                  key={approverName}
+                                  key={approverItem.userUuid}
                                   className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                  onClick={() => toggleApproverSelection(approverName)}
-                                  data-testid={`checkbox-approver-${approverName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                                  onClick={() => toggleApproverSelection(approverItem)}
+                                  data-testid={`checkbox-approver-${approverItem.displayName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
                                 >
                                   <Checkbox
-                                    checked={selectedApproversForSubmission.includes(approverName)}
+                                    checked={selectedApproversForSubmission.some(a => a.userUuid === approverItem.userUuid)}
                                     className="mr-3"
                                   />
-                                  <span className="text-sm">{approverName}</span>
+                                  <span className="text-sm">{approverItem.displayName}</span>
                                 </div>
                               ))
                             )}
@@ -1443,6 +1490,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
                   <div className="flex justify-end gap-3">
                     <Button 
+                      type="button"
                       variant="outline" 
                       className="px-8"
                       onClick={handleSaveDraft}
@@ -1451,6 +1499,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       Save
                     </Button>
                     <Button 
+                      type="button"
                       className="px-8 bg-green-600 hover:bg-green-700"
                       onClick={handleSubmitForApproval}
                       disabled={isSubmittingForApproval}
@@ -1476,6 +1525,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               onRemoveVesselClass={removeVesselClass}
               onSave={handleSaveDraft}
               onSubmit={handleSubmitPartB}
+              approverNames={approverMasterData.map(a => a.displayName)}
             />
           )}
 
@@ -1505,6 +1555,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           onClose={() => setShowChecklistForm(false)}
           checklistConfig={a2Config}
           promotionReviewId={savedReviewId ?? existingReviewData?.id ?? null}
+          promotionReviewUuid={effectiveReviewUuid}
           existingChecklistData={existingReviewData?.checklistProgressData}
         />
       )}

@@ -14,9 +14,9 @@ const CrewPoolModuleRouter = lazy(() => import("./modules/crew-pool").then(m => 
 const VesselRouter = lazy(() => import("./modules/vessel/index"));
 const RotationRouter = lazy(() => import("./modules/rotation/index"));
 const PromotionsRouter = lazy(() => import("./modules/promotions/index"));
-const DrugsAlcoholModule = lazy(() => import("./modules/drugs-alcohol/index").then(m => ({ default: m.DrugsAlcoholModuleRouter })));
-const RestHoursModuleRouter = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursModuleRouter })));
-const RestHoursVesselOverviewRouter = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursVesselOverviewRouter })));
+const DrugsAlcoholModule = lazy(() => import("./modules/drugs-alcohol/index").then(m => ({ default: m.DrugsAlcoholModule })));
+const RestHoursModuleComponent = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursModule })));
+const RestHoursVesselOverviewComponent = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursVesselOverview })));
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const ReportsComingSoon = lazy(() => import("./pages/ReportsComingSoon").then(m => ({ default: m.ReportsComingSoon })));
 const AccountsModule = lazy(() => import("./modules/accounts/AccountsModule").then(m => ({ default: m.AccountsModule })));
@@ -47,9 +47,9 @@ function App() {
                 <Route path="/rotation" component={RotationRouter} />
                 <Route path="/promotions" component={PromotionsRouter} />
                 <Route path="/drugs-alcohol" component={DrugsAlcoholModule} />
-                <Route path="/rest-hours/vessel/:vesselId/:month" component={RestHoursVesselOverviewRouter} />
-                <Route path="/rest-hours/:rest*" component={RestHoursModuleRouter} />
-                <Route path="/rest-hours" component={RestHoursModuleRouter} />
+                <Route path="/rest-hours/vessel/:vesselId/:month" component={RestHoursVesselOverviewComponent} />
+                <Route path="/rest-hours/:rest*" component={RestHoursModuleComponent} />
+                <Route path="/rest-hours" component={RestHoursModuleComponent} />
                 <Route path="/reports" component={ReportsComingSoon} />
                 <Route path="/admin/*" component={AdminRouter} />
                 <Route path="/admin" component={AdminRouter} />

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import PromotionsSideBar from './PromotionsSideBar';
 import { PromotionsTable } from './PromotionsTable';
 import MainLayout from '@/components/main/MainLayout';
@@ -11,13 +11,11 @@ import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
-import { PromotionsVersionToggle } from './v2/components/PromotionsVersionToggle';
 
 export function PromotionsModule() {
     const [selectedPromotionsPage, setSelectedPromotionsPage] = useState('all');
     const [showFilters, setShowFilters] = useState(true);
     
-    // Filter states
     const [searchName, setSearchName] = useState('');
     const [promotionToRank, setPromotionToRank] = useState('');
     const [vessel, setVessel] = useState('');
@@ -26,24 +24,19 @@ export function PromotionsModule() {
     const [criteria, setCriteria] = useState('');
     const [status, setStatus] = useState('');
     
-    // Fetch vessel options from vessel master
     const { vessels: vesselOptions } = useVesselLookup();
     
-    // Fetch company ranks for dynamic rank dropdown
     const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
     
-    // Fetch vessel types from Master 004 API with fallback to static data
     const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
-        queryKey: ["/api/masters/004/data"],
+        queryKey: ["/api/v2/masters/vessel-types"],
     });
     
-    // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
     const vesselTypeOptions = useMemo(() => {
         if (vesselTypeMasterDataRaw.length > 0) {
             const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
             if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
         }
-        // Fallback to static data
         return DEFAULT_DROPDOWN_VESSEL_TYPES;
     }, [vesselTypeMasterDataRaw]);
 
@@ -68,7 +61,6 @@ export function PromotionsModule() {
             <div className="flex flex-col h-full">
                 <SectionTitleComponents title="Crew Promotion">
                     <div className="flex items-center gap-3">
-                        <PromotionsVersionToggle />
                         <Button
                             variant="outline"
                             size="sm"
@@ -84,7 +76,6 @@ export function PromotionsModule() {
 
                 {showFilters && (
                     <div className="flex flex-wrap gap-2 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-                        {/* Search Name */}
                         <div className="relative w-[180px]">
                             <Input
                                 className="h-8 pl-10 text-[#8798ad] text-xs"
@@ -96,7 +87,6 @@ export function PromotionsModule() {
                             <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
                         </div>
 
-                        {/* Promotion to Rank */}
                         <Select value={promotionToRank} onValueChange={setPromotionToRank}>
                             <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-promotion-rank">
                                 <SelectValue placeholder="Promotion to Rank" />
@@ -112,7 +102,6 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        {/* Vessel */}
                         <Select value={vessel} onValueChange={setVessel}>
                             <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel">
                                 <SelectValue placeholder="Vessel" />
@@ -124,7 +113,6 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        {/* Vessel Type */}
                         <Select value={vesselType} onValueChange={setVesselType}>
                             <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel-type">
                                 <SelectValue placeholder="Vessel Type" />
@@ -136,7 +124,6 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        {/* Nationality */}
                         <Select value={nationality} onValueChange={setNationality}>
                             <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-nationality">
                                 <SelectValue placeholder="Nationality" />
@@ -151,7 +138,6 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        {/* Criteria */}
                         <Select value={criteria} onValueChange={setCriteria}>
                             <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-criteria">
                                 <SelectValue placeholder="Criteria" />
@@ -163,7 +149,6 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        {/* Status */}
                         <Select value={status} onValueChange={setStatus}>
                             <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-status">
                                 <SelectValue placeholder="Status" />
@@ -175,7 +160,6 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        {/* Clear Button */}
                         <Button
                             variant="outline"
                             className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
@@ -187,7 +171,6 @@ export function PromotionsModule() {
                     </div>
                 )}
 
-                {/* Promotions Table */}
                 <div className="flex-1 px-4">
                     <PromotionsTable
                         searchName={searchName}
