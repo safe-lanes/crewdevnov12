@@ -1,10 +1,11 @@
-import { VesselRecordsRepository } from "../repositories";
+import { VesselRecordsRepository, CrewRecordsRepository } from "../repositories";
 import type {
   RhVesselRecordV2,
   InsertRhVesselRecordV2,
 } from "../../../../shared/v2/rest-hours/types";
 
 const vesselRecordsRepository = new VesselRecordsRepository();
+const crewRecordsRepository = new CrewRecordsRepository();
 
 function applyAuditUser<T extends object>(
   data: T,
@@ -55,7 +56,29 @@ export const vesselRecordsService = {
       allRecords.push(...records);
     }
 
-    return allRecords;
+    const enrichedRecords: RhVesselRecordV2[] = [];
+    for (const record of allRecords) {
+      if (
+        (record.predictedViolations || 0) > 0 && (record.crewWithPredictedViolations || 0) === 0 ||
+        (record.predictedNCs || 0) > 0 && (record.crewWithPredictedNCs || 0) === 0
+      ) {
+        const crewRecords = await crewRecordsRepository.findAll({
+          vesselId: record.vesselId,
+          monthValue: record.monthValue,
+        });
+        const crewWithPredictedViolations = crewRecords.filter(r => (r.predictedViolations || 0) > 0).length;
+        const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
+        enrichedRecords.push({
+          ...record,
+          crewWithPredictedViolations,
+          crewWithPredictedNCs,
+        });
+      } else {
+        enrichedRecords.push(record);
+      }
+    }
+
+    return enrichedRecords;
   },
 
   async create(

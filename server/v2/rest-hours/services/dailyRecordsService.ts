@@ -108,7 +108,9 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
     const totalNCs = crewRecords.reduce((sum, r) => sum + (r.totalNCs || 0), 0);
     const crewWithNCs = crewRecords.filter(r => (r.totalNCs || 0) > 0).length;
     const predictedViolations = crewRecords.reduce((sum, r) => sum + (r.predictedViolations || 0), 0);
+    const crewWithPredictedViolations = crewRecords.filter(r => (r.predictedViolations || 0) > 0).length;
     const predictedNCs = crewRecords.reduce((sum, r) => sum + (r.predictedNCs || 0), 0);
+    const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
 
     const existingVesselRecords = await vesselRecordsRepository.findAll({
       vesselId,
@@ -125,7 +127,9 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         totalNCs,
         crewWithNCs,
         predictedViolations,
+        crewWithPredictedViolations,
         predictedNCs,
+        crewWithPredictedNCs,
       });
     } else {
       await vesselRecordsRepository.create({
@@ -140,7 +144,9 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         totalNCs,
         crewWithNCs,
         predictedViolations,
+        crewWithPredictedViolations,
         predictedNCs,
+        crewWithPredictedNCs,
         officeReviewStatus: '',
       });
     }
