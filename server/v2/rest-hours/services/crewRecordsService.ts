@@ -111,8 +111,11 @@ async function enrichRecordsWithComputedFields(
       predictedViolationDatesJson = pDates.length > 0 ? JSON.stringify(pDates) : null;
     }
 
+    const cappedPredictedNCs = (record.totalNCs && record.totalNCs >= 1) ? 0 : (record.predictedNCs || 0);
+
     return {
       ...record,
+      predictedNCs: cappedPredictedNCs,
       vesselName,
       violationDates: violationDatesJson,
       predictedViolationDates: predictedViolationDatesJson,
