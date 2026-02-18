@@ -129,7 +129,7 @@ export const RestHoursPlan = (): JSX.Element => {
     const prevMonthYear = `${prevYear}-${prevMonth}`;
 
     try {
-      const prevTasks = await restHoursApiV2.fixedTasks.getAll({ vesselId: selectedVessel });
+      const prevTasks = await restHoursApiV2.fixedTasks.getAll({ vesselId: selectedVessel, monthYear: prevMonthYear });
       const filteredTasks = (prevTasks as FixedTask[]).filter((t: any) => t.monthYear === prevMonthYear);
       if (filteredTasks.length > 0) {
         setNewMonthTrigger({ tasks: filteredTasks, timestamp: Date.now() });

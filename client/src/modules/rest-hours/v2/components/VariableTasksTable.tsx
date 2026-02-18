@@ -78,10 +78,10 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
   const itemsPerPage = 10;
 
   const { data: allTasks = [], isLoading } = useQuery<VariableTask[]>({
-    queryKey: ['v2', 'rest-hours', 'variable-tasks', vesselId],
+    queryKey: ['v2', 'rest-hours', 'variable-tasks', vesselId, periodValue],
     queryFn: async () => {
       if (!vesselId) return [];
-      return restHoursApiV2.variableTasks.getAll({ vesselUuid: vesselId });
+      return restHoursApiV2.variableTasks.getAll({ vesselUuid: vesselId, periodValue });
     },
     enabled: !!vesselId,
   });

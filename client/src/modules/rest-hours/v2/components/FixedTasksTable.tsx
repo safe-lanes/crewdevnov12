@@ -310,7 +310,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     queryKey: ['v2', 'rest-hours', 'fixed-tasks', vesselId, monthYear],
     queryFn: async () => {
       if (!vesselId || !monthYear) return [];
-      return restHoursApiV2.fixedTasks.getAll({ vesselId });
+      return restHoursApiV2.fixedTasks.getAll({ vesselId, monthYear });
     },
     enabled: !!vesselId && !!monthYear,
   });
@@ -355,14 +355,14 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       
       // Check if we need to update taskIds (after initial save creates new tasks)
       const needsTaskIdUpdate = crewTasks.some(task => {
-        const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId);
+        const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId && t.monthYear === monthYear);
         return serverTask && !task.taskId && serverTask.id;
       });
       
       // Check if server data arrived after we initialized with empty arrays
       // This happens when crew members load before fixed tasks query completes
       const needsServerDataMerge = crewTasks.some(task => {
-        const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId);
+        const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId && t.monthYear === monthYear);
         if (!serverTask) return false;
         
         // Check if local task has empty data but server has real data
@@ -379,7 +379,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
           
           return vesselCrewMembers.map((crew: any) => {
             const existingLocal = existingByCrewId.get(crew.empNo);
-            const existingServer = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.empNo);
+            const existingServer = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.empNo && t.monthYear === monthYear);
             
             if (existingLocal) {
               // Check if local data is empty but server has data
@@ -417,7 +417,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         });
       } else if (needsTaskIdUpdate) {
         setCrewTasks(prev => prev.map(task => {
-          const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId);
+          const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId && t.monthYear === monthYear);
           return {
             ...task,
             taskId: serverTask?.id || task.taskId,
@@ -431,7 +431,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     // Initial load - build from server data (parse JSON strings if needed)
     // Use empNo (A000001 format) for crewMemberId consistency with V1 and crew_assignments
     const tasks: CrewTaskData[] = vesselCrewMembers.map((crew: any) => {
-      const existingTask = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.empNo);
+      const existingTask = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.empNo && t.monthYear === monthYear);
       
       return {
         crewMemberId: crew.empNo,

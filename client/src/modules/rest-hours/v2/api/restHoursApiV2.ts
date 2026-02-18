@@ -379,9 +379,10 @@ export const restHoursApiV2 = {
   },
 
   fixedTasks: {
-    async getAll(params?: { vesselId?: string }) {
+    async getAll(params?: { vesselId?: string; monthYear?: string }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.monthYear) searchParams.set('monthYear', params.monthYear);
       const url = `${V2_BASE}/fixed-tasks${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch fixed tasks');
@@ -430,10 +431,11 @@ export const restHoursApiV2 = {
   },
 
   variableTasks: {
-    async getAll(params?: { vesselUuid?: string; date?: string }) {
+    async getAll(params?: { vesselUuid?: string; date?: string; periodValue?: string }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselUuid) searchParams.set('vesselUuid', params.vesselUuid);
-      if (params?.date) searchParams.set('date', params.date);
+      if (params?.periodValue) searchParams.set('periodValue', params.periodValue);
+      else if (params?.date) searchParams.set('date', params.date);
       const url = `${V2_BASE}/variable-tasks${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch variable tasks');
