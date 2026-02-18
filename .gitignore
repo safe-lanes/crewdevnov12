@@ -8,6 +8,9 @@ vite.config.ts.*
 # Prompt reference images
 prompt/
 
+# Database backups
+backups/
+
 # Test output directories
 test-results/
 test-logs/

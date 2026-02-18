@@ -20,82 +20,6 @@ export const forms = pgTable("forms", {
   sharedConfig: text("shared_config"), // JSON string for shared field configs (applies to all rank groups, e.g., appraisalTypeOptions)
 });
 
-// Form Versions - tracks draft and released versions for forms (per rank group)
-export const formVersions = pgTable("form_versions", {
-  id: serial("id").primaryKey(),
-  formId: integer("form_id").notNull().references(() => forms.id, { onDelete: 'cascade' }),
-  rankGroupId: integer("rank_group_id").references(() => rankGroups.id, { onDelete: 'cascade' }), // Links version to specific rank group (nullable for legacy data)
-  versionNo: text("version_no").notNull(), // "00", "01", "02", etc.
-  versionDate: text("version_date").notNull(), // Date string in DD-MMM-YYYY format
-  status: text("status").notNull().default("draft"), // "draft" or "released"
-  configuration: text("configuration"), // JSON string for form configuration specific to this version
-  sharedConfig: text("shared_config"), // JSON string for shared field configs
-  createdAt: timestamp("created_at").defaultNow(),
-  releasedAt: timestamp("released_at"), // Timestamp when version was released
-});
-
-export const rankGroups = pgTable("rank_groups", {
-  id: serial("id").primaryKey(),
-  formId: integer("form_id").notNull().references(() => forms.id),
-  name: text("name").notNull(),
-  ranks: text("ranks").notNull(), // JSON string array of rank names
-  archivedAt: timestamp("archived_at"), // Timestamp when archived, null if active
-  configuration: text("configuration"), // JSON string for rank-group-specific configuration (criteria, recommendations, visibility)
-});
-
-export const availableRanks = pgTable("available_ranks", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  category: text("category").notNull(), // Senior Officers, Junior Officers, Ratings, etc.
-  rankId: text("rank_id"), // User-editable rank ID (e.g., "S1", "S2")
-  label: text("label"), // User-editable label (e.g., "Master", "2nd Off")
-  applicableToCompany: boolean("applicable_to_company"), // User-editable company applicability
-  sortOrder: integer("sort_order").default(0), // For drag-and-drop reordering
-  isSystemRank: boolean("is_system_rank").default(false), // Protected starter pack ranks - cannot edit name or delete
-});
-
-export const trainingMaster = pgTable("training_master", {
-  id: serial("id").primaryKey(),
-  trainingId: text("training_id").notNull().unique(), // e.g., SA001, SB002 - Category+Group+Number
-  trainingName: text("training_name").notNull(),
-  category: text("category").notNull(), // Statutory (S), Industry (N), Others (M)
-  trainingGroup: text("training_group").notNull(), // Safety (A), Security (B), Cargo (C), Navigation (D), Engine (E), Environment (F), General (G)
-  requirementReference: text("requirement_reference"), // Free text - STCW reference, IMO Model Course, etc.
-  applicableToCompany: boolean("applicable_to_company").default(false),
-  trainingLabel: text("training_label"), // Company-specific custom name, defaults to trainingName
-  sortOrder: integer("sort_order").default(0), // For manual reordering within Category+Group
-  isDefault: boolean("is_default").default(false), // True for CSV-loaded trainings (cannot delete/edit name)
-});
-
-// Company Training Groups - stores customizable labels for groups A-J
-export const companyTrainingGroups = pgTable("company_training_groups", {
-  code: text("code").primaryKey(), // A, B, C, D, E, F, G, H, I, J
-  label: text("label"), // Custom label (e.g., "Flag", "Value Add", "Class") - null means just show the letter
-  displayOrder: integer("display_order").notNull(), // 1, 2, 3... for ordering
-});
-
-// Company Training - stores company-specific overrides for trainings
-// Created automatically when "Applicable to Company" is checked in Training Master
-export const companyTrainings = pgTable("company_trainings", {
-  id: serial("id").primaryKey(),
-  trainingMasterId: integer("training_master_id").notNull().references(() => trainingMaster.id).unique(), // Link to source training - unique to prevent duplicates
-  companyId: text("company_id").notNull(), // Initially copied from trainingId, but editable
-  trainingLabel: text("training_label").notNull(), // Synced from Training Master, displayed but not editable
-  abr: text("abr"), // Abbreviation - blank by default, company adds their own
-  requirement: text("requirement"), // Initially copied from requirementReference, editable
-  groupCode: text("group_code"), // A-J, null means unassigned (appears at bottom)
-  sortOrder: integer("sort_order").default(0), // For ordering within group
-});
-
-// Company Training Requirements - stores M/R status per training-rank combination
-// M = Mandatory, R = Recommended, null = not set (checkbox unchecked)
-export const companyTrainingRequirements = pgTable("company_training_requirements", {
-  id: serial("id").primaryKey(),
-  companyTrainingId: integer("company_training_id").notNull().references(() => companyTrainings.id, { onDelete: 'cascade' }),
-  rankId: integer("rank_id").notNull().references(() => availableRanks.id, { onDelete: 'cascade' }),
-  status: text("status"), // 'M' for Mandatory, 'R' for Recommended, null for neither
-});
-
 export const crewMembers = pgTable("crew_members", {
   id: text("id").primaryKey(),
   
@@ -196,106 +120,11 @@ export const crewMembers = pgTable("crew_members", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const appraisalResults = pgTable("appraisal_results", {
-  id: serial("id").primaryKey(),
-  crewMemberId: text("crew_member_id").notNull().references(() => crewMembers.id),
-  formId: integer("form_id").notNull().references(() => forms.id),
-  appraisalType: text("appraisal_type").notNull(),
-  appraisalDate: text("appraisal_date").notNull(),
-  appraisalData: text("appraisal_data").notNull(), // JSON string
-  competenceRating: text("competence_rating"),
-  behavioralRating: text("behavioral_rating"),
-  overallRating: text("overall_rating"),
-  submittedAt: timestamp("submitted_at").defaultNow(),
-  submittedBy: text("submitted_by").notNull(),
-  status: text("status").notNull().default("draft"), // draft, preliminary, submitted, reviewed
-  stageStatuses: text("stage_statuses"), // JSON: {stage1: {status, submittedAt, submittedBy}, stage2: {...}, stage3: {...}}
-  stagePayloads: text("stage_payloads"), // JSON: {stage1: {...}, stage2: {...}, stage3: {...}}
-});
-
-export const recruitmentCandidates = pgTable("recruitment_candidates", {
-  id: text("id").primaryKey(),
-  fileNo: text("file_no").unique(),
-  firstName: text("first_name").notNull(),
-  middleName: text("middle_name"),
-  familyName: text("family_name").notNull(),
-  gender: text("gender"), // Male or Female
-  dob: text("dob").notNull(),
-  nationality: text("nationality").notNull(),
-  rankAppliedFor: text("rank_applied_for").notNull(),
-  presentRank: text("present_rank").notNull(),
-  vesselType: text("vessel_type").notNull(),
-  status: text("status").notNull().default("Draft"), // Draft, Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
-  applicationData: text("application_data"), // JSON string for comprehensive form data
-  isDelete: boolean("is_delete").default(false), // Soft delete flag
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 export const vessels = pgTable("vessels", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   vesselGroup: text("vessel_group"),
   vesselType: text("vessel_type").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const vesselGroups = pgTable("vessel_groups", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  vesselIds: text("vessel_ids").notNull(), // JSON array of vessel IDs from master data
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const vesselDrafts = pgTable("vessel_drafts", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(),
-  revision: text("revision").notNull().default("R1"),
-  draftData: text("draft_data").notNull(), // JSON string of vessel rank data
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const vesselRevisions = pgTable("vessel_revisions", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(),
-  revision: text("revision").notNull(), // R0, R1, R2, etc.
-  revisionDate: text("revision_date").notNull(), // Mandatory field in dd/mm/yyyy format
-  revisionData: text("revision_data").notNull(), // JSON string of finalized vessel rank data
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Training Matrix Vessel Drafts - stores draft training matrix data for vessels
-export const trainingMatrixVesselDrafts = pgTable("training_matrix_vessel_drafts", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(),
-  revision: text("revision").notNull().default("R1"),
-  draftData: text("draft_data").notNull(), // JSON string of vessel training matrix data
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Training Matrix Vessel Revisions - stores finalized training matrix revisions for vessels
-export const trainingMatrixVesselRevisions = pgTable("training_matrix_vessel_revisions", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(),
-  revision: text("revision").notNull(), // R0, R1, R2, etc.
-  revisionDate: text("revision_date").notNull(), // Mandatory field in dd/mm/yyyy format
-  revisionData: text("revision_data").notNull(), // JSON string of finalized vessel training matrix data
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const seafarers = pgTable("seafarers", {
-  id: serial("id").primaryKey(),
-  firstName: text("first_name").notNull(),
-  middleName: text("middle_name"),
-  lastName: text("last_name").notNull(),
-  rank: text("rank").notNull(),
-  nationality: text("nationality").notNull(),
-  status: text("status").notNull().default("Available"), // Available, Assigned, On Leave
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -306,35 +135,6 @@ export const revisions = pgTable("revisions", {
   revisionNo: text("revision_no").notNull(),
   flexDate: text("flex_date"),
   status: text("status").notNull().default("draft"), // draft, submitted
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const vesselRanks = pgTable("vessel_ranks", {
-  id: serial("id").primaryKey(),
-  vesselId: integer("vessel_id").notNull().references(() => vessels.id),
-  revisionId: integer("revision_id").notNull().references(() => revisions.id),
-  rank: text("rank").notNull(),
-  rankId: text("rank_id").notNull(),
-  role: text("role"), // Role name like "3rd Off_1", "3rd Off_2"
-  originalRankId: text("original_rank_id"), // ID of original rank for role rows
-  isRoleRow: boolean("is_role_row").default(false),
-  officer: boolean("officer").default(false),
-  rating: boolean("rating").default(false),
-  seniorOfficer: boolean("senior_officer").default(false),
-  deckOfficer: boolean("deck_officer").default(false),
-  engOfficer: boolean("eng_officer").default(false),
-  pettyOfficer: boolean("petty_officer").default(false),
-  deckRating: boolean("deck_rating").default(false),
-  engineRating: boolean("engine_rating").default(false),
-  generalRating: boolean("general_rating").default(false),
-  cateringRating: boolean("catering_rating").default(false),
-  safetyOfficer: boolean("safety_officer").default(false),
-  sso: boolean("sso").default(false),
-  medicalOfficer: boolean("medical_officer").default(false),
-  navigatingOfficer: boolean("navigating_officer").default(false),
-  emtOfficer: boolean("emt_officer").default(false),
-  actualManning: text("actual_manning"), // JSON string for selected seafarers
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -374,19 +174,6 @@ export const promotionHierarchies = pgTable("promotion_hierarchies", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const companyProcessing = pgTable("company_processing", {
-  id: serial("id").primaryKey(),
-  candidateId: text("candidate_id").notNull(), // References recruitment_candidates or crew_members
-  processType: text("process_type").notNull(), // "recruitment", "onboarding", etc.
-  status: text("status").notNull().default("pending"), // pending, in_progress, approved, rejected, completed
-  b7Data: text("b7_data"), // JSON: {medicalClearance, documentVerification, trainingCompletion, flagStateRequirements, ...}
-  comments: text("comments"), // JSON array: [{text, author, timestamp}, ...]
-  approvals: text("approvals"), // JSON: {stage1: {status, approver, date}, stage2: {...}, ...}
-  attachments: text("attachments"), // JSON array: [{filename, fileType, uploadDate, uploadedBy, fileSize, filePath}, ...]
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 export const promotionForms = pgTable("promotion_forms", {
   id: serial("id").primaryKey(),
   crewMemberId: text("crew_member_id").notNull().references(() => crewMembers.id),
@@ -400,7 +187,7 @@ export const promotionForms = pgTable("promotion_forms", {
   reviewedBy: text("reviewed_by"),
   reviewerComments: text("reviewer_comments"),
   effectiveDate: text("effective_date"), // When promotion takes effect
-  appraisalResultId: integer("appraisal_result_id").references(() => appraisalResults.id), // Optional link to appraisal
+  appraisalResultId: integer("appraisal_result_id"), // Optional link to appraisal
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -603,243 +390,6 @@ export const rotationArchive = pgTable("rotation_archive", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const drugAlcoholTestRecords = pgTable("drug_alcohol_test_records", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(), // VSL-XXX format from master data
-  testType: text("test_type").notNull(), // 'annual', 'periodic', 'monthly', 'post-incident', 'others'
-  
-  // Part A - General Information
-  alcoholDrugType: text("alcohol_drug_type"), // JSON array: ["Alcohol"] or ["Drug"] or ["Alcohol", "Drug"]
-  placeLocation: text("place_location"), // Test location/port
-  dateTimeTestCompleted: text("date_time_test_completed"), // Format: "31 May 2023 - 1010 Hours"
-  externalTestResultsDate: text("external_test_results_date"), // Date external lab results received
-  incidentId: text("incident_id"), // For linking to Incident Module
-  
-  // Part B2 - Testing Equipment (stored as JSON for simplicity during development)
-  // Will be normalized to separate table in production
-  testingEquipment: text("testing_equipment"), // JSON array of equipment entries
-  equipmentNotApplicable: boolean("equipment_not_applicable").default(false), // N/A checkbox
-  
-  // Test history as JSON array: [{ date, port, violations }, ...]
-  // Stores up to last 3 test records
-  testHistory: text("test_history"), // JSON: [{date: "31 May 2023", port: "Punta Gorda", violations: 0}, ...]
-  
-  // Frequency (in months) - 12 for annual, 3 for periodic, 1 for monthly
-  frequencyMonths: integer("frequency_months").notNull().default(12),
-  
-  // Planned test information (from Plan popup)
-  plannedPort: text("planned_port"),
-  plannedDate: text("planned_date"),
-  plannedComments: text("planned_comments"),
-  
-  // Post-incident specific fields
-  incidentTitle: text("incident_title"),
-  incidentDateTime: text("incident_date_time"), // Format: "31 May 2023 - 1010 Hours"
-  alcoholTestDateTime: text("alcohol_test_date_time"),
-  drugTestDateTime: text("drug_test_date_time"),
-  violations: integer("violations").default(0), // Number of violations found during test
-  
-  // Other tests specific fields
-  testDateTime: text("test_date_time"), // Format: "31 May 2023 - 1010 Hours"
-  otherTestType: text("other_test_type"), // "Alcohol" or "Drug" for other tests
-  reasonForTesting: text("reason_for_testing"),
-  description: text("description"),
-  initiatedBy: text("initiated_by"), // Free text e.g., "Vessel - Master", "Office - HSQ Dept."
-  
-  // Part B - Personnel Details
-  personnelTested: text("personnel_tested"), // JSON array: [{id, rank, name, alcoholTest: {checked, date, time}, alcoholResults, alcoholViolation, drugTest: {checked, date, time}, drugResults, drugViolation, witness}]
-  comments: text("comments"), // Comments section
-  masterDeputySignature: text("master_deputy_signature"), // JSON: {confirmed: boolean, name: string, date: string}
-  attachmentFile: text("attachment_file"), // Filename for uploaded document
-  
-  // Record status
-  status: text("status").notNull().default("draft"), // 'draft' or 'submitted'
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const restHoursVesselRecords = pgTable("rest_hours_vessel_records", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  month: text("month").notNull(), // Format: "Feb-2025" (MMM-YYYY)
-  monthValue: text("month_value").notNull(), // Format: "2025-02" (YYYY-MM) for filtering/sorting
-  
-  // Aggregated data from crew records
-  totalCrew: integer("total_crew").notNull().default(0),
-  recordingStatusPercent: integer("recording_status_percent").notNull().default(0), // 0-100
-  activityConflicting: boolean("activity_conflicting").notNull().default(false), // Yes/No
-  crewWithActivityConflicts: integer("crew_with_activity_conflicts").notNull().default(0),
-  crewWithActivityConflictsDetails: text("crew_with_activity_conflicts_details"), // JSON array: [{name: string, rank: string}]
-  totalViolations: integer("total_violations").notNull().default(0),
-  crewWithViolations: integer("crew_with_violations").notNull().default(0),
-  crewWithViolationsDetails: text("crew_with_violations_details"), // JSON array: [{name: string, rank: string}]
-  totalNCs: integer("total_ncs").notNull().default(0), // Non-conformities
-  crewWithNCs: integer("crew_with_ncs").notNull().default(0),
-  crewWithNCsDetails: text("crew_with_ncs_details"), // JSON array: [{name: string, rank: string}]
-  predictedViolations: integer("predicted_violations").notNull().default(0),
-  crewWithPredictedViolations: integer("crew_with_predicted_violations").notNull().default(0),
-  crewWithPredictedViolationsDetails: text("crew_with_predicted_violations_details"), // JSON array: [{name: string, rank: string}]
-  predictedNCs: integer("predicted_ncs").notNull().default(0),
-  crewWithPredictedNCs: integer("crew_with_predicted_ncs").notNull().default(0),
-  crewWithPredictedNCsDetails: text("crew_with_predicted_ncs_details"), // JSON array: [{name: string, rank: string}]
-  vesselReviewStatus: text("vessel_review_status").notNull().default("Due"), // "Completed", "Due", "Overdue"
-  vesselReviewSubmittedDate: timestamp("vessel_review_submitted_date"), // When vessel submitted their review
-  officeReviewStatus: text("office_review_status").notNull().default("Due"), // "Completed", "Due", "Overdue"
-  officeReviewSubmittedDate: timestamp("office_review_submitted_date"), // When office submitted their review
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const restHoursCrewRecords = pgTable("rest_hours_crew_records", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  crewMemberId: text("crew_member_id").notNull(), // Crew member ID
-  rank: text("rank").notNull(), // Crew member rank
-  name: text("name").notNull(), // Full name (First Middle Last)
-  month: text("month").notNull(), // Format: "Feb-2025" (MMM-YYYY)
-  monthValue: text("month_value").notNull(), // Format: "2025-02" (YYYY-MM) for filtering/sorting
-  
-  // Partial month info for sign on/off
-  signOnOffInfo: text("sign_on_off_info"), // e.g., "S.Off / 14th" or "S.On / 12th"
-  
-  // Individual crew member data
-  recordingStatusPercent: integer("recording_status_percent").notNull().default(0), // 0-100
-  activityConflicting: boolean("activity_conflicting").notNull().default(false), // Yes/No
-  totalViolations: integer("total_violations").notNull().default(0),
-  totalNCs: integer("total_ncs").notNull().default(0), // Non-conformities
-  predictedViolations: integer("predicted_violations").notNull().default(0),
-  predictedNCs: integer("predicted_ncs").notNull().default(0),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const restHoursDailyRecords = pgTable("rest_hours_daily_records", {
-  id: serial("id").primaryKey(),
-  crewMemberId: text("crew_member_id").notNull(), // Reference to crew member
-  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  rank: text("rank").notNull(), // Rank at time of recording
-  name: text("name").notNull(), // Full name for display
-  monthYear: text("month_year").notNull(), // Format: "2024-03" (YYYY-MM)
-  
-  // Daily records stored as JSON
-  // Structure: [{
-  //   day: 1-31, 
-  //   dayOfWeek: "Mon"|"Tue"|"Wed"|"Thu"|"Fri"|"Sat"|"Sun",
-  //   hours: ["w"|"d"|"a"|"", ...], // 48 entries (2 per hour for 00:00-23:30), blank string = rest
-  //   isPlan: boolean, // True if this is planned hours (grey), false if recorded
-  //   comments: string,
-  //   violations: [1,2,3,...], // array of violation code numbers
-  //   hoursOfRest24hr: number, // Auto-calculated hours of rest in 24hr period
-  //   hoursOfWork24hr: number, // Auto-calculated hours of work in 24hr period  
-  //   hoursOfRest48hr: number, // Rolling 48hr window
-  //   hoursOfWork48hr: number,
-  //   hoursOfRest7day: number, // Rolling 7-day window
-  //   hoursOfWork7day: number,
-  //   hoursOfRest96hr: number, // Rolling 96hr window (4 days)
-  //   hoursOfWork96hr: number
-  // }]
-  dailyRecords: text("daily_records").notNull(), // JSON array of daily records
-  
-  // Form settings
-  showPlanning: boolean("show_planning").default(false),
-  opaMode: boolean("opa_mode").default(false),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  // Unique constraint: One record per crew member per vessel per month
-  // This prevents duplicate records and works with the application-level upsert logic
-  uniqueCrewVesselMonth: uniqueIndex("rest_hours_daily_records_unique_idx").on(
-    table.crewMemberId, 
-    table.vesselId, 
-    table.monthYear
-  ),
-}));
-
-export const vesselViolationComments = pgTable("vessel_violation_comments", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  monthValue: text("month_value").notNull(), // Format: "2025-11" (YYYY-MM)
-  comment: text("comment"), // Vessel comments, explanations, corrective actions
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const officeViolationComments = pgTable("office_violation_comments", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  monthValue: text("month_value").notNull(), // Format: "2025-11" (YYYY-MM)
-  comment: text("comment"), // Office comments, explanations, corrective actions
-  
-  reviewerName: text("reviewer_name"), // Office reviewer name
-  reviewerPosition: text("reviewer_position"), // Office reviewer position
-  reviewDate: timestamp("review_date"), // Date of office review
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const ncReports = pgTable("nc_reports", {
-  id: serial("id").primaryKey(),
-  crewMemberId: text("crew_member_id").notNull(), // Crew member ID
-  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  rank: text("rank").notNull(), // Crew member's rank
-  monthValue: text("month_value").notNull(), // Format: "2025-11" (YYYY-MM)
-  
-  ncReference: text("nc_reference").notNull().default("STCW/MLC/ILO"), // Always STCW/MLC/ILO
-  
-  identifiedRootCause: text("identified_root_cause"), // User input
-  immediateCorrectiveAction: text("immediate_corrective_action"), // User input
-  preventiveAction: text("preventive_action"), // User input
-  
-  preventiveActionStatus: text("preventive_action_status").notNull().default("Pending"), // "Pending" | "Completed"
-  preventiveActionDueDate: timestamp("preventive_action_due_date"), // Due date for preventive action
-  preventiveActionDateCompleted: timestamp("preventive_action_date_completed"), // Date when preventive action was completed
-  
-  officeClosureVerifiedByName: text("office_closure_verified_by_name"), // Office user name
-  officeClosureVerifiedByPosition: text("office_closure_verified_by_position"), // Auto-filled position
-  officeClosureDate: timestamp("office_closure_date"), // Date of office closure
-  
-  status: text("status").notNull().default("Open"), // "Open" | "Closed"
-  submissionStatus: text("submission_status").notNull().default("draft"), // "draft" | "vessel-submitted" | "office-submitted"
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const fixedTasks = pgTable("fixed_tasks", {
-  id: serial("id").primaryKey(),
-  crewMemberId: text("crew_member_id").notNull(), // Reference to crew member
-  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  rank: text("rank").notNull(), // Rank at time of recording
-  name: text("name").notNull(), // Full name for display
-  monthYear: text("month_year").notNull(), // Format: "2025-10" (YYYY-MM)
-  
-  // Fixed task hours for Sea and Port (48 entries each)
-  // Each entry is a 30-minute slot: ["w"|"d"|"", ...]
-  // "w" = watch duty, "d" = day work, "" = rest
-  seaHours: text("sea_hours").notNull(), // JSON array of 48 entries
-  portHours: text("port_hours").notNull(), // JSON array of 48 entries
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const vesselDateLineAdjustments = pgTable("vessel_dateline_adjustments", {
-  id: serial("id").primaryKey(),
-  vesselId: text("vessel_id").notNull(), // Vessel ID from master data
-  monthValue: text("month_value").notNull(), // Format: "2025-11" (YYYY-MM)
-  
-  // JSON array of date line adjustments: [{ day: 15, type: "advanced" | "retarded" }, ...]
-  adjustments: text("adjustments").notNull(), // JSON: [{day: number, type: string}]
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -854,124 +404,6 @@ export const insertFormSchema = createInsertSchema(forms).pick({
   versionDate: true,
   configuration: true,
   sharedConfig: true,
-});
-
-export const insertFormVersionSchema = createInsertSchema(formVersions).pick({
-  formId: true,
-  rankGroupId: true,
-  versionNo: true,
-  versionDate: true,
-  status: true,
-  configuration: true,
-  sharedConfig: true,
-});
-
-export const updateFormVersionSchema = createInsertSchema(formVersions).pick({
-  versionNo: true,
-  versionDate: true,
-  status: true,
-  configuration: true,
-  sharedConfig: true,
-}).partial();
-
-export const insertRankGroupSchema = createInsertSchema(rankGroups).pick({
-  formId: true,
-  name: true,
-  ranks: true,
-  archivedAt: true,
-  configuration: true,
-});
-
-export const updateRankGroupSchema = createInsertSchema(rankGroups).pick({
-  name: true,
-  ranks: true,
-  archivedAt: true,
-  configuration: true,
-}).partial();
-
-export const insertAvailableRankSchema = createInsertSchema(availableRanks).pick({
-  name: true,
-  category: true,
-  rankId: true,
-  label: true,
-  applicableToCompany: true,
-  sortOrder: true,
-  isSystemRank: true,
-});
-
-export const updateAvailableRankSchema = createInsertSchema(availableRanks).pick({
-  name: true,
-  category: true,
-  rankId: true,
-  label: true,
-  applicableToCompany: true,
-  sortOrder: true,
-  isSystemRank: true,
-}).partial();
-
-export const insertTrainingMasterSchema = createInsertSchema(trainingMaster).pick({
-  trainingId: true,
-  trainingName: true,
-  category: true,
-  trainingGroup: true,
-  requirementReference: true,
-  applicableToCompany: true,
-  trainingLabel: true,
-  sortOrder: true,
-  isDefault: true,
-});
-
-export const updateTrainingMasterSchema = createInsertSchema(trainingMaster).pick({
-  trainingId: true,
-  trainingName: true,
-  category: true,
-  trainingGroup: true,
-  requirementReference: true,
-  applicableToCompany: true,
-  trainingLabel: true,
-  sortOrder: true,
-  isDefault: true,
-}).partial();
-
-export const insertCompanyTrainingGroupSchema = createInsertSchema(companyTrainingGroups).pick({
-  code: true,
-  label: true,
-  displayOrder: true,
-});
-
-export const updateCompanyTrainingGroupSchema = createInsertSchema(companyTrainingGroups).pick({
-  label: true,
-}).partial();
-
-export const insertCompanyTrainingSchema = createInsertSchema(companyTrainings).pick({
-  trainingMasterId: true,
-  companyId: true,
-  trainingLabel: true,
-  abr: true,
-  requirement: true,
-  groupCode: true,
-  sortOrder: true,
-});
-
-export const updateCompanyTrainingSchema = createInsertSchema(companyTrainings).pick({
-  companyId: true,
-  trainingLabel: true,
-  abr: true,
-  requirement: true,
-  groupCode: true,
-  sortOrder: true,
-}).partial();
-
-export const insertCompanyTrainingRequirementSchema = createInsertSchema(companyTrainingRequirements).pick({
-  companyTrainingId: true,
-  rankId: true,
-  status: true,
-});
-
-export const upsertCompanyTrainingRequirementSchema = z.object({
-  companyTrainingId: z.number(),
-  rankId: z.number(),
-  status: z.enum(['M', 'R']).nullable(),
 });
 
 export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
@@ -1070,112 +502,10 @@ export const insertCrewMemberSchema = createInsertSchema(crewMembers).pick({
   id: z.string().optional(), // Make id optional, will be auto-generated if not provided
 });
 
-export const insertAppraisalResultSchema = createInsertSchema(appraisalResults).pick({
-  crewMemberId: true,
-  formId: true,
-  appraisalType: true,
-  appraisalDate: true,
-  appraisalData: true,
-  competenceRating: true,
-  behavioralRating: true,
-  overallRating: true,
-  submittedBy: true,
-  status: true,
-  stageStatuses: true,
-  stagePayloads: true,
-});
-
-export const insertRecruitmentCandidateSchema = createInsertSchema(recruitmentCandidates).pick({
-  id: true,
-  fileNo: true,
-  firstName: true,
-  middleName: true,
-  familyName: true,
-  dob: true,
-  nationality: true,
-  rankAppliedFor: true,
-  presentRank: true,
-  vesselType: true,
-  status: true,
-  applicationData: true,
-});
-
 export const insertVesselSchema = createInsertSchema(vessels).pick({
   name: true,
   vesselGroup: true,
   vesselType: true,
-});
-
-export const insertVesselGroupSchema = createInsertSchema(vesselGroups).pick({
-  name: true,
-  description: true,
-  vesselIds: true,
-});
-
-export const insertVesselDraftSchema = createInsertSchema(vesselDrafts).pick({
-  vesselId: true,
-  revision: true,
-  draftData: true,
-});
-
-export const insertVesselRevisionSchema = createInsertSchema(vesselRevisions).pick({
-  vesselId: true,
-  revision: true,
-  revisionDate: true,
-  revisionData: true,
-}).extend({
-  revisionDate: z.string()
-    .min(1, "Revision date is required")
-    .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Date must be in dd/mm/yyyy format")
-    .refine((dateStr) => {
-      // Validate that it's an actual valid date
-      const [day, month, year] = dateStr.split('/').map(Number);
-      const date = new Date(year, month - 1, day);
-      return (
-        date.getFullYear() === year &&
-        date.getMonth() === month - 1 &&
-        date.getDate() === day
-      );
-    }, {
-      message: "Invalid date - please provide a valid date in dd/mm/yyyy format"
-    })
-});
-
-export const insertTrainingMatrixVesselDraftSchema = createInsertSchema(trainingMatrixVesselDrafts).pick({
-  vesselId: true,
-  revision: true,
-  draftData: true,
-});
-
-export const insertTrainingMatrixVesselRevisionSchema = createInsertSchema(trainingMatrixVesselRevisions).pick({
-  vesselId: true,
-  revision: true,
-  revisionDate: true,
-  revisionData: true,
-}).extend({
-  revisionDate: z.string()
-    .min(1, "Revision date is required")
-    .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Date must be in dd/mm/yyyy format")
-    .refine((dateStr) => {
-      const [day, month, year] = dateStr.split('/').map(Number);
-      const date = new Date(year, month - 1, day);
-      return (
-        date.getFullYear() === year &&
-        date.getMonth() === month - 1 &&
-        date.getDate() === day
-      );
-    }, {
-      message: "Invalid date - please provide a valid date in dd/mm/yyyy format"
-    })
-});
-
-export const insertSeafarerSchema = createInsertSchema(seafarers).pick({
-  firstName: true,
-  middleName: true,
-  lastName: true,
-  rank: true,
-  nationality: true,
-  status: true,
 });
 
 export const insertRevisionSchema = createInsertSchema(revisions).pick({
@@ -1183,32 +513,6 @@ export const insertRevisionSchema = createInsertSchema(revisions).pick({
   revisionNo: true,
   flexDate: true,
   status: true,
-});
-
-export const insertVesselRankSchema = createInsertSchema(vesselRanks).pick({
-  vesselId: true,
-  revisionId: true,
-  rank: true,
-  rankId: true,
-  role: true,
-  originalRankId: true,
-  isRoleRow: true,
-  officer: true,
-  rating: true,
-  seniorOfficer: true,
-  deckOfficer: true,
-  engOfficer: true,
-  pettyOfficer: true,
-  deckRating: true,
-  engineRating: true,
-  generalRating: true,
-  cateringRating: true,
-  safetyOfficer: true,
-  sso: true,
-  medicalOfficer: true,
-  navigatingOfficer: true,
-  emtOfficer: true,
-  actualManning: true,
 });
 
 export const insertCompanyRankSchema = createInsertSchema(companyRanks).pick({
@@ -1254,19 +558,6 @@ export const insertPromotionHierarchySchema = createInsertSchema(promotionHierar
 
 export type InsertPromotionHierarchy = z.infer<typeof insertPromotionHierarchySchema>;
 export type PromotionHierarchy = typeof promotionHierarchies.$inferSelect;
-
-export const insertCompanyProcessingSchema = createInsertSchema(companyProcessing).pick({
-  candidateId: true,
-  processType: true,
-  status: true,
-  b7Data: true,
-  comments: true,
-  approvals: true,
-  attachments: true,
-});
-
-export type InsertCompanyProcessing = z.infer<typeof insertCompanyProcessingSchema>;
-export type CompanyProcessing = typeof companyProcessing.$inferSelect;
 
 export const insertPromotionFormSchema = createInsertSchema(promotionForms).pick({
   crewMemberId: true,
@@ -1408,125 +699,16 @@ export const insertRotationArchiveSchema = createInsertSchema(rotationArchive).o
   createdAt: true,
 });
 
-export const insertDrugAlcoholTestRecordSchema = createInsertSchema(drugAlcoholTestRecords).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertRestHoursVesselRecordSchema = createInsertSchema(restHoursVesselRecords).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertRestHoursCrewRecordSchema = createInsertSchema(restHoursCrewRecords).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertRestHoursDailyRecordSchema = createInsertSchema(restHoursDailyRecords).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertFixedTaskSchema = createInsertSchema(fixedTasks).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertVesselViolationCommentSchema = createInsertSchema(vesselViolationComments).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertOfficeViolationCommentSchema = createInsertSchema(officeViolationComments).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  reviewDate: z.union([z.string(), z.date()]).optional().transform((val) => {
-    if (!val) return undefined;
-    if (val instanceof Date) return val;
-    return new Date(val);
-  }),
-});
-
-export const insertNCReportSchema = createInsertSchema(ncReports).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  preventiveActionDueDate: z.union([z.string(), z.date()]).optional().transform((val) => {
-    if (!val) return undefined;
-    if (val instanceof Date) return val;
-    return new Date(val);
-  }),
-  preventiveActionDateCompleted: z.union([z.string(), z.date()]).optional().transform((val) => {
-    if (!val) return undefined;
-    if (val instanceof Date) return val;
-    return new Date(val);
-  }),
-  officeClosureDate: z.union([z.string(), z.date()]).optional().transform((val) => {
-    if (!val) return undefined;
-    if (val instanceof Date) return val;
-    return new Date(val);
-  }),
-});
-
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
 export type Form = typeof forms.$inferSelect;
-export type InsertFormVersion = z.infer<typeof insertFormVersionSchema>;
-export type UpdateFormVersion = z.infer<typeof updateFormVersionSchema>;
-export type FormVersion = typeof formVersions.$inferSelect;
-export type InsertRankGroup = z.infer<typeof insertRankGroupSchema>;
-export type UpdateRankGroup = z.infer<typeof updateRankGroupSchema>;
-export type RankGroup = typeof rankGroups.$inferSelect;
-export type InsertAvailableRank = z.infer<typeof insertAvailableRankSchema>;
-export type UpdateAvailableRank = z.infer<typeof updateAvailableRankSchema>;
-export type AvailableRank = typeof availableRanks.$inferSelect;
-export type TrainingMaster = typeof trainingMaster.$inferSelect;
-export type InsertTrainingMaster = z.infer<typeof insertTrainingMasterSchema>;
-export type UpdateTrainingMaster = z.infer<typeof updateTrainingMasterSchema>;
-export type CompanyTrainingGroup = typeof companyTrainingGroups.$inferSelect;
-export type InsertCompanyTrainingGroup = z.infer<typeof insertCompanyTrainingGroupSchema>;
-export type UpdateCompanyTrainingGroup = z.infer<typeof updateCompanyTrainingGroupSchema>;
-export type CompanyTraining = typeof companyTrainings.$inferSelect;
-export type InsertCompanyTraining = z.infer<typeof insertCompanyTrainingSchema>;
-export type UpdateCompanyTraining = z.infer<typeof updateCompanyTrainingSchema>;
-export type CompanyTrainingRequirement = typeof companyTrainingRequirements.$inferSelect;
-export type InsertCompanyTrainingRequirement = z.infer<typeof insertCompanyTrainingRequirementSchema>;
-export type UpsertCompanyTrainingRequirement = z.infer<typeof upsertCompanyTrainingRequirementSchema>;
 export type InsertCrewMember = z.infer<typeof insertCrewMemberSchema>;
 export type CrewMember = typeof crewMembers.$inferSelect;
-export type InsertAppraisalResult = z.infer<typeof insertAppraisalResultSchema>;
-export type AppraisalResult = typeof appraisalResults.$inferSelect;
-export type InsertRecruitmentCandidate = z.infer<typeof insertRecruitmentCandidateSchema>;
-export type RecruitmentCandidate = typeof recruitmentCandidates.$inferSelect;
 export type InsertVessel = z.infer<typeof insertVesselSchema>;
 export type Vessel = typeof vessels.$inferSelect;
-export type InsertVesselGroup = z.infer<typeof insertVesselGroupSchema>;
-export type VesselGroup = typeof vesselGroups.$inferSelect;
-export type InsertVesselDraft = z.infer<typeof insertVesselDraftSchema>;
-export type VesselDraft = typeof vesselDrafts.$inferSelect;
-export type InsertVesselRevision = z.infer<typeof insertVesselRevisionSchema>;
-export type VesselRevision = typeof vesselRevisions.$inferSelect;
-export type InsertTrainingMatrixVesselDraft = z.infer<typeof insertTrainingMatrixVesselDraftSchema>;
-export type TrainingMatrixVesselDraft = typeof trainingMatrixVesselDrafts.$inferSelect;
-export type InsertTrainingMatrixVesselRevision = z.infer<typeof insertTrainingMatrixVesselRevisionSchema>;
-export type TrainingMatrixVesselRevision = typeof trainingMatrixVesselRevisions.$inferSelect;
-export type InsertSeafarer = z.infer<typeof insertSeafarerSchema>;
-export type Seafarer = typeof seafarers.$inferSelect;
 export type InsertRevision = z.infer<typeof insertRevisionSchema>;
 export type Revision = typeof revisions.$inferSelect;
-export type InsertVesselRank = z.infer<typeof insertVesselRankSchema>;
-export type VesselRank = typeof vesselRanks.$inferSelect;
 export type InsertCompanyRank = z.infer<typeof insertCompanyRankSchema>;
 export type CompanyRank = typeof companyRanks.$inferSelect;
 export type InsertIdCounter = z.infer<typeof insertIdCounterSchema>;
@@ -1541,22 +723,69 @@ export type InsertRotationPlan = z.infer<typeof insertRotationPlanSchema>;
 export type RotationPlan = typeof rotationPlans.$inferSelect;
 export type InsertRotationArchive = z.infer<typeof insertRotationArchiveSchema>;
 export type RotationArchiveEntry = typeof rotationArchive.$inferSelect;
-export type InsertDrugAlcoholTestRecord = z.infer<typeof insertDrugAlcoholTestRecordSchema>;
-export type DrugAlcoholTestRecord = typeof drugAlcoholTestRecords.$inferSelect;
-export type InsertRestHoursVesselRecord = z.infer<typeof insertRestHoursVesselRecordSchema>;
-export type RestHoursVesselRecord = typeof restHoursVesselRecords.$inferSelect;
-export type InsertRestHoursCrewRecord = z.infer<typeof insertRestHoursCrewRecordSchema>;
-export type RestHoursCrewRecord = typeof restHoursCrewRecords.$inferSelect;
-export type InsertRestHoursDailyRecord = z.infer<typeof insertRestHoursDailyRecordSchema>;
-export type RestHoursDailyRecord = typeof restHoursDailyRecords.$inferSelect;
-export type InsertFixedTask = z.infer<typeof insertFixedTaskSchema>;
-export type FixedTask = typeof fixedTasks.$inferSelect;
-export type InsertVesselViolationComment = z.infer<typeof insertVesselViolationCommentSchema>;
-export type VesselViolationComment = typeof vesselViolationComments.$inferSelect;
-export type InsertOfficeViolationComment = z.infer<typeof insertOfficeViolationCommentSchema>;
-export type OfficeViolationComment = typeof officeViolationComments.$inferSelect;
-export type InsertNCReport = z.infer<typeof insertNCReportSchema>;
-export type NCReport = typeof ncReports.$inferSelect;
+
+// Legacy v1 type aliases (tables dropped - types kept as `any` for backward compatibility during migration)
+export type FormVersion = any;
+export type InsertFormVersion = any;
+export type UpdateFormVersion = any;
+export type RankGroup = any;
+export type InsertRankGroup = any;
+export type UpdateRankGroup = any;
+export type AvailableRank = any;
+export type InsertAvailableRank = any;
+export type UpdateAvailableRank = any;
+export type TrainingMaster = any;
+export type InsertTrainingMaster = any;
+export type UpdateTrainingMaster = any;
+export type CompanyTrainingGroup = any;
+export type InsertCompanyTrainingGroup = any;
+export type UpdateCompanyTrainingGroup = any;
+export type CompanyTraining = any;
+export type InsertCompanyTraining = any;
+export type UpdateCompanyTraining = any;
+export type CompanyTrainingRequirement = any;
+export type InsertCompanyTrainingRequirement = any;
+export type UpsertCompanyTrainingRequirement = any;
+export type AppraisalResult = any;
+export type InsertAppraisalResult = any;
+export type RecruitmentCandidate = any;
+export type InsertRecruitmentCandidate = any;
+export type VesselGroup = any;
+export type InsertVesselGroup = any;
+export type VesselDraft = any;
+export type InsertVesselDraft = any;
+export type VesselRevision = any;
+export type InsertVesselRevision = any;
+export type TrainingMatrixVesselDraft = any;
+export type InsertTrainingMatrixVesselDraft = any;
+export type TrainingMatrixVesselRevision = any;
+export type InsertTrainingMatrixVesselRevision = any;
+export type Seafarer = any;
+export type InsertSeafarer = any;
+export type VesselRank = any;
+export type InsertVesselRank = any;
+export type CompanyProcessing = any;
+export type InsertCompanyProcessing = any;
+export type DrugAlcoholTestRecord = any;
+export type InsertDrugAlcoholTestRecord = any;
+export type RestHoursVesselRecord = any;
+export type InsertRestHoursVesselRecord = any;
+export type RestHoursCrewRecord = any;
+export type InsertRestHoursCrewRecord = any;
+export type RestHoursDailyRecord = any;
+export type InsertRestHoursDailyRecord = any;
+export type FixedTask = any;
+export type InsertFixedTask = any;
+export type VariableTask = any;
+export type InsertVariableTask = any;
+export type VesselViolationComment = any;
+export type InsertVesselViolationComment = any;
+export type OfficeViolationComment = any;
+export type InsertOfficeViolationComment = any;
+export type NCReport = any;
+export type InsertNCReport = any;
+export type VesselDateLineAdjustment = any;
+export type InsertVesselDateLineAdjustment = any;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({
@@ -1648,62 +877,12 @@ export const crewDashboardSummarySchema = z.object({
   appraisals: z.array(appraisalPointSchema),
 });
 
-// Variable Tasks Schema for RH Planning
-export const variableTasks = pgTable("variable_tasks", {
-  id: serial("id").primaryKey(),
-  startDateTime: text("start_date_time").notNull(),
-  finishDateTime: text("finish_date_time").notNull(),
-  startDateTimeSort: text("start_date_time_sort").notNull(), // ISO format for sorting
-  finishDateTimeSort: text("finish_date_time_sort").notNull(), // ISO format for sorting
-  task: text("task").notNull(), // Display text for task
-  status: text("status").notNull(), // 'Planned' or 'Completed'
-  crewInvolved: integer("crew_involved").notNull(), // Count of crew members
-  remarks: text("remarks"),
-  periodValue: text("period_value"), // e.g., "2025-10"
-  vesselId: text("vessel_id"),
-  
-  // New fields for form
-  isDraft: boolean("is_draft").notNull().default(true),
-  recordType: text("record_type").notNull(), // 'task' or 'port-call'
-  statusType: text("status_type").notNull(), // 'planned' or 'completed'
-  selectedTasks: text("selected_tasks"), // JSON array of task IDs
-  otherTask: text("other_task"), // Free text for unlisted tasks
-  crewInvolvedDetails: text("crew_involved_details"), // JSON array of crew member IDs and groups
-  comments: text("comments"),
-});
-
-export const insertVariableTaskSchema = createInsertSchema(variableTasks).omit({ id: true });
-export type InsertVariableTask = z.infer<typeof insertVariableTaskSchema>;
-export type VariableTask = typeof variableTasks.$inferSelect;
-
 export const dateLineAdjustmentSchema = z.object({
   day: z.number().min(1).max(31),
   type: z.enum(["advanced", "retarded"]),
 });
 export type DateLineAdjustmentItem = z.infer<typeof dateLineAdjustmentSchema>;
 
-export const insertVesselDateLineAdjustmentSchema = createInsertSchema(vesselDateLineAdjustments).omit({ id: true, createdAt: true, updatedAt: true }).extend({
-  vesselId: z.string().min(1, "Vessel ID is required"),
-  monthValue: z.string().regex(/^\d{4}-\d{2}$/, "Month value must be in YYYY-MM format"),
-  adjustments: z.string().refine(
-    (val) => {
-      try {
-        const parsed = JSON.parse(val);
-        return Array.isArray(parsed) && parsed.every(item => 
-          typeof item.day === 'number' && 
-          item.day >= 1 && 
-          item.day <= 31 &&
-          (item.type === 'advanced' || item.type === 'retarded')
-        );
-      } catch {
-        return false;
-      }
-    },
-    { message: "Adjustments must be a valid JSON array of {day, type} objects" }
-  ),
-});
-export type InsertVesselDateLineAdjustment = z.infer<typeof insertVesselDateLineAdjustmentSchema>;
-export type VesselDateLineAdjustment = typeof vesselDateLineAdjustments.$inferSelect;
 
 export type DashboardStatus = z.infer<typeof dashboardStatusSchema>;
 export type ExperienceMetric = z.infer<typeof experienceMetricSchema>;

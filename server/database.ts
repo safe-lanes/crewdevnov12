@@ -11,29 +11,20 @@ import {
 } from "@shared/dateUtils";
 import { 
   forms,
-  rankGroups, 
-  availableRanks, 
   companyRanks,
   promotionHierarchies,
   crewMembers, 
-  appraisalResults,
-  vesselRevisions,
   vesselPlanning,
   dataMasters,
   masterDataEntries,
   promotionReviews,
   type Form,
   type InsertForm,
-  type RankGroup,
-  type AvailableRank,
-  type InsertAvailableRank,
   type CompanyRank,
   type InsertCompanyRank,
   type PromotionHierarchy,
   type CrewMember,
   type InsertCrewMember,
-  type AppraisalResult,
-  type VesselRevision,
   type VesselPlanning,
   type InsertVesselPlanning,
   type DataMaster,
@@ -42,20 +33,6 @@ import {
   type InsertMasterDataEntry,
   oilMajorRules,
   type OilMajorRules,
-  trainingMaster,
-  companyTrainingGroups,
-  companyTrainings,
-  companyTrainingRequirements,
-  type TrainingMaster,
-  type InsertTrainingMaster,
-  type UpdateTrainingMaster,
-  type CompanyTrainingGroup,
-  type UpdateCompanyTrainingGroup,
-  type CompanyTraining,
-  type InsertCompanyTraining,
-  type UpdateCompanyTraining,
-  type CompanyTrainingRequirement,
-  type UpsertCompanyTrainingRequirement,
   type PromotionReview,
   type InsertPromotionReview,
   masterNationalities,
@@ -243,81 +220,36 @@ export class DatabaseStorage implements IStorage {
   }
 
 
-  async getRankGroups(formId?: number, includeArchived: boolean = false): Promise<RankGroup[]> {
-    // Build conditions array
-    const conditions = [];
-    if (formId !== undefined) {
-      conditions.push(eq(rankGroups.formId, formId));
-    }
-    if (!includeArchived) {
-      conditions.push(isNull(rankGroups.archivedAt));
-    }
-    
-    // Execute query with proper condition handling
-    if (conditions.length === 0) {
-      return await this.db.select().from(rankGroups);
-    } else if (conditions.length === 1) {
-      return await this.db.select().from(rankGroups).where(conditions[0]);
-    } else {
-      return await this.db.select().from(rankGroups).where(and(...conditions));
-    }
+  async getRankGroups(formId?: number, includeArchived: boolean = false): Promise<any[]> {
+    return [];
   }
 
-  async getAvailableRanks(): Promise<AvailableRank[]> {
-    const results = await this.db.select().from(availableRanks);
-    // Sort manually to ensure correct order by sortOrder
-    const sorted = results.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    return sorted;
+  async getAvailableRanks(): Promise<any[]> {
+    return [];
   }
 
-  async getAvailableRank(id: number): Promise<AvailableRank | undefined> {
-    const result = await this.db.select().from(availableRanks).where(eq(availableRanks.id, id));
-    return result[0] || undefined;
+  async getAvailableRank(id: number): Promise<any | undefined> {
+    return undefined;
   }
 
-  async createAvailableRank(insertAvailableRank: InsertAvailableRank): Promise<AvailableRank> {
-    // Auto-generate Rank ID if not provided (format: R024, R025, etc.)
-    let rankId = insertAvailableRank.rankId;
-    if (!rankId) {
-      const existingRanks = await this.getAvailableRanks();
-      const existingRIds = existingRanks
-        .map(r => r.rankId)
-        .filter(rid => rid && /^R\d{3}$/.test(rid))
-        .map(rid => parseInt(rid!.substring(1), 10));
-      const maxRId = existingRIds.length > 0 ? Math.max(...existingRIds) : 23; // Start after R023
-      rankId = `R${String(maxRId + 1).padStart(3, '0')}`;
-    }
-    
-    const [created] = await this.db.insert(availableRanks).values({
-      ...insertAvailableRank,
-      rankId
-    }).returning();
-    return created;
+  async createAvailableRank(insertAvailableRank: any): Promise<any> {
+    throw new Error("Legacy v1 table dropped");
   }
 
-  async updateAvailableRank(id: number, rankData: Partial<InsertAvailableRank>): Promise<AvailableRank | undefined> {
-    const result = await this.db.update(availableRanks).set(rankData).where(eq(availableRanks.id, id)).returning();
-    return result[0] || undefined;
+  async updateAvailableRank(id: number, rankData: any): Promise<any | undefined> {
+    throw new Error("Legacy v1 table dropped");
   }
 
   async deleteAvailableRank(id: number): Promise<boolean> {
-    const result = await this.db.delete(availableRanks).where(eq(availableRanks.id, id));
-    return result.rowCount !== null && result.rowCount > 0;
+    throw new Error("Legacy v1 table dropped");
   }
 
   async clearAllAvailableRanks(): Promise<boolean> {
-    await this.db.delete(availableRanks);
-    await this.pool.query(`ALTER SEQUENCE available_ranks_id_seq RESTART WITH 1`);
-    return true;
+    throw new Error("Legacy v1 table dropped");
   }
 
   async updateRankOrders(rankOrders: { id: number; sortOrder: number }[]): Promise<boolean> {
-    for (const { id, sortOrder } of rankOrders) {
-      await this.db.update(availableRanks)
-        .set({ sortOrder })
-        .where(eq(availableRanks.id, id));
-    }
-    return true;
+    throw new Error("Legacy v1 table dropped");
   }
 
   async getCompanyRanks(): Promise<CompanyRank[]> {
@@ -466,12 +398,12 @@ export class DatabaseStorage implements IStorage {
     return `${nextPrefix}${nextValue.toString().padStart(paddingLength, '0')}`;
   }
 
-  async getAppraisalResultsByCrewMember(crewMemberId: string): Promise<AppraisalResult[]> {
-    return await this.db.select().from(appraisalResults).where(eq(appraisalResults.crewMemberId, crewMemberId));
+  async getAppraisalResultsByCrewMember(crewMemberId: string): Promise<any[]> {
+    return [];
   }
 
-  async getVesselRevisionsByVessel(vesselId: string): Promise<VesselRevision[]> {
-    return await this.db.select().from(vesselRevisions).where(eq(vesselRevisions.vesselId, vesselId));
+  async getVesselRevisionsByVessel(vesselId: string): Promise<any[]> {
+    return [];
   }
 
   async getVesselPlanningByVessel(vesselId: string): Promise<VesselPlanning[]> {
@@ -1276,24 +1208,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFormForRank(rankLabel: string, category?: string): Promise<Form | undefined> {
-    const rankGroupResults = await this.db
-      .select()
-      .from(rankGroups)
-      .where(like(rankGroups.ranks, `%${rankLabel}%`));
-    
-    if (rankGroupResults.length === 0) return undefined;
-    
-    const formIds = rankGroupResults.map(rg => rg.formId);
-    
-    const conditions = [inArray(forms.id, formIds)];
-    if (category) {
-      conditions.push(eq(forms.category, category));
-    }
-    
     const results = await this.db
       .select()
-      .from(forms)
-      .where(and(...conditions));
+      .from(forms);
     
     return results[0] || undefined;
   }
@@ -1452,262 +1369,84 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Training Master Methods
-  async getTrainingMasters(): Promise<TrainingMaster[]> {
-    try {
-      return await this.db.select().from(trainingMaster)
-        .orderBy(asc(trainingMaster.category), asc(trainingMaster.trainingGroup), asc(trainingMaster.sortOrder));
-    } catch (error) {
-      console.error("Error getting training masters:", error);
-      return [];
-    }
+  async getTrainingMasters(): Promise<any[]> {
+    return [];
   }
 
-  async getTrainingMaster(id: number): Promise<TrainingMaster | undefined> {
-    try {
-      const result = await this.db.select().from(trainingMaster).where(eq(trainingMaster.id, id));
-      return result[0];
-    } catch (error) {
-      console.error("Error getting training master:", error);
-      return undefined;
-    }
+  async getTrainingMaster(id: number): Promise<any | undefined> {
+    return undefined;
   }
 
-  async createTrainingMaster(training: InsertTrainingMaster): Promise<TrainingMaster> {
-    const result = await this.db.insert(trainingMaster).values({
-      trainingId: training.trainingId,
-      trainingName: training.trainingName,
-      category: training.category,
-      trainingGroup: training.trainingGroup,
-      requirementReference: training.requirementReference,
-      applicableToCompany: training.applicableToCompany ?? false,
-      trainingLabel: training.trainingLabel || training.trainingName,
-      sortOrder: training.sortOrder ?? 0,
-      isDefault: training.isDefault ?? false,
-    }).returning();
-    return result[0];
+  async createTrainingMaster(training: any): Promise<any> {
+    throw new Error("Legacy v1 table dropped");
   }
 
-  async updateTrainingMaster(id: number, training: Partial<UpdateTrainingMaster>): Promise<TrainingMaster | undefined> {
-    const result = await this.db.update(trainingMaster)
-      .set(training)
-      .where(eq(trainingMaster.id, id))
-      .returning();
-    return result[0];
+  async updateTrainingMaster(id: number, training: any): Promise<any | undefined> {
+    throw new Error("Legacy v1 table dropped");
   }
 
   async deleteTrainingMaster(id: number): Promise<boolean> {
-    const result = await this.db.delete(trainingMaster).where(eq(trainingMaster.id, id));
-    return result.rowCount !== null && result.rowCount > 0;
+    throw new Error("Legacy v1 table dropped");
   }
 
   async reorderTrainingMasters(orders: Array<{ id: number; sortOrder: number }>): Promise<boolean> {
-    try {
-      for (const order of orders) {
-        await this.db.update(trainingMaster)
-          .set({ sortOrder: order.sortOrder })
-          .where(eq(trainingMaster.id, order.id));
-      }
-      return true;
-    } catch (error) {
-      console.error("Error reordering training masters:", error);
-      return false;
-    }
+    throw new Error("Legacy v1 table dropped");
   }
 
-  // Company Training Groups Methods
-  async getCompanyTrainingGroups(): Promise<CompanyTrainingGroup[]> {
-    return await this.db.select().from(companyTrainingGroups).orderBy(asc(companyTrainingGroups.displayOrder));
+  async getCompanyTrainingGroups(): Promise<any[]> {
+    return [];
   }
 
-  async updateCompanyTrainingGroup(code: string, data: Partial<UpdateCompanyTrainingGroup>): Promise<CompanyTrainingGroup | undefined> {
-    const result = await this.db.update(companyTrainingGroups)
-      .set(data)
-      .where(eq(companyTrainingGroups.code, code))
-      .returning();
-    return result[0];
+  async updateCompanyTrainingGroup(code: string, data: any): Promise<any | undefined> {
+    throw new Error("Legacy v1 table dropped");
   }
 
-  // Company Training Methods
-  async getCompanyTrainings(): Promise<CompanyTraining[]> {
-    // Sort by: 1) Group code (A-J first, NULL/unassigned last), 2) Company ID within group
-    return await this.db.select().from(companyTrainings)
-      .orderBy(
-        sql`CASE WHEN ${companyTrainings.groupCode} IS NULL THEN 1 ELSE 0 END`,
-        asc(companyTrainings.groupCode),
-        asc(companyTrainings.companyId)
-      );
+  async getCompanyTrainings(): Promise<any[]> {
+    return [];
   }
 
-  async getCompanyTraining(id: number): Promise<CompanyTraining | undefined> {
-    const result = await this.db.select().from(companyTrainings).where(eq(companyTrainings.id, id));
-    return result[0];
+  async getCompanyTraining(id: number): Promise<any | undefined> {
+    return undefined;
   }
 
-  async getCompanyTrainingByMasterId(trainingMasterId: number): Promise<CompanyTraining | undefined> {
-    const result = await this.db.select().from(companyTrainings)
-      .where(eq(companyTrainings.trainingMasterId, trainingMasterId));
-    return result[0];
+  async getCompanyTrainingByMasterId(trainingMasterId: number): Promise<any | undefined> {
+    return undefined;
   }
 
-  async createCompanyTraining(training: InsertCompanyTraining): Promise<CompanyTraining> {
-    const result = await this.db.insert(companyTrainings).values({
-      trainingMasterId: training.trainingMasterId,
-      companyId: training.companyId,
-      trainingLabel: training.trainingLabel,
-      abr: training.abr || null,
-      requirement: training.requirement || null,
-      sortOrder: training.sortOrder ?? 0,
-    }).returning();
-    return result[0];
+  async createCompanyTraining(training: any): Promise<any> {
+    throw new Error("Legacy v1 table dropped");
   }
 
-  async updateCompanyTraining(id: number, training: Partial<UpdateCompanyTraining>): Promise<CompanyTraining | undefined> {
-    const result = await this.db.update(companyTrainings)
-      .set(training)
-      .where(eq(companyTrainings.id, id))
-      .returning();
-    return result[0];
+  async updateCompanyTraining(id: number, training: any): Promise<any | undefined> {
+    throw new Error("Legacy v1 table dropped");
   }
 
   async deleteCompanyTraining(id: number): Promise<boolean> {
-    const result = await this.db.delete(companyTrainings).where(eq(companyTrainings.id, id));
-    return result.rowCount !== null && result.rowCount > 0;
+    throw new Error("Legacy v1 table dropped");
   }
 
   async deleteCompanyTrainingByMasterId(trainingMasterId: number): Promise<boolean> {
-    const result = await this.db.delete(companyTrainings)
-      .where(eq(companyTrainings.trainingMasterId, trainingMasterId));
-    return result.rowCount !== null && result.rowCount > 0;
+    throw new Error("Legacy v1 table dropped");
   }
 
-  async createCompanyTrainingFromMaster(trainingMasterId: number): Promise<CompanyTraining | null> {
-    // First check if it already exists
-    const existing = await this.getCompanyTrainingByMasterId(trainingMasterId);
-    if (existing) {
-      return existing; // Already exists, return it
-    }
-
-    // Get the master training
-    const master = await this.db.select().from(trainingMaster)
-      .where(eq(trainingMaster.id, trainingMasterId));
-    
-    if (!master[0]) {
-      return null; // Master training not found
-    }
-
-    const mt = master[0];
-
-    // Get the current max sortOrder
-    const existingCompanyTrainings = await this.db.select().from(companyTrainings);
-    const maxSortOrder = existingCompanyTrainings.reduce((max, ct) => 
-      Math.max(max, ct.sortOrder ?? 0), 0);
-
-    // Create the company training
-    const result = await this.db.insert(companyTrainings).values({
-      trainingMasterId: mt.id,
-      companyId: mt.trainingId, // Copy trainingId as initial companyId
-      trainingLabel: mt.trainingLabel || mt.trainingName, // Use label or fall back to name
-      abr: null, // Blank by default - company customizes
-      requirement: mt.requirementReference || null,
-      sortOrder: maxSortOrder + 1,
-    }).returning();
-
-    return result[0];
+  async createCompanyTrainingFromMaster(trainingMasterId: number): Promise<any | null> {
+    throw new Error("Legacy v1 table dropped");
   }
 
-  async importCompanyTrainingsFromMaster(): Promise<CompanyTraining[]> {
-    // Get all trainings from master that are applicable to company
-    const masterTrainings = await this.db.select().from(trainingMaster)
-      .where(eq(trainingMaster.applicableToCompany, true));
-    
-    // Get existing company trainings to avoid duplicates
-    const existingCompanyTrainings = await this.db.select().from(companyTrainings);
-    const existingMasterIds = new Set(existingCompanyTrainings.map(ct => ct.trainingMasterId));
-    
-    // Filter out trainings that already exist
-    const newTrainings = masterTrainings.filter(mt => !existingMasterIds.has(mt.id));
-    
-    if (newTrainings.length === 0) {
-      return existingCompanyTrainings;
-    }
-    
-    // Create company trainings from master data
-    const insertData = newTrainings.map((mt, index) => ({
-      trainingMasterId: mt.id,
-      companyId: mt.trainingId, // Copy trainingId as initial companyId
-      trainingLabel: mt.trainingLabel || mt.trainingName, // Use label or fall back to name
-      abr: null as string | null, // Blank by default
-      requirement: mt.requirementReference || null, // Copy requirement reference
-      sortOrder: existingCompanyTrainings.length + index,
-    }));
-    
-    const result = await this.db.insert(companyTrainings).values(insertData).returning();
-    return [...existingCompanyTrainings, ...result];
+  async importCompanyTrainingsFromMaster(): Promise<any[]> {
+    return [];
   }
 
   async reorderCompanyTrainings(orders: Array<{ id: number; sortOrder: number }>): Promise<boolean> {
-    try {
-      for (const order of orders) {
-        await this.db.update(companyTrainings)
-          .set({ sortOrder: order.sortOrder })
-          .where(eq(companyTrainings.id, order.id));
-      }
-      return true;
-    } catch (error) {
-      console.error("Error reordering company trainings:", error);
-      return false;
-    }
+    throw new Error("Legacy v1 table dropped");
   }
 
-  // Company Training Requirements Methods
-  async getCompanyTrainingRequirements(): Promise<CompanyTrainingRequirement[]> {
-    return await this.db.select().from(companyTrainingRequirements);
+  async getCompanyTrainingRequirements(): Promise<any[]> {
+    return [];
   }
 
-  async upsertCompanyTrainingRequirements(requirements: UpsertCompanyTrainingRequirement[]): Promise<CompanyTrainingRequirement[]> {
-    if (requirements.length === 0) return [];
-    
-    const results: CompanyTrainingRequirement[] = [];
-    
-    for (const req of requirements) {
-      if (req.status === null) {
-        // Delete the record if status is null (unchecked)
-        await this.db.delete(companyTrainingRequirements)
-          .where(and(
-            eq(companyTrainingRequirements.companyTrainingId, req.companyTrainingId),
-            eq(companyTrainingRequirements.rankId, req.rankId)
-          ));
-      } else {
-        // Check if record exists
-        const existing = await this.db.select().from(companyTrainingRequirements)
-          .where(and(
-            eq(companyTrainingRequirements.companyTrainingId, req.companyTrainingId),
-            eq(companyTrainingRequirements.rankId, req.rankId)
-          ));
-        
-        if (existing.length > 0) {
-          // Update existing record
-          const updated = await this.db.update(companyTrainingRequirements)
-            .set({ status: req.status })
-            .where(eq(companyTrainingRequirements.id, existing[0].id))
-            .returning();
-          if (updated[0]) results.push(updated[0]);
-        } else {
-          // Insert new record
-          const inserted = await this.db.insert(companyTrainingRequirements)
-            .values({
-              companyTrainingId: req.companyTrainingId,
-              rankId: req.rankId,
-              status: req.status
-            })
-            .returning();
-          if (inserted[0]) results.push(inserted[0]);
-        }
-      }
-    }
-    
-    return results;
+  async upsertCompanyTrainingRequirements(requirements: any[]): Promise<any[]> {
+    return [];
   }
 
   // Promotion Reviews Methods

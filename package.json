@@ -9,6 +9,7 @@
     "build:micro-frontend": "vite build --mode micro-frontend",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
+    "db:backup": "tsx scripts/backup-db.ts",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "setup-microfrontend": "node scripts/setup-microfrontend.js",

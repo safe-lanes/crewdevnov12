@@ -56,7 +56,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Form, RankGroup, AvailableRank, InsertMasterDataEntry, insertVesselGroupSchema } from "@shared/schema";
+import { Form, RankGroup, AvailableRank, InsertMasterDataEntry } from "@shared/schema";
 import { FormEditorFactory } from "@/components/FormEditorFactory";
 import { formTemplates, createFormEditor } from "@/utils/formEditorGenerator";
 import { apiRequest } from "@/lib/queryClient";
@@ -1021,7 +1021,9 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Vessel Group Form setup
   const vesselGroupForm = useForm({
-    resolver: zodResolver(insertVesselGroupSchema.extend({
+    resolver: zodResolver(z.object({
+      name: z.string().min(1, "Name is required"),
+      description: z.string().optional(),
       vesselIds: z.array(z.string()).min(1, "Please select at least one vessel")
     })),
     defaultValues: {
