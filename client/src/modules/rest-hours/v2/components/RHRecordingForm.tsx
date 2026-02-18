@@ -369,7 +369,7 @@ export const RHRecordingForm = ({
     
     // Reset all form state to clean slate
     setFormId(null);
-    setRecordMode('Plan');
+    setRecordMode('Rec');
     setShowPlanning(true);
     setOpaMode(false);
     setIsDirty(false); // Reset dirty flag on form initialization
