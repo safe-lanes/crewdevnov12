@@ -483,7 +483,8 @@ export const restHoursApiV2 = {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to delete variable task');
       }
-      return response.json();
+      const text = await response.text();
+      return text ? JSON.parse(text) : { success: true };
     },
 
     async publish(uuid: string) {
