@@ -474,14 +474,18 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
       
       // Pre-populate seafarer comment entry with crew member's name and rank
+      const fullNameForComment = `${crewMember.name?.first || ''} ${crewMember.name?.middle || ''} ${crewMember.name?.last || ''}`.trim();
       if (currentValues.seafarerComments.length === 0) {
-        const fullName = `${crewMember.name?.first || ''} ${crewMember.name?.middle || ''} ${crewMember.name?.last || ''}`.trim();
         updates.seafarerComments = [{
           id: `seafarer-${Date.now()}`,
-          name: fullName || '',
+          name: fullNameForComment || '',
           rank: crewMember.rank || '',
           comment: ''
         }];
+      } else if (currentValues.seafarerComments.length > 0 && !currentValues.seafarerComments[0].name) {
+        updates.seafarerComments = currentValues.seafarerComments.map((c, i) =>
+          i === 0 ? { ...c, name: fullNameForComment || '', rank: crewMember.rank || '' } : c
+        );
       }
       
       if (Object.keys(updates).length > 0) {
@@ -1228,6 +1232,32 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       comment: resolveComment(trainingFollowupComments, f.id, f.comment)
     }));
 
+    const appraiserLabels: Record<string, string> = {
+      "master": "Master",
+      "chief-officer": "Chief Officer",
+      "chief-engineer": "Chief Engineer",
+      "2nd-engineer": "2nd Engineer",
+      "marine-superintendent": "Marine Superintendent",
+      "technical-superintendent": "Technical Superintendent",
+      "crew-manager": "Crew Manager"
+    };
+    const updatedAppraiserComments = (data.appraiserComments ?? []).map((c, index) => {
+      if (index === 0) {
+        const appraiserValue = data.primaryAppraiser;
+        const resolvedName = appraiserValue ? (appraiserLabels[appraiserValue] || appraiserValue) : c.name;
+        return { ...c, name: resolvedName || c.name, rank: appraiserValue ? 'Primary Appraiser' : c.rank };
+      }
+      return c;
+    });
+
+    const seafarerName = data.seafarersName || '';
+    const seafarerRank = data.seafarersRank || '';
+    const updatedSeafarerComments = (data.seafarerComments ?? []).map(c => ({
+      ...c,
+      name: seafarerName || c.name,
+      rank: seafarerRank || c.rank,
+    }));
+
     return {
       ...data,
       trainings: updatedTrainings,
@@ -1237,6 +1267,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       trainingNeeds: updatedTrainingNeeds,
       recommendations: updatedRecommendations,
       trainingFollowups: updatedTrainingFollowups,
+      appraiserComments: updatedAppraiserComments,
+      seafarerComments: updatedSeafarerComments,
     };
   };
 
