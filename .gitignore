@@ -5,6 +5,9 @@ server/public
 vite.config.ts.*
 *.tar.gz
 
+# Prompt reference images
+prompt/
+
 # Test output directories
 test-results/
 test-logs/
