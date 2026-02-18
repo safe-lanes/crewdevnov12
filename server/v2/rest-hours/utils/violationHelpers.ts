@@ -94,10 +94,12 @@ export function calculateNCs(dailyRecordsJson: string, complianceMode: 'Rest' | 
 
     const totalNCs = (completedViolationDays >= 3 || hasCompletedCode2) ? 1 : 0;
 
-    const predictedViolationDays = countViolationDays(dailyRecordsJson, complianceMode, opaMode, true);
-    const hasPredictedCode2 = hasCode2Violation(dailyRecordsJson, complianceMode, opaMode, true);
-
-    const predictedNCs = (predictedViolationDays >= 3 || hasPredictedCode2) ? 1 : 0;
+    let predictedNCs = 0;
+    if (totalNCs === 0) {
+      const predictedViolationDays = countViolationDays(dailyRecordsJson, complianceMode, opaMode, true);
+      const hasPredictedCode2 = hasCode2Violation(dailyRecordsJson, complianceMode, opaMode, true);
+      predictedNCs = (predictedViolationDays >= 3 || hasPredictedCode2) ? 1 : 0;
+    }
 
     return { totalNCs, predictedNCs };
   } catch (error) {
