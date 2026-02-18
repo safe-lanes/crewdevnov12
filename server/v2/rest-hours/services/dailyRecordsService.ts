@@ -8,10 +8,29 @@ import {
   countViolationDays,
   calculateNCs,
 } from "../utils/violationHelpers";
+import { getDb } from "../../db";
+import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { eq, and, or, isNull } from "drizzle-orm";
 
 const dailyRecordsRepository = new DailyRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
 const vesselRecordsRepository = new VesselRecordsRepository();
+
+async function getOnboardCrewCount(vesselId: string): Promise<number> {
+  const db = getDb();
+  const crewData = await db
+    .select({ crewUuid: crewAssignments.crewUuid })
+    .from(crewAssignments)
+    .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
+    .where(
+      and(
+        eq(crewAssignments.vesselUuid, vesselId),
+        eq(crewAssignments.isCurrent, true),
+        or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
+      )
+    );
+  return crewData.length;
+}
 
 function applyAuditUser<T extends object>(
   data: T,
@@ -101,6 +120,9 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
       return;
     }
 
+    const onboardCrewCount = await getOnboardCrewCount(vesselId);
+    const totalCrew = Math.max(onboardCrewCount, crewRecords.length);
+
     const totalPercent = crewRecords.reduce((sum, record) => sum + (record.recordingStatusPercent || 0), 0);
     const averagePercent = Math.round(totalPercent / crewRecords.length);
     const totalViolations = crewRecords.reduce((sum, r) => sum + (r.totalViolations || 0), 0);
@@ -120,7 +142,7 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
 
     if (existingVesselRecord) {
       await vesselRecordsRepository.update(existingVesselRecord.rhVesselUuid, {
-        totalCrew: crewRecords.length,
+        totalCrew,
         recordingStatusPercent: averagePercent,
         totalViolations,
         crewWithViolations,
@@ -136,7 +158,7 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         vesselId,
         monthValue,
         month: formatMonthDisplay(monthValue),
-        totalCrew: crewRecords.length,
+        totalCrew,
         recordingStatusPercent: averagePercent,
         activityConflicting: false,
         totalViolations,

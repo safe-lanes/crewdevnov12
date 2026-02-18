@@ -3,9 +3,28 @@ import type {
   RhVesselRecordV2,
   InsertRhVesselRecordV2,
 } from "../../../../shared/v2/rest-hours/types";
+import { getDb } from "../../db";
+import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { eq, and, or, isNull } from "drizzle-orm";
 
 const vesselRecordsRepository = new VesselRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
+
+async function getOnboardCrewCount(vesselId: string): Promise<number> {
+  const db = getDb();
+  const crewData = await db
+    .select({ crewUuid: crewAssignments.crewUuid })
+    .from(crewAssignments)
+    .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
+    .where(
+      and(
+        eq(crewAssignments.vesselUuid, vesselId),
+        eq(crewAssignments.isCurrent, true),
+        or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
+      )
+    );
+  return crewData.length;
+}
 
 function applyAuditUser<T extends object>(
   data: T,
@@ -58,6 +77,9 @@ export const vesselRecordsService = {
 
     const enrichedRecords: RhVesselRecordV2[] = [];
     for (const record of allRecords) {
+      const onboardCrewCount = await getOnboardCrewCount(record.vesselId);
+      const totalCrew = Math.max(onboardCrewCount, record.totalCrew || 0);
+
       if (
         (record.predictedViolations || 0) > 0 && (record.crewWithPredictedViolations || 0) === 0 ||
         (record.predictedNCs || 0) > 0 && (record.crewWithPredictedNCs || 0) === 0
@@ -70,11 +92,15 @@ export const vesselRecordsService = {
         const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
         enrichedRecords.push({
           ...record,
+          totalCrew,
           crewWithPredictedViolations,
           crewWithPredictedNCs,
         });
       } else {
-        enrichedRecords.push(record);
+        enrichedRecords.push({
+          ...record,
+          totalCrew,
+        });
       }
     }
 
