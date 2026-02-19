@@ -93,7 +93,7 @@ export function RotationPlanTable_v2() {
         </div>
       </SectionTitleComponents>
 
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
