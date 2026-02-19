@@ -594,6 +594,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     itemName: string;
   }>({ open: false, type: null, itemId: '', serverId: undefined, itemName: '' });
 
+  const [emailError, setEmailError] = useState('');
+  const [nokEmailError, setNokEmailError] = useState('');
+
+  const validateEmail = (value: string): string => {
+    if (!value) return '';
+    if (/\s/.test(value)) return 'Email must not contain spaces.';
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(value)) return 'Please enter a valid email address (e.g., name@domain.com).';
+    return '';
+  };
+
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const [isB7TrainingDialogOpen, setIsB7TrainingDialogOpen] = useState(false);
@@ -2237,6 +2248,26 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
         return;
       }
+    }
+    const trimmedEmail = (formData.email || '').trim();
+    const trimmedNokEmail = (formData.nokEmail || '').trim();
+    if (trimmedEmail) {
+      const emailErr = validateEmail(trimmedEmail);
+      if (emailErr) {
+        setEmailError(emailErr);
+        toast({ title: "Validation Error", description: `Email: ${emailErr}`, variant: "destructive" });
+        return;
+      }
+      updateFormData('email', trimmedEmail);
+    }
+    if (trimmedNokEmail) {
+      const nokErr = validateEmail(trimmedNokEmail);
+      if (nokErr) {
+        setNokEmailError(nokErr);
+        toast({ title: "Validation Error", description: `NOK Email: ${nokErr}`, variant: "destructive" });
+        return;
+      }
+      updateFormData('nokEmail', trimmedNokEmail);
     }
     try {
       toast({
@@ -4035,13 +4066,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Email</Label>
             {isEditing ? (
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => updateFormData('email', e.target.value)}
-                className="mt-1"
-                data-testid="input-email"
-              />
+              <>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(validateEmail(e.target.value)); }}
+                  onBlur={(e) => setEmailError(validateEmail(e.target.value.trim()))}
+                  className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
+                  data-testid="input-email"
+                />
+                {emailError && <p className="text-xs text-red-500 mt-1" data-testid="text-email-error">{emailError}</p>}
+              </>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.email}</div>
             )}
@@ -4350,7 +4385,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Email</Label>
               {isEditing ? (
-                <Input type="email" value={formData.nokEmail} onChange={(e) => updateFormData('nokEmail', e.target.value)} className="mt-1" data-testid="input-nok-email" />
+                <>
+                  <Input type="email" value={formData.nokEmail} onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(validateEmail(e.target.value)); }} onBlur={(e) => setNokEmailError(validateEmail(e.target.value.trim()))} className={`mt-1 ${nokEmailError ? 'border-red-500' : ''}`} data-testid="input-nok-email" />
+                  {nokEmailError && <p className="text-xs text-red-500 mt-1" data-testid="text-nok-email-error">{nokEmailError}</p>}
+                </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nokEmail}</div>
               )}
