@@ -201,11 +201,10 @@ export function PromotionHierarchyDialog({ open, onOpenChange, apiBasePath = '/a
     setSelectedRanks(newRanks);
   };
 
-  // Available ranks that haven't been added yet
   const availableRanks = useMemo(() => {
     return companyRanks
-      .filter(rank => !selectedRanks.includes(rank.rank))
-      .map(rank => rank.rank);
+      .filter(rank => !selectedRanks.includes(rank.label))
+      .map(rank => rank.label);
   }, [companyRanks, selectedRanks]);
 
   const isLoading = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
