@@ -16,4 +16,4 @@ test-results/
 test-logs/
 coverage/
 playwright-report/
-attached_assets
+attached_assets/
