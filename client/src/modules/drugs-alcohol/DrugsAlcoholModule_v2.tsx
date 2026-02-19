@@ -51,7 +51,7 @@ export function DrugsAlcoholModule_v2() {
     const vessels = useMemo(() => {
         return externalVessels.map((v: any, index: number) => ({
             id: index + 1,
-            vesselId: v.vuid || v.entryId || `VSL-${String(index + 1).padStart(3, '0')}`,
+            vesselId: v.vesselUuid || v.vuid || v.entryId || `VSL-${String(index + 1).padStart(3, '0')}`,
             name: v.vessel || v.name || 'Unknown Vessel',
         }));
     }, [externalVessels]);

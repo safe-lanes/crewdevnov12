@@ -363,7 +363,7 @@ export const AnnualTestTable_v2: React.FC<AnnualTestTableProps> = ({
   
   const vesselLookup = useMemo(() => {
     return externalVessels.reduce((acc: Record<string, string>, vessel: any) => {
-      const vesselId = vessel.vuid || vessel.entryId || vessel.id;
+      const vesselId = vessel.vesselUuid || vessel.vuid || vessel.entryId || vessel.id;
       acc[vesselId] = vessel.vessel || vessel.name || 'Unknown Vessel';
       return acc;
     }, {});
@@ -371,7 +371,7 @@ export const AnnualTestTable_v2: React.FC<AnnualTestTableProps> = ({
   
   const vesselsList = useMemo(() => {
     return externalVessels.map((vessel: any) => ({
-      vesselId: vessel.vuid || vessel.entryId || vessel.id,
+      vesselId: vessel.vesselUuid || vessel.vuid || vessel.entryId || vessel.id,
       vesselName: vessel.vessel || vessel.name || 'Unknown Vessel',
     }));
   }, [externalVessels]);
