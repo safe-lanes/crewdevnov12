@@ -938,16 +938,23 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             : detailedCrewData.preJoiningMedicals 
               ? JSON.parse(detailedCrewData.preJoiningMedicals) 
               : [];
-          return medicals.map((m: PreJoiningMedical) => ({
+          return medicals.map((m: PreJoiningMedical, index: number) => ({
             ...m,
+            id: m.id || `MED-${index + 1}`,
             vesselCode: m.vesselCode || ''
           }));
         })(),
-        doctorVisits: Array.isArray(detailedCrewData.doctorVisits) 
-          ? detailedCrewData.doctorVisits 
-          : detailedCrewData.doctorVisits 
-            ? JSON.parse(detailedCrewData.doctorVisits) 
-            : [],
+        doctorVisits: (() => {
+          const visits = Array.isArray(detailedCrewData.doctorVisits) 
+            ? detailedCrewData.doctorVisits 
+            : detailedCrewData.doctorVisits 
+              ? JSON.parse(detailedCrewData.doctorVisits) 
+              : [];
+          return visits.map((v: DoctorVisit, index: number) => ({
+            ...v,
+            id: v.id || `DRV-${index + 1}`,
+          }));
+        })(),
       }));
       
       // Also load the uploaded photo from crew data (or reset if no photo)
@@ -5878,9 +5885,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       }
       
       // Pre-Joining Medicals (Part F - F1) - Add to Batch 4
-      if (formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
-        console.log('V2 Preparing Pre-Joining Medicals for batch:', { crewUuid: crewIdentifier, count: formData.preJoiningMedicals.length });
-        formData.preJoiningMedicals.forEach((med: any, index: number) => {
+      const nonEmptyMedicals = (formData.preJoiningMedicals || []).filter((med: any) => {
+        if (med.medUuid) return true;
+        const hasAttachments = (med.attachments || []).some((att: any) => !att.isDeleted);
+        return (med.vesselCode || med.vessel || med.dateOfMedical || med.bp || med.weight || med.anyMedicationPrescribed || med.clinicHospital || med.fitnessForDuty || med.expiry || hasAttachments);
+      });
+      if (nonEmptyMedicals.length > 0) {
+        console.log('V2 Preparing Pre-Joining Medicals for batch:', { crewUuid: crewIdentifier, count: nonEmptyMedicals.length });
+        nonEmptyMedicals.forEach((med: any, index: number) => {
           const medAttachments = med.attachments || [];
           const capturedNewAttachments = [...medAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
             attUuid: att.attUuid,
@@ -5932,9 +5944,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       }
       
       // Doctor Visits (Part F - F2) - Add to Batch 4
-      if (formData.doctorVisits && formData.doctorVisits.length > 0) {
-        console.log('V2 Preparing Doctor Visits for batch:', { crewUuid: crewIdentifier, count: formData.doctorVisits.length });
-        formData.doctorVisits.forEach((visit: any, index: number) => {
+      const nonEmptyVisits = (formData.doctorVisits || []).filter((visit: any) => {
+        if (visit.visitUuid) return true;
+        const hasAttachments = (visit.attachments || []).some((att: any) => !att.isDeleted);
+        return (visit.vessel || visit.port || visit.date || visit.complaint || visit.doctorComments || visit.doctorName || visit.clinicHospital || visit.diagnosis || visit.treatment || visit.followUpDate || hasAttachments);
+      });
+      if (nonEmptyVisits.length > 0) {
+        console.log('V2 Preparing Doctor Visits for batch:', { crewUuid: crewIdentifier, count: nonEmptyVisits.length });
+        nonEmptyVisits.forEach((visit: any, index: number) => {
           const visitAttachments = visit.attachments || [];
           const capturedNewAttachments = [...visitAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
             attUuid: att.attUuid,
