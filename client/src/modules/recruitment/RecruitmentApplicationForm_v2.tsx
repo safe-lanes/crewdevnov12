@@ -2205,6 +2205,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const handleSaveAndContinue = async () => {
+    const trimmedFirstName = (formData.firstName || '').trim();
+    const trimmedFamilyName = (formData.familyName || '').trim();
+    if (!trimmedFirstName || !trimmedFamilyName) {
+      toast({
+        title: "Validation Error",
+        description: "First Name and Family Name are required.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       toast({
         title: "Saving...",
