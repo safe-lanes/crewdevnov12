@@ -1,4 +1,4 @@
-import { eq, and, desc, or, ilike, sql, isNull, isNotNull, inArray, aliasedTable } from "drizzle-orm";
+import { eq, and, desc, or, ilike, sql, isNull, isNotNull, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { CrewMembersRepository } from "../repositories";
@@ -480,34 +480,50 @@ export const crewMembersService = {
 
     const total = countResult?.count || 0;
 
-    // Create aliases for vessel name resolution
-    const previousAssignmentAlias = aliasedTable(crewAssignments, "prevAssignment");
-    const previousVesselAlias = aliasedTable(masterVessels, "prevVessel");
-    
-    // Get crew with current assignment (isCurrent=true)
-    const results = await db
-      .select({
-        crew: crewMembersV2,
-        // Current assignment data
-        currentVessel: crewAssignments.vesselUuid,
+    const latestAssignment = db
+      .selectDistinctOn([crewAssignments.crewUuid], {
+        crewUuid: crewAssignments.crewUuid,
+        vesselUuid: crewAssignments.vesselUuid,
         signOnDate: crewAssignments.signOnDate,
         reliefDue: crewAssignments.reliefDue,
         contractPeriod: crewAssignments.contractPeriod,
-        // Resolved master data names
-        nationality: masterNationalities.nationality,
-        vesselType: masterVesselTypes.vesselType,
-        currentVesselName: masterVessels.vessel,
       })
-      .from(crewMembersV2)
-      .leftJoin(
-        crewAssignments,
+      .from(crewAssignments)
+      .where(
         and(
-          eq(crewAssignments.crewUuid, crewMembersV2.crewUuid),
           eq(crewAssignments.isCurrent, true),
           eq(crewAssignments.isDeleted, false)
         )
       )
-      // JOIN master tables for name resolution
+      .orderBy(crewAssignments.crewUuid, desc(crewAssignments.signOnDate), desc(crewAssignments.id))
+      .as('latest_assignment');
+
+    const crewPage = db
+      .select({ id: crewMembersV2.id })
+      .from(crewMembersV2)
+      .where(and(...conditions))
+      .orderBy(desc(crewMembersV2.createdAt), crewMembersV2.id)
+      .limit(limit)
+      .offset(offset)
+      .as('crew_page');
+
+    const results = await db
+      .select({
+        crew: crewMembersV2,
+        currentVessel: latestAssignment.vesselUuid,
+        signOnDate: latestAssignment.signOnDate,
+        reliefDue: latestAssignment.reliefDue,
+        contractPeriod: latestAssignment.contractPeriod,
+        nationality: masterNationalities.nationality,
+        vesselType: masterVesselTypes.vesselType,
+        currentVesselName: masterVessels.vessel,
+      })
+      .from(crewPage)
+      .innerJoin(crewMembersV2, eq(crewMembersV2.id, crewPage.id))
+      .leftJoin(
+        latestAssignment,
+        eq(latestAssignment.crewUuid, crewMembersV2.crewUuid)
+      )
       .leftJoin(
         masterNationalities,
         eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid)
@@ -518,12 +534,9 @@ export const crewMembersService = {
       )
       .leftJoin(
         masterVessels,
-        eq(crewAssignments.vesselUuid, masterVessels.vesselUuid)
+        eq(latestAssignment.vesselUuid, masterVessels.vesselUuid)
       )
-      .where(and(...conditions))
-      .orderBy(desc(crewMembersV2.createdAt))
-      .limit(limit)
-      .offset(offset);
+      .orderBy(desc(crewMembersV2.createdAt), crewMembersV2.id);
 
     // Get crew UUIDs from results to fetch previous assignments
     const crewUuids = results.map((r: any) => r.crew.crewUuid).filter(Boolean);
@@ -567,18 +580,15 @@ export const crewMembersService = {
       const prevAssignment = previousAssignmentsMap.get(r.crew.crewUuid);
       return {
         ...r.crew,
-        // Return both UUID (for forms) and resolved name (for display)
         nationalityUuid: r.crew.nationalityUuid,
         nationality: r.nationality,
         vesselTypeUuid: r.crew.vesselTypeUuid,
         vesselType: r.vesselType,
         presentVessel: r.currentVessel,
         presentVesselName: r.currentVesselName,
-        // Current assignment data
         signOnDate: r.signOnDate,
         reliefDue: r.reliefDue,
         contractPeriod: r.contractPeriod,
-        // Previous assignment data (from most recent non-current assignment)
         lastVessel: prevAssignment?.vesselName || prevAssignment?.vesselUuid || null,
         signOffDate: prevAssignment?.signOffDate || null,
         reason: prevAssignment?.reason || null,
