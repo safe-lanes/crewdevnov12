@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
+import { formatDate } from '@/utils/format';
 import {
   useV2Candidate,
   useV2CreateCandidate,
@@ -2215,6 +2216,28 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
       return;
     }
+    if (formData.dateOfBirth) {
+      const dobDate = new Date(formData.dateOfBirth);
+      const today = new Date();
+      if (dobDate > today) {
+        toast({
+          title: "Validation Error",
+          description: "Date of Birth cannot be a future date.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const minDob = new Date();
+      minDob.setFullYear(minDob.getFullYear() - 18);
+      if (dobDate > minDob) {
+        toast({
+          title: "Validation Error",
+          description: "Candidate must be at least 18 years old.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     try {
       toast({
         title: "Saving...",
@@ -3755,11 +3778,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
+                  max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()}
                   className="mt-1"
                   data-testid="input-dob"
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-dob">{formData.dateOfBirth}</div>
+                <div className="mt-1 text-sm text-gray-900" data-testid="text-dob">{formData.dateOfBirth ? formatDate(formData.dateOfBirth) : ''}</div>
               )}
             </div>
             <div>
