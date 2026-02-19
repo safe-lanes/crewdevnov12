@@ -583,13 +583,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return [];
   }, [externalVesselsData]);
 
-  // Transform vessel master data for dropdown (name display, code storage, vessel type link)
-  // External API uses 'vessel' field for name and 'vuid' for ID
+  // Transform vessel master data for dropdown (name display, UUID storage, vessel type link)
+  // Uses vesselUuid from local master_vessels table as the value key
   const vesselOptions = useMemo(() => {
     return vesselMasterData
-      .filter((v: any) => v.vessel || v.name)
+      .filter((v: any) => (v.vessel || v.name) && (v.vesselUuid || v.uuid))
       .map((v: any) => ({
-        code: v.vuid || v.nuid || `VSL-${v.id}`,
+        code: v.vesselUuid || v.uuid,
         name: v.vessel || v.name,
         vtuid: v.vtuid || null
       }))
@@ -2171,17 +2171,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const medical = formData.preJoiningMedicals.find(m => m.id === itemId);
           if (!medical) throw new Error('Medical record not found');
           const response = await crewPoolApiV2.createMedical(crewIdentifier, {
-            vesselCode: medical.vesselCode || '',
-            vesselName: medical.vessel || '',
-            vessel: medical.vessel || '',
-            dateOfMedical: medical.dateOfMedical || '',
-            bp: medical.bp || '',
-            weight: medical.weight || '',
-            anyMedicationPrescribed: medical.anyMedicationPrescribed || '',
-            clinicHospital: (medical as any).clinicHospital || '',
-            fitnessForDuty: medical.fitnessForDuty || '',
-            expiryDate: medical.expiry || '',
-            expiry: medical.expiry || '',
+            vesselUuid: medical.vesselCode || undefined,
+            vesselName: medical.vessel || undefined,
+            examinationDate: medical.dateOfMedical || undefined,
+            bp: medical.bp || undefined,
+            weight: medical.weight || undefined,
+            anyMedicationPrescribed: medical.anyMedicationPrescribed || undefined,
+            clinicHospital: (medical as any).clinicHospital || undefined,
+            fitForDuty: medical.fitnessForDuty || undefined,
+            expiryDate: medical.expiry || undefined,
           });
           const result = await response.json() as { medUuid?: string };
           savedUuid = result?.medUuid;
@@ -5489,6 +5487,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       
       // BATCHED SAVE: Process saves in sequential batches to prevent database connection exhaustion
       // This is a production-critical pattern that prevents "too many clients" errors
+      const batchErrors: string[] = [];
       const processBatch = async (batchName: string, operations: (() => Promise<any>)[]) => {
         if (operations.length === 0) return;
         console.log(`V2 Processing batch: ${batchName} (${operations.length} operations)`);
@@ -5497,11 +5496,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         const subBatchSize = 3;
         for (let i = 0; i < operations.length; i += subBatchSize) {
           const subBatch = operations.slice(i, i + subBatchSize);
-          try {
-            await Promise.all(subBatch.map(op => op()));
-          } catch (error) {
-            console.error(`V2 Error in batch ${batchName}, sub-batch ${Math.floor(i / subBatchSize) + 1}:`, error);
-          }
+          const results = await Promise.allSettled(subBatch.map(op => op()));
+          results.forEach((result, idx) => {
+            if (result.status === 'rejected') {
+              const errMsg = result.reason?.message || String(result.reason);
+              console.error(`V2 Error in batch ${batchName}, item ${i + idx + 1}:`, result.reason);
+              batchErrors.push(`${batchName}: ${errMsg}`);
+            }
+          });
         }
         console.log(`V2 Completed batch: ${batchName}`);
       };
@@ -5992,9 +5994,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           await processBatch('Batch 2: Education + Licenses', batch2Operations);
           await processBatch('Batch 3: Training + Sea Service', batch3Operations);
           await processBatch('Batch 4: Medicals + Doctor Visits', batch4Operations);
-          console.log('V2: All batches completed successfully');
+          
+          if (batchErrors.length > 0) {
+            console.error('V2: Batch execution completed with errors:', batchErrors);
+            toast({
+              title: "Partially Saved",
+              description: `Some records failed to save: ${batchErrors.length} error(s). Please review and try again.`,
+              variant: "destructive",
+              duration: 6000,
+            });
+          } else {
+            console.log('V2: All batches completed successfully');
+          }
         } catch (error) {
           console.error('V2: Error during batch execution:', error);
+          toast({
+            title: "Save Error",
+            description: "Some records failed to save. Please try again.",
+            variant: "destructive",
+            duration: 5000,
+          });
         }
       })();
     } else {

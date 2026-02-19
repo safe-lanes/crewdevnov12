@@ -977,10 +977,17 @@ export const crewMembersService = {
     ]);
 
     // Batch 3: Medical and vessel types queries (3 queries)
-    const [medicals, doctorVisits, vesselTypesRaw] = await Promise.all([
+    const [medicalsWithVessel, doctorVisits, vesselTypesRaw] = await Promise.all([
       db
-        .select()
+        .select({
+          medical: crewPreJoiningMedicals,
+          resolvedVesselName: masterVessels.vessel,
+        })
         .from(crewPreJoiningMedicals)
+        .leftJoin(
+          masterVessels,
+          eq(crewPreJoiningMedicals.vesselUuid, masterVessels.vesselUuid)
+        )
         .where(
           and(
             eq(crewPreJoiningMedicals.crewUuid, crewUuid),
@@ -1034,6 +1041,12 @@ export const crewMembersService = {
       ...row.seaService,
       resolvedVesselName: row.resolvedVesselName,
       resolvedVesselTypeName: row.resolvedVesselTypeName,
+    }));
+
+    // Merge resolved vessel names into medicals
+    const medicals = medicalsWithVessel.map((row: { medical: any; resolvedVesselName: string | null }) => ({
+      ...row.medical,
+      vesselName: row.resolvedVesselName || row.medical.vesselName,
     }));
 
     // Collect UUIDs for attachment queries
