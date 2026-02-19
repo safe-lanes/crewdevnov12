@@ -1,6 +1,7 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -829,6 +830,8 @@ function DatePeriodDialog({
   const [joiningDate, setJoiningDate] = useState<Date>();
   const [contractPeriod, setContractPeriod] = useState<string>('');
   const [unassignChecked, setUnassignChecked] = useState(false);
+  const [validationError, setValidationError] = useState<string>('');
+  const { toast } = useToast();
 
   // Check if crew is already assigned to this vessel and rank
   // Note: vesselName prop now contains the vessel UUID (selectedVessel)
@@ -850,10 +853,13 @@ function DatePeriodDialog({
       setJoiningDate(undefined);
       setContractPeriod('');
       setUnassignChecked(false);
+      setValidationError('');
     }
   }, [open, initialValues]);
 
   const handleApply = () => {
+    setValidationError('');
+
     // Priority: If unassign is checked, unassign regardless of other fields
     if (unassignChecked) {
       onUnassign();
@@ -862,11 +868,36 @@ function DatePeriodDialog({
       setJoiningDate(undefined);
       setContractPeriod('');
       setUnassignChecked(false);
+      setValidationError('');
       return;
     }
 
     // Otherwise, validate and create assignment
-    if (!joiningDate || !contractPeriod) {
+    if (!joiningDate && !contractPeriod) {
+      setValidationError('Please select a joining date and contract period');
+      toast({
+        title: "Validation Error",
+        description: "Please select a joining date and contract period",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!joiningDate) {
+      setValidationError('Please select a joining date');
+      toast({
+        title: "Validation Error",
+        description: "Please select a joining date",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!contractPeriod) {
+      setValidationError('Please select a contract period');
+      toast({
+        title: "Validation Error",
+        description: "Please select a contract period",
+        variant: "destructive",
+      });
       return;
     }
     onApply(joiningDate, parseInt(contractPeriod));
@@ -875,6 +906,7 @@ function DatePeriodDialog({
     setJoiningDate(undefined);
     setContractPeriod('');
     setUnassignChecked(false);
+    setValidationError('');
   };
 
   const handleCancel = () => {
@@ -958,6 +990,10 @@ function DatePeriodDialog({
             </label>
           </div>
         </div>
+
+        {validationError && (
+          <p className="text-sm text-red-600" data-testid="text-validation-error">{validationError}</p>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button
@@ -1433,6 +1469,9 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [selectedCrew, setSelectedCrew] = useState<{ crewUuid: string; name: string; rank: string } | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+  const [confirmWarningOpen, setConfirmWarningOpen] = useState(false);
+  const [confirmWarningMessage, setConfirmWarningMessage] = useState('');
+  const [pendingCrewSelect, setPendingCrewSelect] = useState<{ crewUuid: string; name: string; rank: string } | null>(null);
   const prevSelectedVesselsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(false);
   
@@ -1943,6 +1982,64 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     prevSelectedVesselsRef.current = selectedVessels;
   }, [selectedVessels]); // Only depend on selectedVessels to avoid interference with manual radio button selection
 
+  const getCrewStatusWarning = useCallback((crewUuid: string, crewName: string): string | null => {
+    const isDeployed = currentlyDeployedCrewIds.has(crewUuid);
+
+    const hasOverlappingDeployment = allVesselPlanning.some(assignment => {
+      const isThisCrew = assignment.crewMemberId === crewUuid || assignment.relieverCrewId === crewUuid;
+      if (!isThisCrew) return false;
+      if (selectedVesselIds.includes(assignment.vesselUuid)) return false;
+
+      let assignmentStart: Date | null = null;
+      let assignmentEnd: Date | null = null;
+
+      if (assignment.crewMemberId === crewUuid) {
+        assignmentStart = assignment.signOnDate ? new Date(assignment.signOnDate) : null;
+        assignmentEnd = assignment.reliefDue ? new Date(assignment.reliefDue) : null;
+      } else if (assignment.relieverCrewId === crewUuid) {
+        assignmentStart = assignment.relieverSignOnDate ? new Date(assignment.relieverSignOnDate) : null;
+        if (assignmentStart) {
+          const contractMonths = assignment.contractPeriodMonths || 6;
+          assignmentEnd = new Date(assignmentStart);
+          assignmentEnd.setMonth(assignmentEnd.getMonth() + contractMonths);
+        }
+      }
+
+      if (!assignmentStart) return false;
+      return dateRangesOverlap(dateRange.start, dateRange.end, assignmentStart, assignmentEnd);
+    });
+
+    if (isDeployed || hasOverlappingDeployment) {
+      return `${crewName} is currently deployed on another vessel. Are you sure you want to proceed with this assignment?`;
+    }
+
+    const assignedVesselCount = new Set(
+      assignments
+        .filter(a => a.crewUuid === crewUuid)
+        .map(a => a.vesselUuid)
+    ).size;
+
+    if (assignedVesselCount >= 2) {
+      return `${crewName} is already planned on ${assignedVesselCount} vessels. Are you sure you want to proceed with this assignment?`;
+    }
+
+    return null;
+  }, [currentlyDeployedCrewIds, allVesselPlanning, selectedVesselIds, dateRange, assignments]);
+
+  const proceedWithCrewSelect = useCallback((crew: { crewUuid: string; name: string; rank: string }) => {
+    setSelectedCrew(crew);
+    setEditingAssignment(null);
+    setDateDialogOpen(true);
+  }, []);
+
+  const handleConfirmWarningProceed = useCallback(() => {
+    if (pendingCrewSelect) {
+      proceedWithCrewSelect(pendingCrewSelect);
+      setPendingCrewSelect(null);
+    }
+    setConfirmWarningOpen(false);
+  }, [pendingCrewSelect, proceedWithCrewSelect]);
+
   const handleCrewSelect = (crew: { crewUuid: string; name: string; rank: string }) => {
     if (!selectedVessel) {
       toast({
@@ -1952,9 +2049,30 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       });
       return;
     }
-    setSelectedCrew(crew);
-    setEditingAssignment(null); // Clear editing mode
-    setDateDialogOpen(true);
+
+    const isDuplicate = assignments.some(
+      a => a.crewUuid === crew.crewUuid && a.vesselUuid === selectedVessel && a.rank === crew.rank
+    );
+    if (isDuplicate) {
+      const vesselObj = vessels.find((v: any) => v.value === selectedVessel);
+      const vesselDisplayName = vesselObj?.name || selectedVessel;
+      toast({
+        title: "Duplicate assignment",
+        description: `${crew.name} is already assigned to ${vesselDisplayName} as ${crew.rank}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const warningMessage = getCrewStatusWarning(crew.crewUuid, crew.name);
+    if (warningMessage) {
+      setPendingCrewSelect(crew);
+      setConfirmWarningMessage(warningMessage);
+      setConfirmWarningOpen(true);
+      return;
+    }
+
+    proceedWithCrewSelect(crew);
   };
 
   const handleAssignmentClick = (assignment: Assignment) => {
@@ -2505,6 +2623,19 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
           contractPeriod: editingAssignment.contractPeriod
         } : undefined}
       />
+
+      <AlertDialog open={confirmWarningOpen} onOpenChange={setConfirmWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmation Required</AlertDialogTitle>
+            <AlertDialogDescription>{confirmWarningMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setPendingCrewSelect(null); setConfirmWarningOpen(false); }} data-testid="button-cancel-warning">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmWarningProceed} data-testid="button-confirm-warning">Proceed</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
