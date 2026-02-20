@@ -1,34 +1,30 @@
-# Change Log – Sign-On Conflict Detection for Crew Deployments
+# Change Log – A2 Travel & ID Documents: Date Validation & Expiry Sorting
 
 ## 1. Frontend Code Changes
-- Modified `client/src/modules/vessel/components/ReliefStatusEditDialog_v2.tsx`
-  - Added `checkSignOnConflict` async function that calls the backend conflict-check API when Sign On Status is set to "In Transit" or "Signed On"
-  - Added state variables: `showSignOnConflict`, `conflictVesselName`, `isCheckingConflict`
-  - Integrated conflict check into the form submission flow — submission is blocked if a conflict is detected
-  - API failures also block submission (fail-safe approach) with a toast notification asking user to retry
-  - Added `AlertDialog` component to display the conflicting vessel name when a duplicate deployment is detected
-  - Submit button shows loading state ("Checking...") while conflict validation is in progress
+- **File Modified:** `client/src/modules/recruitment/RecruitmentApplicationForm_v2.tsx`
+- Added two new state variables `docDateErrors` and `visaDateErrors` (type `Record<string, string>`) to track per-row date validation errors for A2.1 Travel Documents and A2.2 Visas.
+- Added `validateExpiryVsIssued(issued, expiry)` helper function that returns an error message when both dates are present and expiry is strictly earlier than issued date. Returns empty string when only one date is filled or dates are valid (same date is acceptable).
+- Added `sortByExpiry<T>()` generic helper function that sorts items ascending by expiry date, placing items with no expiry date at the bottom.
+- Updated `updateDocument()` to run date validation on `issued` or `expiry` field changes and update `docDateErrors` state accordingly. Validation errors are computed outside `setFormData` to avoid the anti-pattern of nested state updates.
+- Updated `updateVisa()` with identical date validation logic, updating `visaDateErrors` state.
+- Updated `removeDocument()` and `removeVisa()` to clean up corresponding error entries from `docDateErrors` / `visaDateErrors` when a row is removed.
+- Added inline error message rendering below the Expiry date input in both A2.1 and A2.2 table rows, using existing `text-xs text-muted-foreground mt-1` styling consistent with other validation messages (email, spouse fields).
+- Added save-level validation in `handleSaveAndContinue()`: iterates all documents and visas, validates expiry vs issued dates, sets error state, and blocks saving with a toast message if any invalid entries exist.
+- Added automatic sorting by expiry date (ascending, no-expiry at bottom) in three places:
+  - On data load from database (useEffect for `documentsData` and `visasData`)
+  - After successful save in `handleSaveAndContinue()`
+- Sorting does not occur during active editing to avoid disrupting user focus; rows re-sort after save.
 
 ## 2. Backend Code Changes
-- Modified `server/v2/vessel/services/vesselPlanningService.ts`
-  - Added `checkSignOnConflict(crewUuid, vesselUuid)` method
-  - Queries `crew_assignments` table for active assignments (`isCurrent = true`) on other vessels
-  - Queries `vessel_planning_v2` table for active planning records (joining status "In Transit" or "Signed On", or crew status "primary") on other vessels
-  - Excludes same-vessel assignments from conflict detection
-  - Returns `{ hasConflict, conflictVesselName }` response
-- Modified `server/v2/vessel/controllers/vesselPlanningController.ts`
-  - Added `checkSignOnConflict` controller handler that extracts `crewUuid` from route params and `vesselUuid` from query string
-  - Returns 400 if `vesselUuid` query parameter is missing
-- Modified `server/v2/vessel/routes.ts`
-  - Added route: `GET /api/v2/vessel/planning/check-sign-on-conflict/:crewUuid`
+- No backend changes required. All validation and sorting is handled client-side.
 
 ## 3. Database Level Changes
-- No schema changes
-- No new tables or columns
-- No migrations required
-- Queries existing tables: `crew_assignments`, `vessel_planning_v2`, `vessels`
+- No database schema, migration, or index changes. Sorting is purely a frontend display concern.
 
 ## Additional Notes
-- The conflict check uses a fail-safe approach: if the API call fails or returns a non-OK response, submission is blocked and the user is shown an error toast asking them to retry
-- Same-vessel assignments are excluded from conflict detection (only deployments on other vessels trigger alerts)
-- The feature only activates for "In Transit" and "Signed On" statuses; other statuses are not affected
+- Validation only triggers when both Issued Date and Expiry Date are filled. If either is empty, no error is shown.
+- Same Issued and Expiry dates are accepted as valid.
+- Expired documents (expiry in the past) naturally appear at the top due to ascending sort order.
+- Documents with no expiry date appear at the bottom of the list.
+- No visual indicators (color coding, highlighting) are applied — only sorting order and inline validation messages.
+- Scope is limited to A2.1 Travel & Identification Documents and A2.2 Visas sections only.
