@@ -1717,8 +1717,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     rows: Array<Record<string, any>>,
     primaryField: string,
     sectionLabel: string,
+    primaryFieldLabel: string,
   ): { validRows: Array<Record<string, any>>; hasError: boolean } => {
     let hasError = false;
+    const autoFields = ['id', 'serverId', 'attachments', 'documentId', 'licenseId', 'courseId', 'countryId'];
     const validRows = rows.filter(row => {
       const isServerRow = row.serverId !== undefined && row.serverId !== null;
       const primaryValue = (row[primaryField] || '').toString().trim();
@@ -1728,18 +1730,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         return true;
       }
 
-      if (!primaryValue && hasAttach) {
+      const hasAnyData = Object.entries(row).some(([key, value]) => {
+        if (autoFields.includes(key) || key === primaryField) return false;
+        if (typeof value === 'string') return value.trim() !== '';
+        if (Array.isArray(value)) return value.length > 0;
+        return !!value;
+      });
+
+      if (!primaryValue && !hasAttach && !hasAnyData) {
+        return false;
+      }
+
+      if (!primaryValue && (hasAttach || hasAnyData)) {
         toast({
           title: "Validation Error",
-          description: `${sectionLabel}: A row has an attachment but the required field is empty. Please fill in the field or remove the attachment.`,
+          description: `${sectionLabel}: '${primaryFieldLabel}' is required to save this row.`,
           variant: "destructive",
         });
         hasError = true;
         return true;
-      }
-
-      if (!primaryValue && !hasAttach) {
-        return false;
       }
 
       return true;
@@ -2428,13 +2437,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
       }
       
-      const docValidation = validateRowsBeforeSave(formData.documents, 'document', 'Documents');
-      const visaValidation = validateRowsBeforeSave(formData.visas, 'issuingCountry', 'Visas');
-      const eduValidation = validateRowsBeforeSave(formData.education, 'qualifications', 'Education');
-      const licValidation = validateRowsBeforeSave(formData.licenses, 'certificateDocument', 'Licenses');
-      const trainValidation = validateRowsBeforeSave(formData.trainingCourses, 'trainingCourse', 'Training Certificates');
-      const seaValidation = validateRowsBeforeSave(formData.seaService, 'vesselName', 'Sea Service');
-      const infoValidation = validateRowsBeforeSave(formData.additionalInfo, 'information', 'Additional Information');
+      const docValidation = validateRowsBeforeSave(formData.documents, 'document', 'Documents', 'Document Name');
+      const visaValidation = validateRowsBeforeSave(formData.visas, 'issuingCountry', 'Visas', 'Issuing Country');
+      const eduValidation = validateRowsBeforeSave(formData.education, 'qualifications', 'Education', 'Qualifications');
+      const licValidation = validateRowsBeforeSave(formData.licenses, 'certificateDocument', 'Licenses', 'Certificate/Document');
+      const trainValidation = validateRowsBeforeSave(formData.trainingCourses, 'trainingCourse', 'Training Certificates', 'Training Course');
+      const seaValidation = validateRowsBeforeSave(formData.seaService, 'vesselName', 'Sea Service', 'Vessel Name');
+      const infoValidation = validateRowsBeforeSave(formData.additionalInfo, 'information', 'Additional Information', 'Information');
 
       if (docValidation.hasError || visaValidation.hasError || eduValidation.hasError ||
           licValidation.hasError || trainValidation.hasError || seaValidation.hasError || infoValidation.hasError) {
