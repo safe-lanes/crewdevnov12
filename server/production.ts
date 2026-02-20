@@ -1,12 +1,20 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
 import { runMigrations } from "./migrationRunner";
 
 const app = express();
-// Increase body size limit to handle base64 encoded photos (max 10MB)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+function log(message: string, source = "express") {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -28,7 +36,7 @@ app.use((req, res, next) => {
       }
 
       if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+        logLine = logLine.slice(0, 79) + "\u2026";
       }
 
       log(logLine);
@@ -39,9 +47,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Run database migrations automatically before starting server
   await runMigrations();
-  
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -49,32 +56,21 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    
-    // Log error but don't throw - prevents unnecessary server shutdowns
+
     log(`API Error ${status}: ${message}`);
     if (status >= 500) {
       log(`Server Error Details: ${err.stack || err}`);
     }
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt(process.env.PORT || "4000", 10);
   const httpServer = server.listen({
     port,
     host: "0.0.0.0",
   }, () => {
-    log(`serving on port ${port}`);
+    log(`Production API server running on port ${port}`);
   });
 
-  // Handle port conflicts explicitly
   httpServer.on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') {
       log(`Port ${port} is already in use. Please ensure no other process is using this port.`);
@@ -85,31 +81,27 @@ app.use((req, res, next) => {
     }
   });
 
-  // Graceful shutdown handling to prevent port conflicts
   let isShuttingDown = false;
   const gracefulShutdown = (signal: string) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    
+
     log(`${signal} received. Shutting down gracefully...`);
     httpServer.close(() => {
       log('HTTP server closed.');
       process.exit(0);
     });
 
-    // Force close after 10 seconds
     setTimeout(() => {
       log('Forcing server close after 10 seconds...');
       process.exit(1);
     }, 10000);
   };
 
-  // Listen for termination signals
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-  process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // Used by nodemon
+  process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2'));
 
-  // Handle uncaught errors to prevent crashes
   process.on('uncaughtException', (err) => {
     log(`Uncaught Exception: ${err.message}`);
     gracefulShutdown('UNCAUGHT_EXCEPTION');

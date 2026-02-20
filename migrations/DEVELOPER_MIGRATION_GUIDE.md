@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide explains the database migration system for the Seafarer Performance Management System and how to troubleshoot migration-related errors.
+This guide explains the database migration system for the SAIL Crewing system and how to troubleshoot migration-related errors.
 
 ---
 

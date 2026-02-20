@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { mastersController } from "./controllers";
+import { mastersController, dataMasterController } from "./controllers";
 
 const router = Router();
 
@@ -41,5 +41,21 @@ router.get("/crew-pools/:id", mastersController.getCrewPoolById);
 
 router.get("/appraisal-types", mastersController.getAppraisalTypes);
 router.get("/appraisal-types/:id", mastersController.getAppraisalTypeById);
+
+router.get("/data", dataMasterController.listMasters);
+router.get("/data/:id", dataMasterController.getMaster);
+router.post("/data", dataMasterController.createMaster);
+router.put("/data/:id", dataMasterController.updateMaster);
+router.delete("/data/:id", dataMasterController.deleteMaster);
+
+router.get("/data/:id/entries", dataMasterController.getMasterEntries);
+router.post("/data/:id/entries", dataMasterController.createMasterEntry);
+
+router.get("/data-entries/:id", dataMasterController.getMasterEntry);
+router.put("/data-entries/:id", dataMasterController.updateMasterEntry);
+router.delete("/data-entries/:id", dataMasterController.deleteMasterEntry);
+
+router.get("/external/:type", dataMasterController.getExternalMasterData);
+router.post("/external/sync-all", dataMasterController.syncAllExternalMasterData);
 
 export default router;

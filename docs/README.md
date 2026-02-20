@@ -1,8 +1,8 @@
-# Seafarer Performance Management System - Documentation
+# SAIL Crewing - Documentation
 
 ## Quick Start
 
-This documentation provides comprehensive coverage of the Seafarer Performance Management System (SPMS), a maritime crew management application designed to streamline seafarer and vessel management operations.
+This documentation provides comprehensive coverage of the SAIL Crewing system, a maritime crew management application designed to streamline seafarer and vessel management operations.
 
 ## Documentation Index
 
@@ -19,7 +19,7 @@ This documentation provides comprehensive coverage of the Seafarer Performance M
 ## Project Overview
 
 ### Purpose
-The Seafarer Performance Management System is a comprehensive maritime crew management platform that:
+The SAIL Crewing system is a comprehensive maritime crew management platform that:
 - Manages seafarer profiles, certifications, and employment records
 - Tracks vessel assignments and crew rotations
 - Monitors work/rest hours compliance (MLC/STCW regulations)

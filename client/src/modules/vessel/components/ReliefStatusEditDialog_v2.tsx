@@ -103,6 +103,9 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const [joiningDateOpen, setJoiningDateOpen] = useState(false);
     const [unassignChecked, setUnassignChecked] = useState(false);
     const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
+    const [showSignOnConflict, setShowSignOnConflict] = useState(false);
+    const [conflictVesselName, setConflictVesselName] = useState('');
+    const [isCheckingConflict, setIsCheckingConflict] = useState(false);
     
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
@@ -163,6 +166,38 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             return format(parsed, 'yyyy-MM-dd');
         }
         return dateStr;
+    };
+
+    const checkSignOnConflict = async (crewUuid: string): Promise<boolean> => {
+        try {
+            setIsCheckingConflict(true);
+            const response = await fetch(`/api/v2/vessel/planning/check-sign-on-conflict/${crewUuid}?vesselUuid=${encodeURIComponent(vesselUuid)}`);
+            if (!response.ok) {
+                toast({
+                    title: "Validation Error",
+                    description: "Unable to verify sign-on status. Please try again.",
+                    variant: "destructive",
+                });
+                return true;
+            }
+            const result = await response.json();
+            if (result.hasConflict) {
+                setConflictVesselName(result.conflictVesselName || 'Unknown Vessel');
+                setShowSignOnConflict(true);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error checking sign-on conflict:', error);
+            toast({
+                title: "Validation Error",
+                description: "Unable to verify sign-on status. Please try again.",
+                variant: "destructive",
+            });
+            return true;
+        } finally {
+            setIsCheckingConflict(false);
+        }
     };
 
     const handleSaveV2 = async (data: ReliefStatusFormData) => {
@@ -309,7 +344,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         }
     };
 
-    const handleSubmit = form.handleSubmit((data) => {
+    const handleSubmit = form.handleSubmit(async (data) => {
         if (unassignChecked) {
             setShowUnassignConfirm(true);
             return;
@@ -347,6 +382,14 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             
             handleSaveV2(clearedData);
         } else {
+            const requiresConflictCheck = data.signOnStatus === "In Transit" || data.signOnStatus === "Signed On";
+            const relieverCrewUuid = planningData?.relieverCrewUuid || planningData?.relieverCrewId;
+            
+            if (requiresConflictCheck && relieverCrewUuid) {
+                const hasConflict = await checkSignOnConflict(relieverCrewUuid);
+                if (hasConflict) return;
+            }
+            
             handleSaveV2(data);
         }
     });
@@ -653,10 +696,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             <Button 
                                 type="submit"
                                 className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-[#14b8a6] hover:bg-[#14b8a6]/90"}
-                                disabled={updatePlanningV2.isPending || createPlanningV2.isPending}
+                                disabled={updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
                                 data-testid="button-submit-relief"
                             >
-                                {unassignChecked ? "Unassign" : "Submit"}
+                                {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Submit"}
                             </Button>
                         </div>
                     </form>
@@ -682,6 +725,26 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                         data-testid="button-confirm-unassign"
                     >
                         Confirm Unassign
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showSignOnConflict} onOpenChange={setShowSignOnConflict}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Sign-On Conflict Detected</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This crew member currently has an active sign-on record on vessel <strong>{conflictVesselName}</strong>. 
+                        Please sign off the crew member from the previous vessel before proceeding with this assignment.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction 
+                        onClick={() => setShowSignOnConflict(false)}
+                        data-testid="button-close-conflict-alert"
+                    >
+                        OK
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

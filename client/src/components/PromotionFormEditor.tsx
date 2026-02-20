@@ -66,9 +66,8 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   const [selectedLicenseIds, setSelectedLicenseIds] = useState<string[]>([]);
   const [licenseSearchTerm, setLicenseSearchTerm] = useState("");
 
-  const licensesEndpoint = useV2 ? '/api/v2/masters/licenses-dce' : '/api/masters/016/data';
   const { data: licenses = [] } = useQuery<LicenseEntry[]>({
-    queryKey: [licensesEndpoint],
+    queryKey: ['/api/v2/masters/licenses-dce'],
   });
 
   const formMethods = useForm<PromotionA2Config>({

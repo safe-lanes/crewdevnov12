@@ -1,12 +1,23 @@
 module.exports = {
-    apps: [
-        {
-            name: 'SAIL-crewing-App', // Replace with your application's name
-            script: 'dist/index.js', // Replace with the entry point script of your application
-            instances: 1, // The number of instances you want to run (usually set to 1 for single instance)
-            autorestart: true, // Automatically restart the application if it crashes
-            watch: false, // Set to true if you want pm2 to watch for file changes and automatically reload
-            // max_memory_restart: '1G', // Restart the application if memory usage exceeds this limit
-        },
-    ],
+  apps: [
+    {
+      name: "sail-crewing-api",
+      script: "dist/server/index.js",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: "production",
+        PORT: 4000,
+      },
+      max_memory_restart: "512M",
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
+      error_file: "logs/pm2-error.log",
+      out_file: "logs/pm2-out.log",
+      merge_logs: true,
+      restart_delay: 3000,
+      max_restarts: 10,
+    },
+  ],
 };

@@ -1,0 +1,76 @@
+# SAIL Crewing - Production nginx configuration (Windows)
+# Frontend: static files served by nginx from dist/public/
+# Backend: API proxied to PM2 (Node.js on port 4000)
+#
+# Deployment directory: C:\GitHub\crewing_upgraded_build\
+#
+# Usage:
+#   1. Build: npm run build:prod
+#   2. Start backend: pm2 start ecosystem.config.cjs
+#   3. Add these location blocks to your nginx server config
+
+# ===============================================
+# CREWING API (proxied to PM2 backend)
+# ===============================================
+location /api/ {
+    proxy_pass http://localhost:4000/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization" always;
+
+    if ($request_method = OPTIONS) {
+        add_header Access-Control-Allow-Origin "*";
+        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+        add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization";
+        add_header Content-Length 0;
+        add_header Content-Type text/plain;
+        return 204;
+    }
+}
+
+# ===============================================
+# CREWING STATIC ASSETS (JS, CSS, images)
+# ===============================================
+location /crewing/assets/ {
+    alias C:/GitHub/crewing_upgraded_build/dist/public/assets/;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    try_files $uri =404;
+}
+
+# ===============================================
+# FIGMA ASSETS
+# ===============================================
+location /figmaAssets/ {
+    alias C:/GitHub/crewing_upgraded_build/dist/public/figmaAssets/;
+    expires 30d;
+    add_header Cache-Control "public";
+    try_files $uri =404;
+}
+
+# ===============================================
+# REACT APP (catch-all for /crewing/ SPA routing)
+# ===============================================
+location /crewing/ {
+    alias C:/GitHub/crewing_upgraded_build/dist/public/;
+    try_files $uri $uri/ /crewing/index.html;
+
+    add_header Cache-Control "no-cache";
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range" always;
+
+    if ($request_method = OPTIONS) {
+        add_header Access-Control-Allow-Origin "*";
+        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+        add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range";
+        add_header Content-Length 0;
+        add_header Content-Type text/plain;
+        return 204;
+    }
+}

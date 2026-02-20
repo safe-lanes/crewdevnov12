@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Seafarer Performance Management System uses PostgreSQL as its database, accessed via Drizzle ORM. The schema is defined in `shared/schema.ts` and contains 52 tables organized into logical domains.
+The SAIL Crewing system uses PostgreSQL as its database, accessed via Drizzle ORM. The schema is defined in `shared/schema.ts` and contains 52 tables organized into logical domains.
 
 ## Entity Relationship Diagram
 

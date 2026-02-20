@@ -466,7 +466,7 @@ export const adminApiV2 = {
   },
 
   async getMasterData(type: string) {
-    const res = await fetch(`/api/master-data/external/${encodeURIComponent(type)}`);
+    const res = await fetch(`/api/v2/masters/external/${encodeURIComponent(type)}`);
     if (!res.ok) throw new Error(`Failed to fetch master data: ${type}`);
     const json = await res.json();
     return json.data;

@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_BASE_URL } from "@/config/api";
 
+const V2_BASE = '/api/v2/masters';
+
 const MASTER_TYPES = [
   'nationalities',
   'vessels',
@@ -32,9 +34,9 @@ interface SyncAllResponse {
 
 export function useLocalMasterData(type: MasterType) {
   return useQuery<LocalMasterDataResponse>({
-    queryKey: ['/api/master-data/external', type],
+    queryKey: [`${V2_BASE}/external`, type],
     queryFn: async () => {
-      const response = await fetch(`/api/master-data/external/${type}`);
+      const response = await fetch(`${V2_BASE}/external/${type}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch ${type} from local cache`);
       }
@@ -54,7 +56,7 @@ export function useSyncAllMasterData() {
       const DEFAULT_API_BASE_URL = `${API_BASE_URL}/crewmasterdata/getallmasterdata`;
       const apiBaseUrl = DEFAULT_API_BASE_URL;
       
-      const response = await fetch('/api/master-data/external/sync-all', {
+      const response = await fetch(`${V2_BASE}/external/sync-all`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiBaseUrl, domain }),
@@ -67,7 +69,7 @@ export function useSyncAllMasterData() {
     },
     onSuccess: () => {
       MASTER_TYPES.forEach((type) => {
-        queryClient.invalidateQueries({ queryKey: ['/api/master-data/external', type] });
+        queryClient.invalidateQueries({ queryKey: [`${V2_BASE}/external`, type] });
       });
     },
   });

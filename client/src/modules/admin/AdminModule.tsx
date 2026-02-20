@@ -1216,7 +1216,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Function to force refresh masters data
   const refreshMastersData = () => {
-    rq.invalidateQueries({ queryKey: ['/api/masters'] });
+    rq.invalidateQueries({ queryKey: ['/api/v2/masters/data'] });
   };
 
   // Function to navigate directly to Port Master
@@ -2590,12 +2590,12 @@ const AdminModuleInner = (): JSX.Element => {
             // Refetch the query and get fresh data
             // Use correct queryKey format matching useMasterDataEntries hook
             await rq.refetchQueries({ 
-              queryKey: [`/api/masters/${selectedMaster}/data`],
+              queryKey: ['/api/v2/masters/data', selectedMaster, 'entries'],
               exact: true
             });
 
             // Get fresh data directly from the query cache
-            const freshRawData = (rq.getQueryData([`/api/masters/${selectedMaster}/data`]) as any[]) || [];
+            const freshRawData = (rq.getQueryData(['/api/v2/masters/data', selectedMaster, 'entries']) as any[]) || [];
 
             // Apply field mapping if needed (same logic as masterData useMemo)
             const freshMasterData = (() => {

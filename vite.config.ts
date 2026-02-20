@@ -3,7 +3,12 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
+const BASE_PATH = process.env.NODE_ENV === "production"
+  ? "/crewing/"
+  : "/";
+
 export default defineConfig({
+  base: BASE_PATH,
   plugins: [
     react(),
     runtimeErrorOverlay(),
@@ -23,9 +28,11 @@ export default defineConfig({
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
+  envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
+    assetsDir: "assets",
     emptyOutDir: true,
   },
   server: {

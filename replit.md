@@ -1,9 +1,15 @@
-# Seafarer Performance Management System
+# SAIL Crewing
 
 ## Overview
 A comprehensive maritime operations platform designed to streamline and manage all aspects of seafarer performance, crew deployment, vessel operations, and regulatory compliance. The system aims to enhance operational efficiency, ensure compliance with maritime regulations, and optimize crew management through advanced analytics and robust data handling. Its core capabilities include detailed seafarer appraisal workflows, dynamic crew rotation and recruitment, real-time vessel management, and automated compliance checks for rest hours, training, and drug & alcohol policies. The platform provides a unified view for maritime stakeholders to make informed decisions, improve crew welfare, and ensure safe and efficient vessel operations.
 
 ## Recent Changes
+<<<<<<< HEAD
+- **2026-02-20**: Migrated legacy master data APIs to v2. Created dataMasterController.ts with complete v2 master CRUD and external sync logic under /api/v2/masters/data and /api/v2/masters/external. Updated all frontend consumers: useDataMasters.ts, useLocalMasterApi.tsx, 3 crew-pool dialogs (Visa/TravelDocument/License), PromotionFormEditor, AdminModule.tsx, adminApiV2.ts. Removed ~380 lines of legacy master routes from routes.ts (929→549 lines), cleaned dead imports and applyBasicFieldTransformation helper. Remaining legacy routes: GET /api/crew-members (list), /api/pay-elements, /api/contract-pay-elements, /api/health.
+- **2026-02-20**: Added comprehensive Swagger/OpenAPI documentation at `/api/docs` covering all ~373 endpoints across 11 v2 modules and legacy routes. Removed ~12 dead legacy crew-member route handlers (individual CRUD, sign-off, dashboard, ID assignment, resync-planning) and helper functions (autoCreateVesselPlanning, syncVesselPlanning) from routes.ts (1,302→929 lines). Cleaned unused imports.
+=======
+- **2026-02-20**: Added sign-on conflict validation for crew deployment. When Sign On Status is set to "In Transit" or "Signed On" in the Relief Status dialog, the system now checks if the crew member has an active deployment on another vessel before allowing submission. If a conflict exists, an alert is shown with the conflicting vessel name and submission is blocked. Backend endpoint: GET /api/v2/vessel/planning/check-sign-on-conflict/:crewUuid. Frontend changes in ReliefStatusEditDialog_v2.tsx.
+>>>>>>> 88d1a2bd (Add sign-on conflict detection for crew deployments)
 - **2026-02-18**: Dropped 27 legacy v1 database tables via migration 0094. Added `npm run db:backup` script for full database backups before destructive operations. Removed Drizzle schema definitions for dropped tables from shared/schema.ts. Tables retained (still used by runtime): company_ranks, forms, id_counters, revisions, users, vessel_planning, vessels.
 - **2026-02-18**: Migrated shared hooks from legacy /api/ routes to /api/v2/admin/ endpoints. Hooks migrated: useRankNormalization, useCompanyRanks, useRankOrdering, useTrainingMaster, TrainingCourseSelectionDialog, formCommands. Removed 32 dead legacy route handlers from routes.ts (forms, available-ranks, company-ranks, training-master, company-training-groups, company-trainings, company-training-requirements). Remaining legacy routes: crew-members, masters, master-data, pay-elements, contract-pay-elements, external sync.
 - **2026-02-18**: Backend cleanup — removed ~190 dead /api/ route handlers from routes.ts (10,265→2,431 lines), cleaned storage.ts (8,325→5,301 lines) and database.ts (5,391→1,950 lines). Removed dead server modules (oilMajorRulesParser.ts, complianceEngine.ts). Total backend reduction: ~14,300 lines removed.
@@ -70,6 +76,35 @@ All client modules live under `client/src/modules/` with a flat structure (no v1
 - **Promotions:** Configurable promotion paths for career progression.
 - **Admin / Forms Configuration:** Manages company-specific forms, including versioning, rank groups, available ranks, and promotion hierarchies.
 - **V2 Masters Module:** Provides common REST endpoints at `/api/v2/masters/` for 13 master tables, including dedicated normalized tables for licenses, manning agents, crew pools, and appraisal types.
+
+## Deployment Architecture
+
+### Development (Replit)
+- `npm run dev` — runs Express + Vite dev server on port 5000
+- Frontend and backend served from same process with HMR
+- Entry: `server/index.ts` → Vite middleware for frontend, Express for API
+- Router base: `/` (no prefix)
+
+### Production (PM2 + nginx)
+- **Frontend**: `npm run build:frontend` → static files in `dist/public/` (base path `/crewing/`)
+- **Backend**: `npm run build:backend` → API server bundled to `dist/server/index.js`
+- **Combined**: `npm run build:prod` → builds both
+- **PM2**: `pm2 start ecosystem.config.cjs` → runs API on port 4000
+- **nginx**: serves `dist/public/` for `/crewing/`, proxies `/api/` to PM2 backend
+- Entry: `server/production.ts` → Express API only (no Vite, no static files)
+- Router base: `/crewing`
+- Config: `deploy/nginx.conf.example`, `ecosystem.config.cjs`
+
+### Build Scripts
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Replit dev (port 5000, Vite HMR) |
+| `npm run build` | Replit production build (combined) |
+| `npm run build:frontend` | Production frontend only (dist/public/) |
+| `npm run build:backend` | Production backend only (dist/server/) |
+| `npm run build:prod` | Production frontend + backend |
+| `npm start` | Run Replit production build |
+| `npm run start:prod` | Run separated production backend |
 
 ## External Dependencies
 - **SAIL ERP API:** For enterprise resource planning data integration.
