@@ -4,23 +4,36 @@ Task: Generate a new changelog markdown file for the last fixed issue.
 
 ## Fork Detection
 
-1. Extract the fork name from the Replit team URL.
+1. Read the fork name from the `.forkname` file at the project root:
+   ```bash
+   cat .forkname
+   ```
+   This file contains the fork name (e.g., `upgradedcrewingarchitecturev2`).
+   It is excluded from git (via `.gitignore`) so each fork maintains its own local copy.
+
+2. If `.forkname` does not exist, extract the fork name from the Replit team URL as a fallback.
    The URL pattern is:
    ```
    https://replit.com/t/<team>/repls/<forkname>
    ```
    The fork name is the last segment of the URL path.
-   Example: `https://replit.com/t/safe-lanes/repls/upgradedcrewingarchitecturev2`
-   → fork name = `upgradedcrewingarchitecturev2`
 
-2. Use this fork name for the changelog directory path:
+3. Use this fork name for the changelog directory path:
    ```
    doc/<forkname>/changelog/
    ```
 
+## Setup (one-time per fork)
+
+Create a `.forkname` file at the project root with just the fork name:
+```bash
+echo "upgradedcrewingarchitecturev2" > .forkname
+```
+This file is already in `.gitignore` and will not be pushed to the branch.
+
 ## Requirements
 
-1. Detect the fork name from the Replit team URL (last segment of the URL path).
+1. Read the fork name from `.forkname` file (or extract from Replit URL as fallback).
 2. Navigate to folder: `doc/<forkname>/changelog/`
 3. Check existing files with naming pattern: `changes<SerialNumber>.md`
    Example:
@@ -79,7 +92,8 @@ Each fork maintains its own isolated changelog directory with independent number
 
 ## Rules
 
-- Detect fork name from the Replit team URL (last segment of the path).
+- Read fork name from `.forkname` file (falls back to Replit team URL).
+- `.forkname` is in `.gitignore` — it stays local and is never pushed to the branch.
 - If the fork directory does not exist, create `doc/<forkname>/changelog/` first.
 - If no previous changes file exists for that fork, start with `changes1.md`.
 - Ensure serial number increments correctly per fork.
