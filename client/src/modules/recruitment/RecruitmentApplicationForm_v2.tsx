@@ -606,6 +606,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return '';
   };
 
+  const sanitizeName = (value: string): string => value.replace(/[^a-zA-Z'-]/g, '');
+  const isValidName = (value: string): boolean => !value || /^[a-zA-Z'-]+$/.test(value);
+
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const [isB7TrainingDialogOpen, setIsB7TrainingDialogOpen] = useState(false);
@@ -2289,6 +2292,32 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
     }
     setSpouseValidationError('');
+    const nameFieldsToValidate = [
+      { value: formData.fatherName, label: "Father's Name" },
+      { value: formData.motherName, label: "Mother's Name" },
+      { value: formData.spouseFirstName, label: "Spouse First Name" },
+      { value: formData.spouseMiddleName, label: "Spouse Middle Name" },
+      { value: formData.spouseFamilyName, label: "Spouse Family Name" },
+      { value: formData.nokFirstName, label: "NOK: First Name" },
+      { value: formData.nokMiddleName, label: "NOK: Middle Name" },
+      { value: formData.nokFamilyName, label: "NOK: Family Name" },
+    ];
+    for (const child of formData.children) {
+      nameFieldsToValidate.push(
+        { value: child.firstName, label: `Child ${child.firstName || ''} First Name` },
+        { value: child.middleName, label: `Child ${child.firstName || ''} Middle Name` },
+        { value: child.familyName, label: `Child ${child.firstName || ''} Family Name` },
+      );
+    }
+    const invalidNameFields = nameFieldsToValidate.filter(f => f.value && !isValidName(f.value.trim()));
+    if (invalidNameFields.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: `${invalidNameFields.map(f => f.label).join(', ')} must contain only letters, hyphens, and apostrophes.`,
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       toast({
         title: "Saving...",
@@ -4206,7 +4235,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               {isEditing ? (
                 <Input
                   value={formData.fatherName}
-                  onChange={(e) => updateFormData('fatherName', e.target.value)}
+                  onChange={(e) => updateFormData('fatherName', sanitizeName(e.target.value))}
                   className="mt-1"
                   data-testid="input-father-name"
                 />
@@ -4219,7 +4248,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               {isEditing ? (
                 <Input
                   value={formData.motherName}
-                  onChange={(e) => updateFormData('motherName', e.target.value)}
+                  onChange={(e) => updateFormData('motherName', sanitizeName(e.target.value))}
                   className="mt-1"
                   data-testid="input-mother-name"
                 />
@@ -4236,7 +4265,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <>
                   <Input
                     value={formData.spouseFirstName}
-                    onChange={(e) => { updateFormData('spouseFirstName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
+                    onChange={(e) => { updateFormData('spouseFirstName', sanitizeName(e.target.value)); if (spouseValidationError) setSpouseValidationError(''); }}
                     className="mt-1"
                     data-testid="input-spouse-first-name"
                   />
@@ -4251,7 +4280,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               {isEditing ? (
                 <Input
                   value={formData.spouseMiddleName}
-                  onChange={(e) => updateFormData('spouseMiddleName', e.target.value)}
+                  onChange={(e) => updateFormData('spouseMiddleName', sanitizeName(e.target.value))}
                   className="mt-1"
                   data-testid="input-spouse-middle-name"
                 />
@@ -4265,7 +4294,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <>
                   <Input
                     value={formData.spouseFamilyName}
-                    onChange={(e) => { updateFormData('spouseFamilyName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
+                    onChange={(e) => { updateFormData('spouseFamilyName', sanitizeName(e.target.value)); if (spouseValidationError) setSpouseValidationError(''); }}
                     className="mt-1"
                     data-testid="input-spouse-family-name"
                   />
@@ -4331,21 +4360,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       <TableCell className="p-3 text-[13px]">{index + 1}</TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input value={child.firstName} onChange={(e) => updateChild(child.id, 'firstName', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                          <Input value={child.firstName} onChange={(e) => updateChild(child.id, 'firstName', sanitizeName(e.target.value))} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                         ) : (
                           <span className="text-[13px]">{child.firstName}</span>
                         )}
                       </TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input value={child.middleName} onChange={(e) => updateChild(child.id, 'middleName', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                          <Input value={child.middleName} onChange={(e) => updateChild(child.id, 'middleName', sanitizeName(e.target.value))} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                         ) : (
                           <span className="text-[13px]">{child.middleName}</span>
                         )}
                       </TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input value={child.familyName} onChange={(e) => updateChild(child.id, 'familyName', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                          <Input value={child.familyName} onChange={(e) => updateChild(child.id, 'familyName', sanitizeName(e.target.value))} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                         ) : (
                           <span className="text-[13px]">{child.familyName}</span>
                         )}
@@ -4392,7 +4421,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: First Name</Label>
               {isEditing ? (
-                <Input value={formData.nokFirstName} onChange={(e) => updateFormData('nokFirstName', e.target.value)} className="mt-1" data-testid="input-nok-first-name" />
+                <Input value={formData.nokFirstName} onChange={(e) => updateFormData('nokFirstName', sanitizeName(e.target.value))} className="mt-1" data-testid="input-nok-first-name" />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nokFirstName}</div>
               )}
@@ -4400,7 +4429,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Middle Name</Label>
               {isEditing ? (
-                <Input value={formData.nokMiddleName} onChange={(e) => updateFormData('nokMiddleName', e.target.value)} className="mt-1" data-testid="input-nok-middle-name" />
+                <Input value={formData.nokMiddleName} onChange={(e) => updateFormData('nokMiddleName', sanitizeName(e.target.value))} className="mt-1" data-testid="input-nok-middle-name" />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nokMiddleName}</div>
               )}
@@ -4408,7 +4437,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Family Name</Label>
               {isEditing ? (
-                <Input value={formData.nokFamilyName} onChange={(e) => updateFormData('nokFamilyName', e.target.value)} className="mt-1" data-testid="input-nok-family-name" />
+                <Input value={formData.nokFamilyName} onChange={(e) => updateFormData('nokFamilyName', sanitizeName(e.target.value))} className="mt-1" data-testid="input-nok-family-name" />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nokFamilyName}</div>
               )}
