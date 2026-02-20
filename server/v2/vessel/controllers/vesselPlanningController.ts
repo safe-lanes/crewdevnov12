@@ -259,4 +259,21 @@ export const vesselPlanningController = {
       res.status(500).json({ error: "Failed to fetch officer matrix data" });
     }
   },
+
+  async checkSignOnConflict(req: Request, res: Response) {
+    try {
+      const { crewUuid } = req.params;
+      const { vesselUuid } = req.query;
+
+      if (!crewUuid || !vesselUuid) {
+        return res.status(400).json({ error: "crewUuid and vesselUuid are required" });
+      }
+
+      const result = await vesselPlanningService.checkSignOnConflict(crewUuid, vesselUuid as string);
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking sign-on conflict:", error);
+      res.status(500).json({ error: "Failed to check sign-on conflict" });
+    }
+  },
 };

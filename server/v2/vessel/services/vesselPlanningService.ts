@@ -937,6 +937,75 @@ export const vesselPlanningService = {
    * Get Officer Matrix data for a crew member
    * Returns experience metrics, certifications, and English proficiency
    */
+  async checkSignOnConflict(crewUuid: string, currentVesselUuid: string): Promise<{ hasConflict: boolean; conflictVesselName?: string; conflictVesselUuid?: string }> {
+    const db = getDb();
+    const { masterVessels } = await import("../../../../shared/schema");
+
+    const activeAssignments = await db
+      .select({
+        vesselUuid: crewAssignments.vesselUuid,
+        vesselName: masterVessels.vessel,
+      })
+      .from(crewAssignments)
+      .leftJoin(masterVessels, eq(crewAssignments.vesselUuid, masterVessels.vesselUuid))
+      .where(
+        and(
+          eq(crewAssignments.crewUuid, crewUuid),
+          eq(crewAssignments.isCurrent, true),
+          eq(crewAssignments.isDeleted, false)
+        )
+      );
+
+    const conflict = activeAssignments.find(
+      (a: { vesselUuid: string | null; vesselName: string | null }) => a.vesselUuid && a.vesselUuid !== currentVesselUuid
+    );
+
+    if (conflict) {
+      return {
+        hasConflict: true,
+        conflictVesselName: conflict.vesselName || "Unknown Vessel",
+        conflictVesselUuid: conflict.vesselUuid!,
+      };
+    }
+
+    const activePlanningOnOtherVessels = await db
+      .select({
+        vesselUuid: vesselPlanningV2.vesselUuid,
+        vesselName: masterVessels.vessel,
+        joiningStatus: vesselPlanningV2.joiningStatus,
+        crewStatus: vesselPlanningV2.crewStatus,
+      })
+      .from(vesselPlanningV2)
+      .leftJoin(masterVessels, eq(vesselPlanningV2.vesselUuid, masterVessels.vesselUuid))
+      .where(
+        and(
+          or(
+            eq(vesselPlanningV2.crewUuid, crewUuid),
+            eq(vesselPlanningV2.relieverCrewUuid, crewUuid)
+          ),
+          eq(vesselPlanningV2.isDeleted, false),
+          eq(vesselPlanningV2.isArchived, false)
+        )
+      );
+
+    const planningConflict = activePlanningOnOtherVessels.find((p: { vesselUuid: string; vesselName: string | null; joiningStatus: string | null; crewStatus: string | null }) => {
+      if (p.vesselUuid === currentVesselUuid) return false;
+      if (p.joiningStatus === "In Transit" || p.joiningStatus === "Signed On") return true;
+      if (p.crewStatus === "primary") return true;
+      return false;
+    });
+
+    if (planningConflict) {
+      return {
+        hasConflict: true,
+        conflictVesselName: planningConflict.vesselName || "Unknown Vessel",
+        conflictVesselUuid: planningConflict.vesselUuid,
+      };
+    }
+
+    return { hasConflict: false };
+  },
+
   async getOfficerMatrixData(crewUuid: string, currentRank: string, signOnDate: string | null, department: 'deck' | 'engine') {
     const [experienceMetrics, certifications, englishProficiency] = await Promise.all([
       calculateExperienceMetricsV2(crewUuid, currentRank, signOnDate),
