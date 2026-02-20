@@ -13,17 +13,22 @@
 
 ### Files Modified
 - **doc/codechanges.md** — Updated changelog prompt with fork-wise storage:
-  - Fork name is now extracted from the Replit team URL (`https://replit.com/t/<team>/repls/<forkname>`)
-  - Changelog directory structure changed from `doc/changelog/` to `doc/<forkname>/changelog/`
-  - Each fork maintains independent changelog numbering (changes1.md, changes2.md, etc.)
-  - Replaced `$REPL_SLUG` detection with URL-based fork name extraction
+  - Fork name is now read from `.forkname` file at project root
+  - Falls back to extracting from Replit team URL (`https://replit.com/t/<team>/repls/<forkname>`)
+  - Changelog directory structure: `doc/<forkname>/changelog/`
+  - Each fork maintains independent changelog numbering
+
+### New Files Created
+- **.forkname** — Contains the fork name (`upgradedcrewingarchitecturev2`), read dynamically by the changelog process
+
+### Files Modified
+- **.gitignore** — Added `.forkname` to prevent it from being pushed to the branch
 
 ### Directory Structure Changes
 - Removed: `doc/changelog/` (old shared changelog folder)
-- Created: `doc/upgradedcrewingarchitecturev2/changelog/` (fork-specific changelog folder)
-- Moved: `changes1.md` from shared folder into fork-specific folder
+- Created: `doc/upgradedcrewingarchitecturev2/changelog/` (fork-specific)
 
 ### Purpose
-- Enables isolated tracking of code changes per Replit fork
+- Isolated tracking of code changes per Replit fork
 - Improved traceability across multiple forks
-- Cleaner version management with per-fork numbering
+- `.forkname` stays local (gitignored), one-time setup per fork
