@@ -2255,7 +2255,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const emailErr = validateEmail(trimmedEmail);
       if (emailErr) {
         setEmailError(emailErr);
-        toast({ title: "Validation Error", description: `Email: ${emailErr}` });
         return;
       }
       updateFormData('email', trimmedEmail);
@@ -2264,7 +2263,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const nokErr = validateEmail(trimmedNokEmail);
       if (nokErr) {
         setNokEmailError(nokErr);
-        toast({ title: "Validation Error", description: `NOK Email: ${nokErr}` });
         return;
       }
       updateFormData('nokEmail', trimmedNokEmail);
