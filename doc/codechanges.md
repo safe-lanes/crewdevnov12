@@ -2,22 +2,40 @@
 
 Task: Generate a new changelog markdown file for the last fixed issue.
 
-Requirements:
+## Fork Detection
 
-1. Navigate to folder: doc/changelog
-2. Check existing files with naming pattern: changes<SerialNumber>.md
+1. Extract the fork name from the Replit team URL.
+   The URL pattern is:
+   ```
+   https://replit.com/t/<team>/repls/<forkname>
+   ```
+   The fork name is the last segment of the URL path.
+   Example: `https://replit.com/t/safe-lanes/repls/upgradedcrewingarchitecturev2`
+   → fork name = `upgradedcrewingarchitecturev2`
+
+2. Use this fork name for the changelog directory path:
+   ```
+   doc/<forkname>/changelog/
+   ```
+
+## Requirements
+
+1. Detect the fork name from the Replit team URL (last segment of the URL path).
+2. Navigate to folder: `doc/<forkname>/changelog/`
+3. Check existing files with naming pattern: `changes<SerialNumber>.md`
    Example:
    - changes1.md
    - changes2.md
    - changes3.md
 
-3. Identify the highest existing serial number.
-4. Auto-increment the serial number by +1.
-5. Create a new file with name:
-   changes<NextSerialNumber>.md
+4. Identify the highest existing serial number.
+5. Auto-increment the serial number by +1.
+6. Create a new file with name:
+   `changes<NextSerialNumber>.md`
 
-6. File content structure must be:
+## File Content Structure
 
+```markdown
 # Change Log – Issue <Short Issue Title>
 
 ## 1. Frontend Code Changes
@@ -40,9 +58,30 @@ Requirements:
 ## Additional Notes
 - Deployment notes (if any)
 - Environment changes (if any)
+```
 
-Rules:
-- If no changelog folder exists, create doc/changelog first.
-- If no previous changes file exists, start with changes1.md.
-- Ensure serial number increments correctly.
+## Directory Structure Example
+
+```
+doc/
+  upgradedcrewingarchitecturev2/
+    changelog/
+      changes1.md
+      changes2.md
+      changes3.md
+  anotherForkName/
+    changelog/
+      changes1.md
+      changes2.md
+```
+
+Each fork maintains its own isolated changelog directory with independent numbering.
+
+## Rules
+
+- Detect fork name from the Replit team URL (last segment of the path).
+- If the fork directory does not exist, create `doc/<forkname>/changelog/` first.
+- If no previous changes file exists for that fork, start with `changes1.md`.
+- Ensure serial number increments correctly per fork.
 - Follow clean markdown formatting.
+- Each fork's changelog numbering is independent of other forks.
