@@ -77,7 +77,12 @@ export function LicenseSelectionDialog({
     description?: string;
     officerMatrixLabel?: string;
   }>>({
-    queryKey: ['/api/masters/016/data'],
+    queryKey: ['/api/v2/masters/data', '016', 'entries'],
+    queryFn: async () => {
+      const response = await fetch('/api/v2/masters/data/016/entries');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    },
     enabled: open,
   });
 

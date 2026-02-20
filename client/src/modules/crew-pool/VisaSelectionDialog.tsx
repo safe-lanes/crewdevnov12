@@ -41,7 +41,12 @@ export function VisaSelectionDialog({
     name: string;
     countryName?: string;
   }>>({
-    queryKey: ['/api/masters/001/data'],
+    queryKey: ['/api/v2/masters/data', '001', 'entries'],
+    queryFn: async () => {
+      const response = await fetch('/api/v2/masters/data/001/entries');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    },
     enabled: open,
   });
 

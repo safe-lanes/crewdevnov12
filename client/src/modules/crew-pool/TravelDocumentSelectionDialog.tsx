@@ -37,7 +37,12 @@ export function TravelDocumentSelectionDialog({
     entryId: string;
     name: string;
   }>>({
-    queryKey: ['/api/masters/018/data'],
+    queryKey: ['/api/v2/masters/data', '018', 'entries'],
+    queryFn: async () => {
+      const response = await fetch('/api/v2/masters/data/018/entries');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    },
     enabled: open,
   });
 
