@@ -1709,6 +1709,44 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return `${prefix}-${String(maxNum + 1).padStart(3, '0')}`;
   };
 
+  const hasAttachments = (row: Record<string, any>): boolean => {
+    return Array.isArray(row.attachments) && row.attachments.length > 0;
+  };
+
+  const validateRowsBeforeSave = (
+    rows: Array<Record<string, any>>,
+    primaryField: string,
+    sectionLabel: string,
+  ): { validRows: Array<Record<string, any>>; hasError: boolean } => {
+    let hasError = false;
+    const validRows = rows.filter(row => {
+      const isServerRow = row.serverId !== undefined && row.serverId !== null;
+      const primaryValue = (row[primaryField] || '').toString().trim();
+      const hasAttach = hasAttachments(row);
+
+      if (isServerRow) {
+        return true;
+      }
+
+      if (!primaryValue && hasAttach) {
+        toast({
+          title: "Validation Error",
+          description: `${sectionLabel}: A row has an attachment but the required field is empty. Please fill in the field or remove the attachment.`,
+          variant: "destructive",
+        });
+        hasError = true;
+        return true;
+      }
+
+      if (!primaryValue && !hasAttach) {
+        return false;
+      }
+
+      return true;
+    });
+    return { validRows, hasError };
+  };
+
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -2390,25 +2428,46 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
       }
       
+      const docValidation = validateRowsBeforeSave(formData.documents, 'document', 'Documents');
+      const visaValidation = validateRowsBeforeSave(formData.visas, 'issuingCountry', 'Visas');
+      const eduValidation = validateRowsBeforeSave(formData.education, 'qualifications', 'Education');
+      const licValidation = validateRowsBeforeSave(formData.licenses, 'certificateDocument', 'Licenses');
+      const trainValidation = validateRowsBeforeSave(formData.trainingCourses, 'trainingCourse', 'Training Certificates');
+      const seaValidation = validateRowsBeforeSave(formData.seaService, 'vesselName', 'Sea Service');
+      const infoValidation = validateRowsBeforeSave(formData.additionalInfo, 'information', 'Additional Information');
+
+      if (docValidation.hasError || visaValidation.hasError || eduValidation.hasError ||
+          licValidation.hasError || trainValidation.hasError || seaValidation.hasError || infoValidation.hasError) {
+        return;
+      }
+
+      const filteredDocuments = docValidation.validRows;
+      const filteredVisas = visaValidation.validRows;
+      const filteredEducation = eduValidation.validRows;
+      const filteredLicenses = licValidation.validRows;
+      const filteredTraining = trainValidation.validRows;
+      const filteredSeaService = seaValidation.validRows;
+      const filteredAdditionalInfo = infoValidation.validRows;
+
       // OPTIMIZED: Save all section items in parallel for better performance
       const serverDocMap = new Map((documentsData || []).map(d => [d.docUuid, d.id]));
-      const localDocIds = new Set(formData.documents.map(d => d.id));
+      const localDocIds = new Set(filteredDocuments.map(d => d.id));
       const serverVisaMap = new Map((visasData || []).map(v => [v.visaUuid, v.id]));
-      const localVisaIds = new Set(formData.visas.map(v => v.id));
+      const localVisaIds = new Set(filteredVisas.map(v => v.id));
       const serverEduMap = new Map((educationData || []).map(e => [e.eduUuid, e.id]));
-      const localEduIds = new Set(formData.education.map(e => e.id));
+      const localEduIds = new Set(filteredEducation.map(e => e.id));
       const serverLicMap = new Map((licensesData || []).map(l => [l.licUuid, l.id]));
-      const localLicIds = new Set(formData.licenses.map(l => l.id));
+      const localLicIds = new Set(filteredLicenses.map(l => l.id));
       const serverTrainMap = new Map((trainingData || []).map(t => [t.trainUuid, t.id]));
-      const localTrainIds = new Set(formData.trainingCourses.map(t => t.id));
+      const localTrainIds = new Set(filteredTraining.map(t => t.id));
       const serverSeaMap = new Map((seaServiceData || []).map(s => [s.seaUuid, s.id]));
-      const localSeaIds = new Set(formData.seaService.map(s => s.id));
+      const localSeaIds = new Set(filteredSeaService.map(s => s.id));
 
       // Build all save/update promises for parallel execution
       const allSavePromises: Promise<any>[] = [];
 
       // Documents - save with attachments
-      formData.documents.forEach((doc, index) => {
+      filteredDocuments.forEach((doc, index) => {
         const docPayload = {
           documentId: doc.documentId || undefined,
           documentName: doc.document || undefined,
@@ -2448,7 +2507,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Visas - save with attachments
-      formData.visas.forEach((visa, index) => {
+      filteredVisas.forEach((visa, index) => {
         const visaPayload = {
           countryUuid: visa.countryId || visa.issuingCountry || undefined,
           serialNo: visa.serialNo || undefined,
@@ -2486,7 +2545,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Education - save with attachments
-      formData.education.forEach((edu, index) => {
+      filteredEducation.forEach((edu, index) => {
         const eduPayload = {
           dateOfCompletion: edu.dateOfCompletion || undefined,
           institution: edu.schoolCollegeUniversity || undefined,
@@ -2523,7 +2582,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Licenses - save with attachments
-      formData.licenses.forEach((lic, index) => {
+      filteredLicenses.forEach((lic, index) => {
         const licPayload = {
           licenseId: lic.licenseId || undefined,
           certificateDocument: lic.certificateDocument || undefined,
@@ -2564,7 +2623,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Training - save with attachments
-      formData.trainingCourses.forEach((train, index) => {
+      filteredTraining.forEach((train, index) => {
         const trainPayload = {
           courseId: train.courseId || undefined,
           trainingCourse: train.trainingCourse || undefined,
@@ -2605,7 +2664,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Sea Service - save with attachments
-      formData.seaService.forEach((sea, index) => {
+      filteredSeaService.forEach((sea, index) => {
         const seaPayload = {
           vesselName: sea.vesselName || undefined,
           vesselTypeUuid: sea.vesselType || undefined,
@@ -2688,10 +2747,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       
       // Additional Info - save in parallel with attachments
       const serverInfoMap = new Map((additionalInfoData || []).map(a => [a.infoUuid, a.id]));
-      const localInfoIds = new Set(formData.additionalInfo.map(a => a.id));
+      const localInfoIds = new Set(filteredAdditionalInfo.map(a => a.id));
       const infoSavePromises: Promise<any>[] = [];
       
-      formData.additionalInfo.forEach((info, index) => {
+      filteredAdditionalInfo.forEach((info, index) => {
         const infoPayload = {
           information: info.information || undefined,
           response: info.response || undefined,
@@ -2745,6 +2804,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       
       await Promise.all([...infoSavePromises, ...infoDeletePromises]);
       
+      setFormData(prev => ({
+        ...prev,
+        documents: filteredDocuments as typeof prev.documents,
+        visas: filteredVisas as typeof prev.visas,
+        education: filteredEducation as typeof prev.education,
+        licenses: filteredLicenses as typeof prev.licenses,
+        trainingCourses: filteredTraining as typeof prev.trainingCourses,
+        seaService: filteredSeaService as typeof prev.seaService,
+        additionalInfo: filteredAdditionalInfo as typeof prev.additionalInfo,
+      }));
+
       // Batch invalidate all queries
       queryClient.invalidateQueries({ 
         predicate: (query) => 
