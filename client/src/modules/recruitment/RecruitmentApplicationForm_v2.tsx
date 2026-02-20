@@ -2415,10 +2415,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }),
       ]);
       
+      const nonEmptyChildren = formData.children.filter(child =>
+        (child.firstName || '').trim() || (child.middleName || '').trim() || (child.familyName || '').trim() || (child.dateOfBirth || '').trim() || (child.gender || '').trim()
+      );
+      if (nonEmptyChildren.length !== formData.children.length) {
+        setFormData(prev => ({ ...prev, children: nonEmptyChildren }));
+      }
       // Always save children (even empty array triggers soft-delete of removed children)
       await saveChildrenMutation.mutateAsync({
         recCanUuid: currentUuid,
-        data: formData.children.map((child, index) => ({
+        data: nonEmptyChildren.map((child, index) => ({
           childUuid: child.id.startsWith('CHILD-') || child.id.startsWith('new-') ? undefined : child.id,
           firstName: child.firstName,
           middleName: child.middleName || undefined,
