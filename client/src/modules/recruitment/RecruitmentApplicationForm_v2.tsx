@@ -596,6 +596,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const [emailError, setEmailError] = useState('');
   const [nokEmailError, setNokEmailError] = useState('');
+  const [spouseValidationError, setSpouseValidationError] = useState('');
 
   const validateEmail = (value: string): string => {
     if (!value) return '';
@@ -2267,6 +2268,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
       updateFormData('nokEmail', trimmedNokEmail);
     }
+    if (formData.maritalStatus === 'Married') {
+      const missingSpouseFields: string[] = [];
+      if (!(formData.spouseFirstName || '').trim()) missingSpouseFields.push('Spouse First Name');
+      if (!(formData.spouseFamilyName || '').trim()) missingSpouseFields.push('Spouse Family Name');
+      if (!(formData.spouseDateOfBirth || '').trim()) missingSpouseFields.push('Spouse Date of Birth');
+      if (missingSpouseFields.length > 0) {
+        setSpouseValidationError(`Required when Married: ${missingSpouseFields.join(', ')}`);
+        return;
+      }
+    }
+    setSpouseValidationError('');
     try {
       toast({
         title: "Saving...",
@@ -4151,7 +4163,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Marital Status</Label>
               {isEditing ? (
-                <Select value={formData.maritalStatus} onValueChange={(value) => updateFormData('maritalStatus', value)}>
+                <Select value={formData.maritalStatus} onValueChange={(value) => { updateFormData('maritalStatus', value); if (value !== 'Married') setSpouseValidationError(''); }}>
                   <SelectTrigger className="mt-1" data-testid="select-marital-status">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -4211,12 +4223,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name</Label>
               {isEditing ? (
-                <Input
-                  value={formData.spouseFirstName}
-                  onChange={(e) => updateFormData('spouseFirstName', e.target.value)}
-                  className="mt-1"
-                  data-testid="input-spouse-first-name"
-                />
+                <>
+                  <Input
+                    value={formData.spouseFirstName}
+                    onChange={(e) => { updateFormData('spouseFirstName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
+                    className="mt-1"
+                    data-testid="input-spouse-first-name"
+                  />
+                  {spouseValidationError && !(formData.spouseFirstName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-first-name-error">Required</p>}
+                </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFirstName}</div>
               )}
@@ -4237,12 +4252,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name</Label>
               {isEditing ? (
-                <Input
-                  value={formData.spouseFamilyName}
-                  onChange={(e) => updateFormData('spouseFamilyName', e.target.value)}
-                  className="mt-1"
-                  data-testid="input-spouse-family-name"
-                />
+                <>
+                  <Input
+                    value={formData.spouseFamilyName}
+                    onChange={(e) => { updateFormData('spouseFamilyName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
+                    className="mt-1"
+                    data-testid="input-spouse-family-name"
+                  />
+                  {spouseValidationError && !(formData.spouseFamilyName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-family-name-error">Required</p>}
+                </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFamilyName}</div>
               )}
@@ -4250,13 +4268,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
               {isEditing ? (
-                <Input
-                  type="date"
-                  value={formData.spouseDateOfBirth}
-                  onChange={(e) => updateFormData('spouseDateOfBirth', e.target.value)}
-                  className="mt-1"
-                  data-testid="input-spouse-dob"
-                />
+                <>
+                  <Input
+                    type="date"
+                    value={formData.spouseDateOfBirth}
+                    onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
+                    className="mt-1"
+                    data-testid="input-spouse-dob"
+                  />
+                  {spouseValidationError && !(formData.spouseDateOfBirth || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-dob-error">Required</p>}
+                </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth}</div>
               )}
