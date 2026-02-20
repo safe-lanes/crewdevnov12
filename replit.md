@@ -73,6 +73,35 @@ All client modules live under `client/src/modules/` with a flat structure (no v1
 - **Admin / Forms Configuration:** Manages company-specific forms, including versioning, rank groups, available ranks, and promotion hierarchies.
 - **V2 Masters Module:** Provides common REST endpoints at `/api/v2/masters/` for 13 master tables, including dedicated normalized tables for licenses, manning agents, crew pools, and appraisal types.
 
+## Deployment Architecture
+
+### Development (Replit)
+- `npm run dev` — runs Express + Vite dev server on port 5000
+- Frontend and backend served from same process with HMR
+- Entry: `server/index.ts` → Vite middleware for frontend, Express for API
+- Router base: `/` (no prefix)
+
+### Production (PM2 + nginx)
+- **Frontend**: `npm run build:frontend` → static files in `dist/public/` (base path `/crewing/`)
+- **Backend**: `npm run build:backend` → API server bundled to `dist/server/index.js`
+- **Combined**: `npm run build:prod` → builds both
+- **PM2**: `pm2 start ecosystem.config.cjs` → runs API on port 4000
+- **nginx**: serves `dist/public/` for `/crewing/`, proxies `/api/` to PM2 backend
+- Entry: `server/production.ts` → Express API only (no Vite, no static files)
+- Router base: `/crewing`
+- Config: `deploy/nginx.conf.example`, `ecosystem.config.cjs`
+
+### Build Scripts
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Replit dev (port 5000, Vite HMR) |
+| `npm run build` | Replit production build (combined) |
+| `npm run build:frontend` | Production frontend only (dist/public/) |
+| `npm run build:backend` | Production backend only (dist/server/) |
+| `npm run build:prod` | Production frontend + backend |
+| `npm start` | Run Replit production build |
+| `npm run start:prod` | Run separated production backend |
+
 ## External Dependencies
 - **SAIL ERP API:** For enterprise resource planning data integration.
 - **SAIL Audits API:** For auditing and compliance tracking.
