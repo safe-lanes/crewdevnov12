@@ -6,7 +6,7 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Seafarer Performance Management System API",
+      title: "SAIL Crewing API",
       version: "2.0.0",
       description:
         "Maritime operations platform API for crew management, vessel operations, and regulatory compliance.",
@@ -14,7 +14,11 @@ const options: swaggerJsdoc.Options = {
     servers: [
       {
         url: "/",
-        description: "Current server",
+        description: "Development server",
+      },
+      {
+        url: "https://dev.sl-sail.com",
+        description: "Production server",
       },
     ],
     tags: [
@@ -45,7 +49,7 @@ const swaggerSpec = swaggerJsdoc(options);
 
 export function setupSwagger(app: Express): void {
   app.use(
-    "/api-docs",
+    "/api/docs",
     swaggerUi.serve,
     swaggerUi.setup(swaggerSpec, {
       customCss: `
@@ -64,7 +68,7 @@ export function setupSwagger(app: Express): void {
         }
         .swagger-ui .info .title { font-size: 28px; }
       `,
-      customSiteTitle: "SPMS API Documentation",
+      customSiteTitle: "SAIL Crewing API Documentation",
       swaggerOptions: {
         docExpansion: "none",
         filter: true,
@@ -74,7 +78,7 @@ export function setupSwagger(app: Express): void {
     })
   );
 
-  app.get("/api-docs.json", (_req, res) => {
+  app.get("/api/docs.json", (_req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
   });

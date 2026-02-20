@@ -1,6 +1,6 @@
 # Migration Documentation Index
 
-This folder contains all database migration files and comprehensive documentation for the Seafarer Performance Management System.
+This folder contains all database migration files and comprehensive documentation for the SAIL Crewing system.
 
 ---
 

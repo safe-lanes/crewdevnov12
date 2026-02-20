@@ -1,6 +1,6 @@
 # Database Migrations
 
-This folder contains all PostgreSQL database migration scripts for the Seafarer Performance Management System.
+This folder contains all PostgreSQL database migration scripts for the SAIL Crewing system.
 
 ## ✅ Automatic Migration System (New!)
 

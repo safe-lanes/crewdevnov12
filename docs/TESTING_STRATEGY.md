@@ -2,7 +2,7 @@
 
 ## Current State
 
-The Seafarer Performance Management System currently has **no automated test suite**. This document outlines the testing strategy and identifies critical areas for test coverage.
+The SAIL Crewing system currently has **no automated test suite**. This document outlines the testing strategy and identifies critical areas for test coverage.
 
 ---
 

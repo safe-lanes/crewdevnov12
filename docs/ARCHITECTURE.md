@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Seafarer Performance Management System follows a modern full-stack JavaScript architecture with a React frontend and Express.js backend, connected to a PostgreSQL database via Drizzle ORM.
+The SAIL Crewing system follows a modern full-stack JavaScript architecture with a React frontend and Express.js backend, connected to a PostgreSQL database via Drizzle ORM.
 
 ## High-Level Architecture
 

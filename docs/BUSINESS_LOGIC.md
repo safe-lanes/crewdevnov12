@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the core business rules, workflows, and feature logic implemented in the Seafarer Performance Management System.
+This document describes the core business rules, workflows, and feature logic implemented in the SAIL Crewing system.
 
 ---
 

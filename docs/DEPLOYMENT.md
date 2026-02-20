@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Seafarer Performance Management System is designed to run on Replit's platform with PostgreSQL database support.
+The SAIL Crewing system is designed to run on Replit's platform with PostgreSQL database support.
 
 ---
 

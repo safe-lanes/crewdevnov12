@@ -2,7 +2,7 @@
 
 ## Welcome
 
-This guide will help you get started with the Seafarer Performance Management System test suite. By the end, you'll be able to run tests, write new tests, and understand the testing architecture.
+This guide will help you get started with the SAIL Crewing test suite. By the end, you'll be able to run tests, write new tests, and understand the testing architecture.
 
 ---
 

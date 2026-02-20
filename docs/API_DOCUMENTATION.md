@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Seafarer Performance Management System exposes 253 RESTful API endpoints via Express.js. All endpoints are prefixed with `/api/` and return JSON responses.
+The SAIL Crewing system exposes 253 RESTful API endpoints via Express.js. All endpoints are prefixed with `/api/` and return JSON responses.
 
 ## Base URL
 
