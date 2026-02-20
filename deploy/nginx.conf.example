@@ -1,12 +1,13 @@
-# SAIL Crewing - Production nginx configuration
-# Frontend: static files served by nginx
+# SAIL Crewing - Production nginx configuration (Windows)
+# Frontend: static files served by nginx from dist/public/
 # Backend: API proxied to PM2 (Node.js on port 4000)
+#
+# Deployment directory: C:\GitHub\crewing_upgraded_build\
 #
 # Usage:
 #   1. Build: npm run build:prod
-#   2. Copy dist/public/ to your server's web root
-#   3. Start backend: pm2 start ecosystem.config.cjs
-#   4. Configure nginx with this file
+#   2. Start backend: pm2 start ecosystem.config.cjs
+#   3. Add these location blocks to your nginx server config
 
 # ===============================================
 # CREWING API (proxied to PM2 backend)
@@ -36,7 +37,7 @@ location /api/ {
 # CREWING STATIC ASSETS (JS, CSS, images)
 # ===============================================
 location /crewing/assets/ {
-    alias /path/to/dist/public/assets/;
+    alias C:/GitHub/crewing_upgraded_build/dist/public/assets/;
     expires 1y;
     add_header Cache-Control "public, immutable";
     try_files $uri =404;
@@ -46,7 +47,7 @@ location /crewing/assets/ {
 # FIGMA ASSETS
 # ===============================================
 location /figmaAssets/ {
-    alias /path/to/dist/public/figmaAssets/;
+    alias C:/GitHub/crewing_upgraded_build/dist/public/figmaAssets/;
     expires 30d;
     add_header Cache-Control "public";
     try_files $uri =404;
@@ -56,7 +57,7 @@ location /figmaAssets/ {
 # REACT APP (catch-all for /crewing/ SPA routing)
 # ===============================================
 location /crewing/ {
-    alias /path/to/dist/public/;
+    alias C:/GitHub/crewing_upgraded_build/dist/public/;
     try_files $uri $uri/ /crewing/index.html;
 
     add_header Cache-Control "no-cache";
