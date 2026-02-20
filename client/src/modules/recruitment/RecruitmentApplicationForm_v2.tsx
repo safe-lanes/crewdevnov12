@@ -4366,28 +4366,28 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       <TableCell className="p-3 text-[13px]">{index + 1}</TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input value={child.firstName} onChange={(e) => updateChild(child.id, 'firstName', sanitizeName(e.target.value))} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                          <Input value={child.firstName} onChange={(e) => updateChild(child.id, 'firstName', sanitizeName(e.target.value))} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                         ) : (
                           <span className="text-[13px]">{child.firstName}</span>
                         )}
                       </TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input value={child.middleName} onChange={(e) => updateChild(child.id, 'middleName', sanitizeName(e.target.value))} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                          <Input value={child.middleName} onChange={(e) => updateChild(child.id, 'middleName', sanitizeName(e.target.value))} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                         ) : (
                           <span className="text-[13px]">{child.middleName}</span>
                         )}
                       </TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input value={child.familyName} onChange={(e) => updateChild(child.id, 'familyName', sanitizeName(e.target.value))} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                          <Input value={child.familyName} onChange={(e) => updateChild(child.id, 'familyName', sanitizeName(e.target.value))} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                         ) : (
                           <span className="text-[13px]">{child.familyName}</span>
                         )}
                       </TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input type="date" value={child.dateOfBirth} onChange={(e) => updateChild(child.id, 'dateOfBirth', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                          <Input type="date" value={child.dateOfBirth} onChange={(e) => updateChild(child.id, 'dateOfBirth', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                         ) : (
                           <span className="text-[13px]">{child.dateOfBirth}</span>
                         )}
@@ -4395,7 +4395,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       <TableCell className="p-3">
                         {isEditing ? (
                           <Select value={child.gender} onValueChange={(value) => updateChild(child.id, 'gender', value)}>
-                            <SelectTrigger className="text-[13px] border-0 shadow-none p-0 h-auto">
+                            <SelectTrigger className="text-[13px] border border-input shadow-none p-0 h-auto">
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -4520,19 +4520,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.documents.map((doc) => (
               <TableRow key={doc.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input value={doc.document} onChange={(e) => updateDocument(doc.id, 'document', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={doc.document} onChange={(e) => updateDocument(doc.id, 'document', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={doc.number} onChange={(e) => updateDocument(doc.id, 'number', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={doc.number} onChange={(e) => updateDocument(doc.id, 'number', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={doc.issued} onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={doc.issued} onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={doc.expiry} onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={doc.expiry} onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={doc.issuingAuthority} onChange={(e) => updateDocument(doc.id, 'issuingAuthority', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={doc.issuingAuthority} onChange={(e) => updateDocument(doc.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4585,19 +4585,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input value={visa.issuingCountry} onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={visa.issuingCountry} onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={visa.serialNo} onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={visa.serialNo} onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={visa.issued} onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={visa.issued} onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={visa.expiry} onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={visa.expiry} onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={visa.visaType} onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={visa.visaType} onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4644,16 +4644,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.education.map((edu) => (
               <TableRow key={edu.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input type="date" value={edu.dateOfCompletion} onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={edu.dateOfCompletion} onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={edu.schoolCollegeUniversity} onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={edu.schoolCollegeUniversity} onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={edu.subjectsField} onChange={(e) => updateEducation(edu.id, 'subjectsField', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={edu.subjectsField} onChange={(e) => updateEducation(edu.id, 'subjectsField', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={edu.qualifications} onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={edu.qualifications} onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4710,25 +4710,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableRow key={lic.id} className="border-b border-gray-200">
                 <TableCell className="p-3 text-[13px]">{lic.licenseId || lic.id}</TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.certificateDocument} onChange={(e) => updateLicense(lic.id, 'certificateDocument', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={lic.certificateDocument} onChange={(e) => updateLicense(lic.id, 'certificateDocument', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.abbr} onChange={(e) => updateLicense(lic.id, 'abbr', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={lic.abbr} onChange={(e) => updateLicense(lic.id, 'abbr', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.requirement} onChange={(e) => updateLicense(lic.id, 'requirement', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={lic.requirement} onChange={(e) => updateLicense(lic.id, 'requirement', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.certificateNo} onChange={(e) => updateLicense(lic.id, 'certificateNo', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={lic.certificateNo} onChange={(e) => updateLicense(lic.id, 'certificateNo', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.issuingAuthority} onChange={(e) => updateLicense(lic.id, 'issuingAuthority', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={lic.issuingAuthority} onChange={(e) => updateLicense(lic.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={lic.issued} onChange={(e) => updateLicense(lic.id, 'issued', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={lic.issued} onChange={(e) => updateLicense(lic.id, 'issued', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={lic.expiry} onChange={(e) => updateLicense(lic.id, 'expiry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={lic.expiry} onChange={(e) => updateLicense(lic.id, 'expiry', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4785,25 +4785,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3 text-[13px]">{course.courseId || course.id}</TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.trainingCourse} onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={course.trainingCourse} onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.abbr} onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={course.abbr} onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.requirement} onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={course.requirement} onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.certificateNo} onChange={(e) => updateTrainingCourse(course.id, 'certificateNo', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={course.certificateNo} onChange={(e) => updateTrainingCourse(course.id, 'certificateNo', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.issuingAuthority} onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={course.issuingAuthority} onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={course.issued} onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={course.issued} onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={course.expiry} onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={course.expiry} onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4855,11 +4855,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.seaService.map((service) => (
               <TableRow key={service.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input value={service.vesselName} onChange={(e) => updateSeaService(service.id, 'vesselName', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" placeholder="Enter vessel name" />
+                  <Input value={service.vesselName} onChange={(e) => updateSeaService(service.id, 'vesselName', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" placeholder="Enter vessel name" />
                 </TableCell>
                 <TableCell className="p-3">
                   <Select value={service.vesselType} onValueChange={(value) => updateSeaService(service.id, 'vesselType', value)}>
-                    <SelectTrigger className="text-[13px] border-0 shadow-none p-0 h-auto">
+                    <SelectTrigger className="text-[13px] border border-input shadow-none p-0 h-auto">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -4870,17 +4870,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </Select>
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={service.deadweight} onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={service.deadweight} onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={service.engineTypePower} onChange={(e) => updateSeaService(service.id, 'engineTypePower', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={service.engineTypePower} onChange={(e) => updateSeaService(service.id, 'engineTypePower', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={service.ownerOperator} onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={service.ownerOperator} onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <Select value={service.rank} onValueChange={(value) => updateSeaService(service.id, 'rank', value)}>
-                    <SelectTrigger className="text-[13px] border-0 shadow-none p-0 h-auto">
+                    <SelectTrigger className="text-[13px] border border-input shadow-none p-0 h-auto">
                       <SelectValue placeholder="Select rank" />
                     </SelectTrigger>
                     <SelectContent>
@@ -4895,13 +4895,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </Select>
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={service.from} onChange={(e) => updateSeaService(service.id, 'from', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={service.from} onChange={(e) => updateSeaService(service.id, 'from', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={service.to} onChange={(e) => updateSeaService(service.id, 'to', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input type="date" value={service.to} onChange={(e) => updateSeaService(service.id, 'to', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={service.periodMonths} readOnly className="text-[13px] border-0 shadow-none p-0 h-auto bg-gray-50 cursor-not-allowed" title="Auto-calculated" />
+                  <Input value={service.periodMonths} readOnly className="text-[13px] border border-input shadow-none p-0 h-auto bg-gray-50 cursor-not-allowed" title="Auto-calculated" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4946,10 +4946,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.additionalInfo.map((info) => (
               <TableRow key={info.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input value={info.information} onChange={(e) => updateAdditionalInfo(info.id, 'information', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" placeholder="Enter information requirement" />
+                  <Input value={info.information} onChange={(e) => updateAdditionalInfo(info.id, 'information', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" placeholder="Enter information requirement" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={info.response} onChange={(e) => updateAdditionalInfo(info.id, 'response', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" placeholder="Enter response" />
+                  <Input value={info.response} onChange={(e) => updateAdditionalInfo(info.id, 'response', e.target.value)} className="text-[13px] border border-input shadow-none p-0 h-auto" placeholder="Enter response" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -7567,7 +7567,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     )
                                   }));
                                 }}
-                                className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                                className="text-[#4f5863] text-[13px] border border-input shadow-none p-0 h-auto"
                                 placeholder="Enter training/course name"
                                 data-testid={`input-b7-training-name-${idx}`}
                               />
@@ -7584,7 +7584,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }));
                                 }}
                               >
-                                <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto" data-testid={`select-b7-training-identified-${idx}`}>
+                                <SelectTrigger className="text-[#4f5863] text-[13px] border border-input shadow-none p-0 h-auto" data-testid={`select-b7-training-identified-${idx}`}>
                                   <SelectValue placeholder="Select person" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -7614,7 +7614,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }));
                                 }}
                               >
-                                <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto" data-testid={`select-b7-training-category-${idx}`}>
+                                <SelectTrigger className="text-[#4f5863] text-[13px] border border-input shadow-none p-0 h-auto" data-testid={`select-b7-training-category-${idx}`}>
                                   <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -7636,7 +7636,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     )
                                   }));
                                 }}
-                                className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                                className="text-[#4f5863] text-[13px] border border-input shadow-none p-0 h-auto"
                                 data-testid={`input-b7-training-due-${idx}`}
                               />
                             </TableCell>
@@ -7651,7 +7651,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     )
                                   }));
                                 }}
-                                className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                                className="text-[#4f5863] text-[13px] border border-input shadow-none p-0 h-auto"
                                 placeholder="Enter comments"
                                 data-testid={`input-b7-training-comments-${idx}`}
                               />
