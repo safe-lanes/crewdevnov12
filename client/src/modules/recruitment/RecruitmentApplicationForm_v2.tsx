@@ -2278,6 +2278,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         return;
       }
     }
+    const spouseDobVal = (formData.spouseDateOfBirth || '').trim();
+    if (spouseDobVal) {
+      const [sy, sm, sd] = spouseDobVal.split('-').map(Number);
+      const spouseDobLocal = new Date(sy, sm - 1, sd);
+      const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0);
+      if (spouseDobLocal > todayLocal) {
+        setSpouseValidationError('Spouse Date of Birth cannot be a future date.');
+        return;
+      }
+    }
     setSpouseValidationError('');
     try {
       toast({
@@ -4273,13 +4283,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     type="date"
                     value={formData.spouseDateOfBirth}
                     onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
+                    max={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()}
                     className="mt-1"
                     data-testid="input-spouse-dob"
                   />
                   {spouseValidationError && !(formData.spouseDateOfBirth || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-dob-error">Required</p>}
+                  {spouseValidationError && spouseValidationError.includes('future') && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-dob-future-error">Spouse Date of Birth cannot be a future date.</p>}
                 </>
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth}</div>
+                <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth ? formatDate(formData.spouseDateOfBirth) : ''}</div>
               )}
             </div>
           </div>
