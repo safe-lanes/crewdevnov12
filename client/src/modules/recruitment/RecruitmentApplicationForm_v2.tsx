@@ -2593,12 +2593,34 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
       }
       
-      const nonEmptyDocuments = formData.documents.filter(doc => (doc.document || '').trim());
-      const nonEmptyVisas = formData.visas.filter(visa => (visa.issuingCountry || '').trim());
-      const nonEmptyEducation = formData.education.filter(edu => (edu.qualifications || '').trim());
-      const nonEmptyLicenses = formData.licenses.filter(lic => (lic.certificateDocument || '').trim());
-      const nonEmptyTraining = formData.trainingCourses.filter(train => (train.trainingCourse || '').trim());
-      const nonEmptySeaService = formData.seaService.filter(sea => (sea.vesselName || '').trim());
+      const mandatoryErrors: string[] = [];
+
+      const hasAttachments = (atts?: FileAttachment[]) => (atts || []).filter(a => !(a as any).isDeleted).length > 0;
+      const isDocBlank = (doc: typeof formData.documents[0]) => !(doc.document || '').trim() && !(doc.number || '').trim() && !(doc.issued || '').trim() && !(doc.expiry || '').trim() && !(doc.issuingAuthority || '').trim() && !hasAttachments(doc.attachments);
+      const isVisaBlank = (visa: typeof formData.visas[0]) => !(visa.issuingCountry || '').trim() && !(visa.serialNo || '').trim() && !(visa.issued || '').trim() && !(visa.expiry || '').trim() && !(visa.visaType || '').trim() && !hasAttachments(visa.attachments);
+      const isEduBlank = (edu: typeof formData.education[0]) => !(edu.qualifications || '').trim() && !(edu.subjectsField || '').trim() && !(edu.schoolCollegeUniversity || '').trim() && !(edu.dateOfCompletion || '').trim() && !hasAttachments(edu.attachments);
+      const isLicBlank = (lic: typeof formData.licenses[0]) => !(lic.certificateDocument || '').trim() && !(lic.abbr || '').trim() && !(lic.requirement || '').trim() && !(lic.certificateNo || '').trim() && !(lic.issuingAuthority || '').trim() && !(lic.issued || '').trim() && !(lic.expiry || '').trim() && !hasAttachments(lic.attachments);
+      const isTrainBlank = (t: typeof formData.trainingCourses[0]) => !(t.trainingCourse || '').trim() && !(t.abbr || '').trim() && !(t.requirement || '').trim() && !(t.certificateNo || '').trim() && !(t.issuingAuthority || '').trim() && !(t.issued || '').trim() && !(t.expiry || '').trim() && !hasAttachments(t.attachments);
+      const isSeaBlank = (s: typeof formData.seaService[0]) => !(s.vesselName || '').trim() && !(s.vesselType || '').trim() && !(s.deadweight || '').trim() && !(s.engineTypePower || '').trim() && !(s.ownerOperator || '').trim() && !(s.rank || '').trim() && !(s.from || '').trim() && !(s.to || '').trim() && !(s.periodMonths || '').trim() && !hasAttachments(s.attachments);
+
+      formData.documents.forEach((doc, i) => { if (!isDocBlank(doc) && !(doc.document || '').trim()) mandatoryErrors.push(`Documents Row ${i + 1}: 'Document Name' is required to save this row.`); });
+      formData.visas.forEach((visa, i) => { if (!isVisaBlank(visa) && !(visa.issuingCountry || '').trim()) mandatoryErrors.push(`Visas Row ${i + 1}: 'Issuing Country' is required to save this row.`); });
+      formData.education.forEach((edu, i) => { if (!isEduBlank(edu) && !(edu.qualifications || '').trim()) mandatoryErrors.push(`Education Row ${i + 1}: 'Qualifications' is required to save this row.`); });
+      formData.licenses.forEach((lic, i) => { if (!isLicBlank(lic) && !(lic.certificateDocument || '').trim()) mandatoryErrors.push(`License & DCE Row ${i + 1}: 'Certificate/Document' is required to save this row.`); });
+      formData.trainingCourses.forEach((t, i) => { if (!isTrainBlank(t) && !(t.trainingCourse || '').trim()) mandatoryErrors.push(`Training Course Row ${i + 1}: 'Training/Course' is required to save this row.`); });
+      formData.seaService.forEach((s, i) => { if (!isSeaBlank(s) && !(s.vesselName || '').trim()) mandatoryErrors.push(`Sea Service Row ${i + 1}: 'Vessel Name' is required to save this row.`); });
+
+      if (mandatoryErrors.length > 0) {
+        alert(mandatoryErrors.join('\n'));
+        return;
+      }
+
+      const nonEmptyDocuments = formData.documents.filter(doc => !isDocBlank(doc));
+      const nonEmptyVisas = formData.visas.filter(visa => !isVisaBlank(visa));
+      const nonEmptyEducation = formData.education.filter(edu => !isEduBlank(edu));
+      const nonEmptyLicenses = formData.licenses.filter(lic => !isLicBlank(lic));
+      const nonEmptyTraining = formData.trainingCourses.filter(t => !isTrainBlank(t));
+      const nonEmptySeaService = formData.seaService.filter(s => !isSeaBlank(s));
 
       if (
         nonEmptyDocuments.length !== formData.documents.length ||
@@ -3359,7 +3381,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
-      const nonEmptyB7Training = formData.b7TrainingNeeds.filter(t => (t.training || '').trim());
+      const isB7Blank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
+      const b7MandatoryErrors: string[] = [];
+      formData.b7TrainingNeeds.forEach((t, i) => { if (!isB7Blank(t) && !(t.training || '').trim()) b7MandatoryErrors.push(`Training Needs Row ${i + 1}: 'Training' is required to save this row.`); });
+      if (b7MandatoryErrors.length > 0) {
+        alert(b7MandatoryErrors.join('\n'));
+        return;
+      }
+      const nonEmptyB7Training = formData.b7TrainingNeeds.filter(t => !isB7Blank(t));
       if (nonEmptyB7Training.length !== formData.b7TrainingNeeds.length) {
         setFormData(prev => ({ ...prev, b7TrainingNeeds: nonEmptyB7Training }));
       }
