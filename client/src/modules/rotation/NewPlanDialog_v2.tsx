@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -802,6 +802,90 @@ function CrewColumn({
   );
 }
 
+// Position Select Dialog - shown when a rank has multiple positions on the selected vessel
+function PositionSelectDialog({
+  open,
+  onOpenChange,
+  positions,
+  crewName,
+  onPositionSelect,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  positions: string[];
+  crewName: string;
+  onPositionSelect: (position: string) => void;
+}) {
+  const [selectedPosition, setSelectedPosition] = useState<string>('');
+
+  useEffect(() => {
+    if (open) {
+      setSelectedPosition('');
+    }
+  }, [open]);
+
+  const formatPositionLabel = (position: string): string => {
+    return position.replace(/_/g, ' ');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Select Position</DialogTitle>
+          <DialogDescription>
+            Choose a specific position to assign {crewName} to.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-2">
+          <RadioGroup
+            value={selectedPosition}
+            onValueChange={setSelectedPosition}
+            className="gap-3"
+          >
+            {positions.map((position) => (
+              <div
+                key={position}
+                className={cn(
+                  "flex items-center space-x-3 rounded-md border p-3 cursor-pointer transition-colors",
+                  selectedPosition === position ? "border-primary bg-primary/5" : "border-border"
+                )}
+                onClick={() => setSelectedPosition(position)}
+                data-testid={`radio-position-${position}`}
+              >
+                <RadioGroupItem value={position} id={`pos-${position}`} />
+                <label htmlFor={`pos-${position}`} className="text-sm font-medium cursor-pointer flex-1">
+                  {formatPositionLabel(position)}
+                </label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+        <div className="flex justify-end gap-2 pt-2 border-t">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            data-testid="button-cancel-position-select"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (selectedPosition) {
+                onPositionSelect(selectedPosition);
+              }
+            }}
+            disabled={!selectedPosition}
+            data-testid="button-confirm-position-select"
+          >
+            Confirm
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Date Period Dialog - for selecting joining date and contract period
 function DatePeriodDialog({
   open,
@@ -1433,6 +1517,8 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [selectedCrew, setSelectedCrew] = useState<{ crewUuid: string; name: string; rank: string } | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+  const [positionSelectOpen, setPositionSelectOpen] = useState(false);
+  const [pendingPositionOptions, setPendingPositionOptions] = useState<string[]>([]);
   const prevSelectedVesselsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(false);
   
@@ -1533,9 +1619,10 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   // API now provides displayRole which handles the per-vessel slot counting logic:
   // - If a vessel has ONE slot for a rank: displayRole = base Rank Label (e.g., "Fitter")
   // - If a vessel has MULTIPLE slots for a rank: displayRole = suffixed position (e.g., "Fitter_1", "Fitter_2")
-  const { vesselValidPositions, vesselBaseRanksWithDirectSlots } = useMemo(() => {
+  const { vesselValidPositions, vesselBaseRanksWithDirectSlots, perVesselPositions } = useMemo(() => {
     const validPositions = new Set<string>();
     const baseRanksWithDirectSlots = new Set<string>();
+    const positionsByVessel = new Map<string, Set<string>>();
     
     // Group ranks by vessel for processing
     const ranksByVessel = new Map<string, any[]>();
@@ -1549,11 +1636,17 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     
     // Process each vessel independently, using the API-provided displayRole
     ranksByVessel.forEach((vesselRanks, vesselId) => {
+      if (!positionsByVessel.has(vesselId)) {
+        positionsByVessel.set(vesselId, new Set<string>());
+      }
+      const vesselPositionSet = positionsByVessel.get(vesselId)!;
+      
       vesselRanks.forEach((rank: any) => {
         // Use displayRole from API (already has per-vessel slot count logic applied)
         const displayPosition = rank.displayRole || rank.role || rank.rank;
         if (displayPosition) {
           validPositions.add(displayPosition);
+          vesselPositionSet.add(displayPosition);
           // Track base ranks that have direct slots (no suffix)
           if (!displayPosition.includes('_')) {
             baseRanksWithDirectSlots.add(displayPosition);
@@ -1564,7 +1657,8 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     
     return { 
       vesselValidPositions: validPositions, 
-      vesselBaseRanksWithDirectSlots: baseRanksWithDirectSlots 
+      vesselBaseRanksWithDirectSlots: baseRanksWithDirectSlots,
+      perVesselPositions: positionsByVessel,
     };
   }, [vesselSpecificRanks]);
 
@@ -1581,22 +1675,27 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
 
   // Get all role variants for selected base ranks, filtered by vessel-specific positions
   // Uses Rank Labels (rank field) as source of truth, with suffixed positions only for multi-slot ranks
+  // When vessels are selected, only include positions that exist on at least one selected vessel
   const autoSelectedRoleVariants = useMemo(() => {
     const variants: string[] = [];
     const addedPositions = new Set<string>(); // Track what we've added to avoid duplicates
     const selectedBaseRanks = new Set(selectedRanks);
     
-    // If we have vessel-specific ranks loaded, use vesselValidPositions which already
-    // has the correct logic: base Rank Labels for single slots, suffixed roles for multi-slots
     const hasVesselFilter = selectedVessels.length > 0 && vesselValidPositions.size > 0;
     
-    // Add positions from vesselValidPositions that match our selected base ranks
     selectedBaseRanks.forEach((baseRank: string) => {
       if (hasVesselFilter) {
-        // Vessel filter active: use positions from vesselValidPositions
-        vesselValidPositions.forEach((position: string) => {
-          // Check if this position matches the base rank
-          // Either exact match (base rank) or starts with base rank + underscore (variant)
+        // Vessel filter active: only use positions that actually exist on selected vessel(s)
+        // Build the union of positions across all selected vessels (not company-wide)
+        const vesselFilteredPositions = new Set<string>();
+        selectedVessels.forEach((vesselUuid: string) => {
+          const vesselPositions = perVesselPositions.get(vesselUuid);
+          if (vesselPositions) {
+            vesselPositions.forEach((pos: string) => vesselFilteredPositions.add(pos));
+          }
+        });
+        
+        vesselFilteredPositions.forEach((position: string) => {
           const isMatch = position === baseRank || 
                          (position.startsWith(baseRank) && position.includes('_'));
           
@@ -1607,13 +1706,11 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
         });
       } else {
         // No vessel filter: fall back to company ranks
-        // First check if this rank has role variants at company level
         const hasCompanyVariants = companyRanks.some((rank: any) => 
           rank.rank === baseRank && rank.role && rank.role !== rank.rank
         );
         
         if (hasCompanyVariants) {
-          // Add all variants for this base rank
           companyRanks.forEach((rank: any) => {
             if (rank.rank === baseRank && rank.role && rank.role !== rank.rank) {
               if (!addedPositions.has(rank.role)) {
@@ -1623,7 +1720,6 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
             }
           });
         } else {
-          // No variants - add base rank
           if (!addedPositions.has(baseRank)) {
             variants.push(baseRank);
             addedPositions.add(baseRank);
@@ -1633,7 +1729,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     });
     
     return variants;
-  }, [companyRanks, selectedRanks, selectedVessels.length, vesselValidPositions]);
+  }, [companyRanks, selectedRanks, selectedVessels, vesselValidPositions, perVesselPositions]);
 
   // Use manually managed state if user has modified it, otherwise use auto-computed variants
   const selectedRoleVariants = hasManualVariants 
@@ -1952,8 +2048,40 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       });
       return;
     }
+    
+    setEditingAssignment(null);
+    
+    const baseRank = crew.rank;
+    const vesselPositions = perVesselPositions.get(selectedVessel);
+    
+    if (vesselPositions) {
+      const matchingPositions = Array.from(vesselPositions).filter(
+        (pos: string) => pos.startsWith(baseRank) && pos.includes('_')
+      );
+      
+      if (matchingPositions.length > 1) {
+        setSelectedCrew(crew);
+        setPendingPositionOptions(matchingPositions.sort());
+        setPositionSelectOpen(true);
+        return;
+      }
+      
+      if (matchingPositions.length === 1) {
+        setSelectedCrew({ ...crew, rank: matchingPositions[0] });
+        setDateDialogOpen(true);
+        return;
+      }
+    }
+    
     setSelectedCrew(crew);
-    setEditingAssignment(null); // Clear editing mode
+    setDateDialogOpen(true);
+  };
+  
+  const handlePositionSelected = (position: string) => {
+    if (!selectedCrew) return;
+    setSelectedCrew({ ...selectedCrew, rank: position });
+    setPositionSelectOpen(false);
+    setPendingPositionOptions([]);
     setDateDialogOpen(true);
   };
 
@@ -2482,6 +2610,20 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
           </div>
         </div>
       </DialogContent>
+
+      {/* Position Select Dialog - shown when rank has multiple positions */}
+      <PositionSelectDialog
+        open={positionSelectOpen}
+        onOpenChange={(open) => {
+          setPositionSelectOpen(open);
+          if (!open) {
+            setPendingPositionOptions([]);
+          }
+        }}
+        positions={pendingPositionOptions}
+        crewName={selectedCrew?.name || ''}
+        onPositionSelect={handlePositionSelected}
+      />
 
       {/* Date Period Dialog for crew assignment */}
       <DatePeriodDialog
