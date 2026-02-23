@@ -388,7 +388,7 @@ export function extractLocalDigits(countryName: string, mobile: string): string 
 export function normalizeMobileInput(countryName: string, rawInput: string): string {
   const code = getDialingCode(countryName);
   if (!code) return rawInput;
-  if (rawInput.length <= code.length) {
+  if (rawInput.length <= code.length + 1) {
     return code;
   }
   const afterCode = rawInput.slice(code.length).replace(/^[\s-]+/, '');
