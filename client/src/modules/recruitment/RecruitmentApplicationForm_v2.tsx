@@ -1724,11 +1724,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }));
   };
 
-  const getNextId = (items: Array<{id: string}>, prefix: string): string => {
+  const getNextId = (items: Array<{id: string; [key: string]: any}>, prefix: string, altField?: string): string => {
+    const regex = new RegExp(`^${prefix}-(\\d+)$`);
     const existingNums = items
-      .map(item => {
-        const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
-        return match ? parseInt(match[1], 10) : 0;
+      .flatMap(item => {
+        const nums: number[] = [];
+        const idMatch = item.id.match(regex);
+        if (idMatch) nums.push(parseInt(idMatch[1], 10));
+        if (altField && item[altField]) {
+          const altMatch = String(item[altField]).match(regex);
+          if (altMatch) nums.push(parseInt(altMatch[1], 10));
+        }
+        return nums;
       })
       .filter(n => n > 0);
     const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
@@ -1854,7 +1861,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const addLicense = () => {
-    const nextId = getNextId(formData.licenses, 'LIC');
+    const nextId = getNextId(formData.licenses, 'LIC', 'licenseId');
     const newLic = {
       id: nextId,
       licenseId: nextId,
@@ -1892,7 +1899,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const addTrainingCourse = () => {
-    const nextId = getNextId(formData.trainingCourses, 'TRN');
+    const nextId = getNextId(formData.trainingCourses, 'TRN', 'courseId');
     const newCourse = {
       id: nextId,
       courseId: nextId,
@@ -2121,9 +2128,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const addLicensesFromDatabase = (selectedLicenses: LicenseTemplate[]) => {
     const existingLicenses = formData.licenses.filter(l => l.certificateDocument.trim() !== '');
-    const maxNum = Math.max(0, ...formData.licenses.map(l => {
-      const match = l.id.match(/^LIC-(\d+)$/);
-      return match ? parseInt(match[1], 10) : 0;
+    const maxNum = Math.max(0, ...formData.licenses.flatMap(l => {
+      const nums: number[] = [];
+      const idMatch = l.id.match(/^LIC-(\d+)$/);
+      if (idMatch) nums.push(parseInt(idMatch[1], 10));
+      const licIdMatch = (l.licenseId || '').match(/^LIC-(\d+)$/);
+      if (licIdMatch) nums.push(parseInt(licIdMatch[1], 10));
+      return nums.length > 0 ? nums : [0];
     }));
     const newLicenses = selectedLicenses.map((license, index) => {
       const formattedId = `LIC-${String(maxNum + index + 1).padStart(3, '0')}`;
@@ -2146,9 +2157,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const addTrainingCoursesFromDatabase = (selectedCourses: TrainingCourseTemplate[]) => {
     const existingCourses = formData.trainingCourses.filter(c => c.trainingCourse.trim() !== '');
-    const maxNum = Math.max(0, ...formData.trainingCourses.map(c => {
-      const match = c.id.match(/^TRN-(\d+)$/);
-      return match ? parseInt(match[1], 10) : 0;
+    const maxNum = Math.max(0, ...formData.trainingCourses.flatMap(c => {
+      const nums: number[] = [];
+      const idMatch = c.id.match(/^TRN-(\d+)$/);
+      if (idMatch) nums.push(parseInt(idMatch[1], 10));
+      const courseIdMatch = (c.courseId || '').match(/^TRN-(\d+)$/);
+      if (courseIdMatch) nums.push(parseInt(courseIdMatch[1], 10));
+      return nums.length > 0 ? nums : [0];
     }));
     const newCourses = selectedCourses.map((course, index) => {
       const formattedId = `TRN-${String(maxNum + index + 1).padStart(3, '0')}`;
