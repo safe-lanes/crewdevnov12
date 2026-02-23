@@ -400,7 +400,6 @@ export function RotationModule_v2() {
                                     <SelectItem value="3m">Due in 3M</SelectItem>
                                     <SelectItem value="2m">Due in 2M</SelectItem>
                                     <SelectItem value="1m">Due in 1M</SelectItem>
-                                    <SelectItem value="overdue1m">Overdue in 1M</SelectItem>
                                     <SelectItem value="overdue">Overdue</SelectItem>
                                 </SelectContent>
                             </Select>
