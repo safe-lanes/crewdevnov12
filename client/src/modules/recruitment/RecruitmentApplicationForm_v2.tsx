@@ -24,7 +24,7 @@ import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 import { formatDate } from '@/utils/format';
-import { applyDialingCode } from './countryDialingCodes';
+import { applyDialingCode, getDialingCode, normalizeMobileInput, validateMobileNumber } from './countryDialingCodes';
 import {
   useV2Candidate,
   useV2CreateCandidate,
@@ -596,6 +596,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }>({ open: false, type: null, itemId: '', serverId: undefined, itemName: '' });
 
   const [emailError, setEmailError] = useState('');
+  const [mobileError, setMobileError] = useState('');
   const [nokEmailError, setNokEmailError] = useState('');
   const [spouseValidationError, setSpouseValidationError] = useState('');
   const [docDateErrors, setDocDateErrors] = useState<Record<string, string>>({});
@@ -2299,6 +2300,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         return;
       }
     }
+    const trimmedMobile = (formData.mobile || '').trim();
+    if (trimmedMobile && formData.countryOfResidence) {
+      const mobileErr = validateMobileNumber(formData.countryOfResidence, trimmedMobile);
+      if (mobileErr) {
+        setMobileError(mobileErr);
+        toast({
+          title: "Validation Error",
+          description: mobileErr,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    setMobileError('');
     const trimmedEmail = (formData.email || '').trim();
     const trimmedNokEmail = (formData.nokEmail || '').trim();
     if (trimmedEmail) {
@@ -4187,12 +4202,30 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Mobile</Label>
             {isEditing ? (
-              <Input
-                value={formData.mobile}
-                onChange={(e) => updateFormData('mobile', e.target.value)}
-                className="mt-1"
-                data-testid="input-mobile"
-              />
+              <>
+                <Input
+                  value={formData.mobile}
+                  onChange={(e) => {
+                    const rawInput = e.target.value;
+                    if (formData.countryOfResidence && getDialingCode(formData.countryOfResidence)) {
+                      const normalized = normalizeMobileInput(formData.countryOfResidence, rawInput);
+                      updateFormData('mobile', normalized);
+                      if (mobileError) {
+                        setMobileError(validateMobileNumber(formData.countryOfResidence, normalized) || '');
+                      }
+                    } else {
+                      updateFormData('mobile', rawInput);
+                    }
+                  }}
+                  onBlur={() => {
+                    const err = validateMobileNumber(formData.countryOfResidence, formData.mobile);
+                    setMobileError(err || '');
+                  }}
+                  className="mt-1"
+                  data-testid="input-mobile"
+                />
+                {mobileError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-mobile-error">{mobileError}</p>}
+              </>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.mobile}</div>
             )}

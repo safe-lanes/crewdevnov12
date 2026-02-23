@@ -236,10 +236,129 @@ export const countryDialingCodes: Record<string, string> = {
   "ZIMBABWE": "+263",
 };
 
+export const countryDigitLengths: Record<string, { min: number; max: number }> = {
+  "AFGHANISTAN": { min: 9, max: 9 },
+  "ALBANIA": { min: 9, max: 9 },
+  "ALGERIA": { min: 9, max: 9 },
+  "ARGENTINA": { min: 10, max: 10 },
+  "AUSTRALIA": { min: 9, max: 9 },
+  "AUSTRIA": { min: 10, max: 11 },
+  "BAHRAIN": { min: 8, max: 8 },
+  "BANGLADESH": { min: 10, max: 10 },
+  "BELGIUM": { min: 9, max: 9 },
+  "BRAZIL": { min: 10, max: 11 },
+  "BRUNEI DARUSSALAM": { min: 7, max: 7 },
+  "BULGARIA": { min: 9, max: 9 },
+  "CAMBODIA": { min: 8, max: 9 },
+  "CAMEROON": { min: 9, max: 9 },
+  "CANADA": { min: 10, max: 10 },
+  "CHILE": { min: 9, max: 9 },
+  "CHINA PEO REP OF": { min: 11, max: 11 },
+  "COLOMBIA": { min: 10, max: 10 },
+  "CROATIA": { min: 9, max: 10 },
+  "CUBA": { min: 8, max: 8 },
+  "CYPRUS": { min: 8, max: 8 },
+  "CZECH REPUBLIC": { min: 9, max: 9 },
+  "DENMARK": { min: 8, max: 8 },
+  "ECUADOR": { min: 9, max: 10 },
+  "EGYPT": { min: 10, max: 10 },
+  "ESTONIA": { min: 7, max: 8 },
+  "ETHIOPIA": { min: 9, max: 9 },
+  "FIJI": { min: 7, max: 7 },
+  "FINLAND": { min: 9, max: 10 },
+  "FRANCE": { min: 9, max: 9 },
+  "GEORGIA": { min: 9, max: 9 },
+  "GERMANY, FED REP OF": { min: 10, max: 11 },
+  "GHANA": { min: 9, max: 10 },
+  "GREECE": { min: 10, max: 10 },
+  "HONG KONG, CHINA": { min: 8, max: 8 },
+  "HUNGARY": { min: 9, max: 9 },
+  "ICELAND": { min: 7, max: 7 },
+  "INDIA": { min: 10, max: 10 },
+  "INDONESIA": { min: 10, max: 12 },
+  "IRAN (ISLAMIC REP OF)": { min: 10, max: 10 },
+  "IRAQ": { min: 10, max: 10 },
+  "IRELAND": { min: 9, max: 9 },
+  "ISRAEL": { min: 9, max: 10 },
+  "ITALY": { min: 10, max: 10 },
+  "JAMAICA": { min: 7, max: 7 },
+  "JAPAN": { min: 10, max: 11 },
+  "JORDAN": { min: 9, max: 9 },
+  "KAZAKHSTAN": { min: 10, max: 10 },
+  "KENYA": { min: 9, max: 10 },
+  "KOREA, REP OF": { min: 10, max: 11 },
+  "KUWAIT": { min: 8, max: 8 },
+  "LATVIA": { min: 8, max: 8 },
+  "LEBANON": { min: 7, max: 8 },
+  "LIBERIA": { min: 7, max: 8 },
+  "LITHUANIA": { min: 8, max: 8 },
+  "MACAU": { min: 8, max: 8 },
+  "MALAYSIA": { min: 9, max: 10 },
+  "MALDIVES REP OF": { min: 7, max: 7 },
+  "MALTA": { min: 8, max: 8 },
+  "MAURITIUS": { min: 8, max: 8 },
+  "MEXICO": { min: 10, max: 10 },
+  "MOROCCO": { min: 9, max: 9 },
+  "MOZAMBIQUE": { min: 9, max: 9 },
+  "MYANMAR": { min: 8, max: 10 },
+  "NEPAL": { min: 10, max: 10 },
+  "NETHERLANDS": { min: 9, max: 9 },
+  "NEW ZEALAND": { min: 9, max: 10 },
+  "NIGERIA": { min: 10, max: 11 },
+  "NORWAY": { min: 8, max: 8 },
+  "OMAN": { min: 8, max: 8 },
+  "PAKISTAN": { min: 10, max: 10 },
+  "PANAMA": { min: 8, max: 8 },
+  "PAPUA NEW GUINEA": { min: 8, max: 8 },
+  "PARAGUAY": { min: 9, max: 9 },
+  "PERU": { min: 9, max: 9 },
+  "PHILIPPINES": { min: 10, max: 10 },
+  "POLAND": { min: 9, max: 9 },
+  "PORTUGAL": { min: 9, max: 9 },
+  "QATAR": { min: 8, max: 8 },
+  "ROMANIA": { min: 10, max: 10 },
+  "RUSSIA": { min: 10, max: 10 },
+  "SAUDI ARABIA": { min: 9, max: 9 },
+  "SENEGAL": { min: 9, max: 9 },
+  "SERBIA": { min: 9, max: 10 },
+  "SINGAPORE": { min: 8, max: 8 },
+  "SLOVAK REPUBLIC": { min: 9, max: 9 },
+  "SLOVENIA": { min: 8, max: 8 },
+  "SOUTH AFRICA": { min: 9, max: 9 },
+  "SPAIN": { min: 9, max: 9 },
+  "SRI LANKA": { min: 9, max: 9 },
+  "SWEDEN": { min: 9, max: 10 },
+  "SWITZERLAND": { min: 9, max: 9 },
+  "TAIWAN": { min: 9, max: 10 },
+  "TANZANIA": { min: 9, max: 9 },
+  "THAILAND": { min: 9, max: 9 },
+  "TRINIDAD AND TOBAGO": { min: 7, max: 7 },
+  "TUNISIA": { min: 8, max: 8 },
+  "TURKEY": { min: 10, max: 10 },
+  "UGANDA": { min: 9, max: 9 },
+  "UKRAINE": { min: 9, max: 9 },
+  "UNITED ARAB EMIRATES": { min: 9, max: 9 },
+  "UNITED KINGDOM": { min: 10, max: 10 },
+  "UNITED STATES": { min: 10, max: 10 },
+  "URUGUAY": { min: 8, max: 8 },
+  "UZBEKISTAN": { min: 9, max: 9 },
+  "VENEZUELA": { min: 10, max: 10 },
+  "VIETNAM SOC REP OF": { min: 9, max: 10 },
+  "YEMEN": { min: 9, max: 9 },
+  "ZAMBIA": { min: 9, max: 9 },
+  "ZIMBABWE": { min: 9, max: 9 },
+};
+
+const DEFAULT_DIGIT_RANGE = { min: 7, max: 15 };
+
 const allDialingCodes = Array.from(new Set(Object.values(countryDialingCodes))).sort((a, b) => b.length - a.length);
 
 export function getDialingCode(countryName: string): string | undefined {
   return countryDialingCodes[countryName.toUpperCase()];
+}
+
+export function getDigitRange(countryName: string): { min: number; max: number } {
+  return countryDigitLengths[countryName.toUpperCase()] || DEFAULT_DIGIT_RANGE;
 }
 
 export function stripDialingCode(mobile: string): string {
@@ -257,4 +376,39 @@ export function applyDialingCode(countryName: string, currentMobile: string): st
   if (!code) return currentMobile;
   const digits = stripDialingCode(currentMobile);
   return digits ? `${code} ${digits}` : code;
+}
+
+export function extractLocalDigits(countryName: string, mobile: string): string {
+  const code = getDialingCode(countryName);
+  if (!code) return mobile.replace(/\D/g, '');
+  const stripped = stripDialingCode(mobile);
+  return stripped.replace(/\D/g, '');
+}
+
+export function normalizeMobileInput(countryName: string, rawInput: string): string {
+  const code = getDialingCode(countryName);
+  if (!code) return rawInput;
+  const localDigits = extractLocalDigits(countryName, rawInput);
+  return localDigits ? `${code} ${localDigits}` : code;
+}
+
+export function validateMobileNumber(countryName: string, mobile: string): string | null {
+  if (!countryName || !mobile) return null;
+
+  const code = getDialingCode(countryName);
+  if (!code) return null;
+
+  const localDigits = extractLocalDigits(countryName, mobile);
+  if (!localDigits) return null;
+
+  const range = getDigitRange(countryName);
+
+  if (localDigits.length < range.min || localDigits.length > range.max) {
+    if (range.min === range.max) {
+      return `Mobile number must be exactly ${range.min} digits after ${code}.`;
+    }
+    return `Mobile number must be ${range.min}–${range.max} digits after ${code}.`;
+  }
+
+  return null;
 }
