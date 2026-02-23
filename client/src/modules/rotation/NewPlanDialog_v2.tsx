@@ -1584,22 +1584,19 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     queryKey: ['/api/v2/admin/company-ranks'],
   });
 
-  // Fetch vessel-specific ranks for selected vessels
-  // This is used to filter role variants to only show positions that exist on the selected vessel(s)
-  const selectedVesselIdsForRanks = useMemo(() => {
-    return getVesselIds(selectedVessels);
-  }, [selectedVessels, getVesselIds]);
+  // selectedVessels already contains vessel UUIDs (from vessel list value: v.vesselUuid)
+  // The vessel-revisions/ranks API expects vessel UUIDs directly — no translation needed
 
   // Fetch vessel ranks for ALL selected vessels and combine them
-  // Each rank entry includes vesselId for per-vessel slot counting
+  // Each rank entry includes vesselUuid for per-vessel slot counting
   const { data: vesselSpecificRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/v2/admin/vessel-revisions/ranks', selectedVesselIdsForRanks],
+    queryKey: ['/api/v2/admin/vessel-revisions/ranks', selectedVessels],
     queryFn: async () => {
-      if (selectedVesselIdsForRanks.length === 0) return [];
+      if (selectedVessels.length === 0) return [];
       
-      // Fetch ranks for each selected vessel and combine, tagging each with vesselId
+      // Fetch ranks for each selected vessel and combine, tagging each with vesselUuid
       const allRanks: any[] = [];
-      for (const vesselId of selectedVesselIdsForRanks) {
+      for (const vesselId of selectedVessels) {
         try {
           const response = await fetch(`/api/v2/admin/vessel-revisions/ranks/${vesselId}`);
           if (response.ok) {
@@ -1614,7 +1611,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       }
       return allRanks;
     },
-    enabled: selectedVesselIdsForRanks.length > 0,
+    enabled: selectedVessels.length > 0,
   });
 
   // Build position information from vessel-specific ranks

@@ -141,17 +141,19 @@ export const vesselRevisionsService = {
       rankSlotCounts.set(baseRank, (rankSlotCounts.get(baseRank) || 0) + 1);
     });
 
-    const ranksWithDisplayRole = sortedRanks.map((rank: any) => {
-      const baseRank = rank.rank;
-      const slotCount = rankSlotCounts.get(baseRank) || 1;
-      let displayRole: string;
-      if (slotCount === 1) {
-        displayRole = baseRank;
-      } else {
-        displayRole = rank.role || baseRank;
-      }
-      return { ...rank, displayRole };
-    });
+    const ranksWithDisplayRole = sortedRanks
+      .filter((rank: any) => {
+        const baseRank = rank.rank;
+        const slotCount = rankSlotCounts.get(baseRank) || 1;
+        if (slotCount > 1 && !rank.role) {
+          return false;
+        }
+        return true;
+      })
+      .map((rank: any) => {
+        const displayRole = rank.role || rank.rank;
+        return { ...rank, displayRole };
+      });
 
     return ranksWithDisplayRole;
   },
