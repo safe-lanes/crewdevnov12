@@ -38,10 +38,32 @@ const PermissionsContext = createContext<PermissionsContextType | null>(null);
 
 function getUserProfile(): { role?: string; roleId?: string; myVessels?: MyVessel[] } | null {
   try {
+    const raw = localStorage.getItem('userProfile');
+    console.log('[Permissions DEBUG] Raw localStorage userProfile:', raw ? `${raw.substring(0, 80)}...` : 'null');
+
     const profile = getDecryptedLocalStorageItem('userProfile', true);
-    if (profile && typeof profile === 'object') return profile;
+    console.log('[Permissions DEBUG] Decrypted profile:', profile);
+
+    if (profile && typeof profile === 'object') {
+      console.log('[Permissions DEBUG] Role:', profile.role, '| RoleId:', profile.roleId);
+      return profile;
+    }
+
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          console.log('[Permissions DEBUG] Fallback: parsed as plain JSON. Role:', parsed.role, '| RoleId:', parsed.roleId);
+          return parsed;
+        }
+      } catch {
+        console.log('[Permissions DEBUG] Fallback: not valid JSON either');
+      }
+    }
+
     return null;
-  } catch {
+  } catch (err) {
+    console.error('[Permissions DEBUG] getUserProfile error:', err);
     return null;
   }
 }
@@ -65,12 +87,18 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
   const roleId = userProfile?.roleId || null;
   const myVessels = userProfile?.myVessels || [];
 
+  console.log('[Permissions DEBUG] Query params - roleName:', roleName, '| roleId:', roleId, '| enabled:', !!(roleId || roleName));
+
   const { data, isLoading } = useQuery({
     queryKey: ['/api/v2/admin/access-control/my-permissions', roleId, roleName],
-    queryFn: () => adminApiV2.getMyPermissions({
-      roleId: roleId || undefined,
-      roleName: roleName || undefined,
-    }),
+    queryFn: async () => {
+      const result = await adminApiV2.getMyPermissions({
+        roleId: roleId || undefined,
+        roleName: roleName || undefined,
+      });
+      console.log('[Permissions DEBUG] API response - permissions count:', result?.permissions?.length, '| sample:', result?.permissions?.slice(0, 3));
+      return result;
+    },
     enabled: !!(roleId || roleName),
     staleTime: 5 * 60 * 1000,
     retry: 1,
