@@ -2611,7 +2611,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       formData.seaService.forEach((s, i) => { if (!isSeaBlank(s) && !(s.vesselName || '').trim()) mandatoryErrors.push(`Sea Service Row ${i + 1}: 'Vessel Name' is required to save this row.`); });
 
       if (mandatoryErrors.length > 0) {
-        alert(mandatoryErrors.join('\n'));
+        toast({
+          title: "Validation Error",
+          description: mandatoryErrors.join('\n'),
+          variant: "destructive",
+        });
         return;
       }
 
@@ -3385,7 +3389,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const b7MandatoryErrors: string[] = [];
       formData.b7TrainingNeeds.forEach((t, i) => { if (!isB7Blank(t) && !(t.training || '').trim()) b7MandatoryErrors.push(`Training Needs Row ${i + 1}: 'Training' is required to save this row.`); });
       if (b7MandatoryErrors.length > 0) {
-        alert(b7MandatoryErrors.join('\n'));
+        toast({
+          title: "Validation Error",
+          description: b7MandatoryErrors.join('\n'),
+          variant: "destructive",
+        });
         return;
       }
       const nonEmptyB7Training = formData.b7TrainingNeeds.filter(t => !isB7Blank(t));
