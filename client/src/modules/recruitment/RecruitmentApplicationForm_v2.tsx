@@ -2593,25 +2593,51 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
       }
       
+      const nonEmptyDocuments = formData.documents.filter(doc => (doc.document || '').trim());
+      const nonEmptyVisas = formData.visas.filter(visa => (visa.issuingCountry || '').trim());
+      const nonEmptyEducation = formData.education.filter(edu => (edu.qualifications || '').trim());
+      const nonEmptyLicenses = formData.licenses.filter(lic => (lic.certificateDocument || '').trim());
+      const nonEmptyTraining = formData.trainingCourses.filter(train => (train.trainingCourse || '').trim());
+      const nonEmptySeaService = formData.seaService.filter(sea => (sea.vesselName || '').trim());
+
+      if (
+        nonEmptyDocuments.length !== formData.documents.length ||
+        nonEmptyVisas.length !== formData.visas.length ||
+        nonEmptyEducation.length !== formData.education.length ||
+        nonEmptyLicenses.length !== formData.licenses.length ||
+        nonEmptyTraining.length !== formData.trainingCourses.length ||
+        nonEmptySeaService.length !== formData.seaService.length
+      ) {
+        setFormData(prev => ({
+          ...prev,
+          documents: nonEmptyDocuments,
+          visas: nonEmptyVisas,
+          education: nonEmptyEducation,
+          licenses: nonEmptyLicenses,
+          trainingCourses: nonEmptyTraining,
+          seaService: nonEmptySeaService,
+        }));
+      }
+
       // OPTIMIZED: Save all section items in parallel for better performance
       const serverDocMap = new Map((documentsData || []).map(d => [d.docUuid, d.id]));
-      const localDocIds = new Set(formData.documents.map(d => d.id));
+      const localDocIds = new Set(nonEmptyDocuments.map(d => d.id));
       const serverVisaMap = new Map((visasData || []).map(v => [v.visaUuid, v.id]));
-      const localVisaIds = new Set(formData.visas.map(v => v.id));
+      const localVisaIds = new Set(nonEmptyVisas.map(v => v.id));
       const serverEduMap = new Map((educationData || []).map(e => [e.eduUuid, e.id]));
-      const localEduIds = new Set(formData.education.map(e => e.id));
+      const localEduIds = new Set(nonEmptyEducation.map(e => e.id));
       const serverLicMap = new Map((licensesData || []).map(l => [l.licUuid, l.id]));
-      const localLicIds = new Set(formData.licenses.map(l => l.id));
+      const localLicIds = new Set(nonEmptyLicenses.map(l => l.id));
       const serverTrainMap = new Map((trainingData || []).map(t => [t.trainUuid, t.id]));
-      const localTrainIds = new Set(formData.trainingCourses.map(t => t.id));
+      const localTrainIds = new Set(nonEmptyTraining.map(t => t.id));
       const serverSeaMap = new Map((seaServiceData || []).map(s => [s.seaUuid, s.id]));
-      const localSeaIds = new Set(formData.seaService.map(s => s.id));
+      const localSeaIds = new Set(nonEmptySeaService.map(s => s.id));
 
       // Build all save/update promises for parallel execution
       const allSavePromises: Promise<any>[] = [];
 
       // Documents - save with attachments
-      formData.documents.forEach((doc, index) => {
+      nonEmptyDocuments.forEach((doc, index) => {
         const docPayload = {
           documentId: doc.documentId || undefined,
           documentName: doc.document || undefined,
@@ -2651,7 +2677,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Visas - save with attachments
-      formData.visas.forEach((visa, index) => {
+      nonEmptyVisas.forEach((visa, index) => {
         const visaPayload = {
           countryUuid: visa.countryId || visa.issuingCountry || undefined,
           serialNo: visa.serialNo || undefined,
@@ -2689,7 +2715,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Education - save with attachments
-      formData.education.forEach((edu, index) => {
+      nonEmptyEducation.forEach((edu, index) => {
         const eduPayload = {
           dateOfCompletion: edu.dateOfCompletion || undefined,
           institution: edu.schoolCollegeUniversity || undefined,
@@ -2726,7 +2752,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Licenses - save with attachments
-      formData.licenses.forEach((lic, index) => {
+      nonEmptyLicenses.forEach((lic, index) => {
         const licPayload = {
           licenseId: lic.licenseId || undefined,
           certificateDocument: lic.certificateDocument || undefined,
@@ -2767,7 +2793,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Training - save with attachments
-      formData.trainingCourses.forEach((train, index) => {
+      nonEmptyTraining.forEach((train, index) => {
         const trainPayload = {
           courseId: train.courseId || undefined,
           trainingCourse: train.trainingCourse || undefined,
@@ -2808,7 +2834,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       });
 
       // Sea Service - save with attachments
-      formData.seaService.forEach((sea, index) => {
+      nonEmptySeaService.forEach((sea, index) => {
         const seaPayload = {
           vesselName: sea.vesselName || undefined,
           vesselTypeUuid: sea.vesselType || undefined,
@@ -3333,10 +3359,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
+      const nonEmptyB7Training = formData.b7TrainingNeeds.filter(t => (t.training || '').trim());
+      if (nonEmptyB7Training.length !== formData.b7TrainingNeeds.length) {
+        setFormData(prev => ({ ...prev, b7TrainingNeeds: nonEmptyB7Training }));
+      }
+
       const serverB7TrainingMap = new Map((screeningB7TrainingItems || []).map(t => [t.trainItemUuid, t.id]));
-      for (const training of formData.b7TrainingNeeds) {
+      for (const training of nonEmptyB7Training) {
         if (serverB7TrainingMap.has(training.id) && currentB7Uuid) {
-          // Update existing training item
           await updateB7TrainingItemMutation.mutateAsync({
             trainItemUuid: training.id,
             b7Uuid: currentB7Uuid,
@@ -3349,7 +3379,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             },
           });
         } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate)) {
-          // Create new training item
           await createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {
