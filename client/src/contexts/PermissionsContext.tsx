@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getDecryptedLocalStorageItem, secretKeyAvailable, getDecryptedRawString, deepParseJson } from '@/lib/encryptionService';
+import { getDecryptedLocalStorageItem, secretKeyAvailable, getDecryptedRawString, safeExtractFields } from '@/lib/encryptionService';
+import type { ExtractedUserProfile } from '@/lib/encryptionService';
 import { adminApiV2 } from '@/modules/admin/api/adminApiV2';
 
 interface MenuPermission {
@@ -25,6 +26,7 @@ interface PermissionsContextType {
   myVessels: MyVessel[];
   roleName: string | null;
   roleId: string | null;
+  userId: string | null;
   isLoading: boolean;
   canView: (menuName: string) => boolean;
   canCreate: (menuName: string) => boolean;
@@ -36,51 +38,25 @@ interface PermissionsContextType {
 
 const PermissionsContext = createContext<PermissionsContextType | null>(null);
 
-function extractFieldsFromPartialJson(jsonStr: string): { role?: string; roleId?: string; myVessels?: MyVessel[] } | null {
-  const result: { role?: string; roleId?: string; myVessels?: MyVessel[] } = {};
-  const roleMatch = jsonStr.match(/"role"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
-  if (roleMatch) result.role = roleMatch[1].replace(/\\"/g, '"');
-  const roleIdMatch = jsonStr.match(/"roleId"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
-  if (roleIdMatch) result.roleId = roleIdMatch[1].replace(/\\"/g, '"');
-  const roleNameMatch = jsonStr.match(/"roleName"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
-  if (!result.role && roleNameMatch) result.role = roleNameMatch[1].replace(/\\"/g, '"');
-  const vesselsMatch = jsonStr.match(/"myVessels"\s*:\s*(\[(?:[^\[\]]*|\[(?:[^\[\]]*|\[[^\[\]]*\])*\])*\])/);
-  if (vesselsMatch) {
-    try { result.myVessels = JSON.parse(vesselsMatch[1]); } catch { /* skip vessels if truncated */ }
-  }
-  return (result.role || result.roleId) ? result : null;
-}
-
-function getUserProfile(): { role?: string; roleId?: string; myVessels?: MyVessel[] } | null {
+function getUserProfile(): ExtractedUserProfile | null {
   try {
     const profile = getDecryptedLocalStorageItem('userProfile', true);
     if (profile != null) {
-      const resolved = deepParseJson(profile);
-      if (resolved && typeof resolved === 'object') {
-        return resolved;
-      }
-      if (typeof resolved === 'string' || typeof profile === 'string') {
-        const str = typeof resolved === 'string' ? resolved : String(profile);
-        const partial = extractFieldsFromPartialJson(str);
-        if (partial) return partial;
-      }
+      const extracted = safeExtractFields(profile);
+      if (extracted) return extracted;
     }
 
     const raw = localStorage.getItem('userProfile');
     if (!raw) return null;
 
-    try {
-      const resolved = deepParseJson(raw);
-      if (resolved && typeof resolved === 'object') return resolved;
-    } catch { /* not plain JSON */ }
+    const fromRaw = safeExtractFields(raw);
+    if (fromRaw) return fromRaw;
 
     if (secretKeyAvailable()) {
       const decryptedStr = getDecryptedRawString('userProfile');
       if (decryptedStr) {
-        const resolved = deepParseJson(decryptedStr);
-        if (resolved && typeof resolved === 'object') return resolved;
-        const partial = extractFieldsFromPartialJson(decryptedStr);
-        if (partial) return partial;
+        const fromDecrypted = safeExtractFields(decryptedStr);
+        if (fromDecrypted) return fromDecrypted;
       }
     }
 
@@ -107,6 +83,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
 
   const roleName = userProfile?.role || null;
   const roleId = userProfile?.roleId || null;
+  const userId = userProfile?.userId || null;
   const myVessels = userProfile?.myVessels || [];
 
   const { data, isLoading } = useQuery({
@@ -184,6 +161,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     myVessels,
     roleName,
     roleId,
+    userId,
     isLoading,
     canView,
     canCreate,
@@ -191,7 +169,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     canDelete,
     canViewRoute,
     getVesselIds,
-  }), [permissions, myVessels, roleName, roleId, isLoading, canView, canCreate, canEdit, canDelete, canViewRoute, getVesselIds]);
+  }), [permissions, myVessels, roleName, roleId, userId, isLoading, canView, canCreate, canEdit, canDelete, canViewRoute, getVesselIds]);
 
   return (
     <PermissionsContext.Provider value={value}>
