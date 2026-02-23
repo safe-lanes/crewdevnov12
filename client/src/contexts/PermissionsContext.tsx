@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getDecryptedLocalStorageItem, secretKeyAvailable, getDecryptedRawString } from '@/lib/encryptionService';
+import { getDecryptedLocalStorageItem, secretKeyAvailable, getDecryptedRawString, deepParseJson } from '@/lib/encryptionService';
 import { adminApiV2 } from '@/modules/admin/api/adminApiV2';
 
 interface MenuPermission {
@@ -54,25 +54,31 @@ function extractFieldsFromPartialJson(jsonStr: string): { role?: string; roleId?
 function getUserProfile(): { role?: string; roleId?: string; myVessels?: MyVessel[] } | null {
   try {
     const profile = getDecryptedLocalStorageItem('userProfile', true);
-    if (profile && typeof profile === 'object') {
-      return profile;
-    }
-    if (profile && typeof profile === 'string') {
-      const partial = extractFieldsFromPartialJson(profile);
-      if (partial) return partial;
+    if (profile != null) {
+      const resolved = deepParseJson(profile);
+      if (resolved && typeof resolved === 'object') {
+        return resolved;
+      }
+      if (typeof resolved === 'string' || typeof profile === 'string') {
+        const str = typeof resolved === 'string' ? resolved : String(profile);
+        const partial = extractFieldsFromPartialJson(str);
+        if (partial) return partial;
+      }
     }
 
     const raw = localStorage.getItem('userProfile');
     if (!raw) return null;
 
     try {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
+      const resolved = deepParseJson(raw);
+      if (resolved && typeof resolved === 'object') return resolved;
     } catch { /* not plain JSON */ }
 
     if (secretKeyAvailable()) {
       const decryptedStr = getDecryptedRawString('userProfile');
       if (decryptedStr) {
+        const resolved = deepParseJson(decryptedStr);
+        if (resolved && typeof resolved === 'object') return resolved;
         const partial = extractFieldsFromPartialJson(decryptedStr);
         if (partial) return partial;
       }

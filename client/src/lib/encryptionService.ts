@@ -87,6 +87,20 @@ export function getDecryptedRawString(key: string): string | null {
   }
 }
 
+export function deepParseJson(value: any, maxDepth = 3): any {
+  if (maxDepth <= 0 || value === null || value === undefined) return value;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return deepParseJson(parsed, maxDepth - 1);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
 export function getDecryptedLocalStorageItem(key: string, isParse = false): any {
   const encrypted = localStorage.getItem(key);
   if (!encrypted) return null;

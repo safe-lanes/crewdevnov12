@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { Link, useLocation } from 'wouter'
 import { ModuleNavigator } from '../ModuleNavigator'
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
-import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem } from '@/lib/encryptionService';
+import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { 
     LayoutGrid, 
@@ -196,7 +196,8 @@ export default function HeaderComponent({
     useEffect(() => {
         const resolveUserName = (): string => {
             try {
-                const profile = getDecryptedLocalStorageItem('userProfile', true);
+                const rawProfile = getDecryptedLocalStorageItem('userProfile', true);
+                const profile = deepParseJson(rawProfile);
                 if (profile && typeof profile === 'object') {
                     const first = profile.firstname || profile.firstName || '';
                     const last = profile.lastname || profile.lastName || '';
