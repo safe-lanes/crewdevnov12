@@ -94,7 +94,7 @@ export default function AccessControlPage() {
   const { toast } = useToast();
   const [selectedRoleUuid, setSelectedRoleUuid] = useState<string | null>(null);
   const [localPermissions, setLocalPermissions] = useState<Record<string, Permission>>({});
-  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
+  const [expandedMenus, setExpandedMenus] = useState<Set<string> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
   const { data: menusData = [], isLoading: menusLoading } = useAccessControlMenusV2();
@@ -107,6 +107,18 @@ export default function AccessControlPage() {
       setSelectedRoleUuid(rolesData[0].ruid);
     }
   }, [rolesData, selectedRoleUuid]);
+
+  useEffect(() => {
+    if (menusData.length > 0 && expandedMenus === null) {
+      const parentMuids = new Set(
+        (menusData as MenuItemApi[])
+          .filter(m => !m.parentMenu)
+          .filter(m => (menusData as MenuItemApi[]).some(c => c.parentMenu === m.muid))
+          .map(m => m.muid)
+      );
+      setExpandedMenus(parentMuids);
+    }
+  }, [menusData, expandedMenus]);
 
   useEffect(() => {
     if (permissionsData && Array.isArray(permissionsData)) {
@@ -139,7 +151,7 @@ export default function AccessControlPage() {
 
   const toggleExpand = useCallback((menuId: string) => {
     setExpandedMenus((prev) => {
-      const next = new Set(prev);
+      const next = new Set(prev ?? []);
       if (next.has(menuId)) {
         next.delete(menuId);
       } else {
@@ -201,7 +213,7 @@ export default function AccessControlPage() {
 
   const renderMenuRow = (item: MenuTreeItem, depth: number = 0) => {
     const hasChildren = item.children.length > 0;
-    const isExpanded = expandedMenus.has(item.muid);
+    const isExpanded = expandedMenus?.has(item.muid) ?? false;
     const perms = localPermissions[item.muid] || {
       canview: false,
       cancreate: false,
@@ -212,13 +224,13 @@ export default function AccessControlPage() {
     return (
       <div key={item.muid}>
         <div
-          className={`grid grid-cols-[1fr_repeat(4,80px)] items-center border-b border-gray-200 ${
+          className={`grid grid-cols-[1fr_repeat(4,60px)] items-center border-b border-gray-200 ${
             depth > 0 ? "bg-gray-50/50" : "bg-white"
           } hover:bg-blue-50/30 transition-colors`}
-          style={{ paddingLeft: depth > 0 ? `${depth * 24 + 16}px` : "16px" }}
+          style={{ paddingLeft: depth > 0 ? `${depth * 20 + 12}px` : "12px" }}
           data-testid={`permission-row-${item.muid}`}
         >
-          <div className="flex items-center gap-2 py-2.5 pr-2">
+          <div className="flex items-center gap-1.5 py-1.5 pr-2">
             {hasChildren ? (
               <button
                 onClick={() => toggleExpand(item.muid)}
@@ -226,29 +238,29 @@ export default function AccessControlPage() {
                 data-testid={`toggle-menu-${item.muid}`}
               >
                 {isExpanded ? (
-                  <ChevronDown size={16} className="text-gray-500" />
+                  <ChevronDown size={14} className="text-gray-500" />
                 ) : (
-                  <ChevronRight size={16} className="text-gray-500" />
+                  <ChevronRight size={14} className="text-gray-500" />
                 )}
               </button>
             ) : (
-              <span className="w-[20px]" />
+              <span className="w-[18px]" />
             )}
-            <span className="text-sm text-gray-800 font-medium" data-testid={`text-menu-name-${item.muid}`}>
+            <span className={`text-xs text-gray-800 ${depth === 0 ? "font-semibold" : "font-normal"}`} data-testid={`text-menu-name-${item.muid}`}>
               {item.displayName || item.name}
             </span>
           </div>
           {PERMISSION_KEYS.map((key) => (
             <div
               key={key}
-              className="flex items-center justify-center py-2.5"
+              className="flex items-center justify-center py-1.5"
             >
               <Checkbox
                 checked={perms[key]}
                 onCheckedChange={(checked) =>
                   handlePermissionChange(item.muid, key, !!checked)
                 }
-                className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#4a90d9] data-[state=checked]:border-[#4a90d9]"
+                className="h-4 w-4 border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3]"
                 data-testid={`checkbox-${item.muid}-${key}`}
               />
             </div>
@@ -268,15 +280,15 @@ export default function AccessControlPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-140px)]" data-testid="access-control-loading">
-        <Loader2 className="h-8 w-8 animate-spin text-[#4a90d9]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#52baf3]" />
       </div>
     );
   }
 
   return (
     <div className="flex gap-0 h-[calc(100vh-140px)] max-w-full" data-testid="access-control-page">
-      <div className="w-[200px] min-w-[200px] flex flex-col border border-gray-200 rounded-l-lg overflow-hidden bg-white">
-        <div className="bg-[#4a90d9] text-white text-sm font-semibold px-4 py-2.5" data-testid="text-roles-header">
+      <div className="w-[140px] min-w-[140px] flex flex-col border border-gray-200 rounded-l-lg overflow-hidden bg-white">
+        <div className="bg-[#52baf3] text-white text-xs font-normal px-3 py-2" data-testid="text-roles-header">
           Roles
         </div>
         <ScrollArea className="flex-1">
@@ -284,7 +296,7 @@ export default function AccessControlPage() {
             <div
               key={role.ruid}
               onClick={() => handleRoleSelect(role.ruid)}
-              className={`px-4 py-2.5 text-sm cursor-pointer border-b border-gray-100 transition-colors ${
+              className={`px-3 py-1.5 text-xs cursor-pointer border-b border-gray-100 transition-colors ${
                 selectedRoleUuid === role.ruid
                   ? "bg-[#52baf3] text-white font-medium"
                   : "text-gray-700 hover:bg-gray-50"
@@ -295,7 +307,7 @@ export default function AccessControlPage() {
             </div>
           ))}
           {rolesData.length === 0 && (
-            <div className="px-4 py-6 text-sm text-gray-400 text-center" data-testid="text-no-roles">
+            <div className="px-3 py-4 text-xs text-gray-400 text-center" data-testid="text-no-roles">
               No roles configured
             </div>
           )}
@@ -303,17 +315,17 @@ export default function AccessControlPage() {
       </div>
 
       <div className="flex-1 flex flex-col border border-l-0 border-gray-200 rounded-r-lg overflow-hidden bg-white">
-        <div className="grid grid-cols-[1fr_repeat(4,80px)] bg-[#4a90d9] text-white text-sm font-semibold" data-testid="text-permissions-header">
-          <div className="px-4 py-2.5" data-testid="text-header-menu-name">Menu Name</div>
-          <div className="text-center py-2.5" data-testid="text-header-view">View</div>
-          <div className="text-center py-2.5" data-testid="text-header-create">Create</div>
-          <div className="text-center py-2.5" data-testid="text-header-edit">Edit</div>
-          <div className="text-center py-2.5" data-testid="text-header-delete">Delete</div>
+        <div className="grid grid-cols-[1fr_repeat(4,60px)] bg-[#52baf3] text-white text-xs font-normal" data-testid="text-permissions-header">
+          <div className="px-3 py-2" data-testid="text-header-menu-name">Menu Name</div>
+          <div className="text-center py-2" data-testid="text-header-view">View</div>
+          <div className="text-center py-2" data-testid="text-header-create">Create</div>
+          <div className="text-center py-2" data-testid="text-header-edit">Edit</div>
+          <div className="text-center py-2" data-testid="text-header-delete">Delete</div>
         </div>
         <ScrollArea className="flex-1">
           {permissionsLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-[#4a90d9]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#52baf3]" />
             </div>
           ) : menuTree.length > 0 ? (
             menuTree.map((item) => renderMenuRow(item))
@@ -323,11 +335,11 @@ export default function AccessControlPage() {
             </div>
           )}
         </ScrollArea>
-        <div className="flex justify-end p-3 border-t border-gray-200 bg-gray-50">
+        <div className="flex justify-end px-3 py-2 border-t border-gray-200 bg-gray-50">
           <Button
             onClick={handleSave}
             disabled={!isDirty || savePermissionsMutation.isPending || !selectedRoleUuid}
-            className="bg-[#16569e] hover:bg-[#0f4078] text-white px-6"
+            className="h-8 bg-[#16569e] hover:bg-[#0f4078] text-white text-xs px-5"
             data-testid="button-save-access-control"
           >
             {savePermissionsMutation.isPending ? "Saving..." : "Save Changes"}
