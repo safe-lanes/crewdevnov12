@@ -3187,7 +3187,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     });
   };
 
-  const handleSaveScreening = async (skipToasts: boolean = false) => {
+  const handleSaveScreening = async (skipToasts: boolean = false, isMainSubmit: boolean = false) => {
     if (!recCanUuid) {
       toast({
         title: "Error",
@@ -3793,9 +3793,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           }
         }
       } else {
-        // If no C3 decision yet, update status to Screening when saving Part B sections
+        // If no C3 decision yet, update status based on whether this is the main Submit for Approval or a section save
         const currentStatus = candidate?.status;
-        if (currentStatus && !['Recruited', 'Waitlisted', 'Rejected', 'For Approval'].includes(currentStatus)) {
+        if (isMainSubmit) {
+          const newStatus = getStatusForSection('B', true); // 'For Approval'
+          await updateCandidateMutation.mutateAsync({
+            recCanUuid,
+            data: { status: newStatus },
+          });
+        } else if (currentStatus && !['Recruited', 'Waitlisted', 'Rejected', 'For Approval'].includes(currentStatus)) {
           const newStatus = getStatusForSection('B1', false); // 'Screening'
           await updateCandidateMutation.mutateAsync({
             recCanUuid,
@@ -8274,7 +8280,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Button 
                     className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
                     onClick={() => {
-                      handleSaveScreening();
+                      handleSaveScreening(false, true);
                     }}
                     disabled={savingInProgress}
                     data-testid="button-submit-for-approval"
