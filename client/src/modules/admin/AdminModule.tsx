@@ -103,6 +103,7 @@ import {
   type PortMasterEntry
 } from "@/utils/portMasterMapping";
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
+import AccessControlPage from "./AccessControlPage";
 import { 
   getCategoryLabel,
   getGroupLabel,
@@ -8268,7 +8269,7 @@ const AdminModuleInner = (): JSX.Element => {
       <SideBarComponent 
         selectedAdminPage={selectedAdminPage} 
         setSelectedAdminPage={setSelectedAdminPage} 
-        allowedPages={["forms", "rank-admin", "masters", "training-matrix"]}
+        allowedPages={["forms", "rank-admin", "masters", "training-matrix", "access-control"]}
         isMobileSidebarOpen={isMobileSidebarOpen}
         onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
       />
@@ -8289,6 +8290,7 @@ const AdminModuleInner = (): JSX.Element => {
         {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
         {selectedAdminPage === "masters" && renderDataMastersModule()}
         {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
+        {selectedAdminPage === "access-control" && <AccessControlPage />}
       </MainLayout>
 
       {/* Main content */}
