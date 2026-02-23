@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '@/config/api';
 import { useViewport } from '@/hooks/useViewport';
@@ -307,7 +308,13 @@ export function RotationModule_v2() {
     const isSmallScreen = isPhone || isTablet;
     
     const [selectedRotationPage, setSelectedRotationPage] = useState<string>("due");
-    const allowedPages = ["due", "plan", "approval"];
+    const { canView, permissions } = usePermissions();
+    const allowedPages = useMemo(() => {
+        const all = ["due", "plan", "approval"];
+        if (permissions.length === 0) return all;
+        const pageToMenu: Record<string, string> = { "due": "Due", "plan": "Plan", "approval": "Approval" };
+        return all.filter(p => canView(pageToMenu[p] || p));
+    }, [permissions, canView]);
 
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
     const [selectedVessels, setSelectedVessels] = useState<string[]>([]);

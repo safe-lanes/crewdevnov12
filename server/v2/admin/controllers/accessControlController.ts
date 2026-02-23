@@ -98,6 +98,20 @@ export const accessControlController = {
     }
   },
 
+  async getMyPermissions(req: Request, res: Response) {
+    try {
+      const { roleId, roleName } = req.query;
+      const result = await accessControlService.getMyPermissions(
+        roleId as string | undefined,
+        roleName as string | undefined
+      );
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching my permissions:", error);
+      res.status(500).json({ error: "Failed to fetch permissions" });
+    }
+  },
+
   async getPermissions(req: Request, res: Response) {
     try {
       const { ruid } = req.params;

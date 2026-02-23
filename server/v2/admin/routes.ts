@@ -133,6 +133,7 @@ router.post("/access-control/roles", accessControlController.createRole);
 router.put("/access-control/roles/:ruid", accessControlController.updateRole);
 router.delete("/access-control/roles/:ruid", accessControlController.deleteRole);
 
+router.get("/access-control/my-permissions", accessControlController.getMyPermissions);
 router.get("/access-control/roles/:ruid/permissions", accessControlController.getPermissions);
 router.put("/access-control/roles/:ruid/permissions", accessControlController.savePermissions);
 

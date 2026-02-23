@@ -108,6 +108,54 @@ export class AccessControlRepository {
       .orderBy(asc(admRoleAccessAc.sortOrder));
   }
 
+  async findRoleByName(roleName: string): Promise<AdmRoleMasterAc | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(admRoleMasterAc)
+      .where(and(eq(admRoleMasterAc.assignedRole, roleName), eq(admRoleMasterAc.isDeleted, false)));
+    return results[0];
+  }
+
+  async findPermissionsWithMenusByRoleUuid(roleUuid: string): Promise<Array<{
+    menuName: string;
+    displayName: string | null;
+    route: string;
+    parentMenu: string | null;
+    canview: boolean;
+    cancreate: boolean;
+    canedit: boolean;
+    candelete: boolean;
+  }>> {
+    const db = getDb();
+    const menus = await db
+      .select()
+      .from(admMenuMasterAc)
+      .where(and(eq(admMenuMasterAc.isDeleted, false), eq(admMenuMasterAc.isActive, true)))
+      .orderBy(asc(admMenuMasterAc.sortOrder));
+
+    const permissions = await db
+      .select()
+      .from(admRoleAccessAc)
+      .where(and(eq(admRoleAccessAc.roleId, roleUuid), eq(admRoleAccessAc.isDeleted, false)));
+
+    const permMap = new Map(permissions.map(p => [p.menuId, p]));
+
+    return menus.map(menu => {
+      const perm = permMap.get(menu.muid);
+      return {
+        menuName: menu.name,
+        displayName: menu.displayName,
+        route: menu.route,
+        parentMenu: menu.parentMenu,
+        canview: perm?.canview ?? false,
+        cancreate: perm?.cancreate ?? false,
+        canedit: perm?.canedit ?? false,
+        candelete: perm?.candelete ?? false,
+      };
+    });
+  }
+
   async upsertPermissions(roleUuid: string, permissions: Array<{ menuId: string; canview: boolean; cancreate: boolean; canedit: boolean; candelete: boolean }>): Promise<AdmRoleAccessAc[]> {
     const db = getDb();
     const results: AdmRoleAccessAc[] = [];

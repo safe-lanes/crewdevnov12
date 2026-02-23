@@ -61,6 +61,19 @@ export const accessControlService = {
     return accessControlRepo.findPermissionsByRoleUuid(roleUuid);
   },
 
+  async getMyPermissions(roleId?: string, roleName?: string) {
+    let ruid = roleId;
+    if (!ruid && roleName) {
+      const role = await accessControlRepo.findRoleByName(roleName);
+      if (!role) return { permissions: [], roleName: roleName || null, roleId: null };
+      ruid = role.ruid;
+    }
+    if (!ruid) return { permissions: [], roleName: roleName || null, roleId: null };
+
+    const permissions = await accessControlRepo.findPermissionsWithMenusByRoleUuid(ruid);
+    return { permissions, roleName: roleName || null, roleId: ruid };
+  },
+
   async savePermissions(roleUuid: string, permissions: Array<{ menuId: string; canview: boolean; cancreate: boolean; canedit: boolean; candelete: boolean }>): Promise<AdmRoleAccessAc[]> {
     const role = await accessControlRepo.findRoleByUuid(roleUuid);
     if (!role) throw new Error(`Role not found: ${roleUuid}`);

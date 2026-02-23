@@ -524,4 +524,13 @@ export const adminApiV2 = {
     const res = await apiRequest('PUT', `${V2_BASE}/access-control/roles/${ruid}/permissions`, { permissions });
     return res.json();
   },
+
+  async getMyPermissions(params: { roleId?: string; roleName?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params.roleId) searchParams.set('roleId', params.roleId);
+    if (params.roleName) searchParams.set('roleName', params.roleName);
+    const res = await fetch(`${V2_BASE}/access-control/my-permissions?${searchParams.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch my permissions');
+    return res.json();
+  },
 };

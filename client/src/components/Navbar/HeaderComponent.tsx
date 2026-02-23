@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { Link, useLocation } from 'wouter'
 import { ModuleNavigator } from '../ModuleNavigator'
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem } from '@/lib/encryptionService';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { 
     LayoutGrid, 
     UserPlus,
@@ -27,6 +28,7 @@ const navItems = [
     // {
     //     label: "Dashboard",
     //     href: "/dashboard",
+    //     menuName: "Dashboard",
     //     icon: LayoutGrid,
     //     activeBg: "#5DADE2",
     //     activeText: "white",
@@ -36,6 +38,7 @@ const navItems = [
     {
         label: "Recruitment",
         href: "/recruitment",
+        menuName: "Recruitment",
         icon: UserPlus,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -45,6 +48,7 @@ const navItems = [
     {
         label: "Crew Pool",
         href: "/crew-pool",
+        menuName: "Crew Pool",
         icon: Users,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -54,6 +58,7 @@ const navItems = [
     {
         label: "Vessel",
         href: "/vessel",
+        menuName: "Vessel",
         icon: Ship,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -63,6 +68,7 @@ const navItems = [
     {
         label: "Rotation",
         href: "/rotation",
+        menuName: "Rotation",
         icon: Calendar,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -72,6 +78,7 @@ const navItems = [
     {
         label: "Promotions",
         href: "/promotions",
+        menuName: "Promotions",
         icon: TrendingUp,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -81,6 +88,7 @@ const navItems = [
     {
         label: "Appraisals",
         href: "/",
+        menuName: "Crewing",
         icon: FileText,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -90,6 +98,7 @@ const navItems = [
     {
         label: "Drugs Alcohol",
         href: "/drugs-alcohol",
+        menuName: "Drugs Alcohol",
         icon: FlaskConical,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -99,6 +108,7 @@ const navItems = [
     {
         label: "Rest Hours",
         href: "/rest-hours",
+        menuName: "Rest Hours",
         icon: Clock,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -108,6 +118,7 @@ const navItems = [
     {
         label: "Reports",
         href: "/reports",
+        menuName: "Reports",
         icon: BarChart3,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -118,6 +129,7 @@ const navItems = [
     // {
     //     label: "Account",
     //     href: "/accounts",
+    //     menuName: "Account",
     //     icon: User,
     //     activeBg: "#5DADE2",
     //     activeText: "white",
@@ -127,6 +139,7 @@ const navItems = [
     {
         label: "Admin",
         href: "/admin",
+        menuName: "Admin",
         icon: Settings,
         activeBg: "#5DADE2",
         activeText: "white",
@@ -152,6 +165,12 @@ export default function HeaderComponent({
     const profileRef = useRef<HTMLDivElement>(null);
     const viewport = useViewport();
     const layoutConfig = getLayoutConfig(viewport);
+    const { canView, permissions } = usePermissions();
+
+    const filteredNavItems = useMemo(() => {
+        if (permissions.length === 0) return navItems;
+        return navItems.filter(item => canView(item.menuName));
+    }, [permissions, canView]);
 
     const extractStringValue = (val: any): string => {
         if (!val) return '';
@@ -294,7 +313,7 @@ export default function HeaderComponent({
                     {/* Desktop navigation - full width, no scroll (xl and above) */}
                     <nav className="hidden xl:flex h-[65px] flex-1">
                         <div className="flex h-full">
-                            {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
+                            {filteredNavItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
                                 const isActive = location === href;
                                 return (
                                     <Link key={href} href={href}>
@@ -322,7 +341,7 @@ export default function HeaderComponent({
                     {/* Tablet navigation - horizontal scroll (md to lg, 768px-1279px) */}
                     <nav className="hidden md:flex xl:hidden h-[65px] flex-1 overflow-x-auto overflow-y-hidden" data-testid="tablet-nav">
                         <div className="flex h-full min-w-max">
-                            {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
+                            {filteredNavItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
                                 const isActive = location === href;
                                 return (
                                     <Link key={href} href={href}>
@@ -406,7 +425,7 @@ export default function HeaderComponent({
                     data-testid="mobile-nav-menu"
                 >
                     <div className="grid grid-cols-3 gap-0">
-                        {navItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
+                        {filteredNavItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
                             const isActive = location === href;
                             return (
                                 <Link

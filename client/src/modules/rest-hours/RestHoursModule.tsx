@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import MainLayout from '@/components/main/MainLayout';
 import RestHoursSideBar from './RestHoursSideBar';
 import { RestHoursDashboard } from './components/RestHoursDashboard';
@@ -23,7 +24,13 @@ export const RestHoursModule = (): JSX.Element => {
     setSelectedRestHoursPageState(getPageFromLocation());
   }, [location]);
   
-  const allowedPages = ["dashboard", "record", "plan"];
+  const { canView, permissions } = usePermissions();
+  const allowedPages = useMemo(() => {
+    const all = ["dashboard", "record", "plan"];
+    if (permissions.length === 0) return all;
+    const pageToMenu: Record<string, string> = { "dashboard": "Dashboard", "record": "Record", "plan": "Rest Hours Plan" };
+    return all.filter(p => canView(pageToMenu[p] || p));
+  }, [permissions, canView]);
 
   const setSelectedRestHoursPage = (page: string) => {
     switch (page) {

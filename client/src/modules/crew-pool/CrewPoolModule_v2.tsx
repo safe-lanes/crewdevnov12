@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { FilterIcon, PlusIcon, EditIcon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
@@ -101,8 +102,13 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return [];
     }, [externalVesselsData]);
     
-    // Define allowed pages for the crew pool module
-    const allowedPages = ["crew-database"];
+    const { canView, permissions } = usePermissions();
+    const allowedPages = useMemo(() => {
+        const all = ["crew-database"];
+        if (permissions.length === 0) return all;
+        const pageToMenu: Record<string, string> = { "crew-database": "Crew Database" };
+        return all.filter(p => canView(pageToMenu[p] || p));
+    }, [permissions, canView]);
 
     // Filter state
     const [filters, setFilters] = useState({

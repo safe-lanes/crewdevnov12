@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { useMutation } from '@tanstack/react-query';
 import MainLayout from '@/components/main/MainLayout';
 import DrugsAlcoholSideBar from './DrugsAlcoholSideBar_v2';
@@ -25,7 +26,13 @@ import { useToast } from '@/hooks/use-toast';
 
 export function DrugsAlcoholModule_v2() {
     const [selectedDrugsAlcoholPage, setSelectedDrugsAlcoholPage] = useState<string>("annual");
-    const allowedPages = ["annual", "periodic", "monthly", "post-incident", "others", "summary"];
+    const { canView, permissions } = usePermissions();
+    const allowedPages = useMemo(() => {
+        const all = ["annual", "periodic", "monthly", "post-incident", "others", "summary"];
+        if (permissions.length === 0) return all;
+        const pageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary" };
+        return all.filter(p => canView(pageToMenu[p] || p));
+    }, [permissions, canView]);
     const { toast } = useToast();
 
     const viewport = useViewport();

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { VesselSideBar_v2 } from './VesselSideBar_v2';
@@ -612,7 +613,13 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
 export function VesselModule_v2(): JSX.Element {
     const queryClient = useQueryClient();
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
-    const allowedPages = ["vessel-database"];
+    const { canView, permissions } = usePermissions();
+    const allowedPages = useMemo(() => {
+        const all = ["vessel-database"];
+        if (permissions.length === 0) return all;
+        const pageToMenu: Record<string, string> = { "vessel-database": "Vessel Database" };
+        return all.filter(p => canView(pageToMenu[p] || p));
+    }, [permissions, canView]);
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
     const [vesselValue, setVesselValue] = useState("");
     const [fleetValue, setFleetValue] = useState("");

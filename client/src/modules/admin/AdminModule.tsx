@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -533,6 +534,13 @@ interface SeafarerData {
 // Inner AdminModule component (uses EditSessionContext)
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
+  const { canView, permissions } = usePermissions();
+  const adminAllowedPages = useMemo(() => {
+    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control"];
+    if (permissions.length === 0) return all;
+    const pageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control" };
+    return all.filter(p => canView(pageToMenu[p] || p));
+  }, [permissions, canView]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
   const [selectedTrainingMatrixTab, setSelectedTrainingMatrixTab] = useState("training-master");
@@ -8269,7 +8277,7 @@ const AdminModuleInner = (): JSX.Element => {
       <SideBarComponent 
         selectedAdminPage={selectedAdminPage} 
         setSelectedAdminPage={setSelectedAdminPage} 
-        allowedPages={["forms", "rank-admin", "masters", "training-matrix", "access-control"]}
+        allowedPages={adminAllowedPages}
         isMobileSidebarOpen={isMobileSidebarOpen}
         onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
       />

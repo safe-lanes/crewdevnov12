@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useQueryClient } from '@tanstack/react-query';
@@ -112,7 +113,13 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
 
   const deleteMutation = useV2DeleteCandidate();
 
-  const allowedPages = ["in-progress", "recruited", "waitlist", "rejected"];
+  const { canView, permissions } = usePermissions();
+  const allowedPages = useMemo(() => {
+    const all = ["in-progress", "recruited", "waitlist", "rejected"];
+    if (permissions.length === 0) return all;
+    const pageToMenu: Record<string, string> = { "in-progress": "In Progress", "recruited": "Recruited", "waitlist": "Waitlist", "rejected": "Rejected" };
+    return all.filter(p => canView(pageToMenu[p] || p));
+  }, [permissions, canView]);
 
   const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
     const handleAttachmentClick = () => {
