@@ -179,6 +179,22 @@ export default function AccessControlPage() {
     []
   );
 
+  const handleSelectAll = useCallback(
+    (menuMuid: string, checked: boolean) => {
+      setLocalPermissions((prev) => ({
+        ...prev,
+        [menuMuid]: {
+          canview: checked,
+          cancreate: checked,
+          canedit: checked,
+          candelete: checked,
+        },
+      }));
+      setIsDirty(true);
+    },
+    []
+  );
+
   const handleSave = useCallback(() => {
     if (!selectedRoleUuid) return;
 
@@ -220,11 +236,13 @@ export default function AccessControlPage() {
       canedit: false,
       candelete: false,
     };
+    const allSelected = perms.canview && perms.cancreate && perms.canedit && perms.candelete;
+    const someSelected = !allSelected && (perms.canview || perms.cancreate || perms.canedit || perms.candelete);
 
     return (
       <div key={item.muid}>
         <div
-          className={`grid grid-cols-[1fr_repeat(4,80px)] items-center border-b border-gray-200 ${
+          className={`grid grid-cols-[1fr_80px_repeat(4,80px)] items-center border-b border-gray-200 ${
             depth > 0 ? "bg-gray-50/50" : "bg-white"
           } hover:bg-blue-50/30 transition-colors`}
           style={{ paddingLeft: depth > 0 ? `${depth * 24 + 16}px` : "16px" }}
@@ -249,6 +267,16 @@ export default function AccessControlPage() {
             <span className="text-sm text-gray-800 font-medium" data-testid={`text-menu-name-${item.muid}`}>
               {item.displayName || item.name}
             </span>
+          </div>
+          <div className="flex items-center justify-center py-2.5">
+            <Checkbox
+              checked={allSelected ? true : someSelected ? "indeterminate" : false}
+              onCheckedChange={() =>
+                handleSelectAll(item.muid, !allSelected)
+              }
+              className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3] data-[state=indeterminate]:bg-[#52baf3] data-[state=indeterminate]:border-[#52baf3]"
+              data-testid={`checkbox-select-all-${item.muid}`}
+            />
           </div>
           {PERMISSION_KEYS.map((key) => (
             <div
@@ -315,8 +343,9 @@ export default function AccessControlPage() {
       </div>
 
       <div className="flex-1 flex flex-col border border-l-0 border-gray-200 rounded-r-lg overflow-hidden bg-white">
-        <div className="grid grid-cols-[1fr_repeat(4,80px)] bg-[#52baf3] text-white text-sm font-semibold" data-testid="text-permissions-header">
+        <div className="grid grid-cols-[1fr_80px_repeat(4,80px)] bg-[#52baf3] text-white text-sm font-semibold" data-testid="text-permissions-header">
           <div className="px-4 py-2.5" data-testid="text-header-menu-name">Menu Name</div>
+          <div className="text-center py-2.5" data-testid="text-header-select-all">Select All</div>
           <div className="text-center py-2.5" data-testid="text-header-view">View</div>
           <div className="text-center py-2.5" data-testid="text-header-create">Create</div>
           <div className="text-center py-2.5" data-testid="text-header-edit">Edit</div>
