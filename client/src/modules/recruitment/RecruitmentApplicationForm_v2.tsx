@@ -271,6 +271,7 @@ interface LocalFormData {
     issuingAuthority: string;
     issued: string;
     expiry: string;
+    fromDatabase?: boolean;
     attachments?: FileAttachment[];
   }>;
   trainingCourses: Array<{
@@ -284,6 +285,7 @@ interface LocalFormData {
     issuingAuthority: string;
     issued: string;
     expiry: string;
+    fromDatabase?: boolean;
     attachments?: FileAttachment[];
   }>;
   seaService: Array<{
@@ -1132,6 +1134,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: lic.issuingAuthority || '',
         issued: lic.issued || '',
         expiry: lic.expiry || '',
+        fromDatabase: !!(lic.abbr || lic.requirement),
         attachments: mapApiAttachments(lic.attachments),
       }));
       const sorted = [...mapped].sort((a, b) => {
@@ -1157,6 +1160,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: course.issuingAuthority || '',
         issued: course.issued || '',
         expiry: course.expiry || '',
+        fromDatabase: !!(course.abbr || course.requirement),
         attachments: mapApiAttachments(course.attachments),
       }));
       const sorted = [...mapped].sort((a, b) => {
@@ -2148,6 +2152,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: '',
         issued: '',
         expiry: '',
+        fromDatabase: true,
         attachments: []
       };
     });
@@ -2177,6 +2182,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: '',
         issued: '',
         expiry: '',
+        fromDatabase: true,
         attachments: []
       };
     });
@@ -4893,13 +4899,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableRow key={lic.id} className="border-b border-gray-200">
                 <TableCell className="p-3 text-[13px]">{lic.licenseId || lic.id}</TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.certificateDocument} onChange={(e) => updateLicense(lic.id, 'certificateDocument', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {lic.fromDatabase ? (
+                    <span className="text-[13px] text-gray-900">{lic.certificateDocument}</span>
+                  ) : (
+                    <Input value={lic.certificateDocument} onChange={(e) => updateLicense(lic.id, 'certificateDocument', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.abbr} onChange={(e) => updateLicense(lic.id, 'abbr', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {lic.fromDatabase ? (
+                    <span className="text-[13px] text-gray-900">{lic.abbr}</span>
+                  ) : (
+                    <Input value={lic.abbr} onChange={(e) => updateLicense(lic.id, 'abbr', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.requirement} onChange={(e) => updateLicense(lic.id, 'requirement', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {lic.fromDatabase ? (
+                    <span className="text-[13px] text-gray-900">{lic.requirement}</span>
+                  ) : (
+                    <Input value={lic.requirement} onChange={(e) => updateLicense(lic.id, 'requirement', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={lic.certificateNo} onChange={(e) => updateLicense(lic.id, 'certificateNo', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
@@ -4969,13 +4987,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3 text-[13px]">{course.courseId || course.id}</TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.trainingCourse} onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {course.fromDatabase ? (
+                    <span className="text-[13px] text-gray-900">{course.trainingCourse}</span>
+                  ) : (
+                    <Input value={course.trainingCourse} onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.abbr} onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {course.fromDatabase ? (
+                    <span className="text-[13px] text-gray-900">{course.abbr}</span>
+                  ) : (
+                    <Input value={course.abbr} onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.requirement} onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {course.fromDatabase ? (
+                    <span className="text-[13px] text-gray-900">{course.requirement}</span>
+                  ) : (
+                    <Input value={course.requirement} onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={course.certificateNo} onChange={(e) => updateTrainingCourse(course.id, 'certificateNo', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
