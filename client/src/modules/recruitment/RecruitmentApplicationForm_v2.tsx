@@ -1712,7 +1712,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
       const days = to.getDate() - from.getDate();
       const totalMonths = months + (days / 30);
-      return totalMonths > 0 ? `${totalMonths.toFixed(1)}M` : '';
+      return totalMonths >= 0 ? `${totalMonths.toFixed(1)}M` : '';
     } catch {
       return '';
     }
