@@ -605,6 +605,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [visaDateErrors, setVisaDateErrors] = useState<Record<string, string>>({});
   const [licDateErrors, setLicDateErrors] = useState<Record<string, string>>({});
   const [trainingDateErrors, setTrainingDateErrors] = useState<Record<string, string>>({});
+  const [seaServiceDateErrors, setSeaServiceDateErrors] = useState<Record<string, string>>({});
 
   const validateEmail = (value: string): string => {
     if (!value) return '';
@@ -1959,9 +1960,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const removeSeaService = (id: string) => {
     setFormData(prev => ({ ...prev, seaService: prev.seaService.filter(s => s.id !== id) }));
+    setSeaServiceDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
   const updateSeaService = (id: string, field: string, value: string) => {
+    if (field === 'from' || field === 'to') {
+      const service = formData.seaService.find(s => s.id === id);
+      if (service) {
+        const fromVal = field === 'from' ? value : service.from;
+        const toVal = field === 'to' ? value : service.to;
+        const err = (fromVal && toVal && toVal < fromVal) ? '"To" date cannot be earlier than "From" date.' : '';
+        setSeaServiceDateErrors(p => { const next = { ...p }; if (err) { next[id] = err; } else { delete next[id]; } return next; });
+      }
+    }
     setFormData(prev => {
       const updatedServices = prev.seaService.map(s => {
         if (s.id === id) {
@@ -2432,10 +2443,24 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       if (err) { trainingDateIssues.push(course.trainingCourse || 'A training course'); newTrainingErrors[course.id] = err; }
     }
     setTrainingDateErrors(newTrainingErrors);
-    if (docDateIssues.length > 0 || visaDateIssues.length > 0 || licDateIssues.length > 0 || trainingDateIssues.length > 0) {
+    const seaDateIssues: string[] = [];
+    const newSeaErrors: Record<string, string> = {};
+    for (const sea of formData.seaService) {
+      if (sea.from && sea.to && sea.to < sea.from) {
+        seaDateIssues.push(sea.vesselName || 'A sea service entry');
+        newSeaErrors[sea.id] = '"To" date cannot be earlier than "From" date.';
+      }
+    }
+    setSeaServiceDateErrors(newSeaErrors);
+    const hasDocDateIssues = docDateIssues.length > 0 || visaDateIssues.length > 0 || licDateIssues.length > 0 || trainingDateIssues.length > 0;
+    const hasSeaDateIssues = seaDateIssues.length > 0;
+    if (hasDocDateIssues || hasSeaDateIssues) {
+      const messages: string[] = [];
+      if (hasDocDateIssues) messages.push('Expiry Date cannot be earlier than Issued Date.');
+      if (hasSeaDateIssues) messages.push('"To" date cannot be earlier than "From" date in Sea Service.');
       toast({
         title: "Validation Error",
-        description: "Expiry Date cannot be earlier than Issued Date. Please correct the highlighted entries.",
+        description: messages.join(' ') + ' Please correct the highlighted entries.',
         variant: "destructive",
       });
       return;
@@ -5180,6 +5205,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <Input type="date" value={service.to} onChange={(e) => updateSeaService(service.id, 'to', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  {seaServiceDateErrors[service.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-sea-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={service.periodMonths} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-gray-50 cursor-not-allowed" title="Auto-calculated" />
