@@ -259,6 +259,7 @@ function CrewFilterDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Filter {rank}</DialogTitle>
+          <DialogDescription>Filter crew candidates by pool, manning agent, ship type, nationality, or experience.</DialogDescription>
         </DialogHeader>
         
         <div className="max-h-[60vh] overflow-y-auto pr-2">
@@ -974,6 +975,7 @@ function DatePeriodDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Assign {crewName}</DialogTitle>
+          <DialogDescription>Set the joining date and contract period for this assignment.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           {/* Joining Date */}
@@ -1758,12 +1760,9 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     });
   }, [selectedRoleVariants]);
 
-  // Sync selectedRoleVariantsState with autoSelectedRoleVariants when base ranks change (unless manually modified)
-  useEffect(() => {
-    if (!isInitialLoadRef.current && !hasManualVariants) {
-      setSelectedRoleVariantsState(autoSelectedRoleVariants);
-    }
-  }, [autoSelectedRoleVariants, hasManualVariants]);
+  // No useEffect sync needed: when hasManualVariants is false, selectedRoleVariants
+  // already points directly to autoSelectedRoleVariants (line above).
+  // When hasManualVariants flips to true, user explicitly sets state via handlers.
 
   // Fetch existing crew data to identify currently deployed crew
   const queryParams = useMemo(() => {
@@ -2347,6 +2346,9 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] h-[90vh] p-0">
         <DialogHeader className="p-6 pb-4 border-b">
+          <DialogDescription className="sr-only">
+            Configure vessels, ranks, and crew assignments for the rotation plan.
+          </DialogDescription>
           <div className="flex items-center justify-between mb-4">
             <DialogTitle className="text-2xl font-bold">
               {editPlan ? "Edit Rotation Plan V2" : "New Rotation Plan V2"}
