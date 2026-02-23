@@ -2101,7 +2101,8 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
 
     // Find vessel by UUID (selectedVessel is now a UUID) and rank objects to get their IDs
     const vesselObj = vessels.find((v: any) => v.value === selectedVessel);
-    const rankObj = companyRanks.find((r: any) => r.rank === selectedCrew.rank);
+    const baseRank = selectedCrew.rank.includes('_') ? selectedCrew.rank.replace(/_\d+$/, '') : selectedCrew.rank;
+    const rankObj = companyRanks.find((r: any) => r.rank === baseRank);
 
     // Validate that we have proper IDs - fail if not available
     // For V2, use vessel.value which is the UUID
