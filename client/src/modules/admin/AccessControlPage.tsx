@@ -224,13 +224,13 @@ export default function AccessControlPage() {
     return (
       <div key={item.muid}>
         <div
-          className={`grid grid-cols-[1fr_repeat(4,60px)] items-center border-b border-gray-200 ${
+          className={`grid grid-cols-[1fr_repeat(4,80px)] items-center border-b border-gray-200 ${
             depth > 0 ? "bg-gray-50/50" : "bg-white"
           } hover:bg-blue-50/30 transition-colors`}
-          style={{ paddingLeft: depth > 0 ? `${depth * 20 + 12}px` : "12px" }}
+          style={{ paddingLeft: depth > 0 ? `${depth * 24 + 16}px` : "16px" }}
           data-testid={`permission-row-${item.muid}`}
         >
-          <div className="flex items-center gap-1.5 py-1.5 pr-2">
+          <div className="flex items-center gap-2 py-2.5 pr-2">
             {hasChildren ? (
               <button
                 onClick={() => toggleExpand(item.muid)}
@@ -238,29 +238,29 @@ export default function AccessControlPage() {
                 data-testid={`toggle-menu-${item.muid}`}
               >
                 {isExpanded ? (
-                  <ChevronDown size={14} className="text-gray-500" />
+                  <ChevronDown size={16} className="text-gray-500" />
                 ) : (
-                  <ChevronRight size={14} className="text-gray-500" />
+                  <ChevronRight size={16} className="text-gray-500" />
                 )}
               </button>
             ) : (
-              <span className="w-[18px]" />
+              <span className="w-[20px]" />
             )}
-            <span className={`text-xs text-gray-800 ${depth === 0 ? "font-semibold" : "font-normal"}`} data-testid={`text-menu-name-${item.muid}`}>
+            <span className="text-sm text-gray-800 font-medium" data-testid={`text-menu-name-${item.muid}`}>
               {item.displayName || item.name}
             </span>
           </div>
           {PERMISSION_KEYS.map((key) => (
             <div
               key={key}
-              className="flex items-center justify-center py-1.5"
+              className="flex items-center justify-center py-2.5"
             >
               <Checkbox
                 checked={perms[key]}
                 onCheckedChange={(checked) =>
                   handlePermissionChange(item.muid, key, !!checked)
                 }
-                className="h-4 w-4 border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3]"
+                className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3]"
                 data-testid={`checkbox-${item.muid}-${key}`}
               />
             </div>
@@ -287,8 +287,8 @@ export default function AccessControlPage() {
 
   return (
     <div className="flex gap-0 h-[calc(100vh-140px)] max-w-full" data-testid="access-control-page">
-      <div className="w-[140px] min-w-[140px] flex flex-col border border-gray-200 rounded-l-lg overflow-hidden bg-white">
-        <div className="bg-[#52baf3] text-white text-xs font-normal px-3 py-2" data-testid="text-roles-header">
+      <div className="w-[200px] min-w-[200px] flex flex-col border border-gray-200 rounded-l-lg overflow-hidden bg-white">
+        <div className="bg-[#52baf3] text-white text-sm font-semibold px-4 py-2.5" data-testid="text-roles-header">
           Roles
         </div>
         <ScrollArea className="flex-1">
@@ -296,7 +296,7 @@ export default function AccessControlPage() {
             <div
               key={role.ruid}
               onClick={() => handleRoleSelect(role.ruid)}
-              className={`px-3 py-1.5 text-xs cursor-pointer border-b border-gray-100 transition-colors ${
+              className={`px-4 py-2.5 text-sm cursor-pointer border-b border-gray-100 transition-colors ${
                 selectedRoleUuid === role.ruid
                   ? "bg-[#52baf3] text-white font-medium"
                   : "text-gray-700 hover:bg-gray-50"
@@ -307,7 +307,7 @@ export default function AccessControlPage() {
             </div>
           ))}
           {rolesData.length === 0 && (
-            <div className="px-3 py-4 text-xs text-gray-400 text-center" data-testid="text-no-roles">
+            <div className="px-4 py-6 text-sm text-gray-400 text-center" data-testid="text-no-roles">
               No roles configured
             </div>
           )}
@@ -315,12 +315,12 @@ export default function AccessControlPage() {
       </div>
 
       <div className="flex-1 flex flex-col border border-l-0 border-gray-200 rounded-r-lg overflow-hidden bg-white">
-        <div className="grid grid-cols-[1fr_repeat(4,60px)] bg-[#52baf3] text-white text-xs font-normal" data-testid="text-permissions-header">
-          <div className="px-3 py-2" data-testid="text-header-menu-name">Menu Name</div>
-          <div className="text-center py-2" data-testid="text-header-view">View</div>
-          <div className="text-center py-2" data-testid="text-header-create">Create</div>
-          <div className="text-center py-2" data-testid="text-header-edit">Edit</div>
-          <div className="text-center py-2" data-testid="text-header-delete">Delete</div>
+        <div className="grid grid-cols-[1fr_repeat(4,80px)] bg-[#52baf3] text-white text-sm font-semibold" data-testid="text-permissions-header">
+          <div className="px-4 py-2.5" data-testid="text-header-menu-name">Menu Name</div>
+          <div className="text-center py-2.5" data-testid="text-header-view">View</div>
+          <div className="text-center py-2.5" data-testid="text-header-create">Create</div>
+          <div className="text-center py-2.5" data-testid="text-header-edit">Edit</div>
+          <div className="text-center py-2.5" data-testid="text-header-delete">Delete</div>
         </div>
         <ScrollArea className="flex-1">
           {permissionsLoading ? (
@@ -335,11 +335,11 @@ export default function AccessControlPage() {
             </div>
           )}
         </ScrollArea>
-        <div className="flex justify-end px-3 py-2 border-t border-gray-200 bg-gray-50">
+        <div className="flex justify-end p-3 border-t border-gray-200 bg-gray-50">
           <Button
             onClick={handleSave}
             disabled={!isDirty || savePermissionsMutation.isPending || !selectedRoleUuid}
-            className="h-8 bg-[#16569e] hover:bg-[#0f4078] text-white text-xs px-5"
+            className="bg-[#16569e] hover:bg-[#0f4078] text-white px-6"
             data-testid="button-save-access-control"
           >
             {savePermissionsMutation.isPending ? "Saving..." : "Save Changes"}
