@@ -24,6 +24,7 @@ import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 import { formatDate } from '@/utils/format';
+import { applyDialingCode } from './countryDialingCodes';
 import {
   useV2Candidate,
   useV2CreateCandidate,
@@ -4150,7 +4151,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Country of Residence</Label>
             {isEditing ? (
-              <Select value={formData.countryOfResidence} onValueChange={(value) => updateFormData('countryOfResidence', value)}>
+              <Select value={formData.countryOfResidence} onValueChange={(value) => {
+                setFormData(prev => ({
+                  ...prev,
+                  countryOfResidence: value,
+                  mobile: applyDialingCode(value, prev.mobile),
+                }));
+              }}>
                 <SelectTrigger className="mt-1" data-testid="select-country-residence">
                   <SelectValue placeholder="Select country of residence" />
                 </SelectTrigger>
