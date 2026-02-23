@@ -39,7 +39,7 @@ export function decryptData(encryptedData: string | null, isParse = false): any 
       return null;
     }
 
-    if (error?.message?.includes('Unexpected end of JSON input')) {
+    if (error?.message?.includes('Unexpected end of JSON input') || error?.message?.includes('Unterminated string')) {
       try {
         return CryptoJS.AES.decrypt(encryptedData!, secretKey).toString(
           CryptoJS.enc.Utf8
@@ -60,6 +60,29 @@ export function encryptData(data: any): string | null {
     return CryptoJS.AES.encrypt(stringified, secretKey).toString();
   } catch (error) {
     console.error('Encryption error:', error);
+    return null;
+  }
+}
+
+export function secretKeyAvailable(): boolean {
+  return !!secretKey;
+}
+
+export function getDecryptedRawString(key: string): string | null {
+  try {
+    const encrypted = localStorage.getItem(key);
+    if (!encrypted || !secretKey) return null;
+    const decryptedBytes = CryptoJS.AES.decrypt(encrypted, secretKey);
+    let result: string | null = null;
+    try {
+      result = decryptedBytes.toString(CryptoJS.enc.Utf8);
+    } catch {
+      try {
+        result = decryptedBytes.toString(CryptoJS.enc.Latin1);
+      } catch { /* both failed */ }
+    }
+    return result || null;
+  } catch {
     return null;
   }
 }

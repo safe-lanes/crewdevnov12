@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getDecryptedLocalStorageItem } from '@/lib/encryptionService';
+import { getDecryptedLocalStorageItem, secretKeyAvailable, getDecryptedRawString } from '@/lib/encryptionService';
 import { adminApiV2 } from '@/modules/admin/api/adminApiV2';
 
 interface MenuPermission {
@@ -36,34 +36,50 @@ interface PermissionsContextType {
 
 const PermissionsContext = createContext<PermissionsContextType | null>(null);
 
+function extractFieldsFromPartialJson(jsonStr: string): { role?: string; roleId?: string; myVessels?: MyVessel[] } | null {
+  const result: { role?: string; roleId?: string; myVessels?: MyVessel[] } = {};
+  const roleMatch = jsonStr.match(/"role"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
+  if (roleMatch) result.role = roleMatch[1].replace(/\\"/g, '"');
+  const roleIdMatch = jsonStr.match(/"roleId"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
+  if (roleIdMatch) result.roleId = roleIdMatch[1].replace(/\\"/g, '"');
+  const roleNameMatch = jsonStr.match(/"roleName"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
+  if (!result.role && roleNameMatch) result.role = roleNameMatch[1].replace(/\\"/g, '"');
+  const vesselsMatch = jsonStr.match(/"myVessels"\s*:\s*(\[(?:[^\[\]]*|\[(?:[^\[\]]*|\[[^\[\]]*\])*\])*\])/);
+  if (vesselsMatch) {
+    try { result.myVessels = JSON.parse(vesselsMatch[1]); } catch { /* skip vessels if truncated */ }
+  }
+  return (result.role || result.roleId) ? result : null;
+}
+
 function getUserProfile(): { role?: string; roleId?: string; myVessels?: MyVessel[] } | null {
   try {
-    const raw = localStorage.getItem('userProfile');
-    console.log('[Permissions DEBUG] Raw localStorage userProfile:', raw ? `${raw.substring(0, 80)}...` : 'null');
-
     const profile = getDecryptedLocalStorageItem('userProfile', true);
-    console.log('[Permissions DEBUG] Decrypted profile:', profile);
-
     if (profile && typeof profile === 'object') {
-      console.log('[Permissions DEBUG] Role:', profile.role, '| RoleId:', profile.roleId);
       return profile;
     }
+    if (profile && typeof profile === 'string') {
+      const partial = extractFieldsFromPartialJson(profile);
+      if (partial) return partial;
+    }
 
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
-          console.log('[Permissions DEBUG] Fallback: parsed as plain JSON. Role:', parsed.role, '| RoleId:', parsed.roleId);
-          return parsed;
-        }
-      } catch {
-        console.log('[Permissions DEBUG] Fallback: not valid JSON either');
+    const raw = localStorage.getItem('userProfile');
+    if (!raw) return null;
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch { /* not plain JSON */ }
+
+    if (secretKeyAvailable()) {
+      const decryptedStr = getDecryptedRawString('userProfile');
+      if (decryptedStr) {
+        const partial = extractFieldsFromPartialJson(decryptedStr);
+        if (partial) return partial;
       }
     }
 
     return null;
-  } catch (err) {
-    console.error('[Permissions DEBUG] getUserProfile error:', err);
+  } catch {
     return null;
   }
 }
@@ -87,8 +103,6 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
   const roleId = userProfile?.roleId || null;
   const myVessels = userProfile?.myVessels || [];
 
-  console.log('[Permissions DEBUG] Query params - roleName:', roleName, '| roleId:', roleId, '| enabled:', !!(roleId || roleName));
-
   const { data, isLoading } = useQuery({
     queryKey: ['/api/v2/admin/access-control/my-permissions', roleId, roleName],
     queryFn: async () => {
@@ -96,12 +110,11 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
         roleId: roleId || undefined,
         roleName: roleName || undefined,
       });
-      console.log('[Permissions DEBUG] API response - permissions count:', result?.permissions?.length, '| sample:', result?.permissions?.slice(0, 3));
       return result;
     },
     enabled: !!(roleId || roleName),
     staleTime: 5 * 60 * 1000,
-    retry: 1,
+    retry: 2,
   });
 
   const permissions: MenuPermission[] = data?.permissions || [];
