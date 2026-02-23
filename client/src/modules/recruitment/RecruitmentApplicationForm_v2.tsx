@@ -601,6 +601,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [spouseValidationError, setSpouseValidationError] = useState('');
   const [docDateErrors, setDocDateErrors] = useState<Record<string, string>>({});
   const [visaDateErrors, setVisaDateErrors] = useState<Record<string, string>>({});
+  const [licDateErrors, setLicDateErrors] = useState<Record<string, string>>({});
+  const [trainingDateErrors, setTrainingDateErrors] = useState<Record<string, string>>({});
 
   const validateEmail = (value: string): string => {
     if (!value) return '';
@@ -1119,43 +1121,51 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   useEffect(() => {
     if (licensesData && licensesData.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        licenses: licensesData.map(lic => ({
-          id: lic.licUuid,
-          serverId: lic.id,
-          licenseId: lic.licenseId || '',
-          certificateDocument: lic.certificateDocument || '',
-          abbr: lic.abbr || '',
-          requirement: lic.requirement || '',
-          certificateNo: lic.certificateNo || '',
-          issuingAuthority: lic.issuingAuthority || '',
-          issued: lic.issued || '',
-          expiry: lic.expiry || '',
-          attachments: mapApiAttachments(lic.attachments),
-        })),
+      const mapped = licensesData.map(lic => ({
+        id: lic.licUuid,
+        serverId: lic.id,
+        licenseId: lic.licenseId || '',
+        certificateDocument: lic.certificateDocument || '',
+        abbr: lic.abbr || '',
+        requirement: lic.requirement || '',
+        certificateNo: lic.certificateNo || '',
+        issuingAuthority: lic.issuingAuthority || '',
+        issued: lic.issued || '',
+        expiry: lic.expiry || '',
+        attachments: mapApiAttachments(lic.attachments),
       }));
+      const sorted = [...mapped].sort((a, b) => {
+        if (!a.expiry && !b.expiry) return 0;
+        if (!a.expiry) return 1;
+        if (!b.expiry) return -1;
+        return a.expiry.localeCompare(b.expiry);
+      });
+      setFormData(prev => ({ ...prev, licenses: sorted }));
     }
   }, [licensesData]);
 
   useEffect(() => {
     if (trainingData && trainingData.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        trainingCourses: trainingData.map(course => ({
-          id: course.trainUuid,
-          serverId: course.id,
-          courseId: course.courseId || '',
-          trainingCourse: course.trainingCourse || '',
-          abbr: course.abbr || '',
-          requirement: course.requirement || '',
-          certificateNo: course.certificateNo || '',
-          issuingAuthority: course.issuingAuthority || '',
-          issued: course.issued || '',
-          expiry: course.expiry || '',
-          attachments: mapApiAttachments(course.attachments),
-        })),
+      const mapped = trainingData.map(course => ({
+        id: course.trainUuid,
+        serverId: course.id,
+        courseId: course.courseId || '',
+        trainingCourse: course.trainingCourse || '',
+        abbr: course.abbr || '',
+        requirement: course.requirement || '',
+        certificateNo: course.certificateNo || '',
+        issuingAuthority: course.issuingAuthority || '',
+        issued: course.issued || '',
+        expiry: course.expiry || '',
+        attachments: mapApiAttachments(course.attachments),
       }));
+      const sorted = [...mapped].sort((a, b) => {
+        if (!a.expiry && !b.expiry) return 0;
+        if (!a.expiry) return 1;
+        if (!b.expiry) return -1;
+        return a.expiry.localeCompare(b.expiry);
+      });
+      setFormData(prev => ({ ...prev, trainingCourses: sorted }));
     }
   }, [trainingData]);
 
@@ -1862,9 +1872,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const removeLicense = (id: string) => {
     setFormData(prev => ({ ...prev, licenses: prev.licenses.filter(l => l.id !== id) }));
+    setLicDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
   const updateLicense = (id: string, field: string, value: string) => {
+    if (field === 'issued' || field === 'expiry') {
+      const lic = formData.licenses.find(l => l.id === id);
+      if (lic) {
+        const issued = field === 'issued' ? value : lic.issued;
+        const expiry = field === 'expiry' ? value : lic.expiry;
+        const err = validateExpiryVsIssued(issued, expiry);
+        setLicDateErrors(p => { const next = { ...p }; if (err) { next[id] = err; } else { delete next[id]; } return next; });
+      }
+    }
     setFormData(prev => ({
       ...prev,
       licenses: prev.licenses.map(l => l.id === id ? { ...l, [field]: value } : l)
@@ -1890,9 +1910,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const removeTrainingCourse = (id: string) => {
     setFormData(prev => ({ ...prev, trainingCourses: prev.trainingCourses.filter(t => t.id !== id) }));
+    setTrainingDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
   const updateTrainingCourse = (id: string, field: string, value: string) => {
+    if (field === 'issued' || field === 'expiry') {
+      const course = formData.trainingCourses.find(t => t.id === id);
+      if (course) {
+        const issued = field === 'issued' ? value : course.issued;
+        const expiry = field === 'expiry' ? value : course.expiry;
+        const err = validateExpiryVsIssued(issued, expiry);
+        setTrainingDateErrors(p => { const next = { ...p }; if (err) { next[id] = err; } else { delete next[id]; } return next; });
+      }
+    }
     setFormData(prev => ({
       ...prev,
       trainingCourses: prev.trainingCourses.map(t => t.id === id ? { ...t, [field]: value } : t)
@@ -2367,7 +2397,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       if (err) { visaDateIssues.push(visa.issuingCountry || 'A visa'); newVisaErrors[visa.id] = err; }
     }
     setVisaDateErrors(newVisaErrors);
-    if (docDateIssues.length > 0 || visaDateIssues.length > 0) {
+    const licDateIssues: string[] = [];
+    const newLicErrors: Record<string, string> = {};
+    for (const lic of formData.licenses) {
+      const err = validateExpiryVsIssued(lic.issued, lic.expiry);
+      if (err) { licDateIssues.push(lic.certificateDocument || 'A license'); newLicErrors[lic.id] = err; }
+    }
+    setLicDateErrors(newLicErrors);
+    const trainingDateIssues: string[] = [];
+    const newTrainingErrors: Record<string, string> = {};
+    for (const course of formData.trainingCourses) {
+      const err = validateExpiryVsIssued(course.issued, course.expiry);
+      if (err) { trainingDateIssues.push(course.trainingCourse || 'A training course'); newTrainingErrors[course.id] = err; }
+    }
+    setTrainingDateErrors(newTrainingErrors);
+    if (docDateIssues.length > 0 || visaDateIssues.length > 0 || licDateIssues.length > 0 || trainingDateIssues.length > 0) {
       toast({
         title: "Validation Error",
         description: "Expiry Date cannot be earlier than Issued Date. Please correct the highlighted entries.",
@@ -2895,6 +2939,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         documents: sortByExpiry(prev.documents),
         visas: sortByExpiry(prev.visas),
+        licenses: sortByExpiry(prev.licenses),
+        trainingCourses: sortByExpiry(prev.trainingCourses),
       }));
       toast({
         title: "Saved",
@@ -4843,6 +4889,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <Input type="date" value={lic.expiry} onChange={(e) => updateLicense(lic.id, 'expiry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {licDateErrors[lic.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-lic-expiry-error-${lic.id}`}>{licDateErrors[lic.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4918,6 +4965,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <Input type="date" value={course.expiry} onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {trainingDateErrors[course.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-training-expiry-error-${course.id}`}>{trainingDateErrors[course.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
