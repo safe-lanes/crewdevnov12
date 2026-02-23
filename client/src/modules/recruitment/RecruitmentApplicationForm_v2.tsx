@@ -4693,7 +4693,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.documents.map((doc) => (
               <TableRow key={doc.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input value={doc.document} onChange={(e) => updateDocument(doc.id, 'document', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {doc.documentId ? (
+                    <span className="text-[13px] text-gray-900">{doc.document}</span>
+                  ) : (
+                    <Input value={doc.document} onChange={(e) => updateDocument(doc.id, 'document', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={doc.number} onChange={(e) => updateDocument(doc.id, 'number', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
@@ -4759,7 +4763,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input value={visa.issuingCountry} onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  {visa.countryId ? (
+                    <span className="text-[13px] text-gray-900">{visa.issuingCountry}</span>
+                  ) : (
+                    <Input value={visa.issuingCountry} onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={visa.serialNo} onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
