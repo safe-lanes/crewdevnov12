@@ -14,6 +14,7 @@ import {
   vesselRevisionsController,
   trainingMatrixVesselDraftsController,
   trainingMatrixVesselRevisionsController,
+  accessControlController,
 } from "./controllers";
 
 const router = Router();
@@ -121,5 +122,18 @@ router.get("/training-matrix-vessel-revisions/by-vessel/:vesselId", trainingMatr
 router.get("/training-matrix-vessel-revisions/next-revision/:vesselId", trainingMatrixVesselRevisionsController.getNextRevision);
 router.get("/training-matrix-vessel-revisions/:id", trainingMatrixVesselRevisionsController.getById);
 router.post("/training-matrix-vessel-revisions", trainingMatrixVesselRevisionsController.create);
+
+router.get("/access-control/menus", accessControlController.getAllMenus);
+router.post("/access-control/menus", accessControlController.createMenu);
+router.put("/access-control/menus/:muid", accessControlController.updateMenu);
+router.delete("/access-control/menus/:muid", accessControlController.deleteMenu);
+
+router.get("/access-control/roles", accessControlController.getAllRoles);
+router.post("/access-control/roles", accessControlController.createRole);
+router.put("/access-control/roles/:ruid", accessControlController.updateRole);
+router.delete("/access-control/roles/:ruid", accessControlController.deleteRole);
+
+router.get("/access-control/roles/:ruid/permissions", accessControlController.getPermissions);
+router.put("/access-control/roles/:ruid/permissions", accessControlController.savePermissions);
 
 export default router;

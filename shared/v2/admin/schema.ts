@@ -187,3 +187,39 @@ export const admTrainingMatrixVesselRevisionsV2 = pgTable("adm_training_matrix_v
   revisionData: text("revision_data").notNull(),
   ...auditColumns,
 });
+
+export const admMenuMasterAc = pgTable("adm_menumaster_ac", {
+  id: serial("id").primaryKey(),
+  muid: text("muid").notNull().unique(),
+  name: text("name").notNull().unique(),
+  displayName: text("display_name"),
+  route: text("route").notNull().unique(),
+  parentMenu: text("parent_menu"),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+export const admRoleMasterAc = pgTable("adm_rolemaster_ac", {
+  id: serial("id").primaryKey(),
+  ruid: text("ruid").notNull().unique(),
+  assignedRole: text("assigned_role").notNull(),
+  roletype: text("roletype").notNull(),
+  orderby: integer("orderby"),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+export const admRoleAccessAc = pgTable("adm_roleaccess_ac", {
+  id: serial("id").primaryKey(),
+  rauid: text("rauid").notNull().unique(),
+  canview: boolean("canview").notNull().default(false),
+  cancreate: boolean("cancreate").notNull().default(false),
+  canedit: boolean("canedit").notNull().default(false),
+  candelete: boolean("candelete").notNull().default(false),
+  menuId: text("menu_id").notNull(),
+  roleId: text("role_id").notNull(),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});

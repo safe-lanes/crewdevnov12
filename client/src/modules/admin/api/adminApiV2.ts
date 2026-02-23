@@ -471,4 +471,57 @@ export const adminApiV2 = {
     const json = await res.json();
     return json.data;
   },
+
+  async getAccessControlMenus() {
+    const res = await fetch(`${V2_BASE}/access-control/menus`);
+    if (!res.ok) throw new Error('Failed to fetch access control menus');
+    return res.json();
+  },
+
+  async createAccessControlMenu(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/access-control/menus`, data);
+    return res.json();
+  },
+
+  async updateAccessControlMenu(muid: string, data: any) {
+    const res = await apiRequest('PUT', `${V2_BASE}/access-control/menus/${muid}`, data);
+    return res.json();
+  },
+
+  async deleteAccessControlMenu(muid: string) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/access-control/menus/${muid}`);
+    return res.json();
+  },
+
+  async getAccessControlRoles() {
+    const res = await fetch(`${V2_BASE}/access-control/roles`);
+    if (!res.ok) throw new Error('Failed to fetch access control roles');
+    return res.json();
+  },
+
+  async createAccessControlRole(data: any) {
+    const res = await apiRequest('POST', `${V2_BASE}/access-control/roles`, data);
+    return res.json();
+  },
+
+  async updateAccessControlRole(ruid: string, data: any) {
+    const res = await apiRequest('PUT', `${V2_BASE}/access-control/roles/${ruid}`, data);
+    return res.json();
+  },
+
+  async deleteAccessControlRole(ruid: string) {
+    const res = await apiRequest('DELETE', `${V2_BASE}/access-control/roles/${ruid}`);
+    return res.json();
+  },
+
+  async getAccessControlPermissions(ruid: string) {
+    const res = await fetch(`${V2_BASE}/access-control/roles/${ruid}/permissions`);
+    if (!res.ok) throw new Error('Failed to fetch permissions');
+    return res.json();
+  },
+
+  async saveAccessControlPermissions(ruid: string, permissions: any[]) {
+    const res = await apiRequest('PUT', `${V2_BASE}/access-control/roles/${ruid}/permissions`, { permissions });
+    return res.json();
+  },
 };

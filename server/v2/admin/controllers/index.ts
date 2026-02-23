@@ -12,3 +12,4 @@ export { vesselDraftsController } from "./vesselDraftsController";
 export { vesselRevisionsController } from "./vesselRevisionsController";
 export { trainingMatrixVesselDraftsController } from "./trainingMatrixVesselDraftsController";
 export { trainingMatrixVesselRevisionsController } from "./trainingMatrixVesselRevisionsController";
+export { accessControlController } from "./accessControlController";
