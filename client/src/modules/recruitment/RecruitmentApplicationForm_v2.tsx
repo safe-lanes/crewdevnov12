@@ -4822,10 +4822,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -4833,16 +4833,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.education.map((edu) => (
               <TableRow key={edu.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input type="date" value={edu.dateOfCompletion} onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input value={edu.schoolCollegeUniversity} onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={edu.qualifications} onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={edu.subjectsField} onChange={(e) => updateEducation(edu.id, 'subjectsField', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={edu.qualifications} onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                  <Input value={edu.schoolCollegeUniversity} onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input type="date" value={edu.dateOfCompletion} onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)} className="text-[13px] border-0 shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
