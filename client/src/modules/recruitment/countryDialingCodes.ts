@@ -388,10 +388,12 @@ export function extractLocalDigits(countryName: string, mobile: string): string 
 export function normalizeMobileInput(countryName: string, rawInput: string): string {
   const code = getDialingCode(countryName);
   if (!code) return rawInput;
-  if (rawInput.length <= code.length + 1) {
+  if (rawInput.length <= code.length) {
     return code;
   }
-  const afterCode = rawInput.slice(code.length).replace(/^[\s-]+/, '');
+  const afterCode = rawInput.startsWith(code)
+    ? rawInput.slice(code.length).replace(/^[\s-]+/, '')
+    : rawInput.slice(code.length);
   const localDigits = afterCode.replace(/\D/g, '');
   return localDigits ? `${code} ${localDigits}` : code;
 }
