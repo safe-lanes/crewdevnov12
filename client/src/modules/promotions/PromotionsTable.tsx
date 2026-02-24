@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { ColDef, ICellRendererParams, GridReadyEvent, GridApi, GridOptions } from 'ag-grid-community';
 import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
@@ -172,6 +173,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   criteria,
   status
 }) => {
+  const { canEdit: canEditPerm, permissions } = usePermissions();
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [selectedPromotion, setSelectedPromotion] = useState<any | null>(null);
   
@@ -635,7 +637,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       sortable: true,
       resizable: true
     },
-    {
+    ...((permissions.length === 0 || canEditPerm("Promotions All")) ? [{
       headerName: '',
       field: 'edit',
       width: 60,
@@ -645,8 +647,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       },
       sortable: false,
       resizable: false
-    }
-  ], [handleEditPromotion]);
+    }] : [])
+  ], [handleEditPromotion, permissions, canEditPerm]);
 
   const handleGridReady = (event: GridReadyEvent) => {
     setGridApi(event.api);

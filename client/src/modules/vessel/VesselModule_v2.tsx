@@ -613,7 +613,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
 export function VesselModule_v2(): JSX.Element {
     const queryClient = useQueryClient();
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
-    const { canView, permissions } = usePermissions();
+    const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
     const allowedPages = useMemo(() => {
         const all = ["vessel-database"];
         if (permissions.length === 0) return all;
@@ -1055,6 +1055,8 @@ export function VesselModule_v2(): JSX.Element {
             e.stopPropagation();
             handleEditVessel(props.data);
         };
+
+        if (permissions.length > 0 && !canEdit("Vessel Database")) return null;
 
         return (
             <div className="flex items-center justify-center h-full">
@@ -2303,6 +2305,7 @@ export function VesselModule_v2(): JSX.Element {
                                                             <TableCell className="text-xs text-gray-700">{row.onBoardCrew?.signOffPortName || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.onBoardCrew?.reliefStatus || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">
+                                                                {(permissions.length === 0 || canEdit("Officer Matrix")) && (
                                                                 <Button 
                                                                     variant="ghost" 
                                                                     size="sm" 
@@ -2312,6 +2315,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                 >
                                                                     <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
                                                                 </Button>
+                                                                )}
                                                             </TableCell>
                                                             
                                                             {/* Reliever Status */}
@@ -2320,7 +2324,7 @@ export function VesselModule_v2(): JSX.Element {
                                                             <TableCell className="text-xs text-gray-700">{row.relieverData?.signOnPortName || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.relieverData?.signOnStatus || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">
-                                                                {!row.hasBothOnBoard && (
+                                                                {!row.hasBothOnBoard && (permissions.length === 0 || canEdit("Officer Matrix")) && (
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="sm" 

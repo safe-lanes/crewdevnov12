@@ -534,7 +534,7 @@ interface SeafarerData {
 // Inner AdminModule component (uses EditSessionContext)
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
-  const { canView, permissions } = usePermissions();
+  const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
   const adminAllowedPages = useMemo(() => {
     const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control"];
     if (permissions.length === 0) return all;
@@ -3868,6 +3868,7 @@ const AdminModuleInner = (): JSX.Element => {
           </span>
         </div>
         <div className="flex gap-2">
+          {(permissions.length === 0 || canEdit("Rank Admin")) && (
           <Button
             variant={isCompanyEditing ? "default" : "outline"}
             onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
@@ -3880,6 +3881,7 @@ const AdminModuleInner = (): JSX.Element => {
           >
             {isCompanyEditing ? "Save" : "Edit Table"}
           </Button>
+          )}
         </div>
       </div>
 
@@ -4306,6 +4308,7 @@ const AdminModuleInner = (): JSX.Element => {
             <div className={`flex ${currentBreakpoint === 'mobile' ? 'justify-center' : 'justify-end'}`}>
               {selectedRankAdminTab === "rank-master" && (
                 <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
+                  {(permissions.length === 0 || canEdit("Rank Admin")) && (
                   <Button
                     variant={isRankMasterEditing ? "default" : "outline"}
                     onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
@@ -4317,6 +4320,7 @@ const AdminModuleInner = (): JSX.Element => {
                   >
                     {isRankMasterEditing ? "Save" : "Edit Rank"}
                   </Button>
+                  )}
                   <Button
                     onClick={() => {
                       // Force refresh rank data to clear any stale cache
@@ -4406,6 +4410,7 @@ const AdminModuleInner = (): JSX.Element => {
           <div className="flex justify-end">
             {selectedRankAdminTab === "rank-master" && (
               <div className="flex gap-2">
+                {(permissions.length === 0 || canEdit("Rank Admin")) && (
                 <Button
                   variant={isRankMasterEditing ? "default" : "outline"}
                   onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
@@ -4417,6 +4422,7 @@ const AdminModuleInner = (): JSX.Element => {
                 >
                   {isRankMasterEditing ? "Save" : "Edit Rank"}
                 </Button>
+                )}
                 <Button
                   onClick={() => {
                     // Force refresh rank data to clear any stale cache
@@ -4599,7 +4605,7 @@ const AdminModuleInner = (): JSX.Element => {
                                 >
                                   <ChevronDown className="h-3 w-3" />
                                 </Button>
-                                {!rank.isSystemRank && (
+                                {!rank.isSystemRank && (permissions.length === 0 || canDelete("Rank Admin")) && (
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -5545,6 +5551,7 @@ const AdminModuleInner = (): JSX.Element => {
                   <Filter className="h-4 w-4" />
                   Filters
                 </Button>
+                {(permissions.length === 0 || canEdit("Admin Training Matrix")) && (
                 <Button
                   variant={isCompanyTrainingEditing ? "default" : "outline"}
                   onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
@@ -5558,6 +5565,7 @@ const AdminModuleInner = (): JSX.Element => {
                 >
                   {isCompanyTrainingEditing ? "Save" : "Edit"}
                 </Button>
+                )}
                 {isCompanyTrainingEditing && (
                   <Button
                     variant="outline"
@@ -5649,6 +5657,7 @@ const AdminModuleInner = (): JSX.Element => {
                     <Filter className="h-4 w-4" />
                     Filters
                   </Button>
+                  {(permissions.length === 0 || canEdit("Admin Training Matrix")) && (
                   <Button
                     variant={isCompanyTrainingEditing ? "default" : "outline"}
                     onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
@@ -5662,6 +5671,7 @@ const AdminModuleInner = (): JSX.Element => {
                   >
                     {isCompanyTrainingEditing ? "Save" : "Edit"}
                   </Button>
+                  )}
                   {isCompanyTrainingEditing && (
                     <Button
                       variant="outline"
@@ -5931,6 +5941,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     >
                                       <ChevronDown className="h-4 w-4" />
                                     </Button>
+                                    {(permissions.length === 0 || canDelete("Admin Training Matrix")) && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -5941,6 +5952,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
+                                    )}
                                   </div>
                                 </TableCell>
                               )}
@@ -6842,6 +6854,7 @@ const AdminModuleInner = (): JSX.Element => {
               >
                 {syncAllMasterDataMutation.isPending ? "Syncing..." : "Sync All"}
               </Button>
+              {(permissions.length === 0 || canEdit("Masters")) && (
               <Button
                 variant={isMasterInEditMode ? "default" : "outline"}
                 onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}
@@ -6854,6 +6867,8 @@ const AdminModuleInner = (): JSX.Element => {
               >
                 {isMasterInEditMode ? "Save" : "Edit Master"}
               </Button>
+              )}
+              {(permissions.length === 0 || canCreate("Masters")) && (
               <Button
                 onClick={handleNewEntry}
                 disabled={!isMasterInEditMode}
@@ -6866,6 +6881,7 @@ const AdminModuleInner = (): JSX.Element => {
               >
                 + New Entry
               </Button>
+              )}
             </div>
           </div>
         )}
@@ -8103,6 +8119,7 @@ const AdminModuleInner = (): JSX.Element => {
     <div>
       <SectionTitleComponents title={"Forms Configuration"}>
         <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
+          {(permissions.length === 0 || canCreate("Forms")) && (
           <Button
             variant="outline"
             onClick={() => setShowCreateFormDialog(true)}
@@ -8111,6 +8128,7 @@ const AdminModuleInner = (): JSX.Element => {
             <Plus className="h-4 w-4" />
             <span className="text-xs">Create Form</span>
           </Button>
+          )}
           <Button
             variant="outline"
             className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
@@ -8173,6 +8191,7 @@ const AdminModuleInner = (): JSX.Element => {
                       >
                         <div className="flex items-center justify-between">
                           <span>{form.name}</span>
+                          {(permissions.length === 0 || canCreate("Forms")) && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -8181,6 +8200,7 @@ const AdminModuleInner = (): JSX.Element => {
                           >
                             <Plus className="h-4 w-4 text-gray-500" />
                           </Button>
+                          )}
                         </div>
                       </TableCell>
                     )}

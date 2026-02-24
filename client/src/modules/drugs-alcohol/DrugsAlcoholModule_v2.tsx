@@ -26,13 +26,15 @@ import { useToast } from '@/hooks/use-toast';
 
 export function DrugsAlcoholModule_v2() {
     const [selectedDrugsAlcoholPage, setSelectedDrugsAlcoholPage] = useState<string>("annual");
-    const { canView, permissions } = usePermissions();
+    const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
     const allowedPages = useMemo(() => {
         const all = ["annual", "periodic", "monthly", "post-incident", "others", "summary"];
         if (permissions.length === 0) return all;
         const pageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary" };
         return all.filter(p => canView(pageToMenu[p] || p));
     }, [permissions, canView]);
+    const daPageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary" };
+    const currentDAMenu = daPageToMenu[selectedDrugsAlcoholPage] || "Annual";
     const { toast } = useToast();
 
     const viewport = useViewport();
@@ -537,8 +539,8 @@ export function DrugsAlcoholModule_v2() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onAdd={(vesselId) => handleOpenForm('annual', vesselId)}
-                            onEdit={(recordId) => handleOpenForm('annual', undefined, String(recordId))}
+                            onAdd={(permissions.length === 0 || canCreate("Annual")) ? (vesselId) => handleOpenForm('annual', vesselId) : undefined}
+                            onEdit={(permissions.length === 0 || canEdit("Annual")) ? (recordId) => handleOpenForm('annual', undefined, String(recordId)) : undefined}
                         />
                     </div>
                 );
@@ -563,8 +565,8 @@ export function DrugsAlcoholModule_v2() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onAdd={(vesselId) => handleOpenForm('periodic', vesselId)}
-                            onEdit={(recordId) => handleOpenForm('periodic', undefined, String(recordId))}
+                            onAdd={(permissions.length === 0 || canCreate("Periodic")) ? (vesselId) => handleOpenForm('periodic', vesselId) : undefined}
+                            onEdit={(permissions.length === 0 || canEdit("Periodic")) ? (recordId) => handleOpenForm('periodic', undefined, String(recordId)) : undefined}
                         />
                     </div>
                 );
@@ -589,8 +591,8 @@ export function DrugsAlcoholModule_v2() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onAdd={(vesselId) => handleOpenForm('monthly', vesselId)}
-                            onEdit={(recordId) => handleOpenForm('monthly', undefined, String(recordId))}
+                            onAdd={(permissions.length === 0 || canCreate("Monthly")) ? (vesselId) => handleOpenForm('monthly', vesselId) : undefined}
+                            onEdit={(permissions.length === 0 || canEdit("Monthly")) ? (recordId) => handleOpenForm('monthly', undefined, String(recordId)) : undefined}
                         />
                     </div>
                 );
@@ -599,6 +601,7 @@ export function DrugsAlcoholModule_v2() {
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Post Incident Test">
                             <div className="flex gap-2 items-center">
+                                {(permissions.length === 0 || canCreate("Post Incident")) && (
                                 <Button
                                     variant="default"
                                     size="sm"
@@ -609,6 +612,7 @@ export function DrugsAlcoholModule_v2() {
                                     <Plus className="h-4 w-4" />
                                     Add New
                                 </Button>
+                                )}
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -627,7 +631,7 @@ export function DrugsAlcoholModule_v2() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onEdit={(recordId) => handleOpenForm('post-incident', undefined, String(recordId))}
+                            onEdit={(permissions.length === 0 || canEdit("Post Incident")) ? (recordId) => handleOpenForm('post-incident', undefined, String(recordId)) : undefined}
                         />
                     </div>
                 );
@@ -636,6 +640,7 @@ export function DrugsAlcoholModule_v2() {
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Other Tests">
                             <div className="flex gap-2 items-center">
+                                {(permissions.length === 0 || canCreate("Others")) && (
                                 <Button
                                     variant="default"
                                     size="sm"
@@ -646,6 +651,7 @@ export function DrugsAlcoholModule_v2() {
                                     <Plus className="h-4 w-4" />
                                     Add New
                                 </Button>
+                                )}
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -664,7 +670,7 @@ export function DrugsAlcoholModule_v2() {
                             selectedVessels={selectedVessels}
                             fleetValue={fleetValue}
                             addGroupValue={addGroupValue}
-                            onEdit={(recordId) => handleOpenForm('others', undefined, String(recordId))}
+                            onEdit={(permissions.length === 0 || canEdit("Others")) ? (recordId) => handleOpenForm('others', undefined, String(recordId)) : undefined}
                         />
                     </div>
                 );
@@ -676,8 +682,8 @@ export function DrugsAlcoholModule_v2() {
                         {summarySelectedVessel && (
                             <SummaryTable_v2 
                                 selectedVessel={summarySelectedVessel}
-                                onAdd={(testType) => handleOpenForm(testType, summarySelectedVessel)}
-                                onEdit={(testType, recordId) => handleOpenForm(testType, summarySelectedVessel, String(recordId))}
+                                onAdd={(permissions.length === 0 || canCreate("Summary")) ? (testType) => handleOpenForm(testType, summarySelectedVessel) : undefined}
+                                onEdit={(permissions.length === 0 || canEdit("Summary")) ? (testType, recordId) => handleOpenForm(testType, summarySelectedVessel, String(recordId)) : undefined}
                             />
                         )}
                     </div>

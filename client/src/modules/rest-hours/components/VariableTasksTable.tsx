@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { Pencil, Trash2, ChevronUp, ChevronDown, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -67,6 +68,7 @@ interface VariableTasksTableProps {
 }
 
 export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTableProps) => {
+  const { canCreate, canEdit, canDelete, permissions } = usePermissions();
   const { toast } = useToast();
   const [sortColumn, setSortColumn] = useState<SortColumn>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -270,6 +272,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-end mb-4">
+        {(permissions.length === 0 || canCreate("Rest Hours Plan")) && (
         <Button
           onClick={handleAddTask}
           disabled={!vesselId || !periodValue}
@@ -279,6 +282,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
           <Plus className="h-4 w-4 mr-1" />
           Add Task
         </Button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -394,6 +398,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
                     </TableCell>
                     <TableCell className="py-3">
                       <div className="flex items-center justify-center gap-2">
+                        {(permissions.length === 0 || canEdit("Rest Hours Plan")) && (
                         <button
                           onClick={() => handleEdit(task)}
                           className="text-gray-600 hover:text-blue-600 transition-colors"
@@ -401,6 +406,8 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
+                        )}
+                        {(permissions.length === 0 || canDelete("Rest Hours Plan")) && (
                         <button
                           onClick={() => handleDelete((task as any).variableTaskUuid || String(task.id))}
                           className="text-gray-600 hover:text-red-600 transition-colors"
@@ -408,6 +415,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

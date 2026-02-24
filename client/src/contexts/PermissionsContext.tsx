@@ -122,33 +122,43 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     return map;
   }, [permissions]);
 
+  const warnUnknownMenu = useCallback((menuName: string, action: string) => {
+    if (permMap.size > 0 && !permMap.has(menuName.toLowerCase())) {
+      console.warn(`[RBAC] ${action}("${menuName}") - menu not found in permissions, defaulting to allow`);
+    }
+  }, [permMap]);
+
   const canView = useCallback((menuName: string) => {
     if (!menuName) return true;
+    warnUnknownMenu(menuName, 'canView');
     const perm = permMap.get(menuName.toLowerCase());
     if (!perm) return true;
     return perm.canview;
-  }, [permMap]);
+  }, [permMap, warnUnknownMenu]);
 
   const canCreate = useCallback((menuName: string) => {
     if (!menuName) return true;
+    warnUnknownMenu(menuName, 'canCreate');
     const perm = permMap.get(menuName.toLowerCase());
     if (!perm) return true;
     return perm.cancreate;
-  }, [permMap]);
+  }, [permMap, warnUnknownMenu]);
 
   const canEdit = useCallback((menuName: string) => {
     if (!menuName) return true;
+    warnUnknownMenu(menuName, 'canEdit');
     const perm = permMap.get(menuName.toLowerCase());
     if (!perm) return true;
     return perm.canedit;
-  }, [permMap]);
+  }, [permMap, warnUnknownMenu]);
 
   const canDelete = useCallback((menuName: string) => {
     if (!menuName) return true;
+    warnUnknownMenu(menuName, 'canDelete');
     const perm = permMap.get(menuName.toLowerCase());
     if (!perm) return true;
     return perm.candelete;
-  }, [permMap]);
+  }, [permMap, warnUnknownMenu]);
 
   const canViewRoute = useCallback((route: string) => {
     if (!route) return true;
