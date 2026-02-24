@@ -250,11 +250,10 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
   if (!params.colDef || !params.data) return null;
   
   const { onAdd } = params.context || {};
+  if (!onAdd) return null;
   
   const handleAdd = () => {
-    if (onAdd) {
-      onAdd(params.data.vesselId);
-    }
+    onAdd(params.data.vesselId);
   };
 
   return (
