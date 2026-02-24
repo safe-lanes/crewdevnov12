@@ -5770,6 +5770,38 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         });
       }
       
+      const seaServiceErrors: string[] = [];
+      (formData.currentCompanySeaService || []).forEach((sea: any, i: number) => {
+        if (!sea.seaUuid) {
+          const missing: string[] = [];
+          if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
+          if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
+          if (!(sea.rank || '').trim()) missing.push('Rank');
+          if (!(sea.from || sea.fromDate || '').trim()) missing.push('From Date');
+          if (!(sea.to || sea.toDate || '').trim()) missing.push('To Date');
+          if (missing.length > 0) seaServiceErrors.push(`E1 Company Sea Service Row ${i + 1}: ${missing.map(f => `'${f}'`).join(', ')} required to save this row.`);
+        }
+      });
+      (formData.externalSeaService || []).forEach((sea: any, i: number) => {
+        if (!sea.seaUuid) {
+          const missing: string[] = [];
+          if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
+          if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
+          if (!(sea.rank || '').trim()) missing.push('Rank');
+          if (!(sea.from || sea.fromDate || '').trim()) missing.push('From Date');
+          if (!(sea.to || sea.toDate || '').trim()) missing.push('To Date');
+          if (missing.length > 0) seaServiceErrors.push(`E2 External Sea Service Row ${i + 1}: ${missing.map(f => `'${f}'`).join(', ')} required to save this row.`);
+        }
+      });
+      if (seaServiceErrors.length > 0) {
+        toast({
+          title: "Validation Error",
+          description: seaServiceErrors.join('\n'),
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Sea Service - Company (Part E - E1) - Add to Batch 3
       if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
         console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.currentCompanySeaService.length });
