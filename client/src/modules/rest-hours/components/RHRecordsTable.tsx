@@ -13,6 +13,7 @@ import { NCOverviewDialog } from './NCOverviewDialog';
 import { VesselReviewDialog } from './VesselReviewDialog';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
+import { usePermissions } from '@/contexts/PermissionsContext';
 
 interface RHRecordsTableProps {
   selectedVessels: string[];
@@ -631,6 +632,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const gridRef = useRef<AgGridReact>(null);
   const [, setLocation] = useLocation();
   const { vessels: v2Vessels, getVesselName } = useV2Vessels();
+  const { canEdit, permissions } = usePermissions();
 
   const allVessels = useMemo(() => v2Vessels.map(v => ({
     id: v.id,
@@ -821,6 +823,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const ActionsRenderer = (params: ICellRendererParams) => {
     // Defensive guard for AG Grid initialization
     if (!params.colDef || !params.data) return null;
+    if (!(permissions.length === 0 || canEdit("Rest Hours Plan"))) return null;
     
     const handleClick = () => {
       const record = params.data as RestHoursVesselRecordWithName;
