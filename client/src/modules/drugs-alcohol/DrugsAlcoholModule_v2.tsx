@@ -33,6 +33,12 @@ export function DrugsAlcoholModule_v2() {
         const pageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary" };
         return all.filter(p => canView(pageToMenu[p] || p));
     }, [permissions, canView]);
+
+    useEffect(() => {
+        if (allowedPages.length > 0 && !allowedPages.includes(selectedDrugsAlcoholPage)) {
+            setSelectedDrugsAlcoholPage(allowedPages[0]);
+        }
+    }, [allowedPages]);
     const daPageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary" };
     const currentDAMenu = daPageToMenu[selectedDrugsAlcoholPage] || "Annual";
     const { toast } = useToast();
