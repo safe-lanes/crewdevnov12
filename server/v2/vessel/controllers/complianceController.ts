@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { getDb } from "../../db";
-import { crewAssignments, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { storage } from "../../../storage";
 
 interface ComplianceRuleResult {
@@ -120,25 +121,26 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
   const db = getDb();
   const experiences: CrewExperience[] = [];
   
-  const assignments = await db
+  const planningRecords = await db
     .select()
-    .from(crewAssignments)
+    .from(vesselPlanningV2)
     .where(
       and(
-        eq(crewAssignments.vesselUuid, vesselUuid),
-        eq(crewAssignments.isCurrent, true),
-        eq(crewAssignments.isDeleted, false),
-        isNull(crewAssignments.signOffDate)
+        eq(vesselPlanningV2.vesselUuid, vesselUuid),
+        eq(vesselPlanningV2.isDeleted, false),
+        eq(vesselPlanningV2.isArchived, false)
       )
     );
   
-  for (const assignment of assignments) {
-    if (!assignment.crewUuid) continue;
+  const activeRecords = planningRecords.filter((r: any) => r.crewUuid);
+  
+  for (const record of activeRecords) {
+    if (!record.crewUuid) continue;
     
     const crew = await db
       .select()
       .from(crewMembersV2)
-      .where(eq(crewMembersV2.crewUuid, assignment.crewUuid))
+      .where(eq(crewMembersV2.crewUuid, record.crewUuid))
       .limit(1);
     
     if (!crew.length) continue;
@@ -147,15 +149,15 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
     const seaServices = await db
       .select()
       .from(crewSeaService)
-      .where(eq(crewSeaService.crewUuid, assignment.crewUuid));
+      .where(eq(crewSeaService.crewUuid, record.crewUuid));
     
     const personalDetails = await db
       .select()
       .from(crewPersonalDetails)
-      .where(eq(crewPersonalDetails.crewUuid, assignment.crewUuid))
+      .where(eq(crewPersonalDetails.crewUuid, record.crewUuid))
       .limit(1);
     
-    const currentRank = assignment.rank || crewMember.presentRank || '';
+    const currentRank = normalizeRankName(record.rank) || crewMember.presentRank || '';
     
     const yearsWithOperator = calculateYearsFromSeaService(seaServices, 'company');
     const yearsInRank = calculateYearsFromSeaService(seaServices, 'rank', currentRank);
@@ -167,7 +169,7 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
     }
     
     let timeOnboardMonths = 0;
-    const signOnDate = assignment.signOnDate;
+    const signOnDate = record.signOnDate;
     if (signOnDate) {
       const signOn = new Date(signOnDate);
       const now = new Date();
@@ -182,7 +184,7 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
       yearsOnTankerType,
       englishProficiency,
       timeOnboardMonths,
-      crewName: `${crewMember.firstName || ''} ${crewMember.lastName || ''}`.trim()
+      crewName: `${crewMember.firstName || ''} ${crewMember.familyName || ''}`.trim()
     });
   }
   
