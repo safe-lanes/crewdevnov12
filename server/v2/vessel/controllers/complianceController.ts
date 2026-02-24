@@ -117,6 +117,63 @@ function calculateYearsFromSeaService(
   return totalMonths / 12;
 }
 
+async function getCrewExperienceForMember(
+  crewUuid: string,
+  rank: string,
+  signOnDate: string | null
+): Promise<CrewExperience | null> {
+  const db = getDb();
+  
+  const crew = await db
+    .select()
+    .from(crewMembersV2)
+    .where(eq(crewMembersV2.crewUuid, crewUuid))
+    .limit(1);
+  
+  if (!crew.length) return null;
+  const crewMember = crew[0];
+  
+  const seaServices = await db
+    .select()
+    .from(crewSeaService)
+    .where(eq(crewSeaService.crewUuid, crewUuid));
+  
+  const personalDetails = await db
+    .select()
+    .from(crewPersonalDetails)
+    .where(eq(crewPersonalDetails.crewUuid, crewUuid))
+    .limit(1);
+  
+  const currentRank = normalizeRankName(rank) || crewMember.presentRank || '';
+  
+  const yearsWithOperator = calculateYearsFromSeaService(seaServices, 'company');
+  const yearsInRank = calculateYearsFromSeaService(seaServices, 'rank', currentRank);
+  const yearsOnTankerType = calculateYearsFromSeaService(seaServices, 'all');
+  
+  let englishProficiency = -1;
+  if (personalDetails.length && personalDetails[0].englishProficiency) {
+    englishProficiency = PROFICIENCY_MAP[personalDetails[0].englishProficiency] ?? -1;
+  }
+  
+  let timeOnboardMonths = 0;
+  if (signOnDate) {
+    const signOn = new Date(signOnDate);
+    const now = new Date();
+    timeOnboardMonths = (now.getFullYear() - signOn.getFullYear()) * 12 + 
+                        (now.getMonth() - signOn.getMonth());
+  }
+  
+  return {
+    rank: currentRank,
+    yearsWithOperator,
+    yearsInRank,
+    yearsOnTankerType,
+    englishProficiency,
+    timeOnboardMonths,
+    crewName: `${crewMember.firstName || ''} ${crewMember.familyName || ''}`.trim()
+  };
+}
+
 async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperience[]> {
   const db = getDb();
   const experiences: CrewExperience[] = [];
@@ -136,56 +193,70 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
   
   for (const record of activeRecords) {
     if (!record.crewUuid) continue;
+    const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate);
+    if (exp) experiences.push(exp);
+  }
+  
+  return experiences;
+}
+
+async function getSimulatedCrewExperience(
+  vesselUuid: string,
+  simulatedCrew: Array<{ rank: string; crewMemberId: string; crewName?: string; joiningDate?: string }>
+): Promise<CrewExperience[]> {
+  const db = getDb();
+  
+  const planningRecords = await db
+    .select()
+    .from(vesselPlanningV2)
+    .where(
+      and(
+        eq(vesselPlanningV2.vesselUuid, vesselUuid),
+        eq(vesselPlanningV2.isDeleted, false),
+        eq(vesselPlanningV2.isArchived, false)
+      )
+    );
+  
+  const activeRecords = planningRecords.filter((r: any) => r.crewUuid);
+  
+  const simRankMap = new Map<string, { crewMemberId: string; joiningDate?: string }>();
+  for (const sim of simulatedCrew) {
+    const normalizedRank = normalizeRankName(sim.rank).toLowerCase();
+    simRankMap.set(normalizedRank, { crewMemberId: sim.crewMemberId, joiningDate: sim.joiningDate });
+  }
+  
+  const experiences: CrewExperience[] = [];
+  const processedRanks = new Set<string>();
+  
+  for (const record of activeRecords) {
+    if (!record.crewUuid) continue;
+    const normalizedRank = normalizeRankName(record.rank).toLowerCase();
     
-    const crew = await db
-      .select()
-      .from(crewMembersV2)
-      .where(eq(crewMembersV2.crewUuid, record.crewUuid))
-      .limit(1);
-    
-    if (!crew.length) continue;
-    const crewMember = crew[0];
-    
-    const seaServices = await db
-      .select()
-      .from(crewSeaService)
-      .where(eq(crewSeaService.crewUuid, record.crewUuid));
-    
-    const personalDetails = await db
-      .select()
-      .from(crewPersonalDetails)
-      .where(eq(crewPersonalDetails.crewUuid, record.crewUuid))
-      .limit(1);
-    
-    const currentRank = normalizeRankName(record.rank) || crewMember.presentRank || '';
-    
-    const yearsWithOperator = calculateYearsFromSeaService(seaServices, 'company');
-    const yearsInRank = calculateYearsFromSeaService(seaServices, 'rank', currentRank);
-    const yearsOnTankerType = calculateYearsFromSeaService(seaServices, 'all');
-    
-    let englishProficiency = -1;
-    if (personalDetails.length && personalDetails[0].englishProficiency) {
-      englishProficiency = PROFICIENCY_MAP[personalDetails[0].englishProficiency] ?? -1;
+    const simEntry = simRankMap.get(normalizedRank);
+    if (simEntry) {
+      const exp = await getCrewExperienceForMember(
+        simEntry.crewMemberId,
+        record.rank,
+        simEntry.joiningDate || null
+      );
+      if (exp) experiences.push(exp);
+      processedRanks.add(normalizedRank);
+    } else {
+      const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate);
+      if (exp) experiences.push(exp);
     }
-    
-    let timeOnboardMonths = 0;
-    const signOnDate = record.signOnDate;
-    if (signOnDate) {
-      const signOn = new Date(signOnDate);
-      const now = new Date();
-      timeOnboardMonths = (now.getFullYear() - signOn.getFullYear()) * 12 + 
-                          (now.getMonth() - signOn.getMonth());
+  }
+  
+  for (const sim of simulatedCrew) {
+    const normalizedRank = normalizeRankName(sim.rank).toLowerCase();
+    if (!processedRanks.has(normalizedRank)) {
+      const exp = await getCrewExperienceForMember(
+        sim.crewMemberId,
+        sim.rank,
+        sim.joiningDate || null
+      );
+      if (exp) experiences.push(exp);
     }
-    
-    experiences.push({
-      rank: currentRank,
-      yearsWithOperator,
-      yearsInRank,
-      yearsOnTankerType,
-      englishProficiency,
-      timeOnboardMonths,
-      crewName: `${crewMember.firstName || ''} ${crewMember.familyName || ''}`.trim()
-    });
   }
   
   return experiences;
@@ -463,18 +534,36 @@ export const complianceController = {
         });
       }
       
-      let crewExperiences = await getCrewExperienceFromV2(vesselUuid);
+      const crewExperiences = simulatedCrew && simulatedCrew.length > 0
+        ? await getSimulatedCrewExperience(vesselUuid, simulatedCrew)
+        : await getCrewExperienceFromV2(vesselUuid);
+      
+      const results: ComplianceCheckResult[] = [];
+      
+      for (const rule of allRules) {
+        if (!rule.isActive) continue;
+        
+        let parsedRules: any = rule.rules;
+        if (typeof parsedRules === 'string') {
+          try {
+            parsedRules = JSON.parse(parsedRules);
+          } catch (e) {
+            parsedRules = {} as any;
+          }
+        }
+        
+        const result = checkComplianceForOilMajor(
+          rule.oilMajorName,
+          parsedRules,
+          crewExperiences
+        );
+        results.push(result);
+      }
       
       res.json({
         vesselId: vesselUuid,
-        results: allRules.map((rule: any) => ({
-          oilMajorName: rule.oilMajorName,
-          overallStatus: 'gray',
-          results: [],
-          summary: { passed: 0, failed: 0, total: 0 }
-        })),
-        simulated: true,
-        message: "Simulated compliance check in V2"
+        results,
+        simulated: true
       });
     } catch (error) {
       console.error('V2 Simulated Compliance Matrix error:', error);
