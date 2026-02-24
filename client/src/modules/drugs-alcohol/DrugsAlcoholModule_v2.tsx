@@ -26,7 +26,8 @@ import { useToast } from '@/hooks/use-toast';
 
 export function DrugsAlcoholModule_v2() {
     const [selectedDrugsAlcoholPage, setSelectedDrugsAlcoholPage] = useState<string>("annual");
-    const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
+    const { canView, canCreate, canEdit, canDelete, permissions, userType, myVessels } = usePermissions();
+    const isShipUser = userType === 'Ship';
     const allowedPages = useMemo(() => {
         const all = ["annual", "periodic", "monthly", "post-incident", "others", "summary"];
         if (permissions.length === 0) return all;
@@ -71,15 +72,33 @@ export function DrugsAlcoholModule_v2() {
         }));
     }, [externalVessels]);
     
+    const shipUserVesselName = useMemo(() => {
+        if (!isShipUser || myVessels.length === 0) return null;
+        return myVessels[0].vessel;
+    }, [isShipUser, myVessels]);
+
     useEffect(() => {
-        if (vessels.length > 0 && !summarySelectedVessel) {
+        if (isShipUser && myVessels.length > 0 && vessels.length > 0) {
+            const myVesselName = myVessels[0].vessel;
+            const matchedVessel = vessels.find((v: any) => v.name === myVesselName);
+            if (matchedVessel) {
+                setSummarySelectedVessel(matchedVessel.vesselId);
+                setSelectedVessels([matchedVessel.name]);
+            }
+        }
+    }, [isShipUser, myVessels, vessels]);
+
+    useEffect(() => {
+        if (!isShipUser && vessels.length > 0 && !summarySelectedVessel) {
             setSummarySelectedVessel(vessels[0].vesselId);
         }
-    }, [vessels, summarySelectedVessel]);
+    }, [isShipUser, vessels, summarySelectedVessel]);
 
     const handleClearFilters = () => {
         setFilterType("vessel");
-        setSelectedVessels([]);
+        if (!isShipUser) {
+            setSelectedVessels([]);
+        }
         setFleetValue("");
         setAddGroupValue("");
     };
@@ -241,7 +260,15 @@ export function DrugsAlcoholModule_v2() {
         }
     };
 
-    const renderVesselSelect = () => (
+    const renderVesselSelect = () => {
+        if (isShipUser) {
+            return (
+                <span className="h-8 flex items-center text-xs font-medium text-[#0f172a] dark:text-white px-3 bg-gray-50 dark:bg-neutral-800 border border-input rounded-md min-w-[120px]" data-testid="text-vessel-locked">
+                    {shipUserVesselName || "No vessel assigned"}
+                </span>
+            );
+        }
+        return (
         <Popover>
             <PopoverTrigger asChild>
                 <Button
@@ -283,6 +310,7 @@ export function DrugsAlcoholModule_v2() {
             </PopoverContent>
         </Popover>
     );
+    };
 
     const renderFleetSelect = () => (
         <Select value={fleetValue} onValueChange={setFleetValue}>
@@ -481,43 +509,51 @@ export function DrugsAlcoholModule_v2() {
                     <Label className="text-xs font-normal text-[#4f5863] dark:text-neutral-300">
                         Vessel
                     </Label>
-                    <Select 
-                        value={summarySelectedVessel} 
-                        onValueChange={setSummarySelectedVessel}
-                        disabled={vesselsLoading}
-                    >
-                        <SelectTrigger 
-                            className={`h-8 text-xs bg-white dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-48'}`}
-                            data-testid="select-vessel-summary"
+                    {isShipUser ? (
+                        <span className="h-8 flex items-center text-xs font-medium text-[#0f172a] dark:text-white px-3 bg-gray-50 dark:bg-neutral-800 border border-input rounded-md min-w-[120px]" data-testid="text-vessel-summary-locked">
+                            {shipUserVesselName || "No vessel assigned"}
+                        </span>
+                    ) : (
+                        <Select 
+                            value={summarySelectedVessel} 
+                            onValueChange={setSummarySelectedVessel}
+                            disabled={vesselsLoading}
                         >
-                            <SelectValue placeholder={vesselsLoading ? "Loading..." : "Select Vessel"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {vessels.map((vessel: any) => (
-                                <SelectItem 
-                                    key={vessel.id} 
-                                    value={vessel.vesselId}
-                                    data-testid={`option-vessel-${vessel.id}`}
-                                >
-                                    {vessel.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                            <SelectTrigger 
+                                className={`h-8 text-xs bg-white dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-48'}`}
+                                data-testid="select-vessel-summary"
+                            >
+                                <SelectValue placeholder={vesselsLoading ? "Loading..." : "Select Vessel"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {vessels.map((vessel: any) => (
+                                    <SelectItem 
+                                        key={vessel.id} 
+                                        value={vessel.vesselId}
+                                        data-testid={`option-vessel-${vessel.id}`}
+                                    >
+                                        {vessel.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
                 </div>
 
-                <Button
-                    variant="outline"
-                    onClick={() => {
-                        if (vessels.length > 0) {
-                            setSummarySelectedVessel(vessels[0].vesselId);
-                        }
-                    }}
-                    className={`h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] ${isPhone ? 'w-full' : 'w-16'}`}
-                    data-testid="button-clear-filters"
-                >
-                    Clear
-                </Button>
+                {!isShipUser && (
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            if (vessels.length > 0) {
+                                setSummarySelectedVessel(vessels[0].vesselId);
+                            }
+                        }}
+                        className={`h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] ${isPhone ? 'w-full' : 'w-16'}`}
+                        data-testid="button-clear-filters"
+                    >
+                        Clear
+                    </Button>
+                )}
             </div>
         );
     };
