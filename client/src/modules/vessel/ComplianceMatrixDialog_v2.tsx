@@ -33,7 +33,7 @@ interface ComplianceRuleResult {
 
 interface ComplianceCheckResult {
     oilMajorName: string;
-    overallStatus: 'green' | 'yellow' | 'red';
+    overallStatus: 'green' | 'yellow' | 'red' | 'gray';
     results: ComplianceRuleResult[];
     summary: {
         passed: number;
@@ -135,7 +135,9 @@ function formatRequirementValue(req: ComplianceRuleResult): { required: string; 
             ? (PROFICIENCY_LEVELS[req.requiredValue] || 'Unknown')
             : 'Unknown';
         let actualLevel: string;
-        if (req.actualValue === -2) {
+        if (req.status === 'not_applicable') {
+            actualLevel = 'N/A (no crew assigned)';
+        } else if (req.actualValue === -2) {
             actualLevel = 'N/A';
         } else if (req.actualValue >= 0) {
             actualLevel = PROFICIENCY_LEVELS[req.actualValue] || 'Unknown';
@@ -148,7 +150,7 @@ function formatRequirementValue(req: ComplianceRuleResult): { required: string; 
     if (req.status === 'not_applicable') {
         return {
             required: `${req.requiredValue} ${req.unit}`,
-            actual: 'N/A (condition not met)'
+            actual: 'N/A (no crew assigned)'
         };
     }
     

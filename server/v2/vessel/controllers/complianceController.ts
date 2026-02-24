@@ -17,7 +17,7 @@ interface ComplianceRuleResult {
 
 interface ComplianceCheckResult {
   oilMajorName: string;
-  overallStatus: 'green' | 'yellow' | 'red';
+  overallStatus: 'green' | 'yellow' | 'red' | 'gray';
   results: ComplianceRuleResult[];
   summary: {
     passed: number;
@@ -265,6 +265,16 @@ function evaluateExperienceRules(
         unit: 'years',
         status: totalYears >= requiredValue ? 'pass' : 'fail'
       });
+    } else {
+      results.push({
+        category,
+        label: label || `Combined aggregate for ${rankPairStr} shall not be less than ${requiredValue} years.`,
+        rankPair: rankPairStr,
+        requiredValue,
+        actualValue: 0,
+        unit: 'years',
+        status: 'not_applicable'
+      });
     }
   }
   
@@ -298,6 +308,16 @@ function evaluateEnglishProficiencyRules(
           actualValue: crew.englishProficiency,
           unit: 'level',
           status
+        });
+      } else {
+        results.push({
+          category: 'English Proficiency',
+          label: label || `English proficiency for ${rankName} must be ${requiredLevel}`,
+          rankPair: rankName,
+          requiredValue: requiredLevelNum,
+          actualValue: 0,
+          unit: 'level',
+          status: 'not_applicable'
         });
       }
     }
@@ -360,13 +380,16 @@ function checkComplianceForOilMajor(
   
   const passed = allResults.filter(r => r.status === 'pass').length;
   const failed = allResults.filter(r => r.status === 'fail').length;
+  const notApplicable = allResults.filter(r => r.status === 'not_applicable').length;
   const total = allResults.length;
   
-  let overallStatus: 'green' | 'yellow' | 'red' = 'green';
+  let overallStatus: 'green' | 'yellow' | 'red' | 'gray' = 'green';
   if (total === 0) {
     overallStatus = 'green';
   } else if (failed > 0) {
     overallStatus = 'red';
+  } else if (notApplicable === total) {
+    overallStatus = 'gray';
   }
   
   return {
@@ -392,19 +415,6 @@ export const complianceController = {
       }
       
       const crewExperiences = await getCrewExperienceFromV2(vesselUuid);
-      
-      if (crewExperiences.length === 0) {
-        return res.json({
-          vesselId: vesselUuid,
-          results: allRules.map((rule: any) => ({
-            oilMajorName: rule.oilMajorName,
-            overallStatus: 'gray',
-            results: [],
-            summary: { passed: 0, failed: 0, total: 0 }
-          })),
-          message: "No crew assigned to this vessel in V2."
-        });
-      }
       
       const results: ComplianceCheckResult[] = [];
       
