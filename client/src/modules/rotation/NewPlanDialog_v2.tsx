@@ -1091,7 +1091,7 @@ function VesselTimelineView({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [canvasWidth, setCanvasWidth] = useState(800);
   
   // Helper to get vessel name from UUID
   const getVesselNameFromUuid = (uuid: string): string => {
@@ -1192,18 +1192,18 @@ function VesselTimelineView({
     return groups;
   }, [vessels, displayRanks, existingCrew, assignments, rankMapping, vesselLookup]);
   
-  // Resize canvas to match container
+  // Resize canvas width to match container (height is computed from content)
   useEffect(() => {
-    const updateCanvasSize = () => {
+    const updateCanvasWidth = () => {
       if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setCanvasSize({ width: rect.width, height: rect.height });
+        setCanvasWidth(containerRef.current.clientWidth);
       }
     };
     
-    updateCanvasSize();
-    window.addEventListener('resize', updateCanvasSize);
-    return () => window.removeEventListener('resize', updateCanvasSize);
+    updateCanvasWidth();
+    const observer = new ResizeObserver(updateCanvasWidth);
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
   }, []);
   
   // Generate month headers
@@ -1230,18 +1230,27 @@ function VesselTimelineView({
     
     // Safety check: ensure vessels and displayRanks are defined arrays
     if (!Array.isArray(vessels) || !Array.isArray(displayRanks)) return;
+    if (vessels.length === 0 || canvasWidth <= 0) return;
     
-    const width = canvasSize.width;
-    const height = canvasSize.height;
+    const width = canvasWidth;
     const vesselHeaderHeight = 48;
     const monthHeaderHeight = 32;
     const rowHeight = 40;
-    const rankColumnWidth = 100; // Fixed width for rank column
-    const timelineStartX = rankColumnWidth; // Timeline starts after rank column
+    const rankColumnWidth = 100;
+    const timelineStartX = rankColumnWidth;
     const timelineWidth = width - rankColumnWidth;
+    const vesselGap = 10;
+    const cornerRadius = 8;
+    
+    // Compute total canvas height from content
+    const vesselSectionHeight = vesselHeaderHeight + monthHeaderHeight + (displayRanks.length * rowHeight);
+    const totalHeight = (vessels.length * vesselSectionHeight) + ((vessels.length - 1) * vesselGap);
+    
+    canvas.width = width;
+    canvas.height = totalHeight;
     
     // Clear canvas
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, width, totalHeight);
     
     let yOffset = 0;
     
@@ -1249,6 +1258,14 @@ function VesselTimelineView({
     vessels.forEach((vessel, vesselIdx) => {
       const isSelected = selectedVessel === vessel;
       const headerColor = isSelected ? '#52baf3' : '#b0b8c1';
+      const sectionHeight = vesselSectionHeight;
+      const sectionStartY = yOffset;
+      
+      // Clip to rounded rectangle for the entire vessel band
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(0, yOffset, width, sectionHeight, cornerRadius);
+      ctx.clip();
       
       // Draw vessel header (full width)
       ctx.fillStyle = headerColor;
@@ -1428,6 +1445,19 @@ function VesselTimelineView({
           ctx.fillRect(0, vesselContentStartY, width, contentHeight);
         }
       }
+      
+      // Restore context (remove rounded clip) and draw subtle border around vessel band
+      ctx.restore();
+      ctx.strokeStyle = isSelected ? '#52baf3' : '#d1d5db';
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.beginPath();
+      ctx.roundRect(0, sectionStartY, width, sectionHeight, cornerRadius);
+      ctx.stroke();
+      
+      // Add gap between vessels
+      if (vesselIdx < vessels.length - 1) {
+        yOffset += vesselGap;
+      }
     });
     
     // Draw "today" vertical line (only in timeline area)
@@ -1436,10 +1466,10 @@ function VesselTimelineView({
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(todayX, 0);
-    ctx.lineTo(todayX, yOffset);
+    ctx.lineTo(todayX, totalHeight);
     ctx.stroke();
     
-  }, [vessels, displayRanks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasSize]);
+  }, [vessels, displayRanks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasWidth]);
   
   // Handle canvas click for vessel selection and assignment editing
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1455,12 +1485,14 @@ function VesselTimelineView({
     const rowHeight = 40;
     const rankColumnWidth = 100;
     const timelineStartX = rankColumnWidth;
-    const timelineWidth = canvasSize.width - rankColumnWidth;
+    const timelineWidth = canvasWidth - rankColumnWidth;
+    const vesselGap = 10;
     
     let yOffset = 0;
     
     // Check each vessel section
-    for (const vessel of vessels) {
+    for (let vi = 0; vi < vessels.length; vi++) {
+      const vessel = vessels[vi];
       const headerStart = yOffset;
       const headerEnd = yOffset + vesselHeaderHeight;
       
@@ -1493,7 +1525,6 @@ function VesselTimelineView({
               const blueEnd = Math.max(timelineStartX, timelineStartX + ((differenceInDays(contractEndDate, startDate) / totalDays) * timelineWidth));
               
               if (x >= blueStart && x <= blueEnd) {
-                // Clicked on this assignment bar
                 if (onAssignmentClick) {
                   onAssignmentClick(assignment);
                 }
@@ -1505,15 +1536,18 @@ function VesselTimelineView({
       }
       
       yOffset += displayRanks.length * rowHeight;
+      
+      // Account for gap between vessels
+      if (vi < vessels.length - 1) {
+        yOffset += vesselGap;
+      }
     }
   };
   
   return (
-    <div ref={containerRef} className="w-full h-full">
+    <div ref={containerRef} className="w-full h-full overflow-y-auto">
       <canvas
         ref={canvasRef}
-        width={canvasSize.width}
-        height={canvasSize.height}
         className="block cursor-pointer"
         onClick={handleCanvasClick}
         data-testid="canvas-vessel-timeline"
