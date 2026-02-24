@@ -4703,8 +4703,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
-                          // Check if this is an active contract (no 'to' date or isActive flag)
-                          const isActiveContract = !service.to || service.to === '' || (service as any).isActive === true;
+                          const isManualRow = !(service as any).seaUuid;
+                          const isActiveContract = !isManualRow && (!service.to || service.to === '' || (service as any).isActive === true);
                           
                           // Use shared date utility for consistent date across frontend and backend
                           const todayDate = formatDateToISO(getReportingDate());
@@ -4745,8 +4745,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
-                          // For active contracts, calculate period from 'from' date to today
-                          const isActiveContract = !service.to || service.to === '' || (service as any).isActive === true;
+                          const isManualRow2 = !(service as any).seaUuid;
+                          const isActiveContract = !isManualRow2 && (!service.to || service.to === '' || (service as any).isActive === true);
                           
                           let displayPeriod = service.periodMonths;
                           
