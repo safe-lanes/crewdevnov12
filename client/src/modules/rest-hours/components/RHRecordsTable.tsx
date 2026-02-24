@@ -823,7 +823,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const ActionsRenderer = (params: ICellRendererParams) => {
     // Defensive guard for AG Grid initialization
     if (!params.colDef || !params.data) return null;
-    if (!(permissions.length === 0 || canEdit("Rest Hours Plan"))) return null;
+    if (!(permissions.length === 0 || canEdit("Record"))) return null;
     
     const handleClick = () => {
       const record = params.data as RestHoursVesselRecordWithName;
