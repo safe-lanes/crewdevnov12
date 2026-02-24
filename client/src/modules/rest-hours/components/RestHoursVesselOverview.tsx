@@ -93,8 +93,15 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     setPlanVesselId(value);
   };
 
-  const { userType, myVessels } = usePermissions();
+  const { userType, myVessels, canView, permissions } = usePermissions();
   const isShipUser = userType === 'Ship';
+
+  const allowedPages = useMemo(() => {
+    const all = ["dashboard", "record", "plan"];
+    if (permissions.length === 0) return all;
+    const pageToMenu: Record<string, string> = { "dashboard": "Dashboard", "record": "Record", "plan": "Rest Hours Plan" };
+    return all.filter(p => canView(pageToMenu[p] || p));
+  }, [permissions, canView]);
 
   // Use V2 vessels hook
   const { vessels = [], isLoading: vesselsLoading } = useV2Vessels();
@@ -299,7 +306,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
       <RestHoursSideBar 
         selectedRestHoursPage="record"
         setSelectedRestHoursPage={setSelectedRestHoursPage}
-        allowedPages={["dashboard", "record", "plan"]}
+        allowedPages={allowedPages}
       />
       <MainLayout hasSidebar={true}>
         <div className="flex flex-col h-full">
