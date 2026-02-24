@@ -190,8 +190,40 @@ FROM (VALUES
 JOIN crew_members_v2 c ON c.emp_no = v.emp;
 
 -- ============================================================
+-- PART 6: Crew assignments (for crew count and status calculation)
+-- The crew_assignments table with isCurrent=true is used by:
+--   - Vessel Database "Crew o/b" count
+--   - Crew Pool status calculation (On Board vs On Leave)
+-- ============================================================
+INSERT INTO crew_assignments (assign_uuid, crew_uuid, vessel_uuid, is_current, sign_on_date, relief_due, contract_period, assignment_type, is_deleted, created_at, updated_at)
+SELECT 
+  gen_random_uuid(),
+  vp.crew_uuid,
+  vp.vessel_uuid,
+  true,
+  vp.sign_on_date::text,
+  vp.relief_due::text,
+  vp.contract_period_months::text || ' months',
+  'primary',
+  false,
+  NOW(),
+  NOW()
+FROM vessel_planning_v2 vp
+WHERE vp.is_deleted = false
+  AND vp.is_archived = false
+  AND vp.crew_uuid IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM crew_assignments ca 
+    WHERE ca.crew_uuid = vp.crew_uuid 
+      AND ca.vessel_uuid = vp.vessel_uuid 
+      AND ca.is_current = true 
+      AND ca.is_deleted = false
+  );
+
+-- ============================================================
 -- Verification queries (for manual check)
 -- ============================================================
 -- SELECT COUNT(*) FROM crew_members_v2 WHERE is_deleted = false;  -- Expected: ~72
 -- SELECT COUNT(*) FROM vessel_planning_v2 WHERE vessel_uuid = '7440571a-841a-11ed-aa7c-7003bca91a86' AND is_deleted = false;  -- Expected: 23 (Vessel 3)
 -- SELECT COUNT(*) FROM vessel_planning_v2 WHERE vessel_uuid = '7446783c-841a-11ed-aa7c-7003bca91a86' AND is_deleted = false;  -- Expected: 23 (Vessel 5)
+-- SELECT vessel_uuid, COUNT(*) FROM crew_assignments WHERE is_current = true AND is_deleted = false GROUP BY vessel_uuid;  -- Expected: Vessel 3: 23, Vessel 5: 23
