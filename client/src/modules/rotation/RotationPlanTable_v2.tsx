@@ -161,6 +161,7 @@ export function RotationPlanTable_v2() {
               Show Archived
             </label>
           </div>
+          {(permissions.length === 0 || canCreate("Rotation Plan")) && (
           <Button
             onClick={() => setNewPlanDialogOpen(true)}
             className="bg-green-600 hover:bg-green-700 text-white h-8 px-4"
@@ -251,6 +252,7 @@ export function RotationPlanTable_v2() {
                           <Archive className="h-4 w-4" />
                         </Button>
                       )}
+                      {(permissions.length === 0 || canDelete("Rotation Plan")) && (
                       <Button
                         variant="ghost"
                         size="icon"
