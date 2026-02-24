@@ -31,8 +31,10 @@ interface CrewExperience {
   yearsWithOperator: number;
   yearsInRank: number;
   yearsOnTankerType: number;
+  yearsOnAllTankers: number;
   englishProficiency: number;
   timeOnboardMonths: number;
+  signOnDate: string | null;
   crewName: string;
 }
 
@@ -148,7 +150,8 @@ async function getCrewExperienceForMember(
   
   const yearsWithOperator = calculateYearsFromSeaService(seaServices, 'company');
   const yearsInRank = calculateYearsFromSeaService(seaServices, 'rank', currentRank);
-  const yearsOnTankerType = calculateYearsFromSeaService(seaServices, 'all');
+  const yearsOnTankerType = calculateYearsFromSeaService(seaServices, 'vesselType');
+  const yearsOnAllTankers = calculateYearsFromSeaService(seaServices, 'all');
   
   let englishProficiency = -1;
   if (personalDetails.length && personalDetails[0].englishProficiency) {
@@ -168,8 +171,10 @@ async function getCrewExperienceForMember(
     yearsWithOperator,
     yearsInRank,
     yearsOnTankerType,
+    yearsOnAllTankers,
     englishProficiency,
     timeOnboardMonths,
+    signOnDate: signOnDate || null,
     crewName: `${crewMember.firstName || ''} ${crewMember.familyName || ''}`.trim()
   };
 }
