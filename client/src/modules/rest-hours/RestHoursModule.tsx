@@ -46,7 +46,16 @@ export const RestHoursModule = (): JSX.Element => {
     }
   };
 
+  useEffect(() => {
+    if (allowedPages.length > 0 && !allowedPages.includes(selectedRestHoursPage)) {
+      setSelectedRestHoursPage(allowedPages[0]);
+    }
+  }, [selectedRestHoursPage, allowedPages]);
+
   const renderContent = () => {
+    if (permissions.length > 0 && !allowedPages.includes(selectedRestHoursPage)) {
+      return null;
+    }
     switch (selectedRestHoursPage) {
       case 'dashboard':
         return <RestHoursDashboard />;
