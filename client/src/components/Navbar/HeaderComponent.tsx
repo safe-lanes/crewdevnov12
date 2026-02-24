@@ -315,7 +315,7 @@ export default function HeaderComponent({
                     <nav className="hidden xl:flex h-[65px] flex-1">
                         <div className="flex h-full">
                             {filteredNavItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
-                                const isActive = location === href;
+                                const isActive = href === "/" ? location === "/" : location.startsWith(href);
                                 return (
                                     <Link key={href} href={href}>
                                         <div
@@ -343,7 +343,7 @@ export default function HeaderComponent({
                     <nav className="hidden md:flex xl:hidden h-[65px] flex-1 overflow-x-auto overflow-y-hidden" data-testid="tablet-nav">
                         <div className="flex h-full min-w-max">
                             {filteredNavItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
-                                const isActive = location === href;
+                                const isActive = href === "/" ? location === "/" : location.startsWith(href);
                                 return (
                                     <Link key={href} href={href}>
                                         <div
@@ -427,7 +427,7 @@ export default function HeaderComponent({
                 >
                     <div className="grid grid-cols-3 gap-0">
                         {filteredNavItems.map(({ label, href, icon: Icon, activeBg, activeText, inactiveBg, inactiveText }) => {
-                            const isActive = location === href;
+                            const isActive = href === "/" ? location === "/" : location.startsWith(href);
                             return (
                                 <Link
                                     key={href}
