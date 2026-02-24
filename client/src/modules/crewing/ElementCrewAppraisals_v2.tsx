@@ -202,10 +202,10 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   // Fetch company ranks for filters from V2 admin endpoint
   const { data: companyRanksV2Data = [] } = useCompanyRanksV2();
   const availableRankOptions = useMemo(() => {
-    return (companyRanksV2Data as any[]).map((rank: any) => ({
-      value: rank.label || rank.name,
-      label: rank.label || rank.name,
-    }));
+    return (companyRanksV2Data as any[]).map((r: any) => ({
+      value: r.rank || r.label || r.name,
+      label: r.rank || r.label || r.name,
+    })).filter((r: any) => r.value);
   }, [companyRanksV2Data]);
 
   // Use V2 Masters for vessels
