@@ -13,6 +13,7 @@ import { parseRestHoursFilters, partToPeriodFilter } from '../utils/filterParams
 import { useViewport } from '@/hooks/useViewport';
 import { useRestHoursFiltersStore } from '@/stores/restHoursFiltersStore';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
+import { usePermissions } from '@/contexts/PermissionsContext';
 
 export const RestHoursPlan = (): JSX.Element => {
   const viewport = useViewport();
@@ -21,6 +22,7 @@ export const RestHoursPlan = (): JSX.Element => {
 
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const { canCreate, canEdit, permissions } = usePermissions();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
@@ -270,6 +272,7 @@ export const RestHoursPlan = (): JSX.Element => {
               <>
                 {!isEditMode ? (
                   <>
+                    {(permissions.length === 0 || canEdit("Rest Hours Plan")) && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -281,6 +284,8 @@ export const RestHoursPlan = (): JSX.Element => {
                       <Edit2 className="h-4 w-4" />
                       Edit
                     </Button>
+                    )}
+                    {(permissions.length === 0 || canCreate("Rest Hours Plan")) && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -292,6 +297,7 @@ export const RestHoursPlan = (): JSX.Element => {
                       <Plus className="h-4 w-4" />
                       New
                     </Button>
+                    )}
                   </>
                 ) : (
                   <Button
@@ -355,6 +361,7 @@ export const RestHoursPlan = (): JSX.Element => {
               <>
                 {!isEditMode ? (
                   <>
+                    {(permissions.length === 0 || canEdit("Rest Hours Plan")) && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -366,6 +373,8 @@ export const RestHoursPlan = (): JSX.Element => {
                       <Edit2 className="h-4 w-4" />
                       Edit
                     </Button>
+                    )}
+                    {(permissions.length === 0 || canCreate("Rest Hours Plan")) && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -377,6 +386,7 @@ export const RestHoursPlan = (): JSX.Element => {
                       <Plus className="h-4 w-4" />
                       New Month
                     </Button>
+                    )}
                   </>
                 ) : (
                   <Button
@@ -443,6 +453,7 @@ export const RestHoursPlan = (): JSX.Element => {
               <>
                 {!isEditMode ? (
                   <>
+                    {(permissions.length === 0 || canEdit("Rest Hours Plan")) && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -454,6 +465,8 @@ export const RestHoursPlan = (): JSX.Element => {
                       <Edit2 className="h-4 w-4" />
                       Edit
                     </Button>
+                    )}
+                    {(permissions.length === 0 || canCreate("Rest Hours Plan")) && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -465,6 +478,7 @@ export const RestHoursPlan = (): JSX.Element => {
                       <Plus className="h-4 w-4" />
                       New Month
                     </Button>
+                    )}
                   </>
                 ) : (
                   <Button
