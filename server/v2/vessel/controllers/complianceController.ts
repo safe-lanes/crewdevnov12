@@ -31,11 +31,10 @@ interface CrewExperience {
   yearsWithOperator: number;
   yearsInRank: number;
   yearsOnTankerType: number;
-  yearsOnAllTankers: number;
   englishProficiency: number;
   timeOnboardMonths: number;
-  signOnDate: string | null;
   crewName: string;
+  signOnDate: string | null;
 }
 
 const PROFICIENCY_MAP: Record<string, number> = {
@@ -150,8 +149,7 @@ async function getCrewExperienceForMember(
   
   const yearsWithOperator = calculateYearsFromSeaService(seaServices, 'company');
   const yearsInRank = calculateYearsFromSeaService(seaServices, 'rank', currentRank);
-  const yearsOnTankerType = calculateYearsFromSeaService(seaServices, 'vesselType');
-  const yearsOnAllTankers = calculateYearsFromSeaService(seaServices, 'all');
+  const yearsOnTankerType = calculateYearsFromSeaService(seaServices, 'all');
   
   let englishProficiency = -1;
   if (personalDetails.length && personalDetails[0].englishProficiency) {
@@ -171,11 +169,10 @@ async function getCrewExperienceForMember(
     yearsWithOperator,
     yearsInRank,
     yearsOnTankerType,
-    yearsOnAllTankers,
     englishProficiency,
     timeOnboardMonths,
+    crewName: `${crewMember.firstName || ''} ${crewMember.familyName || ''}`.trim(),
     signOnDate: signOnDate || null,
-    crewName: `${crewMember.firstName || ''} ${crewMember.familyName || ''}`.trim()
   };
 }
 
@@ -402,6 +399,91 @@ function evaluateEnglishProficiencyRules(
   return results;
 }
 
+function parseDateJoinedRankPair(rankPairStr: string): string[] {
+  const parts = rankPairStr.split(/\s*-\s*/);
+  const ranks: string[] = [];
+  for (const part of parts) {
+    const cleaned = part.replace(/\s*joining\s*date\s*/i, '').trim();
+    if (cleaned.length > 0) {
+      ranks.push(cleaned);
+    }
+  }
+  return ranks;
+}
+
+function evaluateDateJoinedRules(
+  ruleArray: any[],
+  crewExperiences: CrewExperience[]
+): ComplianceRuleResult[] {
+  const results: ComplianceRuleResult[] = [];
+  
+  for (const rule of ruleArray) {
+    const rankPairStr = rule.rankPair || '';
+    const requiredDays = rule.requiredDays || 0;
+    const label = rule.label || '';
+    
+    const ranks = parseDateJoinedRankPair(rankPairStr);
+    
+    if (ranks.length < 2) {
+      results.push({
+        category: 'Date Joined',
+        label,
+        rankPair: rankPairStr,
+        requiredValue: requiredDays,
+        actualValue: 0,
+        unit: 'days',
+        status: 'not_applicable'
+      });
+      continue;
+    }
+    
+    const crew1 = matchRankToCrewExperience(ranks[0], crewExperiences);
+    const crew2 = matchRankToCrewExperience(ranks[1], crewExperiences);
+    
+    if (!crew1 || !crew2) {
+      results.push({
+        category: 'Date Joined',
+        label: label || `A minimum of ${requiredDays} days shall lapse between replacement of ${ranks.join(' and ')}`,
+        rankPair: ranks.join(' + '),
+        requiredValue: requiredDays,
+        actualValue: 0,
+        unit: 'days',
+        status: 'not_applicable'
+      });
+      continue;
+    }
+    
+    if (!crew1.signOnDate || !crew2.signOnDate) {
+      results.push({
+        category: 'Date Joined',
+        label: label || `A minimum of ${requiredDays} days shall lapse between replacement of ${ranks.join(' and ')}`,
+        rankPair: `${normalizeRankName(crew1.rank)} + ${normalizeRankName(crew2.rank)}`,
+        requiredValue: requiredDays,
+        actualValue: 0,
+        unit: 'days',
+        status: 'not_applicable'
+      });
+      continue;
+    }
+    
+    const date1 = new Date(crew1.signOnDate);
+    const date2 = new Date(crew2.signOnDate);
+    const daysDiff = Math.abs(Math.round((date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24)));
+    
+    results.push({
+      category: 'Date Joined',
+      label: label || `A minimum of ${requiredDays} days shall lapse between replacement of ${ranks.join(' and ')}`,
+      rankPair: `${normalizeRankName(crew1.rank)} + ${normalizeRankName(crew2.rank)}`,
+      requiredValue: requiredDays,
+      actualValue: daysDiff,
+      unit: 'days',
+      status: daysDiff >= requiredDays ? 'pass' : 'fail'
+    });
+  }
+  
+  return results;
+}
+
 function checkComplianceForOilMajor(
   oilMajorName: string,
   rules: any,
@@ -450,6 +532,13 @@ function checkComplianceForOilMajor(
   if (rules?.englishProficiencyRules?.length) {
     allResults.push(...evaluateEnglishProficiencyRules(
       rules.englishProficiencyRules,
+      crewExperiences
+    ));
+  }
+  
+  if (rules?.dateJoinedRules?.length) {
+    allResults.push(...evaluateDateJoinedRules(
+      rules.dateJoinedRules,
       crewExperiences
     ));
   }
