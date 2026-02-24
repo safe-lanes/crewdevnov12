@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { RHCrewRecordsTable } from './RHCrewRecordsTable';
@@ -92,11 +93,24 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     setPlanVesselId(value);
   };
 
+  const { userType, myVessels } = usePermissions();
+  const isShipUser = userType === 'Ship';
+
   // Use V2 vessels hook
   const { vessels = [], isLoading: vesselsLoading } = useV2Vessels();
   
   // Fetch company ranks for dynamic rank dropdown
   const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
+
+  useEffect(() => {
+    if (isShipUser && myVessels.length > 0 && vessels.length > 0) {
+      const myVesselName = myVessels[0].vessel;
+      const matchedVessel = vessels.find(v => v.vessel === myVesselName);
+      if (matchedVessel?.vesselUuid) {
+        setPlanVesselId(matchedVessel.vesselUuid);
+      }
+    }
+  }, [isShipUser, myVessels, vessels]);
 
   // Fetch date line adjustments using V2 API
   const { data: dateLineAdjustment } = useQuery<RhDatelineAdjustmentV2 | null>({
@@ -146,13 +160,12 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   };
 
   const handleClearFilters = () => {
-    // Reset period to current month in store
+    if (isShipUser) return;
     const defaultOption = periodOptions[0]?.value || "";
     if (defaultOption) {
       const [year, month] = defaultOption.split('-').map(Number);
       setStorePeriodValue({ mode: 'year-month', year, month });
     }
-    // Reset vessel to URL param or clear
     setPlanVesselId(urlVesselId || "");
     setSelectedRank("");
     setSearchText("");
@@ -170,8 +183,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     const prevVessel = prevUrlParams.current.vesselId;
     const prevMonth = prevUrlParams.current.monthValue;
     
-    // Only sync if URL param has actually changed (new deep link)
-    if (urlVesselId !== prevVessel) {
+    if (!isShipUser && urlVesselId !== prevVessel) {
       prevUrlParams.current.vesselId = urlVesselId;
       if (urlVesselId) {
         setPlanVesselId(urlVesselId);
@@ -395,10 +407,10 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         {/* Vessel Single Select */}
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-[#4f5863] dark:text-neutral-300">Vessel</Label>
-          <Select value={selectedVessel} onValueChange={handleVesselChange}>
+          <Select value={selectedVessel} onValueChange={handleVesselChange} disabled={isShipUser}>
             <SelectTrigger 
               className="h-8 w-52 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-              disabled={vesselsLoading}
+              disabled={vesselsLoading || isShipUser}
               data-testid="select-vessel"
             >
               <SelectValue placeholder={vesselsLoading ? "Loading..." : "Select Vessel"} />
@@ -458,6 +470,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
             variant="outline"
             onClick={handleClearFilters}
             className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+            disabled={isShipUser}
             data-testid="button-clear-filters"
           >
             Clear
