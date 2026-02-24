@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PromotionsSideBar from './PromotionsSideBar';
 import { PromotionsTable } from './PromotionsTable';
 import MainLayout from '@/components/main/MainLayout';
@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { usePermissions } from '@/contexts/PermissionsContext';
 
 export function PromotionsModule() {
     const [selectedPromotionsPage, setSelectedPromotionsPage] = useState('all');
@@ -24,6 +25,9 @@ export function PromotionsModule() {
     const [criteria, setCriteria] = useState('');
     const [status, setStatus] = useState('');
     
+    const { userType, myVessels } = usePermissions();
+    const isShipUser = userType === 'Ship';
+
     const { vessels: vesselOptions } = useVesselLookup();
     
     const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
@@ -40,10 +44,27 @@ export function PromotionsModule() {
         return DEFAULT_DROPDOWN_VESSEL_TYPES;
     }, [vesselTypeMasterDataRaw]);
 
+    useEffect(() => {
+        if (isShipUser && myVessels.length > 0 && vesselOptions.length > 0 && !vessel) {
+            const myVesselName = myVessels[0].vessel;
+            const matchedVessel = vesselOptions.find((v) => v.name === myVesselName);
+            if (matchedVessel) {
+                setVessel(matchedVessel.entryId);
+            }
+        }
+    }, [isShipUser, myVessels, vesselOptions, vessel]);
+
+    const shipUserVesselName = useMemo(() => {
+        if (!isShipUser || myVessels.length === 0) return null;
+        return myVessels[0].vessel;
+    }, [isShipUser, myVessels]);
+
     const handleClearFilters = () => {
         setSearchName('');
         setPromotionToRank('');
-        setVessel('');
+        if (!isShipUser) {
+            setVessel('');
+        }
         setVesselType('');
         setNationality('');
         setCriteria('');
@@ -102,16 +123,22 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        <Select value={vessel} onValueChange={setVessel}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel">
-                                <SelectValue placeholder="Vessel" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {vesselOptions.map((v) => (
-                                    <SelectItem key={v.entryId} value={v.entryId}>{v.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        {isShipUser ? (
+                            <div className="w-[150px] h-8 flex items-center px-3 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700" data-testid="vessel-name-ship-user">
+                                {shipUserVesselName || 'No vessel'}
+                            </div>
+                        ) : (
+                            <Select value={vessel} onValueChange={setVessel}>
+                                <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel">
+                                    <SelectValue placeholder="Vessel" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {vesselOptions.map((v) => (
+                                        <SelectItem key={v.entryId} value={v.entryId}>{v.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
 
                         <Select value={vesselType} onValueChange={setVesselType}>
                             <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel-type">
