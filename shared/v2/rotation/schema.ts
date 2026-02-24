@@ -30,6 +30,7 @@ export const rotationDraftsV2 = pgTable("rotation_drafts_v2", {
   proposedByUuid: text("proposed_by_uuid"),
   proposedDate: text("proposed_date"),
   updatedByUuid: text("updated_by_uuid"),
+  previousPlanStatus: text("previous_plan_status"),
   ...rotationDraftsAuditColumns,
 });
 

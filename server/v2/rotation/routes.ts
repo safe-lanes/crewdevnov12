@@ -17,6 +17,8 @@ router.get("/drafts/:draftUuid", rotationDraftsController.getByDraftUuid);
 router.post("/drafts", rotationDraftsController.create);
 router.patch("/drafts/:draftUuid", rotationDraftsController.update);
 router.post("/drafts/:draftUuid/propose", rotationDraftsController.propose);
+router.post("/drafts/:draftUuid/archive", rotationDraftsController.archive);
+router.post("/drafts/:draftUuid/unarchive", rotationDraftsController.unarchive);
 router.delete("/drafts/:draftUuid", rotationDraftsController.delete);
 
 router.post("/drafts/:draftUuid/vessels", rotationDraftsController.addVessel);

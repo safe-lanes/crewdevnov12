@@ -527,6 +527,35 @@ export const rotationDraftsService = {
     return proposals;
   },
 
+  async archiveDraft(draftUuid: string) {
+    const existing = await rotationDraftsRepository.findByDraftUuid(draftUuid);
+    if (!existing) {
+      throw new Error(`Draft not found: ${draftUuid}`);
+    }
+    if (existing.planStatus === "Archived") {
+      throw new Error(`Draft is already archived: ${draftUuid}`);
+    }
+    return rotationDraftsRepository.update(draftUuid, {
+      previousPlanStatus: existing.planStatus,
+      planStatus: "Archived",
+    });
+  },
+
+  async unarchiveDraft(draftUuid: string) {
+    const existing = await rotationDraftsRepository.findByDraftUuid(draftUuid);
+    if (!existing) {
+      throw new Error(`Draft not found: ${draftUuid}`);
+    }
+    if (existing.planStatus !== "Archived") {
+      throw new Error(`Draft is not archived: ${draftUuid}`);
+    }
+    const restoreStatus = existing.previousPlanStatus || "In Draft";
+    return rotationDraftsRepository.update(draftUuid, {
+      planStatus: restoreStatus,
+      previousPlanStatus: null,
+    });
+  },
+
   async deleteDraft(draftUuid: string) {
     return rotationDraftsRepository.softDelete(draftUuid);
   },

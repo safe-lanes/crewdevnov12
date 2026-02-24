@@ -18,12 +18,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, Archive } from 'lucide-react';
+import { Pencil, Trash2, Archive, ArchiveRestore } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { NewPlanDialog_v2 } from './NewPlanDialog_v2';
-import { useRotationDraftsV2, useDeleteDraftV2 } from './hooks/useRotationV2';
+import { useRotationDraftsV2, useDeleteDraftV2, useArchiveDraftV2, useUnarchiveDraftV2 } from './hooks/useRotationV2';
 import type { RotationDraftV2 } from './api/rotationApiV2';
 
 export function RotationPlanTable_v2() {
@@ -32,10 +32,20 @@ export function RotationPlanTable_v2() {
   const [editingPlan, setEditingPlan] = useState<RotationDraftV2 | null>(null);
   const [newPlanDialogOpen, setNewPlanDialogOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [planToArchive, setPlanToArchive] = useState<string | null>(null);
+  const [unarchiveDialogOpen, setUnarchiveDialogOpen] = useState(false);
+  const [planToUnarchive, setPlanToUnarchive] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: drafts = [], isLoading } = useRotationDraftsV2();
   const deleteMutation = useDeleteDraftV2();
+  const archiveMutation = useArchiveDraftV2();
+  const unarchiveMutation = useUnarchiveDraftV2();
+
+  const activeDrafts = drafts.filter((d) => d.planStatus !== 'Archived');
+  const archivedDrafts = drafts.filter((d) => d.planStatus === 'Archived');
+  const displayedDrafts = showArchived ? archivedDrafts : activeDrafts;
 
   const handleDeleteClick = (draftUuid: string) => {
     setPlanToDelete(draftUuid);
@@ -56,6 +66,56 @@ export function RotationPlanTable_v2() {
         toast({
           title: "Error",
           description: "Failed to delete rotation plan",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleArchiveClick = (draftUuid: string) => {
+    setPlanToArchive(draftUuid);
+    setArchiveDialogOpen(true);
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (planToArchive !== null) {
+      try {
+        await archiveMutation.mutateAsync(planToArchive);
+        toast({
+          title: "Success",
+          description: "Rotation plan archived successfully",
+        });
+        setArchiveDialogOpen(false);
+        setPlanToArchive(null);
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to archive rotation plan",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleUnarchiveClick = (draftUuid: string) => {
+    setPlanToUnarchive(draftUuid);
+    setUnarchiveDialogOpen(true);
+  };
+
+  const handleUnarchiveConfirm = async () => {
+    if (planToUnarchive !== null) {
+      try {
+        await unarchiveMutation.mutateAsync(planToUnarchive);
+        toast({
+          title: "Success",
+          description: "Rotation plan unarchived successfully",
+        });
+        setUnarchiveDialogOpen(false);
+        setPlanToUnarchive(null);
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to unarchive rotation plan",
           variant: "destructive",
         });
       }
@@ -124,14 +184,14 @@ export function RotationPlanTable_v2() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {drafts.length === 0 ? (
+            {displayedDrafts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-gray-500 dark:text-gray-400 py-8">
-                  No rotation plans found
+                  {showArchived ? 'No archived rotation plans found' : 'No rotation plans found'}
                 </TableCell>
               </TableRow>
             ) : (
-              drafts.map((draft) => (
+              displayedDrafts.map((draft) => (
                 <TableRow key={draft.draftUuid} data-testid={`row-plan-v2-${draft.draftUuid}`}>
                   <TableCell className="text-sm" data-testid={`text-draft-id-v2-${draft.draftUuid}`}>
                     {draft.draftId}
@@ -152,27 +212,42 @@ export function RotationPlanTable_v2() {
                     {draft.createdByName || 'Current User'}
                   </TableCell>
                   <TableCell className="text-sm" data-testid={`text-plan-status-v2-${draft.draftUuid}`}>
-                    {draft.planStatus}
+                    {showArchived ? 'Archived' : draft.planStatus}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                        onClick={() => handleEditClick(draft)}
-                        data-testid={`button-edit-v2-${draft.draftUuid}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                        data-testid={`button-archive-v2-${draft.draftUuid}`}
-                      >
-                        <Archive className="h-4 w-4" />
-                      </Button>
+                      {!showArchived && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                          onClick={() => handleEditClick(draft)}
+                          data-testid={`button-edit-v2-${draft.draftUuid}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {showArchived ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                          onClick={() => handleUnarchiveClick(draft.draftUuid)}
+                          data-testid={`button-unarchive-v2-${draft.draftUuid}`}
+                        >
+                          <ArchiveRestore className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                          onClick={() => handleArchiveClick(draft.draftUuid)}
+                          data-testid={`button-archive-v2-${draft.draftUuid}`}
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -207,6 +282,46 @@ export function RotationPlanTable_v2() {
               data-testid="button-confirm-delete-v2"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Rotation Plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will move the rotation plan to the archive. You can restore it later from the archived view.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-archive-v2">No</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleArchiveConfirm}
+              data-testid="button-confirm-archive-v2"
+            >
+              Yes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={unarchiveDialogOpen} onOpenChange={setUnarchiveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unarchive Rotation Plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will restore the rotation plan back to its original status.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-unarchive-v2">No</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleUnarchiveConfirm}
+              data-testid="button-confirm-unarchive-v2"
+            >
+              Yes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

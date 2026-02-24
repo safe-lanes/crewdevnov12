@@ -110,6 +110,28 @@ export function useDeleteDraftV2() {
   });
 }
 
+export function useArchiveDraftV2() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (draftUuid: string) => rotationApiV2.archiveDraft(draftUuid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'drafts'] });
+    },
+  });
+}
+
+export function useUnarchiveDraftV2() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (draftUuid: string) => rotationApiV2.unarchiveDraft(draftUuid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'drafts'] });
+    },
+  });
+}
+
 export function useProposeDraftV2() {
   const queryClient = useQueryClient();
   

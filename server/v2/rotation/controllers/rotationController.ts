@@ -146,6 +146,40 @@ export const rotationDraftsController = {
     }
   },
 
+  async archive(req: Request, res: Response) {
+    try {
+      const { draftUuid } = req.params;
+      const draft = await rotationDraftsService.archiveDraft(draftUuid);
+      res.json(draft);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      if (error.message?.includes("already archived")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error archiving draft:", error);
+      res.status(500).json({ error: "Failed to archive draft" });
+    }
+  },
+
+  async unarchive(req: Request, res: Response) {
+    try {
+      const { draftUuid } = req.params;
+      const draft = await rotationDraftsService.unarchiveDraft(draftUuid);
+      res.json(draft);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      if (error.message?.includes("not archived")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error unarchiving draft:", error);
+      res.status(500).json({ error: "Failed to unarchive draft" });
+    }
+  },
+
   async delete(req: Request, res: Response) {
     try {
       const { draftUuid } = req.params;

@@ -169,6 +169,24 @@ export const rotationApiV2 = {
     }
   },
 
+  async archiveDraft(draftUuid: string): Promise<RotationDraftV2> {
+    const response = await apiRequest('POST', `${V2_BASE}/drafts/${draftUuid}/archive`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Failed to archive draft');
+    }
+    return response.json();
+  },
+
+  async unarchiveDraft(draftUuid: string): Promise<RotationDraftV2> {
+    const response = await apiRequest('POST', `${V2_BASE}/drafts/${draftUuid}/unarchive`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Failed to unarchive draft');
+    }
+    return response.json();
+  },
+
   async proposeDraft(draftUuid: string, proposedByUuid: string): Promise<RotationDraftV2> {
     const response = await apiRequest('POST', `${V2_BASE}/drafts/${draftUuid}/propose`, { proposedByUuid });
     if (!response.ok) {
