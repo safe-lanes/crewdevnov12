@@ -17,6 +17,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
+import { ComplianceMatrixDialog_v2 as ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog_v2';
 
 // Format date as DD-MMM-YY (e.g., "15 Dec 25")
 function formatAvailabilityDate(dateString: string | null | undefined): string {
@@ -1075,6 +1076,7 @@ function VesselTimelineView({
   selectedVessel,
   onVesselSelect,
   onAssignmentClick,
+  onComplianceCheck,
   dateRange,
   assignments = [],
   vesselLookup = []
@@ -1085,6 +1087,7 @@ function VesselTimelineView({
   selectedVessel: string; // UUID
   onVesselSelect: (vessel: string) => void; // vessel is UUID
   onAssignmentClick?: (assignment: Assignment) => void;
+  onComplianceCheck?: (vesselUuid: string) => void;
   dateRange: { start: Date; end: Date };
   assignments?: Assignment[];
   vesselLookup?: { value: string; name: string }[]; // For UUID to name translation
@@ -1283,6 +1286,28 @@ function VesselTimelineView({
       ctx.fillStyle = 'white';
       ctx.font = 'bold 14px sans-serif';
       ctx.fillText(vesselDisplayName, 50, yOffset + 30);
+      
+      // Draw "Check Compliance" button (right-aligned on vessel header)
+      const btnText = 'Check Compliance';
+      ctx.font = '12px sans-serif';
+      const btnTextWidth = ctx.measureText(btnText).width;
+      const btnPadX = 12;
+      const btnPadY = 4;
+      const btnWidth = btnTextWidth + btnPadX * 2;
+      const btnHeight = 24;
+      const btnX = width - btnWidth - 16;
+      const btnY = yOffset + (vesselHeaderHeight - btnHeight) / 2;
+      
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(btnX, btnY, btnWidth, btnHeight, 4);
+      ctx.stroke();
+      
+      ctx.fillStyle = 'white';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(btnText, btnX + btnPadX, btnY + btnHeight / 2 + 4);
       
       // vessel is now a UUID, so comparison with selectedVessel (also UUID) works correctly
       if (isSelected) {
@@ -1496,8 +1521,28 @@ function VesselTimelineView({
       const headerStart = yOffset;
       const headerEnd = yOffset + vesselHeaderHeight;
       
-      // Check if clicked on vessel header
+      // Check if clicked on "Check Compliance" button in vessel header
       if (y >= headerStart && y < headerEnd) {
+        const btnText = 'Check Compliance';
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCtx.font = '12px sans-serif';
+          const btnTextWidth = tempCtx.measureText(btnText).width;
+          const btnPadX = 12;
+          const btnWidth = btnTextWidth + btnPadX * 2;
+          const btnHeight = 24;
+          const btnX = canvasWidth - btnWidth - 16;
+          const btnY = headerStart + (vesselHeaderHeight - btnHeight) / 2;
+          
+          if (x >= btnX && x <= btnX + btnWidth && y >= btnY && y <= btnY + btnHeight) {
+            if (onComplianceCheck) {
+              onComplianceCheck(vessel);
+            }
+            return;
+          }
+        }
+        
         onVesselSelect(vessel);
         return;
       }
@@ -1567,6 +1612,9 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   const [selectedCrew, setSelectedCrew] = useState<{ crewUuid: string; name: string; rank: string } | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [positionSelectOpen, setPositionSelectOpen] = useState(false);
+  const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
+  const [complianceVesselId, setComplianceVesselId] = useState<string | undefined>(undefined);
+  const [complianceSimulatedCrew, setComplianceSimulatedCrew] = useState<Array<{ rank: string; crewMemberId: string; crewName: string; joiningDate?: string }>>([]);
   const [pendingPositionOptions, setPendingPositionOptions] = useState<string[]>([]);
   const prevSelectedVesselsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(false);
@@ -2143,6 +2191,19 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     setDateDialogOpen(true);
   };
 
+  const handleComplianceCheck = (vesselUuid: string) => {
+    const vesselAssignments = assignments.filter(a => a.vesselUuid === vesselUuid);
+    const simulatedCrew = vesselAssignments.map(a => ({
+      rank: a.rank,
+      crewMemberId: a.crewUuid,
+      crewName: a.crewName,
+      joiningDate: a.joiningDate,
+    }));
+    setComplianceVesselId(vesselUuid);
+    setComplianceSimulatedCrew(simulatedCrew);
+    setComplianceDialogOpen(true);
+  };
+
   const handleAssignmentApply = (joiningDate: Date, contractPeriod: number) => {
     if (!selectedCrew || !selectedVessel) return;
 
@@ -2649,6 +2710,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                 selectedVessel={selectedVessel}
                 onVesselSelect={setSelectedVessel}
                 onAssignmentClick={handleAssignmentClick}
+                onComplianceCheck={handleComplianceCheck}
                 dateRange={dateRange}
                 assignments={assignments}
                 vesselLookup={vessels.map((v: any) => ({ value: v.value, name: v.name }))}
@@ -2693,6 +2755,13 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
           joiningDate: editingAssignment.joiningDate,
           contractPeriod: editingAssignment.contractPeriod
         } : undefined}
+      />
+
+      <ComplianceMatrixDialog
+        open={complianceDialogOpen}
+        onOpenChange={setComplianceDialogOpen}
+        vesselId={complianceVesselId}
+        simulatedCrew={complianceSimulatedCrew}
       />
     </Dialog>
   );
