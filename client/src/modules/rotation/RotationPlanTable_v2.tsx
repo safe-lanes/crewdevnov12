@@ -24,6 +24,7 @@ import SectionTitleComponents from '@/components/Section/SectionTitleComponents'
 import { NewPlanDialog_v2 } from './NewPlanDialog_v2';
 import { useRotationDraftsV2, useDeleteDraftV2 } from './hooks/useRotationV2';
 import type { RotationDraftV2 } from './api/rotationApiV2';
+import { usePermissions } from '@/contexts/PermissionsContext';
 
 export function RotationPlanTable_v2() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -31,6 +32,7 @@ export function RotationPlanTable_v2() {
   const [editingPlan, setEditingPlan] = useState<RotationDraftV2 | null>(null);
   const [newPlanDialogOpen, setNewPlanDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { canCreate, canEdit, canDelete, permissions } = usePermissions();
 
   const { data: drafts = [], isLoading } = useRotationDraftsV2();
   const deleteMutation = useDeleteDraftV2();
@@ -83,6 +85,7 @@ export function RotationPlanTable_v2() {
     <div className="flex flex-col h-full">
       <SectionTitleComponents title="Rotation Plan">
         <div className="flex items-center gap-4">
+          {(permissions.length === 0 || canCreate("Plan")) && (
           <Button
             onClick={() => setNewPlanDialogOpen(true)}
             className="bg-green-600 hover:bg-green-700 text-white h-8 px-4"
@@ -90,6 +93,7 @@ export function RotationPlanTable_v2() {
           >
             + New Plan
           </Button>
+          )}
         </div>
       </SectionTitleComponents>
 
@@ -140,6 +144,7 @@ export function RotationPlanTable_v2() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {(permissions.length === 0 || canEdit("Plan")) && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -149,6 +154,8 @@ export function RotationPlanTable_v2() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      )}
+                      {(permissions.length === 0 || canDelete("Plan")) && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -158,6 +165,7 @@ export function RotationPlanTable_v2() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
