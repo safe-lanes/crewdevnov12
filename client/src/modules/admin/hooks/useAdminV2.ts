@@ -649,3 +649,100 @@ export function useMasterDataV2(type: string, options?: { enabled?: boolean }) {
     staleTime: STALE_TIME,
   });
 }
+
+export function useAccessControlMenusV2(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: [V2_KEY, 'access-control', 'menus'],
+    queryFn: () => adminApiV2.getAccessControlMenus(),
+    enabled: options?.enabled !== false,
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useAccessControlRolesV2(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: [V2_KEY, 'access-control', 'roles'],
+    queryFn: () => adminApiV2.getAccessControlRoles(),
+    enabled: options?.enabled !== false,
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useAccessControlPermissionsV2(ruid: string | null, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: [V2_KEY, 'access-control', 'permissions', ruid],
+    queryFn: () => ruid ? adminApiV2.getAccessControlPermissions(ruid) : Promise.reject('No ruid'),
+    enabled: !!ruid && options?.enabled !== false,
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useCreateAccessControlMenuV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => adminApiV2.createAccessControlMenu(withAuditUser(data)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'menus'] });
+    },
+  });
+}
+
+export function useUpdateAccessControlMenuV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ muid, data }: { muid: string; data: any }) => adminApiV2.updateAccessControlMenu(muid, withAuditUser(data)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'menus'] });
+    },
+  });
+}
+
+export function useDeleteAccessControlMenuV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (muid: string) => adminApiV2.deleteAccessControlMenu(muid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'menus'] });
+    },
+  });
+}
+
+export function useCreateAccessControlRoleV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => adminApiV2.createAccessControlRole(withAuditUser(data)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'roles'] });
+    },
+  });
+}
+
+export function useUpdateAccessControlRoleV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ruid, data }: { ruid: string; data: any }) => adminApiV2.updateAccessControlRole(ruid, withAuditUser(data)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'roles'] });
+    },
+  });
+}
+
+export function useDeleteAccessControlRoleV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ruid: string) => adminApiV2.deleteAccessControlRole(ruid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'roles'] });
+    },
+  });
+}
+
+export function useSaveAccessControlPermissionsV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ruid, permissions }: { ruid: string; permissions: any[] }) => adminApiV2.saveAccessControlPermissions(ruid, permissions),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'access-control', 'permissions', variables.ruid] });
+    },
+  });
+}

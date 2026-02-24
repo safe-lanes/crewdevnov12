@@ -26,6 +26,7 @@ import { AppraisalResult } from "@shared/schema";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { useVesselsV2, useVesselTypesV2, useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import { useCompanyRanksV2 } from "@/modules/admin/hooks/useAdminV2";
@@ -127,8 +128,7 @@ const RatingCellRenderer = (params: ICellRendererParams) => {
   return <RatingBadge value={params.value} color={params.data.competenceRating.color} />;
 };
 
-const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void } }) => {
-  // Defensive guard for AG Grid initialization
+const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void; canEditPerm: boolean; canDeletePerm: boolean } }) => {
   if (!params.colDef || !params.data) return null;
   
   return (
@@ -136,6 +136,7 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
       <Button variant="ghost" size="icon" className="h-6 w-6">
         <EyeIcon className="h-[18px] w-[18px] text-gray-500" />
       </Button>
+      {params.context.canEditPerm && (
       <Button
         variant="ghost"
         size="icon"
@@ -144,14 +145,18 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
       >
         <EditIcon className="h-[18px] w-[18px] text-gray-500" />
       </Button>
+      )}
+      {params.context.canDeletePerm && (
       <Button variant="ghost" size="icon" className="h-6 w-6">
         <Trash2Icon className="h-[18px] w-[18px] text-gray-500" />
       </Button>
+      )}
     </div>
   );
 };
 
 export const ElementCrewAppraisals_v2 = (): JSX.Element => {
+  const { canEdit, canDelete, permissions } = usePermissions();
   const viewport = useViewport();
   const isPhone = viewport === 'phone';
   const isTablet = viewport === 'tablet';
@@ -909,7 +914,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
               rowData={crewData}
               columnDefs={columnDefs}
               onGridReady={onGridReady}
-              context={{ handleEditClick }}
+              context={{ handleEditClick, canEditPerm: permissions.length === 0 || canEdit("Crewing"), canDeletePerm: permissions.length === 0 || canDelete("Crewing") }}
               fillAvailableHeight={true}
               bottomPadding={80}
               width="100%"

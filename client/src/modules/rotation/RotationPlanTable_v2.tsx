@@ -25,6 +25,7 @@ import SectionTitleComponents from '@/components/Section/SectionTitleComponents'
 import { NewPlanDialog_v2 } from './NewPlanDialog_v2';
 import { useRotationDraftsV2, useDeleteDraftV2, useArchiveDraftV2, useUnarchiveDraftV2 } from './hooks/useRotationV2';
 import type { RotationDraftV2 } from './api/rotationApiV2';
+import { usePermissions } from '@/contexts/PermissionsContext';
 
 export function RotationPlanTable_v2() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -37,6 +38,7 @@ export function RotationPlanTable_v2() {
   const [unarchiveDialogOpen, setUnarchiveDialogOpen] = useState(false);
   const [planToUnarchive, setPlanToUnarchive] = useState<string | null>(null);
   const { toast } = useToast();
+  const { canCreate, canEdit, canDelete, permissions } = usePermissions();
 
   const { data: drafts = [], isLoading } = useRotationDraftsV2();
   const deleteMutation = useDeleteDraftV2();
@@ -152,8 +154,8 @@ export function RotationPlanTable_v2() {
               onCheckedChange={(checked) => setShowArchived(checked === true)}
               data-testid="checkbox-show-archived-plan-v2"
             />
-            <label 
-              htmlFor="show-archived-plan-v2" 
+            <label
+              htmlFor="show-archived-plan-v2"
               className="text-sm text-gray-700 cursor-pointer select-none"
             >
               Show Archived
@@ -166,6 +168,7 @@ export function RotationPlanTable_v2() {
           >
             + New Plan
           </Button>
+          )}
         </div>
       </SectionTitleComponents>
 
@@ -257,6 +260,7 @@ export function RotationPlanTable_v2() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -276,7 +280,7 @@ export function RotationPlanTable_v2() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-delete-v2">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700"
               data-testid="button-confirm-delete-v2"
@@ -297,7 +301,7 @@ export function RotationPlanTable_v2() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-archive-v2">No</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleArchiveConfirm}
               data-testid="button-confirm-archive-v2"
             >
@@ -317,7 +321,7 @@ export function RotationPlanTable_v2() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-unarchive-v2">No</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleUnarchiveConfirm}
               data-testid="button-confirm-unarchive-v2"
             >
@@ -328,7 +332,7 @@ export function RotationPlanTable_v2() {
       </AlertDialog>
 
       <NewPlanDialog_v2
-        open={newPlanDialogOpen} 
+        open={newPlanDialogOpen}
         onOpenChange={(open) => {
           setNewPlanDialogOpen(open);
           if (!open) {

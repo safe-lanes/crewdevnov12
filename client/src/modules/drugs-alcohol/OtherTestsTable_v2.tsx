@@ -129,10 +129,11 @@ const DescriptionCellRenderer = (props: ICellRendererParams) => {
 
 const ActionsCellRenderer = (props: ICellRendererParams) => {
   const { onEdit } = props.context || {};
+  if (!onEdit) return null;
   
   const handleEdit = () => {
     const recordId = props.data?.daUuid;
-    if (onEdit && recordId) {
+    if (recordId) {
       onEdit(recordId);
     }
   };

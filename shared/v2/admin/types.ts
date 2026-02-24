@@ -16,6 +16,9 @@ import {
   admVesselRevisionsV2,
   admTrainingMatrixVesselDraftsV2,
   admTrainingMatrixVesselRevisionsV2,
+  admMenuMasterAc,
+  admRoleMasterAc,
+  admRoleAccessAc,
 } from "./schema";
 
 export const insertAdmFormV2Schema = createInsertSchema(admFormsV2).omit({
@@ -161,3 +164,30 @@ export type InsertAdmTrainingMatrixVesselDraftV2 = z.infer<typeof insertAdmTrain
 
 export type AdmTrainingMatrixVesselRevisionV2 = typeof admTrainingMatrixVesselRevisionsV2.$inferSelect;
 export type InsertAdmTrainingMatrixVesselRevisionV2 = z.infer<typeof insertAdmTrainingMatrixVesselRevisionV2Schema>;
+
+export const insertAdmMenuMasterAcSchema = createInsertSchema(admMenuMasterAc).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAdmRoleMasterAcSchema = createInsertSchema(admRoleMasterAc).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAdmRoleAccessAcSchema = createInsertSchema(admRoleAccessAc).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AdmMenuMasterAc = typeof admMenuMasterAc.$inferSelect;
+export type InsertAdmMenuMasterAc = z.infer<typeof insertAdmMenuMasterAcSchema>;
+
+export type AdmRoleMasterAc = typeof admRoleMasterAc.$inferSelect;
+export type InsertAdmRoleMasterAc = z.infer<typeof insertAdmRoleMasterAcSchema>;
+
+export type AdmRoleAccessAc = typeof admRoleAccessAc.$inferSelect;
+export type InsertAdmRoleAccessAc = z.infer<typeof insertAdmRoleAccessAcSchema>;

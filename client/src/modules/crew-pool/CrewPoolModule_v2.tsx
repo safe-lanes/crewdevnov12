@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { FilterIcon, PlusIcon, EditIcon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
@@ -101,8 +102,13 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return [];
     }, [externalVesselsData]);
     
-    // Define allowed pages for the crew pool module
-    const allowedPages = ["crew-database"];
+    const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
+    const allowedPages = useMemo(() => {
+        const all = ["crew-database"];
+        if (permissions.length === 0) return all;
+        const pageToMenu: Record<string, string> = { "crew-database": "Crew Database" };
+        return all.filter(p => canView(pageToMenu[p] || p));
+    }, [permissions, canView]);
 
     // Filter state
     const [filters, setFilters] = useState({
@@ -186,6 +192,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             setIsCrewInfoFormOpen(true);
         };
 
+        if (permissions.length > 0 && !canEdit("Crew Database")) return null;
+
         return (
             <div className="flex items-center justify-center gap-1 h-full">
                 <Button
@@ -199,7 +207,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 </Button>
             </div>
         );
-    }, []);
+    }, [permissions, canEdit]);
 
     // Column definitions with groups - responsive widths
     const columnDefs: ColDef[] = useMemo(() => [
@@ -961,11 +969,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                             <FilterIcon className="h-3 w-3 mr-1" />
                             Filters
                         </Button>
+                        {(permissions.length === 0 || canCreate("Crew Database")) && (
                         <Button
                             className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
                             onClick={() => {
                                 console.log('New crew clicked');
-                                setSelectedCrewMember(null); // No selected crew member for new crew
+                                setSelectedCrewMember(null);
                                 setIsCrewInfoFormOpen(true);
                             }}
                             data-testid="button-new-crew"
@@ -973,6 +982,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                             <PlusIcon className="h-3 w-3 mr-1" />
                             New Crew
                         </Button>
+                        )}
+
                     </div>
                 </SectionTitleComponents>
                 {renderContent()}

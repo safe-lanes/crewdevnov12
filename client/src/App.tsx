@@ -6,6 +6,8 @@ import { Switch, Route } from "wouter";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
+import { PermissionsProvider } from "@/contexts/PermissionsContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const AdminRouter = lazy(() => import("./modules/admin/index"));
 const AppraisalsRouter = lazy(() => import("./modules/crewing/AppraisalsRouter"));
@@ -33,35 +35,63 @@ function PageLoader() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="bg-transparent flex flex-row justify-center w-full h-screen" data-testid="app-root">
-          <div className="bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-screen w-full pt-[67px] overflow-y-auto" data-testid="main-content" role="main">
-            <HeaderComponent />
-            <Suspense fallback={<PageLoader />}>
-              <Switch>
-                <Route path="/" component={AppraisalsRouter} />
-                <Route path="/dashboard" component={DashboardPage} />
-                <Route path="/recruitment" component={RecruitmentWrapper} />
-                <Route path="/crew-pool" component={CrewPoolModuleRouter} />
-                <Route path="/vessel" component={VesselRouter} />
-                <Route path="/rotation" component={RotationRouter} />
-                <Route path="/promotions" component={PromotionsRouter} />
-                <Route path="/drugs-alcohol" component={DrugsAlcoholModule} />
-                <Route path="/rest-hours/vessel/:vesselId/:month" component={RestHoursVesselOverviewComponent} />
-                <Route path="/rest-hours/:rest*" component={RestHoursModuleComponent} />
-                <Route path="/rest-hours" component={RestHoursModuleComponent} />
-                <Route path="/reports" component={ReportsComingSoon} />
-                <Route path="/admin/*" component={AdminRouter} />
-                <Route path="/admin" component={AdminRouter} />
-                <Route path="/accounts/:path*" component={AccountsModule} />
-                <Route path="/accounts" component={AccountsModule} />
-                <Route component={NotFound} />
-              </Switch>
-            </Suspense>
+      <PermissionsProvider>
+        <TooltipProvider>
+          <div className="bg-transparent flex flex-row justify-center w-full h-screen" data-testid="app-root">
+            <div className="bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-screen w-full pt-[67px] overflow-y-auto" data-testid="main-content" role="main">
+              <HeaderComponent />
+              <Suspense fallback={<PageLoader />}>
+                <Switch>
+                  <Route path="/">
+                    <ProtectedRoute menuName="Crewing"><AppraisalsRouter /></ProtectedRoute>
+                  </Route>
+                  <Route path="/dashboard" component={DashboardPage} />
+                  <Route path="/recruitment">
+                    <ProtectedRoute menuName="Recruitment"><RecruitmentWrapper /></ProtectedRoute>
+                  </Route>
+                  <Route path="/crew-pool">
+                    <ProtectedRoute menuName="Crew Pool"><CrewPoolModuleRouter /></ProtectedRoute>
+                  </Route>
+                  <Route path="/vessel">
+                    <ProtectedRoute menuName="Vessel"><VesselRouter /></ProtectedRoute>
+                  </Route>
+                  <Route path="/rotation">
+                    <ProtectedRoute menuName="Rotation"><RotationRouter /></ProtectedRoute>
+                  </Route>
+                  <Route path="/promotions">
+                    <ProtectedRoute menuName="Promotions"><PromotionsRouter /></ProtectedRoute>
+                  </Route>
+                  <Route path="/drugs-alcohol">
+                    <ProtectedRoute menuName="Drugs Alcohol"><DrugsAlcoholModule /></ProtectedRoute>
+                  </Route>
+                  <Route path="/rest-hours/vessel/:vesselId/:month">
+                    {(params) => <ProtectedRoute menuName="Rest Hours"><RestHoursVesselOverviewComponent {...params} /></ProtectedRoute>}
+                  </Route>
+                  <Route path="/rest-hours/:rest*">
+                    <ProtectedRoute menuName="Rest Hours"><RestHoursModuleComponent /></ProtectedRoute>
+                  </Route>
+                  <Route path="/rest-hours">
+                    <ProtectedRoute menuName="Rest Hours"><RestHoursModuleComponent /></ProtectedRoute>
+                  </Route>
+                  <Route path="/reports">
+                    <ProtectedRoute menuName="Reports"><ReportsComingSoon /></ProtectedRoute>
+                  </Route>
+                  <Route path="/admin/*">
+                    <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>
+                  </Route>
+                  <Route path="/admin">
+                    <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>
+                  </Route>
+                  <Route path="/accounts/:path*" component={AccountsModule} />
+                  <Route path="/accounts" component={AccountsModule} />
+                  <Route component={NotFound} />
+                </Switch>
+              </Suspense>
+            </div>
           </div>
-        </div>
-        <Toaster />
-      </TooltipProvider>
+          <Toaster />
+        </TooltipProvider>
+      </PermissionsProvider>
     </QueryClientProvider>
   );
 }

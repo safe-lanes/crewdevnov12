@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useQueryClient } from '@tanstack/react-query';
@@ -112,7 +113,19 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
 
   const deleteMutation = useV2DeleteCandidate();
 
-  const allowedPages = ["in-progress", "recruited", "waitlist", "rejected"];
+  const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
+  const allowedPages = useMemo(() => {
+    const all = ["in-progress", "recruited", "waitlist", "rejected"];
+    if (permissions.length === 0) return all;
+    const pageToMenu: Record<string, string> = { "in-progress": "In Progress", "recruited": "Recruited", "waitlist": "Waitlist", "rejected": "Rejected" };
+    return all.filter(p => canView(pageToMenu[p] || p));
+  }, [permissions, canView]);
+
+  const recruitmentPageToMenu: Record<string, string> = useMemo(() => ({
+    "in-progress": "In Progress", "recruited": "Recruited", "waitlist": "Waitlist", "rejected": "Rejected"
+  }), []);
+
+  const currentMenuName = recruitmentPageToMenu[selectedRecruitmentPage] || "In Progress";
 
   const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
     const handleAttachmentClick = () => {
@@ -169,6 +182,9 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
       });
     };
 
+    const hasEditPerm = permissions.length === 0 || canEdit(currentMenuName);
+    const hasDeletePerm = permissions.length === 0 || canDelete(currentMenuName);
+
     return (
       <div className="flex items-center justify-center gap-1 h-full">
         <Button
@@ -180,6 +196,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         >
           <PaperclipIcon className="h-4 w-4 text-gray-600" />
         </Button>
+        {hasEditPerm && (
         <Button
           variant="ghost"
           size="sm"
@@ -189,6 +206,8 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         >
           <EditIcon className="h-4 w-4 text-gray-600" />
         </Button>
+        )}
+        {hasDeletePerm && (
         <Button
           variant="ghost"
           size="sm"
@@ -198,9 +217,10 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         >
           <Trash2Icon className="h-4 w-4 text-red-600" />
         </Button>
+        )}
       </div>
     );
-  }, [deleteMutation, toast]);
+  }, [deleteMutation, toast, permissions, canEdit, canDelete, currentMenuName]);
 
   const columnDefs: ColDef[] = useMemo(() => {
     const baseColumns: ColDef[] = [
@@ -720,6 +740,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
               <FilterIcon className={`h-3 w-3 ${isPhone ? '' : 'mr-1'}`} />
               {!isPhone && 'Filters'}
             </Button>
+            {(permissions.length === 0 || canCreate(currentMenuName)) && (
             <Button
               className={`h-8 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white ${isPhone ? 'w-auto px-3' : 'w-32'}`}
               onClick={() => {
@@ -731,6 +752,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
               <PlusIcon className={`h-3 w-3 ${isPhone ? '' : 'mr-1'}`} />
               {!isPhone && 'New Crew'}
             </Button>
+            )}
           </div>
         </SectionTitleComponents>
         {renderContent()}
