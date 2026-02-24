@@ -12,6 +12,7 @@ import { generateRestHoursPDF } from '@/lib/generateRestHoursPDF';
 import { queryClient } from '@/lib/queryClient';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import type { RestHoursDailyRecord, FixedTask, VesselDateLineAdjustment, DateLineAdjustmentItem, VariableTask } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
@@ -235,6 +236,8 @@ export const RHRecordingForm = ({
   monthValue: initialMonthValue,
 }: RHRecordingFormProps): JSX.Element => {
   const { toast } = useToast();
+  const { userType, myVessels } = usePermissions();
+  const isShipUser = userType === 'Ship';
   const { vessels: v2Vessels, getVesselName } = useV2Vessels();
   
   const vessels = useMemo(() => v2Vessels.map(v => ({
@@ -336,10 +339,22 @@ export const RHRecordingForm = ({
   useEffect(() => {
     if (open) {
       setSelectedPeriod(initialMonthValue);
-      setSelectedVesselId(initialVesselId);
+      if (!isShipUser) {
+        setSelectedVesselId(initialVesselId);
+      }
       setSelectedCrewMemberId(initialCrewMemberId);
     }
-  }, [open, initialMonthValue, initialVesselId, initialCrewMemberId]);
+  }, [open, initialMonthValue, initialVesselId, initialCrewMemberId, isShipUser]);
+
+  useEffect(() => {
+    if (isShipUser && open && myVessels.length > 0 && vessels.length > 0) {
+      const myVesselName = myVessels[0].vessel;
+      const matched = vessels.find(v => v.name === myVesselName);
+      if (matched?.entryId) {
+        setSelectedVesselId(matched.entryId);
+      }
+    }
+  }, [isShipUser, open, myVessels, vessels]);
   
   // Reset crew member selection when vessel changes (to first crew on that vessel)
   useEffect(() => {
@@ -1534,8 +1549,9 @@ export const RHRecordingForm = ({
             <Select
               value={selectedVesselId}
               onValueChange={setSelectedVesselId}
+              disabled={isShipUser}
             >
-              <SelectTrigger className="h-8 w-48 text-xs" data-testid="select-vessel">
+              <SelectTrigger className="h-8 w-48 text-xs" disabled={isShipUser} data-testid="select-vessel">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
