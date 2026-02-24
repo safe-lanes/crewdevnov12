@@ -1247,8 +1247,11 @@ function VesselTimelineView({
     
     // Draw each vessel section
     vessels.forEach((vessel, vesselIdx) => {
+      const isSelected = selectedVessel === vessel;
+      const headerColor = isSelected ? '#52baf3' : '#b0b8c1';
+      
       // Draw vessel header (full width)
-      ctx.fillStyle = '#52baf3';
+      ctx.fillStyle = headerColor;
       ctx.fillRect(0, yOffset, width, vesselHeaderHeight);
       
       // Draw radio button (left side)
@@ -1265,7 +1268,7 @@ function VesselTimelineView({
       ctx.fillText(vesselDisplayName, 50, yOffset + 30);
       
       // vessel is now a UUID, so comparison with selectedVessel (also UUID) works correctly
-      if (selectedVessel === vessel) {
+      if (isSelected) {
         ctx.beginPath();
         ctx.arc(20, yOffset + 24, 4, 0, 2 * Math.PI);
         ctx.fillStyle = 'white';
@@ -1276,7 +1279,7 @@ function VesselTimelineView({
       
       // Draw header row (rank column + month headers)
       // Rank column header
-      ctx.fillStyle = '#52baf3';
+      ctx.fillStyle = headerColor;
       ctx.fillRect(0, yOffset, rankColumnWidth, monthHeaderHeight);
       ctx.fillStyle = 'white';
       ctx.font = 'bold 12px sans-serif';
@@ -1284,7 +1287,7 @@ function VesselTimelineView({
       ctx.fillText('Rank', rankColumnWidth / 2, yOffset + 20);
       
       // Month headers (in timeline area)
-      ctx.fillStyle = '#52baf3';
+      ctx.fillStyle = headerColor;
       ctx.fillRect(timelineStartX, yOffset, timelineWidth, monthHeaderHeight);
       
       ctx.fillStyle = 'white';
@@ -1310,6 +1313,8 @@ function VesselTimelineView({
       
       yOffset += monthHeaderHeight;
       
+      const vesselContentStartY = yOffset;
+      
       // Draw rank rows
       displayRanks.forEach((rank, rankIdx) => {
         const rowData = groupedData[vessel]?.[rank];
@@ -1322,11 +1327,11 @@ function VesselTimelineView({
         ctx.fillRect(0, y, width, rowHeight);
         
         // Draw rank column background with border
-        ctx.fillStyle = '#f3f4f6';
+        ctx.fillStyle = isSelected ? '#f3f4f6' : '#ececec';
         ctx.fillRect(0, y, rankColumnWidth, rowHeight);
         
         // Draw rank label (centered in rank column)
-        ctx.fillStyle = '#1f2937';
+        ctx.fillStyle = isSelected ? '#1f2937' : '#9ca3af';
         ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(rank, rankColumnWidth / 2, y + 25);
@@ -1415,6 +1420,14 @@ function VesselTimelineView({
         
         yOffset += rowHeight;
       });
+      
+      if (!isSelected) {
+        const contentHeight = yOffset - vesselContentStartY;
+        if (contentHeight > 0) {
+          ctx.fillStyle = 'rgba(240, 240, 240, 0.45)';
+          ctx.fillRect(0, vesselContentStartY, width, contentHeight);
+        }
+      }
     });
     
     // Draw "today" vertical line (only in timeline area)
