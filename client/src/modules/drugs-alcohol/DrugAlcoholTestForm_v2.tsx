@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { generateDrugAlcoholTestPDF } from '@/lib/generateDrugAlcoholTestPDF';
 import { useToast } from '@/hooks/use-toast';
@@ -156,6 +157,13 @@ export function DrugAlcoholTestForm_v2({
   // Vessel lookup hook
   const { getVesselName, vessels } = useVesselLookup();
 
+  const { userType, myVessels } = usePermissions();
+  const isShipUser = userType === 'Ship';
+  const shipUserVesselName = useMemo(() => {
+    if (!isShipUser || myVessels.length === 0) return null;
+    return myVessels[0].vessel;
+  }, [isShipUser, myVessels]);
+
   // Fetch existing record for editing (V2 - uses UUID)
   const { data: existingRecord, isLoading: recordLoading, isError: recordError } = useQuery<any>({
     queryKey: ['v2', 'drugs-alcohol', recordUuid],
@@ -257,6 +265,16 @@ export function DrugAlcoholTestForm_v2({
       witnessAutoCopied.current = true;
     }
   }, [existingRecord, recordUuid, testType, form]);
+
+  useEffect(() => {
+    if (isShipUser && myVessels.length > 0 && vessels.length > 0) {
+      const myVesselName = myVessels[0].vessel;
+      const matchedVessel = vessels.find((v) => v.name === myVesselName);
+      if (matchedVessel) {
+        form.setValue('vesselId', matchedVessel.entryId);
+      }
+    }
+  }, [isShipUser, myVessels, vessels, form]);
 
   // Watch the vessel ID from form to filter crew dynamically
   const formVesselId = form.watch('vesselId');
@@ -614,20 +632,26 @@ export function DrugAlcoholTestForm_v2({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel*</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="bg-[#ffffff]" data-testid="select-vesselId">
-                                  <SelectValue placeholder="Select Vessel" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {vessels.map((vessel) => (
-                                  <SelectItem key={vessel.entryId} value={vessel.entryId}>
-                                    {vessel.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            {isShipUser ? (
+                              <div className="h-10 flex items-center text-sm font-medium text-[#0f172a] px-3 bg-gray-50 border border-input rounded-md" data-testid="text-vesselId-locked">
+                                {shipUserVesselName || "No vessel assigned"}
+                              </div>
+                            ) : (
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="bg-[#ffffff]" data-testid="select-vesselId">
+                                    <SelectValue placeholder="Select Vessel" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {vessels.map((vessel) => (
+                                    <SelectItem key={vessel.entryId} value={vessel.entryId}>
+                                      {vessel.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
