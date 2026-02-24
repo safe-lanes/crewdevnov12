@@ -146,65 +146,56 @@ export const RestHoursRecord = (): JSX.Element => {
     });
   };
 
-  const renderVesselSelect = () => {
-    if (isShipUser) {
-      return (
-        <span className="text-xs font-medium text-[#0f172a] dark:text-white" data-testid="ship-vessel-name">
-          {shipVesselName || "No vessel assigned"}
-        </span>
-      );
-    }
-
-    return (
-      <Popover modal={false}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={`h-8 text-xs text-[#0f172a] dark:text-white justify-between bg-transparent dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-40'}`}
-            disabled={vesselsLoading}
-            data-testid="select-vessel-multi"
-          >
-            <span className="truncate">
-              {selectedVessels.length > 0 
+  const renderVesselSelect = () => (
+    <Popover modal={false}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={`h-8 text-xs text-[#0f172a] dark:text-white justify-between bg-transparent dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-40'}`}
+          disabled={vesselsLoading || isShipUser}
+          data-testid="select-vessel-multi"
+        >
+          <span className="truncate">
+            {isShipUser && shipVesselName
+              ? shipVesselName
+              : selectedVessels.length > 0 
                 ? `${selectedVessels.length} selected` 
                 : vesselsLoading ? "Loading..." : "Vessel"
-              }
-            </span>
-            <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-60 p-2" align="start">
-          <div className="max-h-60 overflow-y-auto">
-            {vessels.map((vessel: any) => (
-              <div 
-                key={vessel.id} 
-                className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
-                data-testid={`vessel-row-${vessel.entryId || vessel.id}`}
-                onClick={() => toggleVessel(vessel.name)}
+            }
+          </span>
+          <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-60 p-2" align="start">
+        <div className="max-h-60 overflow-y-auto">
+          {vessels.map((vessel: any) => (
+            <div 
+              key={vessel.id} 
+              className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
+              data-testid={`vessel-row-${vessel.entryId || vessel.id}`}
+              onClick={() => toggleVessel(vessel.name)}
+            >
+              <Checkbox 
+                checked={selectedVessels.includes(vessel.name)}
+                onCheckedChange={() => toggleVessel(vessel.name)}
+                data-testid={`checkbox-vessel-${vessel.entryId || vessel.id}`}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <span 
+                className="text-sm flex-1"
+                data-testid={`label-vessel-${vessel.entryId || vessel.id}`}
               >
-                <Checkbox 
-                  checked={selectedVessels.includes(vessel.name)}
-                  onCheckedChange={() => toggleVessel(vessel.name)}
-                  data-testid={`checkbox-vessel-${vessel.entryId || vessel.id}`}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <span 
-                  className="text-sm flex-1"
-                  data-testid={`label-vessel-${vessel.entryId || vessel.id}`}
-                >
-                  {vessel.name}
-                </span>
-              </div>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-    );
-  };
+                {vessel.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 
-  // Fleet select component (shared across layouts)
   const renderFleetSelect = () => (
-    <Select value={fleetValue} onValueChange={setFleetValue}>
+    <Select value={fleetValue} onValueChange={setFleetValue} disabled={isShipUser}>
       <SelectTrigger 
         className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
         data-testid="select-fleet-value"
@@ -221,7 +212,7 @@ export const RestHoursRecord = (): JSX.Element => {
 
   // Additional Group select component (shared across layouts)
   const renderAddGroupSelect = () => (
-    <Select value={addGroupValue} onValueChange={setAddGroupValue}>
+    <Select value={addGroupValue} onValueChange={setAddGroupValue} disabled={isShipUser}>
       <SelectTrigger 
         className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
         data-testid="select-addgroup-value"
@@ -245,64 +236,60 @@ export const RestHoursRecord = (): JSX.Element => {
         <div className="flex flex-col gap-3 mb-4 p-3 bg-transparent rounded-lg" data-testid="filter-container">
           <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
-          {isShipUser ? (
-            <div className="flex items-center gap-2">
-              {renderVesselSelect()}
+          <RadioGroup 
+            value={filterType} 
+            onValueChange={(value: "vessel" | "fleet" | "addGroup") => !isShipUser && setFilterType(value)}
+            className="flex flex-col gap-3"
+          >
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="vessel" 
+                  id="filter-vessel"
+                  className="h-4 w-4"
+                  disabled={isShipUser}
+                  data-testid="radio-vessel"
+                />
+                {renderVesselSelect()}
+              </div>
             </div>
-          ) : (
-            <RadioGroup 
-              value={filterType} 
-              onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
-              className="flex flex-col gap-3"
-            >
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem 
-                    value="vessel" 
-                    id="filter-vessel"
-                    className="h-4 w-4"
-                    data-testid="radio-vessel"
-                  />
-                  {renderVesselSelect()}
-                </div>
-              </div>
 
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem 
-                    value="fleet" 
-                    id="filter-fleet"
-                    className="h-4 w-4"
-                    data-testid="radio-fleet"
-                  />
-                  {renderFleetSelect()}
-                </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="fleet" 
+                  id="filter-fleet"
+                  className="h-4 w-4"
+                  disabled={isShipUser}
+                  data-testid="radio-fleet"
+                />
+                {renderFleetSelect()}
               </div>
+            </div>
 
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem 
-                    value="addGroup" 
-                    id="filter-addgroup"
-                    className="h-4 w-4"
-                    data-testid="radio-addgroup"
-                  />
-                  {renderAddGroupSelect()}
-                </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="addGroup" 
+                  id="filter-addgroup"
+                  className="h-4 w-4"
+                  disabled={isShipUser}
+                  data-testid="radio-addgroup"
+                />
+                {renderAddGroupSelect()}
               </div>
-            </RadioGroup>
-          )}
+            </div>
+          </RadioGroup>
 
-          {!isShipUser && (
-            <Button
-              variant="outline"
-              onClick={handleClearFilters}
-              className="h-8 w-full text-[#8798ad] text-[11px] border-[#e1e8ed]"
-              data-testid="button-clear-filters"
-            >
-              Clear
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            onClick={handleClearFilters}
+            className="h-8 w-full text-[#8798ad] text-[11px] border-[#e1e8ed]"
+            disabled={isShipUser}
+            data-testid="button-clear-filters"
+          >
+            Clear
+          </Button>
         </div>
       );
     }
@@ -312,64 +299,60 @@ export const RestHoursRecord = (): JSX.Element => {
         <div className="flex flex-col gap-3 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
           <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
-          {isShipUser ? (
-            <div className="flex items-center gap-2">
-              {renderVesselSelect()}
+          <RadioGroup 
+            value={filterType} 
+            onValueChange={(value: "vessel" | "fleet" | "addGroup") => !isShipUser && setFilterType(value)}
+            className="grid grid-cols-3 gap-4"
+          >
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="vessel" 
+                  id="filter-vessel"
+                  className="h-4 w-4"
+                  disabled={isShipUser}
+                  data-testid="radio-vessel"
+                />
+                {renderVesselSelect()}
+              </div>
             </div>
-          ) : (
-            <RadioGroup 
-              value={filterType} 
-              onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
-              className="grid grid-cols-3 gap-4"
-            >
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem 
-                    value="vessel" 
-                    id="filter-vessel"
-                    className="h-4 w-4"
-                    data-testid="radio-vessel"
-                  />
-                  {renderVesselSelect()}
-                </div>
-              </div>
 
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem 
-                    value="fleet" 
-                    id="filter-fleet"
-                    className="h-4 w-4"
-                    data-testid="radio-fleet"
-                  />
-                  {renderFleetSelect()}
-                </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="fleet" 
+                  id="filter-fleet"
+                  className="h-4 w-4"
+                  disabled={isShipUser}
+                  data-testid="radio-fleet"
+                />
+                {renderFleetSelect()}
               </div>
+            </div>
 
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem 
-                    value="addGroup" 
-                    id="filter-addgroup"
-                    className="h-4 w-4"
-                    data-testid="radio-addgroup"
-                  />
-                  {renderAddGroupSelect()}
-                </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem 
+                  value="addGroup" 
+                  id="filter-addgroup"
+                  className="h-4 w-4"
+                  disabled={isShipUser}
+                  data-testid="radio-addgroup"
+                />
+                {renderAddGroupSelect()}
               </div>
-            </RadioGroup>
-          )}
+            </div>
+          </RadioGroup>
 
-          {!isShipUser && (
-            <Button
-              variant="outline"
-              onClick={handleClearFilters}
-              className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-              data-testid="button-clear-filters"
-            >
-              Clear
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            onClick={handleClearFilters}
+            className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+            disabled={isShipUser}
+            data-testid="button-clear-filters"
+          >
+            Clear
+          </Button>
         </div>
       );
     }
@@ -378,58 +361,54 @@ export const RestHoursRecord = (): JSX.Element => {
       <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
         <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
-        {isShipUser ? (
+        <RadioGroup 
+          value={filterType} 
+          onValueChange={(value: "vessel" | "fleet" | "addGroup") => !isShipUser && setFilterType(value)}
+          className="flex items-center gap-6"
+        >
           <div className="flex items-center gap-2">
+            <RadioGroupItem 
+              value="vessel" 
+              id="filter-vessel"
+              className="h-4 w-4"
+              disabled={isShipUser}
+              data-testid="radio-vessel"
+            />
             {renderVesselSelect()}
           </div>
-        ) : (
-          <RadioGroup 
-            value={filterType} 
-            onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
-            className="flex items-center gap-6"
-          >
-            <div className="flex items-center gap-2">
-              <RadioGroupItem 
-                value="vessel" 
-                id="filter-vessel"
-                className="h-4 w-4"
-                data-testid="radio-vessel"
-              />
-              {renderVesselSelect()}
-            </div>
 
-            <div className="flex items-center gap-2">
-              <RadioGroupItem 
-                value="fleet" 
-                id="filter-fleet"
-                className="h-4 w-4"
-                data-testid="radio-fleet"
-              />
-              {renderFleetSelect()}
-            </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem 
+              value="fleet" 
+              id="filter-fleet"
+              className="h-4 w-4"
+              disabled={isShipUser}
+              data-testid="radio-fleet"
+            />
+            {renderFleetSelect()}
+          </div>
 
-            <div className="flex items-center gap-2">
-              <RadioGroupItem 
-                value="addGroup" 
-                id="filter-addgroup"
-                className="h-4 w-4"
-                data-testid="radio-addgroup"
-              />
-              {renderAddGroupSelect()}
-            </div>
-          </RadioGroup>
-        )}
+          <div className="flex items-center gap-2">
+            <RadioGroupItem 
+              value="addGroup" 
+              id="filter-addgroup"
+              className="h-4 w-4"
+              disabled={isShipUser}
+              data-testid="radio-addgroup"
+            />
+            {renderAddGroupSelect()}
+          </div>
+        </RadioGroup>
 
-        {!isShipUser && (
-          <Button
-            variant="outline"
-            onClick={handleClearFilters}
-            className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-            data-testid="button-clear-filters"
-          >
-            Clear
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          onClick={handleClearFilters}
+          className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
+          disabled={isShipUser}
+          data-testid="button-clear-filters"
+        >
+          Clear
+        </Button>
       </div>
     );
   };
