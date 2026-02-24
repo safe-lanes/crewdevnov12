@@ -18,7 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Archive } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { NewPlanDialog_v2 } from './NewPlanDialog_v2';
@@ -30,6 +31,7 @@ export function RotationPlanTable_v2() {
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
   const [editingPlan, setEditingPlan] = useState<RotationDraftV2 | null>(null);
   const [newPlanDialogOpen, setNewPlanDialogOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const { toast } = useToast();
 
   const { data: drafts = [], isLoading } = useRotationDraftsV2();
@@ -83,6 +85,20 @@ export function RotationPlanTable_v2() {
     <div className="flex flex-col h-full">
       <SectionTitleComponents title="Rotation Plan">
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
+            <Checkbox
+              id="show-archived-plan-v2"
+              checked={showArchived}
+              onCheckedChange={(checked) => setShowArchived(checked === true)}
+              data-testid="checkbox-show-archived-plan-v2"
+            />
+            <label 
+              htmlFor="show-archived-plan-v2" 
+              className="text-sm text-gray-700 cursor-pointer select-none"
+            >
+              Show Archived
+            </label>
+          </div>
           <Button
             onClick={() => setNewPlanDialogOpen(true)}
             className="bg-green-600 hover:bg-green-700 text-white h-8 px-4"
@@ -148,6 +164,14 @@ export function RotationPlanTable_v2() {
                         data-testid={`button-edit-v2-${draft.draftUuid}`}
                       >
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                        data-testid={`button-archive-v2-${draft.draftUuid}`}
+                      >
+                        <Archive className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
