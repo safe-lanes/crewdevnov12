@@ -91,6 +91,7 @@ export interface ExtractedUserProfile {
   role?: string;
   roleId?: string;
   userId?: string;
+  userType?: string;
   myVessels?: Array<{ vessel: string; vesselId: string; imoNumber: string }>;
 }
 
@@ -180,8 +181,9 @@ function extractFromObject(obj: any): ExtractedUserProfile | null {
   if (obj.roleName && !result.role) result.role = String(obj.roleName);
   if (obj.roleId) result.roleId = String(obj.roleId);
   if (obj.userId) result.userId = String(obj.userId);
+  if (obj.userType) result.userType = String(obj.userType);
   if (Array.isArray(obj.myVessels)) result.myVessels = obj.myVessels;
-  if (result.role || result.roleId || result.userId || (result.myVessels && result.myVessels.length > 0)) return result;
+  if (result.role || result.roleId || result.userId || result.userType || (result.myVessels && result.myVessels.length > 0)) return result;
   return null;
 }
 
@@ -223,10 +225,11 @@ export function safeExtractFields(rawValue: any): ExtractedUserProfile | null {
   result.role = extractStringField(str, 'role') || extractStringField(str, 'roleName');
   result.roleId = extractStringField(str, 'roleId');
   result.userId = extractStringField(str, 'userId');
+  result.userType = extractStringField(str, 'userType');
   result.myVessels = extractVesselsFromString(str);
-  console.log('[RBAC] safeExtract: regex result -', 'role:', result.role, 'roleId:', result.roleId, 'userId:', result.userId, 'vessels:', result.myVessels?.length || 0);
+  console.log('[RBAC] safeExtract: regex result -', 'role:', result.role, 'roleId:', result.roleId, 'userId:', result.userId, 'userType:', result.userType, 'vessels:', result.myVessels?.length || 0);
 
-  if (result.role || result.roleId || result.userId || (result.myVessels && result.myVessels.length > 0)) return result;
+  if (result.role || result.roleId || result.userId || result.userType || (result.myVessels && result.myVessels.length > 0)) return result;
   return null;
 }
 

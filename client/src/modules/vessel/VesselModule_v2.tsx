@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -613,7 +613,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
 export function VesselModule_v2(): JSX.Element {
     const queryClient = useQueryClient();
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
-    const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
+    const { canView, canCreate, canEdit, canDelete, permissions, userType, myVessels } = usePermissions();
     const allowedPages = useMemo(() => {
         const all = ["vessel-database"];
         if (permissions.length === 0) return all;
@@ -650,12 +650,24 @@ export function VesselModule_v2(): JSX.Element {
     const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
     const [reliefDialogData, setReliefDialogData] = useState<{ rank: string; rankId: string; planningData: any } | null>(null);
 
+    const isShipUser = userType === 'Ship';
+
     const { toast } = useToast();
     const [, setLocation] = useLocation();
     const gridApiRef = useRef<GridApi | null>(null);
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
     const { data: ports = [] } = usePorts();
+
+    useEffect(() => {
+        if (isShipUser && myVessels.length > 0 && vessels.length > 0 && !selectedVessel) {
+            const myVesselIds = new Set(myVessels.map(v => v.vesselId));
+            const matchedVessel = vessels.find((v: any) => myVesselIds.has(v.vesselId));
+            if (matchedVessel) {
+                setSelectedVessel(matchedVessel);
+            }
+        }
+    }, [isShipUser, myVessels, vessels, selectedVessel]);
     
     const { data: crewCounts = {} } = useQuery<Record<string, number>>({
         queryKey: ['/api/v2/vessel/crew-counts'],
@@ -1438,21 +1450,27 @@ export function VesselModule_v2(): JSX.Element {
                 <div className="flex items-center justify-between mb-6 pb-4">
                     {/* Left: Vessel Dropdown */}
                     <div className="flex-shrink-0">
-                        <Select value={selectedVessel.name} onValueChange={handleVesselChange}>
-                            <SelectTrigger 
-                                className="h-10 border-none shadow-none text-xl font-semibold text-[#0f172a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800"
-                                data-testid="select-vessel-detail"
-                            >
-                                <SelectValue>{selectedVessel.name}</SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {[...vessels].sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')).map((vessel: any) => (
-                                    <SelectItem key={vessel.id} value={vessel.name}>
-                                        {vessel.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        {isShipUser ? (
+                            <div className="h-10 flex items-center px-3 text-xl font-semibold text-[#0f172a] dark:text-white" data-testid="vessel-name-ship-user">
+                                {selectedVessel.name}
+                            </div>
+                        ) : (
+                            <Select value={selectedVessel.name} onValueChange={handleVesselChange}>
+                                <SelectTrigger 
+                                    className="h-10 border-none shadow-none text-xl font-semibold text-[#0f172a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800"
+                                    data-testid="select-vessel-detail"
+                                >
+                                    <SelectValue>{selectedVessel.name}</SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[...vessels].sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')).map((vessel: any) => (
+                                        <SelectItem key={vessel.id} value={vessel.name}>
+                                            {vessel.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
                     </div>
 
                     {/* Center: Tabs */}
@@ -1480,17 +1498,19 @@ export function VesselModule_v2(): JSX.Element {
                         </div>
                     </div>
 
-                    {/* Right: Back Button */}
+                    {/* Right: Back Button (hidden for Ship users) */}
                     <div className="flex-shrink-0">
-                        <Button
-                            variant="outline"
-                            onClick={handleBackToList}
-                            className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
-                            data-testid="button-back-to-list"
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                            <span className="text-xs">Back</span>
-                        </Button>
+                        {!isShipUser && (
+                            <Button
+                                variant="outline"
+                                onClick={handleBackToList}
+                                className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
+                                data-testid="button-back-to-list"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                <span className="text-xs">Back</span>
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -2360,7 +2380,21 @@ export function VesselModule_v2(): JSX.Element {
             />
             
             <MainLayout hasSidebar={true}>
-                {selectedVessel ? renderVesselDetail() : renderVesselDatabase()}
+                {isShipUser ? (
+                    selectedVessel ? renderVesselDetail() : (
+                        <div className="flex items-center justify-center h-64">
+                            {vesselsLoading ? (
+                                <p className="text-gray-500">Loading vessel data...</p>
+                            ) : myVessels.length === 0 ? (
+                                <p className="text-gray-500">No vessel assigned to your account. Please contact your administrator.</p>
+                            ) : (
+                                <p className="text-gray-500">Unable to find your assigned vessel. Please contact your administrator.</p>
+                            )}
+                        </div>
+                    )
+                ) : (
+                    selectedVessel ? renderVesselDetail() : renderVesselDatabase()
+                )}
             </MainLayout>
 
             <ComplianceMatrixDialog_v2

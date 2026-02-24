@@ -27,6 +27,7 @@ interface PermissionsContextType {
   roleName: string | null;
   roleId: string | null;
   userId: string | null;
+  userType: string | null;
   isLoading: boolean;
   canView: (menuName: string) => boolean;
   canCreate: (menuName: string) => boolean;
@@ -95,6 +96,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
   const roleName = userProfile?.role || null;
   const roleId = userProfile?.roleId || null;
   const userId = userProfile?.userId || null;
+  const userType = userProfile?.userType || null;
   const myVessels = userProfile?.myVessels || [];
 
   const { data, isLoading } = useQuery({
@@ -183,6 +185,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     roleName,
     roleId,
     userId,
+    userType,
     isLoading,
     canView,
     canCreate,
@@ -190,7 +193,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     canDelete,
     canViewRoute,
     getVesselIds,
-  }), [permissions, myVessels, roleName, roleId, userId, isLoading, canView, canCreate, canEdit, canDelete, canViewRoute, getVesselIds]);
+  }), [permissions, myVessels, roleName, roleId, userId, userType, isLoading, canView, canCreate, canEdit, canDelete, canViewRoute, getVesselIds]);
 
   return (
     <PermissionsContext.Provider value={value}>
