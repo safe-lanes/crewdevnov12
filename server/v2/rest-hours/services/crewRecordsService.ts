@@ -302,7 +302,8 @@ export const crewRecordsService = {
           );
 
         // Deduplicate by crewId — if multiple assignments match (e.g. rejoined crew),
-        // keep the one with the latest signOnDate for this month.
+        // keep the one with the latest signOnDate. On a tie, prefer isCurrent=true
+        // so stale records with an erroneous signOffDate never win over the live record.
         const assignmentByCrewId = new Map<string, typeof crewData[0]>();
         for (const crew of crewData) {
           const crewId = crew.empNo || crew.crewUuid;
@@ -314,6 +315,9 @@ export const crewRecordsService = {
             const newDate = crew.signOnDate || '';
             if (newDate > existingDate) {
               assignmentByCrewId.set(crewId, crew);
+            } else if (newDate === existingDate && crew.isCurrent && !existing.isCurrent) {
+              // Same signOnDate — the currently-active assignment wins
+              assignmentByCrewId.set(crewId, crew);
             }
           }
         }
@@ -323,14 +327,17 @@ export const crewRecordsService = {
           if (record.vesselId !== vesselId) continue;
           const assignment = assignmentByCrewId.get(record.crewMemberId);
           if (assignment) {
+            // If the crew member is still on board (isCurrent=true), suppress any
+            // signOffDate — they haven't actually left yet regardless of stored value.
+            const effectiveSignOffDate = assignment.isCurrent ? null : assignment.signOffDate;
             record.signOnOffInfo = buildSignOnOffInfo(
               assignment.signOnDate,
-              assignment.signOffDate,
+              effectiveSignOffDate,
               firstDay,
               lastDay
             );
             record._signOnDate = assignment.signOnDate;
-            record._signOffDate = assignment.signOffDate;
+            record._signOffDate = effectiveSignOffDate;
           }
         }
 
@@ -343,9 +350,11 @@ export const crewRecordsService = {
         for (const [crewId, crew] of assignmentByCrewId) {
           if (existingCrewIds.has(crewId)) continue;
 
+          const effectiveSignOffDate = crew.isCurrent ? null : crew.signOffDate;
+
           const signOnOffInfo = buildSignOnOffInfo(
             crew.signOnDate,
-            crew.signOffDate,
+            effectiveSignOffDate,
             firstDay,
             lastDay
           );
@@ -374,7 +383,7 @@ export const crewRecordsService = {
             isDeleted: false,
             isSync: false,
             _signOnDate: crew.signOnDate,
-            _signOffDate: crew.signOffDate,
+            _signOffDate: effectiveSignOffDate,
           };
           allRecords.push(placeholderRecord);
           existingCrewIds.add(crewId);
