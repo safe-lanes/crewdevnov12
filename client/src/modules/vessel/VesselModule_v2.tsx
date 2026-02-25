@@ -659,6 +659,19 @@ export function VesselModule_v2(): JSX.Element {
     const [, setLocation] = useLocation();
     const gridApiRef = useRef<GridApi | null>(null);
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
+
+    const myVesselIdSet = useMemo(
+        () => new Set(myVessels.map(v => v.vesselId)),
+        [myVessels]
+    );
+
+    const myVesselsList = useMemo(
+        () => [...vessels].filter((v: any) => myVesselIdSet.has(v.vesselId))
+                          .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')),
+        [vessels, myVesselIdSet]
+    );
+
+    const isMultiVesselShipUser = isShipUser && myVessels.length > 1;
     const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
     const { data: ports = [] } = usePorts();
 
@@ -1453,10 +1466,26 @@ export function VesselModule_v2(): JSX.Element {
                 <div className="flex items-center justify-between mb-6 pb-4">
                     {/* Left: Vessel Dropdown */}
                     <div className="flex-shrink-0">
-                        {isShipUser ? (
+                        {isShipUser && !isMultiVesselShipUser ? (
                             <div className="h-10 flex items-center px-3 text-xl font-semibold text-[#0f172a] dark:text-white" data-testid="vessel-name-ship-user">
                                 {selectedVessel.name}
                             </div>
+                        ) : isMultiVesselShipUser ? (
+                            <Select value={selectedVessel.name} onValueChange={handleVesselChange}>
+                                <SelectTrigger
+                                    className="h-10 border-none shadow-none text-xl font-semibold text-[#0f172a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800"
+                                    data-testid="select-vessel-ship-user"
+                                >
+                                    <SelectValue>{selectedVessel.name}</SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {myVesselsList.map((vessel: any) => (
+                                        <SelectItem key={vessel.id} value={vessel.name}>
+                                            {vessel.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         ) : (
                             <Select value={selectedVessel.name} onValueChange={handleVesselChange}>
                                 <SelectTrigger 
