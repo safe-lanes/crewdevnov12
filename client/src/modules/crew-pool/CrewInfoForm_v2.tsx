@@ -5459,6 +5459,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // Save Draft functionality
   const handleSaveDraft = () => {
     console.log('Saving crew info (V2):', formData);
+
+    // Required field validation
+    const trimmedFirstName = (formData.firstName || '').trim();
+    const trimmedFamilyName = (formData.familyName || '').trim();
+    if (!trimmedFirstName || !trimmedFamilyName) {
+      toast({
+        title: "Validation Error",
+        description: "First Name and Family Name are required.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const seaServiceErrors: string[] = [];
     (formData.currentCompanySeaService || []).forEach((sea: any, i: number) => {
@@ -6615,9 +6627,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           
           if (crewUuid) {
             setCreatedCrewId(crewUuid);
-            if (onCrewMemberChange && responseData) {
-              onCrewMemberChange(responseData);
-            }
+            // NOTE: We intentionally do NOT call onCrewMemberChange here.
+            // Calling it would update the `crewMember` prop from null to the new record,
+            // which triggers the form-data load effect and overwrites the user's in-progress
+            // edits with the (incomplete) freshly-created record from the API.
+            // The `createdCrewId` state is sufficient — subsequent saves use:
+            //   existingUuid = crewMember?.crewUuid || crewMember?.id || createdCrewId
             
             // Chain save of child tables with the new crewUuid
             // Personal Details (B1 fields)
