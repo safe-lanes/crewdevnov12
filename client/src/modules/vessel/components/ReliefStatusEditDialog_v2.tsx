@@ -464,7 +464,6 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                                     <SelectValue placeholder="Select Status" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="Proposed">Proposed</SelectItem>
                                                     <SelectItem value="Planned">Planned</SelectItem>
                                                     <SelectItem value="Confirmed">Confirmed</SelectItem>
                                                     <SelectItem value="In Transit">In Transit</SelectItem>
