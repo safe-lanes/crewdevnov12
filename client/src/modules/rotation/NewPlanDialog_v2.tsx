@@ -1397,7 +1397,7 @@ function VesselTimelineView({
       ctx.font = '12px sans-serif';
       ctx.textAlign = 'center';
       
-      months.forEach((month) => {
+      months.forEach((month, monthIdx) => {
         // Calculate X position based on actual day offset from startDate
         const monthStart = month.date > startDate ? month.date : startDate;
         const monthEnd = endOfMonth(month.date) < endDate ? endOfMonth(month.date) : endDate;
@@ -1411,6 +1411,16 @@ function VesselTimelineView({
         
         if (x >= timelineStartX && x <= width) {
           ctx.fillText(month.label, x, yOffset + 20);
+        }
+
+        // Draw vertical separator line at month boundary in header (skip first month - no left border needed)
+        if (monthIdx > 0 && monthStartX > timelineStartX) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(monthStartX, yOffset);
+          ctx.lineTo(monthStartX, yOffset + monthHeaderHeight);
+          ctx.stroke();
         }
       });
       
@@ -1446,7 +1456,23 @@ function VesselTimelineView({
         ctx.moveTo(rankColumnWidth - 0.5, y);
         ctx.lineTo(rankColumnWidth - 0.5, y + rowHeight);
         ctx.stroke();
-        
+
+        // Draw vertical month grid lines in the row area (behind bars, matching DueCrewTable style)
+        months.forEach((month, monthIdx) => {
+          const monthStart = month.date > startDate ? month.date : startDate;
+          const monthEnd = endOfMonth(month.date);
+          if (monthEnd < startDate || monthStart > endDate) return;
+          const monthStartX = timelineStartX + ((differenceInDays(monthStart, startDate) / totalDays) * timelineWidth);
+          if (monthIdx > 0 && monthStartX > timelineStartX) {
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(monthStartX - 0.5, y);
+            ctx.lineTo(monthStartX - 0.5, y + rowHeight);
+            ctx.stroke();
+          }
+        });
+
         // Draw existing crew bars (top half) - in timeline area only
         const topBarY = y + 5;
         const topBarHeight = 15;
@@ -1708,9 +1734,10 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   }, [open]);
   
   // Date range state - default is Today - 2 months to Today + 5 months
+  // startOfMonth ensures months align from day 1 for clean grid rendering
   const today = useMemo(() => new Date(), []);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
-    start: addMonths(today, -2),
+    start: startOfMonth(addMonths(today, -2)),
     end: addMonths(today, 5)
   });
   const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
@@ -2704,7 +2731,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                     onClick={() => {
                       const today = new Date();
                       setDateRange({
-                        start: addMonths(today, -2),
+                        start: startOfMonth(addMonths(today, -2)),
                         end: addMonths(today, 5)
                       });
                     }}
