@@ -415,7 +415,7 @@ export const RestHoursRecord = (): JSX.Element => {
 
   return (
     <div className="flex flex-col h-full">
-      <SectionTitleComponents title="RH Records - Office Overview">
+      <SectionTitleComponents title="RH Records - Overview">
         <div className={`flex items-center ${isPhone ? 'flex-col gap-2' : 'flex-row gap-4'}`}>
           <div className="flex items-center gap-1">
             <span className="text-xs text-[#4f5863]">Rest</span>
