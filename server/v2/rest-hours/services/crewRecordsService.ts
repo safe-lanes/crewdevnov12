@@ -286,19 +286,13 @@ export const crewRecordsService = {
             and(
               eq(crewAssignments.vesselUuid, vesselId),
               or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
+              // Date-based overlap: signed on before/during month end
+              // AND still on board or signed off during/after month start
+              lte(crewAssignments.signOnDate, lastDay),
               or(
-                // Case 1: Date-based overlap — signed on before/during month end
-                // AND still on board or signed off during/after month start
-                and(
-                  lte(crewAssignments.signOnDate, lastDay),
-                  or(
-                    isNull(crewAssignments.signOffDate),
-                    eq(crewAssignments.signOffDate, ''),
-                    gte(crewAssignments.signOffDate, firstDay)
-                  )
-                ),
-                // Case 2: Backward compat — currently on board with no sign-on date recorded
-                eq(crewAssignments.isCurrent, true)
+                isNull(crewAssignments.signOffDate),
+                eq(crewAssignments.signOffDate, ''),
+                gte(crewAssignments.signOffDate, firstDay)
               )
             )
           );
