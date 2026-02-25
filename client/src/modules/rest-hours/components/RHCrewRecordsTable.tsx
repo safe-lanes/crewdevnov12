@@ -3,7 +3,7 @@ import { useRef, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { Edit } from 'lucide-react';
+import { Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { RestHoursCrewRecord } from '@shared/schema';
@@ -22,6 +22,7 @@ interface RHCrewRecordsTableProps {
   searchText?: string;
   complianceMode: ComplianceMode;
   opaMode: boolean;
+  isLocked?: boolean;
 }
 
 const ProgressBarRenderer = (params: ICellRendererParams) => {
@@ -300,7 +301,9 @@ const PredictedViolationsWithDatesRenderer = (params: ICellRendererParams) => {
 const ActionsRenderer = (params: ICellRendererParams) => {
   // Defensive guard for AG Grid initialization
   if (!params.colDef || !params.data) return null;
-  
+
+  const isLocked = !!(params.context && params.context.isLocked);
+
   const handleEdit = () => {
     if (params.context && params.context.onEditRecord) {
       params.context.onEditRecord(params.data);
@@ -315,14 +318,18 @@ const ActionsRenderer = (params: ICellRendererParams) => {
         className="h-7 w-7 p-0 hover:bg-gray-100"
         onClick={handleEdit}
         data-testid={`button-edit-crew-${params.data?.id}`}
+        title={isLocked ? 'View record' : 'Edit record'}
       >
-        <Edit className="h-4 w-4 text-gray-600" />
+        {isLocked
+          ? <Eye className="h-4 w-4 text-gray-600" />
+          : <Edit className="h-4 w-4 text-gray-600" />
+        }
       </Button>
     </div>
   );
 };
 
-export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, searchText, complianceMode, opaMode }: RHCrewRecordsTableProps) {
+export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, searchText, complianceMode, opaMode, isLocked = false }: RHCrewRecordsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<RestHoursCrewRecord | null>(null);
@@ -585,7 +592,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           gridOptions={{ theme: 'legacy' }}
-          context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations, onViewNCReport: handleViewNCReport, onViewPredictedNC: handleViewPredictedNC }}
+          context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations, onViewNCReport: handleViewNCReport, onViewPredictedNC: handleViewPredictedNC, isLocked }}
           animateRows={true}
           pagination={true}
           paginationPageSize={20}
@@ -606,6 +613,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           monthValue={selectedRecord.monthValue}
           signOnDate={(selectedRecord as any).signOnDate ?? null}
           signOffDate={(selectedRecord as any).signOffDate ?? null}
+          isLocked={isLocked}
         />
       )}
 

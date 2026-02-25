@@ -223,6 +223,14 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     }
   };
 
+  // Fetch vessel record to get isLocked state
+  const { data: vesselRecordsForPeriod = [] } = useQuery({
+    queryKey: ['/api/v2/rest-hours/vessel-records', selectedVessel, periodValue],
+    queryFn: () => restHoursApiV2.vesselRecords.getAll({ vesselId: selectedVessel, monthValue: periodValue }),
+    enabled: !!selectedVessel && !!periodValue,
+  });
+  const isLocked = !!(vesselRecordsForPeriod[0] as any)?.isLocked;
+
   // Fetch crew records for export using V2 API (matching V1 pattern: vesselId, monthValue)
   const { data: crewRecordsForExport = [] } = useQuery({
     queryKey: ['v2', 'rest-hours', 'crew-records-export', selectedVessel, periodValue],
@@ -494,6 +502,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
           searchText={searchText}
           complianceMode={complianceMode}
           opaMode={opaMode}
+          isLocked={isLocked}
         />
       </div>
         </div>

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { FileText } from 'lucide-react';
+import { FileText, Lock } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { generateRestHoursPDF } from '@/lib/generateRestHoursPDF';
 import { queryClient } from '@/lib/queryClient';
@@ -47,6 +47,7 @@ interface RHRecordingFormProps {
   monthValue: string; // Format: "2025-10" (YYYY-MM)
   signOnDate?: string | null;  // YYYY-MM-DD — day the crew joined this month (if applicable)
   signOffDate?: string | null; // YYYY-MM-DD — day the crew departed this month (if applicable)
+  isLocked?: boolean;
 }
 
 // Violation code descriptions mapping
@@ -238,6 +239,7 @@ export const RHRecordingForm = ({
   monthValue: initialMonthValue,
   signOnDate,
   signOffDate,
+  isLocked = false,
 }: RHRecordingFormProps): JSX.Element => {
   const { toast } = useToast();
   const { userType, myVessels } = usePermissions();
@@ -1343,12 +1345,12 @@ export const RHRecordingForm = ({
         dayOfWeekLabel: record.dayOfWeek,
         marker: isAdvanced ? 'advanced' : isRetarded ? 'retarded' : undefined,
         occurrence: record.occurrence,
-        isDisabled: isAdvanced || isOutOfRange,
+        isDisabled: isAdvanced || isOutOfRange || isLocked,
       });
     });
     
     return rows;
-  }, [dailyRecords, dateLineAdjustment, applicableDayRange]);
+  }, [dailyRecords, dateLineAdjustment, applicableDayRange, isLocked]);
 
   // Check if any date line adjustments exist
   const hasDateLineAdjustments = useMemo(() => {
@@ -1538,17 +1540,26 @@ export const RHRecordingForm = ({
                 <FileText className="h-4 w-4 mr-2" />
                 Export
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleClear}
-                className="h-8 px-3 text-xs"
-                data-testid="button-clear-form"
-              >
-                Clear
-              </Button>
+              {!isLocked && (
+                <Button
+                  variant="outline"
+                  onClick={handleClear}
+                  className="h-8 px-3 text-xs"
+                  data-testid="button-clear-form"
+                >
+                  Clear
+                </Button>
+              )}
             </div>
           </div>
         </DialogHeader>
+
+        {isLocked && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
+            <Lock className="h-4 w-4 flex-shrink-0 text-amber-500" />
+            <span>This record is locked and cannot be edited.</span>
+          </div>
+        )}
 
         {/* Filter Controls */}
         <div className="flex items-center gap-4 py-3 border-b">
@@ -2048,13 +2059,15 @@ export const RHRecordingForm = ({
           >
             {saveMutation.isPending ? 'Saving...' : 'Close'}
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saveMutation.isPending}
-            data-testid="button-save"
-          >
-            {saveMutation.isPending ? 'Saving...' : 'Save'}
-          </Button>
+          {!isLocked && (
+            <Button
+              onClick={handleSave}
+              disabled={saveMutation.isPending}
+              data-testid="button-save"
+            >
+              {saveMutation.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

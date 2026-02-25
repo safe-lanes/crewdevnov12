@@ -43,6 +43,7 @@ export const rhVesselRecordsV2 = pgTable("rh_vessel_records_v2", {
   vesselReviewSubmittedDate: timestamp("vessel_review_submitted_date"),
   officeReviewStatus: text("office_review_status").notNull().default("Due"),
   officeReviewSubmittedDate: timestamp("office_review_submitted_date"),
+  isLocked: boolean("is_locked").notNull().default(false),
   ...auditColumns,
 });
 

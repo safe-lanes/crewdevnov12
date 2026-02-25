@@ -1,9 +1,9 @@
 import { useRef, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { Edit, Users } from 'lucide-react';
+import { Edit, Eye, Lock, LockOpen, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { RestHoursVesselRecord } from '@shared/schema';
@@ -633,6 +633,15 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const [, setLocation] = useLocation();
   const { vessels: v2Vessels, getVesselName } = useV2Vessels();
   const { canEdit, permissions } = usePermissions();
+  const queryClient = useQueryClient();
+
+  const lockMutation = useMutation({
+    mutationFn: ({ uuid, isLocked }: { uuid: string; isLocked: boolean }) =>
+      restHoursApiV2.vesselRecords.toggleLock(uuid, isLocked),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/rest-hours/vessel-records'] });
+    },
+  });
 
   const allVessels = useMemo(() => v2Vessels.map(v => ({
     id: v.id,
@@ -750,6 +759,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
         vesselReviewSubmittedDate: null,
         officeReviewStatus: '',
         officeReviewSubmittedDate: null,
+        isLocked: false,
         createdAt: null,
         updatedAt: null,
       };
@@ -824,24 +834,48 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     // Defensive guard for AG Grid initialization
     if (!params.colDef || !params.data) return null;
     if (!(permissions.length === 0 || canEdit("Record"))) return null;
-    
-    const handleClick = () => {
-      const record = params.data as RestHoursVesselRecordWithName;
-      if (record) {
-        handleEditRecord(record);
-      }
+
+    const record = params.data as RestHoursVesselRecordWithName;
+    const isLocked = !!(record as any).isLocked;
+    const rhVesselUuid = (record as any).rhVesselUuid as string | undefined;
+
+    const handleLockClick = () => {
+      if (!rhVesselUuid) return;
+      lockMutation.mutate({ uuid: rhVesselUuid, isLocked: !isLocked });
+    };
+
+    const handleEditClick = () => {
+      if (record) handleEditRecord(record);
     };
 
     return (
-      <div className="flex items-center justify-center gap-2 h-full">
+      <div className="flex items-center justify-center gap-1 h-full">
         <Button
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0 hover:bg-gray-100"
-          onClick={handleClick}
-          data-testid={`button-edit-${params.data?.id}`}
+          onClick={handleLockClick}
+          disabled={!rhVesselUuid || lockMutation.isPending}
+          data-testid={`button-lock-${params.data?.id}`}
+          title={isLocked ? 'Unlock records' : 'Lock records'}
         >
-          <Edit className="h-4 w-4 text-gray-600" />
+          {isLocked
+            ? <Lock className="h-4 w-4 text-amber-500" />
+            : <LockOpen className="h-4 w-4 text-gray-400" />
+          }
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 hover:bg-gray-100"
+          onClick={handleEditClick}
+          data-testid={`button-edit-${params.data?.id}`}
+          title={isLocked ? 'View records' : 'Edit records'}
+        >
+          {isLocked
+            ? <Eye className="h-4 w-4 text-gray-600" />
+            : <Edit className="h-4 w-4 text-gray-600" />
+          }
         </Button>
       </div>
     );
@@ -933,7 +967,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     },
     {
       headerName: '',
-      width: 60,
+      width: 90,
       cellRenderer: ActionsRenderer,
       sortable: false,
       filter: false,

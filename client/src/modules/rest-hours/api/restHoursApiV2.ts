@@ -71,6 +71,15 @@ export const restHoursApiV2 = {
       return response.json();
     },
 
+    async toggleLock(uuid: string, isLocked: boolean) {
+      const response = await apiRequest('PATCH', `${V2_BASE}/vessel-records/${uuid}`, withAuditUser({ isLocked }));
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(error.message || 'Failed to update lock state');
+      }
+      return response.json();
+    },
+
     async delete(uuid: string) {
       const response = await apiRequest('DELETE', `${V2_BASE}/vessel-records/${uuid}`);
       if (!response.ok) {
