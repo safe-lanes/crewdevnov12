@@ -201,6 +201,8 @@ async function enrichRecordsWithComputedFields(
 
     return {
       ...cleanRecord,
+      signOnDate: _signOnDate ?? null,
+      signOffDate: _signOffDate ?? null,
       predictedNCs: cappedPredictedNCs,
       vesselName,
       violationDates: violationDatesJson,

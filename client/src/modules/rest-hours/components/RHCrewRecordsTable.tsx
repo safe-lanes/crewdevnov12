@@ -604,6 +604,8 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           vesselId={selectedRecord.vesselId}
           rank={selectedRecord.rank}
           monthValue={selectedRecord.monthValue}
+          signOnDate={(selectedRecord as any).signOnDate ?? null}
+          signOffDate={(selectedRecord as any).signOffDate ?? null}
         />
       )}
 

@@ -45,6 +45,8 @@ interface RHRecordingFormProps {
   vesselId: string;
   rank: string;
   monthValue: string; // Format: "2025-10" (YYYY-MM)
+  signOnDate?: string | null;  // YYYY-MM-DD — day the crew joined this month (if applicable)
+  signOffDate?: string | null; // YYYY-MM-DD — day the crew departed this month (if applicable)
 }
 
 // Violation code descriptions mapping
@@ -234,6 +236,8 @@ export const RHRecordingForm = ({
   vesselId: initialVesselId,
   rank: initialRank,
   monthValue: initialMonthValue,
+  signOnDate,
+  signOffDate,
 }: RHRecordingFormProps): JSX.Element => {
   const { toast } = useToast();
   const { userType, myVessels } = usePermissions();
@@ -1284,6 +1288,28 @@ export const RHRecordingForm = ({
     }
   };
 
+  // Compute the inclusive range of days [from, to] that are applicable for this crew member.
+  // Days outside this range must be greyed out and uneditable.
+  const applicableDayRange = useMemo(() => {
+    if (!selectedPeriod) return { from: 1, to: 31 };
+    const [year, month] = selectedPeriod.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const firstDay = `${selectedPeriod}-01`;
+    const lastDay = `${selectedPeriod}-${String(daysInMonth).padStart(2, '0')}`;
+
+    let from = 1;
+    let to = daysInMonth;
+
+    if (signOnDate && signOnDate >= firstDay && signOnDate <= lastDay) {
+      from = parseInt(signOnDate.split('-')[2], 10);
+    }
+    if (signOffDate && signOffDate >= firstDay && signOffDate <= lastDay) {
+      to = parseInt(signOffDate.split('-')[2], 10);
+    }
+
+    return { from, to };
+  }, [selectedPeriod, signOnDate, signOffDate]);
+
   // Generate display rows - now 1:1 mapping since retarded days have separate records
   const displayRows = useMemo(() => {
     const rows: DisplayRow[] = [];
@@ -1308,6 +1334,7 @@ export const RHRecordingForm = ({
       const adjustmentType = adjustmentsMap.get(record.day);
       const isAdvanced = adjustmentType === 'advanced';
       const isRetarded = adjustmentType === 'retarded' && record.occurrence === 'duplicate';
+      const isOutOfRange = record.day < applicableDayRange.from || record.day > applicableDayRange.to;
       
       rows.push({
         baseIndex,
@@ -1316,12 +1343,12 @@ export const RHRecordingForm = ({
         dayOfWeekLabel: record.dayOfWeek,
         marker: isAdvanced ? 'advanced' : isRetarded ? 'retarded' : undefined,
         occurrence: record.occurrence,
-        isDisabled: isAdvanced,
+        isDisabled: isAdvanced || isOutOfRange,
       });
     });
     
     return rows;
-  }, [dailyRecords, dateLineAdjustment]);
+  }, [dailyRecords, dateLineAdjustment, applicableDayRange]);
 
   // Check if any date line adjustments exist
   const hasDateLineAdjustments = useMemo(() => {
@@ -1760,7 +1787,7 @@ export const RHRecordingForm = ({
                         className={`border-t border-b border-l text-center ${isSecondHalf ? 'border-r' : ''}`}
                         style={{
                           padding: '2px',
-                          backgroundColor: getCellColor(record.isPlan, hour),
+                          backgroundColor: isDisabled ? '#F3F4F6' : getCellColor(record.isPlan, hour),
                           borderRightWidth: isSecondHalf ? '1px' : '0.5px',
                           borderRightColor: isSecondHalf ? '#d1d5db' : '#e5e7eb',
                           borderRightStyle: 'solid',
@@ -1847,7 +1874,7 @@ export const RHRecordingForm = ({
                           style={{ width: '100%', minWidth: '15px' }}
                           data-testid={`cell-hour-${record.day}${occurrenceSuffix}-${hourIndex}`}
                         >
-                          {(showPlanning || !record.isPlan) ? hour : ''}
+                          {isDisabled ? '' : (showPlanning || !record.isPlan) ? hour : ''}
                         </div>
                       </td>
                     );
@@ -1855,12 +1882,13 @@ export const RHRecordingForm = ({
                   
                   {/* Hours of Rest (Calendar Day) */}
                   <td className={`border border-gray-300 text-center ${record.isPlan ? 'font-light text-gray-400' : ''}`} style={{ padding: '2px' }}>
-                    {record.hoursOfRest24hr}
+                    {isDisabled ? '' : record.hoursOfRest24hr}
                   </td>
                   
                   {/* Violations */}
                   <td className={`border border-gray-300 text-center font-semibold ${record.isPlan ? 'text-gray-500' : 'text-red-600'}`} style={{ padding: '2px' }}>
                     {(() => {
+                      if (isDisabled) return '';
                       // Hide predicted violations (from plan rows) when Show Planning is unchecked
                       if (record.isPlan && !showPlanning) return '';
                       
@@ -1942,7 +1970,7 @@ export const RHRecordingForm = ({
                           fontWeight: record.isPlan ? 300 : (record.anyPeriodRest24hr < 10 ? 'bold' : 'normal')
                         }}
                       >
-                        {record.anyPeriodRest24hr.toFixed(1)}
+                        {isDisabled ? '' : record.anyPeriodRest24hr.toFixed(1)}
                       </td>
                       
                       {/* Any Period: Rest in 7 days */}
@@ -1954,7 +1982,7 @@ export const RHRecordingForm = ({
                           fontWeight: record.isPlan ? 300 : (record.anyPeriodRest7day < 77 ? 'bold' : 'normal')
                         }}
                       >
-                        {record.anyPeriodRest7day.toFixed(1)}
+                        {isDisabled ? '' : record.anyPeriodRest7day.toFixed(1)}
                       </td>
                     </>
                   )}
@@ -1970,7 +1998,7 @@ export const RHRecordingForm = ({
                           fontWeight: record.isPlan ? 300 : (record.anyPeriodWork24hr > 14 ? 'bold' : 'normal')
                         }}
                       >
-                        {record.anyPeriodWork24hr.toFixed(1)}
+                        {isDisabled ? '' : record.anyPeriodWork24hr.toFixed(1)}
                       </td>
                       
                       {/* Any Period: Work in 7 days */}
@@ -1982,7 +2010,7 @@ export const RHRecordingForm = ({
                           fontWeight: record.isPlan ? 300 : (record.anyPeriodWork7day > 72 ? 'bold' : 'normal')
                         }}
                       >
-                        {record.anyPeriodWork7day.toFixed(1)}
+                        {isDisabled ? '' : record.anyPeriodWork7day.toFixed(1)}
                       </td>
                     </>
                   )}
