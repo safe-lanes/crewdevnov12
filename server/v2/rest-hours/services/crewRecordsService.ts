@@ -42,6 +42,14 @@ function formatDateDisplay(date: string): string {
   return `${String(day).padStart(2, '0')}-${months[monthIdx]}-${year}`;
 }
 
+function formatMonthDisplay(monthValue: string): string {
+  if (!monthValue) return '';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const [year, month] = monthValue.split('-');
+  const monthIdx = parseInt(month, 10) - 1;
+  return `${months[monthIdx]}-${year}`;
+}
+
 function buildSignOnOffInfo(
   signOnDate: string | null | undefined,
   signOffDate: string | null | undefined,
@@ -362,7 +370,7 @@ export const crewRecordsService = {
             crewMemberId: crewId,
             rank: crew.presentRank || 'Unknown',
             name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim() || 'Unknown',
-            month: monthValue,
+            month: formatMonthDisplay(monthValue),
             monthValue: monthValue,
             signOnOffInfo,
             recordingStatusPercent: 0,
