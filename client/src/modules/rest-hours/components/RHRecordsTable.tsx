@@ -855,7 +855,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
       if (!rhVesselUuid) return;
       const hasPerm = isLocked ? hasUnlockPermission : hasLockPermission;
       if (!hasPerm) {
-        toast({ title: "You don't have permission to lock and unlock", variant: 'destructive' });
+        toast({ title: isLocked ? "You don't have permission to unlock" : "You don't have permission to lock", variant: 'destructive' });
         return;
       }
       params.context?.onToggleLock?.(rhVesselUuid, !isLocked);
