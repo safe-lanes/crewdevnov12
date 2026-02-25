@@ -5491,7 +5491,37 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       });
       return;
     }
-    
+
+    // Cross-section period overlap validation (E1 + E2 combined)
+    const allSeaRows = [
+      ...(formData.currentCompanySeaService || []),
+      ...(formData.externalSeaService || []),
+    ].filter((r: any) => !!(r.from || r.fromDate));
+
+    for (let i = 0; i < allSeaRows.length; i++) {
+      for (let j = i + 1; j < allSeaRows.length; j++) {
+        const a = allSeaRows[i] as any;
+        const b = allSeaRows[j] as any;
+        const aFrom = a.from || a.fromDate || '';
+        const aTo   = (a.to && a.to !== '') ? a.to : ((a.toDate && a.toDate !== '') ? a.toDate : null);
+        const bFrom = b.from || b.fromDate || '';
+        const bTo   = (b.to && b.to !== '') ? b.to : ((b.toDate && b.toDate !== '') ? b.toDate : null);
+        if (!aFrom || !bFrom) continue;
+        // No overlap only if one period ends strictly before the other starts
+        const noOverlap =
+          (aTo !== null && aTo < bFrom) ||
+          (bTo !== null && bTo < aFrom);
+        if (!noOverlap) {
+          toast({
+            title: "Validation Error",
+            description: "Sea service already exists for the selected period.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
+
     // Include the uploaded photo in the data to be saved
     const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
     
