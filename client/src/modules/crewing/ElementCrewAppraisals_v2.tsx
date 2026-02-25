@@ -158,7 +158,6 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
 export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   const { canEdit, canDelete, permissions, userType, myVessels } = usePermissions();
   const isShipUser = userType === 'Ship';
-  const isMultiVesselShipUser = isShipUser && myVessels.length > 1;
   const viewport = useViewport();
   const isPhone = viewport === 'phone';
   const isTablet = viewport === 'tablet';
@@ -227,17 +226,10 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     return [];
   }, [vesselsV2Data]);
 
-  const myVesselMasterData = useMemo(() => {
-    if (!isShipUser) return [];
-    const myVesselNames = new Set(myVessels.map(v => v.vessel));
-    return vesselMasterData.filter(v => myVesselNames.has(v.name));
-  }, [isShipUser, myVessels, vesselMasterData]);
-
   const shipUserVesselName = useMemo(() => {
-    if (!isShipUser) return null;
-    if (filters.vessel) return filters.vessel;
-    return myVessels[0]?.vessel ?? null;
-  }, [isShipUser, filters.vessel, myVessels]);
+    if (!isShipUser || myVessels.length === 0) return null;
+    return myVessels[0].vessel;
+  }, [isShipUser, myVessels]);
 
   useEffect(() => {
     if (isShipUser && myVessels.length > 0 && !filters.vessel) {
@@ -670,21 +662,10 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                   </SelectContent>
                 </Select>
 
-                {isShipUser && !isMultiVesselShipUser ? (
+                {isShipUser ? (
                   <div className="h-8 w-28 flex items-center px-3 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 shrink-0" data-testid="vessel-name-ship-user">
                     {shipUserVesselName || 'No vessel'}
                   </div>
-                ) : isMultiVesselShipUser ? (
-                  <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
-                    <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-vessel-ship-user">
-                      <SelectValue placeholder="Vessel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {myVesselMasterData.map((vessel) => (
-                        <SelectItem key={vessel.entryId} value={vessel.name}>{vessel.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 ) : (
                   <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
                     <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-vessel">
@@ -779,21 +760,10 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                     </SelectContent>
                   </Select>
 
-                  {isShipUser && !isMultiVesselShipUser ? (
+                  {isShipUser ? (
                     <div className="h-8 w-full flex items-center px-3 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700" data-testid="vessel-name-ship-user">
                       {shipUserVesselName || 'No vessel'}
                     </div>
-                  ) : isMultiVesselShipUser ? (
-                    <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
-                      <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel-ship-user">
-                        <SelectValue placeholder="Vessel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {myVesselMasterData.map((vessel) => (
-                          <SelectItem key={vessel.entryId} value={vessel.name}>{vessel.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   ) : (
                     <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
                       <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel">
@@ -893,21 +863,10 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                     </SelectContent>
                   </Select>
 
-                  {isShipUser && !isMultiVesselShipUser ? (
+                  {isShipUser ? (
                     <div className="h-8 w-full flex items-center px-3 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700" data-testid="vessel-name-ship-user">
                       {shipUserVesselName || 'No vessel'}
                     </div>
-                  ) : isMultiVesselShipUser ? (
-                    <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
-                      <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel-ship-user">
-                        <SelectValue placeholder="Vessel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {myVesselMasterData.map((vessel) => (
-                          <SelectItem key={vessel.entryId} value={vessel.name}>{vessel.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   ) : (
                     <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
                       <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel">

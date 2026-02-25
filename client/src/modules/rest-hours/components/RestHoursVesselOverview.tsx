@@ -96,14 +96,6 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   const { userType, myVessels, canView, permissions } = usePermissions();
   const isShipUser = userType === 'Ship';
 
-  const isMultiVesselShipUser = isShipUser && myVessels.length > 1;
-
-  const myVesselsFiltered = useMemo(() => {
-    if (!isShipUser) return [];
-    const myNames = new Set(myVessels.map(v => v.vessel));
-    return vessels.filter(v => myNames.has(v.vessel));
-  }, [isShipUser, myVessels, vessels]);
-
   const allowedPages = useMemo(() => {
     const all = ["dashboard", "record", "plan"];
     if (permissions.length === 0) return all;
@@ -175,17 +167,13 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   };
 
   const handleClearFilters = () => {
-    if (isShipUser && !isMultiVesselShipUser) return;
+    if (isShipUser) return;
     const defaultOption = periodOptions[0]?.value || "";
     if (defaultOption) {
       const [year, month] = defaultOption.split('-').map(Number);
       setStorePeriodValue({ mode: 'year-month', year, month });
     }
-    if (isMultiVesselShipUser && myVesselsFiltered.length > 0) {
-      setPlanVesselId(myVesselsFiltered[0].vesselUuid || "");
-    } else if (!isShipUser) {
-      setPlanVesselId(urlVesselId || "");
-    }
+    setPlanVesselId(urlVesselId || "");
     setSelectedRank("");
     setSearchText("");
   };
@@ -426,58 +414,22 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         {/* Vessel Single Select */}
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-[#4f5863] dark:text-neutral-300">Vessel</Label>
-          {isShipUser && !isMultiVesselShipUser ? (
-            <Select value={selectedVessel} onValueChange={handleVesselChange} disabled>
-              <SelectTrigger
-                className="h-8 w-52 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                disabled
-                data-testid="select-vessel"
-              >
-                <SelectValue placeholder={vesselsLoading ? "Loading..." : "Select Vessel"} />
-              </SelectTrigger>
-              <SelectContent>
-                {vessels.map((vessel) => (
-                  <SelectItem key={vessel.vesselUuid || ''} value={vessel.vesselUuid || ''}>
-                    {vessel.vessel}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : isMultiVesselShipUser ? (
-            <Select value={selectedVessel} onValueChange={handleVesselChange}>
-              <SelectTrigger
-                className="h-8 w-52 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                disabled={vesselsLoading}
-                data-testid="select-vessel-ship-user"
-              >
-                <SelectValue placeholder={vesselsLoading ? "Loading..." : "Select Vessel"} />
-              </SelectTrigger>
-              <SelectContent>
-                {myVesselsFiltered.map((vessel) => (
-                  <SelectItem key={vessel.vesselUuid || ''} value={vessel.vesselUuid || ''}>
-                    {vessel.vessel}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Select value={selectedVessel} onValueChange={handleVesselChange}>
-              <SelectTrigger
-                className="h-8 w-52 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
-                disabled={vesselsLoading}
-                data-testid="select-vessel"
-              >
-                <SelectValue placeholder={vesselsLoading ? "Loading..." : "Select Vessel"} />
-              </SelectTrigger>
-              <SelectContent>
-                {vessels.map((vessel) => (
-                  <SelectItem key={vessel.vesselUuid || ''} value={vessel.vesselUuid || ''}>
-                    {vessel.vessel}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={selectedVessel} onValueChange={handleVesselChange} disabled={isShipUser}>
+            <SelectTrigger 
+              className="h-8 w-52 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
+              disabled={vesselsLoading || isShipUser}
+              data-testid="select-vessel"
+            >
+              <SelectValue placeholder={vesselsLoading ? "Loading..." : "Select Vessel"} />
+            </SelectTrigger>
+            <SelectContent>
+              {vessels.map((vessel) => (
+                <SelectItem key={vessel.vesselUuid || ''} value={vessel.vesselUuid || ''}>
+                  {vessel.vessel}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Rank Dropdown */}
@@ -525,7 +477,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
             variant="outline"
             onClick={handleClearFilters}
             className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-            disabled={isShipUser && !isMultiVesselShipUser}
+            disabled={isShipUser}
             data-testid="button-clear-filters"
           >
             Clear

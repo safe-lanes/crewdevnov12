@@ -27,7 +27,6 @@ export function PromotionsModule() {
     
     const { userType, myVessels } = usePermissions();
     const isShipUser = userType === 'Ship';
-    const isMultiVesselShipUser = isShipUser && myVessels.length > 1;
 
     const { vessels: vesselOptions } = useVesselLookup();
     
@@ -45,12 +44,6 @@ export function PromotionsModule() {
         return DEFAULT_DROPDOWN_VESSEL_TYPES;
     }, [vesselTypeMasterDataRaw]);
 
-    const myVesselOptions = useMemo(() => {
-        if (!isShipUser) return [];
-        const myVesselNames = new Set(myVessels.map(v => v.vessel));
-        return vesselOptions.filter(v => myVesselNames.has(v.name));
-    }, [isShipUser, myVessels, vesselOptions]);
-
     useEffect(() => {
         if (isShipUser && myVessels.length > 0 && vesselOptions.length > 0 && !vessel) {
             const myVesselName = myVessels[0].vessel;
@@ -62,13 +55,9 @@ export function PromotionsModule() {
     }, [isShipUser, myVessels, vesselOptions, vessel]);
 
     const shipUserVesselName = useMemo(() => {
-        if (!isShipUser) return null;
-        if (vessel) {
-            const matched = vesselOptions.find(v => v.entryId === vessel);
-            if (matched) return matched.name;
-        }
-        return myVessels[0]?.vessel ?? null;
-    }, [isShipUser, vessel, vesselOptions, myVessels]);
+        if (!isShipUser || myVessels.length === 0) return null;
+        return myVessels[0].vessel;
+    }, [isShipUser, myVessels]);
 
     const handleClearFilters = () => {
         setSearchName('');
@@ -134,21 +123,10 @@ export function PromotionsModule() {
                             </SelectContent>
                         </Select>
 
-                        {isShipUser && !isMultiVesselShipUser ? (
+                        {isShipUser ? (
                             <div className="w-[150px] h-8 flex items-center px-3 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700" data-testid="vessel-name-ship-user">
                                 {shipUserVesselName || 'No vessel'}
                             </div>
-                        ) : isMultiVesselShipUser ? (
-                            <Select value={vessel} onValueChange={setVessel}>
-                                <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel-ship-user">
-                                    <SelectValue placeholder="Vessel" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {myVesselOptions.map((v) => (
-                                        <SelectItem key={v.entryId} value={v.entryId}>{v.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
                         ) : (
                             <Select value={vessel} onValueChange={setVessel}>
                                 <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel">
