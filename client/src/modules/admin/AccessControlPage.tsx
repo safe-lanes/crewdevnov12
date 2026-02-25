@@ -65,6 +65,9 @@ const PERMISSION_LABELS: Record<keyof Permission, string> = {
   candelete: "Delete",
 };
 
+const LOCK_ACTION_MENUS = new Set(["rh lock", "rh unlock"]);
+const LOCK_ACTION_DISABLED_KEYS = new Set<keyof Permission>(["canedit", "candelete"]);
+
 function buildMenuTree(menus: MenuItemApi[]): MenuTreeItem[] {
   const map = new Map<string, MenuTreeItem>();
   const roots: MenuTreeItem[] = [];
@@ -180,14 +183,14 @@ export default function AccessControlPage() {
   );
 
   const handleSelectAll = useCallback(
-    (menuMuid: string, checked: boolean) => {
+    (menuMuid: string, checked: boolean, restricted = false) => {
       setLocalPermissions((prev) => ({
         ...prev,
         [menuMuid]: {
           canview: checked,
           cancreate: checked,
-          canedit: checked,
-          candelete: checked,
+          canedit: restricted ? false : checked,
+          candelete: restricted ? false : checked,
         },
       }));
       setIsDirty(true);
@@ -230,14 +233,17 @@ export default function AccessControlPage() {
   const renderMenuRow = (item: MenuTreeItem, depth: number = 0) => {
     const hasChildren = item.children.length > 0;
     const isExpanded = expandedMenus?.has(item.muid) ?? false;
+    const isLockMenu = LOCK_ACTION_MENUS.has(item.name.toLowerCase());
     const perms = localPermissions[item.muid] || {
       canview: false,
       cancreate: false,
       canedit: false,
       candelete: false,
     };
-    const allSelected = perms.canview && perms.cancreate && perms.canedit && perms.candelete;
-    const someSelected = !allSelected && (perms.canview || perms.cancreate || perms.canedit || perms.candelete);
+    const allSelected = isLockMenu
+      ? perms.canview && perms.cancreate
+      : perms.canview && perms.cancreate && perms.canedit && perms.candelete;
+    const someSelected = !allSelected && (perms.canview || perms.cancreate || (!isLockMenu && (perms.canedit || perms.candelete)));
 
     return (
       <div key={item.muid}>
@@ -272,27 +278,31 @@ export default function AccessControlPage() {
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}
               onCheckedChange={() =>
-                handleSelectAll(item.muid, !allSelected)
+                handleSelectAll(item.muid, !allSelected, isLockMenu)
               }
               className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3] data-[state=indeterminate]:bg-[#52baf3] data-[state=indeterminate]:border-[#52baf3]"
               data-testid={`checkbox-select-all-${item.muid}`}
             />
           </div>
-          {PERMISSION_KEYS.map((key) => (
-            <div
-              key={key}
-              className="flex items-center justify-center py-2.5"
-            >
-              <Checkbox
-                checked={perms[key]}
-                onCheckedChange={(checked) =>
-                  handlePermissionChange(item.muid, key, !!checked)
-                }
-                className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3]"
-                data-testid={`checkbox-${item.muid}-${key}`}
-              />
-            </div>
-          ))}
+          {PERMISSION_KEYS.map((key) => {
+            const isDisabledKey = isLockMenu && LOCK_ACTION_DISABLED_KEYS.has(key);
+            return (
+              <div
+                key={key}
+                className={`flex items-center justify-center py-2.5 ${isDisabledKey ? "opacity-40 cursor-not-allowed" : ""}`}
+              >
+                <Checkbox
+                  checked={isDisabledKey ? false : perms[key]}
+                  onCheckedChange={isDisabledKey ? undefined : (checked) =>
+                    handlePermissionChange(item.muid, key, !!checked)
+                  }
+                  disabled={isDisabledKey}
+                  className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3]"
+                  data-testid={`checkbox-${item.muid}-${key}`}
+                />
+              </div>
+            );
+          })}
         </div>
         {hasChildren && isExpanded && (
           <div>
