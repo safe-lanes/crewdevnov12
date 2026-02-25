@@ -620,6 +620,9 @@ export function VesselModule_v2(): JSX.Element {
         const pageToMenu: Record<string, string> = { "vessel-database": "Vessel Database" };
         return all.filter(p => canView(pageToMenu[p] || p));
     }, [permissions, canView]);
+
+    const showAppraisalColumn = permissions.length === 0 || canView('Appraisal');
+    const showHandoverColumn = permissions.length === 0 || canView('Handover');
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
     const [vesselValue, setVesselValue] = useState("");
     const [fleetValue, setFleetValue] = useState("");
@@ -1576,8 +1579,8 @@ export function VesselModule_v2(): JSX.Element {
                                                     {showArchived ? (
                                                         <>
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Actual Sign Off Date</TableHead>
-                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>
-                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>
+                                                            {showAppraisalColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
+                                                            {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
                                                         </>
                                                     ) : (
                                                         <>
@@ -1585,8 +1588,8 @@ export function VesselModule_v2(): JSX.Element {
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Planned S/Off</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-40 sticky top-0 z-30 bg-[#52baf3]">Doc. Expiring (2m)/Expired</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Medical Expiring</TableHead>
-                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>
-                                                            <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>
+                                                            {showAppraisalColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
+                                                            {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
                                                             <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
                                                         </>
                                                     )}
@@ -1649,73 +1652,77 @@ export function VesselModule_v2(): JSX.Element {
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-signoff-date-${index + 1}`}>
                                                                         {formatDateOnly(planning.signOffDate || planning.archivedDate)}
                                                                     </TableCell>
-                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
-                                                                        {(() => {
-                                                                            const crewAppraisals = allAppraisals
-                                                                                .filter((a: any) => 
-                                                                                    a.crewMemberId === planning.crewMemberId || a.crewMemberId === planning.crewUuid
-                                                                                )
-                                                                                .sort((a: any, b: any) => {
-                                                                                    const dateA = new Date(a.updatedAt || a.createdAt || 0);
-                                                                                    const dateB = new Date(b.updatedAt || b.createdAt || 0);
-                                                                                    return dateB.getTime() - dateA.getTime();
-                                                                                });
-                                                                            const hasAppraisal = crewAppraisals.length > 0;
-                                                                            const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
-                                                                            const status = latestAppraisal?.status?.toLowerCase();
-                                                                            const isDraft = status === 'draft' || status === 'preliminary';
-                                                                            const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
-                                                                            const buttonConfig = isDraft ? {
-                                                                                text: buttonText,
-                                                                                appraisalId: latestAppraisal?.id,
-                                                                                status: latestAppraisal?.status
-                                                                            } : {
-                                                                                text: 'Add',
-                                                                                appraisalId: undefined,
-                                                                                status: undefined
-                                                                            };
-                                                                            return (
-                                                                                <Button
-                                                                                    variant="ghost"
-                                                                                    size="sm"
-                                                                                    className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                    onClick={() => handleAppraisalClick(planning, buttonConfig)}
-                                                                                    data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
-                                                                                >
-                                                                                    {buttonText}
-                                                                                </Button>
-                                                                            );
-                                                                        })()}
-                                                                    </TableCell>
-                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
-                                                                        {(() => {
-                                                                            const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments) || (planning.handoverAttachmentCount || 0);
-                                                                            const hasAttachments = attachmentCount > 0;
-                                                                            const handoverDate = formatDateOnly(planning.handOverDate);
-                                                                            return (
-                                                                                <div className="flex flex-col gap-0.5">
-                                                                                    {handoverDate && <span className="text-gray-600">{handoverDate}</span>}
+                                                                    {showAppraisalColumn && (
+                                                                        <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
+                                                                            {(() => {
+                                                                                const crewAppraisals = allAppraisals
+                                                                                    .filter((a: any) => 
+                                                                                        a.crewMemberId === planning.crewMemberId || a.crewMemberId === planning.crewUuid
+                                                                                    )
+                                                                                    .sort((a: any, b: any) => {
+                                                                                        const dateA = new Date(a.updatedAt || a.createdAt || 0);
+                                                                                        const dateB = new Date(b.updatedAt || b.createdAt || 0);
+                                                                                        return dateB.getTime() - dateA.getTime();
+                                                                                    });
+                                                                                const hasAppraisal = crewAppraisals.length > 0;
+                                                                                const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                const status = latestAppraisal?.status?.toLowerCase();
+                                                                                const isDraft = status === 'draft' || status === 'preliminary';
+                                                                                const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
+                                                                                const buttonConfig = isDraft ? {
+                                                                                    text: buttonText,
+                                                                                    appraisalId: latestAppraisal?.id,
+                                                                                    status: latestAppraisal?.status
+                                                                                } : {
+                                                                                    text: 'Add',
+                                                                                    appraisalId: undefined,
+                                                                                    status: undefined
+                                                                                };
+                                                                                return (
                                                                                     <Button
-                                                                                        variant="link"
+                                                                                        variant="ghost"
                                                                                         size="sm"
-                                                                                        onClick={() => {
-                                                                                            setHandoverDialogData({
-                                                                                                planningId: planning.planUuid,
-                                                                                                vesselId: selectedVessel?.vesselId || '',
-                                                                                                crewName: planning.crewMemberName || '',
-                                                                                                rank: planning.rank || ''
-                                                                                            });
-                                                                                            setHandoverDialogOpen(true);
-                                                                                        }}
-                                                                                        className={`p-0 h-auto ${hasAttachments ? 'text-green-600' : 'text-blue-600'}`}
-                                                                                        data-testid={`button-handover-${index + 1}`}
+                                                                                        className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                                        onClick={() => handleAppraisalClick(planning, buttonConfig)}
+                                                                                        data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
                                                                                     >
-                                                                                        {hasAttachments ? 'View' : 'Add'}
+                                                                                        {buttonText}
                                                                                     </Button>
-                                                                                </div>
-                                                                            );
-                                                                        })()}
-                                                                    </TableCell>
+                                                                                );
+                                                                            })()}
+                                                                        </TableCell>
+                                                                    )}
+                                                                    {showHandoverColumn && (
+                                                                        <TableCell className="text-xs text-gray-700" data-testid={`cell-handover-${index + 1}`}>
+                                                                            {(() => {
+                                                                                const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments) || (planning.handoverAttachmentCount || 0);
+                                                                                const hasAttachments = attachmentCount > 0;
+                                                                                const handoverDate = formatDateOnly(planning.handOverDate);
+                                                                                return (
+                                                                                    <div className="flex flex-col gap-0.5">
+                                                                                        {handoverDate && <span className="text-gray-600">{handoverDate}</span>}
+                                                                                        <Button
+                                                                                            variant="link"
+                                                                                            size="sm"
+                                                                                            onClick={() => {
+                                                                                                setHandoverDialogData({
+                                                                                                    planningId: planning.planUuid,
+                                                                                                    vesselId: selectedVessel?.vesselId || '',
+                                                                                                    crewName: planning.crewMemberName || '',
+                                                                                                    rank: planning.rank || ''
+                                                                                                });
+                                                                                                setHandoverDialogOpen(true);
+                                                                                            }}
+                                                                                            className={`p-0 h-auto ${hasAttachments ? 'text-green-600' : 'text-blue-600'}`}
+                                                                                            data-testid={`button-handover-${index + 1}`}
+                                                                                        >
+                                                                                            {hasAttachments ? 'View' : 'Add'}
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                );
+                                                                            })()}
+                                                                        </TableCell>
+                                                                    )}
                                                                 </>
                                                             ) : (
                                                                 <>
@@ -1778,69 +1785,73 @@ export function VesselModule_v2(): JSX.Element {
                                                                             return <span className={colorClass}>{medExpiry}</span>;
                                                                         })()}
                                                                     </TableCell>
-                                                                    <TableCell className="text-xs" data-testid={`cell-appraisal-${index + 1}`}>
-                                                                        {(() => {
-                                                                            const crewAppraisals = allAppraisals
-                                                                                .filter((a: any) => 
-                                                                                    a.crewMemberId === planning.crewMemberId || a.crewMemberId === planning.crewUuid
-                                                                                )
-                                                                                .sort((a: any, b: any) => {
-                                                                                    const dateA = new Date(a.updatedAt || a.createdAt || 0);
-                                                                                    const dateB = new Date(b.updatedAt || b.createdAt || 0);
-                                                                                    return dateB.getTime() - dateA.getTime();
-                                                                                });
-                                                                            const hasAppraisal = crewAppraisals.length > 0;
-                                                                            const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
-                                                                            const status = latestAppraisal?.status?.toLowerCase();
-                                                                            const isDraft = status === 'draft' || status === 'preliminary';
-                                                                            const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
-                                                                            const buttonConfig = isDraft ? {
-                                                                                text: buttonText,
-                                                                                appraisalId: latestAppraisal?.id,
-                                                                                status: latestAppraisal?.status
-                                                                            } : {
-                                                                                text: 'Add',
-                                                                                appraisalId: undefined,
-                                                                                status: undefined
-                                                                            };
-                                                                            return (
-                                                                                <Button
-                                                                                    variant="ghost"
-                                                                                    size="sm"
-                                                                                    className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                    onClick={() => handleAppraisalClick(planning, buttonConfig)}
-                                                                                    data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
-                                                                                >
-                                                                                    {buttonText}
-                                                                                </Button>
-                                                                            );
-                                                                        })()}
-                                                                    </TableCell>
-                                                                    <TableCell className="text-xs" data-testid={`cell-handover-${index + 1}`}>
-                                                                        {(() => {
-                                                                            const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments) || (planning.handoverAttachmentCount || 0);
-                                                                            const hasAttachments = attachmentCount > 0;
-                                                                            return (
-                                                                                <Button
-                                                                                    variant="link"
-                                                                                    size="sm"
-                                                                                    onClick={() => {
-                                                                                        setHandoverDialogData({
-                                                                                            planningId: planning.planUuid,
-                                                                                            vesselId: selectedVessel?.vesselId || '',
-                                                                                            crewName: planning.crewMemberName || '',
-                                                                                            rank: planning.rank || ''
-                                                                                        });
-                                                                                        setHandoverDialogOpen(true);
-                                                                                    }}
-                                                                                    className={hasAttachments ? 'text-green-600' : 'text-blue-600'}
-                                                                                    data-testid={`button-handover-${index + 1}`}
-                                                                                >
-                                                                                    {hasAttachments ? 'View' : 'Add'}
-                                                                                </Button>
-                                                                            );
-                                                                        })()}
-                                                                    </TableCell>
+                                                                    {showAppraisalColumn && (
+                                                                        <TableCell className="text-xs" data-testid={`cell-appraisal-${index + 1}`}>
+                                                                            {(() => {
+                                                                                const crewAppraisals = allAppraisals
+                                                                                    .filter((a: any) => 
+                                                                                        a.crewMemberId === planning.crewMemberId || a.crewMemberId === planning.crewUuid
+                                                                                    )
+                                                                                    .sort((a: any, b: any) => {
+                                                                                        const dateA = new Date(a.updatedAt || a.createdAt || 0);
+                                                                                        const dateB = new Date(b.updatedAt || b.createdAt || 0);
+                                                                                        return dateB.getTime() - dateA.getTime();
+                                                                                    });
+                                                                                const hasAppraisal = crewAppraisals.length > 0;
+                                                                                const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                const status = latestAppraisal?.status?.toLowerCase();
+                                                                                const isDraft = status === 'draft' || status === 'preliminary';
+                                                                                const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
+                                                                                const buttonConfig = isDraft ? {
+                                                                                    text: buttonText,
+                                                                                    appraisalId: latestAppraisal?.id,
+                                                                                    status: latestAppraisal?.status
+                                                                                } : {
+                                                                                    text: 'Add',
+                                                                                    appraisalId: undefined,
+                                                                                    status: undefined
+                                                                                };
+                                                                                return (
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                                        onClick={() => handleAppraisalClick(planning, buttonConfig)}
+                                                                                        data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
+                                                                                    >
+                                                                                        {buttonText}
+                                                                                    </Button>
+                                                                                );
+                                                                            })()}
+                                                                        </TableCell>
+                                                                    )}
+                                                                    {showHandoverColumn && (
+                                                                        <TableCell className="text-xs" data-testid={`cell-handover-${index + 1}`}>
+                                                                            {(() => {
+                                                                                const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments) || (planning.handoverAttachmentCount || 0);
+                                                                                const hasAttachments = attachmentCount > 0;
+                                                                                return (
+                                                                                    <Button
+                                                                                        variant="link"
+                                                                                        size="sm"
+                                                                                        onClick={() => {
+                                                                                            setHandoverDialogData({
+                                                                                                planningId: planning.planUuid,
+                                                                                                vesselId: selectedVessel?.vesselId || '',
+                                                                                                crewName: planning.crewMemberName || '',
+                                                                                                rank: planning.rank || ''
+                                                                                            });
+                                                                                            setHandoverDialogOpen(true);
+                                                                                        }}
+                                                                                        className={hasAttachments ? 'text-green-600' : 'text-blue-600'}
+                                                                                        data-testid={`button-handover-${index + 1}`}
+                                                                                    >
+                                                                                        {hasAttachments ? 'View' : 'Add'}
+                                                                                    </Button>
+                                                                                );
+                                                                            })()}
+                                                                        </TableCell>
+                                                                    )}
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-view-${index + 1}`}>
                                                                         <Button 
                                                                             variant="ghost" 
