@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react';
+import { useRef, useMemo, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { AgGridReact } from 'ag-grid-react';
@@ -643,6 +643,10 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     },
   });
 
+  const handleLockToggle = useCallback((uuid: string, newIsLocked: boolean) => {
+    lockMutation.mutate({ uuid, isLocked: newIsLocked });
+  }, [lockMutation]);
+
   const allVessels = useMemo(() => v2Vessels.map(v => ({
     id: v.id,
     entryId: v.vesselUuid ?? '',
@@ -841,7 +845,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
 
     const handleLockClick = () => {
       if (!rhVesselUuid) return;
-      lockMutation.mutate({ uuid: rhVesselUuid, isLocked: !isLocked });
+      params.context?.onToggleLock?.(rhVesselUuid, !isLocked);
     };
 
     const handleEditClick = () => {
@@ -855,12 +859,12 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
           size="sm"
           className="h-7 w-7 p-0 hover:bg-gray-100"
           onClick={handleLockClick}
-          disabled={!rhVesselUuid || lockMutation.isPending}
+          disabled={!rhVesselUuid || !!params.context?.lockPending}
           data-testid={`button-lock-${params.data?.id}`}
           title={isLocked ? 'Unlock records' : 'Lock records'}
         >
           {isLocked
-            ? <Lock className="h-4 w-4 text-amber-500" />
+            ? <Lock className="h-4 w-4 text-red-500" />
             : <LockOpen className="h-4 w-4 text-gray-400" />
           }
         </Button>
@@ -1006,7 +1010,9 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
             onViewNCs: handleViewNCs,
             onViewPredictedNCs: handleViewPredictedNCs,
             onViewVesselReview: handleViewVesselReview,
-            onViewOfficeReview: handleViewOfficeReview
+            onViewOfficeReview: handleViewOfficeReview,
+            onToggleLock: handleLockToggle,
+            lockPending: lockMutation.isPending,
           }}
           animateRows={true}
           pagination={true}
