@@ -420,6 +420,20 @@ function CrewColumn({
     queryKey: [`/api/v2/rotation/crew/by-rank/${normalizedRank}`],
   });
 
+  // Fetch all Proposed (pending approval) rotation entries for Blue colour highlighting
+  const { data: allProposals = [] } = useQuery<ProposalEntry[]>({
+    queryKey: ['/api/v2/rotation/proposals'],
+  });
+
+  // Build Set of crew UUIDs with pending proposals (Proposed but not yet Deployed or Rejected)
+  const proposedCrewIds = useMemo(() => {
+    return new Set(
+      allProposals
+        .filter(p => p.proposalStatus !== 'Deployed' && p.proposalStatus !== 'Rejected')
+        .map(p => p.crewUuid)
+    );
+  }, [allProposals]);
+
   // Fetch Manning Agents from V2 dedicated table
   const { data: manningAgentsData } = useManningAgentsV2();
 
@@ -1926,24 +1940,10 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     queryKey: ['/api/v2/vessel/planning'],
   });
 
-  // Fetch all Proposed (pending approval) rotation entries for Blue colour highlighting
-  const { data: allProposals = [] } = useQuery<ProposalEntry[]>({
-    queryKey: ['/api/v2/rotation/proposals'],
-  });
-
   // Create Set of currently deployed crew UUIDs for O(1) lookup
   const currentlyDeployedCrewIds = useMemo(() => {
     return new Set(existingCrew.map(crew => crew.crewUuid));
   }, [existingCrew]);
-
-  // Build Set of crew UUIDs with pending proposals (Proposed but not yet Deployed or Rejected)
-  const proposedCrewIds = useMemo(() => {
-    return new Set(
-      allProposals
-        .filter(p => p.proposalStatus !== 'Deployed' && p.proposalStatus !== 'Rejected')
-        .map(p => p.crewUuid)
-    );
-  }, [allProposals]);
 
   // Get vessel IDs for the selected vessels (for conflict detection)
   const selectedVesselIds = useMemo(() => {
