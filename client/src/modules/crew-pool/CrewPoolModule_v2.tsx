@@ -9,6 +9,7 @@ import CrewPoolSideBar from './CrewPoolSideBar';
 import MainLayout from '../../components/main/MainLayout';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
+import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -915,21 +916,38 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                             <div className="text-red-500">Error loading crew members: {crewError.message}</div>
                         </div>
                     ) : (
-                        <AgGridTable
-                            rowData={crewData}
-                            columnDefs={columnDefs}
-                            onGridReady={onGridReady}
-                            width="100%"
-                            enableExport={!isPhone}
-                            enableSideBar={!isSmallScreen}
-                            enableStatusBar={false}
-                            enableRowGrouping={!isSmallScreen}
-                            enablePivoting={!isSmallScreen}
-                            enableAdvancedFilter={false}
-                            rowSelection={false}
-                            fillAvailableHeight={true}
-                            bottomPadding={isPhone ? 10 : 20}
-                        />
+                        <>
+                            <AgGridTable
+                                rowData={crewData}
+                                columnDefs={columnDefs}
+                                onGridReady={onGridReady}
+                                width="100%"
+                                enableExport={!isPhone}
+                                enableSideBar={!isSmallScreen}
+                                enableStatusBar={false}
+                                enableRowGrouping={!isSmallScreen}
+                                enablePivoting={!isSmallScreen}
+                                enableAdvancedFilter={false}
+                                rowSelection={false}
+                                fillAvailableHeight={true}
+                                bottomPadding={isPhone ? 10 : 20}
+                            />
+                            <div className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center" style={{ marginTop: '-1px' }}>
+                                <div className="text-xs font-normal font-['Mulish',Helvetica] text-black">
+                                    Rows: {crewData.length > 0 ? crewData.length : 0}
+                                </div>
+                                <div>
+                                    <AgGridTableActions
+                                        gridApi={gridApi}
+                                        exportFilename="crew-pool"
+                                        showExportButtons={true}
+                                        showFilterButtons={true}
+                                        showGroupButtons={true}
+                                        showSelectionButtons={false}
+                                    />
+                                </div>
+                            </div>
+                        </>
                     )}
                 </div>
             </>
