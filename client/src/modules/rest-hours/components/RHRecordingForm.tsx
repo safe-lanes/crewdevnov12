@@ -22,6 +22,8 @@ import {
   calculateRollingMetrics as calculateTimelineRollingMetrics,
   calculateMinRestInAny24HourPeriod,
   calculateMaxWorkInAny24HourPeriod,
+  calculateRestViaNextDayWorkAnchor,
+  EXPERIMENTAL_NEXT_DAY_WORK_ANCHORED_REST,
   detectViolations as detectTimelineViolations,
   groupViolationsByDay,
   groupViolationObjectsByDay,
@@ -960,6 +962,19 @@ export const RHRecordingForm = ({
     
     // Build result map with violations and metrics for each day
     const resultMap = new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
+
+    // Pre-build a map of dayIndex → array indices in fullTimeline (primary occurrence only).
+    // This lets each day look up its NEXT day's indices in O(1) without re-scanning the timeline.
+    const dayIndexToArrayIndices = new Map<number, number[]>();
+    for (let i = 0; i < fullTimeline.length; i++) {
+      const slot = fullTimeline[i];
+      if (slot.occurrence !== 'primary') continue;
+      // Find which dayIndex in dailyRecords this slot belongs to
+      const dIdx = dailyRecords.findIndex(r => r.day === slot.sourceDay);
+      if (dIdx === -1) continue;
+      if (!dayIndexToArrayIndices.has(dIdx)) dayIndexToArrayIndices.set(dIdx, []);
+      dayIndexToArrayIndices.get(dIdx)!.push(i);
+    }
     
     for (let dayIndex = 0; dayIndex < dailyRecords.length; dayIndex++) {
       const record = dailyRecords[dayIndex];
@@ -994,15 +1009,11 @@ export const RHRecordingForm = ({
       // IMPORTANT: We need the ARRAY INDICES (positions in fullTimeline array), not slot.slotIndex
       // because the prefix sums are built from the array order, not the logical slotIndex values
       // (slotIndex can be negative for previous month data)
-      const dayArrayIndices: number[] = [];
-      let lastArrayIndex = -1;
-      for (let i = 0; i < fullTimeline.length; i++) {
-        const slot = fullTimeline[i];
-        if (slot.sourceDay === record.day && slot.occurrence === 'primary') {
-          dayArrayIndices.push(i);
-          lastArrayIndex = i;
-        }
-      }
+      const dayArrayIndices: number[] = dayIndexToArrayIndices.get(dayIndex) || [];
+      const lastArrayIndex = dayArrayIndices.length > 0 ? dayArrayIndices[dayArrayIndices.length - 1] : -1;
+
+      // Next day's array indices (for the experimental calculation)
+      const nextDayArrayIndices: number[] = dayIndexToArrayIndices.get(dayIndex + 1) || [];
       
       let metrics = {
         anyPeriodRest24hr: 24,
@@ -1012,16 +1023,25 @@ export const RHRecordingForm = ({
       };
       
       if (lastArrayIndex >= 47) { // Need at least 48 slots for 24-hour window
-        // Calculate MINIMUM rest in ANY 24-hour window ending on this day
-        // This checks all 48 possible windows, not just the one ending at midnight
-        const minRestIn24hr = calculateMinRestInAny24HourPeriod(dayArrayIndices, cumulativeRest);
+        // [EXPERIMENTAL] Calculate rest in 24h using the next-day work-anchored method,
+        // or fall back to the original minimum-rest-in-any-window approach.
+        const restIn24hr = EXPERIMENTAL_NEXT_DAY_WORK_ANCHORED_REST
+          ? calculateRestViaNextDayWorkAnchor(
+              dayArrayIndices,
+              nextDayArrayIndices,
+              fullTimeline,
+              cumulativeWork,
+              cumulativeRest
+            )
+          : calculateMinRestInAny24HourPeriod(dayArrayIndices, cumulativeRest);
+
         const maxWorkIn24hr = calculateMaxWorkInAny24HourPeriod(dayArrayIndices, cumulativeWork);
         
         // For 7-day metrics, use the rolling window ending at the last slot of the day
         const rollingMetrics = calculateTimelineRollingMetrics(lastArrayIndex, cumulativeRest, cumulativeWork);
         
         metrics = {
-          anyPeriodRest24hr: minRestIn24hr,
+          anyPeriodRest24hr: restIn24hr,
           anyPeriodRest7day: lastArrayIndex >= 335 ? rollingMetrics.rest168h : 168,
           anyPeriodWork24hr: maxWorkIn24hr,
           anyPeriodWork7day: lastArrayIndex >= 335 ? rollingMetrics.work168h : 0,

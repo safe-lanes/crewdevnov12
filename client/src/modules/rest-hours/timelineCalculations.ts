@@ -6,6 +6,15 @@
  * It provides true rolling window calculations for regulatory compliance.
  */
 
+// ─── EXPERIMENTAL ─────────────────────────────────────────────────────────────
+// Violation 1 / "Hours of Rest in any 24 Hr Period" column calculation.
+// When true  → new logic: 24 − maxWork(any valid 24h window anchored to the
+//              first work slot of the NEXT day, per Note 1 & Note 2 of spec).
+// When false → original logic: minimum rest in any 24h window ending on this day.
+// Set to false to fully revert to the original behaviour.
+export const EXPERIMENTAL_NEXT_DAY_WORK_ANCHORED_REST = true;
+// ──────────────────────────────────────────────────────────────────────────────
+
 import type { TimelineDailyRecord } from './types';
 
 // Re-export for backward compatibility
@@ -224,6 +233,90 @@ export function calculateMinRestInAny24HourPeriod(
   }
   
   return minRest;
+}
+
+/**
+ * [EXPERIMENTAL – controlled by EXPERIMENTAL_NEXT_DAY_WORK_ANCHORED_REST]
+ *
+ * Calculates "Hours of Rest in any 24 Hr Period" for Day N using the
+ * next-day work-anchored logic:
+ *
+ *   1. Find the first work slot on Day N+1 (nextDayIndices).
+ *   2. Every 24-hour window that ends at-or-after that slot is a valid candidate.
+ *      (Note 1: the window must reach at least as far as that first work slot.)
+ *   3. Additionally, windows that fall entirely within Day N+1 but contain the
+ *      highest work hours are also valid candidates.
+ *      (Note 2: if Day N+1 alone yields a higher work figure, use that.)
+ *   4. maxWork = the highest work hours found across all valid candidate windows.
+ *   5. Return 24 − maxWork.
+ *
+ * Fallback: if nextDayIndices is empty or Day N+1 has no work at all, falls back
+ * to calculateMinRestInAny24HourPeriod (original logic).
+ *
+ * @param dayNIndices    - Array positions in fullTimeline for Day N (primary occurrence)
+ * @param nextDayIndices - Array positions in fullTimeline for Day N+1 (primary occurrence)
+ * @param fullTimeline   - The complete timeline slot array
+ * @param cumulativeWork - Prefix sum array for work hours (built from fullTimeline)
+ * @param cumulativeRest - Prefix sum array for rest hours (built from fullTimeline)
+ * @returns Calculated rest hours (hours, in 0.5 increments)
+ */
+export function calculateRestViaNextDayWorkAnchor(
+  dayNIndices: number[],
+  nextDayIndices: number[],
+  fullTimeline: TimelineSlot[],
+  cumulativeWork: number[],
+  cumulativeRest: number[]
+): number {
+  const WINDOW_SIZE_24H = 48;
+
+  // --- Fallback: no next day data ---
+  if (nextDayIndices.length === 0) {
+    return calculateMinRestInAny24HourPeriod(dayNIndices, cumulativeRest);
+  }
+
+  // Find the first work slot in the next day
+  let firstWorkIdxInNextDay = -1;
+  for (const idx of nextDayIndices) {
+    const status = fullTimeline[idx].status;
+    const isWork = status !== '' && status.toLowerCase() !== 'r';
+    if (isWork) {
+      firstWorkIdxInNextDay = idx;
+      break;
+    }
+  }
+
+  // --- Fallback: next day has no work ---
+  if (firstWorkIdxInNextDay === -1) {
+    return calculateMinRestInAny24HourPeriod(dayNIndices, cumulativeRest);
+  }
+
+  // Collect all valid candidate end-points:
+  //   - Every slot in nextDayIndices that is >= firstWorkIdxInNextDay
+  //     (Note 1: window must end at-or-after the first work slot of next day)
+  //   - This naturally includes windows that fall entirely within next day
+  //     (Note 2: the entire nextDay set beyond firstWorkIdx is already covered)
+  let maxWork = 0;
+  let foundValidWindow = false;
+
+  for (const endIdx of nextDayIndices) {
+    if (endIdx < firstWorkIdxInNextDay) continue; // Not yet at first work slot
+    if (endIdx < WINDOW_SIZE_24H - 1) continue;   // Not enough history for a full 24h window
+
+    const startIdx = endIdx - WINDOW_SIZE_24H + 1;
+    const workIn24h = cumulativeWork[endIdx + 1] - cumulativeWork[startIdx];
+    if (workIn24h > maxWork) {
+      maxWork = workIn24h;
+    }
+    foundValidWindow = true;
+  }
+
+  // If no valid 24h window could be formed (e.g. next day starts very early in timeline)
+  // fall back to original logic
+  if (!foundValidWindow) {
+    return calculateMinRestInAny24HourPeriod(dayNIndices, cumulativeRest);
+  }
+
+  return 24 - maxWork;
 }
 
 /**
