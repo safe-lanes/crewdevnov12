@@ -41,39 +41,28 @@ const PermissionsContext = createContext<PermissionsContextType | null>(null);
 
 function getUserProfile(): ExtractedUserProfile | null {
   try {
-    console.log('[RBAC] getUserProfile: starting extraction...');
-    console.log('[RBAC] secretKeyAvailable:', secretKeyAvailable());
-
     const profile = getDecryptedLocalStorageItem('userProfile', true);
-    console.log('[RBAC] Stage 1 - decryptedLocalStorage result:', profile != null ? `type=${typeof profile}` : 'null');
     if (profile != null) {
       const extracted = safeExtractFields(profile);
-      console.log('[RBAC] Stage 1 - safeExtractFields result:', extracted);
       if (extracted) return extracted;
     }
 
     const raw = localStorage.getItem('userProfile');
-    console.log('[RBAC] Stage 2 - raw localStorage:', raw ? `length=${raw.length}, first50=${raw.substring(0, 50)}...` : 'null/empty');
     if (!raw) return null;
 
     const fromRaw = safeExtractFields(raw);
-    console.log('[RBAC] Stage 2 - safeExtractFields(raw) result:', fromRaw);
     if (fromRaw) return fromRaw;
 
     if (secretKeyAvailable()) {
       const decryptedStr = getDecryptedRawString('userProfile');
-      console.log('[RBAC] Stage 3 - getDecryptedRawString result:', decryptedStr ? `length=${decryptedStr.length}, first50=${decryptedStr.substring(0, 50)}...` : 'null');
       if (decryptedStr) {
         const fromDecrypted = safeExtractFields(decryptedStr);
-        console.log('[RBAC] Stage 3 - safeExtractFields result:', fromDecrypted);
         if (fromDecrypted) return fromDecrypted;
       }
     }
 
-    console.log('[RBAC] All stages failed - returning null');
     return null;
   } catch (err) {
-    console.error('[RBAC] getUserProfile error:', err);
     return null;
   }
 }

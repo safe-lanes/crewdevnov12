@@ -193,20 +193,16 @@ export function safeExtractFields(rawValue: any): ExtractedUserProfile | null {
   const resolved = deepParseJson(rawValue);
   const fromResolved = extractFromObject(resolved);
   if (fromResolved) {
-    console.log('[RBAC] safeExtract: succeeded via deepParseJson', fromResolved.role, fromResolved.roleId, 'vessels:', fromResolved.myVessels?.length || 0);
     return fromResolved;
   }
-  console.log('[RBAC] safeExtract: deepParseJson returned', typeof resolved, resolved && typeof resolved === 'string' ? `first80: ${resolved.substring(0, 80)}` : '');
 
   let str = typeof rawValue === 'string' ? rawValue : String(rawValue);
 
   const normalized = normalizeJsonString(str);
   if (normalized !== str) {
-    console.log('[RBAC] safeExtract: normalized differs, first80:', normalized.substring(0, 80));
     const fromNormalized = deepParseJson(normalized);
     const extracted = extractFromObject(fromNormalized);
     if (extracted) {
-      console.log('[RBAC] safeExtract: succeeded via normalize+deepParse', extracted.role, extracted.roleId, 'vessels:', extracted.myVessels?.length || 0);
       return extracted;
     }
 
@@ -216,10 +212,8 @@ export function safeExtractFields(rawValue: any): ExtractedUserProfile | null {
   const repaired = tryRepairAndParse(str);
   const fromRepaired = extractFromObject(repaired);
   if (fromRepaired) {
-    console.log('[RBAC] safeExtract: succeeded via repair', fromRepaired.role, fromRepaired.roleId, 'vessels:', fromRepaired.myVessels?.length || 0);
     return fromRepaired;
   }
-  console.log('[RBAC] safeExtract: repair returned', repaired ? 'object but no fields' : 'null');
 
   const result: ExtractedUserProfile = {};
   result.role = extractStringField(str, 'role') || extractStringField(str, 'roleName');
@@ -227,7 +221,6 @@ export function safeExtractFields(rawValue: any): ExtractedUserProfile | null {
   result.userId = extractStringField(str, 'userId');
   result.userType = extractStringField(str, 'userType');
   result.myVessels = extractVesselsFromString(str);
-  console.log('[RBAC] safeExtract: regex result -', 'role:', result.role, 'roleId:', result.roleId, 'userId:', result.userId, 'userType:', result.userType, 'vessels:', result.myVessels?.length || 0);
 
   if (result.role || result.roleId || result.userId || result.userType || (result.myVessels && result.myVessels.length > 0)) return result;
   return null;
