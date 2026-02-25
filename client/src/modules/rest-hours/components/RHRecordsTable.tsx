@@ -639,6 +639,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
     mutationFn: ({ uuid, isLocked }: { uuid: string; isLocked: boolean }) =>
       restHoursApiV2.vesselRecords.toggleLock(uuid, isLocked),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/rest-hours/vessel-records'] });
     },
   });
