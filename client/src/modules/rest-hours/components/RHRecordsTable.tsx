@@ -14,6 +14,7 @@ import { VesselReviewDialog } from './VesselReviewDialog';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface RHRecordsTableProps {
   selectedVessels: string[];
@@ -632,8 +633,12 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const gridRef = useRef<AgGridReact>(null);
   const [, setLocation] = useLocation();
   const { vessels: v2Vessels, getVesselName } = useV2Vessels();
-  const { canEdit, permissions } = usePermissions();
+  const { canCreate, canEdit, permissions } = usePermissions();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const canLock   = permissions.length === 0 || canCreate('RH Lock');
+  const canUnlock = permissions.length === 0 || canCreate('RH Unlock');
 
   const lockMutation = useMutation({
     mutationFn: ({ uuid, isLocked }: { uuid: string; isLocked: boolean }) =>
@@ -838,14 +843,21 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
   const ActionsRenderer = (params: ICellRendererParams) => {
     // Defensive guard for AG Grid initialization
     if (!params.colDef || !params.data) return null;
-    if (!(permissions.length === 0 || canEdit("Record"))) return null;
 
     const record = params.data as RestHoursVesselRecordWithName;
     const isLocked = !!(record as any).isLocked;
     const rhVesselUuid = (record as any).rhVesselUuid as string | undefined;
+    const hasLockPermission   = params.context?.canLock   ?? true;
+    const hasUnlockPermission = params.context?.canUnlock ?? true;
+    const hasEditPermission   = params.context?.canEditRecord ?? true;
 
     const handleLockClick = () => {
       if (!rhVesselUuid) return;
+      const hasPerm = isLocked ? hasUnlockPermission : hasLockPermission;
+      if (!hasPerm) {
+        toast({ title: "You don't have permission to lock and unlock", variant: 'destructive' });
+        return;
+      }
       params.context?.onToggleLock?.(rhVesselUuid, !isLocked);
     };
 
@@ -869,19 +881,21 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
             : <LockOpen className="h-4 w-4 text-gray-400" />
           }
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 hover:bg-gray-100"
-          onClick={handleEditClick}
-          data-testid={`button-edit-${params.data?.id}`}
-          title={isLocked ? 'View records' : 'Edit records'}
-        >
-          {isLocked
-            ? <Eye className="h-4 w-4 text-gray-600" />
-            : <Edit className="h-4 w-4 text-gray-600" />
-          }
-        </Button>
+        {hasEditPermission && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 hover:bg-gray-100"
+            onClick={handleEditClick}
+            data-testid={`button-edit-${params.data?.id}`}
+            title={isLocked ? 'View records' : 'Edit records'}
+          >
+            {isLocked
+              ? <Eye className="h-4 w-4 text-gray-600" />
+              : <Edit className="h-4 w-4 text-gray-600" />
+            }
+          </Button>
+        )}
       </div>
     );
   };
@@ -1014,6 +1028,9 @@ export function RHRecordsTable({ selectedVessels, selectedMonth, complianceMode,
             onViewOfficeReview: handleViewOfficeReview,
             onToggleLock: handleLockToggle,
             lockPending: lockMutation.isPending,
+            canLock,
+            canUnlock,
+            canEditRecord: permissions.length === 0 || canEdit('Record'),
           }}
           animateRows={true}
           pagination={true}
