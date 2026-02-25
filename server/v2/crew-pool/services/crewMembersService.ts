@@ -441,7 +441,7 @@ export const crewMembersService = {
     offset?: number;
   }): Promise<{ data: any[]; pagination: PaginationMeta }> {
     const db = getDb();
-    const limit = Math.min(filters?.limit || 50, 100);
+    const limit = Math.min(filters?.limit || 1000, 1000);
     const offset = filters?.offset || 0;
 
     const conditions: any[] = [
