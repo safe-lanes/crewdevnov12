@@ -930,7 +930,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                 enableAdvancedFilter={false}
                                 rowSelection={false}
                                 fillAvailableHeight={true}
-                                bottomPadding={isPhone ? 10 : 20}
+                                bottomPadding={isPhone ? 10 : 80}
                             />
                             <div className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center" style={{ marginTop: '-1px' }}>
                                 <div className="text-xs font-normal font-['Mulish',Helvetica] text-black">
