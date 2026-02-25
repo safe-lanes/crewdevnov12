@@ -664,7 +664,17 @@ export function useSaveSeaServiceV2() {
       seaUuid?: string;
       attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
     }) => {
-      const v2Data = withAuditUser(mapLegacySeaServiceToV2(data));
+      const rawV2Data = mapLegacySeaServiceToV2(data);
+      // For vessel-synced rows (_skipLockedFields flag), omit fields managed by vessel assignment
+      if ((data as any)._skipLockedFields) {
+        delete rawV2Data.vesselName;
+        delete rawV2Data.vesselUuid;
+        delete rawV2Data.vesselTypeUuid;
+        delete rawV2Data.rank;
+        delete rawV2Data.fromDate;
+        delete rawV2Data.toDate;
+      }
+      const v2Data = withAuditUser(rawV2Data);
       let result: any;
       let entityUuid: string;
       

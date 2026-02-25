@@ -3,8 +3,9 @@ import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachment
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { masterPorts } from "../../../../shared/schema";
-import { eq, and, sql, desc, or } from "drizzle-orm";
+import { masterPorts, masterVessels } from "../../../../shared/schema";
+import { eq, and, sql, desc, or, isNull } from "drizzle-orm";
+import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
 
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
   const auditUserUuid = (data as any).auditUserUuid || null;
@@ -646,6 +647,32 @@ export const vesselPlanningService = {
       }
     });
 
+    // E1 Sea Service sync: update toDate on sign-off
+    if (crewUuid && vesselUuid) {
+      try {
+        const db2 = getDb();
+        await db2
+          .update(crewSeaService)
+          .set({
+            toDate: data.signOffDate,
+            updatedAt: new Date(),
+            updatedByUuid: data.auditUserUuid || null,
+          })
+          .where(
+            and(
+              eq(crewSeaService.crewUuid, crewUuid),
+              eq(crewSeaService.vesselUuid, vesselUuid),
+              eq(crewSeaService.serviceType, 'company'),
+              eq(crewSeaService.isDeleted, false),
+              isNull(crewSeaService.toDate)
+            )
+          );
+        console.log(`✅ [VESSEL-PLANNING-V2] E1 sea service toDate updated for crew ${crewUuid} on vessel ${vesselUuid}`);
+      } catch (e1Err) {
+        console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 sign-off sync skipped:`, e1Err);
+      }
+    }
+
     return vesselPlanningRepository.findByPlanUuid(planUuid);
   },
 
@@ -895,6 +922,84 @@ export const vesselPlanningService = {
         return updated;
       }
     });
+
+    // E1 Sea Service sync: auto-create entry on sign-on
+    try {
+      const db3 = getDb();
+      const finalCrewUuid = relieverCrewUuid;
+      const finalSignOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
+
+      // Resolve vessel info for E1 record
+      const [vesselRow] = await db3
+        .select({ vesselName: masterVessels.vessel, vesselTypeName: masterVessels.vesselType })
+        .from(masterVessels)
+        .where(eq(masterVessels.vesselUuid, vesselUuid))
+        .limit(1);
+
+      const resolvedVesselName = vesselRow?.vesselName || null;
+      const resolvedVesselTypeName = vesselRow?.vesselTypeName || null;
+      let resolvedVesselTypeUuid: string | null = null;
+      if (resolvedVesselTypeName) {
+        resolvedVesselTypeUuid = await resolveVesselTypeUuid(resolvedVesselTypeName);
+      }
+
+      // Duplicate check: same crew + vessel + fromDate + company service
+      const existing = await db3
+        .select({ id: crewSeaService.id })
+        .from(crewSeaService)
+        .where(
+          and(
+            eq(crewSeaService.crewUuid, finalCrewUuid),
+            eq(crewSeaService.vesselUuid, vesselUuid),
+            eq(crewSeaService.fromDate, finalSignOnDate),
+            eq(crewSeaService.serviceType, 'company'),
+            eq(crewSeaService.isDeleted, false)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        console.log(`ℹ️ [VESSEL-PLANNING-V2] E1 auto-create skipped: record already exists for crew ${finalCrewUuid} on vessel ${vesselUuid} from ${finalSignOnDate}`);
+      } else {
+        // Overlap check: crew already has an open (no toDate) company sea service record
+        const openRecord = await db3
+          .select({ id: crewSeaService.id })
+          .from(crewSeaService)
+          .where(
+            and(
+              eq(crewSeaService.crewUuid, finalCrewUuid),
+              eq(crewSeaService.serviceType, 'company'),
+              eq(crewSeaService.isDeleted, false),
+              isNull(crewSeaService.toDate)
+            )
+          )
+          .limit(1);
+
+        if (openRecord.length > 0) {
+          console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 auto-create skipped: crew ${finalCrewUuid} already has an open company sea service record (overlapping period)`);
+        } else {
+          const { v4: uuidv4e1 } = await import("uuid");
+          await db3.insert(crewSeaService).values({
+            seaUuid: uuidv4e1(),
+            crewUuid: finalCrewUuid,
+            serviceType: 'company',
+            vesselUuid: vesselUuid,
+            vesselName: resolvedVesselName,
+            vesselTypeUuid: resolvedVesselTypeUuid,
+            rank: planning.rank || null,
+            fromDate: finalSignOnDate,
+            toDate: null,
+            isDeleted: false,
+            isSync: false,
+            createdByUuid: data.auditUserUuid || null,
+            updatedByUuid: data.auditUserUuid || null,
+          });
+          console.log(`✅ [VESSEL-PLANNING-V2] E1 sea service auto-created for crew ${finalCrewUuid} on vessel ${vesselUuid} from ${finalSignOnDate}`);
+        }
+      }
+    } catch (e1Err) {
+      console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 sign-on auto-create skipped:`, e1Err);
+    }
 
     return result;
   },

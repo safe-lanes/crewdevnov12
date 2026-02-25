@@ -396,6 +396,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     enabled: !!crewUuid && isOpen,
   });
 
+  // V2: Crew assignments — used to detect auto-generated (vessel-synced) E1 rows
+  const { data: crewAssignmentsData } = useQuery<any[]>({
+    queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'assignments'],
+    queryFn: async () => {
+      const response = await fetch(`/api/v2/crew-pool/crew/${crewUuid}/assignments`);
+      if (!response.ok) throw new Error('Failed to fetch assignments');
+      return response.json();
+    },
+    enabled: !!crewUuid && isOpen,
+  });
+
   // Crew ID will be auto-assigned by the API during creation
 
   // Get company ranks from shared hook
@@ -961,7 +972,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       setUploadedPhoto(detailedCrewData.uploadedPhoto || null);
     }
   }, [detailedCrewData, crewMember?.crewUuid, crewMember?.id]);
-  
+
+  // Mark E1 rows that were auto-generated via vessel sign-on as isVesselSynced
+  useEffect(() => {
+    if (!crewAssignmentsData || crewAssignmentsData.length === 0) return;
+
+    // Build a set of "vesselUuid|signOnDate" keys from all on-board assignments
+    const assignmentKeys = new Set<string>();
+    crewAssignmentsData.forEach((a: any) => {
+      if (a.vesselUuid && a.signOnDate) {
+        assignmentKeys.add(`${a.vesselUuid}|${a.signOnDate}`);
+      }
+    });
+
+    setFormData(prev => {
+      const updated = (prev.currentCompanySeaService || []).map((sea: any) => {
+        if (!sea.seaUuid) return sea; // manual (unsaved) rows are never synced
+        const key = `${sea.vesselCode || sea.vesselUuid || ''}|${sea.from || sea.fromDate || ''}`;
+        const isSynced = assignmentKeys.has(key);
+        if (isSynced === !!(sea.isVesselSynced)) return sea;
+        return { ...sea, isVesselSynced: isSynced };
+      });
+      if (updated.every((s: any, i: number) => s === prev.currentCompanySeaService[i])) return prev;
+      return { ...prev, currentCompanySeaService: updated };
+    });
+  }, [crewAssignmentsData]);
+
   // Reset photo when crew member changes or form closes
   // V2: Check both crewUuid and id
   useEffect(() => {
@@ -4589,60 +4625,79 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       const bDate = b.to || b.from || '';
                       return bDate.localeCompare(aDate);
                     })
-                    .map((service) => (
-                    <tr key={service.id} className="border-t">
+                    .map((service) => {
+                      const isVesselSynced = !!(service as any).isVesselSynced;
+                      return (
+                    <tr key={service.id} className={`border-t${isVesselSynced ? ' bg-blue-50/30' : ''}`}>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Select
-                          value={service.vesselCode}
-                          onValueChange={(value) => {
-                            const selectedVessel = vesselOptions.find(v => v.code === value);
-                            updateCurrentCompanySeaService(service.id, 'vesselCode', value);
-                            updateCurrentCompanySeaService(service.id, 'vesselName', selectedVessel?.name || '');
-                            // Auto-populate vessel type from vessel's linked vtuid
-                            if (selectedVessel?.vtuid) {
-                              const vesselTypeName = vesselTypeIdToNameMap.get(selectedVessel.vtuid);
-                              if (vesselTypeName) {
-                                updateCurrentCompanySeaService(service.id, 'vesselType', vesselTypeName);
+                        {isVesselSynced ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[13px] text-[#4f5863]">{service.vesselName || '—'}</span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.61 7.76"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M12 10v4"/><path d="M12 2v3"/></svg>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Auto-synced from Vessel tab</p></TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        ) : (
+                          <Select
+                            value={service.vesselCode}
+                            onValueChange={(value) => {
+                              const selectedVessel = vesselOptions.find(v => v.code === value);
+                              updateCurrentCompanySeaService(service.id, 'vesselCode', value);
+                              updateCurrentCompanySeaService(service.id, 'vesselName', selectedVessel?.name || '');
+                              if (selectedVessel?.vtuid) {
+                                const vesselTypeName = vesselTypeIdToNameMap.get(selectedVessel.vtuid);
+                                if (vesselTypeName) {
+                                  updateCurrentCompanySeaService(service.id, 'vesselType', vesselTypeName);
+                                }
                               }
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                            <SelectValue placeholder="Select vessel">
-                              {service.vesselName || "Select vessel"}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {vesselsLoading ? (
-                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
-                            ) : vesselOptions.length === 0 ? (
-                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
-                            ) : (
-                              vesselOptions.map((vessel) => (
-                                <SelectItem key={vessel.code} value={vessel.code}>
-                                  {vessel.name}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
+                            }}
+                          >
+                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                              <SelectValue placeholder="Select vessel">
+                                {service.vesselName || "Select vessel"}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vesselsLoading ? (
+                                <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
+                              ) : vesselOptions.length === 0 ? (
+                                <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                              ) : (
+                                vesselOptions.map((vessel) => (
+                                  <SelectItem key={vessel.code} value={vessel.code}>
+                                    {vessel.name}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Select
-                          value={service.vesselType}
-                          onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'vesselType', value)}
-                        >
-                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                            <SelectValue placeholder="Select vessel type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {vesselTypeMasterData.map((vesselType) => (
-                              <SelectItem key={vesselType} value={vesselType}>
-                                {vesselType}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {isVesselSynced ? (
+                          <span className="text-[13px] text-[#4f5863]">{service.vesselType || '—'}</span>
+                        ) : (
+                          <Select
+                            value={service.vesselType}
+                            onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'vesselType', value)}
+                          >
+                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                              <SelectValue placeholder="Select vessel type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vesselTypeMasterData.map((vesselType) => (
+                                <SelectItem key={vesselType} value={vesselType}>
+                                  {vesselType}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -4669,37 +4724,45 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Select
-                          value={service.rank}
-                          onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'rank', value)}
-                        >
-                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
-                            <SelectValue placeholder="Select rank" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ranksLoading ? (
-                              <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
-                            ) : ranksError ? (
-                              <SelectItem value="error" disabled>Failed to load ranks</SelectItem>
-                            ) : rankOptions.length === 0 ? (
-                              <SelectItem value="empty" disabled>No ranks available</SelectItem>
-                            ) : (
-                              rankOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
+                        {isVesselSynced ? (
+                          <span className="text-[13px] text-[#4f5863]">{service.rank || '—'}</span>
+                        ) : (
+                          <Select
+                            value={service.rank}
+                            onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'rank', value)}
+                          >
+                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                              <SelectValue placeholder="Select rank" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ranksLoading ? (
+                                <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                              ) : ranksError ? (
+                                <SelectItem value="error" disabled>Failed to load ranks</SelectItem>
+                              ) : rankOptions.length === 0 ? (
+                                <SelectItem value="empty" disabled>No ranks available</SelectItem>
+                              ) : (
+                                rankOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
-                          value={service.from}
-                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                        />
+                        {isVesselSynced ? (
+                          <span className="text-[13px] text-[#4f5863]">{service.from || '—'}</span>
+                        ) : (
+                          <Input
+                            type="date"
+                            value={service.from}
+                            onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
+                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          />
+                        )}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
@@ -4855,7 +4918,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </div>
                       </td>
                     </tr>
-                  ))
+                      );
+                    })
                 )}
               </tbody>
             </table>
@@ -5815,24 +5879,28 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }));
           const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
           
+          // For vessel-synced rows, pass locked fields through unchanged to avoid overwriting vessel assignment data
+          const isSeaSynced = !!sea.isVesselSynced && !!sea.seaUuid;
           const seaData: LegacySeaService = {
             seaUuid: sea.seaUuid,
             isCompanyService: true,
             vesselName: sea.vesselName || '',
             vesselCode: sea.vesselCode || '',
             vesselType: sea.vesselType || '',
-            deadweight: sea.deadweight || '',
-            engineTypePower: sea.engineTypePower || '',
-            ownerOperator: sea.ownerOperator || '',
             rank: sea.rank || '',
             from: sea.from || sea.fromDate || '',
             to: sea.to || sea.toDate || '',
             fromDate: sea.from || sea.fromDate || '',
             toDate: sea.to || sea.toDate || '',
+            // Always editable
+            deadweight: sea.deadweight || '',
+            engineTypePower: sea.engineTypePower || '',
+            ownerOperator: sea.ownerOperator || '',
             periodMonths: sea.periodMonths || '',
             experienceCategories: sea.experienceCategories || [],
             sortOrder: index,
-          };
+            ...(isSeaSynced ? { _skipLockedFields: true } : {}),
+          } as LegacySeaService;
           
           batch3Operations.push(async () => {
             // Delete attachments first (if any marked for deletion)
