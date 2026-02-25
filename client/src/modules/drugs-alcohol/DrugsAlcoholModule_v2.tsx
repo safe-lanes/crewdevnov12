@@ -77,16 +77,33 @@ export function DrugsAlcoholModule_v2() {
         return myVessels[0].vessel;
     }, [isShipUser, myVessels]);
 
+    const isMultiVesselShipUser = isShipUser && myVessels.length > 1;
+
+    const myVesselsFiltered = useMemo(() => {
+        if (!isShipUser) return [];
+        const myNames = new Set(myVessels.map(v => v.vessel));
+        return vessels.filter((v: any) => myNames.has(v.name));
+    }, [isShipUser, myVessels, vessels]);
+
     useEffect(() => {
         if (isShipUser && myVessels.length > 0 && vessels.length > 0) {
-            const myVesselName = myVessels[0].vessel;
-            const matchedVessel = vessels.find((v: any) => v.name === myVesselName);
-            if (matchedVessel) {
-                setSummarySelectedVessel(matchedVessel.vesselId);
-                setSelectedVessels([matchedVessel.name]);
+            if (isMultiVesselShipUser) {
+                const myNames = myVessels.map(v => v.vessel);
+                const matched = vessels.filter((v: any) => myNames.includes(v.name));
+                if (matched.length > 0) {
+                    setSelectedVessels(matched.map((v: any) => v.name));
+                    setSummarySelectedVessel(matched[0].vesselId);
+                }
+            } else {
+                const myVesselName = myVessels[0].vessel;
+                const matchedVessel = vessels.find((v: any) => v.name === myVesselName);
+                if (matchedVessel) {
+                    setSummarySelectedVessel(matchedVessel.vesselId);
+                    setSelectedVessels([matchedVessel.name]);
+                }
             }
         }
-    }, [isShipUser, myVessels, vessels]);
+    }, [isShipUser, isMultiVesselShipUser, myVessels, vessels]);
 
     useEffect(() => {
         if (!isShipUser && vessels.length > 0 && !summarySelectedVessel) {
@@ -98,6 +115,8 @@ export function DrugsAlcoholModule_v2() {
         setFilterType("vessel");
         if (!isShipUser) {
             setSelectedVessels([]);
+        } else if (isMultiVesselShipUser) {
+            setSelectedVessels(myVesselsFiltered.map(v => v.name));
         }
         setFleetValue("");
         setAddGroupValue("");
@@ -261,13 +280,14 @@ export function DrugsAlcoholModule_v2() {
     };
 
     const renderVesselSelect = () => {
-        if (isShipUser) {
+        if (isShipUser && !isMultiVesselShipUser) {
             return (
                 <span className="h-8 flex items-center text-xs font-medium text-[#0f172a] dark:text-white px-3 bg-gray-50 dark:bg-neutral-800 border border-input rounded-md min-w-[120px]" data-testid="text-vessel-locked">
                     {shipUserVesselName || "No vessel assigned"}
                 </span>
             );
         }
+        const vesselList = isMultiVesselShipUser ? myVesselsFiltered : vessels;
         return (
         <Popover>
             <PopoverTrigger asChild>
@@ -275,7 +295,7 @@ export function DrugsAlcoholModule_v2() {
                     variant="outline"
                     className={`h-8 text-xs text-[#0f172a] dark:text-white justify-between bg-transparent dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-40'}`}
                     disabled={vesselsLoading}
-                    data-testid="select-vessel-multi"
+                    data-testid={isMultiVesselShipUser ? "select-vessel-multi-ship-user" : "select-vessel-multi"}
                 >
                     <span className="truncate">
                         {selectedVessels.length > 0 
@@ -288,7 +308,7 @@ export function DrugsAlcoholModule_v2() {
             </PopoverTrigger>
             <PopoverContent className="w-60 p-2" align="start">
                 <div className="max-h-60 overflow-y-auto">
-                    {vessels.map((vessel: any) => (
+                    {vesselList.map((vessel: any) => (
                         <div 
                             key={vessel.id} 
                             className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
@@ -509,10 +529,34 @@ export function DrugsAlcoholModule_v2() {
                     <Label className="text-xs font-normal text-[#4f5863] dark:text-neutral-300">
                         Vessel
                     </Label>
-                    {isShipUser ? (
+                    {isShipUser && !isMultiVesselShipUser ? (
                         <span className="h-8 flex items-center text-xs font-medium text-[#0f172a] dark:text-white px-3 bg-gray-50 dark:bg-neutral-800 border border-input rounded-md min-w-[120px]" data-testid="text-vessel-summary-locked">
                             {shipUserVesselName || "No vessel assigned"}
                         </span>
+                    ) : isMultiVesselShipUser ? (
+                        <Select
+                            value={summarySelectedVessel}
+                            onValueChange={setSummarySelectedVessel}
+                            disabled={vesselsLoading}
+                        >
+                            <SelectTrigger
+                                className={`h-8 text-xs bg-white dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-48'}`}
+                                data-testid="select-vessel-summary-ship-user"
+                            >
+                                <SelectValue placeholder={vesselsLoading ? "Loading..." : "Select Vessel"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {myVesselsFiltered.map((vessel: any) => (
+                                    <SelectItem
+                                        key={vessel.id}
+                                        value={vessel.vesselId}
+                                        data-testid={`option-vessel-${vessel.id}`}
+                                    >
+                                        {vessel.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     ) : (
                         <Select 
                             value={summarySelectedVessel} 
@@ -540,11 +584,13 @@ export function DrugsAlcoholModule_v2() {
                     )}
                 </div>
 
-                {!isShipUser && (
+                {(!isShipUser || isMultiVesselShipUser) && (
                     <Button
                         variant="outline"
                         onClick={() => {
-                            if (vessels.length > 0) {
+                            if (isMultiVesselShipUser && myVesselsFiltered.length > 0) {
+                                setSummarySelectedVessel(myVesselsFiltered[0].vesselId);
+                            } else if (!isShipUser && vessels.length > 0) {
                                 setSummarySelectedVessel(vessels[0].vesselId);
                             }
                         }}

@@ -159,10 +159,16 @@ export function DrugAlcoholTestForm_v2({
 
   const { userType, myVessels } = usePermissions();
   const isShipUser = userType === 'Ship';
+  const isMultiVesselShipUser = isShipUser && myVessels.length > 1;
   const shipUserVesselName = useMemo(() => {
     if (!isShipUser || myVessels.length === 0) return null;
     return myVessels[0].vessel;
   }, [isShipUser, myVessels]);
+  const myVesselOptions = useMemo(() => {
+    if (!isShipUser) return [];
+    const myNames = new Set(myVessels.map(v => v.vessel));
+    return vessels.filter(v => myNames.has(v.name));
+  }, [isShipUser, myVessels, vessels]);
 
   // Fetch existing record for editing (V2 - uses UUID)
   const { data: existingRecord, isLoading: recordLoading, isError: recordError } = useQuery<any>({
@@ -632,10 +638,25 @@ export function DrugAlcoholTestForm_v2({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel*</FormLabel>
-                            {isShipUser ? (
+                            {isShipUser && !isMultiVesselShipUser ? (
                               <div className="h-10 flex items-center text-sm font-medium text-[#0f172a] px-3 bg-gray-50 border border-input rounded-md" data-testid="text-vesselId-locked">
                                 {shipUserVesselName || "No vessel assigned"}
                               </div>
+                            ) : isMultiVesselShipUser ? (
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="bg-[#ffffff]" data-testid="select-vesselId-ship-user">
+                                    <SelectValue placeholder="Select Vessel" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {myVesselOptions.map((vessel) => (
+                                    <SelectItem key={vessel.entryId} value={vessel.entryId}>
+                                      {vessel.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             ) : (
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
