@@ -62,13 +62,26 @@ export const RestHoursRecord = (): JSX.Element => {
     return myVessels[0].vessel;
   }, [isShipUser, myVessels]);
 
+  const isMultiVesselShipUser = isShipUser && myVessels.length > 1;
+
+  const myVesselsFiltered = useMemo(() => {
+    if (!isShipUser) return [];
+    const myNames = new Set(myVessels.map(v => v.vessel));
+    return vessels.filter(v => myNames.has(v.name));
+  }, [isShipUser, myVessels, vessels]);
+
   useEffect(() => {
     if (isShipUser && myVessels.length > 0 && vessels.length > 0) {
-      const myVesselName = myVessels[0].vessel;
       setFilterType("vessel");
-      setSelectedVessels([myVesselName]);
+      if (isMultiVesselShipUser) {
+        const myNames = myVessels.map(v => v.vessel);
+        const matched = vessels.filter(v => myNames.includes(v.name));
+        if (matched.length > 0) setSelectedVessels(matched.map(v => v.name));
+      } else {
+        setSelectedVessels([myVessels[0].vessel]);
+      }
     }
-  }, [isShipUser, myVessels, vessels]);
+  }, [isShipUser, isMultiVesselShipUser, myVessels, vessels]);
 
   // Convert PeriodFilterValue to string format for queries (YYYY-MM)
   const selectedMonthString = useMemo(() => {
@@ -136,9 +149,13 @@ export const RestHoursRecord = (): JSX.Element => {
 
   const handleClearFilters = () => {
     setFilterType("vessel");
-    setSelectedVessels([]);
-    setFleetValue("");
-    setAddGroupValue("");
+    if (!isShipUser) {
+      setSelectedVessels([]);
+      setFleetValue("");
+      setAddGroupValue("");
+    } else if (isMultiVesselShipUser) {
+      setSelectedVessels(myVesselsFiltered.map(v => v.name));
+    }
     setPeriodValue({
       mode: 'year-month',
       year: currentYear,
@@ -146,53 +163,64 @@ export const RestHoursRecord = (): JSX.Element => {
     });
   };
 
-  const renderVesselSelect = () => (
-    <Popover modal={false}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={`h-8 text-xs text-[#0f172a] dark:text-white justify-between bg-transparent dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-40'}`}
-          disabled={vesselsLoading || isShipUser}
-          data-testid="select-vessel-multi"
+  const renderVesselSelect = () => {
+    if (isShipUser && !isMultiVesselShipUser) {
+      return (
+        <span
+          className={`h-8 flex items-center text-xs font-medium text-[#0f172a] dark:text-white px-3 bg-gray-50 dark:bg-neutral-800 border border-input rounded-md ${isPhone ? 'w-full' : 'min-w-[120px]'}`}
+          data-testid="text-vessel-locked"
         >
-          <span className="truncate">
-            {isShipUser && shipVesselName
-              ? shipVesselName
-              : selectedVessels.length > 0 
-                ? `${selectedVessels.length} selected` 
+          {shipVesselName || "No vessel assigned"}
+        </span>
+      );
+    }
+    const vesselList = isMultiVesselShipUser ? myVesselsFiltered : vessels;
+    return (
+      <Popover modal={false}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={`h-8 text-xs text-[#0f172a] dark:text-white justify-between bg-transparent dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-40'}`}
+            disabled={vesselsLoading}
+            data-testid={isMultiVesselShipUser ? "select-vessel-multi-ship-user" : "select-vessel-multi"}
+          >
+            <span className="truncate">
+              {selectedVessels.length > 0
+                ? `${selectedVessels.length} selected`
                 : vesselsLoading ? "Loading..." : "Vessel"
-            }
-          </span>
-          <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-60 p-2" align="start">
-        <div className="max-h-60 overflow-y-auto">
-          {vessels.map((vessel: any) => (
-            <div 
-              key={vessel.id} 
-              className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
-              data-testid={`vessel-row-${vessel.entryId || vessel.id}`}
-              onClick={() => toggleVessel(vessel.name)}
-            >
-              <Checkbox 
-                checked={selectedVessels.includes(vessel.name)}
-                onCheckedChange={() => toggleVessel(vessel.name)}
-                data-testid={`checkbox-vessel-${vessel.entryId || vessel.id}`}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <span 
-                className="text-sm flex-1"
-                data-testid={`label-vessel-${vessel.entryId || vessel.id}`}
+              }
+            </span>
+            <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-2" align="start">
+          <div className="max-h-60 overflow-y-auto">
+            {vesselList.map((vessel: any) => (
+              <div
+                key={vessel.id}
+                className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
+                data-testid={`vessel-row-${vessel.entryId || vessel.id}`}
+                onClick={() => toggleVessel(vessel.name)}
               >
-                {vessel.name}
-              </span>
-            </div>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
+                <Checkbox
+                  checked={selectedVessels.includes(vessel.name)}
+                  onCheckedChange={() => toggleVessel(vessel.name)}
+                  data-testid={`checkbox-vessel-${vessel.entryId || vessel.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span
+                  className="text-sm flex-1"
+                  data-testid={`label-vessel-${vessel.entryId || vessel.id}`}
+                >
+                  {vessel.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   const renderFleetSelect = () => (
     <Select value={fleetValue} onValueChange={setFleetValue} disabled={isShipUser}>
@@ -285,7 +313,7 @@ export const RestHoursRecord = (): JSX.Element => {
             variant="outline"
             onClick={handleClearFilters}
             className="h-8 w-full text-[#8798ad] text-[11px] border-[#e1e8ed]"
-            disabled={isShipUser}
+            disabled={isShipUser && !isMultiVesselShipUser}
             data-testid="button-clear-filters"
           >
             Clear
@@ -348,7 +376,7 @@ export const RestHoursRecord = (): JSX.Element => {
             variant="outline"
             onClick={handleClearFilters}
             className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-            disabled={isShipUser}
+            disabled={isShipUser && !isMultiVesselShipUser}
             data-testid="button-clear-filters"
           >
             Clear
@@ -404,7 +432,7 @@ export const RestHoursRecord = (): JSX.Element => {
           variant="outline"
           onClick={handleClearFilters}
           className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
-          disabled={isShipUser}
+          disabled={isShipUser && !isMultiVesselShipUser}
           data-testid="button-clear-filters"
         >
           Clear
