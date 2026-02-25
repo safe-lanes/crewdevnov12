@@ -112,6 +112,7 @@ interface DeployedCrewAssignment {
   reliefDue: string | null;
   relieverSignOnDate: string | null;
   contractPeriodMonths: number | null; // Used to calculate reliever's end date
+  joiningStatus: string | null; // Reliever sign-on status: Planned, Confirmed, In Transit, Signed On
 }
 
 interface Assignment {
@@ -567,9 +568,18 @@ function CrewColumn({
   };
   
   // Get color based on deployment status and assignment count
-  // Priority: Red (deployed on overlapping period) > Brown (2+ vessels) > Blue (1 vessel) > Default
+  // Priority: Purple (deployed reliever, Planned/Confirmed) > Red (deployed on overlapping period) > Brown (2+ vessels) > Blue (1 vessel) > Default
   const getCrewNameColor = (crewUuid: string) => {
-    // First priority: Check if crew has an overlapping deployment on ANY vessel
+    // Highest priority: Purple — crew is a deployed reliever with status Planned or Confirmed
+    // This means Deploy was clicked in Approval, but the crew hasn't boarded yet
+    const isPurple = allDeployedAssignments.some(assignment => {
+      if (assignment.relieverCrewId !== crewUuid) return false;
+      if (selectedVesselIds.includes(assignment.vesselUuid)) return false;
+      return assignment.joiningStatus === 'Planned' || assignment.joiningStatus === 'Confirmed';
+    });
+    if (isPurple) return 'text-purple-600';
+
+    // Second priority: Check if crew has an overlapping deployment on ANY vessel
     // This checks all vessels, not just the selected ones for planning
     const hasOverlappingDeployment = allDeployedAssignments.some(assignment => {
       // Check if this crew member is the primary crew or reliever
@@ -626,6 +636,22 @@ function CrewColumn({
   // Returns the vessel names to display in tooltip on hover
   const getCrewVesselInfo = (crewUuid: string): string | null => {
     const vesselNames: string[] = [];
+
+    // Check for Purple: crew is a deployed reliever with Planned or Confirmed status
+    const purpleVessels: string[] = [];
+    allDeployedAssignments.forEach(assignment => {
+      if (assignment.relieverCrewId !== crewUuid) return;
+      if (selectedVesselIds.includes(assignment.vesselUuid)) return;
+      if (assignment.joiningStatus === 'Planned' || assignment.joiningStatus === 'Confirmed') {
+        const vesselName = getVesselName(assignment.vesselUuid);
+        if (vesselName && !purpleVessels.includes(vesselName)) {
+          purpleVessels.push(vesselName);
+        }
+      }
+    });
+    if (purpleVessels.length > 0) {
+      return `Deployed (Awaiting Sign On): ${purpleVessels.join(', ')}`;
+    }
 
     // Check for overlapping deployments on other vessels (red color reason)
     allDeployedAssignments.forEach(assignment => {
@@ -737,8 +763,8 @@ function CrewColumn({
                   {(() => {
                     const nameColor = getCrewNameColor(crew.crewUuid);
                     const vesselInfo = getCrewVesselInfo(crew.crewUuid);
-                    // Show tooltip for red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
-                    const hasColoredStatus = nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
+                    // Show tooltip for purple (deployed awaiting sign on), red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
+                    const hasColoredStatus = nameColor === 'text-purple-600' || nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
                     const showVesselTooltip = vesselInfo && hasColoredStatus;
                     
                     if (showVesselTooltip) {

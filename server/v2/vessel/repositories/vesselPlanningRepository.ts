@@ -24,6 +24,7 @@ export class VesselPlanningRepository {
         reliefDue: vesselPlanningV2.reliefDue,
         relieverSignOnDate: vesselPlanningV2.relieverSignOnDate,
         contractPeriodMonths: vesselPlanningV2.contractPeriodMonths,
+        joiningStatus: vesselPlanningV2.joiningStatus,
       })
       .from(vesselPlanningV2)
       .where(
