@@ -191,6 +191,8 @@ async function enrichRecordsWithComputedFields(
     let violationDatesJson: string | null = null;
     let predictedViolationDatesJson: string | null = null;
 
+    let liveRecordingPercent: number | undefined;
+
     if (dailyRecordsJson && record.monthValue) {
       const { firstDay, lastDay } = getMonthBounds(record.monthValue);
       const dayRange = (record._signOnDate || record._signOffDate)
@@ -201,6 +203,8 @@ async function enrichRecordsWithComputedFields(
       const pDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, true, dayRange);
       violationDatesJson = vDates.length > 0 ? JSON.stringify(vDates) : null;
       predictedViolationDatesJson = pDates.length > 0 ? JSON.stringify(pDates) : null;
+
+      liveRecordingPercent = calculateRecordingPercentage(dailyRecordsJson, record.monthValue, dayRange);
     }
 
     const cappedPredictedNCs = (record.totalNCs && record.totalNCs >= 1) ? 0 : (record.predictedNCs || 0);
@@ -209,6 +213,7 @@ async function enrichRecordsWithComputedFields(
 
     return {
       ...cleanRecord,
+      ...(liveRecordingPercent !== undefined ? { recordingStatusPercent: liveRecordingPercent } : {}),
       signOnDate: _signOnDate ?? null,
       signOffDate: _signOffDate ?? null,
       predictedNCs: cappedPredictedNCs,

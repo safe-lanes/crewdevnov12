@@ -149,16 +149,13 @@ async function getCrewAssignmentForMonth(
         and(
           eq(crewAssignments.vesselUuid, vesselId),
           or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
-          or(
-            and(
-              lte(crewAssignments.signOnDate, lastDay),
-              or(
-                isNull(crewAssignments.signOffDate),
-                eq(crewAssignments.signOffDate, ''),
-                gte(crewAssignments.signOffDate, firstDay)
-              )
-            ),
-            eq(crewAssignments.isCurrent, true)
+          and(
+            lte(crewAssignments.signOnDate, lastDay),
+            or(
+              isNull(crewAssignments.signOffDate),
+              eq(crewAssignments.signOffDate, ''),
+              gte(crewAssignments.signOffDate, firstDay)
+            )
           )
         )
       );
