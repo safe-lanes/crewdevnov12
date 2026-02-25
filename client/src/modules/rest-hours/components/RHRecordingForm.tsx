@@ -1345,12 +1345,12 @@ export const RHRecordingForm = ({
         dayOfWeekLabel: record.dayOfWeek,
         marker: isAdvanced ? 'advanced' : isRetarded ? 'retarded' : undefined,
         occurrence: record.occurrence,
-        isDisabled: isAdvanced || isOutOfRange || isLocked,
+        isDisabled: isAdvanced || isOutOfRange,
       });
     });
     
     return rows;
-  }, [dailyRecords, dateLineAdjustment, applicableDayRange, isLocked]);
+  }, [dailyRecords, dateLineAdjustment, applicableDayRange]);
 
   // Check if any date line adjustments exist
   const hasDateLineAdjustments = useMemo(() => {
@@ -1751,6 +1751,7 @@ export const RHRecordingForm = ({
             <tbody>
               {displayRows.map((row, displayIndex) => {
                 const { baseIndex, record, dayLabel, dayOfWeekLabel, marker, occurrence, isDisabled } = row;
+                const isNonEditable = isDisabled || isLocked;
                 
                 // Determine styling based on marker and occurrence
                 const isAdvanced = marker === 'advanced';
@@ -1767,9 +1768,9 @@ export const RHRecordingForm = ({
                     {/* Plan/Rec Button */}
                     <td className="border border-gray-300 text-center" style={{ padding: '2px' }}>
                       <button
-                        onClick={() => !isDisabled && handleTogglePlanRec(baseIndex)}
+                        onClick={() => !isNonEditable && handleTogglePlanRec(baseIndex)}
                         className={`px-2 py-1 text-xs rounded ${isDisabled ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-100 hover:bg-blue-200'}`}
-                        disabled={isDisabled}
+                        disabled={isNonEditable}
                         data-testid={`button-plan-rec-${record.day}${occurrenceSuffix}`}
                       >
                         {record.isPlan ? 'Plan' : 'Rec'}
@@ -1812,10 +1813,10 @@ export const RHRecordingForm = ({
                       >
                         <div
                           key={`${baseIndex}-${hourIndex}-${hour}`}
-                          contentEditable={!isDisabled}
+                          contentEditable={!isNonEditable}
                           suppressContentEditableWarning
                           onBlur={(e) => {
-                            if (isDisabled) return;
+                            if (isNonEditable) return;
                             const value = e.currentTarget.textContent || '';
                             handleHourCellEdit(baseIndex, hourIndex, value);
                           }}
@@ -1963,9 +1964,9 @@ export const RHRecordingForm = ({
                     <input
                       type="text"
                       value={record.comments}
-                      onChange={(e) => !isDisabled && handleCommentsChange(baseIndex, e.target.value)}
+                      onChange={(e) => !isNonEditable && handleCommentsChange(baseIndex, e.target.value)}
                       className={`w-full outline-none bg-transparent px-1 ${isDisabled ? 'cursor-not-allowed' : ''}`}
-                      disabled={isDisabled}
+                      disabled={isNonEditable}
                       data-testid={`input-comments-${record.day}${occurrenceSuffix}`}
                     />
                   </td>
