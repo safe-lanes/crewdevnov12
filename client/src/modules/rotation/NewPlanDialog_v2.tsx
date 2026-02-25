@@ -115,6 +115,13 @@ interface DeployedCrewAssignment {
   joiningStatus: string | null; // Reliever sign-on status: Planned, Confirmed, In Transit, Signed On
 }
 
+interface ProposalEntry {
+  crewUuid: string;
+  vesselUuid: string;
+  vessel: string;
+  proposalStatus: string; // Pending, Deployed, Rejected
+}
+
 interface Assignment {
   id?: string; // Unique identifier for each assignment
   vessel: string;
@@ -623,8 +630,13 @@ function CrewColumn({
     if (currentlyDeployedCrewIds.has(crewUuid)) {
       return 'text-red-600'; // Red for currently deployed crew on selected vessels
     }
-    
-    // Third priority: Check draft assignments
+
+    // Third priority: Blue — crew has a pending proposal (Proposed, awaiting Deploy approval)
+    if (proposedCrewIds.has(crewUuid)) {
+      return 'text-blue-600'; // Blue for proposed but not yet deployed
+    }
+
+    // Fourth priority: Check draft assignments in current unsaved session
     const count = getCrewAssignmentCount(crewUuid);
     if (count >= 2) return 'text-[#814C02]'; // Brown for 2+ vessels in draft
     if (count === 1) return 'text-blue-600'; // Blue for 1 vessel in draft
@@ -651,6 +663,15 @@ function CrewColumn({
     });
     if (purpleVessels.length > 0) {
       return `Deployed (Awaiting Sign On): ${purpleVessels.join(', ')}`;
+    }
+
+    // Check for Blue (Proposed): crew has a pending proposal awaiting Deploy approval
+    const proposedVessels = allProposals
+      .filter(p => p.crewUuid === crewUuid && p.proposalStatus !== 'Deployed' && p.proposalStatus !== 'Rejected')
+      .map(p => p.vessel)
+      .filter((v, i, arr) => arr.indexOf(v) === i); // unique vessel names
+    if (proposedVessels.length > 0) {
+      return `Proposed (Awaiting Approval): ${proposedVessels.join(', ')}`;
     }
 
     // Check for overlapping deployments on other vessels (red color reason)
@@ -1905,10 +1926,24 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     queryKey: ['/api/v2/vessel/planning'],
   });
 
+  // Fetch all Proposed (pending approval) rotation entries for Blue colour highlighting
+  const { data: allProposals = [] } = useQuery<ProposalEntry[]>({
+    queryKey: ['/api/v2/rotation/proposals'],
+  });
+
   // Create Set of currently deployed crew UUIDs for O(1) lookup
   const currentlyDeployedCrewIds = useMemo(() => {
     return new Set(existingCrew.map(crew => crew.crewUuid));
   }, [existingCrew]);
+
+  // Build Set of crew UUIDs with pending proposals (Proposed but not yet Deployed or Rejected)
+  const proposedCrewIds = useMemo(() => {
+    return new Set(
+      allProposals
+        .filter(p => p.proposalStatus !== 'Deployed' && p.proposalStatus !== 'Rejected')
+        .map(p => p.crewUuid)
+    );
+  }, [allProposals]);
 
   // Get vessel IDs for the selected vessels (for conflict detection)
   const selectedVesselIds = useMemo(() => {
