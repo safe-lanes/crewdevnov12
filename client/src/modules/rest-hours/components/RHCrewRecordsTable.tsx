@@ -491,10 +491,10 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     {
       headerName: 'S.On/Off',
       field: 'signOnOffInfo',
-      flex: 1.5,
-      minWidth: 110,
-      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' } as any,
-      headerTooltip: 'S.On or S.Off with Role'
+      flex: 2.5,
+      minWidth: 200,
+      cellStyle: { fontSize: '13px', display: 'flex', alignItems: 'center' } as any,
+      headerTooltip: 'Sign On or Sign Off date if the event falls within this month'
     },
     {
       headerName: 'Status',

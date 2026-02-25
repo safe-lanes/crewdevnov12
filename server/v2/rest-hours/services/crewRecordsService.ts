@@ -2,7 +2,7 @@ import { CrewRecordsRepository, DailyRecordsRepository } from "../repositories";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterVessels } from "../../../../shared/schema";
-import { eq, and, or, isNull, inArray } from "drizzle-orm";
+import { eq, and, or, isNull, inArray, lte, gte } from "drizzle-orm";
 import type {
   RhCrewRecordV2,
   InsertRhCrewRecordV2,
@@ -16,6 +16,76 @@ import {
 
 const crewRecordsRepository = new CrewRecordsRepository();
 const dailyRecordsRepository = new DailyRecordsRepository();
+
+// ─── Date helpers ────────────────────────────────────────────────────────────
+
+function getMonthBounds(monthValue: string): { firstDay: string; lastDay: string } {
+  const [year, month] = monthValue.split('-').map(Number);
+  const firstDay = `${monthValue}-01`;
+  const lastDayDate = new Date(year, month, 0);
+  const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+  return { firstDay, lastDay };
+}
+
+function dateInMonth(date: string | null | undefined, firstDay: string, lastDay: string): boolean {
+  if (!date) return false;
+  return date >= firstDay && date <= lastDay;
+}
+
+function formatDateDisplay(date: string): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const parts = date.split('-');
+  if (parts.length !== 3) return date;
+  const day = parseInt(parts[2], 10);
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const year = parts[0];
+  return `${String(day).padStart(2, '0')}-${months[monthIdx]}-${year}`;
+}
+
+function buildSignOnOffInfo(
+  signOnDate: string | null | undefined,
+  signOffDate: string | null | undefined,
+  firstDay: string,
+  lastDay: string
+): string | null {
+  const signOnInMonth = dateInMonth(signOnDate, firstDay, lastDay);
+  const signOffInMonth = dateInMonth(signOffDate, firstDay, lastDay);
+
+  if (signOnInMonth && signOffInMonth) {
+    return `S.On: ${formatDateDisplay(signOnDate!)} | S.Off: ${formatDateDisplay(signOffDate!)}`;
+  } else if (signOnInMonth) {
+    return `S.On: ${formatDateDisplay(signOnDate!)}`;
+  } else if (signOffInMonth) {
+    return `S.Off: ${formatDateDisplay(signOffDate!)}`;
+  }
+  return null;
+}
+
+function getApplicableDayRange(
+  signOnDate: string | null | undefined,
+  signOffDate: string | null | undefined,
+  firstDay: string,
+  lastDay: string,
+  monthValue: string
+): { from: number; to: number } {
+  const [year, month] = monthValue.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  let from = 1;
+  let to = daysInMonth;
+
+  if (signOnDate && signOnDate >= firstDay && signOnDate <= lastDay) {
+    from = parseInt(signOnDate.split('-')[2], 10);
+  }
+
+  if (signOffDate && signOffDate >= firstDay && signOffDate <= lastDay) {
+    to = parseInt(signOffDate.split('-')[2], 10);
+  }
+
+  return { from, to };
+}
+
+// ─── Audit helper ─────────────────────────────────────────────────────────────
 
 function applyAuditUser<T extends object>(
   data: T,
@@ -32,6 +102,8 @@ function applyAuditUser<T extends object>(
 
   return result;
 }
+
+// ─── Vessel name resolution ───────────────────────────────────────────────────
 
 async function resolveVesselNames(vesselIds: string[]): Promise<Map<string, string>> {
   const map = new Map<string, string>();
@@ -61,14 +133,21 @@ async function resolveVesselNames(vesselIds: string[]): Promise<Map<string, stri
   return map;
 }
 
+// ─── Enrich records ───────────────────────────────────────────────────────────
+
 type EnrichedCrewRecord = RhCrewRecordV2 & {
   vesselName?: string;
   violationDates?: string | null;
   predictedViolationDates?: string | null;
 };
 
+type RecordWithAssignment = RhCrewRecordV2 & {
+  _signOnDate?: string | null;
+  _signOffDate?: string | null;
+};
+
 async function enrichRecordsWithComputedFields(
-  records: RhCrewRecordV2[],
+  records: RecordWithAssignment[],
   complianceMode: 'Rest' | 'Work' = 'Rest',
   opaMode: boolean = false
 ): Promise<EnrichedCrewRecord[]> {
@@ -104,17 +183,24 @@ async function enrichRecordsWithComputedFields(
     let violationDatesJson: string | null = null;
     let predictedViolationDatesJson: string | null = null;
 
-    if (dailyRecordsJson) {
-      const vDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, false);
-      const pDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, true);
+    if (dailyRecordsJson && record.monthValue) {
+      const { firstDay, lastDay } = getMonthBounds(record.monthValue);
+      const dayRange = (record._signOnDate || record._signOffDate)
+        ? getApplicableDayRange(record._signOnDate, record._signOffDate, firstDay, lastDay, record.monthValue)
+        : undefined;
+
+      const vDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, false, dayRange);
+      const pDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, true, dayRange);
       violationDatesJson = vDates.length > 0 ? JSON.stringify(vDates) : null;
       predictedViolationDatesJson = pDates.length > 0 ? JSON.stringify(pDates) : null;
     }
 
     const cappedPredictedNCs = (record.totalNCs && record.totalNCs >= 1) ? 0 : (record.predictedNCs || 0);
 
+    const { _signOnDate, _signOffDate, ...cleanRecord } = record as any;
+
     return {
-      ...record,
+      ...cleanRecord,
       predictedNCs: cappedPredictedNCs,
       vesselName,
       violationDates: violationDatesJson,
@@ -122,6 +208,8 @@ async function enrichRecordsWithComputedFields(
     };
   });
 }
+
+// ─── Service ──────────────────────────────────────────────────────────────────
 
 export const crewRecordsService = {
   async getAll(filters?: {
@@ -149,7 +237,7 @@ export const crewRecordsService = {
   }): Promise<EnrichedCrewRecord[]> {
     const { vesselIds, monthValue, ranks, search } = params;
 
-    let allRecords: RhCrewRecordV2[] = [];
+    let allRecords: RecordWithAssignment[] = [];
 
     if (vesselIds && vesselIds.length > 0) {
       for (const vesselId of vesselIds) {
@@ -160,21 +248,28 @@ export const crewRecordsService = {
         allRecords.push(...records);
       }
     } else {
-      allRecords = await crewRecordsRepository.findAll({ monthValue });
+      const records = await crewRecordsRepository.findAll({ monthValue });
+      allRecords.push(...records);
     }
 
     if (vesselIds && vesselIds.length > 0 && monthValue) {
-      const existingCrewIds = new Set(
-        allRecords.map(r => r.crewMemberId)
-      );
+      const { firstDay, lastDay } = getMonthBounds(monthValue);
 
       const db = getDb();
       for (const vesselId of vesselIds) {
+
+        // Query ALL assignments for this vessel that overlap with the given month.
+        // Overlap condition:
+        //   signOnDate <= lastDay of month
+        //   AND (signOffDate >= firstDay of month OR signOffDate is null/empty)
+        // We also include isCurrent=true crew who may have no signOnDate yet (backward compat).
         const crewData = await db
           .select({
             crewUuid: crewAssignments.crewUuid,
             vesselUuid: crewAssignments.vesselUuid,
             signOnDate: crewAssignments.signOnDate,
+            signOffDate: crewAssignments.signOffDate,
+            isCurrent: crewAssignments.isCurrent,
             firstName: crewMembersV2.firstName,
             familyName: crewMembersV2.familyName,
             presentRank: crewMembersV2.presentRank,
@@ -188,21 +283,74 @@ export const crewRecordsService = {
           .where(
             and(
               eq(crewAssignments.vesselUuid, vesselId),
-              eq(crewAssignments.isCurrent, true),
+              or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
               or(
-                eq(crewMembersV2.isDeleted, false),
-                isNull(crewMembersV2.isDeleted)
+                // Case 1: Date-based overlap — signed on before/during month end
+                // AND still on board or signed off during/after month start
+                and(
+                  lte(crewAssignments.signOnDate, lastDay),
+                  or(
+                    isNull(crewAssignments.signOffDate),
+                    eq(crewAssignments.signOffDate, ''),
+                    gte(crewAssignments.signOffDate, firstDay)
+                  )
+                ),
+                // Case 2: Backward compat — currently on board with no sign-on date recorded
+                eq(crewAssignments.isCurrent, true)
               )
             )
           );
 
+        // Deduplicate by crewId — if multiple assignments match (e.g. rejoined crew),
+        // keep the one with the latest signOnDate for this month.
+        const assignmentByCrewId = new Map<string, typeof crewData[0]>();
         for (const crew of crewData) {
           const crewId = crew.empNo || crew.crewUuid;
-          if (existingCrewIds.has(crewId)) {
-            continue;
+          const existing = assignmentByCrewId.get(crewId);
+          if (!existing) {
+            assignmentByCrewId.set(crewId, crew);
+          } else {
+            const existingDate = existing.signOnDate || '';
+            const newDate = crew.signOnDate || '';
+            if (newDate > existingDate) {
+              assignmentByCrewId.set(crewId, crew);
+            }
           }
+        }
 
-          const placeholderRecord = {
+        // Update signOnOffInfo for existing records from the DB using the assignment data
+        for (const record of allRecords) {
+          if (record.vesselId !== vesselId) continue;
+          const assignment = assignmentByCrewId.get(record.crewMemberId);
+          if (assignment) {
+            record.signOnOffInfo = buildSignOnOffInfo(
+              assignment.signOnDate,
+              assignment.signOffDate,
+              firstDay,
+              lastDay
+            );
+            record._signOnDate = assignment.signOnDate;
+            record._signOffDate = assignment.signOffDate;
+          }
+        }
+
+        // Build set of crew IDs that already have a DB record this month
+        const existingCrewIds = new Set(
+          allRecords.filter(r => r.vesselId === vesselId).map(r => r.crewMemberId)
+        );
+
+        // Add placeholder records for crew on board this month without existing records
+        for (const [crewId, crew] of assignmentByCrewId) {
+          if (existingCrewIds.has(crewId)) continue;
+
+          const signOnOffInfo = buildSignOnOffInfo(
+            crew.signOnDate,
+            crew.signOffDate,
+            firstDay,
+            lastDay
+          );
+
+          const placeholderRecord: RecordWithAssignment = {
             id: 0,
             rhCrewRecordUuid: `placeholder-${crew.crewUuid}-${monthValue}`,
             vesselId: vesselId,
@@ -211,7 +359,7 @@ export const crewRecordsService = {
             name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim() || 'Unknown',
             month: monthValue,
             monthValue: monthValue,
-            signOnOffInfo: crew.signOnDate || null,
+            signOnOffInfo,
             recordingStatusPercent: 0,
             activityConflicting: false,
             totalViolations: 0,
@@ -225,8 +373,11 @@ export const crewRecordsService = {
             updatedByUuid: null,
             isDeleted: false,
             isSync: false,
-          } as RhCrewRecordV2;
+            _signOnDate: crew.signOnDate,
+            _signOffDate: crew.signOffDate,
+          };
           allRecords.push(placeholderRecord);
+          existingCrewIds.add(crewId);
         }
       }
     }
@@ -254,7 +405,7 @@ export const crewRecordsService = {
     monthValue?: string;
   }): Promise<Array<{ rank: string; violationDays: number }>> {
     const records = await crewRecordsRepository.findAll(params);
-    
+
     const violationsByRank: Record<string, number> = {};
     for (const record of records) {
       const rank = record.rank || "Unknown";
@@ -274,7 +425,7 @@ export const crewRecordsService = {
     monthValue?: string;
   }): Promise<Array<{ rank: string; ncCount: number }>> {
     const records = await crewRecordsRepository.findAll(params);
-    
+
     const ncsByRank: Record<string, number> = {};
     for (const record of records) {
       const rank = record.rank || "Unknown";

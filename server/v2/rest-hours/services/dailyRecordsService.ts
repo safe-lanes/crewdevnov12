@@ -10,7 +10,7 @@ import {
 } from "../utils/violationHelpers";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { eq, and, or, isNull } from "drizzle-orm";
+import { eq, and, or, isNull, lte, gte } from "drizzle-orm";
 
 const dailyRecordsRepository = new DailyRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
@@ -56,6 +56,125 @@ function formatMonthDisplay(monthValue: string): string {
   return `${monthNames[monthIndex]}-${year}`;
 }
 
+function getMonthBounds(monthValue: string): { firstDay: string; lastDay: string } {
+  const [year, month] = monthValue.split('-').map(Number);
+  const firstDay = `${monthValue}-01`;
+  const lastDayDate = new Date(year, month, 0);
+  const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+  return { firstDay, lastDay };
+}
+
+function dateInMonth(date: string | null | undefined, firstDay: string, lastDay: string): boolean {
+  if (!date) return false;
+  return date >= firstDay && date <= lastDay;
+}
+
+function formatDateDisplay(date: string): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const parts = date.split('-');
+  if (parts.length !== 3) return date;
+  const day = parseInt(parts[2], 10);
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const year = parts[0];
+  return `${String(day).padStart(2, '0')}-${months[monthIdx]}-${year}`;
+}
+
+function buildSignOnOffInfo(
+  signOnDate: string | null | undefined,
+  signOffDate: string | null | undefined,
+  firstDay: string,
+  lastDay: string
+): string | null {
+  const signOnInMonth = dateInMonth(signOnDate, firstDay, lastDay);
+  const signOffInMonth = dateInMonth(signOffDate, firstDay, lastDay);
+
+  if (signOnInMonth && signOffInMonth) {
+    return `S.On: ${formatDateDisplay(signOnDate!)} | S.Off: ${formatDateDisplay(signOffDate!)}`;
+  } else if (signOnInMonth) {
+    return `S.On: ${formatDateDisplay(signOnDate!)}`;
+  } else if (signOffInMonth) {
+    return `S.Off: ${formatDateDisplay(signOffDate!)}`;
+  }
+  return null;
+}
+
+function getApplicableDayRange(
+  signOnDate: string | null | undefined,
+  signOffDate: string | null | undefined,
+  firstDay: string,
+  lastDay: string,
+  monthValue: string
+): { from: number; to: number } | undefined {
+  if (!signOnDate && !signOffDate) return undefined;
+
+  const [year, month] = monthValue.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  let from = 1;
+  let to = daysInMonth;
+  let changed = false;
+
+  if (signOnDate && signOnDate >= firstDay && signOnDate <= lastDay) {
+    from = parseInt(signOnDate.split('-')[2], 10);
+    changed = true;
+  }
+
+  if (signOffDate && signOffDate >= firstDay && signOffDate <= lastDay) {
+    to = parseInt(signOffDate.split('-')[2], 10);
+    changed = true;
+  }
+
+  return changed ? { from, to } : undefined;
+}
+
+async function getCrewAssignmentForMonth(
+  crewMemberId: string,
+  vesselId: string,
+  monthValue: string
+): Promise<{ signOnDate: string | null; signOffDate: string | null } | null> {
+  try {
+    const { firstDay, lastDay } = getMonthBounds(monthValue);
+    const db = getDb();
+
+    const rows = await db
+      .select({
+        crewUuid: crewAssignments.crewUuid,
+        empNo: crewMembersV2.empNo,
+        signOnDate: crewAssignments.signOnDate,
+        signOffDate: crewAssignments.signOffDate,
+      })
+      .from(crewAssignments)
+      .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
+      .where(
+        and(
+          eq(crewAssignments.vesselUuid, vesselId),
+          or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
+          or(
+            and(
+              lte(crewAssignments.signOnDate, lastDay),
+              or(
+                isNull(crewAssignments.signOffDate),
+                eq(crewAssignments.signOffDate, ''),
+                gte(crewAssignments.signOffDate, firstDay)
+              )
+            ),
+            eq(crewAssignments.isCurrent, true)
+          )
+        )
+      );
+
+    const match = rows.find(r => {
+      const id = r.empNo || r.crewUuid;
+      return id === crewMemberId;
+    });
+
+    return match ? { signOnDate: match.signOnDate || null, signOffDate: match.signOffDate || null } : null;
+  } catch (error) {
+    console.error('Failed to get crew assignment for month:', error);
+    return null;
+  }
+}
+
 async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: string) {
   try {
     const dailyRecord = await dailyRecordsRepository.findByKey(crewMemberId, vesselId, monthYear);
@@ -64,11 +183,21 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
     }
 
     const dailyRecordsJson = dailyRecord.dailyRecords || '[]';
-    const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear);
 
-    const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false);
-    const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true);
-    const { totalNCs, predictedNCs } = calculateNCs(dailyRecordsJson, 'Rest', false);
+    const assignment = await getCrewAssignmentForMonth(crewMemberId, vesselId, monthYear);
+    const { firstDay, lastDay } = getMonthBounds(monthYear);
+    const dayRange = assignment
+      ? getApplicableDayRange(assignment.signOnDate, assignment.signOffDate, firstDay, lastDay, monthYear)
+      : undefined;
+
+    const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange);
+    const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false, dayRange);
+    const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true, dayRange);
+    const { totalNCs, predictedNCs } = calculateNCs(dailyRecordsJson, 'Rest', false, dayRange);
+
+    const signOnOffInfo = assignment
+      ? buildSignOnOffInfo(assignment.signOnDate, assignment.signOffDate, firstDay, lastDay)
+      : null;
 
     const existingCrewRecords = await crewRecordsRepository.findAll({
       vesselId,
@@ -84,6 +213,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
         predictedViolations,
         totalNCs,
         predictedNCs,
+        signOnOffInfo: signOnOffInfo ?? existingCrewRecord.signOnOffInfo,
       });
     } else {
       await crewRecordsRepository.create({
@@ -93,7 +223,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
         name: dailyRecord.name || '',
         monthValue: monthYear,
         month: formatMonthDisplay(monthYear),
-        signOnOffInfo: '',
+        signOnOffInfo: signOnOffInfo ?? null,
         recordingStatusPercent: recordingPercent,
         activityConflicting: false,
         totalViolations,
