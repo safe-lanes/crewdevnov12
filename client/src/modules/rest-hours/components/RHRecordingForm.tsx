@@ -22,8 +22,7 @@ import {
   calculateRollingMetrics as calculateTimelineRollingMetrics,
   calculateMinRestInAny24HourPeriod,
   calculateMaxWorkInAny24HourPeriod,
-  calculateRestViaNextDayWorkAnchor,
-  EXPERIMENTAL_NEXT_DAY_WORK_ANCHORED_REST,
+  calculateRestIn24HWorkAnchored,
   detectViolations as detectTimelineViolations,
   groupViolationsByDay,
   groupViolationObjectsByDay,
@@ -981,34 +980,33 @@ export const RHRecordingForm = ({
       const dayViolations = violationsByDay.get(record.day) || [];
       
       // Convert violation codes to numbers (strip brackets)
+      // Remove code-1 from the old pipeline — it will be re-derived from the work-anchored metric below
       const violationNumbers = dayViolations.map(code => {
         const match = code.match(/\[(\d+)\]/);
         return match ? parseInt(match[1]) : 0;
-      }).filter(n => n > 0);
+      }).filter(n => n > 0 && n !== 1);
       
       // Generate diagnostics using the violation objects that were assigned to this day
-      // This ensures diagnostics are aligned with the majority-day assignment
+      // Filter out code-1 diagnostics — they'll be re-derived from the work-anchored metric
       const violationObjectsForDay = violationObjectsByDay.get(record.day) || [];
-      const diagnostics: ViolationDiagnostic[] = violationObjectsForDay.map(({ violation, assignedDay }) => {
-        const codeNum = parseInt(violation.code.match(/\[(\d+)\]/)![1]);
-        
-        // Compute violatingRanges for hover highlighting
-        const violatingRanges = computeViolatingRanges(violation, fullTimeline, codeNum);
-        
-        return {
-          code: codeNum,
-          windowStart: 'Timeline window',
-          reason: violation.reason,
-          violatingRanges,
-          // majorityDay is the day this violation is ASSIGNED TO (used by NC/Predicted NC counting)
-          majorityDay: assignedDay,
-        };
-      });
+      const diagnostics: ViolationDiagnostic[] = violationObjectsForDay
+        .filter(({ violation }) => {
+          const codeNum = parseInt(violation.code.match(/\[(\d+)\]/)![1]);
+          return codeNum !== 1;
+        })
+        .map(({ violation, assignedDay }) => {
+          const codeNum = parseInt(violation.code.match(/\[(\d+)\]/)![1]);
+          const violatingRanges = computeViolatingRanges(violation, fullTimeline, codeNum);
+          return {
+            code: codeNum,
+            windowStart: 'Timeline window',
+            reason: violation.reason,
+            violatingRanges,
+            majorityDay: assignedDay,
+          };
+        });
       
       // Calculate metrics from timeline for this day
-      // IMPORTANT: We need the ARRAY INDICES (positions in fullTimeline array), not slot.slotIndex
-      // because the prefix sums are built from the array order, not the logical slotIndex values
-      // (slotIndex can be negative for previous month data)
       const dayArrayIndices: number[] = dayIndexToArrayIndices.get(dayIndex) || [];
       const lastArrayIndex = dayArrayIndices.length > 0 ? dayArrayIndices[dayArrayIndices.length - 1] : -1;
 
@@ -1019,31 +1017,67 @@ export const RHRecordingForm = ({
         anyPeriodWork7day: 0,
       };
       
-      if (lastArrayIndex >= 47) { // Need at least 48 slots for 24-hour window
-        // [EXPERIMENTAL] Calculate rest in 24h by anchoring the window to THIS day's
-        // first work slot (the 24h windows reach back into the previous day).
-        const restIn24hr = EXPERIMENTAL_NEXT_DAY_WORK_ANCHORED_REST
-          ? calculateRestViaNextDayWorkAnchor(
-              dayArrayIndices,
-              dayArrayIndices,
-              fullTimeline,
-              cumulativeWork,
-              cumulativeRest
-            )
-          : calculateMinRestInAny24HourPeriod(dayArrayIndices, cumulativeRest);
+      let worstWindowEndSlot: number | null = null;
+      
+      if (lastArrayIndex >= 47) {
+        const anchored = calculateRestIn24HWorkAnchored(
+          dayArrayIndices,
+          dayArrayIndices,
+          fullTimeline,
+          cumulativeWork,
+          cumulativeRest
+        );
 
         const maxWorkIn24hr = calculateMaxWorkInAny24HourPeriod(dayArrayIndices, cumulativeWork);
-        
-        // For 7-day metrics, use the rolling window ending at the last slot of the day
         const rollingMetrics = calculateTimelineRollingMetrics(lastArrayIndex, cumulativeRest, cumulativeWork);
         
         metrics = {
-          anyPeriodRest24hr: restIn24hr,
+          anyPeriodRest24hr: anchored.rest,
           anyPeriodRest7day: lastArrayIndex >= 335 ? rollingMetrics.rest168h : 168,
           anyPeriodWork24hr: maxWorkIn24hr,
           anyPeriodWork7day: lastArrayIndex >= 335 ? rollingMetrics.work168h : 0,
         };
+        worstWindowEndSlot = anchored.worstWindowEndSlot;
       }
+
+      // Derive Violation 1 from the work-anchored rest metric
+      if (metrics.anyPeriodRest24hr < 10) {
+        violationNumbers.push(1);
+
+        // Build highlighting ranges from the worst-case 24h window
+        let violatingRanges: Array<{ startCell: number; endCell: number; startDay: number }> = [];
+        if (worstWindowEndSlot !== null) {
+          const winStart = Math.max(0, worstWindowEndSlot - 47);
+          const slotsInWindow = fullTimeline.slice(winStart, worstWindowEndSlot + 1);
+          const dayRanges = new Map<number, { minCell: number; maxCell: number }>();
+          for (const slot of slotsInWindow) {
+            if (slot.sourceDay < 1) continue;
+            const existing = dayRanges.get(slot.sourceDay);
+            if (!existing) {
+              dayRanges.set(slot.sourceDay, { minCell: slot.halfHourIndex, maxCell: slot.halfHourIndex });
+            } else {
+              existing.minCell = Math.min(existing.minCell, slot.halfHourIndex);
+              existing.maxCell = Math.max(existing.maxCell, slot.halfHourIndex);
+            }
+          }
+          violatingRanges = Array.from(dayRanges.entries()).map(([day, range]) => ({
+            startDay: day,
+            startCell: range.minCell,
+            endCell: range.maxCell,
+          }));
+        }
+
+        diagnostics.push({
+          code: 1,
+          windowStart: 'Timeline window',
+          reason: `Minimum 10 hours rest in 24-hour period: ${metrics.anyPeriodRest24hr.toFixed(1)}h (< 10h required)`,
+          violatingRanges,
+          majorityDay: record.day,
+        });
+      }
+
+      // Sort violation numbers for consistent display
+      violationNumbers.sort((a, b) => a - b);
       
       resultMap.set(dayIndex, {
         violations: violationNumbers,
