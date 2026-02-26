@@ -715,8 +715,8 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.update(planUuid, resolvedData);
   },
 
-  async findByVesselAndRank(vesselUuid: string, rankId: string) {
-    return vesselPlanningRepository.findByVesselAndRank(vesselUuid, rankId);
+  async findByVesselAndRank(vesselUuid: string, rankId: string, rank?: string) {
+    return vesselPlanningRepository.findByVesselAndRank(vesselUuid, rankId, rank);
   },
 
   /**

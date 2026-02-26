@@ -62,10 +62,21 @@ export const rotationDeployService = {
         updatedByUuid: effectiveAuditUser,
       });
 
-      const existingPlan = await vesselPlanningRepository.findByVesselAndRank(
-        entry.vesselUuid,
-        entry.rankId || entry.rank
-      );
+      let existingPlan;
+      if (entry.rankId) {
+        existingPlan = await vesselPlanningRepository.findByVesselAndRank(
+          entry.vesselUuid,
+          entry.rankId,
+          entry.rank
+        );
+      }
+      if (!existingPlan) {
+        const allPlans = await vesselPlanningRepository.findByVesselUuid(entry.vesselUuid);
+        const matchByRank = allPlans.find((p: any) => p.rank === entry.rank && !p.isArchived);
+        if (matchByRank) {
+          existingPlan = matchByRank;
+        }
+      }
 
       let planUuid: string;
       
