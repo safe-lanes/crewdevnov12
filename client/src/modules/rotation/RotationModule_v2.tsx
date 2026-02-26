@@ -22,7 +22,7 @@ import { VesselFleetGroupFilter, FilterMode } from '@/components/filters/vessel-
 const useVessels = () => {
     return useQuery({
         queryKey: ['/api/v2/vessel/list'],
-        staleTime: 5 * 60 * 1000,
+        staleTime: 0,
         retry: 2,
         select: (data: any[]) => {
             return data.map((vessel: any) => ({

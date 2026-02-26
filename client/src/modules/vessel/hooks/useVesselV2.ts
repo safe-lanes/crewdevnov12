@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { vesselApiV2, CreatePlanningInput, UpdatePlanningInput } from '../api/vesselApiV2';
 
 const V2_QUERY_KEY = '/api/v2/vessel';
-const V2_STALE_TIME = 60 * 1000;
+const V2_STALE_TIME = 0;
 
 function getCrewUserId(): string | null {
   try {
