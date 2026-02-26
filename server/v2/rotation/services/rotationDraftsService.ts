@@ -491,6 +491,23 @@ export const rotationDraftsService = {
         // Use deployedDate as archivedDate for archived entries
         const archivedDate = entry.deployedDate || null;
         
+        let currentCrew: { id: string; name: string; contractStartDate: string; contractEndDate: string; rangeStartDate: string; rangeEndDate: string } | null = null;
+        if (entry.currentCrewUuid && entry.currentCrewSignOnDate && entry.currentCrewContractEnd) {
+          let currentCrewName = 'Unknown Crew';
+          const currentCrewMember = await crewMembersRepository.findByUuid(entry.currentCrewUuid);
+          if (currentCrewMember) {
+            currentCrewName = `${currentCrewMember.firstName || ''} ${currentCrewMember.familyName || ''}`.trim() || 'Unknown Crew';
+          }
+          currentCrew = {
+            id: entry.currentCrewUuid,
+            name: currentCrewName,
+            contractStartDate: entry.currentCrewSignOnDate,
+            contractEndDate: entry.currentCrewContractEnd,
+            rangeStartDate: entry.currentCrewRangeStart || entry.currentCrewContractEnd,
+            rangeEndDate: entry.currentCrewRangeEnd || entry.currentCrewContractEnd,
+          };
+        }
+        
         proposals.push({
           // Entry identifiers
           entryUuid: entry.entryUuid,
@@ -520,6 +537,8 @@ export const rotationDraftsService = {
           result: displayResult,
           // Archived date (for archived view)
           archivedDate: archivedDate,
+          // Current crew on board (for timeline bars)
+          currentCrew,
         });
       }
     }
