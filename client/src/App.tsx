@@ -40,8 +40,9 @@ function TenantErrorPopup({ error }: { error: string }) {
     let portNumber = window.location.port;
     portNumber = portNumber ? `:${portNumber}` : "";
     const fullUrl = `${protocol}//${hostname}${portNumber}`;
+    localStorage.removeItem("tenantId");
     localStorage.setItem("selected_module", "U2FsdGVkX19gp34OrOluh/gJ6eeByT19nc8eMBUBsVE=");
-    window.location.assign(fullUrl);
+    window.location.assign(`${fullUrl}/audit/dashboard/summary`);
   };
 
   return (
