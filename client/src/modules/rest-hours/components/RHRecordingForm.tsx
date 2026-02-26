@@ -1012,9 +1012,6 @@ export const RHRecordingForm = ({
       const dayArrayIndices: number[] = dayIndexToArrayIndices.get(dayIndex) || [];
       const lastArrayIndex = dayArrayIndices.length > 0 ? dayArrayIndices[dayArrayIndices.length - 1] : -1;
 
-      // Next day's array indices (for the experimental calculation)
-      const nextDayArrayIndices: number[] = dayIndexToArrayIndices.get(dayIndex + 1) || [];
-      
       let metrics = {
         anyPeriodRest24hr: 24,
         anyPeriodRest7day: 168,
@@ -1023,12 +1020,12 @@ export const RHRecordingForm = ({
       };
       
       if (lastArrayIndex >= 47) { // Need at least 48 slots for 24-hour window
-        // [EXPERIMENTAL] Calculate rest in 24h using the next-day work-anchored method,
-        // or fall back to the original minimum-rest-in-any-window approach.
+        // [EXPERIMENTAL] Calculate rest in 24h by anchoring the window to THIS day's
+        // first work slot (the 24h windows reach back into the previous day).
         const restIn24hr = EXPERIMENTAL_NEXT_DAY_WORK_ANCHORED_REST
           ? calculateRestViaNextDayWorkAnchor(
               dayArrayIndices,
-              nextDayArrayIndices,
+              dayArrayIndices,
               fullTimeline,
               cumulativeWork,
               cumulativeRest
