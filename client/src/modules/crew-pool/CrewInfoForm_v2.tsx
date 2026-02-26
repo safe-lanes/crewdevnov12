@@ -238,6 +238,7 @@ interface License {
   issuingAuthority: string;
   issued: string;
   expiry: string;
+  fromDatabase?: boolean;
   attachments?: FileAttachment[];
   archivedAt?: string;       // ISO date when COC was archived (superseded by upgrade)
   archivedReason?: string;   // Reason for archiving
@@ -245,7 +246,7 @@ interface License {
 
 interface TrainingCourse {
   id: string;
-  courseId?: string;  // Template ID for duplicate detection
+  courseId?: string;  // Company ID from Admin > Training Matrix (e.g., SC001) for DB entries
   companyId?: string; // Company ID from Admin > Training Matrix > Company (e.g., SA001)
   trainingCourse: string;
   abbr: string;
@@ -254,6 +255,7 @@ interface TrainingCourse {
   issuingAuthority: string;
   issued: string;
   expiry: string;
+  fromDatabase?: boolean;
   attachments?: FileAttachment[];
 }
 
@@ -866,16 +868,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           : detailedCrewData.education 
             ? JSON.parse(detailedCrewData.education) 
             : [],
-        licenses: Array.isArray(detailedCrewData.licenses) 
+        licenses: (Array.isArray(detailedCrewData.licenses) 
           ? detailedCrewData.licenses 
           : detailedCrewData.licenses 
             ? JSON.parse(detailedCrewData.licenses) 
-            : [],
-        trainingCourses: Array.isArray(detailedCrewData.trainingCourses) 
+            : []).map((l: any) => ({ ...l, fromDatabase: !!(l.licenseId && l.licenseId.trim()) })),
+        trainingCourses: (Array.isArray(detailedCrewData.trainingCourses) 
           ? detailedCrewData.trainingCourses 
           : detailedCrewData.trainingCourses 
             ? JSON.parse(detailedCrewData.trainingCourses) 
-            : [],
+            : []).map((t: any) => ({ ...t, fromDatabase: !!(t.courseId && t.courseId.trim()) })),
         currentCompanySeaService: (() => {
           const services = Array.isArray(detailedCrewData.currentCompanySeaService) 
             ? detailedCrewData.currentCompanySeaService 
@@ -1486,7 +1488,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         certificateNo: '',
         issuingAuthority: '',
         issued: '',
-        expiry: ''
+        expiry: '',
+        fromDatabase: true,
       }));
       return { 
         ...prev, 
@@ -1503,7 +1506,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       const maxId = getMaxIdNum(prev.trainingCourses, 'TRN');
       const newCourses: TrainingCourse[] = selectedTemplates.map((template, index) => ({
         id: `TRN-${maxId + index + 1}`,
-        courseId: template.id,
+        courseId: template.companyId,
         companyId: template.companyId,
         trainingCourse: template.name,
         abbr: template.abbr,
@@ -1511,7 +1514,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         certificateNo: '',
         issuingAuthority: '',
         issued: '',
-        expiry: ''
+        expiry: '',
+        fromDatabase: true,
       }));
       return { 
         ...prev, 
@@ -3961,11 +3965,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {formData.documents.map((doc) => (
               <TableRow key={doc.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input
-                    value={doc.document}
-                    onChange={(e) => updateDocument(doc.id, 'document', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {doc.documentId ? (
+                    <span className="text-[#4f5863] text-[13px]">{doc.document}</span>
+                  ) : (
+                    <Input
+                      value={doc.document}
+                      onChange={(e) => updateDocument(doc.id, 'document', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4078,11 +4086,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input
-                    value={visa.issuingCountry}
-                    onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {visa.countryId ? (
+                    <span className="text-[#4f5863] text-[13px]">{visa.issuingCountry}</span>
+                  ) : (
+                    <Input
+                      value={visa.issuingCountry}
+                      onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4306,26 +4318,38 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </div>
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={license.certificateDocument}
-                    onChange={(e) => updateLicense(license.id, 'certificateDocument', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                    disabled={!!license.archivedAt}
-                  />
+                  {license.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{license.certificateDocument}</span>
+                  ) : (
+                    <Input
+                      value={license.certificateDocument}
+                      onChange={(e) => updateLicense(license.id, 'certificateDocument', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                      disabled={!!license.archivedAt}
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={license.abbr}
-                    onChange={(e) => updateLicense(license.id, 'abbr', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {license.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{license.abbr}</span>
+                  ) : (
+                    <Input
+                      value={license.abbr}
+                      onChange={(e) => updateLicense(license.id, 'abbr', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={license.requirement}
-                    onChange={(e) => updateLicense(license.id, 'requirement', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {license.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{license.requirement}</span>
+                  ) : (
+                    <Input
+                      value={license.requirement}
+                      onChange={(e) => updateLicense(license.id, 'requirement', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4451,25 +4475,37 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <div className="text-[#4f5863] text-[13px] font-mono">{course.courseId || '-'}</div>
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={course.trainingCourse}
-                    onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {course.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{course.trainingCourse}</span>
+                  ) : (
+                    <Input
+                      value={course.trainingCourse}
+                      onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={course.abbr}
-                    onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {course.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{course.abbr}</span>
+                  ) : (
+                    <Input
+                      value={course.abbr}
+                      onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={course.requirement}
-                    onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {course.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{course.requirement}</span>
+                  ) : (
+                    <Input
+                      value={course.requirement}
+                      onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input

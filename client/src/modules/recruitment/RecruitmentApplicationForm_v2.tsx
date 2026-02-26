@@ -2108,7 +2108,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const formattedId = `LIC-${String(maxNum + index + 1).padStart(3, '0')}`;
       return {
         id: formattedId,
-        licenseId: formattedId,
+        licenseId: license.id,
         certificateDocument: license.name,
         abbr: license.abbr || '',
         requirement: license.requirement || '',
@@ -2138,7 +2138,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const formattedId = `TRN-${String(maxNum + index + 1).padStart(3, '0')}`;
       return {
         id: formattedId,
-        courseId: formattedId,
+        courseId: course.companyId || formattedId,
         trainingCourse: course.name,
         abbr: course.abbr || '',
         requirement: course.requirement || '',
