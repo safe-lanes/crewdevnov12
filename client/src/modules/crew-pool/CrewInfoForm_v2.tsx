@@ -684,7 +684,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     firstName: crewMember?.firstName || '',
     middleName: crewMember?.middleName || '',
     familyName: crewMember?.familyName || '',
-    gender: 'Male', // Default to Male, will be loaded from fetched data
+    gender: '',
     nationality: crewMember?.nationality || '',
     presentRank: normalizeRank(crewMember?.presentRank || '') || crewMember?.presentRank || '',
     dateOfBirth: crewMember?.dob || '',
@@ -732,90 +732,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     nokRelationship: '',
     
     // A2.1 Travel and Identification Documents
-    documents: [{
-      id: '1',
-      documentId: '',
-      document: '',
-      number: '',
-      issued: '',
-      expiry: '',
-      issuingAuthority: ''
-    }],
+    documents: [],
     
     // A2.2 Visas
-    visas: [{
-      id: '1',
-      countryId: '',
-      issuingCountry: '',
-      serialNo: '',
-      issued: '',
-      expiry: '',
-      visaType: ''
-    }],
+    visas: [],
     
     // A3.1 Education
-    education: [{
-      id: '1',
-      dateOfCompletion: '',
-      schoolCollegeUniversity: '',
-      subjectsField: '',
-      qualifications: ''
-    }],
+    education: [],
     
     // A3.2 License & DCE
-    licenses: [{
-      id: '1',
-      licenseId: '',
-      certificateDocument: '',
-      abbr: '',
-      requirement: '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    }],
+    licenses: [],
     
     // A3.3 Training Courses
-    trainingCourses: [{
-      id: '1',
-      trainingCourse: '',
-      abbr: '',
-      requirement: '',
-      certificateNo: '',
-      issuingAuthority: '',
-      issued: '',
-      expiry: ''
-    }],
+    trainingCourses: [],
     
     // A4.1 Sea Service - Current Company
-    currentCompanySeaService: [{
-      id: '1',
-      vesselName: '',
-      vesselCode: '',
-      vesselType: '',
-      deadweight: '',
-      engineTypePower: '',
-      ownerOperator: '',
-      rank: '',
-      from: '',
-      to: '',
-      periodMonths: ''
-    }],
+    currentCompanySeaService: [],
     
     // A4.2 Sea Service - External
-    externalSeaService: [{
-      id: '1',
-      vesselName: '',
-      vesselCode: '',
-      vesselType: '',
-      deadweight: '',
-      engineTypePower: '',
-      ownerOperator: '',
-      rank: '',
-      from: '',
-      to: '',
-      periodMonths: ''
-    }],
+    externalSeaService: [],
     
     // F1. Pre Joining Medicals
     preJoiningMedicals: [],
@@ -855,7 +790,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         firstName: detailedCrewData.firstName || '',
         middleName: detailedCrewData.middleName || '',
         familyName: detailedCrewData.familyName || '',
-        gender: detailedCrewData.gender || 'Male',
+        gender: detailedCrewData.gender || '',
         nationality: detailedCrewData.nationality || '',
         presentRank: normalizeRank(detailedCrewData.presentRank || '') || detailedCrewData.presentRank || '',
         dateOfBirth: detailedCrewData.dob || detailedCrewData.dateOfBirth || '',
@@ -1052,7 +987,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         firstName: '',
         middleName: '',
         familyName: '',
-        gender: 'Male',
+        gender: '',
         nationality: '',
         presentRank: '',
         dateOfBirth: '',
@@ -1100,65 +1035,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         nokRelationship: '',
         
         // A2.1 Travel and Identification Documents
-        documents: [{
-          id: '1',
-          documentId: '',
-          document: '',
-          number: '',
-          issued: '',
-          expiry: '',
-          issuingAuthority: ''
-        }],
+        documents: [],
         
         // A2.2 Visas
-        visas: [{
-          id: '1',
-          countryId: '',
-          issuingCountry: '',
-          serialNo: '',
-          issued: '',
-          expiry: '',
-          visaType: ''
-        }],
+        visas: [],
         
         // A3.1 Education
-        education: [{
-          id: '1',
-          dateOfCompletion: '',
-          schoolCollegeUniversity: '',
-          subjectsField: '',
-          qualifications: '',
-          attachments: []
-        }],
+        education: [],
         
         // A3.2 License
-        licenses: [{
-          id: '1',
-          licenseId: '',
-          certificateDocument: '',
-          abbr: '',
-          requirement: '',
-          certificateNo: '',
-          issuingAuthority: '',
-          issued: '',
-          expiry: '',
-          attachments: []
-        }],
+        licenses: [],
         
         // A3.3 Training Courses
-        trainingCourses: [{
-          id: '1',
-          courseId: '',
-          companyId: '',
-          trainingCourse: '',
-          abbr: '',
-          requirement: '',
-          certificateNo: '',
-          issuingAuthority: '',
-          issued: '',
-          expiry: '',
-          attachments: []
-        }],
+        trainingCourses: [],
         
         // A4.1 Sea Service
         currentCompanySeaService: [],
