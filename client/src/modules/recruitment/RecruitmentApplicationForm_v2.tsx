@@ -859,6 +859,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return [];
   }, [externalVesselTypesData]);
 
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
   const countryMasterData: string[] = useMemo(() => {
     const countries = (externalCountriesData as any)?.countries || externalCountriesData || [];
     if (countries.length > 0) {
@@ -4806,7 +4808,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={doc.number} onChange={(e) => updateDocument(doc.id, 'number', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={doc.issued} onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={doc.issued} onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input type="date" value={doc.expiry} onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -4876,7 +4878,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={visa.serialNo} onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={visa.issued} onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={visa.issued} onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input type="date" value={visa.expiry} onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -5023,7 +5025,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={lic.issuingAuthority} onChange={(e) => updateLicense(lic.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={lic.issued} onChange={(e) => updateLicense(lic.id, 'issued', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={lic.issued} onChange={(e) => updateLicense(lic.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input type="date" value={lic.expiry} onChange={(e) => updateLicense(lic.id, 'expiry', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -5111,7 +5113,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={course.issuingAuthority} onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={course.issued} onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={course.issued} onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input type="date" value={course.expiry} onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />

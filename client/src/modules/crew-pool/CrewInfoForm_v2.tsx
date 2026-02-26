@@ -23,6 +23,7 @@ import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
+import { validateMobileNumber, normalizeMobileInput, applyDialingCode, getDialingCode } from '../recruitment/countryDialingCodes';
 import { TravelDocumentSelectionDialog } from './TravelDocumentSelectionDialog';
 import { VisaSelectionDialog } from './VisaSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
@@ -360,6 +361,22 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const dotColor = hasExpired ? 'bg-red-500' : hasExpiring ? 'bg-orange-500' : 'bg-green-500';
     return { dotColor, issueCount: issues.length, issues };
   };
+
+  const validateExpiryVsIssued = (issued: string, expiry: string): string => {
+    if (!issued || !expiry) return '';
+    if (expiry < issued) return 'Expiry Date cannot be earlier than Issued Date.';
+    return '';
+  };
+
+  const validateEmail = (value: string): string => {
+    if (!value) return '';
+    if (/\s/.test(value)) return 'Email must not contain spaces.';
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(value)) return 'Please enter a valid email address (e.g., name@domain.com).';
+    return '';
+  };
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   
   // State for issues popup dialog
   const [issuesDialogOpen, setIssuesDialogOpen] = useState(false);
@@ -486,6 +503,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   // State for tracking if we're saving before opening attachment dialog
   const [isSavingBeforeAttachment, setIsSavingBeforeAttachment] = useState(false);
+
+  // Inline validation error states (matching Recruitment form patterns)
+  const [docDateErrors, setDocDateErrors] = useState<Record<string, string>>({});
+  const [visaDateErrors, setVisaDateErrors] = useState<Record<string, string>>({});
+  const [licDateErrors, setLicDateErrors] = useState<Record<string, string>>({});
+  const [trainingDateErrors, setTrainingDateErrors] = useState<Record<string, string>>({});
+  const [seaServiceDateErrors, setSeaServiceDateErrors] = useState<Record<string, string>>({});
+  const [spouseValidationError, setSpouseValidationError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [nokEmailError, setNokEmailError] = useState('');
+  const [mobileError, setMobileError] = useState('');
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -1335,6 +1363,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         doc.id === id ? { ...doc, [field]: value } : doc
       )
     }));
+    if (field === 'issued' || field === 'expiry') {
+      const doc = formData.documents.find(d => d.id === id);
+      if (doc) {
+        const issued = field === 'issued' ? value : doc.issued;
+        const expiry = field === 'expiry' ? value : doc.expiry;
+        const err = validateExpiryVsIssued(issued, expiry);
+        setDocDateErrors(prev => err ? { ...prev, [id]: err } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)));
+      }
+    }
   };
 
   const removeDocument = (id: string) => {
@@ -1390,6 +1427,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         visa.id === id ? { ...visa, [field]: value } : visa
       )
     }));
+    if (field === 'issued' || field === 'expiry') {
+      const visa = formData.visas.find(v => v.id === id);
+      if (visa) {
+        const issued = field === 'issued' ? value : visa.issued;
+        const expiry = field === 'expiry' ? value : visa.expiry;
+        const err = validateExpiryVsIssued(issued, expiry);
+        setVisaDateErrors(prev => err ? { ...prev, [id]: err } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)));
+      }
+    }
   };
 
   const removeVisa = (id: string) => {
@@ -1610,6 +1656,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         license.id === id ? { ...license, [field]: value } : license
       )
     }));
+    if (field === 'issued' || field === 'expiry') {
+      const lic = formData.licenses.find(l => l.id === id);
+      if (lic) {
+        const issued = field === 'issued' ? value : lic.issued;
+        const expiry = field === 'expiry' ? value : lic.expiry;
+        const err = validateExpiryVsIssued(issued, expiry);
+        setLicDateErrors(prev => err ? { ...prev, [id]: err } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)));
+      }
+    }
   };
 
   const removeLicense = (id: string) => {
@@ -1666,6 +1721,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         course.id === id ? { ...course, [field]: value } : course
       )
     }));
+    if (field === 'issued' || field === 'expiry') {
+      const course = formData.trainingCourses.find(c => c.id === id);
+      if (course) {
+        const issued = field === 'issued' ? value : course.issued;
+        const expiry = field === 'expiry' ? value : course.expiry;
+        const err = validateExpiryVsIssued(issued, expiry);
+        setTrainingDateErrors(prev => err ? { ...prev, [id]: err } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)));
+      }
+    }
   };
 
   const removeTrainingCourse = (id: string) => {
@@ -3566,12 +3630,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {isEditing ? (
               <Input
                 value={formData.mobile}
-                onChange={(e) => updateFormData('mobile', e.target.value)}
+                onChange={(e) => { updateFormData('mobile', e.target.value); if (mobileError) setMobileError(''); }}
                 className="mt-1"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.mobile}</div>
             )}
+            {mobileError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-mobile-error">{mobileError}</p>}
           </div>
           
           <div>
@@ -3580,12 +3645,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <Input
                 type="email"
                 value={formData.email}
-                onChange={(e) => updateFormData('email', e.target.value)}
+                onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(''); }}
                 className="mt-1"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.email}</div>
             )}
+            {emailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-email-error">{emailError}</p>}
           </div>
         </div>
       </div>
@@ -3680,12 +3746,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               {isEditing ? (
                 <Input
                   value={formData.spouseFirstName}
-                  onChange={(e) => updateFormData('spouseFirstName', e.target.value)}
+                  onChange={(e) => { updateFormData('spouseFirstName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
                   className="mt-1"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFirstName}</div>
               )}
+              {spouseValidationError && !(formData.spouseFirstName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-firstname-error">Required</p>}
             </div>
             
             <div>
@@ -3706,12 +3773,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               {isEditing ? (
                 <Input
                   value={formData.spouseFamilyName}
-                  onChange={(e) => updateFormData('spouseFamilyName', e.target.value)}
+                  onChange={(e) => { updateFormData('spouseFamilyName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
                   className="mt-1"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFamilyName}</div>
               )}
+              {spouseValidationError && !(formData.spouseFamilyName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-familyname-error">Required</p>}
             </div>
             
             <div>
@@ -3720,12 +3788,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <Input
                   type="date"
                   value={formData.spouseDateOfBirth}
-                  onChange={(e) => updateFormData('spouseDateOfBirth', e.target.value)}
+                  onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
                   className="mt-1"
+                  max={todayStr}
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth}</div>
               )}
+              {spouseValidationError && !(formData.spouseDateOfBirth || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-dob-error">Required</p>}
             </div>
           </div>
 
@@ -3770,7 +3840,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Input
                               value={child.firstName}
                               onChange={(e) => updateChild(index, 'firstName', e.target.value)}
-                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                              className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                             />
                           ) : (
                             child.firstName
@@ -3781,7 +3851,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Input
                               value={child.middleName}
                               onChange={(e) => updateChild(index, 'middleName', e.target.value)}
-                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                              className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                             />
                           ) : (
                             child.middleName
@@ -3792,7 +3862,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Input
                               value={child.familyName}
                               onChange={(e) => updateChild(index, 'familyName', e.target.value)}
-                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                              className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                             />
                           ) : (
                             child.familyName
@@ -3804,7 +3874,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                               type="date"
                               value={child.dateOfBirth}
                               onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
-                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                              className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                             />
                           ) : (
                             child.dateOfBirth
@@ -3813,7 +3883,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                           {isEditing ? (
                             <Select value={child.gender} onValueChange={(value) => updateChild(index, 'gender', value)}>
-                              <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                              <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                                 <SelectValue placeholder="Select" />
                               </SelectTrigger>
                               <SelectContent>
@@ -3921,12 +3991,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <Input
                   type="email"
                   value={formData.nokEmail}
-                  onChange={(e) => updateFormData('nokEmail', e.target.value)}
+                  onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(''); }}
                   className="mt-1"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nokEmail}</div>
               )}
+              {nokEmailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-nokemail-error">{nokEmailError}</p>}
             </div>
             
             <div>
@@ -4008,14 +4079,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     value={doc.document}
                     onChange={(e) => updateDocument(doc.id, 'document', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={doc.number}
                     onChange={(e) => updateDocument(doc.id, 'number', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4023,7 +4094,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={doc.issued}
                     onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    max={todayStr}
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4031,14 +4103,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={doc.expiry}
                     onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)}
-                    className={`${getExpiryColorClass(doc.expiry)} text-[13px] border-0 shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(doc.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
                   />
+                  {docDateErrors[doc.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-doc-expiry-error-${doc.id}`}>{docDateErrors[doc.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={doc.issuingAuthority}
                     onChange={(e) => updateDocument(doc.id, 'issuingAuthority', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4123,14 +4196,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     value={visa.issuingCountry}
                     onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={visa.serialNo}
                     onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4138,7 +4211,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={visa.issued}
                     onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    max={todayStr}
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4146,14 +4220,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={visa.expiry}
                     onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)}
-                    className={`${getExpiryColorClass(visa.expiry)} text-[13px] border-0 shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(visa.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
                   />
+                  {visaDateErrors[visa.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-visa-expiry-error-${visa.id}`}>{visaDateErrors[visa.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={visa.visaType}
                     onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4211,10 +4286,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -4223,31 +4298,31 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TableRow key={edu.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   <Input
-                    type="date"
-                    value={edu.dateOfCompletion}
-                    onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
-                  />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input
-                    value={edu.schoolCollegeUniversity}
-                    onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    value={edu.qualifications}
+                    onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={edu.subjectsField}
                     onChange={(e) => updateEducation(edu.id, 'subjectsField', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
-                    value={edu.qualifications}
-                    onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    value={edu.schoolCollegeUniversity}
+                    onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                  />
+                </TableCell>
+                <TableCell className="p-3">
+                  <Input
+                    type="date"
+                    value={edu.dateOfCompletion}
+                    onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)}
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4349,7 +4424,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     value={license.certificateDocument}
                     onChange={(e) => updateLicense(license.id, 'certificateDocument', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                     disabled={!!license.archivedAt}
                   />
                 </TableCell>
@@ -4357,21 +4432,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     value={license.abbr}
                     onChange={(e) => updateLicense(license.id, 'abbr', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={license.requirement}
                     onChange={(e) => updateLicense(license.id, 'requirement', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={license.certificateNo}
                     onChange={(e) => updateLicense(license.id, 'certificateNo', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4379,7 +4454,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     value={license.issuingAuthority} 
                     onValueChange={(value) => updateLicense(license.id, 'issuingAuthority', value)}
                   >
-                    <SelectTrigger className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto">
+                    <SelectTrigger className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto">
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
@@ -4394,7 +4469,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={license.issued}
                     onChange={(e) => updateLicense(license.id, 'issued', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    max={todayStr}
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4402,8 +4478,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={license.expiry}
                     onChange={(e) => updateLicense(license.id, 'expiry', e.target.value)}
-                    className={`${getExpiryColorClass(license.expiry)} text-[13px] border-0 shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(license.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
                   />
+                  {licDateErrors[license.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-lic-expiry-error-${license.id}`}>{licDateErrors[license.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4492,35 +4569,35 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     value={course.trainingCourse}
                     onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={course.abbr}
                     onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={course.requirement}
                     onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={course.certificateNo}
                     onChange={(e) => updateTrainingCourse(course.id, 'certificateNo', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={course.issuingAuthority}
                     onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4528,7 +4605,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={course.issued}
                     onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border-0 shadow-none p-0 h-auto"
+                    max={todayStr}
+                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
                 <TableCell className="p-3">
@@ -4536,8 +4614,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={course.expiry}
                     onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)}
-                    className={`${getExpiryColorClass(course.expiry)} text-[13px] border-0 shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(course.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
                   />
+                  {trainingDateErrors[course.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-train-expiry-error-${course.id}`}>{trainingDateErrors[course.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4805,6 +4884,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             );
                           }
                         })()}
+                        {seaServiceDateErrors[service.id || (service as any).seaUuid] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-e1-to-error-${service.id}`}>{seaServiceDateErrors[service.id || (service as any).seaUuid]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
@@ -5072,6 +5152,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
                           className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
+                        {seaServiceDateErrors[service.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -5470,6 +5551,179 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         variant: "destructive",
       });
       return;
+    }
+
+    // DOB validation
+    if (formData.dateOfBirth) {
+      const dobDate = new Date(formData.dateOfBirth);
+      const today = new Date();
+      if (dobDate > today) {
+        toast({ title: "Validation Error", description: "Date of Birth cannot be a future date.", variant: "destructive" });
+        return;
+      }
+      const minDob = new Date();
+      minDob.setFullYear(minDob.getFullYear() - 18);
+      if (dobDate > minDob) {
+        toast({ title: "Validation Error", description: "Crew member must be at least 18 years old.", variant: "destructive" });
+        return;
+      }
+    }
+
+    // Mobile validation
+    const trimmedMobile = (formData.mobile || '').trim();
+    if (trimmedMobile && formData.countryOfResidence) {
+      const mobileErr = validateMobileNumber(formData.countryOfResidence, trimmedMobile);
+      if (mobileErr) {
+        setMobileError(mobileErr);
+        toast({ title: "Validation Error", description: mobileErr, variant: "destructive" });
+        return;
+      }
+    }
+    setMobileError('');
+
+    // Email validation
+    const trimmedEmail = (formData.email || '').trim();
+    const trimmedNokEmail = (formData.nokEmail || '').trim();
+    if (trimmedEmail) {
+      const emailErr = validateEmail(trimmedEmail);
+      if (emailErr) {
+        setEmailError(emailErr);
+        toast({ title: "Validation Error", description: emailErr, variant: "destructive" });
+        return;
+      }
+    }
+    setEmailError('');
+    if (trimmedNokEmail) {
+      const nokErr = validateEmail(trimmedNokEmail);
+      if (nokErr) {
+        setNokEmailError(nokErr);
+        toast({ title: "Validation Error", description: nokErr, variant: "destructive" });
+        return;
+      }
+    }
+    setNokEmailError('');
+
+    // Spouse validation when married
+    if (formData.maritalStatus === 'Married') {
+      const missingSpouseFields: string[] = [];
+      if (!(formData.spouseFirstName || '').trim()) missingSpouseFields.push('Spouse First Name');
+      if (!(formData.spouseFamilyName || '').trim()) missingSpouseFields.push('Spouse Family Name');
+      if (!(formData.spouseDateOfBirth || '').trim()) missingSpouseFields.push('Spouse Date of Birth');
+      if (missingSpouseFields.length > 0) {
+        setSpouseValidationError(`Required when Married: ${missingSpouseFields.join(', ')}`);
+        toast({ title: "Validation Error", description: `Required when Married: ${missingSpouseFields.join(', ')}`, variant: "destructive" });
+        return;
+      }
+    }
+    const spouseDobVal = (formData.spouseDateOfBirth || '').trim();
+    if (spouseDobVal) {
+      const [sy, sm, sd] = spouseDobVal.split('-').map(Number);
+      const spouseDobLocal = new Date(sy, sm - 1, sd);
+      const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0);
+      if (spouseDobLocal > todayLocal) {
+        setSpouseValidationError('Spouse Date of Birth cannot be a future date.');
+        toast({ title: "Validation Error", description: "Spouse Date of Birth cannot be a future date.", variant: "destructive" });
+        return;
+      }
+    }
+    setSpouseValidationError('');
+
+    // Expiry vs Issued validation for docs, visas, licenses, training
+    const newDocErrors: Record<string, string> = {};
+    for (const doc of formData.documents) {
+      const err = validateExpiryVsIssued(doc.issued, doc.expiry);
+      if (err) newDocErrors[doc.id] = err;
+    }
+    setDocDateErrors(newDocErrors);
+    const newVisaErrors: Record<string, string> = {};
+    for (const visa of formData.visas) {
+      const err = validateExpiryVsIssued(visa.issued, visa.expiry);
+      if (err) newVisaErrors[visa.id] = err;
+    }
+    setVisaDateErrors(newVisaErrors);
+    const newLicErrors: Record<string, string> = {};
+    for (const lic of formData.licenses) {
+      const err = validateExpiryVsIssued(lic.issued, lic.expiry);
+      if (err) newLicErrors[lic.id] = err;
+    }
+    setLicDateErrors(newLicErrors);
+    const newTrainingErrors: Record<string, string> = {};
+    for (const course of formData.trainingCourses) {
+      const err = validateExpiryVsIssued(course.issued, course.expiry);
+      if (err) newTrainingErrors[course.id] = err;
+    }
+    setTrainingDateErrors(newTrainingErrors);
+    const hasDateIssues = Object.keys(newDocErrors).length > 0 || Object.keys(newVisaErrors).length > 0 ||
+      Object.keys(newLicErrors).length > 0 || Object.keys(newTrainingErrors).length > 0;
+    if (hasDateIssues) {
+      toast({ title: "Validation Error", description: "Expiry Date cannot be earlier than Issued Date. Please fix highlighted rows.", variant: "destructive" });
+      return;
+    }
+
+    // Sea service To < From validation (E2 + manual E1 rows)
+    const newSeaErrors: Record<string, string> = {};
+    (formData.currentCompanySeaService || []).forEach((sea: any) => {
+      if (!sea.seaUuid) {
+        const from = sea.from || sea.fromDate || '';
+        const to = sea.to || sea.toDate || '';
+        if (from && to && to < from) {
+          newSeaErrors[sea.id || sea.seaUuid || `e1-${from}`] = '"To" date cannot be earlier than "From" date.';
+        }
+      }
+    });
+    (formData.externalSeaService || []).forEach((sea: any) => {
+      const from = sea.from || sea.fromDate || '';
+      const to = sea.to || sea.toDate || '';
+      if (from && to && to < from) {
+        newSeaErrors[sea.id || sea.seaUuid || `e2-${from}`] = '"To" date cannot be earlier than "From" date.';
+      }
+    });
+    setSeaServiceDateErrors(newSeaErrors);
+    if (Object.keys(newSeaErrors).length > 0) {
+      toast({ title: "Validation Error", description: '"To" date cannot be earlier than "From" date in Sea Service.', variant: "destructive" });
+      return;
+    }
+
+    // Row mandatory field validation + blank row cleanup for docs/visas/edu/lic/training
+    const hasAttachments = (atts: any) => Array.isArray(atts) && atts.filter((a: any) => !a.isDeleted).length > 0;
+    const isDocBlank = (doc: typeof formData.documents[0]) => !(doc.document || '').trim() && !(doc.number || '').trim() && !(doc.issued || '').trim() && !(doc.expiry || '').trim() && !(doc.issuingAuthority || '').trim() && !hasAttachments(doc.attachments);
+    const isVisaBlank = (visa: typeof formData.visas[0]) => !(visa.issuingCountry || '').trim() && !(visa.serialNo || '').trim() && !(visa.issued || '').trim() && !(visa.expiry || '').trim() && !(visa.visaType || '').trim() && !hasAttachments(visa.attachments);
+    const isEduBlank = (edu: typeof formData.education[0]) => !(edu.qualifications || '').trim() && !(edu.subjectsField || '').trim() && !(edu.schoolCollegeUniversity || '').trim() && !(edu.dateOfCompletion || '').trim() && !hasAttachments(edu.attachments);
+    const isLicBlank = (lic: typeof formData.licenses[0]) => !(lic.certificateDocument || '').trim() && !(lic.abbr || '').trim() && !(lic.requirement || '').trim() && !(lic.certificateNo || '').trim() && !(lic.issuingAuthority || '').trim() && !(lic.issued || '').trim() && !(lic.expiry || '').trim() && !hasAttachments(lic.attachments);
+    const isTrainBlank = (t: typeof formData.trainingCourses[0]) => !(t.trainingCourse || '').trim() && !(t.abbr || '').trim() && !(t.requirement || '').trim() && !(t.certificateNo || '').trim() && !(t.issuingAuthority || '').trim() && !(t.issued || '').trim() && !(t.expiry || '').trim() && !hasAttachments(t.attachments);
+
+    const mandatoryErrors: string[] = [];
+    formData.documents.forEach((doc, i) => { if (!isDocBlank(doc) && !(doc.document || '').trim()) mandatoryErrors.push(`Documents Row ${i + 1}: 'Document Name' is required to save this row.`); });
+    formData.visas.forEach((visa, i) => { if (!isVisaBlank(visa) && !(visa.issuingCountry || '').trim()) mandatoryErrors.push(`Visas Row ${i + 1}: 'Issuing Country' is required to save this row.`); });
+    formData.education.forEach((edu, i) => { if (!isEduBlank(edu) && !(edu.qualifications || '').trim()) mandatoryErrors.push(`Education Row ${i + 1}: 'Qualifications' is required to save this row.`); });
+    formData.licenses.forEach((lic, i) => { if (!isLicBlank(lic) && !(lic.certificateDocument || '').trim()) mandatoryErrors.push(`License & DCE Row ${i + 1}: 'Certificate/Document' is required to save this row.`); });
+    formData.trainingCourses.forEach((t, i) => { if (!isTrainBlank(t) && !(t.trainingCourse || '').trim()) mandatoryErrors.push(`Training Course Row ${i + 1}: 'Training/Course' is required to save this row.`); });
+    if (mandatoryErrors.length > 0) {
+      toast({ title: "Validation Error", description: mandatoryErrors.join('\n'), variant: "destructive" });
+      return;
+    }
+
+    // Remove fully blank rows before saving
+    const nonEmptyDocuments = formData.documents.filter(doc => !isDocBlank(doc));
+    const nonEmptyVisas = formData.visas.filter(visa => !isVisaBlank(visa));
+    const nonEmptyEducation = formData.education.filter(edu => !isEduBlank(edu));
+    const nonEmptyLicenses = formData.licenses.filter(lic => !isLicBlank(lic));
+    const nonEmptyTraining = formData.trainingCourses.filter(t => !isTrainBlank(t));
+    if (
+      nonEmptyDocuments.length !== formData.documents.length ||
+      nonEmptyVisas.length !== formData.visas.length ||
+      nonEmptyEducation.length !== formData.education.length ||
+      nonEmptyLicenses.length !== formData.licenses.length ||
+      nonEmptyTraining.length !== formData.trainingCourses.length
+    ) {
+      setFormData(prev => ({
+        ...prev,
+        documents: nonEmptyDocuments,
+        visas: nonEmptyVisas,
+        education: nonEmptyEducation,
+        licenses: nonEmptyLicenses,
+        trainingCourses: nonEmptyTraining,
+      }));
     }
     
     const seaServiceErrors: string[] = [];
