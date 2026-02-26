@@ -19,7 +19,6 @@ import { filterViolations } from '../violationFilters';
 import {
   buildTimeline,
   buildPrefixSums,
-  calculateRollingMetrics as calculateTimelineRollingMetrics,
   calculateMinRestInAny24HourPeriod,
   calculateRestIn24HWorkAnchored,
   detectViolations as detectTimelineViolations,
@@ -1027,13 +1026,26 @@ export const RHRecordingForm = ({
           cumulativeRest
         );
 
-        const rollingMetrics = calculateTimelineRollingMetrics(lastArrayIndex, cumulativeRest, cumulativeWork);
+        let rest7day = 0;
+        for (let offset = 0; offset < 7; offset++) {
+          const lookbackIndex = dayIndex - offset;
+          if (lookbackIndex >= 0) {
+            rest7day += dailyRecords[lookbackIndex].hoursOfRest24hr ?? 24;
+          } else {
+            const prevDayIndex = previousMonthRecords.length + lookbackIndex;
+            if (prevDayIndex >= 0 && prevDayIndex < previousMonthRecords.length) {
+              rest7day += previousMonthRecords[prevDayIndex].hoursOfRest24hr ?? 24;
+            } else {
+              rest7day += 24;
+            }
+          }
+        }
         
         metrics = {
           anyPeriodRest24hr: anchored.rest,
-          anyPeriodRest7day: lastArrayIndex >= 335 ? rollingMetrics.rest168h : 168,
+          anyPeriodRest7day: rest7day,
           anyPeriodWork24hr: 24 - anchored.rest,
-          anyPeriodWork7day: lastArrayIndex >= 335 ? rollingMetrics.work168h : 0,
+          anyPeriodWork7day: 168 - rest7day,
         };
         worstWindowEndSlot = anchored.worstWindowEndSlot;
       }
