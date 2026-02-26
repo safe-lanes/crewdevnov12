@@ -4,10 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Switch, Route } from "wouter";
 import { lazy, Suspense } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { useTenantInit } from "@/hooks/useTenantInit";
 
 const AdminRouter = lazy(() => import("./modules/admin/index"));
 const AppraisalsRouter = lazy(() => import("./modules/crewing/AppraisalsRouter"));
@@ -32,7 +33,46 @@ function PageLoader() {
   );
 }
 
+function TenantError({ error }: { error: string }) {
+  return (
+    <div className="flex items-center justify-center h-screen w-full bg-background" data-testid="tenant-error-screen">
+      <div className="flex flex-col items-center gap-4 max-w-md text-center p-8">
+        <AlertTriangle className="h-12 w-12 text-destructive" />
+        <h2 className="text-lg font-semibold text-foreground">Connection Error</h2>
+        <p className="text-sm text-muted-foreground" data-testid="tenant-error-message">{error}</p>
+        <button
+          onClick={() => {
+            localStorage.removeItem("tenantId");
+            window.location.reload();
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+          data-testid="button-tenant-retry"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TenantLoader() {
+  return (
+    <div className="flex items-center justify-center h-screen w-full bg-background" data-testid="tenant-loading-screen">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Connecting to tenant database...</p>
+      </div>
+    </div>
+  );
+}
+
 function App() {
+  const { isLoading, error, isResolved } = useTenantInit();
+
+  if (isLoading) return <TenantLoader />;
+  if (error && !isResolved) return <TenantError error={error} />;
+
   return (
     <QueryClientProvider client={queryClient}>
       <PermissionsProvider>

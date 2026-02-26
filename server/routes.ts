@@ -16,8 +16,47 @@ import { storage, isConnected, connectionError, calculateExperienceFromSeaServic
 import { storageAccount } from "./storage-accounts";
 import { insertPayElementSchema, insertContractPayElementSchema } from "@shared/schema";
 import { normalizeCrewMemberForTable, calculateCrewStatus } from "@shared/crew-mapping";
+import { tenantConnectionManager, TenantNotFoundError } from "./utils/tenantConnectionManager";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.post("/api/v2/tenant/init", async (req, res) => {
+    try {
+      const { domain } = req.body;
+      if (!domain || typeof domain !== "string") {
+        return res.status(400).json({
+          error: "Invalid request",
+          message: "domain is required and must be a string",
+        });
+      }
+
+      if (!tenantConnectionManager.isMultiTenantEnabled) {
+        return res.status(503).json({
+          error: "Multi-tenant not configured",
+          message: "This server is running in single-tenant mode",
+        });
+      }
+
+      const tenant = await tenantConnectionManager.resolveTenant(domain.trim());
+      return res.json({
+        tenantId: tenant.tuid,
+        dbName: tenant.tuid,
+        companyName: tenant.companyName,
+      });
+    } catch (err: any) {
+      if (err instanceof TenantNotFoundError) {
+        return res.status(404).json({
+          error: "Domain not found",
+          message: err.message,
+        });
+      }
+      console.error("Tenant init error:", err.message);
+      return res.status(500).json({
+        error: "Failed to resolve tenant",
+        message: "An error occurred while resolving the tenant database",
+      });
+    }
+  });
+
   // Mount v2 recruitment routes (isolated from existing functionality)
   app.use("/api/v2/recruitment", recruitmentV2Routes);
   

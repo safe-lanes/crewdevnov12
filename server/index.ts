@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { runMigrations } from "./migrationRunner";
+import { tenantConnectionManager } from "./utils/tenantConnectionManager";
+import { tenantMiddleware } from "./middleware/tenantMiddleware";
 
 const app = express();
 // Increase body size limit to handle base64 encoded photos (max 10MB)
@@ -41,6 +43,12 @@ app.use((req, res, next) => {
 (async () => {
   // Run database migrations automatically before starting server
   await runMigrations();
+
+  // Initialize multi-tenant connection manager (no-op if MASTER_DATABASE_URL not set)
+  await tenantConnectionManager.init();
+
+  // Apply tenant middleware before routes
+  app.use(tenantMiddleware);
   
   const server = await registerRoutes(app);
 
@@ -92,8 +100,9 @@ app.use((req, res, next) => {
     isShuttingDown = true;
     
     log(`${signal} received. Shutting down gracefully...`);
-    httpServer.close(() => {
+    httpServer.close(async () => {
       log('HTTP server closed.');
+      await tenantConnectionManager.closeAll();
       process.exit(0);
     });
 

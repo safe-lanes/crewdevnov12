@@ -1,4 +1,5 @@
 import '@/lib/agGridSetup';
+import './lib/tenantFetch';
 import { createRoot } from "react-dom/client";
 import { Router } from "wouter";
 import App from "./App";

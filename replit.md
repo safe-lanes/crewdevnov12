@@ -52,6 +52,7 @@ All client modules reside under `client/src/modules/` with a flat structure:
 - **Crew Deployment:** Implements a two-stage workflow (Deploy from Rotation → Sign On).
 - **Role-Based Access Control (RBAC):** Gated access to modules and CRUD operations based on user permissions.
 - **Rest Hours Compliance:** Advanced calculations for work/rest hour violations using work-anchored and rolling-window logic.
+- **Multi-Tenant Database Architecture:** Production uses per-tenant database isolation via `MASTER_DATABASE_URL`. The `TenantConnectionManager` singleton (`server/utils/tenantConnectionManager.ts`) manages tenant resolution from a master `tenants` table, per-tenant connection pools (max 5 connections each, idle eviction after 10 min), and `AsyncLocalStorage`-based request-scoped tenant context. `getDb()` in `server/v2/db.ts` transparently returns the correct tenant DB — zero changes needed in service/repository code. Frontend auto-injects `x-tenant-id` header via global fetch interceptor (`client/src/lib/tenantFetch.ts`) and explicit headers in `queryClient.ts`. Tenant init flow: `POST /api/v2/tenant/init { domain }` → returns `tuid`. When `MASTER_DATABASE_URL` is not set (Replit dev), everything runs in single-tenant mode with no behavioral changes.
 
 ### Feature Specifications
 - **Crew Pool:** Manages seafarer data with UUIDs and soft deletes.
