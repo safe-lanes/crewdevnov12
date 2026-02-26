@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import {
   tenantConnectionManager,
   TenantNotFoundError,
+  TenantInactiveError,
   TenantDatabaseError,
 } from "../utils/tenantConnectionManager";
 
@@ -57,7 +58,12 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
 
       if (err instanceof TenantNotFoundError) {
         res.status(404).json({
-          error: "Tenant not found",
+          error: "domain_not_found",
+          message: err.message,
+        });
+      } else if (err instanceof TenantInactiveError) {
+        res.status(403).json({
+          error: "tenant_inactive",
           message: err.message,
         });
       } else if (err instanceof TenantDatabaseError) {

@@ -9,15 +9,23 @@ type DrizzleInstance = ReturnType<typeof drizzle>;
 export class TenantNotFoundError extends Error {
   status = 404;
   constructor(domain: string) {
-    super(`Tenant not found or inactive for domain: ${domain}`);
+    super(`No company registered for domain: ${domain}`);
     this.name = "TenantNotFoundError";
+  }
+}
+
+export class TenantInactiveError extends Error {
+  status = 403;
+  constructor(domain: string) {
+    super(`Company account for domain '${domain}' is currently inactive. Please contact your administrator.`);
+    this.name = "TenantInactiveError";
   }
 }
 
 export class TenantDatabaseError extends Error {
   status = 503;
   constructor(tuid: string, cause?: string) {
-    super(`Failed to connect to tenant database '${tuid}'${cause ? `: ${cause}` : ""}`);
+    super(`Unable to connect to the database for domain '${tuid}'.${cause ? ` ${cause}` : ""} Please try again later.`);
     this.name = "TenantDatabaseError";
   }
 }
@@ -116,22 +124,27 @@ class TenantConnectionManager {
 
     try {
       const result = await this.masterDb
-        .select({ tuid: tenants.tuid, companyName: tenants.companyName })
+        .select({
+          tuid: tenants.tuid,
+          companyName: tenants.companyName,
+          isActive: tenants.isActive,
+          isDeleted: tenants.isDeleted,
+        })
         .from(tenants)
-        .where(
-          and(
-            eq(tenants.domain, domain),
-            eq(tenants.isActive, true),
-            eq(tenants.isDeleted, false),
-          ),
-        )
+        .where(eq(tenants.domain, domain))
         .limit(1);
 
       if (result.length === 0) {
         throw new TenantNotFoundError(domain);
       }
 
-      const tenant = result[0];
+      const row = result[0];
+
+      if (!row.isActive || row.isDeleted) {
+        throw new TenantInactiveError(domain);
+      }
+
+      const tenant = { tuid: row.tuid, companyName: row.companyName };
       this.tenantCache.set(domain, {
         tuid: tenant.tuid,
         companyName: tenant.companyName,

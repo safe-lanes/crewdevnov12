@@ -80,13 +80,21 @@ export function useTenantInit(): TenantInitResult {
             return;
           }
 
+          const errorData = await res.json().catch(() => null);
+
           if (res.status === 404) {
-            setError(`Company not found for domain: ${domain}`);
+            setError(errorData?.message || `No company registered for domain: ${domain}`);
             setIsLoading(false);
             return;
           }
 
-          throw new Error(`Unexpected response: ${res.status}`);
+          if (res.status === 403) {
+            setError(errorData?.message || `Company account for domain '${domain}' is currently inactive. Please contact your administrator.`);
+            setIsLoading(false);
+            return;
+          }
+
+          throw new Error(errorData?.message || `Unexpected response: ${res.status}`);
         } catch (err: any) {
           if (retryCount < 1) {
             setTimeout(() => initTenant(retryCount + 1), 2000);

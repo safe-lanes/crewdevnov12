@@ -16,7 +16,7 @@ import { storage, isConnected, connectionError, calculateExperienceFromSeaServic
 import { storageAccount } from "./storage-accounts";
 import { insertPayElementSchema, insertContractPayElementSchema } from "@shared/schema";
 import { normalizeCrewMemberForTable, calculateCrewStatus } from "@shared/crew-mapping";
-import { tenantConnectionManager, TenantNotFoundError } from "./utils/tenantConnectionManager";
+import { tenantConnectionManager, TenantNotFoundError, TenantInactiveError } from "./utils/tenantConnectionManager";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/v2/tenant/init", async (req, res) => {
@@ -45,7 +45,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err: any) {
       if (err instanceof TenantNotFoundError) {
         return res.status(404).json({
-          error: "Domain not found",
+          error: "domain_not_found",
+          message: err.message,
+        });
+      }
+      if (err instanceof TenantInactiveError) {
+        return res.status(403).json({
+          error: "tenant_inactive",
           message: err.message,
         });
       }
