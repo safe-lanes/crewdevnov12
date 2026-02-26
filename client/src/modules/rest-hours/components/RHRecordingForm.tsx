@@ -21,12 +21,14 @@ import {
   buildPrefixSums,
   calculateMinRestInAny24HourPeriod,
   calculateMinRestInAny7DayPeriod,
+  calculateMaxWorkInAny72HourPeriod,
   calculateRestIn24HWorkAnchored,
   detectViolations as detectTimelineViolations,
   groupViolationsByDay,
   groupViolationObjectsByDay,
   prependPreviousMonthTimeline,
   analyzeRestPeriodsWithRanges,
+  checkCode4ViolationWithRange,
   calculateMajorityDayFor24HourWindow,
   MAJORITY_DAY_ASSIGNMENT,
   TWENTY_FOUR_HOUR_VIOLATION_CODES,
@@ -976,34 +978,10 @@ export const RHRecordingForm = ({
     
     for (let dayIndex = 0; dayIndex < dailyRecords.length; dayIndex++) {
       const record = dailyRecords[dayIndex];
-      const dayViolations = violationsByDay.get(record.day) || [];
       
-      // Convert violation codes to numbers (strip brackets)
-      // Remove codes 1, 3, 5 from the old pipeline — they are re-derived from the work-anchored metric below
-      const violationNumbers = dayViolations.map(code => {
-        const match = code.match(/\[(\d+)\]/);
-        return match ? parseInt(match[1]) : 0;
-      }).filter(n => n > 0 && n !== 1 && n !== 3 && n !== 5);
-      
-      // Generate diagnostics using the violation objects that were assigned to this day
-      // Filter out codes 1, 3, 5 diagnostics — they are re-derived from the work-anchored metric
-      const violationObjectsForDay = violationObjectsByDay.get(record.day) || [];
-      const diagnostics: ViolationDiagnostic[] = violationObjectsForDay
-        .filter(({ violation }) => {
-          const codeNum = parseInt(violation.code.match(/\[(\d+)\]/)![1]);
-          return codeNum !== 1 && codeNum !== 3 && codeNum !== 5;
-        })
-        .map(({ violation, assignedDay }) => {
-          const codeNum = parseInt(violation.code.match(/\[(\d+)\]/)![1]);
-          const violatingRanges = computeViolatingRanges(violation, fullTimeline, codeNum);
-          return {
-            code: codeNum,
-            windowStart: 'Timeline window',
-            reason: violation.reason,
-            violatingRanges,
-            majorityDay: assignedDay,
-          };
-        });
+      // All violation codes are now re-derived from per-day metrics below
+      const violationNumbers: number[] = [];
+      const diagnostics: ViolationDiagnostic[] = [];
       
       // Calculate metrics from timeline for this day
       const dayArrayIndices: number[] = dayIndexToArrayIndices.get(dayIndex) || [];
@@ -1113,6 +1091,95 @@ export const RHRecordingForm = ({
             windowStart: 'Timeline window',
             reason,
             violatingRanges: buildViolatingRanges(),
+            majorityDay: record.day,
+          });
+        }
+      }
+
+      // Derive Violation 2 (Rest mode: min 77h rest in 7 days) from the rolling 7-day metric
+      if (metrics.anyPeriodRest7day < 77) {
+        violationNumbers.push(2);
+        diagnostics.push({
+          code: 2,
+          windowStart: 'Timeline window',
+          reason: `Minimum 77 hours rest in 7-day period: ${metrics.anyPeriodRest7day.toFixed(1)}h (< 77h required)`,
+          violatingRanges: [],
+          majorityDay: record.day,
+        });
+      }
+
+      // Derive Violation 4 (Work interval > 14h between rest periods) from the work-anchored window
+      if (worstWindowEndSlot !== null) {
+        const code4Result = checkCode4ViolationWithRange(fullTimeline, worstWindowEndSlot);
+        if (code4Result.hasViolation) {
+          violationNumbers.push(4);
+          let code4Ranges: Array<{ startCell: number; endCell: number; startDay: number }> = [];
+          if (code4Result.violatingRange) {
+            const gapSlots = fullTimeline.slice(code4Result.violatingRange.startSlot, code4Result.violatingRange.endSlot + 1);
+            const gapDayRanges = new Map<number, { minCell: number; maxCell: number }>();
+            for (const slot of gapSlots) {
+              if (slot.sourceDay < 1) continue;
+              const existing = gapDayRanges.get(slot.sourceDay);
+              if (!existing) {
+                gapDayRanges.set(slot.sourceDay, { minCell: slot.halfHourIndex, maxCell: slot.halfHourIndex });
+              } else {
+                existing.minCell = Math.min(existing.minCell, slot.halfHourIndex);
+                existing.maxCell = Math.max(existing.maxCell, slot.halfHourIndex);
+              }
+            }
+            code4Ranges = Array.from(gapDayRanges.entries()).map(([day, range]) => ({
+              startDay: day,
+              startCell: range.minCell,
+              endCell: range.maxCell,
+            }));
+          }
+          const gapHours = code4Result.violatingRange
+            ? ((code4Result.violatingRange.endSlot - code4Result.violatingRange.startSlot + 1) * 0.5).toFixed(1)
+            : '?';
+          diagnostics.push({
+            code: 4,
+            windowStart: 'Timeline window',
+            reason: `Work interval between rest periods exceeds 14 hours: ${gapHours}h continuous work`,
+            violatingRanges: code4Ranges,
+            majorityDay: record.day,
+          });
+        }
+      }
+
+      // Derive Violation 6 (Work mode: max 72h work in 7 days) from the rolling 7-day metric
+      if (metrics.anyPeriodWork7day > 72) {
+        violationNumbers.push(6);
+        diagnostics.push({
+          code: 6,
+          windowStart: 'Timeline window',
+          reason: `Maximum 72 hours work in 7-day period: ${metrics.anyPeriodWork7day.toFixed(1)}h (> 72h limit)`,
+          violatingRanges: [],
+          majorityDay: record.day,
+        });
+      }
+
+      // Derive Violation 7 (OPA: max 15h work in 24h) from the work-anchored metric
+      if (opaMode && metrics.anyPeriodWork24hr > 15) {
+        violationNumbers.push(7);
+        diagnostics.push({
+          code: 7,
+          windowStart: 'Timeline window',
+          reason: `OPA 90: Maximum 15 hours work in 24-hour period: ${metrics.anyPeriodWork24hr.toFixed(1)}h (> 15h limit)`,
+          violatingRanges: buildViolatingRanges(),
+          majorityDay: record.day,
+        });
+      }
+
+      // Derive Violation 8 (OPA: max 36h work in 72h) from rolling 72-hour metric
+      if (opaMode) {
+        const work72h = calculateMaxWorkInAny72HourPeriod(dayArrayIndices, cumulativeWork);
+        if (work72h > 36) {
+          violationNumbers.push(8);
+          diagnostics.push({
+            code: 8,
+            windowStart: 'Timeline window',
+            reason: `OPA 90: Maximum 36 hours work in 72-hour period: ${work72h.toFixed(1)}h (> 36h limit)`,
+            violatingRanges: [],
             majorityDay: record.day,
           });
         }

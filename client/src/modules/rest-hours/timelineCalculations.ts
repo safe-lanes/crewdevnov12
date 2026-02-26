@@ -246,6 +246,25 @@ export function calculateMinRestInAny7DayPeriod(
   return minRest;
 }
 
+export function calculateMaxWorkInAny72HourPeriod(
+  arrayIndices: number[],
+  cumulativeWork: number[]
+): number {
+  const WINDOW_SIZE_72H = 144;
+  
+  let maxWork = 0;
+  
+  for (const arrayIdx of arrayIndices) {
+    if (arrayIdx >= WINDOW_SIZE_72H - 1) {
+      const startIdx = arrayIdx - WINDOW_SIZE_72H + 1;
+      const workIn72h = cumulativeWork[arrayIdx + 1] - cumulativeWork[startIdx];
+      maxWork = Math.max(maxWork, workIn72h);
+    }
+  }
+  
+  return maxWork;
+}
+
 /**
  * Calculates "Hours of Rest in any 24 Hr Period" for Day N using the
  * work-anchored logic:
