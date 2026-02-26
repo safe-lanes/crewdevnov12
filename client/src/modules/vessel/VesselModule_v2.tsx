@@ -2303,11 +2303,12 @@ export function VesselModule_v2(): JSX.Element {
                                                                 hasBothOnBoard: false,
                                                             });
                                                         } else {
+                                                            const isHalfArchived = primaryCrew?.isArchived === true && secondaryCrew;
                                                             normalizedRows.push({
                                                                 serialNumber: rankIndex + 1,
                                                                 rank,
                                                                 rankName: fullRankName,
-                                                                onBoardCrew: primaryCrew,
+                                                                onBoardCrew: isHalfArchived ? null : primaryCrew,
                                                                 relieverData: secondaryCrew,
                                                                 crewLabel: '',
                                                                 hasBothOnBoard: false,
