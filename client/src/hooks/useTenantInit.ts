@@ -1,10 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 
+function extractStringValue(val: any): string {
+  if (!val) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "object") {
+    return val.value || val.name || val.label || JSON.stringify(val);
+  }
+  return String(val);
+}
+
 async function resolveDomain(): Promise<string> {
   try {
     const mod = await import("@/lib/encryptionService");
     const decrypted = mod.getDecryptedLocalStorageItem("domain", true);
-    if (decrypted) return mod.extractStringValue(decrypted);
+    if (decrypted) return extractStringValue(decrypted);
     return localStorage.getItem("domain") || "";
   } catch {
     return localStorage.getItem("domain") || "";
