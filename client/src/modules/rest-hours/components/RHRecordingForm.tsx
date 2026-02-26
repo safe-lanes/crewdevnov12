@@ -979,19 +979,19 @@ export const RHRecordingForm = ({
       const dayViolations = violationsByDay.get(record.day) || [];
       
       // Convert violation codes to numbers (strip brackets)
-      // Remove code-1 and code-5 from the old pipeline — they are re-derived from the work-anchored metric below
+      // Remove codes 1, 3, 5 from the old pipeline — they are re-derived from the work-anchored metric below
       const violationNumbers = dayViolations.map(code => {
         const match = code.match(/\[(\d+)\]/);
         return match ? parseInt(match[1]) : 0;
-      }).filter(n => n > 0 && n !== 1 && n !== 5);
+      }).filter(n => n > 0 && n !== 1 && n !== 3 && n !== 5);
       
       // Generate diagnostics using the violation objects that were assigned to this day
-      // Filter out code-1 and code-5 diagnostics — they are re-derived from the work-anchored metric
+      // Filter out codes 1, 3, 5 diagnostics — they are re-derived from the work-anchored metric
       const violationObjectsForDay = violationObjectsByDay.get(record.day) || [];
       const diagnostics: ViolationDiagnostic[] = violationObjectsForDay
         .filter(({ violation }) => {
           const codeNum = parseInt(violation.code.match(/\[(\d+)\]/)![1]);
-          return codeNum !== 1 && codeNum !== 5;
+          return codeNum !== 1 && codeNum !== 3 && codeNum !== 5;
         })
         .map(({ violation, assignedDay }) => {
           const codeNum = parseInt(violation.code.match(/\[(\d+)\]/)![1]);
@@ -1085,11 +1085,37 @@ export const RHRecordingForm = ({
         });
       }
 
-      if (metrics.anyPeriodRest24hr >= 10) {
-        const idx3 = violationNumbers.indexOf(3);
-        if (idx3 !== -1) violationNumbers.splice(idx3, 1);
-        const diagIdx = diagnostics.findIndex(d => d.code === 3);
-        if (diagIdx !== -1) diagnostics.splice(diagIdx, 1);
+      // Derive Violation 3 from the same work-anchored window as Violation 1
+      // Only when Violation 1 is present (rest < 10h), check rest period structure
+      if (metrics.anyPeriodRest24hr < 10 && worstWindowEndSlot !== null) {
+        const windowStartSlot = Math.max(0, worstWindowEndSlot - 47);
+        const { lengths: restPeriods } = analyzeRestPeriodsWithRanges(fullTimeline, worstWindowEndSlot);
+        const sorted = [...restPeriods].sort((a, b) => b - a);
+        const largest = sorted[0] || 0;
+        const secondLargest = sorted[1] || 0;
+        const largestHours = largest * 0.5;
+        const totalHours = (largest + secondLargest) * 0.5;
+
+        if (largestHours < 6 || totalHours < 10) {
+          violationNumbers.push(3);
+          const numPeriods = restPeriods.length;
+          const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
+          let reason = '';
+          if (numPeriods === 0) {
+            reason = `No rest periods found in worst 24h window`;
+          } else if (numPeriods === 1) {
+            reason = `1 rest period: ${largestHours.toFixed(1)}h (need ≥6h and ≥10h total for single period)`;
+          } else {
+            reason = `${numPeriods} rest periods: ${allPeriodsHours}. Top 2: ${largestHours.toFixed(1)}h + ${(secondLargest * 0.5).toFixed(1)}h = ${totalHours.toFixed(1)}h (need ≥6h longest, ≥10h total)`;
+          }
+          diagnostics.push({
+            code: 3,
+            windowStart: 'Timeline window',
+            reason,
+            violatingRanges: buildViolatingRanges(),
+            majorityDay: record.day,
+          });
+        }
       }
 
       // Sort violation numbers for consistent display
