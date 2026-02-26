@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Switch, Route } from "wouter";
 import { lazy, Suspense } from "react";
-import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -33,23 +33,30 @@ function PageLoader() {
   );
 }
 
-function TenantError({ error }: { error: string }) {
+function TenantErrorPopup({ error }: { error: string }) {
+  const handleBack = () => {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    let portNumber = window.location.port;
+    portNumber = portNumber ? `:${portNumber}` : "";
+    const fullUrl = `${protocol}//${hostname}${portNumber}`;
+    localStorage.setItem("selected_module", "U2FsdGVkX19gp34OrOluh/gJ6eeByT19nc8eMBUBsVE=");
+    window.location.assign(fullUrl);
+  };
+
   return (
-    <div className="flex items-center justify-center h-screen w-full bg-background" data-testid="tenant-error-screen">
-      <div className="flex flex-col items-center gap-4 max-w-md text-center p-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="tenant-error-overlay">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-8 flex flex-col items-center gap-4 text-center" data-testid="tenant-error-popup">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <h2 className="text-lg font-semibold text-foreground">Connection Error</h2>
         <p className="text-sm text-muted-foreground" data-testid="tenant-error-message">{error}</p>
         <button
-          onClick={() => {
-            localStorage.removeItem("tenantId");
-            window.location.reload();
-          }}
+          onClick={handleBack}
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-          data-testid="button-tenant-retry"
+          data-testid="button-tenant-back"
         >
-          <RefreshCw className="h-4 w-4" />
-          Retry
+          <ArrowLeft className="h-4 w-4" />
+          Back
         </button>
       </div>
     </div>
@@ -71,7 +78,8 @@ function App() {
   const { isLoading, error, isResolved } = useTenantInit();
 
   if (isLoading) return <TenantLoader />;
-  if (error && !isResolved) return <TenantError error={error} />;
+
+  const tenantError = error && !isResolved;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -130,6 +138,7 @@ function App() {
             </div>
           </div>
           <Toaster />
+          {tenantError && <TenantErrorPopup error={error} />}
         </TooltipProvider>
       </PermissionsProvider>
     </QueryClientProvider>
