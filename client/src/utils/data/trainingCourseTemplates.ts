@@ -1,9 +1,10 @@
 export interface TrainingCourseTemplate {
   id: string;
-  companyId?: string; // Company ID from Admin > Training Matrix > Company
+  companyId?: string;
   name: string;
   abbr: string;
   requirement: string;
+  sortOrder?: number;
 }
 
 export const TRAINING_COURSE_TEMPLATES: TrainingCourseTemplate[] = [];

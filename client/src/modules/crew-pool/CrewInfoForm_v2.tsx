@@ -246,8 +246,8 @@ interface License {
 
 interface TrainingCourse {
   id: string;
-  courseId?: string;  // Company ID from Admin > Training Matrix (e.g., SC001) for DB entries
-  companyId?: string; // Company ID from Admin > Training Matrix > Company (e.g., SA001)
+  courseId?: string;
+  companyId?: string;
   trainingCourse: string;
   abbr: string;
   requirement: string;
@@ -256,6 +256,7 @@ interface TrainingCourse {
   issued: string;
   expiry: string;
   fromDatabase?: boolean;
+  sortOrder?: number;
   attachments?: FileAttachment[];
 }
 
@@ -420,7 +421,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     enabled: !!crewUuid && isOpen,
   });
 
-  // Crew ID will be auto-assigned by the API during creation
+  const { data: adminCompanyTrainings = [] } = useQuery<Array<{ id: number; companyId: string }>>({
+    queryKey: ['/api/v2/admin/company-trainings'],
+  });
 
   // Get company ranks from shared hook
   const { data: companyRanks, isLoading: ranksLoading, rankOptions, error: ranksError } = useCompanyRanks();
@@ -873,11 +876,28 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           : detailedCrewData.licenses 
             ? JSON.parse(detailedCrewData.licenses) 
             : []).map((l: any) => ({ ...l, fromDatabase: !!(l.licenseId && l.licenseId.trim()) })),
-        trainingCourses: (Array.isArray(detailedCrewData.trainingCourses) 
-          ? detailedCrewData.trainingCourses 
-          : detailedCrewData.trainingCourses 
-            ? JSON.parse(detailedCrewData.trainingCourses) 
-            : []).map((t: any) => ({ ...t, fromDatabase: !!(t.courseId && t.courseId.trim()) })),
+        trainingCourses: (() => {
+          const raw = (Array.isArray(detailedCrewData.trainingCourses) 
+            ? detailedCrewData.trainingCourses 
+            : detailedCrewData.trainingCourses 
+              ? JSON.parse(detailedCrewData.trainingCourses) 
+              : []).map((t: any) => ({ ...t, fromDatabase: !!(t.courseId && t.courseId.trim()) }));
+          if (adminCompanyTrainings.length > 0) {
+            const orderMap = new Map<string, number>();
+            adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+            raw.forEach((t: any) => {
+              if (t.courseId && orderMap.has(t.courseId)) {
+                t.sortOrder = orderMap.get(t.courseId);
+              }
+            });
+            raw.sort((a: any, b: any) => {
+              const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+              const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+              return aOrder - bOrder;
+            });
+          }
+          return raw;
+        })(),
         currentCompanySeaService: (() => {
           const services = Array.isArray(detailedCrewData.currentCompanySeaService) 
             ? detailedCrewData.currentCompanySeaService 
@@ -930,7 +950,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Also load the uploaded photo from crew data (or reset if no photo)
       setUploadedPhoto(detailedCrewData.uploadedPhoto || null);
     }
-  }, [detailedCrewData, crewMember?.crewUuid, crewMember?.id]);
+  }, [detailedCrewData, crewMember?.crewUuid, crewMember?.id, adminCompanyTrainings]);
 
   // Mark E1 rows that were auto-generated via vessel sign-on as isVesselSynced
   useEffect(() => {
@@ -1516,10 +1536,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         issued: '',
         expiry: '',
         fromDatabase: true,
+        sortOrder: template.sortOrder,
       }));
+      const allCourses = [...existingCourses, ...newCourses];
+      allCourses.sort((a, b) => {
+        const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+        const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+        return aOrder - bOrder;
+      });
       return { 
         ...prev, 
-        trainingCourses: [...existingCourses, ...newCourses] 
+        trainingCourses: allCourses 
       };
     });
     setIsTrainingDialogOpen(false);

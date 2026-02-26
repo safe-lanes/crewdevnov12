@@ -286,6 +286,7 @@ interface LocalFormData {
     issued: string;
     expiry: string;
     fromDatabase?: boolean;
+    sortOrder?: number;
     attachments?: FileAttachment[];
   }>;
   seaService: Array<{
@@ -581,6 +582,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const { data: adminCompanyTrainings = [] } = useQuery<Array<{ id: number; companyId: string }>>({
+    queryKey: ['/api/v2/admin/company-trainings'],
+  });
   
   const a1Ref = useRef<HTMLDivElement>(null);
   const a2Ref = useRef<HTMLDivElement>(null);
@@ -1160,17 +1165,26 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: course.issued || '',
         expiry: course.expiry || '',
         fromDatabase: !!(course.abbr || course.requirement),
+        sortOrder: undefined as number | undefined,
         attachments: mapApiAttachments(course.attachments),
       }));
-      const sorted = [...mapped].sort((a, b) => {
-        if (!a.expiry && !b.expiry) return 0;
-        if (!a.expiry) return 1;
-        if (!b.expiry) return -1;
-        return a.expiry.localeCompare(b.expiry);
-      });
-      setFormData(prev => ({ ...prev, trainingCourses: sorted }));
+      if (adminCompanyTrainings.length > 0) {
+        const orderMap = new Map<string, number>();
+        adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+        mapped.forEach(t => {
+          if (t.courseId && orderMap.has(t.courseId)) {
+            t.sortOrder = orderMap.get(t.courseId);
+          }
+        });
+        mapped.sort((a, b) => {
+          const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+          const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+          return aOrder - bOrder;
+        });
+      }
+      setFormData(prev => ({ ...prev, trainingCourses: mapped }));
     }
-  }, [trainingData]);
+  }, [trainingData, adminCompanyTrainings]);
 
   useEffect(() => {
     if (seaServiceData && seaServiceData.length > 0) {
@@ -2147,10 +2161,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: '',
         expiry: '',
         fromDatabase: true,
+        sortOrder: course.sortOrder,
         attachments: []
       };
     });
-    setFormData(prev => ({ ...prev, trainingCourses: [...existingCourses, ...newCourses] }));
+    const allCourses = [...existingCourses, ...newCourses];
+    allCourses.sort((a, b) => {
+      const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      return aOrder - bOrder;
+    });
+    setFormData(prev => ({ ...prev, trainingCourses: allCourses }));
     setIsTrainingDialogOpen(false);
   };
 
