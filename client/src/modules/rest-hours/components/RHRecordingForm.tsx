@@ -1085,6 +1085,13 @@ export const RHRecordingForm = ({
         });
       }
 
+      if (metrics.anyPeriodRest24hr >= 10) {
+        const idx3 = violationNumbers.indexOf(3);
+        if (idx3 !== -1) violationNumbers.splice(idx3, 1);
+        const diagIdx = diagnostics.findIndex(d => d.code === 3);
+        if (diagIdx !== -1) diagnostics.splice(diagIdx, 1);
+      }
+
       // Sort violation numbers for consistent display
       violationNumbers.sort((a, b) => a - b);
       

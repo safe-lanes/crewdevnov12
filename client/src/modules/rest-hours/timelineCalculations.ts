@@ -514,7 +514,7 @@ function checkCode3Violation(timeline: TimelineSlot[], slotIdx: number): boolean
   const largestHours = largest * 0.5;
   const totalHours = (largest + secondLargest) * 0.5;
   
-  return largestHours < 6 || totalHours < 10;
+  return largestHours < 6;
 }
 
 /**
@@ -663,11 +663,11 @@ export function detectViolations(
         if (numPeriods === 0) {
           reason = `No rest periods found (only blank cells count as rest, not 'd' or 'a')`;
         } else if (numPeriods > 2) {
-          reason = `${numPeriods} rest periods: ${allPeriodsHours}. Top 2: ${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest, ≥10h total)`;
+          reason = `${numPeriods} rest periods: ${allPeriodsHours}. Top 2: ${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest)`;
         } else if (numPeriods === 1) {
-          reason = `1 rest period: ${largestHours}h (need ≥6h and ≥10h total for single period)`;
+          reason = `1 rest period: ${largestHours}h (need ≥6h)`;
         } else {
-          reason = `2 rest periods: ${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest, ≥10h total)`;
+          reason = `2 rest periods: ${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest)`;
         }
         
         violations.push({
