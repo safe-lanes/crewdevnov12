@@ -3854,19 +3854,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <div className="mt-1 text-sm text-gray-900">{formData.nokAddress}</div>
               )}
             </div>
-            
-            <div>
-              <Label className="text-xs text-gray-500 tracking-wide">NOK: Relationship</Label>
-              {isEditing ? (
-                <Input
-                  value={formData.nokRelationship}
-                  onChange={(e) => updateFormData('nokRelationship', e.target.value)}
-                  className="mt-1"
-                />
-              ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.nokRelationship}</div>
-              )}
-            </div>
           </div>
         </div>
       </div>
