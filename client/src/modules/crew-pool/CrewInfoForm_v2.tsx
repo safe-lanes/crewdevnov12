@@ -5372,11 +5372,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     // Required field validation
     const trimmedFirstName = (formData.firstName || '').trim();
-    const trimmedFamilyName = (formData.familyName || '').trim();
-    if (!trimmedFirstName || !trimmedFamilyName) {
+    if (!trimmedFirstName) {
       toast({
         title: "Validation Error",
-        description: "First Name and Family Name are required.",
+        description: "First Name is required.",
         variant: "destructive",
       });
       return;
