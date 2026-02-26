@@ -964,12 +964,14 @@ export const RHRecordingForm = ({
     const resultMap = new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
 
     // Pre-build a map of dayIndex → array indices in fullTimeline (primary occurrence only).
-    // This lets each day look up its NEXT day's indices in O(1) without re-scanning the timeline.
+    // Skip prepended previous-month slots (slotIndex < 0) to avoid sourceDay collisions
+    // (e.g., Nov Day 30 matching Dec Day 30 by day number). The work-anchored window
+    // still looks back into prepended data correctly via prefix sums.
     const dayIndexToArrayIndices = new Map<number, number[]>();
     for (let i = 0; i < fullTimeline.length; i++) {
       const slot = fullTimeline[i];
       if (slot.occurrence !== 'primary') continue;
-      // Find which dayIndex in dailyRecords this slot belongs to
+      if (slot.slotIndex < 0) continue;
       const dIdx = dailyRecords.findIndex(r => r.day === slot.sourceDay);
       if (dIdx === -1) continue;
       if (!dayIndexToArrayIndices.has(dIdx)) dayIndexToArrayIndices.set(dIdx, []);
