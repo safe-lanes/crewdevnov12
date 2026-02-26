@@ -46,7 +46,7 @@ function TenantErrorPopup({ error }: { error: string }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" data-testid="tenant-error-overlay">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50" data-testid="tenant-error-overlay">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-8 flex flex-col items-center gap-4 text-center" data-testid="tenant-error-popup">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <h2 className="text-lg font-semibold text-foreground">Connection Error</h2>
@@ -86,7 +86,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <PermissionsProvider>
         <TooltipProvider>
-          <div className="bg-transparent flex flex-row justify-center w-full h-screen" data-testid="app-root">
+          <div className={`bg-transparent flex flex-row justify-center w-full h-screen${tenantError ? " pointer-events-none opacity-50" : ""}`} data-testid="app-root">
             <div className="bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-screen w-full pt-[67px] overflow-y-auto" data-testid="main-content" role="main">
               <HeaderComponent />
               <Suspense fallback={<PageLoader />}>
