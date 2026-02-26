@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { eq, and } from "drizzle-orm";
 import { tenants } from "@shared/v2/tenant/schema";
+import 'dotenv/config';
 
 type DrizzleInstance = ReturnType<typeof drizzle>;
 
@@ -47,7 +48,7 @@ interface TenantStore {
   tenantId: string;
 }
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 1 * 60 * 1000;
 const IDLE_EVICTION_MS = 10 * 60 * 1000;
 const EVICTION_CHECK_INTERVAL_MS = 60 * 1000;
 
@@ -105,7 +106,7 @@ class TenantConnectionManager {
       console.log("🏠 Falling back to single-tenant mode");
       this._isMultiTenantEnabled = false;
       if (this.masterPool) {
-        await this.masterPool.end().catch(() => {});
+        await this.masterPool.end().catch(() => { });
         this.masterPool = null;
       }
       this.masterDb = null;
