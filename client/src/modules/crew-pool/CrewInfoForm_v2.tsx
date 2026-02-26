@@ -362,12 +362,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return { dotColor, issueCount: issues.length, issues };
   };
 
-  const validateExpiryVsIssued = (issued: string, expiry: string): string => {
-    if (!issued || !expiry) return '';
-    if (expiry < issued) return 'Expiry Date cannot be earlier than Issued Date.';
-    return '';
-  };
-
   const validateEmail = (value: string): string => {
     if (!value) return '';
     if (/\s/.test(value)) return 'Email must not contain spaces.';
@@ -504,11 +498,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // State for tracking if we're saving before opening attachment dialog
   const [isSavingBeforeAttachment, setIsSavingBeforeAttachment] = useState(false);
 
-  // Inline validation error states (matching Recruitment form patterns)
-  const [docDateErrors, setDocDateErrors] = useState<Record<string, string>>({});
-  const [visaDateErrors, setVisaDateErrors] = useState<Record<string, string>>({});
-  const [licDateErrors, setLicDateErrors] = useState<Record<string, string>>({});
-  const [trainingDateErrors, setTrainingDateErrors] = useState<Record<string, string>>({});
   const [seaServiceDateErrors, setSeaServiceDateErrors] = useState<Record<string, string>>({});
   const [spouseValidationError, setSpouseValidationError] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -1363,15 +1352,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         doc.id === id ? { ...doc, [field]: value } : doc
       )
     }));
-    if (field === 'issued' || field === 'expiry') {
-      const doc = formData.documents.find(d => d.id === id);
-      if (doc) {
-        const issued = field === 'issued' ? value : doc.issued;
-        const expiry = field === 'expiry' ? value : doc.expiry;
-        const err = validateExpiryVsIssued(issued, expiry);
-        setDocDateErrors(prev => err ? { ...prev, [id]: err } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)));
-      }
-    }
   };
 
   const removeDocument = (id: string) => {
@@ -1427,15 +1407,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         visa.id === id ? { ...visa, [field]: value } : visa
       )
     }));
-    if (field === 'issued' || field === 'expiry') {
-      const visa = formData.visas.find(v => v.id === id);
-      if (visa) {
-        const issued = field === 'issued' ? value : visa.issued;
-        const expiry = field === 'expiry' ? value : visa.expiry;
-        const err = validateExpiryVsIssued(issued, expiry);
-        setVisaDateErrors(prev => err ? { ...prev, [id]: err } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)));
-      }
-    }
   };
 
   const removeVisa = (id: string) => {
@@ -1656,15 +1627,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         license.id === id ? { ...license, [field]: value } : license
       )
     }));
-    if (field === 'issued' || field === 'expiry') {
-      const lic = formData.licenses.find(l => l.id === id);
-      if (lic) {
-        const issued = field === 'issued' ? value : lic.issued;
-        const expiry = field === 'expiry' ? value : lic.expiry;
-        const err = validateExpiryVsIssued(issued, expiry);
-        setLicDateErrors(prev => err ? { ...prev, [id]: err } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)));
-      }
-    }
   };
 
   const removeLicense = (id: string) => {
@@ -1721,15 +1683,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         course.id === id ? { ...course, [field]: value } : course
       )
     }));
-    if (field === 'issued' || field === 'expiry') {
-      const course = formData.trainingCourses.find(c => c.id === id);
-      if (course) {
-        const issued = field === 'issued' ? value : course.issued;
-        const expiry = field === 'expiry' ? value : course.expiry;
-        const err = validateExpiryVsIssued(issued, expiry);
-        setTrainingDateErrors(prev => err ? { ...prev, [id]: err } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)));
-      }
-    }
   };
 
   const removeTrainingCourse = (id: string) => {
@@ -4103,9 +4056,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={doc.expiry}
                     onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)}
+                    min={doc.issued || undefined}
                     className={`${getExpiryColorClass(doc.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
                   />
-                  {docDateErrors[doc.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-doc-expiry-error-${doc.id}`}>{docDateErrors[doc.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4220,9 +4173,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={visa.expiry}
                     onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)}
+                    min={visa.issued || undefined}
                     className={`${getExpiryColorClass(visa.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
                   />
-                  {visaDateErrors[visa.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-visa-expiry-error-${visa.id}`}>{visaDateErrors[visa.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4478,9 +4431,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={license.expiry}
                     onChange={(e) => updateLicense(license.id, 'expiry', e.target.value)}
+                    min={license.issued || undefined}
                     className={`${getExpiryColorClass(license.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
                   />
-                  {licDateErrors[license.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-lic-expiry-error-${license.id}`}>{licDateErrors[license.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4614,9 +4567,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     type="date"
                     value={course.expiry}
                     onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)}
+                    min={course.issued || undefined}
                     className={`${getExpiryColorClass(course.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
                   />
-                  {trainingDateErrors[course.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-train-expiry-error-${course.id}`}>{trainingDateErrors[course.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4736,7 +4689,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                               }
                             }}
                           >
-                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                               <SelectValue placeholder="Select vessel">
                                 {service.vesselName || "Select vessel"}
                               </SelectValue>
@@ -4765,7 +4718,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             value={service.vesselType}
                             onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'vesselType', value)}
                           >
-                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                               <SelectValue placeholder="Select vessel type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -4782,7 +4735,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={service.deadweight}
                           onChange={(e) => updateCurrentCompanySeaService(service.id, 'deadweight', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter deadweight"
                         />
                       </td>
@@ -4790,7 +4743,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={service.engineTypePower}
                           onChange={(e) => updateCurrentCompanySeaService(service.id, 'engineTypePower', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter engine type/power"
                         />
                       </td>
@@ -4798,7 +4751,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={service.ownerOperator}
                           onChange={(e) => updateCurrentCompanySeaService(service.id, 'ownerOperator', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter owner/operator"
                         />
                       </td>
@@ -4810,7 +4763,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             value={service.rank}
                             onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'rank', value)}
                           >
-                            <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                               <SelectValue placeholder="Select rank" />
                             </SelectTrigger>
                             <SelectContent>
@@ -4839,7 +4792,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             type="date"
                             value={service.from}
                             onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
-                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                            className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           />
                         )}
                       </td>
@@ -4878,7 +4831,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                 type="date"
                                 value={service.to}
                                 onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
-                                className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                                 data-testid={`input-date-to-${service.id}`}
                               />
                             );
@@ -5067,7 +5020,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={service.vesselName}
                           onChange={(e) => updateExternalSeaService(service.id, 'vesselName', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter vessel name"
                         />
                       </td>
@@ -5076,7 +5029,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           value={service.vesselType}
                           onValueChange={(value) => updateExternalSeaService(service.id, 'vesselType', value)}
                         >
-                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select vessel type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -5092,7 +5045,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={service.deadweight}
                           onChange={(e) => updateExternalSeaService(service.id, 'deadweight', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter deadweight"
                         />
                       </td>
@@ -5100,7 +5053,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={service.engineTypePower}
                           onChange={(e) => updateExternalSeaService(service.id, 'engineTypePower', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter engine type/power"
                         />
                       </td>
@@ -5108,7 +5061,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={service.ownerOperator}
                           onChange={(e) => updateExternalSeaService(service.id, 'ownerOperator', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter owner/operator"
                         />
                       </td>
@@ -5117,7 +5070,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           value={service.rank}
                           onValueChange={(value) => updateExternalSeaService(service.id, 'rank', value)}
                         >
-                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select rank" />
                           </SelectTrigger>
                           <SelectContent>
@@ -5142,7 +5095,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.from}
                           onChange={(e) => updateExternalSeaService(service.id, 'from', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
@@ -5150,7 +5103,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.to}
                           onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                         {seaServiceDateErrors[service.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
                       </td>
@@ -5307,7 +5260,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             updatePreJoiningMedical(medical.id, 'vessel', selectedVessel?.name || '');
                           }}
                         >
-                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select vessel">
                               {medical.vessel || "Select vessel"}
                             </SelectValue>
@@ -5332,28 +5285,28 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={medical.dateOfMedical}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'dateOfMedical', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={medical.bp}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'bp', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={medical.weight}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'weight', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={medical.anyMedicationPrescribed}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'anyMedicationPrescribed', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter medication"
                         />
                       </td>
@@ -5362,7 +5315,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           value={medical.fitnessForDuty || ''}
                           onValueChange={(value) => updatePreJoiningMedical(medical.id, 'fitnessForDuty', value)}
                         >
-                          <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
@@ -5376,7 +5329,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={medical.expiry}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'expiry', e.target.value)}
-                          className={`border-0 bg-transparent p-0 focus-visible:ring-0 ${getExpiryColorClass(medical.expiry)} text-[13px] font-normal h-6`}
+                          className={`border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 ${getExpiryColorClass(medical.expiry)} text-[13px] font-normal h-6`}
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
@@ -5463,7 +5416,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={visit.vessel}
                           onChange={(e) => updateDoctorVisit(visit.id, 'vessel', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter vessel"
                         />
                       </td>
@@ -5471,7 +5424,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={visit.port}
                           onChange={(e) => updateDoctorVisit(visit.id, 'port', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter port"
                         />
                       </td>
@@ -5480,14 +5433,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={visit.date}
                           onChange={(e) => updateDoctorVisit(visit.id, 'date', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={visit.complaint}
                           onChange={(e) => updateDoctorVisit(visit.id, 'complaint', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter complaint/illness/injury"
                         />
                       </td>
@@ -5495,7 +5448,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={visit.doctorComments}
                           onChange={(e) => updateDoctorVisit(visit.id, 'doctorComments', e.target.value)}
-                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter doctor comments"
                         />
                       </td>
@@ -5627,38 +5580,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       }
     }
     setSpouseValidationError('');
-
-    // Expiry vs Issued validation for docs, visas, licenses, training
-    const newDocErrors: Record<string, string> = {};
-    for (const doc of formData.documents) {
-      const err = validateExpiryVsIssued(doc.issued, doc.expiry);
-      if (err) newDocErrors[doc.id] = err;
-    }
-    setDocDateErrors(newDocErrors);
-    const newVisaErrors: Record<string, string> = {};
-    for (const visa of formData.visas) {
-      const err = validateExpiryVsIssued(visa.issued, visa.expiry);
-      if (err) newVisaErrors[visa.id] = err;
-    }
-    setVisaDateErrors(newVisaErrors);
-    const newLicErrors: Record<string, string> = {};
-    for (const lic of formData.licenses) {
-      const err = validateExpiryVsIssued(lic.issued, lic.expiry);
-      if (err) newLicErrors[lic.id] = err;
-    }
-    setLicDateErrors(newLicErrors);
-    const newTrainingErrors: Record<string, string> = {};
-    for (const course of formData.trainingCourses) {
-      const err = validateExpiryVsIssued(course.issued, course.expiry);
-      if (err) newTrainingErrors[course.id] = err;
-    }
-    setTrainingDateErrors(newTrainingErrors);
-    const hasDateIssues = Object.keys(newDocErrors).length > 0 || Object.keys(newVisaErrors).length > 0 ||
-      Object.keys(newLicErrors).length > 0 || Object.keys(newTrainingErrors).length > 0;
-    if (hasDateIssues) {
-      toast({ title: "Validation Error", description: "Expiry Date cannot be earlier than Issued Date. Please fix highlighted rows.", variant: "destructive" });
-      return;
-    }
 
     // Sea service To < From validation (E2 + manual E1 rows)
     const newSeaErrors: Record<string, string> = {};

@@ -601,10 +601,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [mobileError, setMobileError] = useState('');
   const [nokEmailError, setNokEmailError] = useState('');
   const [spouseValidationError, setSpouseValidationError] = useState('');
-  const [docDateErrors, setDocDateErrors] = useState<Record<string, string>>({});
-  const [visaDateErrors, setVisaDateErrors] = useState<Record<string, string>>({});
-  const [licDateErrors, setLicDateErrors] = useState<Record<string, string>>({});
-  const [trainingDateErrors, setTrainingDateErrors] = useState<Record<string, string>>({});
   const [seaServiceDateErrors, setSeaServiceDateErrors] = useState<Record<string, string>>({});
 
   const validateEmail = (value: string): string => {
@@ -1788,22 +1784,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     });
   };
 
-  const validateExpiryVsIssued = (issued: string, expiry: string): string => {
-    if (!issued || !expiry) return '';
-    if (expiry < issued) return 'Expiry Date cannot be earlier than Issued Date.';
-    return '';
-  };
-
   const updateDocument = (id: string, field: string, value: string) => {
-    if (field === 'issued' || field === 'expiry') {
-      const doc = formData.documents.find(d => d.id === id);
-      if (doc) {
-        const issued = field === 'issued' ? value : doc.issued;
-        const expiry = field === 'expiry' ? value : doc.expiry;
-        const err = validateExpiryVsIssued(issued, expiry);
-        setDocDateErrors(p => { const next = { ...p }; if (err) { next[id] = err; } else { delete next[id]; } return next; });
-      }
-    }
     setFormData(prev => ({
       ...prev,
       documents: prev.documents.map(d => d.id === id ? { ...d, [field]: value } : d)
@@ -1825,19 +1806,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const removeVisa = (id: string) => {
     setFormData(prev => ({ ...prev, visas: prev.visas.filter(v => v.id !== id) }));
-    setVisaDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
   const updateVisa = (id: string, field: string, value: string) => {
-    if (field === 'issued' || field === 'expiry') {
-      const visa = formData.visas.find(v => v.id === id);
-      if (visa) {
-        const issued = field === 'issued' ? value : visa.issued;
-        const expiry = field === 'expiry' ? value : visa.expiry;
-        const err = validateExpiryVsIssued(issued, expiry);
-        setVisaDateErrors(p => { const next = { ...p }; if (err) { next[id] = err; } else { delete next[id]; } return next; });
-      }
-    }
     setFormData(prev => ({
       ...prev,
       visas: prev.visas.map(v => v.id === id ? { ...v, [field]: value } : v)
@@ -1886,19 +1857,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const removeLicense = (id: string) => {
     setFormData(prev => ({ ...prev, licenses: prev.licenses.filter(l => l.id !== id) }));
-    setLicDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
   const updateLicense = (id: string, field: string, value: string) => {
-    if (field === 'issued' || field === 'expiry') {
-      const lic = formData.licenses.find(l => l.id === id);
-      if (lic) {
-        const issued = field === 'issued' ? value : lic.issued;
-        const expiry = field === 'expiry' ? value : lic.expiry;
-        const err = validateExpiryVsIssued(issued, expiry);
-        setLicDateErrors(p => { const next = { ...p }; if (err) { next[id] = err; } else { delete next[id]; } return next; });
-      }
-    }
     setFormData(prev => ({
       ...prev,
       licenses: prev.licenses.map(l => l.id === id ? { ...l, [field]: value } : l)
@@ -1924,19 +1885,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const removeTrainingCourse = (id: string) => {
     setFormData(prev => ({ ...prev, trainingCourses: prev.trainingCourses.filter(t => t.id !== id) }));
-    setTrainingDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
   const updateTrainingCourse = (id: string, field: string, value: string) => {
-    if (field === 'issued' || field === 'expiry') {
-      const course = formData.trainingCourses.find(t => t.id === id);
-      if (course) {
-        const issued = field === 'issued' ? value : course.issued;
-        const expiry = field === 'expiry' ? value : course.expiry;
-        const err = validateExpiryVsIssued(issued, expiry);
-        setTrainingDateErrors(p => { const next = { ...p }; if (err) { next[id] = err; } else { delete next[id]; } return next; });
-      }
-    }
     setFormData(prev => ({
       ...prev,
       trainingCourses: prev.trainingCourses.map(t => t.id === id ? { ...t, [field]: value } : t)
@@ -2417,34 +2368,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
     }
     setSpouseValidationError('');
-    const docDateIssues: string[] = [];
-    const newDocErrors: Record<string, string> = {};
-    for (const doc of formData.documents) {
-      const err = validateExpiryVsIssued(doc.issued, doc.expiry);
-      if (err) { docDateIssues.push(doc.document || 'A document'); newDocErrors[doc.id] = err; }
-    }
-    setDocDateErrors(newDocErrors);
-    const visaDateIssues: string[] = [];
-    const newVisaErrors: Record<string, string> = {};
-    for (const visa of formData.visas) {
-      const err = validateExpiryVsIssued(visa.issued, visa.expiry);
-      if (err) { visaDateIssues.push(visa.issuingCountry || 'A visa'); newVisaErrors[visa.id] = err; }
-    }
-    setVisaDateErrors(newVisaErrors);
-    const licDateIssues: string[] = [];
-    const newLicErrors: Record<string, string> = {};
-    for (const lic of formData.licenses) {
-      const err = validateExpiryVsIssued(lic.issued, lic.expiry);
-      if (err) { licDateIssues.push(lic.certificateDocument || 'A license'); newLicErrors[lic.id] = err; }
-    }
-    setLicDateErrors(newLicErrors);
-    const trainingDateIssues: string[] = [];
-    const newTrainingErrors: Record<string, string> = {};
-    for (const course of formData.trainingCourses) {
-      const err = validateExpiryVsIssued(course.issued, course.expiry);
-      if (err) { trainingDateIssues.push(course.trainingCourse || 'A training course'); newTrainingErrors[course.id] = err; }
-    }
-    setTrainingDateErrors(newTrainingErrors);
     const seaDateIssues: string[] = [];
     const newSeaErrors: Record<string, string> = {};
     for (const sea of formData.seaService) {
@@ -2454,15 +2377,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
     }
     setSeaServiceDateErrors(newSeaErrors);
-    const hasDocDateIssues = docDateIssues.length > 0 || visaDateIssues.length > 0 || licDateIssues.length > 0 || trainingDateIssues.length > 0;
-    const hasSeaDateIssues = seaDateIssues.length > 0;
-    if (hasDocDateIssues || hasSeaDateIssues) {
-      const messages: string[] = [];
-      if (hasDocDateIssues) messages.push('Expiry Date cannot be earlier than Issued Date.');
-      if (hasSeaDateIssues) messages.push('"To" date cannot be earlier than "From" date in Sea Service.');
+    if (seaDateIssues.length > 0) {
       toast({
         title: "Validation Error",
-        description: messages.join(' ') + ' Please correct the highlighted entries.',
+        description: '"To" date cannot be earlier than "From" date in Sea Service. Please correct the highlighted entries.',
         variant: "destructive",
       });
       return;
@@ -4811,8 +4729,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input type="date" value={doc.issued} onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={doc.expiry} onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
-                  {docDateErrors[doc.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-doc-expiry-error-${doc.id}`}>{docDateErrors[doc.id]}</p>}
+                  <Input type="date" value={doc.expiry} onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)} min={doc.issued || undefined} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={doc.issuingAuthority} onChange={(e) => updateDocument(doc.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -4881,8 +4798,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input type="date" value={visa.issued} onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={visa.expiry} onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
-                  {visaDateErrors[visa.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-visa-expiry-error-${visa.id}`}>{visaDateErrors[visa.id]}</p>}
+                  <Input type="date" value={visa.expiry} onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)} min={visa.issued || undefined} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={visa.visaType} onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -5028,8 +4944,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input type="date" value={lic.issued} onChange={(e) => updateLicense(lic.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={lic.expiry} onChange={(e) => updateLicense(lic.id, 'expiry', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
-                  {licDateErrors[lic.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-lic-expiry-error-${lic.id}`}>{licDateErrors[lic.id]}</p>}
+                  <Input type="date" value={lic.expiry} onChange={(e) => updateLicense(lic.id, 'expiry', e.target.value)} min={lic.issued || undefined} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -5116,8 +5031,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input type="date" value={course.issued} onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={course.expiry} onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
-                  {trainingDateErrors[course.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-training-expiry-error-${course.id}`}>{trainingDateErrors[course.id]}</p>}
+                  <Input type="date" value={course.expiry} onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)} min={course.issued || undefined} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
