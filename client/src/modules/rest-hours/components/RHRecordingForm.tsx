@@ -20,6 +20,7 @@ import {
   buildTimeline,
   buildPrefixSums,
   calculateMinRestInAny24HourPeriod,
+  calculateMinRestInAny7DayPeriod,
   calculateRestIn24HWorkAnchored,
   detectViolations as detectTimelineViolations,
   groupViolationsByDay,
@@ -1026,20 +1027,7 @@ export const RHRecordingForm = ({
           cumulativeRest
         );
 
-        let rest7day = 0;
-        for (let offset = 0; offset < 7; offset++) {
-          const lookbackIndex = dayIndex - offset;
-          if (lookbackIndex >= 0) {
-            rest7day += dailyRecords[lookbackIndex].hoursOfRest24hr ?? 24;
-          } else {
-            const prevDayIndex = previousMonthRecords.length + lookbackIndex;
-            if (prevDayIndex >= 0 && prevDayIndex < previousMonthRecords.length) {
-              rest7day += previousMonthRecords[prevDayIndex].hoursOfRest24hr ?? 24;
-            } else {
-              rest7day += 24;
-            }
-          }
-        }
+        const rest7day = calculateMinRestInAny7DayPeriod(dayArrayIndices, cumulativeRest);
         
         metrics = {
           anyPeriodRest24hr: anchored.rest,

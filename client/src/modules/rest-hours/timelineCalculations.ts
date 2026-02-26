@@ -227,6 +227,25 @@ export function calculateMinRestInAny24HourPeriod(
   return minRest;
 }
 
+export function calculateMinRestInAny7DayPeriod(
+  arrayIndices: number[],
+  cumulativeRest: number[]
+): number {
+  const WINDOW_SIZE_7D = 336;
+  
+  let minRest = 168;
+  
+  for (const arrayIdx of arrayIndices) {
+    if (arrayIdx >= WINDOW_SIZE_7D - 1) {
+      const startIdx = arrayIdx - WINDOW_SIZE_7D + 1;
+      const restIn7d = cumulativeRest[arrayIdx + 1] - cumulativeRest[startIdx];
+      minRest = Math.min(minRest, restIn7d);
+    }
+  }
+  
+  return minRest;
+}
+
 /**
  * Calculates "Hours of Rest in any 24 Hr Period" for Day N using the
  * work-anchored logic:
