@@ -42,6 +42,7 @@ export const vesselPlanningV2 = pgTable("vessel_planning_v2", {
   deploymentChecklistCompleted: boolean("deployment_checklist_completed"),
   applicableDocsChecked: boolean("applicable_docs_checked"),
   isArchived: boolean("is_archived").default(false),
+  isRelieverArchived: boolean("is_reliever_archived").default(false),
   archivedDate: text("archived_date"),
   ...auditColumns,
 });

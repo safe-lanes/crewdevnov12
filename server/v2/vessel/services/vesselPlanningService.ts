@@ -548,6 +548,10 @@ export const vesselPlanningService = {
     if (auditedData.signOffPortUuid) {
       resolvedData.signOffPortUuid = await resolvePortToUuid(auditedData.signOffPortUuid) || undefined;
     }
+
+    if (resolvedData.relieverCrewUuid === null && existing.isArchived && existing.relieverCrewUuid) {
+      (resolvedData as any).isRelieverArchived = true;
+    }
     
     return vesselPlanningRepository.update(planUuid, resolvedData);
   },

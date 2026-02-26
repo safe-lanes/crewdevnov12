@@ -1422,7 +1422,8 @@ export function VesselModule_v2(): JSX.Element {
             .filter((planning: any) => {
                 if (!planning.crewMemberId) return false;
                 const isArchived = planning.isArchived === true;
-                return showArchived ? isArchived : !isArchived;
+                const hasActiveReliever = isArchived && planning.relieverCrewUuid && !planning.isRelieverArchived;
+                return showArchived ? isArchived : (!isArchived || hasActiveReliever);
             })
             .sort((a: any, b: any) => {
                 const aOrder = getSortOrder(a.rank);
@@ -2208,7 +2209,7 @@ export function VesselModule_v2(): JSX.Element {
                                                         const rankHasSuffix = fullRankName?.includes('_');
                                                         
                                                         const matchingRecords = vesselPlanning.filter((p: any) => {
-                                                            if (p.isArchived) return false;
+                                                            if (p.isArchived && !(p.relieverCrewUuid && !p.isRelieverArchived)) return false;
                                                             
                                                             if (rankHasSuffix) {
                                                                 return p.rank === fullRankName;
