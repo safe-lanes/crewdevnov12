@@ -524,6 +524,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
 
+  // Refs for click-outside detection on B1/B2/B3
+  const sectionB1Ref = useRef<HTMLDivElement>(null);
+  const sectionB2Ref = useRef<HTMLDivElement>(null);
+  const sectionB3Ref = useRef<HTMLDivElement>(null);
+
   // External API hooks for master data with 5-minute cache and 2 retry attempts
   const { data: externalVesselTypesData, isLoading: vesselTypesLoading } = useVesselTypesV2();
   const { data: externalVesselsData, isLoading: vesselsLoading } = useVesselsV2();
@@ -1062,6 +1067,57 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       setUploadedPhoto(null);
     }
   }, [isOpen, crewMember]);
+
+  // Click-outside detection for B1/B2/B3: auto-save and close editing section
+  useEffect(() => {
+    const isInsidePortal = (el: Element | null): boolean => {
+      while (el) {
+        if (
+          el.hasAttribute?.('data-radix-popper-content-wrapper') ||
+          el.hasAttribute?.('data-radix-portal') ||
+          el.getAttribute?.('role') === 'listbox' ||
+          el.getAttribute?.('role') === 'dialog' ||
+          el.classList?.contains('rdp') ||
+          el.hasAttribute?.('data-radix-select-viewport') ||
+          el.closest?.('[data-radix-popper-content-wrapper]') ||
+          el.closest?.('[data-radix-portal]')
+        ) {
+          return true;
+        }
+        el = el.parentElement;
+      }
+      return false;
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (isInsidePortal(target)) return;
+
+      const sectionRefs: Record<string, React.RefObject<HTMLDivElement>> = {
+        'B1': sectionB1Ref,
+        'B2': sectionB2Ref,
+        'B3': sectionB3Ref,
+      };
+
+      Object.entries(editingSections).forEach(([sectionId, isEditing]) => {
+        if (!isEditing) return;
+        const ref = sectionRefs[sectionId];
+        if (ref?.current && !ref.current.contains(target)) {
+          const crewUuid = getEffectiveCrewUuid();
+          if (crewUuid) {
+            handleSectionAutoSave(sectionId);
+          }
+          setEditingSections(prev => ({ ...prev, [sectionId]: false }));
+        }
+      });
+    };
+
+    const hasEditingSection = Object.values(editingSections).some(Boolean);
+    if (hasEditingSection) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [editingSections, formData]);
 
   // Helper function to calculate BMI
   const calculateBMI = (height: string, weight: string) => {
@@ -2955,7 +3011,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const isEditing = editingSections['B1'];
     
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div ref={sectionB1Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B1 General Particulars</h3>
           <Button
@@ -3382,7 +3438,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const isEditing = editingSections['B2'];
     
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div ref={sectionB2Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B2 Address & Contact Info</h3>
           <Button
@@ -3505,7 +3561,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const isEditing = editingSections['B3'];
     
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div ref={sectionB3Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B3 Family and NOK</h3>
           <Button
@@ -6422,12 +6478,80 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
-  // Auto-save functionality
-  const handleAutoSave = () => {
-    console.log('Auto-saving current section:', activeSection);
+  // Auto-save functionality — saves the specific section's data to the backend
+  const handleSectionAutoSave = (sectionId: string) => {
+    const crewUuid = getEffectiveCrewUuid();
+    if (!crewUuid) return;
+
+    if (sectionId === 'B1') {
+      const personalDetailsData = {
+        height: formData.heightCm,
+        weight: formData.weightKg,
+        bmi: formData.bmi,
+        dob: formData.dateOfBirth,
+        placeOfBirthCity: formData.placeOfBirthCity,
+        placeOfBirthCountry: formData.placeOfBirthCountry,
+        nativeLanguage: formData.nativeLanguage,
+        foreignLanguages: formData.foreignLanguages,
+        englishProficiency: formData.englishProficiency,
+        manningAgent: formData.manningAgent,
+        crewPool: formData.crewPool,
+      };
+      updateCrewMutation.mutate({ id: crewUuid, data: { ...formData, uploadedPhoto: uploadedPhoto || null } });
+      savePersonalDetailsMutationV2.mutate({ crewUuid, data: personalDetailsData });
+      if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
+        saveVesselTypesMutationV2.mutate({ crewUuid, vesselTypeUuids: formData.vesselType });
+      }
+    } else if (sectionId === 'B2') {
+      const addressData = {
+        countryOfResidence: formData.countryOfResidence,
+        nearestAirport: formData.nearestAirport,
+        residentialAddressLine1: formData.residentialAddressLine1,
+        residentialAddressLine2: formData.residentialAddressLine2,
+        contactLandline: formData.contactLandline,
+        mobile: formData.mobile,
+        email: formData.email,
+      };
+      saveAddressMutationV2.mutate({ crewUuid, data: addressData });
+    } else if (sectionId === 'B3') {
+      const familyInfoData = {
+        maritalStatus: formData.maritalStatus,
+        numberOfDependentChildren: formData.numberOfDependentChildren,
+        fatherName: formData.fatherName,
+        motherName: formData.motherName,
+        spouseFirstName: formData.spouseFirstName,
+        spouseMiddleName: formData.spouseMiddleName,
+        spouseFamilyName: formData.spouseFamilyName,
+        spouseDateOfBirth: formData.spouseDateOfBirth,
+      };
+      saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData });
+      const nokData = {
+        firstName: formData.nokFirstName,
+        middleName: formData.nokMiddleName,
+        familyName: formData.nokFamilyName,
+        relationship: formData.nokRelationship,
+        telephone: formData.nokTelephone,
+        email: formData.nokEmail,
+        address: formData.nokAddress,
+      };
+      if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
+        saveNextOfKinMutationV2.mutate({ crewUuid, data: nokData });
+      }
+      if (formData.children && formData.children.length > 0) {
+        formData.children.forEach((child: any) => {
+          saveChildMutationV2.mutate({
+            crewUuid,
+            data: { firstName: child.firstName, middleName: child.middleName, familyName: child.familyName, dateOfBirth: child.dateOfBirth, gender: child.gender },
+            childUuid: child.childUuid,
+          });
+        });
+      }
+    }
+
+    console.log(`[V2] Auto-saved section ${sectionId}`);
     toast({
       title: "Auto-saved",
-      description: `Section ${activeSection} has been auto-saved.`,
+      description: `Section ${sectionId} has been saved.`,
       duration: 1500,
     });
   };
@@ -6595,20 +6719,27 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const toggleEditSection = async (sectionId: 'B1' | 'B2' | 'B3') => {
     const isCurrentlyEditing = editingSections[sectionId];
     
-    // For B2 and B3, ensure crew exists before entering edit mode
-    // B1 is the primary data entry section - no auto-save needed
+    // For B2 and B3, validate mandatory fields before allowing edit on new crew
     if (!isCurrentlyEditing && sectionId !== 'B1') {
+      if (!(formData.firstName || '').trim()) {
+        toast({
+          title: "Missing Required Field",
+          description: "Please fill in 'First Name' in Section B1 (General Particulars) before editing this section.",
+          variant: "destructive",
+        });
+        return;
+      }
       const crewUuidResult = await ensureCrewExists();
       if (!crewUuidResult) {
-        // Failed to create crew - don't enter edit mode
         return;
       }
     }
     
-    // If turning off edit mode and another section is being edited, auto-save
+    // If another section is being edited, auto-save it before switching
     const currentlyEditing = Object.keys(editingSections).find(key => editingSections[key]);
     if (currentlyEditing && currentlyEditing !== sectionId && editingSections[currentlyEditing]) {
-      handleAutoSave();
+      handleSectionAutoSave(currentlyEditing);
+      setEditingSections(prev => ({ ...prev, [currentlyEditing]: false }));
     }
     
     setEditingSections(prev => ({
