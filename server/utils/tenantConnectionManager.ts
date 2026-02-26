@@ -154,6 +154,7 @@ class TenantConnectionManager {
       return { tuid: tenant.tuid, companyName: tenant.companyName };
     } catch (err) {
       if (err instanceof TenantNotFoundError) throw err;
+      if (err instanceof TenantInactiveError) throw err;
       throw new TenantDatabaseError("sails_master_crewing", (err as Error).message);
     }
   }
