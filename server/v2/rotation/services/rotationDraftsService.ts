@@ -14,7 +14,9 @@ import type {
 } from "../../../../shared/v2/rotation/schema";
 import { getDb } from "../../db";
 import { masterVessels } from "../../../../shared/schema";
-import { eq } from "drizzle-orm";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
+import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { eq, and, isNotNull, sql } from "drizzle-orm";
 
 const crewMembersRepository = new CrewMembersRepository();
 
@@ -417,6 +419,40 @@ export const rotationDraftsService = {
       return status === "Proposed" || status === "Partially Approved";
     });
     
+    // Pre-load current crew on board from vessel_planning_v2 for timeline bars
+    const db = getDb();
+    const onBoardRows = await db
+      .select({
+        vesselUuid: vesselPlanningV2.vesselUuid,
+        rank: vesselPlanningV2.rank,
+        crewUuid: vesselPlanningV2.crewUuid,
+        signOnDate: vesselPlanningV2.signOnDate,
+        contractPeriodMonths: vesselPlanningV2.contractPeriodMonths,
+        contractEndRangeStartMonths: vesselPlanningV2.contractEndRangeStartMonths,
+        contractEndRangeEndMonths: vesselPlanningV2.contractEndRangeEndMonths,
+        reliefDue: vesselPlanningV2.reliefDue,
+        crewFirstName: crewMembersV2.firstName,
+        crewMiddleName: crewMembersV2.middleName,
+        crewFamilyName: crewMembersV2.familyName,
+      })
+      .from(vesselPlanningV2)
+      .innerJoin(crewMembersV2, eq(vesselPlanningV2.crewUuid, crewMembersV2.crewUuid))
+      .where(
+        and(
+          eq(vesselPlanningV2.isDeleted, false),
+          eq(vesselPlanningV2.isArchived, false),
+          isNotNull(vesselPlanningV2.crewUuid),
+          eq(crewMembersV2.isDeleted, false),
+          sql`${crewMembersV2.archivedAt} IS NULL`
+        )
+      );
+
+    const onBoardMap = new Map<string, typeof onBoardRows[0]>();
+    for (const row of onBoardRows) {
+      const key = `${row.vesselUuid}::${row.rank}`;
+      onBoardMap.set(key, row);
+    }
+
     // Get all entries for these drafts and flatten into proposals
     const proposals: any[] = [];
     
@@ -492,20 +528,52 @@ export const rotationDraftsService = {
         const archivedDate = entry.deployedDate || null;
         
         let currentCrew: { id: string; name: string; contractStartDate: string; contractEndDate: string; rangeStartDate: string; rangeEndDate: string } | null = null;
-        if (entry.currentCrewUuid && entry.currentCrewSignOnDate && entry.currentCrewContractEnd) {
-          let currentCrewName = 'Unknown Crew';
-          const currentCrewMember = await crewMembersRepository.findByUuid(entry.currentCrewUuid);
-          if (currentCrewMember) {
-            currentCrewName = `${currentCrewMember.firstName || ''} ${currentCrewMember.familyName || ''}`.trim() || 'Unknown Crew';
+        if (entry.vesselUuid && entry.rank) {
+          const onBoardKey = `${entry.vesselUuid}::${entry.rank}`;
+          const onBoard = onBoardMap.get(onBoardKey);
+          if (onBoard && onBoard.crewUuid && onBoard.crewUuid !== entry.crewUuid) {
+            const joiningDate = onBoard.signOnDate ? new Date(onBoard.signOnDate) : null;
+            let contractEndDateStr: string | null = null;
+            let rangeEndDateStr: string | null = null;
+
+            if (joiningDate && !isNaN(joiningDate.getTime())) {
+              if (onBoard.contractEndRangeStartMonths) {
+                const contractEnd = new Date(joiningDate);
+                contractEnd.setMonth(contractEnd.getMonth() + onBoard.contractEndRangeStartMonths);
+                contractEndDateStr = contractEnd.toISOString().split("T")[0];
+              } else if (onBoard.contractPeriodMonths) {
+                const contractEnd = new Date(joiningDate);
+                contractEnd.setMonth(contractEnd.getMonth() + onBoard.contractPeriodMonths);
+                contractEndDateStr = contractEnd.toISOString().split("T")[0];
+              } else if (onBoard.reliefDue) {
+                contractEndDateStr = onBoard.reliefDue;
+              }
+
+              if (onBoard.contractEndRangeEndMonths) {
+                const rangeEnd = new Date(joiningDate);
+                rangeEnd.setMonth(rangeEnd.getMonth() + onBoard.contractEndRangeEndMonths);
+                rangeEndDateStr = rangeEnd.toISOString().split("T")[0];
+              } else if (contractEndDateStr) {
+                rangeEndDateStr = contractEndDateStr;
+              }
+            } else if (onBoard.reliefDue) {
+              contractEndDateStr = onBoard.reliefDue;
+              rangeEndDateStr = onBoard.reliefDue;
+            }
+
+            if (contractEndDateStr) {
+              const crewName = [onBoard.crewFirstName, onBoard.crewMiddleName, onBoard.crewFamilyName]
+                .filter(Boolean).join(' ').trim() || 'Unknown Crew';
+              currentCrew = {
+                id: onBoard.crewUuid!,
+                name: crewName,
+                contractStartDate: onBoard.signOnDate || contractEndDateStr,
+                contractEndDate: contractEndDateStr,
+                rangeStartDate: onBoard.reliefDue || contractEndDateStr,
+                rangeEndDate: rangeEndDateStr || contractEndDateStr,
+              };
+            }
           }
-          currentCrew = {
-            id: entry.currentCrewUuid,
-            name: currentCrewName,
-            contractStartDate: entry.currentCrewSignOnDate,
-            contractEndDate: entry.currentCrewContractEnd,
-            rangeStartDate: entry.currentCrewRangeStart || entry.currentCrewContractEnd,
-            rangeEndDate: entry.currentCrewRangeEnd || entry.currentCrewContractEnd,
-          };
         }
         
         proposals.push({
