@@ -1930,7 +1930,7 @@ export const RHRecordingForm = ({
             </Select>
           </div>
 
-          <div className="flex items-center gap-1 ml-auto">
+          <div className="flex items-center gap-1 ml-auto" title="In Record (Rec.) mode all entries will be recorded as a 'Completed Record' (Green or Blue coloured). In 'Plan' mode all entries will be recorded as a plan (Grey Coloured)">
             <span className="text-xs text-[#4f5863]">Rec.</span>
             <button
               onClick={() => setRecordMode(prev => prev === 'Rec' ? 'Plan' : 'Rec')}
@@ -1949,7 +1949,7 @@ export const RHRecordingForm = ({
             <span className="text-xs text-[#4f5863]">Plan</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" title="When clicked, the planned work will be visible.">
             <Checkbox
               id="show-planning"
               checked={showPlanning}
@@ -1961,7 +1961,7 @@ export const RHRecordingForm = ({
             </Label>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" title="Click to enable 'OPA' category Violations">
             <Checkbox
               id="opa"
               checked={opaMode}
@@ -1973,7 +1973,7 @@ export const RHRecordingForm = ({
             </Label>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" title="Click to toggle between 'Rest' mode & 'Work' mode calculations">
             <span className="text-xs text-[#4f5863]">Rest</span>
             <button
               onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
