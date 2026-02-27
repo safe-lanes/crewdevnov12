@@ -34,6 +34,7 @@ import {
   sortViolationCodes,
   MAJORITY_DAY_ASSIGNMENT,
   TWENTY_FOUR_HOUR_VIOLATION_CODES,
+  CODE_EF_EXPERIMENTAL,
   type DateLineAdjustment,
   type TimelineSlot,
   type Violation as TimelineViolation,
@@ -57,7 +58,7 @@ interface RHRecordingFormProps {
 const VIOLATION_CODE_DESCRIPTIONS: Record<string, string> = {
   'A': "Minimum 10 hours of rest in any 24 hour period",
   'C': "Minimum hours of rest in any 7 day period = 77",
-  'EF': "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length",
+  'EF': "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length (Experimental)",
   'G': "Interval between rest periods not to exceed 14 hours",
   'B': "ILO Work - Maximum 14 hours of work in any 24 hour period",
   'D': "ILO Work - Maximum 72 hours of work in any 7 day period",
@@ -1134,9 +1135,9 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 3 from the same work-anchored window as Violation 1
-      // Only when Violation 1 is present (rest < 10h), check rest period structure
-      if (metrics.anyPeriodRest24hr < 10 && worstWindowEndSlot !== null) {
+      // EXPERIMENTAL: Derive Code EF from the same work-anchored window as Violation A
+      // Only when Violation A is present (rest < 10h), check rest period structure
+      if (CODE_EF_EXPERIMENTAL.enabled && metrics.anyPeriodRest24hr < 10 && worstWindowEndSlot !== null) {
         const windowStartSlot = Math.max(0, worstWindowEndSlot - 47);
         const { lengths: restPeriods } = analyzeRestPeriodsWithRanges(fullTimeline, worstWindowEndSlot);
         const sorted = [...restPeriods].sort((a, b) => b - a);

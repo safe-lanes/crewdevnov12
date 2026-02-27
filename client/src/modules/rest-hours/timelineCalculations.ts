@@ -660,10 +660,10 @@ export function detectViolations(
         });
       }
       
-      // Check for Code [3] violation with optional work-anchored window filtering
+      // EXPERIMENTAL: Check for Code EF violation with optional work-anchored window filtering
       // When WORK_ANCHORED_24H_WINDOW.enabled is true, only check windows that START with work ('w') or duty ('d')
-      let shouldCheckCode3 = true;
-      if (WORK_ANCHORED_24H_WINDOW.enabled) {
+      let shouldCheckCode3 = CODE_EF_EXPERIMENTAL.enabled;
+      if (shouldCheckCode3 && WORK_ANCHORED_24H_WINDOW.enabled) {
         // The 24-hour window starts 47 slots before the current slot (48 slots total, 0-indexed)
         if (windowStartIdx24h >= 0) {
           const windowStartStatus = timeline[windowStartIdx24h].status.toLowerCase();
@@ -841,6 +841,12 @@ export const WORK_ANCHORED_24H_WINDOW: {
   enabled: boolean;
 } = {
   enabled: true, // Set to false to revert to MLC-compliant behavior
+};
+
+export const CODE_EF_EXPERIMENTAL: {
+  enabled: boolean;
+} = {
+  enabled: true, // EXPERIMENTAL: Code EF detection logic is under active fine-tuning
 };
 
 /**
