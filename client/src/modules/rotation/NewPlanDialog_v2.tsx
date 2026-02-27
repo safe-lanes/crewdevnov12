@@ -591,13 +591,14 @@ function CrewColumn({
   // Get color based on deployment status and assignment count
   // Priority: Red (reliever Signed On/In Transit) > Purple (reliever Planned/Confirmed) > Red (deployed on overlapping period) > Brown (2+ vessels) > Blue (1 vessel) > Default
   const getCrewNameColor = (crewUuid: string) => {
-    // Highest priority: Red — crew is a deployed reliever already Signed On or In Transit on another vessel
-    const isRelieverActive = allDeployedAssignments.some(assignment => {
-      if (assignment.relieverCrewId !== crewUuid) return false;
+    // Highest priority: Red — crew is Signed On or In Transit on another vessel
+    const isActiveOnOtherVessel = allDeployedAssignments.some(assignment => {
+      const isThisCrew = assignment.relieverCrewId === crewUuid || assignment.crewMemberId === crewUuid;
+      if (!isThisCrew) return false;
       if (selectedVesselIds.includes(assignment.vesselUuid)) return false;
       return assignment.joiningStatus === 'Signed On' || assignment.joiningStatus === 'In Transit';
     });
-    if (isRelieverActive) return 'text-red-600';
+    if (isActiveOnOtherVessel) return 'text-red-600';
 
     // Second priority: Purple — crew is a deployed reliever with status Planned or Confirmed
     const isPurple = allDeployedAssignments.some(assignment => {
@@ -670,10 +671,11 @@ function CrewColumn({
   const getCrewVesselInfo = (crewUuid: string): string | null => {
     const vesselNames: string[] = [];
 
-    // Check for Red: crew is a deployed reliever with Signed On or In Transit status
+    // Check for Red: crew is Signed On or In Transit on another vessel
     const activeRelieverVessels: string[] = [];
     allDeployedAssignments.forEach(assignment => {
-      if (assignment.relieverCrewId !== crewUuid) return;
+      const isThisCrew = assignment.relieverCrewId === crewUuid || assignment.crewMemberId === crewUuid;
+      if (!isThisCrew) return;
       if (selectedVesselIds.includes(assignment.vesselUuid)) return;
       if (assignment.joiningStatus === 'Signed On' || assignment.joiningStatus === 'In Transit') {
         const vesselName = getVesselName(assignment.vesselUuid);
