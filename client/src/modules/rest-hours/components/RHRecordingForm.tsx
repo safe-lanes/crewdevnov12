@@ -1179,7 +1179,7 @@ export const RHRecordingForm = ({
               hasCodeF = true;
               codeFWindowEnd = slotIdx;
               const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
-              codeFReason = `${restPeriods.length} rest periods: ${allPeriodsHours}. Top 2 sum: ${topTwoHours.toFixed(1)}h (< 10h, exception not met)`;
+              codeFReason = `${restPeriods.length} rest periods: ${allPeriodsHours}. Top 2 sum: ${topTwoHours.toFixed(1)}h (< 10h, alternate not met)`;
             }
           }
 

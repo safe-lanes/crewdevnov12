@@ -693,7 +693,7 @@ export function detectViolations(
           const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
           violations.push({
             code: ViolationCode.VIOLATION_3F,
-            reason: `${restPeriods.length} rest periods: ${allPeriodsHours}. Top 2 sum: ${topTwoHours}h (< 10h, exception not met)`,
+            reason: `${restPeriods.length} rest periods: ${allPeriodsHours}. Top 2 sum: ${topTwoHours}h (< 10h, alternate not met)`,
             slotIndex: slotIdx,
             sourceDay: slot.sourceDay,
             occurrence: slot.occurrence,
