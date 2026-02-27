@@ -402,20 +402,20 @@ export function NCOverviewDialog({
             <div className="text-center py-8 text-gray-500">No non-conformities found</div>
           ) : (
             <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-blue-50">
+              <table className="w-full border-collapse">
+                <thead className="bg-blue-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Vessel</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Rank</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Name</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Date</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Violations</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Comments</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Vessel</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Rank</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Name</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Date</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Violations</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Comments</th>
                     {!isPredicted && (
-                      <th className="px-4 py-2 text-left text-sm font-semibold">Status</th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Status</th>
                     )}
                     {!isPredicted && (
-                      <th className="px-4 py-2 text-center text-sm font-semibold">View Report</th>
+                      <th className="px-4 py-2 text-center text-sm font-semibold bg-blue-50 border-b border-blue-200">View Report</th>
                     )}
                   </tr>
                 </thead>
@@ -426,19 +426,19 @@ export function NCOverviewDialog({
                     const rowSpan = isFirstRowForCrew ? crewRowCounts.get(record.crewMemberId) || 1 : undefined;
                     
                     return (
-                    <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="border-t hover:bg-gray-50">
+                    <tr key={`${record.crewMemberId}-${record.day}-${index}`} className={`hover:bg-gray-50 ${isFirstRowForCrew ? 'border-t-2 border-gray-300' : 'border-t border-gray-100'}`}>
                       {isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                        <td className="px-4 py-2 text-sm align-top" rowSpan={rowSpan}>
                           {record.vesselName}
                         </td>
                       )}
                       {isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                        <td className="px-4 py-2 text-sm align-top" rowSpan={rowSpan}>
                           {record.rank}
                         </td>
                       )}
                       {isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                        <td className="px-4 py-2 text-sm align-top" rowSpan={rowSpan}>
                           {record.crewMemberName}
                         </td>
                       )}
@@ -485,13 +485,13 @@ export function NCOverviewDialog({
                       </td>
                       <td className="px-4 py-2 text-sm">{record.comments}</td>
                       {!isPredicted && isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
+                        <td className="px-4 py-2 text-sm align-top" rowSpan={rowSpan}>
                           <StatusBadge status={record.status} />
                         </td>
                       )}
                       {!isPredicted && isFirstRowForCrew && (
                         <td 
-                          className="px-4 py-2 text-center align-middle" 
+                          className="px-4 py-2 text-center align-top" 
                           rowSpan={rowSpan}
                         >
                           <Button
