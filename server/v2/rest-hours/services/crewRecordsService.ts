@@ -192,6 +192,10 @@ async function enrichRecordsWithComputedFields(
     let predictedViolationDatesJson: string | null = null;
 
     let liveRecordingPercent: number | undefined;
+    let liveTotalViolations: number | undefined;
+    let livePredictedViolations: number | undefined;
+    let liveTotalNCs: number | undefined;
+    let livePredictedNCs: number | undefined;
 
     if (dailyRecordsJson && record.monthValue) {
       const { firstDay, lastDay } = getMonthBounds(record.monthValue);
@@ -204,16 +208,28 @@ async function enrichRecordsWithComputedFields(
       violationDatesJson = vDates.length > 0 ? JSON.stringify(vDates) : null;
       predictedViolationDatesJson = pDates.length > 0 ? JSON.stringify(pDates) : null;
 
+      liveTotalViolations = vDates.length;
+      livePredictedViolations = pDates.length;
+
+      const liveNCs = calculateNCs(dailyRecordsJson, complianceMode, opaMode, dayRange);
+      liveTotalNCs = liveNCs.totalNCs;
+      livePredictedNCs = liveNCs.predictedNCs;
+
       liveRecordingPercent = calculateRecordingPercentage(dailyRecordsJson, record.monthValue, dayRange);
     }
 
-    const cappedPredictedNCs = (record.totalNCs && record.totalNCs >= 1) ? 0 : (record.predictedNCs || 0);
+    const finalTotalNCs = liveTotalNCs ?? (record.totalNCs || 0);
+    const finalPredictedNCs = livePredictedNCs ?? (record.predictedNCs || 0);
+    const cappedPredictedNCs = (finalTotalNCs >= 1) ? 0 : finalPredictedNCs;
 
     const { _signOnDate, _signOffDate, ...cleanRecord } = record as any;
 
     return {
       ...cleanRecord,
       ...(liveRecordingPercent !== undefined ? { recordingStatusPercent: liveRecordingPercent } : {}),
+      ...(liveTotalViolations !== undefined ? { totalViolations: liveTotalViolations } : {}),
+      ...(livePredictedViolations !== undefined ? { predictedViolations: livePredictedViolations } : {}),
+      ...(liveTotalNCs !== undefined ? { totalNCs: liveTotalNCs } : {}),
       signOnDate: _signOnDate ?? null,
       signOffDate: _signOffDate ?? null,
       predictedNCs: cappedPredictedNCs,
@@ -234,6 +250,21 @@ export const crewRecordsService = {
   }): Promise<EnrichedCrewRecord[]> {
     const records = await crewRecordsRepository.findAll(filters);
     return enrichRecordsWithComputedFields(records);
+  },
+
+  async getAllBulk(params: {
+    vesselIds: string[];
+    monthValue?: string;
+  }): Promise<EnrichedCrewRecord[]> {
+    const { vesselIds, monthValue } = params;
+    if (!vesselIds || vesselIds.length === 0) return [];
+
+    let allRecords: RecordWithAssignment[] = [];
+    for (const vesselId of vesselIds) {
+      const records = await crewRecordsRepository.findAll({ vesselId, monthValue });
+      allRecords.push(...records);
+    }
+    return enrichRecordsWithComputedFields(allRecords);
   },
 
   async getByUuid(rhCrewRecordUuid: string): Promise<RhCrewRecordV2> {
@@ -422,7 +453,7 @@ export const crewRecordsService = {
     vesselId?: string;
     monthValue?: string;
   }): Promise<Array<{ rank: string; violationDays: number }>> {
-    const records = await crewRecordsRepository.findAll(params);
+    const records = await this.getAll(params);
 
     const violationsByRank: Record<string, number> = {};
     for (const record of records) {
@@ -442,7 +473,7 @@ export const crewRecordsService = {
     vesselId?: string;
     monthValue?: string;
   }): Promise<Array<{ rank: string; ncCount: number }>> {
-    const records = await crewRecordsRepository.findAll(params);
+    const records = await this.getAll(params);
 
     const ncsByRank: Record<string, number> = {};
     for (const record of records) {

@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { NCReport, RestHoursCrewRecord, RestHoursDailyRecord, MasterDataEntry } from "@shared/schema";
 import { filterViolations } from '../violationFilters';
+import { sortViolationCodes } from '../timelineCalculations';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { useUsersV2 } from '@/hooks/v2/useMasterDataV2';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
@@ -27,20 +28,20 @@ interface NCReportDialogProps {
   vesselName: string;
 }
 
-// Violation code descriptions mapping
-const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
-  1: "Minimum 10 hours of rest in any 24 hour period",
-  2: "Minimum hours of rest in any 7 day period = 77",
-  3: "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length",
-  4: "Interval between rest periods not to exceed 14 hours",
-  5: "ILO Work - Maximum 14 hours of work in any 24 hour period",
-  6: "ILO Work - Maximum 72 hours of work in any 7 day period",
-  7: "OPA - Maximum 15 hours of work in any 24 hour period",
-  8: "OPA - Maximum 36 hours of work in 72 hours",
+const VIOLATION_CODE_DESCRIPTIONS: Record<string, string> = {
+  'A': "Minimum 10 hours of rest in any 24 hour period",
+  'C': "Minimum hours of rest in any 7 day period = 77",
+  'E': "1 period of 6 hrs Rest in any 24 hr Period",
+  'F': "Hrs of rest (10) may be divided into no more than 2 periods",
+  'G': "Interval between rest periods not to exceed 14 hours",
+  'B': "ILO Work - Maximum 14 hours of work in any 24 hour period",
+  'D': "ILO Work - Maximum 72 hours of work in any 7 day period",
+  'I': "OPA - Maximum 15 hours of work in any 24 hour period",
+  'H': "OPA - Maximum 36 hours of work in 72 hours",
 };
 
 interface ViolationDiagnostic {
-  code: number;
+  code: string;
   windowStart: string;
   reason: string;
   violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>;
@@ -52,7 +53,7 @@ interface DailyRecord {
   hours: string[];
   isPlan: boolean;
   comments: string;
-  violations: number[];
+  violations: string[];
   violationDiagnostics?: ViolationDiagnostic[];
 }
 
@@ -320,8 +321,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
         const filteredDiagnostics = diagnostics.filter(d => filteredViolations.includes(d.code));
 
         // Format violation codes with descriptions
-        const violationCodesStr = filteredViolations
-          .sort((a, b) => a - b)
+        const violationCodesStr = sortViolationCodes(filteredViolations)
           .map(code => {
             const desc = VIOLATION_CODE_DESCRIPTIONS[code] || `Code ${code}`;
             return `${code} - ${desc}`;

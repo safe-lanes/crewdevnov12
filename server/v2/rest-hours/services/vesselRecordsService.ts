@@ -5,25 +5,40 @@ import type {
 } from "../../../../shared/v2/rest-hours/types";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { eq, and, or, isNull } from "drizzle-orm";
+import { eq, and, or, isNull, inArray, sql } from "drizzle-orm";
+import { crewRecordsService } from "./crewRecordsService";
 
 const vesselRecordsRepository = new VesselRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
 
-async function getOnboardCrewCount(vesselId: string): Promise<number> {
+async function getOnboardCrewCounts(vesselIds: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (vesselIds.length === 0) return map;
+
   const db = getDb();
-  const crewData = await db
-    .select({ crewUuid: crewAssignments.crewUuid })
+  const uniqueIds = Array.from(new Set(vesselIds));
+
+  const rows = await db
+    .select({
+      vesselUuid: crewAssignments.vesselUuid,
+      count: sql<number>`cast(count(*) as int)`,
+    })
     .from(crewAssignments)
     .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
     .where(
       and(
-        eq(crewAssignments.vesselUuid, vesselId),
+        inArray(crewAssignments.vesselUuid, uniqueIds),
         eq(crewAssignments.isCurrent, true),
         or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
       )
-    );
-  return crewData.length;
+    )
+    .groupBy(crewAssignments.vesselUuid);
+
+  for (const row of rows) {
+    map.set(row.vesselUuid, Number(row.count));
+  }
+
+  return map;
 }
 
 function applyAuditUser<T extends object>(
@@ -42,12 +57,79 @@ function applyAuditUser<T extends object>(
   return result;
 }
 
+async function enrichVesselRecordsWithLiveCounts(
+  records: RhVesselRecordV2[]
+): Promise<RhVesselRecordV2[]> {
+  if (records.length === 0) return [];
+
+  const vesselIds = Array.from(new Set(records.map(r => r.vesselId)));
+  const monthValues = Array.from(new Set(records.map(r => r.monthValue)));
+
+  const [crewCountsMap, allEnrichedCrew] = await Promise.all([
+    getOnboardCrewCounts(vesselIds),
+    crewRecordsService.getAllBulk({ vesselIds, monthValue: monthValues.length === 1 ? monthValues[0] : undefined }),
+  ]);
+
+  const crewByVesselMonth = new Map<string, typeof allEnrichedCrew>();
+  for (const crew of allEnrichedCrew) {
+    const key = `${crew.vesselId}|${crew.monthValue}`;
+    let group = crewByVesselMonth.get(key);
+    if (!group) {
+      group = [];
+      crewByVesselMonth.set(key, group);
+    }
+    group.push(crew);
+  }
+
+  return records.map(record => {
+    const onboardCrewCount = crewCountsMap.get(record.vesselId) || 0;
+    const totalCrew = Math.max(onboardCrewCount, record.totalCrew || 0);
+
+    const key = `${record.vesselId}|${record.monthValue}`;
+    const crewRecords = crewByVesselMonth.get(key);
+
+    if (crewRecords && crewRecords.length > 0) {
+      const totalViolations = crewRecords.reduce((sum, r) => sum + (r.totalViolations || 0), 0);
+      const crewWithViolations = crewRecords.filter(r => (r.totalViolations || 0) > 0).length;
+      const totalNCs = crewRecords.reduce((sum, r) => sum + (r.totalNCs || 0), 0);
+      const crewWithNCs = crewRecords.filter(r => (r.totalNCs || 0) > 0).length;
+      const predictedViolations = crewRecords.reduce((sum, r) => sum + (r.predictedViolations || 0), 0);
+      const crewWithPredictedViolations = crewRecords.filter(r => (r.predictedViolations || 0) > 0).length;
+      const predictedNCs = crewRecords.reduce((sum, r) => sum + (r.predictedNCs || 0), 0);
+      const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
+
+      const totalPercent = crewRecords.reduce((sum, r) => sum + (r.recordingStatusPercent || 0), 0);
+      const averagePercent = Math.round(totalPercent / crewRecords.length);
+
+      return {
+        ...record,
+        totalCrew,
+        totalViolations,
+        crewWithViolations,
+        totalNCs,
+        crewWithNCs,
+        predictedViolations,
+        crewWithPredictedViolations,
+        predictedNCs,
+        crewWithPredictedNCs,
+        recordingStatusPercent: averagePercent,
+      };
+    }
+
+    return {
+      ...record,
+      totalCrew,
+    };
+  });
+}
+
 export const vesselRecordsService = {
   async getAll(filters?: {
     vesselId?: string;
     monthValue?: string;
   }): Promise<RhVesselRecordV2[]> {
-    return vesselRecordsRepository.findAll(filters);
+    const records = await vesselRecordsRepository.findAll(filters);
+    return enrichVesselRecordsWithLiveCounts(records);
   },
 
   async getByUuid(rhVesselUuid: string): Promise<RhVesselRecordV2> {
@@ -75,36 +157,7 @@ export const vesselRecordsService = {
       allRecords.push(...records);
     }
 
-    const enrichedRecords: RhVesselRecordV2[] = [];
-    for (const record of allRecords) {
-      const onboardCrewCount = await getOnboardCrewCount(record.vesselId);
-      const totalCrew = Math.max(onboardCrewCount, record.totalCrew || 0);
-
-      if (
-        (record.predictedViolations || 0) > 0 && (record.crewWithPredictedViolations || 0) === 0 ||
-        (record.predictedNCs || 0) > 0 && (record.crewWithPredictedNCs || 0) === 0
-      ) {
-        const crewRecords = await crewRecordsRepository.findAll({
-          vesselId: record.vesselId,
-          monthValue: record.monthValue,
-        });
-        const crewWithPredictedViolations = crewRecords.filter(r => (r.predictedViolations || 0) > 0).length;
-        const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
-        enrichedRecords.push({
-          ...record,
-          totalCrew,
-          crewWithPredictedViolations,
-          crewWithPredictedNCs,
-        });
-      } else {
-        enrichedRecords.push({
-          ...record,
-          totalCrew,
-        });
-      }
-    }
-
-    return enrichedRecords;
+    return enrichVesselRecordsWithLiveCounts(allRecords);
   },
 
   async create(

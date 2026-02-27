@@ -13,6 +13,7 @@ import { queryClient } from '@/lib/queryClient';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import type { RestHoursDailyRecord, FixedTask, VesselDateLineAdjustment, DateLineAdjustmentItem, VariableTask } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
@@ -28,10 +29,14 @@ import {
   groupViolationObjectsByDay,
   prependPreviousMonthTimeline,
   analyzeRestPeriodsWithRanges,
+  analyzeCodeFViolation,
   checkCode4ViolationWithRange,
   calculateMajorityDayFor24HourWindow,
+  sortViolationCodes,
   MAJORITY_DAY_ASSIGNMENT,
   TWENTY_FOUR_HOUR_VIOLATION_CODES,
+  CODE_EF_EXPERIMENTAL,
+  WORK_ANCHORED_24H_WINDOW,
   type DateLineAdjustment,
   type TimelineSlot,
   type Violation as TimelineViolation,
@@ -52,16 +57,16 @@ interface RHRecordingFormProps {
   isLocked?: boolean;
 }
 
-// Violation code descriptions mapping
-const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
-  1: "Minimum 10 hours of rest in any 24 hour period",
-  2: "Minimum hours of rest in any 7 day period = 77",
-  3: "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length",
-  4: "Interval between rest periods not to exceed 14 hours",
-  5: "ILO Work - Maximum 14 hours of work in any 24 hour period",
-  6: "ILO Work - Maximum 72 hours of work in any 7 day period",
-  7: "OPA - Maximum 15 hours of work in any 24 hour period",
-  8: "OPA - Maximum 36 hours of work in 72 hours",
+const VIOLATION_CODE_DESCRIPTIONS: Record<string, string> = {
+  'A': "Minimum 10 hours of rest in any 24 hour period",
+  'C': "Minimum hours of rest in any 7 day period = 77",
+  'E': "1 period of 6 hrs Rest in any 24 hr Period",
+  'F': "Hrs of rest (10) may be divided into no more than 2 periods",
+  'G': "Interval between rest periods not to exceed 14 hours",
+  'B': "ILO Work - Maximum 14 hours of work in any 24 hour period",
+  'D': "ILO Work - Maximum 72 hours of work in any 7 day period",
+  'I': "OPA - Maximum 15 hours of work in any 24 hour period",
+  'H': "OPA - Maximum 36 hours of work in 72 hours",
 };
 
 // Helper: Check if a crew member is involved in a variable task
@@ -247,6 +252,7 @@ export const RHRecordingForm = ({
   const { userType, myVessels } = usePermissions();
   const isShipUser = userType === 'Ship';
   const { vessels: v2Vessels, getVesselName } = useV2Vessels();
+  const { getCanonicalRankName } = useRankNormalization();
   
   const vessels = useMemo(() => v2Vessels.map(v => ({
     id: v.id,
@@ -280,7 +286,7 @@ export const RHRecordingForm = ({
   const lastViolationsHashRef = useRef<string>('');
   
   // Violation highlighting state
-  const [hoveredViolation, setHoveredViolation] = useState<{ dayIndex: number; code: number } | null>(null);
+  const [hoveredViolation, setHoveredViolation] = useState<{ dayIndex: number; code: string } | null>(null);
   
   // Calculate previous month period string
   const previousMonthPeriod = useMemo(() => {
@@ -318,11 +324,72 @@ export const RHRecordingForm = ({
     return options;
   }, []);
   
-  // Filter crew members by selected vessel
+  const { data: availableRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/v2/admin/available-ranks'],
+    enabled: open,
+  });
+
+  const { data: vesselRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/v2/admin/vessel-revisions/ranks', selectedVesselId],
+    queryFn: async () => {
+      if (!selectedVesselId) return [];
+      const res = await fetch(`/api/v2/admin/vessel-revisions/ranks/${selectedVesselId}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open && !!selectedVesselId,
+  });
+
+  const rankOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    availableRanks.forEach((rank: any) => {
+      addRankAliasesToMap(map, rank.name, rank.sortOrder || 0);
+    });
+    vesselRanks.forEach((rank: any) => {
+      const sortOrder = rank.sortOrder;
+      if (sortOrder === undefined) return;
+      if (rank.rank) {
+        addRankAliasesToMap(map, rank.rank, sortOrder);
+      }
+      if (rank.role && rank.role !== rank.rank) {
+        map.set(rank.role, sortOrder);
+      }
+      if (rank.role && rank.role.includes('_')) {
+        const baseRank = rank.role.split('_')[0];
+        if (!map.has(baseRank)) {
+          map.set(baseRank, sortOrder);
+        }
+      }
+    });
+    return map;
+  }, [availableRanks, vesselRanks]);
+
+  const getRankSortOrder = useCallback((rankName: string | null | undefined): number => {
+    if (!rankName) return 999999;
+    const exact = rankOrderMap.get(rankName);
+    if (exact !== undefined) return exact;
+    const baseRank = rankName.split('_')[0];
+    const base = rankOrderMap.get(baseRank);
+    if (base !== undefined) return base;
+    const canonical = getCanonicalRankName(rankName);
+    const canonicalOrder = rankOrderMap.get(canonical);
+    if (canonicalOrder !== undefined) return canonicalOrder;
+    return 999999;
+  }, [rankOrderMap, getCanonicalRankName]);
+
   const filteredCrewMembers = useMemo(() => {
-    if (!selectedVesselId) return allCrewMembers;
-    return allCrewMembers.filter((cm: any) => cm.presentVessel === selectedVesselId);
-  }, [allCrewMembers, selectedVesselId]);
+    const filtered = selectedVesselId
+      ? allCrewMembers.filter((cm: any) => cm.presentVessel === selectedVesselId)
+      : allCrewMembers;
+    return [...filtered].sort((a: any, b: any) => {
+      const aOrder = getRankSortOrder(a.presentRank);
+      const bOrder = getRankSortOrder(b.presentRank);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      const aSuffix = a.presentRank?.includes('_') ? parseInt(a.presentRank.split('_')[1]) || 0 : 0;
+      const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
+      return aSuffix - bSuffix;
+    });
+  }, [allCrewMembers, selectedVesselId, getRankSortOrder]);
   
   // Get selected crew member details (match by empNo/crewMemberId which is A-format like A000042)
   const selectedCrewMember = useMemo(() => {
@@ -360,24 +427,30 @@ export const RHRecordingForm = ({
       const matched = vessels.find(v => v.name === myVesselName);
       if (matched?.entryId) {
         setSelectedVesselId(matched.entryId);
+        const crewOnVessel = allCrewMembers.filter((cm: any) => cm.presentVessel === matched.entryId);
+        if (crewOnVessel.length > 0) {
+          const sorted = [...crewOnVessel].sort((a: any, b: any) => {
+            const aOrder = getRankSortOrder(a.presentRank);
+            const bOrder = getRankSortOrder(b.presentRank);
+            if (aOrder !== bOrder) return aOrder - bOrder;
+            const aSuffix = a.presentRank?.includes('_') ? parseInt(a.presentRank.split('_')[1]) || 0 : 0;
+            const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
+            return aSuffix - bSuffix;
+          });
+          setSelectedCrewMemberId(sorted[0].crewMemberId || sorted[0].empNo);
+        }
       }
     }
-  }, [isShipUser, open, myVessels, vessels]);
-  
-  // Reset crew member selection when vessel changes (to first crew on that vessel)
+  }, [isShipUser, open, myVessels, vessels, allCrewMembers, getRankSortOrder]);
+
   useEffect(() => {
-    if (!open) return;
-    
-    // Skip if this is the initial load
-    if (selectedVesselId === initialVesselId && selectedCrewMemberId === initialCrewMemberId) {
-      return;
-    }
-    
-    // When vessel changes, select the first crew member on that vessel
-    if (filteredCrewMembers.length > 0) {
+    if (!open || filteredCrewMembers.length === 0) return;
+    const isValid = filteredCrewMembers.some((cm: any) => cm.crewMemberId === selectedCrewMemberId || cm.empNo === selectedCrewMemberId);
+    if (!isValid) {
       setSelectedCrewMemberId(filteredCrewMembers[0].crewMemberId || filteredCrewMembers[0].empNo);
     }
-  }, [selectedVesselId, filteredCrewMembers, open]);
+  }, [open, filteredCrewMembers, selectedCrewMemberId]);
+  
 
   // Auto-check "Show Planning" when switching to Plan mode
   useEffect(() => {
@@ -904,7 +977,7 @@ export const RHRecordingForm = ({
   // This memoization builds the timeline ONCE and calculates all violations efficiently
   const timelineData = useMemo(() => {
     const emptyResult = {
-      violationMap: new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>(),
+      violationMap: new Map<number, { violations: string[]; diagnostics: ViolationDiagnostic[]; metrics: any }>(),
       timeline: [] as TimelineSlot[],
       violations: [] as TimelineViolation[],
     };
@@ -961,7 +1034,13 @@ export const RHRecordingForm = ({
     const violationObjectsByDay = groupViolationObjectsByDay(allViolations);
     
     // Build result map with violations and metrics for each day
-    const resultMap = new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
+    const resultMap = new Map<number, { violations: string[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
+
+    const deferredCodeF = new Map<number, {
+      reason: string;
+      violatingRanges: Array<{ startCell: number; endCell: number; startDay: number }>;
+      majorityDay: number;
+    }>();
 
     // Pre-build a map of dayIndex → array indices in fullTimeline (primary occurrence only).
     // Skip prepended previous-month slots (slotIndex < 0) to avoid sourceDay collisions
@@ -982,7 +1061,7 @@ export const RHRecordingForm = ({
       const record = dailyRecords[dayIndex];
       
       // All violation codes are now re-derived from per-day metrics below
-      const violationNumbers: number[] = [];
+      const violationNumbers: string[] = [];
       const diagnostics: ViolationDiagnostic[] = [];
       
       // Calculate metrics from timeline for this day
@@ -1041,11 +1120,11 @@ export const RHRecordingForm = ({
         }));
       };
 
-      // Derive Violation 1 (Rest mode: min 10h rest in 24h) from the work-anchored metric
+      // Derive Violation A (Rest mode: min 10h rest in 24h) from the work-anchored metric
       if (metrics.anyPeriodRest24hr < 10) {
-        violationNumbers.push(1);
+        violationNumbers.push('A');
         diagnostics.push({
-          code: 1,
+          code: 'A',
           windowStart: 'Timeline window',
           reason: `Minimum 10 hours rest in 24-hour period: ${metrics.anyPeriodRest24hr.toFixed(1)}h (< 10h required)`,
           violatingRanges: buildViolatingRanges(),
@@ -1053,11 +1132,11 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 5 (Work mode: max 14h work in 24h) from the same work-anchored metric
+      // Derive Violation B (Work mode: max 14h work in 24h) from the same work-anchored metric
       if (metrics.anyPeriodWork24hr > 14) {
-        violationNumbers.push(5);
+        violationNumbers.push('B');
         diagnostics.push({
-          code: 5,
+          code: 'B',
           windowStart: 'Timeline window',
           reason: `Maximum 14 hours work in 24-hour period: ${metrics.anyPeriodWork24hr.toFixed(1)}h (> 14h limit)`,
           violatingRanges: buildViolatingRanges(),
@@ -1065,44 +1144,117 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 3 from the same work-anchored window as Violation 1
-      // Only when Violation 1 is present (rest < 10h), check rest period structure
-      if (metrics.anyPeriodRest24hr < 10 && worstWindowEndSlot !== null) {
-        const windowStartSlot = Math.max(0, worstWindowEndSlot - 47);
-        const { lengths: restPeriods } = analyzeRestPeriodsWithRanges(fullTimeline, worstWindowEndSlot);
-        const sorted = [...restPeriods].sort((a, b) => b - a);
-        const largest = sorted[0] || 0;
-        const secondLargest = sorted[1] || 0;
-        const largestHours = largest * 0.5;
-        const totalHours = (largest + secondLargest) * 0.5;
+      // EXPERIMENTAL: Derive Code E and F independently by scanning all 24h windows for this day
+      if (CODE_EF_EXPERIMENTAL.enabled && dayArrayIndices.length > 0) {
+        let hasCodeE = false;
+        let codeEReason = '';
+        let codeEWindowEnd: number | null = null;
 
-        if (largestHours < 6 || totalHours < 10) {
-          violationNumbers.push(3);
-          const numPeriods = restPeriods.length;
-          const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
-          let reason = '';
-          if (numPeriods === 0) {
-            reason = `No rest periods found in worst 24h window`;
-          } else if (numPeriods === 1) {
-            reason = `1 rest period: ${largestHours.toFixed(1)}h (need ≥6h and ≥10h total for single period)`;
-          } else {
-            reason = `${numPeriods} rest periods: ${allPeriodsHours}. Top 2: ${largestHours.toFixed(1)}h + ${(secondLargest * 0.5).toFixed(1)}h = ${totalHours.toFixed(1)}h (need ≥6h longest, ≥10h total)`;
+        let codeFTriggered = false;
+        let codeFReason = '';
+        let codeFWindowEnd: number | null = null;
+        let codeFIsExceptionCandidate = false;
+
+        const hasCodeA = violationNumbers.includes('A');
+
+        for (const slotIdx of dayArrayIndices) {
+          if (slotIdx < 47) continue;
+
+          let shouldCheck = true;
+          if (WORK_ANCHORED_24H_WINDOW.enabled) {
+            const windowStartIdx = slotIdx - 47;
+            if (windowStartIdx >= 0) {
+              const windowStartStatus = fullTimeline[windowStartIdx].status.toLowerCase();
+              shouldCheck = windowStartStatus === 'w' || windowStartStatus === 'd';
+            }
           }
+          if (!shouldCheck) continue;
+
+          const { lengths: restPeriods } = analyzeRestPeriodsWithRanges(fullTimeline, slotIdx);
+          const sorted = [...restPeriods].sort((a, b) => b - a);
+          const largest = sorted[0] || 0;
+          const largestHours = largest * 0.5;
+
+          if (!hasCodeE && (restPeriods.length === 0 || largestHours < 6)) {
+            hasCodeE = true;
+            codeEWindowEnd = slotIdx;
+            codeEReason = restPeriods.length === 0
+              ? `No rest periods found in 24h window`
+              : `Largest rest period: ${largestHours.toFixed(1)}h (need ≥6h)`;
+          }
+
+          if (!codeFTriggered) {
+            const analysis = analyzeCodeFViolation(fullTimeline, slotIdx);
+            if (analysis.hasViolation) {
+              codeFTriggered = true;
+              codeFWindowEnd = slotIdx;
+              const allPeriodsHours = analysis.sortedPeriodHours.map(h => h.toFixed(1)).join('h, ') + 'h';
+              codeFReason = `${analysis.periodCount} rest periods: ${allPeriodsHours}. Top 2 sum: ${analysis.topTwoSum.toFixed(1)}h (< 10h, alternate not met)`;
+              codeFIsExceptionCandidate = !hasCodeA && analysis.isExceptionCandidate;
+            }
+          }
+
+          if (hasCodeE && codeFTriggered) break;
+        }
+
+        const buildRangesForWindow = (windowEndSlot: number | null): Array<{ startCell: number; endCell: number; startDay: number }> => {
+          if (windowEndSlot === null) return [];
+          const winStart = Math.max(0, windowEndSlot - 47);
+          const slotsInWindow = fullTimeline.slice(winStart, windowEndSlot + 1);
+          const dayRanges = new Map<number, { minCell: number; maxCell: number }>();
+          for (const slot of slotsInWindow) {
+            if (slot.sourceDay < 1) continue;
+            const existing = dayRanges.get(slot.sourceDay);
+            if (!existing) {
+              dayRanges.set(slot.sourceDay, { minCell: slot.halfHourIndex, maxCell: slot.halfHourIndex });
+            } else {
+              existing.minCell = Math.min(existing.minCell, slot.halfHourIndex);
+              existing.maxCell = Math.max(existing.maxCell, slot.halfHourIndex);
+            }
+          }
+          return Array.from(dayRanges.entries()).map(([day, range]) => ({
+            startDay: day,
+            startCell: range.minCell,
+            endCell: range.maxCell,
+          }));
+        };
+
+        if (hasCodeE) {
+          violationNumbers.push('E');
           diagnostics.push({
-            code: 3,
+            code: 'E',
             windowStart: 'Timeline window',
-            reason,
-            violatingRanges: buildViolatingRanges(),
+            reason: codeEReason,
+            violatingRanges: buildRangesForWindow(codeEWindowEnd),
             majorityDay: record.day,
           });
         }
+
+        if (codeFTriggered) {
+          if (codeFIsExceptionCandidate) {
+            deferredCodeF.set(dayIndex, {
+              reason: codeFReason,
+              violatingRanges: buildRangesForWindow(codeFWindowEnd),
+              majorityDay: record.day,
+            });
+          } else {
+            violationNumbers.push('F');
+            diagnostics.push({
+              code: 'F',
+              windowStart: 'Timeline window',
+              reason: codeFReason,
+              violatingRanges: buildRangesForWindow(codeFWindowEnd),
+              majorityDay: record.day,
+            });
+          }
+        }
       }
 
-      // Derive Violation 2 (Rest mode: min 77h rest in 7 days) from the rolling 7-day metric
+      // Derive Violation C (Rest mode: min 77h rest in 7 days) from the rolling 7-day metric
       if (metrics.anyPeriodRest7day < 77) {
-        violationNumbers.push(2);
+        violationNumbers.push('C');
         diagnostics.push({
-          code: 2,
+          code: 'C',
           windowStart: 'Timeline window',
           reason: `Minimum 77 hours rest in 7-day period: ${metrics.anyPeriodRest7day.toFixed(1)}h (< 77h required)`,
           violatingRanges: [],
@@ -1110,11 +1262,11 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 4 (Work interval > 14h between rest periods) from the work-anchored window
+      // Derive Violation G (Work interval > 14h between rest periods) from the work-anchored window
       if (worstWindowEndSlot !== null) {
         const code4Result = checkCode4ViolationWithRange(fullTimeline, worstWindowEndSlot);
         if (code4Result.hasViolation) {
-          violationNumbers.push(4);
+          violationNumbers.push('G');
           let code4Ranges: Array<{ startCell: number; endCell: number; startDay: number }> = [];
           if (code4Result.violatingRange) {
             const gapSlots = fullTimeline.slice(code4Result.violatingRange.startSlot, code4Result.violatingRange.endSlot + 1);
@@ -1139,7 +1291,7 @@ export const RHRecordingForm = ({
             ? ((code4Result.violatingRange.endSlot - code4Result.violatingRange.startSlot + 1) * 0.5).toFixed(1)
             : '?';
           diagnostics.push({
-            code: 4,
+            code: 'G',
             windowStart: 'Timeline window',
             reason: `Work interval between rest periods exceeds 14 hours: ${gapHours}h continuous work`,
             violatingRanges: code4Ranges,
@@ -1148,11 +1300,11 @@ export const RHRecordingForm = ({
         }
       }
 
-      // Derive Violation 6 (Work mode: max 72h work in 7 days) from the rolling 7-day metric
+      // Derive Violation D (Work mode: max 72h work in 7 days) from the rolling 7-day metric
       if (metrics.anyPeriodWork7day > 72) {
-        violationNumbers.push(6);
+        violationNumbers.push('D');
         diagnostics.push({
-          code: 6,
+          code: 'D',
           windowStart: 'Timeline window',
           reason: `Maximum 72 hours work in 7-day period: ${metrics.anyPeriodWork7day.toFixed(1)}h (> 72h limit)`,
           violatingRanges: [],
@@ -1160,11 +1312,11 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 7 (OPA: max 15h work in 24h) from the work-anchored metric
+      // Derive Violation I (OPA: max 15h work in 24h) from the work-anchored metric
       if (opaMode && metrics.anyPeriodWork24hr > 15) {
-        violationNumbers.push(7);
+        violationNumbers.push('I');
         diagnostics.push({
-          code: 7,
+          code: 'I',
           windowStart: 'Timeline window',
           reason: `OPA 90: Maximum 15 hours work in 24-hour period: ${metrics.anyPeriodWork24hr.toFixed(1)}h (> 15h limit)`,
           violatingRanges: buildViolatingRanges(),
@@ -1172,13 +1324,13 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 8 (OPA: max 36h work in 72h) from rolling 72-hour metric
+      // Derive Violation H (OPA: max 36h work in 72h) from rolling 72-hour metric
       if (opaMode) {
         const work72h = calculateMaxWorkInAny72HourPeriod(dayArrayIndices, cumulativeWork);
         if (work72h > 36) {
-          violationNumbers.push(8);
+          violationNumbers.push('H');
           diagnostics.push({
-            code: 8,
+            code: 'H',
             windowStart: 'Timeline window',
             reason: `OPA 90: Maximum 36 hours work in 72-hour period: ${work72h.toFixed(1)}h (> 36h limit)`,
             violatingRanges: [],
@@ -1187,14 +1339,45 @@ export const RHRecordingForm = ({
         }
       }
 
-      // Sort violation numbers for consistent display
-      violationNumbers.sort((a, b) => a - b);
+      // Sort violation codes for consistent display
+      const sortedViolations = sortViolationCodes(violationNumbers);
       
       resultMap.set(dayIndex, {
-        violations: violationNumbers,
+        violations: sortedViolations,
         diagnostics,
         metrics,
       });
+    }
+
+    if (deferredCodeF.size > 0) {
+      const exceptionGranted = new Set<number>();
+
+      for (let dayIndex = 0; dayIndex < dailyRecords.length; dayIndex++) {
+        if (!deferredCodeF.has(dayIndex)) continue;
+
+        let exceptionsInWindow = 0;
+        for (let prev = Math.max(0, dayIndex - 6); prev < dayIndex; prev++) {
+          if (exceptionGranted.has(prev)) exceptionsInWindow++;
+        }
+
+        if (exceptionsInWindow < 2) {
+          exceptionGranted.add(dayIndex);
+        } else {
+          const entry = resultMap.get(dayIndex);
+          const codeFData = deferredCodeF.get(dayIndex)!;
+          if (entry) {
+            entry.violations.push('F');
+            entry.violations = sortViolationCodes(entry.violations);
+            entry.diagnostics.push({
+              code: 'F',
+              windowStart: 'Timeline window',
+              reason: codeFData.reason,
+              violatingRanges: codeFData.violatingRanges,
+              majorityDay: codeFData.majorityDay,
+            });
+          }
+        }
+      }
     }
     
     return {
@@ -1436,6 +1619,9 @@ export const RHRecordingForm = ({
         flagOfShip,
         watchkeeper,
         seafarerFullName,
+        complianceMode,
+        opaMode,
+        showPlanning,
       });
       
       toast({
@@ -1748,7 +1934,21 @@ export const RHRecordingForm = ({
             <Label className="text-xs text-[#4f5863]">Vessel</Label>
             <Select
               value={selectedVesselId}
-              onValueChange={setSelectedVesselId}
+              onValueChange={(newVesselId) => {
+                setSelectedVesselId(newVesselId);
+                const crewOnNewVessel = allCrewMembers.filter((cm: any) => cm.presentVessel === newVesselId);
+                if (crewOnNewVessel.length > 0) {
+                  const sorted = [...crewOnNewVessel].sort((a: any, b: any) => {
+                    const aOrder = getRankSortOrder(a.presentRank);
+                    const bOrder = getRankSortOrder(b.presentRank);
+                    if (aOrder !== bOrder) return aOrder - bOrder;
+                    const aSuffix = a.presentRank?.includes('_') ? parseInt(a.presentRank.split('_')[1]) || 0 : 0;
+                    const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
+                    return aSuffix - bSuffix;
+                  });
+                  setSelectedCrewMemberId(sorted[0].crewMemberId || sorted[0].empNo);
+                }
+              }}
               disabled={isShipUser}
             >
               <SelectTrigger className="h-8 w-48 text-xs" disabled={isShipUser} data-testid="select-vessel">
@@ -1783,67 +1983,95 @@ export const RHRecordingForm = ({
             </Select>
           </div>
 
-          <div className="flex items-center gap-1 ml-auto">
-            <span className="text-xs text-[#4f5863]">Rec.</span>
-            <button
-              onClick={() => setRecordMode(prev => prev === 'Rec' ? 'Plan' : 'Rec')}
-              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
-                recordMode === 'Plan' ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-              data-testid="toggle-record-mode"
-              type="button"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  recordMode === 'Plan' ? 'translate-x-5' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className="text-xs text-[#4f5863]">Plan</span>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 ml-auto cursor-help">
+                <span className="text-xs text-[#4f5863]">Rec.</span>
+                <button
+                  onClick={() => setRecordMode(prev => prev === 'Rec' ? 'Plan' : 'Rec')}
+                  className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                    recordMode === 'Plan' ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                  data-testid="toggle-record-mode"
+                  type="button"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      recordMode === 'Plan' ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <span className="text-xs text-[#4f5863]">Plan</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              In Record (Rec.) mode all entries will be recorded as a 'Completed Record' (Green or Blue coloured). In 'Plan' mode all entries will be recorded as a plan (Grey Coloured).
+            </TooltipContent>
+          </Tooltip>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="show-planning"
-              checked={showPlanning}
-              onCheckedChange={(checked) => setShowPlanning(checked as boolean)}
-              data-testid="checkbox-show-planning"
-            />
-            <Label htmlFor="show-planning" className="text-xs cursor-pointer">
-              Show Planning
-            </Label>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 cursor-help">
+                <Checkbox
+                  id="show-planning"
+                  checked={showPlanning}
+                  onCheckedChange={(checked) => setShowPlanning(checked as boolean)}
+                  data-testid="checkbox-show-planning"
+                />
+                <Label htmlFor="show-planning" className="text-xs cursor-pointer">
+                  Show Planning
+                </Label>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              When checked, the planned work will be visible.
+            </TooltipContent>
+          </Tooltip>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="opa"
-              checked={opaMode}
-              onCheckedChange={(checked) => setOpaMode(checked as boolean)}
-              data-testid="checkbox-opa"
-            />
-            <Label htmlFor="opa" className="text-xs cursor-pointer">
-              OPA
-            </Label>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 cursor-help">
+                <Checkbox
+                  id="opa"
+                  checked={opaMode}
+                  onCheckedChange={(checked) => setOpaMode(checked as boolean)}
+                  data-testid="checkbox-opa"
+                />
+                <Label htmlFor="opa" className="text-xs cursor-pointer">
+                  OPA
+                </Label>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              Click to enable 'OPA' category Violations.
+            </TooltipContent>
+          </Tooltip>
 
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-[#4f5863]">Rest</span>
-            <button
-              onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
-              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
-                complianceMode === 'Work' ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-              data-testid="toggle-compliance-mode"
-              type="button"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  complianceMode === 'Work' ? 'translate-x-5' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className="text-xs text-[#4f5863]">Work</span>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 cursor-help">
+                <span className="text-xs text-[#4f5863]">Rest</span>
+                <button
+                  onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
+                  className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                    complianceMode === 'Work' ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                  data-testid="toggle-compliance-mode"
+                  type="button"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      complianceMode === 'Work' ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <span className="text-xs text-[#4f5863]">Work</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              Click to toggle between 'Rest' mode & 'Work' mode calculations.
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Rest Hours Table */}
@@ -2073,13 +2301,12 @@ export const RHRecordingForm = ({
                       
                       // If no diagnostics available, just show the codes
                       if (visibleDiagnostics.length === 0) {
-                        return `[${visibleViolations.join(', ')}]`;
+                        return visibleViolations.join(', ');
                       }
                       
                       // Show individual codes with hover functionality for highlighting
                       return (
                         <span className="flex flex-wrap gap-0.5 justify-center">
-                          [
                           {visibleViolations.map((code, idx) => {
                             const diagnostic = visibleDiagnostics.find(d => d.code === code);
                             
@@ -2106,16 +2333,12 @@ export const RHRecordingForm = ({
                                     avoidCollisions={false}
                                     className="max-w-[220px] text-[11px] z-50"
                                   >
-                                    <div className="space-y-0.5">
-                                      <div className="leading-snug">{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
-                                      <div className="text-gray-600 leading-snug">{diagnostic.reason}</div>
-                                    </div>
+                                    <div className="leading-snug">{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
                             );
                           })}
-                          ]
                         </span>
                       );
                     })()}
@@ -2213,24 +2436,32 @@ export const RHRecordingForm = ({
         )}
 
         {/* Footer Actions */}
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleRequestClose}
-            disabled={saveMutation.isPending}
-            data-testid="button-cancel"
-          >
-            {saveMutation.isPending ? 'Saving...' : 'Close'}
-          </Button>
-          {!isLocked && (
+        <div className="flex justify-between items-center gap-2 pt-4 border-t">
+          <div className="text-xs text-muted-foreground border rounded px-3 py-1.5" data-testid="text-field-guidance">
+            <span className="font-medium">Enter fields</span>
+            <span className="mx-3">w: watch</span>
+            <span className="mx-3">d: daywork (routine)</span>
+            <span className="mx-3">a: additional work</span>
+          </div>
+          <div className="flex gap-2">
             <Button
-              onClick={handleSave}
+              variant="outline"
+              onClick={handleRequestClose}
               disabled={saveMutation.isPending}
-              data-testid="button-save"
+              data-testid="button-cancel"
             >
-              {saveMutation.isPending ? 'Saving...' : 'Save'}
+              {saveMutation.isPending ? 'Saving...' : 'Close'}
             </Button>
-          )}
+            {!isLocked && (
+              <Button
+                onClick={handleSave}
+                disabled={saveMutation.isPending}
+                data-testid="button-save"
+              >
+                {saveMutation.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
