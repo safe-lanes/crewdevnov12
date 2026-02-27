@@ -589,10 +589,17 @@ function CrewColumn({
   };
   
   // Get color based on deployment status and assignment count
-  // Priority: Purple (deployed reliever, Planned/Confirmed) > Red (deployed on overlapping period) > Brown (2+ vessels) > Blue (1 vessel) > Default
+  // Priority: Red (reliever Signed On/In Transit) > Purple (reliever Planned/Confirmed) > Red (deployed on overlapping period) > Brown (2+ vessels) > Blue (1 vessel) > Default
   const getCrewNameColor = (crewUuid: string) => {
-    // Highest priority: Purple — crew is a deployed reliever with status Planned or Confirmed
-    // This means Deploy was clicked in Approval, but the crew hasn't boarded yet
+    // Highest priority: Red — crew is a deployed reliever already Signed On or In Transit on another vessel
+    const isRelieverActive = allDeployedAssignments.some(assignment => {
+      if (assignment.relieverCrewId !== crewUuid) return false;
+      if (selectedVesselIds.includes(assignment.vesselUuid)) return false;
+      return assignment.joiningStatus === 'Signed On' || assignment.joiningStatus === 'In Transit';
+    });
+    if (isRelieverActive) return 'text-red-600';
+
+    // Second priority: Purple — crew is a deployed reliever with status Planned or Confirmed
     const isPurple = allDeployedAssignments.some(assignment => {
       if (assignment.relieverCrewId !== crewUuid) return false;
       if (selectedVesselIds.includes(assignment.vesselUuid)) return false;
@@ -662,6 +669,22 @@ function CrewColumn({
   // Returns the vessel names to display in tooltip on hover
   const getCrewVesselInfo = (crewUuid: string): string | null => {
     const vesselNames: string[] = [];
+
+    // Check for Red: crew is a deployed reliever with Signed On or In Transit status
+    const activeRelieverVessels: string[] = [];
+    allDeployedAssignments.forEach(assignment => {
+      if (assignment.relieverCrewId !== crewUuid) return;
+      if (selectedVesselIds.includes(assignment.vesselUuid)) return;
+      if (assignment.joiningStatus === 'Signed On' || assignment.joiningStatus === 'In Transit') {
+        const vesselName = getVesselName(assignment.vesselUuid);
+        if (vesselName && !activeRelieverVessels.includes(vesselName)) {
+          activeRelieverVessels.push(vesselName);
+        }
+      }
+    });
+    if (activeRelieverVessels.length > 0) {
+      return `Deployed (Signed On / In Transit): ${activeRelieverVessels.join(', ')}`;
+    }
 
     // Check for Purple: crew is a deployed reliever with Planned or Confirmed status
     const purpleVessels: string[] = [];
