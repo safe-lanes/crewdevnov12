@@ -401,47 +401,39 @@ export function NCOverviewDialog({
           ) : ncRecords.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No non-conformities found</div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full border-collapse">
+            <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
+              <table className="w-full border-collapse table-fixed">
                 <thead className="bg-blue-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Vessel</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Rank</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Name</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Date</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Violations</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Comments</th>
+                    <th className="w-[13%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Vessel</th>
+                    <th className="w-[10%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Rank</th>
+                    <th className="w-[15%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Name</th>
+                    <th className="w-[12%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Date</th>
+                    <th className="w-[12%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Violations</th>
+                    <th className="w-[18%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Comments</th>
                     {!isPredicted && (
-                      <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Status</th>
+                      <th className="w-[10%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Status</th>
                     )}
                     {!isPredicted && (
-                      <th className="px-4 py-2 text-center text-sm font-semibold bg-blue-50 border-b border-blue-200">View Report</th>
+                      <th className="w-[10%] px-4 py-2 text-center text-sm font-semibold bg-blue-50 border-b border-blue-200">View Report</th>
                     )}
                   </tr>
                 </thead>
                 <tbody>
                   {ncRecords.map((record, index) => {
-                    // Only show vessel, rank and name on the first row for each crew member
                     const isFirstRowForCrew = index === 0 || ncRecords[index - 1].crewMemberId !== record.crewMemberId;
-                    const rowSpan = isFirstRowForCrew ? crewRowCounts.get(record.crewMemberId) || 1 : undefined;
                     
                     return (
                     <tr key={`${record.crewMemberId}-${record.day}-${index}`} className={`hover:bg-gray-50 ${isFirstRowForCrew ? 'border-t-2 border-gray-300' : 'border-t border-gray-100'}`}>
-                      {isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-top" rowSpan={rowSpan}>
-                          {record.vesselName}
-                        </td>
-                      )}
-                      {isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-top" rowSpan={rowSpan}>
-                          {record.rank}
-                        </td>
-                      )}
-                      {isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-top" rowSpan={rowSpan}>
-                          {record.crewMemberName}
-                        </td>
-                      )}
+                      <td className="px-4 py-2 text-sm">
+                        {isFirstRowForCrew ? record.vesselName : ''}
+                      </td>
+                      <td className="px-4 py-2 text-sm">
+                        {isFirstRowForCrew ? record.rank : ''}
+                      </td>
+                      <td className="px-4 py-2 text-sm">
+                        {isFirstRowForCrew ? record.crewMemberName : ''}
+                      </td>
                       <td className="px-4 py-2 text-sm">{formatDay(record.day, monthValue)}</td>
                       <td className="px-4 py-2 text-sm">
                         {record.filteredViolations.map((code, idx) => {
@@ -484,25 +476,24 @@ export function NCOverviewDialog({
                         })}
                       </td>
                       <td className="px-4 py-2 text-sm">{record.comments}</td>
-                      {!isPredicted && isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-top" rowSpan={rowSpan}>
-                          <StatusBadge status={record.status} />
+                      {!isPredicted && (
+                        <td className="px-4 py-2 text-sm">
+                          {isFirstRowForCrew ? <StatusBadge status={record.status} /> : ''}
                         </td>
                       )}
-                      {!isPredicted && isFirstRowForCrew && (
-                        <td 
-                          className="px-4 py-2 text-center align-top" 
-                          rowSpan={rowSpan}
-                        >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewNCReport(record.crewMemberId, record.vesselId)}
-                            data-testid={`button-view-nc-report-${record.crewMemberId}`}
-                            className="text-xs"
-                          >
-                            View Report
-                          </Button>
+                      {!isPredicted && (
+                        <td className="px-4 py-2 text-center">
+                          {isFirstRowForCrew ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewNCReport(record.crewMemberId, record.vesselId)}
+                              data-testid={`button-view-nc-report-${record.crewMemberId}`}
+                              className="text-xs"
+                            >
+                              View Report
+                            </Button>
+                          ) : ''}
                         </td>
                       )}
                     </tr>
