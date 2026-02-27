@@ -48,7 +48,7 @@ export const crewAvailabilityService = {
     const db = getDb();
     
     const results = await db
-      .select({
+      .selectDistinctOn([crewMembersV2.crewUuid], {
         crew: crewMembersV2,
         currentVesselUuid: crewAssignments.vesselUuid,
         currentSignOnDate: crewAssignments.signOnDate,
@@ -67,7 +67,7 @@ export const crewAvailabilityService = {
           eq(crewMembersV2.presentRank, rank),
           eq(crewMembersV2.isDeleted, false),
           isNull(crewMembersV2.archivedAt),
-          ilike(crewMembersV2.status, "active") // Case-insensitive status check
+          ilike(crewMembersV2.status, "active")
         )
       );
 
@@ -184,7 +184,7 @@ export const crewAvailabilityService = {
     ];
 
     const results = await db
-      .select({
+      .selectDistinctOn([crewMembersV2.crewUuid], {
         crew: crewMembersV2,
         currentVesselUuid: crewAssignments.vesselUuid,
         currentSignOnDate: crewAssignments.signOnDate,
