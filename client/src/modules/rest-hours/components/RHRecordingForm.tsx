@@ -13,6 +13,7 @@ import { queryClient } from '@/lib/queryClient';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import type { RestHoursDailyRecord, FixedTask, VesselDateLineAdjustment, DateLineAdjustmentItem, VariableTask } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
@@ -247,6 +248,7 @@ export const RHRecordingForm = ({
   const { userType, myVessels } = usePermissions();
   const isShipUser = userType === 'Ship';
   const { vessels: v2Vessels, getVesselName } = useV2Vessels();
+  const { getCanonicalRankName } = useRankNormalization();
   
   const vessels = useMemo(() => v2Vessels.map(v => ({
     id: v.id,
@@ -318,11 +320,72 @@ export const RHRecordingForm = ({
     return options;
   }, []);
   
-  // Filter crew members by selected vessel
+  const { data: availableRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/v2/admin/available-ranks'],
+    enabled: open,
+  });
+
+  const { data: vesselRanks = [] } = useQuery<any[]>({
+    queryKey: ['/api/v2/admin/vessel-revisions/ranks', selectedVesselId],
+    queryFn: async () => {
+      if (!selectedVesselId) return [];
+      const res = await fetch(`/api/v2/admin/vessel-revisions/ranks/${selectedVesselId}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open && !!selectedVesselId,
+  });
+
+  const rankOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    availableRanks.forEach((rank: any) => {
+      addRankAliasesToMap(map, rank.name, rank.sortOrder || 0);
+    });
+    vesselRanks.forEach((rank: any) => {
+      const sortOrder = rank.sortOrder;
+      if (sortOrder === undefined) return;
+      if (rank.rank) {
+        addRankAliasesToMap(map, rank.rank, sortOrder);
+      }
+      if (rank.role && rank.role !== rank.rank) {
+        map.set(rank.role, sortOrder);
+      }
+      if (rank.role && rank.role.includes('_')) {
+        const baseRank = rank.role.split('_')[0];
+        if (!map.has(baseRank)) {
+          map.set(baseRank, sortOrder);
+        }
+      }
+    });
+    return map;
+  }, [availableRanks, vesselRanks]);
+
+  const getRankSortOrder = useCallback((rankName: string | null | undefined): number => {
+    if (!rankName) return 999999;
+    const exact = rankOrderMap.get(rankName);
+    if (exact !== undefined) return exact;
+    const baseRank = rankName.split('_')[0];
+    const base = rankOrderMap.get(baseRank);
+    if (base !== undefined) return base;
+    const canonical = getCanonicalRankName(rankName);
+    const canonicalOrder = rankOrderMap.get(canonical);
+    if (canonicalOrder !== undefined) return canonicalOrder;
+    return 999999;
+  }, [rankOrderMap, getCanonicalRankName]);
+
   const filteredCrewMembers = useMemo(() => {
-    if (!selectedVesselId) return allCrewMembers;
-    return allCrewMembers.filter((cm: any) => cm.presentVessel === selectedVesselId);
-  }, [allCrewMembers, selectedVesselId]);
+    const filtered = selectedVesselId
+      ? allCrewMembers.filter((cm: any) => cm.presentVessel === selectedVesselId)
+      : allCrewMembers;
+    return [...filtered].sort((a: any, b: any) => {
+      const aOrder = getRankSortOrder(a.presentRank);
+      const bOrder = getRankSortOrder(b.presentRank);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      const aSuffix = a.presentRank?.includes('_') ? parseInt(a.presentRank.split('_')[1]) || 0 : 0;
+      const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
+      return aSuffix - bSuffix;
+    });
+  }, [allCrewMembers, selectedVesselId, getRankSortOrder]);
   
   // Get selected crew member details (match by empNo/crewMemberId which is A-format like A000042)
   const selectedCrewMember = useMemo(() => {
@@ -360,24 +423,30 @@ export const RHRecordingForm = ({
       const matched = vessels.find(v => v.name === myVesselName);
       if (matched?.entryId) {
         setSelectedVesselId(matched.entryId);
+        const crewOnVessel = allCrewMembers.filter((cm: any) => cm.presentVessel === matched.entryId);
+        if (crewOnVessel.length > 0) {
+          const sorted = [...crewOnVessel].sort((a: any, b: any) => {
+            const aOrder = getRankSortOrder(a.presentRank);
+            const bOrder = getRankSortOrder(b.presentRank);
+            if (aOrder !== bOrder) return aOrder - bOrder;
+            const aSuffix = a.presentRank?.includes('_') ? parseInt(a.presentRank.split('_')[1]) || 0 : 0;
+            const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
+            return aSuffix - bSuffix;
+          });
+          setSelectedCrewMemberId(sorted[0].crewMemberId || sorted[0].empNo);
+        }
       }
     }
-  }, [isShipUser, open, myVessels, vessels]);
-  
-  // Reset crew member selection when vessel changes (to first crew on that vessel)
+  }, [isShipUser, open, myVessels, vessels, allCrewMembers, getRankSortOrder]);
+
   useEffect(() => {
-    if (!open) return;
-    
-    // Skip if this is the initial load
-    if (selectedVesselId === initialVesselId && selectedCrewMemberId === initialCrewMemberId) {
-      return;
-    }
-    
-    // When vessel changes, select the first crew member on that vessel
-    if (filteredCrewMembers.length > 0) {
+    if (!open || filteredCrewMembers.length === 0) return;
+    const isValid = filteredCrewMembers.some((cm: any) => cm.crewMemberId === selectedCrewMemberId || cm.empNo === selectedCrewMemberId);
+    if (!isValid) {
       setSelectedCrewMemberId(filteredCrewMembers[0].crewMemberId || filteredCrewMembers[0].empNo);
     }
-  }, [selectedVesselId, filteredCrewMembers, open]);
+  }, [open, filteredCrewMembers, selectedCrewMemberId]);
+  
 
   // Auto-check "Show Planning" when switching to Plan mode
   useEffect(() => {
@@ -1748,7 +1817,21 @@ export const RHRecordingForm = ({
             <Label className="text-xs text-[#4f5863]">Vessel</Label>
             <Select
               value={selectedVesselId}
-              onValueChange={setSelectedVesselId}
+              onValueChange={(newVesselId) => {
+                setSelectedVesselId(newVesselId);
+                const crewOnNewVessel = allCrewMembers.filter((cm: any) => cm.presentVessel === newVesselId);
+                if (crewOnNewVessel.length > 0) {
+                  const sorted = [...crewOnNewVessel].sort((a: any, b: any) => {
+                    const aOrder = getRankSortOrder(a.presentRank);
+                    const bOrder = getRankSortOrder(b.presentRank);
+                    if (aOrder !== bOrder) return aOrder - bOrder;
+                    const aSuffix = a.presentRank?.includes('_') ? parseInt(a.presentRank.split('_')[1]) || 0 : 0;
+                    const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
+                    return aSuffix - bSuffix;
+                  });
+                  setSelectedCrewMemberId(sorted[0].crewMemberId || sorted[0].empNo);
+                }
+              }}
               disabled={isShipUser}
             >
               <SelectTrigger className="h-8 w-48 text-xs" disabled={isShipUser} data-testid="select-vessel">
