@@ -6,6 +6,7 @@ import type {
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
+import { crewRecordsService } from "./crewRecordsService";
 
 const vesselRecordsRepository = new VesselRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
@@ -42,12 +43,66 @@ function applyAuditUser<T extends object>(
   return result;
 }
 
+async function enrichVesselRecordsWithLiveCounts(
+  records: RhVesselRecordV2[]
+): Promise<RhVesselRecordV2[]> {
+  if (records.length === 0) return [];
+
+  const enrichedRecords: RhVesselRecordV2[] = [];
+
+  for (const record of records) {
+    const onboardCrewCount = await getOnboardCrewCount(record.vesselId);
+    const totalCrew = Math.max(onboardCrewCount, record.totalCrew || 0);
+
+    const enrichedCrewRecords = await crewRecordsService.getAll({
+      vesselId: record.vesselId,
+      monthValue: record.monthValue,
+    });
+
+    if (enrichedCrewRecords.length > 0) {
+      const totalViolations = enrichedCrewRecords.reduce((sum, r) => sum + (r.totalViolations || 0), 0);
+      const crewWithViolations = enrichedCrewRecords.filter(r => (r.totalViolations || 0) > 0).length;
+      const totalNCs = enrichedCrewRecords.reduce((sum, r) => sum + (r.totalNCs || 0), 0);
+      const crewWithNCs = enrichedCrewRecords.filter(r => (r.totalNCs || 0) > 0).length;
+      const predictedViolations = enrichedCrewRecords.reduce((sum, r) => sum + (r.predictedViolations || 0), 0);
+      const crewWithPredictedViolations = enrichedCrewRecords.filter(r => (r.predictedViolations || 0) > 0).length;
+      const predictedNCs = enrichedCrewRecords.reduce((sum, r) => sum + (r.predictedNCs || 0), 0);
+      const crewWithPredictedNCs = enrichedCrewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
+
+      const totalPercent = enrichedCrewRecords.reduce((sum, r) => sum + (r.recordingStatusPercent || 0), 0);
+      const averagePercent = Math.round(totalPercent / enrichedCrewRecords.length);
+
+      enrichedRecords.push({
+        ...record,
+        totalCrew,
+        totalViolations,
+        crewWithViolations,
+        totalNCs,
+        crewWithNCs,
+        predictedViolations,
+        crewWithPredictedViolations,
+        predictedNCs,
+        crewWithPredictedNCs,
+        recordingStatusPercent: averagePercent,
+      });
+    } else {
+      enrichedRecords.push({
+        ...record,
+        totalCrew,
+      });
+    }
+  }
+
+  return enrichedRecords;
+}
+
 export const vesselRecordsService = {
   async getAll(filters?: {
     vesselId?: string;
     monthValue?: string;
   }): Promise<RhVesselRecordV2[]> {
-    return vesselRecordsRepository.findAll(filters);
+    const records = await vesselRecordsRepository.findAll(filters);
+    return enrichVesselRecordsWithLiveCounts(records);
   },
 
   async getByUuid(rhVesselUuid: string): Promise<RhVesselRecordV2> {
@@ -75,36 +130,7 @@ export const vesselRecordsService = {
       allRecords.push(...records);
     }
 
-    const enrichedRecords: RhVesselRecordV2[] = [];
-    for (const record of allRecords) {
-      const onboardCrewCount = await getOnboardCrewCount(record.vesselId);
-      const totalCrew = Math.max(onboardCrewCount, record.totalCrew || 0);
-
-      if (
-        (record.predictedViolations || 0) > 0 && (record.crewWithPredictedViolations || 0) === 0 ||
-        (record.predictedNCs || 0) > 0 && (record.crewWithPredictedNCs || 0) === 0
-      ) {
-        const crewRecords = await crewRecordsRepository.findAll({
-          vesselId: record.vesselId,
-          monthValue: record.monthValue,
-        });
-        const crewWithPredictedViolations = crewRecords.filter(r => (r.predictedViolations || 0) > 0).length;
-        const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
-        enrichedRecords.push({
-          ...record,
-          totalCrew,
-          crewWithPredictedViolations,
-          crewWithPredictedNCs,
-        });
-      } else {
-        enrichedRecords.push({
-          ...record,
-          totalCrew,
-        });
-      }
-    }
-
-    return enrichedRecords;
+    return enrichVesselRecordsWithLiveCounts(allRecords);
   },
 
   async create(

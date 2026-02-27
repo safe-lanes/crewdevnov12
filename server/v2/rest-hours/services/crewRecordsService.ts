@@ -192,6 +192,10 @@ async function enrichRecordsWithComputedFields(
     let predictedViolationDatesJson: string | null = null;
 
     let liveRecordingPercent: number | undefined;
+    let liveTotalViolations: number | undefined;
+    let livePredictedViolations: number | undefined;
+    let liveTotalNCs: number | undefined;
+    let livePredictedNCs: number | undefined;
 
     if (dailyRecordsJson && record.monthValue) {
       const { firstDay, lastDay } = getMonthBounds(record.monthValue);
@@ -204,16 +208,28 @@ async function enrichRecordsWithComputedFields(
       violationDatesJson = vDates.length > 0 ? JSON.stringify(vDates) : null;
       predictedViolationDatesJson = pDates.length > 0 ? JSON.stringify(pDates) : null;
 
+      liveTotalViolations = vDates.length;
+      livePredictedViolations = pDates.length;
+
+      const liveNCs = calculateNCs(dailyRecordsJson, complianceMode, opaMode, dayRange);
+      liveTotalNCs = liveNCs.totalNCs;
+      livePredictedNCs = liveNCs.predictedNCs;
+
       liveRecordingPercent = calculateRecordingPercentage(dailyRecordsJson, record.monthValue, dayRange);
     }
 
-    const cappedPredictedNCs = (record.totalNCs && record.totalNCs >= 1) ? 0 : (record.predictedNCs || 0);
+    const finalTotalNCs = liveTotalNCs ?? (record.totalNCs || 0);
+    const finalPredictedNCs = livePredictedNCs ?? (record.predictedNCs || 0);
+    const cappedPredictedNCs = (finalTotalNCs >= 1) ? 0 : finalPredictedNCs;
 
     const { _signOnDate, _signOffDate, ...cleanRecord } = record as any;
 
     return {
       ...cleanRecord,
       ...(liveRecordingPercent !== undefined ? { recordingStatusPercent: liveRecordingPercent } : {}),
+      ...(liveTotalViolations !== undefined ? { totalViolations: liveTotalViolations } : {}),
+      ...(livePredictedViolations !== undefined ? { predictedViolations: livePredictedViolations } : {}),
+      ...(liveTotalNCs !== undefined ? { totalNCs: liveTotalNCs } : {}),
       signOnDate: _signOnDate ?? null,
       signOffDate: _signOffDate ?? null,
       predictedNCs: cappedPredictedNCs,
