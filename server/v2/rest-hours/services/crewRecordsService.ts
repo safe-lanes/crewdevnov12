@@ -252,6 +252,21 @@ export const crewRecordsService = {
     return enrichRecordsWithComputedFields(records);
   },
 
+  async getAllBulk(params: {
+    vesselIds: string[];
+    monthValue?: string;
+  }): Promise<EnrichedCrewRecord[]> {
+    const { vesselIds, monthValue } = params;
+    if (!vesselIds || vesselIds.length === 0) return [];
+
+    let allRecords: RecordWithAssignment[] = [];
+    for (const vesselId of vesselIds) {
+      const records = await crewRecordsRepository.findAll({ vesselId, monthValue });
+      allRecords.push(...records);
+    }
+    return enrichRecordsWithComputedFields(allRecords);
+  },
+
   async getByUuid(rhCrewRecordUuid: string): Promise<RhCrewRecordV2> {
     const record = await crewRecordsRepository.findByUuid(rhCrewRecordUuid);
     if (!record) {
