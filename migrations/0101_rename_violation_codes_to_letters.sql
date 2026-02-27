@@ -20,7 +20,7 @@ DECLARE
   j INT;
   changed BOOLEAN;
 BEGIN
-  FOR rec IN SELECT uuid, daily_records FROM rh_daily_records_v2 WHERE daily_records IS NOT NULL AND daily_records != '' AND daily_records != '[]'
+  FOR rec IN SELECT id, daily_records FROM rh_daily_records_v2 WHERE daily_records IS NOT NULL AND daily_records != '' AND daily_records != '[]'
   LOOP
     BEGIN
       daily_json := rec.daily_records::JSONB;
@@ -92,11 +92,11 @@ BEGIN
       END LOOP;
 
       IF changed THEN
-        UPDATE rh_daily_records_v2 SET daily_records = updated_json::TEXT WHERE uuid = rec.uuid;
+        UPDATE rh_daily_records_v2 SET daily_records = updated_json::TEXT WHERE id = rec.id;
       END IF;
 
     EXCEPTION WHEN OTHERS THEN
-      RAISE NOTICE 'Skipped record uuid=% due to error: %', rec.uuid, SQLERRM;
+      RAISE NOTICE 'Skipped record id=% due to error: %', rec.id, SQLERRM;
     END;
   END LOOP;
 END $$;
