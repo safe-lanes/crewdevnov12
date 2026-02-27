@@ -4,7 +4,7 @@
  */
 
 export interface ViolationDiagnostic {
-  code: number;
+  code: string;
   reason: string;
   dayIndex?: number;
   windowStart?: string | number;  // Can be "Multiple windows" or a formatted date string or timestamp
@@ -25,7 +25,7 @@ export interface PersistedDailyRecord {
   hours: string[];          // 48 entries (2 per hour for 00:00-23:30): "w", "d", "a", "" (blank = rest)
   isPlan: boolean;          // True if planned hours (grey), false if recorded
   comments: string;         // Daily comments
-  violations: number[];     // Violation code numbers
+  violations: string[];     // Violation code letters (A, B, C, D, EF, G, H, I)
 }
 
 /**

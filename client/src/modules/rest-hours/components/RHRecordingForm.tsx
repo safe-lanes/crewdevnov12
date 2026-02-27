@@ -30,6 +30,7 @@ import {
   analyzeRestPeriodsWithRanges,
   checkCode4ViolationWithRange,
   calculateMajorityDayFor24HourWindow,
+  sortViolationCodes,
   MAJORITY_DAY_ASSIGNMENT,
   TWENTY_FOUR_HOUR_VIOLATION_CODES,
   type DateLineAdjustment,
@@ -52,16 +53,15 @@ interface RHRecordingFormProps {
   isLocked?: boolean;
 }
 
-// Violation code descriptions mapping
-const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
-  1: "Minimum 10 hours of rest in any 24 hour period",
-  2: "Minimum hours of rest in any 7 day period = 77",
-  3: "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length",
-  4: "Interval between rest periods not to exceed 14 hours",
-  5: "ILO Work - Maximum 14 hours of work in any 24 hour period",
-  6: "ILO Work - Maximum 72 hours of work in any 7 day period",
-  7: "OPA - Maximum 15 hours of work in any 24 hour period",
-  8: "OPA - Maximum 36 hours of work in 72 hours",
+const VIOLATION_CODE_DESCRIPTIONS: Record<string, string> = {
+  'A': "Minimum 10 hours of rest in any 24 hour period",
+  'C': "Minimum hours of rest in any 7 day period = 77",
+  'EF': "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length",
+  'G': "Interval between rest periods not to exceed 14 hours",
+  'B': "ILO Work - Maximum 14 hours of work in any 24 hour period",
+  'D': "ILO Work - Maximum 72 hours of work in any 7 day period",
+  'I': "OPA - Maximum 15 hours of work in any 24 hour period",
+  'H': "OPA - Maximum 36 hours of work in 72 hours",
 };
 
 // Helper: Check if a crew member is involved in a variable task
@@ -280,7 +280,7 @@ export const RHRecordingForm = ({
   const lastViolationsHashRef = useRef<string>('');
   
   // Violation highlighting state
-  const [hoveredViolation, setHoveredViolation] = useState<{ dayIndex: number; code: number } | null>(null);
+  const [hoveredViolation, setHoveredViolation] = useState<{ dayIndex: number; code: string } | null>(null);
   
   // Calculate previous month period string
   const previousMonthPeriod = useMemo(() => {
@@ -904,7 +904,7 @@ export const RHRecordingForm = ({
   // This memoization builds the timeline ONCE and calculates all violations efficiently
   const timelineData = useMemo(() => {
     const emptyResult = {
-      violationMap: new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>(),
+      violationMap: new Map<number, { violations: string[]; diagnostics: ViolationDiagnostic[]; metrics: any }>(),
       timeline: [] as TimelineSlot[],
       violations: [] as TimelineViolation[],
     };
@@ -961,7 +961,7 @@ export const RHRecordingForm = ({
     const violationObjectsByDay = groupViolationObjectsByDay(allViolations);
     
     // Build result map with violations and metrics for each day
-    const resultMap = new Map<number, { violations: number[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
+    const resultMap = new Map<number, { violations: string[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
 
     // Pre-build a map of dayIndex → array indices in fullTimeline (primary occurrence only).
     // Skip prepended previous-month slots (slotIndex < 0) to avoid sourceDay collisions
@@ -982,7 +982,7 @@ export const RHRecordingForm = ({
       const record = dailyRecords[dayIndex];
       
       // All violation codes are now re-derived from per-day metrics below
-      const violationNumbers: number[] = [];
+      const violationNumbers: string[] = [];
       const diagnostics: ViolationDiagnostic[] = [];
       
       // Calculate metrics from timeline for this day
@@ -1041,11 +1041,11 @@ export const RHRecordingForm = ({
         }));
       };
 
-      // Derive Violation 1 (Rest mode: min 10h rest in 24h) from the work-anchored metric
+      // Derive Violation A (Rest mode: min 10h rest in 24h) from the work-anchored metric
       if (metrics.anyPeriodRest24hr < 10) {
-        violationNumbers.push(1);
+        violationNumbers.push('A');
         diagnostics.push({
-          code: 1,
+          code: 'A',
           windowStart: 'Timeline window',
           reason: `Minimum 10 hours rest in 24-hour period: ${metrics.anyPeriodRest24hr.toFixed(1)}h (< 10h required)`,
           violatingRanges: buildViolatingRanges(),
@@ -1053,11 +1053,11 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 5 (Work mode: max 14h work in 24h) from the same work-anchored metric
+      // Derive Violation B (Work mode: max 14h work in 24h) from the same work-anchored metric
       if (metrics.anyPeriodWork24hr > 14) {
-        violationNumbers.push(5);
+        violationNumbers.push('B');
         diagnostics.push({
-          code: 5,
+          code: 'B',
           windowStart: 'Timeline window',
           reason: `Maximum 14 hours work in 24-hour period: ${metrics.anyPeriodWork24hr.toFixed(1)}h (> 14h limit)`,
           violatingRanges: buildViolatingRanges(),
@@ -1077,7 +1077,7 @@ export const RHRecordingForm = ({
         const totalHours = (largest + secondLargest) * 0.5;
 
         if (largestHours < 6 || totalHours < 10) {
-          violationNumbers.push(3);
+          violationNumbers.push('EF');
           const numPeriods = restPeriods.length;
           const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
           let reason = '';
@@ -1089,7 +1089,7 @@ export const RHRecordingForm = ({
             reason = `${numPeriods} rest periods: ${allPeriodsHours}. Top 2: ${largestHours.toFixed(1)}h + ${(secondLargest * 0.5).toFixed(1)}h = ${totalHours.toFixed(1)}h (need ≥6h longest, ≥10h total)`;
           }
           diagnostics.push({
-            code: 3,
+            code: 'EF',
             windowStart: 'Timeline window',
             reason,
             violatingRanges: buildViolatingRanges(),
@@ -1098,11 +1098,11 @@ export const RHRecordingForm = ({
         }
       }
 
-      // Derive Violation 2 (Rest mode: min 77h rest in 7 days) from the rolling 7-day metric
+      // Derive Violation C (Rest mode: min 77h rest in 7 days) from the rolling 7-day metric
       if (metrics.anyPeriodRest7day < 77) {
-        violationNumbers.push(2);
+        violationNumbers.push('C');
         diagnostics.push({
-          code: 2,
+          code: 'C',
           windowStart: 'Timeline window',
           reason: `Minimum 77 hours rest in 7-day period: ${metrics.anyPeriodRest7day.toFixed(1)}h (< 77h required)`,
           violatingRanges: [],
@@ -1110,11 +1110,11 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 4 (Work interval > 14h between rest periods) from the work-anchored window
+      // Derive Violation G (Work interval > 14h between rest periods) from the work-anchored window
       if (worstWindowEndSlot !== null) {
         const code4Result = checkCode4ViolationWithRange(fullTimeline, worstWindowEndSlot);
         if (code4Result.hasViolation) {
-          violationNumbers.push(4);
+          violationNumbers.push('G');
           let code4Ranges: Array<{ startCell: number; endCell: number; startDay: number }> = [];
           if (code4Result.violatingRange) {
             const gapSlots = fullTimeline.slice(code4Result.violatingRange.startSlot, code4Result.violatingRange.endSlot + 1);
@@ -1139,7 +1139,7 @@ export const RHRecordingForm = ({
             ? ((code4Result.violatingRange.endSlot - code4Result.violatingRange.startSlot + 1) * 0.5).toFixed(1)
             : '?';
           diagnostics.push({
-            code: 4,
+            code: 'G',
             windowStart: 'Timeline window',
             reason: `Work interval between rest periods exceeds 14 hours: ${gapHours}h continuous work`,
             violatingRanges: code4Ranges,
@@ -1148,11 +1148,11 @@ export const RHRecordingForm = ({
         }
       }
 
-      // Derive Violation 6 (Work mode: max 72h work in 7 days) from the rolling 7-day metric
+      // Derive Violation D (Work mode: max 72h work in 7 days) from the rolling 7-day metric
       if (metrics.anyPeriodWork7day > 72) {
-        violationNumbers.push(6);
+        violationNumbers.push('D');
         diagnostics.push({
-          code: 6,
+          code: 'D',
           windowStart: 'Timeline window',
           reason: `Maximum 72 hours work in 7-day period: ${metrics.anyPeriodWork7day.toFixed(1)}h (> 72h limit)`,
           violatingRanges: [],
@@ -1160,11 +1160,11 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 7 (OPA: max 15h work in 24h) from the work-anchored metric
+      // Derive Violation I (OPA: max 15h work in 24h) from the work-anchored metric
       if (opaMode && metrics.anyPeriodWork24hr > 15) {
-        violationNumbers.push(7);
+        violationNumbers.push('I');
         diagnostics.push({
-          code: 7,
+          code: 'I',
           windowStart: 'Timeline window',
           reason: `OPA 90: Maximum 15 hours work in 24-hour period: ${metrics.anyPeriodWork24hr.toFixed(1)}h (> 15h limit)`,
           violatingRanges: buildViolatingRanges(),
@@ -1172,13 +1172,13 @@ export const RHRecordingForm = ({
         });
       }
 
-      // Derive Violation 8 (OPA: max 36h work in 72h) from rolling 72-hour metric
+      // Derive Violation H (OPA: max 36h work in 72h) from rolling 72-hour metric
       if (opaMode) {
         const work72h = calculateMaxWorkInAny72HourPeriod(dayArrayIndices, cumulativeWork);
         if (work72h > 36) {
-          violationNumbers.push(8);
+          violationNumbers.push('H');
           diagnostics.push({
-            code: 8,
+            code: 'H',
             windowStart: 'Timeline window',
             reason: `OPA 90: Maximum 36 hours work in 72-hour period: ${work72h.toFixed(1)}h (> 36h limit)`,
             violatingRanges: [],
@@ -1187,11 +1187,11 @@ export const RHRecordingForm = ({
         }
       }
 
-      // Sort violation numbers for consistent display
-      violationNumbers.sort((a, b) => a - b);
+      // Sort violation codes for consistent display
+      const sortedViolations = sortViolationCodes(violationNumbers);
       
       resultMap.set(dayIndex, {
-        violations: violationNumbers,
+        violations: sortedViolations,
         diagnostics,
         metrics,
       });

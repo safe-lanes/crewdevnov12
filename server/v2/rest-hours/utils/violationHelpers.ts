@@ -1,14 +1,14 @@
-export function filterViolationsByMode(violations: number[], complianceMode: 'Rest' | 'Work', opaMode: boolean): number[] {
-  const visibleCodes: number[] = [];
+export function filterViolationsByMode(violations: string[], complianceMode: 'Rest' | 'Work', opaMode: boolean): string[] {
+  const visibleCodes: string[] = [];
 
   if (complianceMode === 'Rest') {
-    visibleCodes.push(1, 2, 3, 4);
+    visibleCodes.push('A', 'C', 'EF', 'G');
   } else {
-    visibleCodes.push(5, 6);
+    visibleCodes.push('B', 'D');
   }
 
   if (opaMode) {
-    visibleCodes.push(7, 8);
+    visibleCodes.push('I', 'H');
   }
 
   return violations.filter(v => visibleCodes.includes(v));
@@ -49,10 +49,10 @@ export function getViolationDates(
 
       if (relevantViolations.length === 0) return;
 
-      const diagnostics: Array<{ code: number; majorityDay?: number }> = day.violationDiagnostics || [];
+      const diagnostics: Array<{ code: string; majorityDay?: number }> = day.violationDiagnostics || [];
 
       for (const violationCode of relevantViolations) {
-        const diagnostic = diagnostics.find((d: { code: number }) => d.code === violationCode);
+        const diagnostic = diagnostics.find((d: { code: string }) => d.code === violationCode);
         const assignedDay = diagnostic?.majorityDay ?? day.day;
 
         if (assignedDay && assignedDay >= 1) {
@@ -82,7 +82,7 @@ export function countViolationDays(
   return violationDates.length;
 }
 
-export function hasCode2Violation(
+export function hasCodeCViolation(
   dailyRecordsJson: string,
   complianceMode: 'Rest' | 'Work',
   opaMode: boolean,
@@ -112,10 +112,10 @@ export function hasCode2Violation(
       }
 
       const relevantViolations = filterViolationsByMode(day.violations, complianceMode, opaMode);
-      return relevantViolations.includes(2);
+      return relevantViolations.includes('C');
     });
   } catch (error) {
-    console.error('Failed to check Code [2] violation:', error);
+    console.error('Failed to check Code [C] violation:', error);
     return false;
   }
 }
@@ -128,14 +128,14 @@ export function calculateNCs(
 ): { totalNCs: number; predictedNCs: number } {
   try {
     const completedViolationDays = countViolationDays(dailyRecordsJson, complianceMode, opaMode, false, applicableDayRange);
-    const hasCompletedCode2 = hasCode2Violation(dailyRecordsJson, complianceMode, opaMode, false, applicableDayRange);
+    const hasCompletedCode2 = hasCodeCViolation(dailyRecordsJson, complianceMode, opaMode, false, applicableDayRange);
 
     const totalNCs = (completedViolationDays >= 3 || hasCompletedCode2) ? 1 : 0;
 
     let predictedNCs = 0;
     if (totalNCs === 0) {
       const predictedViolationDays = countViolationDays(dailyRecordsJson, complianceMode, opaMode, true, applicableDayRange);
-      const hasPredictedCode2 = hasCode2Violation(dailyRecordsJson, complianceMode, opaMode, true, applicableDayRange);
+      const hasPredictedCode2 = hasCodeCViolation(dailyRecordsJson, complianceMode, opaMode, true, applicableDayRange);
       predictedNCs = (predictedViolationDays >= 3 || hasPredictedCode2) ? 1 : 0;
     }
 

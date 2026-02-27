@@ -419,14 +419,22 @@ export function prependPreviousMonthTimeline(
  * Violation codes for regulatory non-compliance
  */
 export enum ViolationCode {
-  VIOLATION_1 = '[1]',
-  VIOLATION_2 = '[2]',
-  VIOLATION_3 = '[3]',
-  VIOLATION_4 = '[4]',
-  VIOLATION_5 = '[5]',
-  VIOLATION_6 = '[6]',
-  VIOLATION_7 = '[7]',
-  VIOLATION_8 = '[8]',
+  VIOLATION_1 = '[A]',
+  VIOLATION_2 = '[C]',
+  VIOLATION_3 = '[EF]',
+  VIOLATION_4 = '[G]',
+  VIOLATION_5 = '[B]',
+  VIOLATION_6 = '[D]',
+  VIOLATION_7 = '[I]',
+  VIOLATION_8 = '[H]',
+}
+
+export const VIOLATION_SORT_ORDER: Record<string, number> = {
+  'A': 1, 'B': 2, 'C': 3, 'D': 4, 'EF': 5, 'G': 6, 'H': 7, 'I': 8,
+};
+
+export function sortViolationCodes(codes: string[]): string[] {
+  return [...codes].sort((a, b) => (VIOLATION_SORT_ORDER[a] ?? 99) - (VIOLATION_SORT_ORDER[b] ?? 99));
 }
 
 export interface Violation {
@@ -842,11 +850,11 @@ export const WORK_ANCHORED_24H_WINDOW: {
  * Otherwise, uses END-day assignment.
  */
 export const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
-  '[1]', // MIN_REST_10H_IN_24H
-  '[3]', // REST_PERIOD_STRUCTURE
-  '[4]', // MAX_WORK_INTERVAL
-  '[5]', // MAX_WORK_14H_IN_24H
-  '[7]', // OPA 90: MAX_WORK_15H_IN_24H
+  '[A]', // MIN_REST_10H_IN_24H
+  '[EF]', // REST_PERIOD_STRUCTURE
+  '[G]', // MAX_WORK_INTERVAL
+  '[B]', // MAX_WORK_14H_IN_24H
+  '[I]', // OPA 90: MAX_WORK_15H_IN_24H
 ];
 
 /**
@@ -855,7 +863,7 @@ export const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
  * so majority-day logic is not applied.
  */
 const SEVENTY_TWO_HOUR_VIOLATION_CODES = [
-  '[8]', // OPA 90: MAX_WORK_36H_IN_72H
+  '[H]', // OPA 90: MAX_WORK_36H_IN_72H
 ];
 
 /**
@@ -864,8 +872,8 @@ const SEVENTY_TWO_HOUR_VIOLATION_CODES = [
  * If the first day is in the previous month (negative sourceDay), clamp to day 1.
  */
 const START_DAY_VIOLATION_CODES = [
-  '[2]', // MIN_REST_77H_IN_168H
-  '[6]', // MAX_WORK_72H_IN_168H
+  '[C]', // MIN_REST_77H_IN_168H
+  '[D]', // MAX_WORK_72H_IN_168H
 ];
 
 /**

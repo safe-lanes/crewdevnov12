@@ -2,9 +2,9 @@
  * Violation Filtering Helper Functions for V2
  * 
  * Compliance Modes:
- * - Rest Mode (MLC Option 2): Shows violations 1, 2, 3, 4
- * - Work Mode (MLC Option 1): Shows violations 5, 6
- * - OPA Mode: Always shows violations 7, 8 when enabled (additive to other modes)
+ * - Rest Mode (MLC Option 2): Shows violations A, C, EF, G
+ * - Work Mode (MLC Option 1): Shows violations B, D
+ * - OPA Mode: Always shows violations I, H when enabled (additive to other modes)
  */
 
 export type ComplianceMode = 'Rest' | 'Work';
@@ -19,19 +19,17 @@ export type ComplianceMode = 'Rest' | 'Work';
 export function getVisibleViolationCodes(
   complianceMode: ComplianceMode,
   opaMode: boolean
-): number[] {
-  const codes: number[] = [];
+): string[] {
+  const codes: string[] = [];
 
-  // Add codes based on compliance mode
   if (complianceMode === 'Rest') {
-    codes.push(1, 2, 3, 4); // Rest mode violations
+    codes.push('A', 'C', 'EF', 'G');
   } else {
-    codes.push(5, 6); // Work mode violations
+    codes.push('B', 'D');
   }
 
-  // Add OPA codes if OPA mode is enabled
   if (opaMode) {
-    codes.push(7, 8);
+    codes.push('I', 'H');
   }
 
   return codes;
@@ -46,10 +44,10 @@ export function getVisibleViolationCodes(
  * @returns Filtered array of violation codes
  */
 export function filterViolations(
-  violations: number[],
+  violations: string[],
   complianceMode: ComplianceMode,
   opaMode: boolean
-): number[] {
+): string[] {
   const visibleCodes = getVisibleViolationCodes(complianceMode, opaMode);
   return violations.filter(v => visibleCodes.includes(v));
 }
