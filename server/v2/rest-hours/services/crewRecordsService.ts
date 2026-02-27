@@ -453,7 +453,7 @@ export const crewRecordsService = {
     vesselId?: string;
     monthValue?: string;
   }): Promise<Array<{ rank: string; violationDays: number }>> {
-    const records = await crewRecordsRepository.findAll(params);
+    const records = await this.getAll(params);
 
     const violationsByRank: Record<string, number> = {};
     for (const record of records) {
@@ -473,7 +473,7 @@ export const crewRecordsService = {
     vesselId?: string;
     monthValue?: string;
   }): Promise<Array<{ rank: string; ncCount: number }>> {
-    const records = await crewRecordsRepository.findAll(params);
+    const records = await this.getAll(params);
 
     const ncsByRank: Record<string, number> = {};
     for (const record of records) {
