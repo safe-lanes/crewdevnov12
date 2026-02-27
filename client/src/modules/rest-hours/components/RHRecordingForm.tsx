@@ -1930,67 +1930,95 @@ export const RHRecordingForm = ({
             </Select>
           </div>
 
-          <div className="flex items-center gap-1 ml-auto" title="In Record (Rec.) mode all entries will be recorded as a 'Completed Record' (Green or Blue coloured). In 'Plan' mode all entries will be recorded as a plan (Grey Coloured)">
-            <span className="text-xs text-[#4f5863]">Rec.</span>
-            <button
-              onClick={() => setRecordMode(prev => prev === 'Rec' ? 'Plan' : 'Rec')}
-              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
-                recordMode === 'Plan' ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-              data-testid="toggle-record-mode"
-              type="button"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  recordMode === 'Plan' ? 'translate-x-5' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className="text-xs text-[#4f5863]">Plan</span>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 ml-auto cursor-help">
+                <span className="text-xs text-[#4f5863]">Rec.</span>
+                <button
+                  onClick={() => setRecordMode(prev => prev === 'Rec' ? 'Plan' : 'Rec')}
+                  className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                    recordMode === 'Plan' ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                  data-testid="toggle-record-mode"
+                  type="button"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      recordMode === 'Plan' ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <span className="text-xs text-[#4f5863]">Plan</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              In Record (Rec.) mode all entries will be recorded as a 'Completed Record' (Green or Blue coloured). In 'Plan' mode all entries will be recorded as a plan (Grey Coloured).
+            </TooltipContent>
+          </Tooltip>
 
-          <div className="flex items-center gap-2" title="When clicked, the planned work will be visible.">
-            <Checkbox
-              id="show-planning"
-              checked={showPlanning}
-              onCheckedChange={(checked) => setShowPlanning(checked as boolean)}
-              data-testid="checkbox-show-planning"
-            />
-            <Label htmlFor="show-planning" className="text-xs cursor-pointer">
-              Show Planning
-            </Label>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 cursor-help">
+                <Checkbox
+                  id="show-planning"
+                  checked={showPlanning}
+                  onCheckedChange={(checked) => setShowPlanning(checked as boolean)}
+                  data-testid="checkbox-show-planning"
+                />
+                <Label htmlFor="show-planning" className="text-xs cursor-pointer">
+                  Show Planning
+                </Label>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              When checked, the planned work will be visible.
+            </TooltipContent>
+          </Tooltip>
 
-          <div className="flex items-center gap-2" title="Click to enable 'OPA' category Violations">
-            <Checkbox
-              id="opa"
-              checked={opaMode}
-              onCheckedChange={(checked) => setOpaMode(checked as boolean)}
-              data-testid="checkbox-opa"
-            />
-            <Label htmlFor="opa" className="text-xs cursor-pointer">
-              OPA
-            </Label>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 cursor-help">
+                <Checkbox
+                  id="opa"
+                  checked={opaMode}
+                  onCheckedChange={(checked) => setOpaMode(checked as boolean)}
+                  data-testid="checkbox-opa"
+                />
+                <Label htmlFor="opa" className="text-xs cursor-pointer">
+                  OPA
+                </Label>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              Click to enable 'OPA' category Violations.
+            </TooltipContent>
+          </Tooltip>
 
-          <div className="flex items-center gap-1" title="Click to toggle between 'Rest' mode & 'Work' mode calculations">
-            <span className="text-xs text-[#4f5863]">Rest</span>
-            <button
-              onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
-              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
-                complianceMode === 'Work' ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-              data-testid="toggle-compliance-mode"
-              type="button"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  complianceMode === 'Work' ? 'translate-x-5' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className="text-xs text-[#4f5863]">Work</span>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 cursor-help">
+                <span className="text-xs text-[#4f5863]">Rest</span>
+                <button
+                  onClick={() => setComplianceMode(prev => prev === 'Rest' ? 'Work' : 'Rest')}
+                  className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                    complianceMode === 'Work' ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                  data-testid="toggle-compliance-mode"
+                  type="button"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      complianceMode === 'Work' ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <span className="text-xs text-[#4f5863]">Work</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              Click to toggle between 'Rest' mode & 'Work' mode calculations.
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Rest Hours Table */}
