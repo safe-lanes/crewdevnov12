@@ -190,6 +190,7 @@ interface FormData {
 }
 
 interface ChildInfo {
+  childUuid?: string;
   firstName: string;
   middleName: string;
   familyName: string;
@@ -508,6 +509,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [emailError, setEmailError] = useState('');
   const [nokEmailError, setNokEmailError] = useState('');
   const [mobileError, setMobileError] = useState('');
+  const [deletedChildUuids, setDeletedChildUuids] = useState<string[]>([]);
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -794,6 +796,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // V2: Check both crewUuid and id for compatibility
   useEffect(() => {
     if (detailedCrewData && (crewMember?.crewUuid || crewMember?.id)) {
+      setDeletedChildUuids([]);
       setFormData(prev => ({
         ...prev,
         // A1.1 General Particulars
@@ -1265,10 +1268,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeChild = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      children: prev.children.filter((_, i) => i !== index)
-    }));
+    setFormData(prev => {
+      const childToRemove = prev.children[index];
+      if (childToRemove?.childUuid) {
+        setDeletedChildUuids(prevUuids => [...prevUuids, childToRemove.childUuid!]);
+      }
+      return {
+        ...prev,
+        children: prev.children.filter((_, i) => i !== index)
+      };
+    });
   };
 
   // Helper function to get next unique ID based on prefix
@@ -5758,6 +5767,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       saveFamilyInfoMutationV2.mutate({ crewUuid: crewIdentifier, data: familyInfoData });
       
       // Children (A1.3 - array of child records)
+      if (deletedChildUuids.length > 0) {
+        console.log('V2 Deleting Children:', { crewUuid: crewIdentifier, count: deletedChildUuids.length, uuids: deletedChildUuids });
+        deletedChildUuids.forEach(childUuid => {
+          deleteChildMutationV2.mutate({ crewUuid: crewIdentifier, childUuid });
+        });
+        setDeletedChildUuids([]);
+      }
       if (formData.children && formData.children.length > 0) {
         console.log('V2 Saving Children:', { crewUuid: crewIdentifier, count: formData.children.length });
         formData.children.forEach((child: any) => {
