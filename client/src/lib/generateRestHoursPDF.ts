@@ -404,7 +404,7 @@ class RestHoursPDFGenerator {
       // Violations cell
       this.drawRect(cellX, rowY, this.violationsColWidth, rowHeight, BORDER_COLOR);
       if (record.violations && record.violations.length > 0) {
-        const violationsText = `[${record.violations.join(',')}]`;
+        const violationsText = record.violations.join(', ');
         this.drawText(violationsText, cellX + 2, rowY + 3, 5, 'normal', RED_COLOR);
       }
       cellX += this.violationsColWidth;

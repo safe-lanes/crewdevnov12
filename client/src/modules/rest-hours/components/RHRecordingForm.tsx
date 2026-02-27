@@ -2073,13 +2073,12 @@ export const RHRecordingForm = ({
                       
                       // If no diagnostics available, just show the codes
                       if (visibleDiagnostics.length === 0) {
-                        return `[${visibleViolations.join(', ')}]`;
+                        return visibleViolations.join(', ');
                       }
                       
                       // Show individual codes with hover functionality for highlighting
                       return (
                         <span className="flex flex-wrap gap-0.5 justify-center">
-                          [
                           {visibleViolations.map((code, idx) => {
                             const diagnostic = visibleDiagnostics.find(d => d.code === code);
                             
@@ -2115,7 +2114,6 @@ export const RHRecordingForm = ({
                               </TooltipProvider>
                             );
                           })}
-                          ]
                         </span>
                       );
                     })()}
