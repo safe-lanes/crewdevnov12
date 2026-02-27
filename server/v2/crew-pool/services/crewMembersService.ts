@@ -214,8 +214,8 @@ export const crewMembersService = {
   async create(
     data: Omit<InsertCrewMemberV2, "crewUuid"> & { nationality?: string; vesselType?: string }
   ): Promise<CrewMemberV2> {
-    if (!data.firstName || !data.familyName) {
-      throw new Error("First name and family name are required");
+    if (!data.firstName) {
+      throw new Error("First name is required");
     }
     
     // Auto-generate empNo if not provided
