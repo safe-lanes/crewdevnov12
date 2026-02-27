@@ -2330,10 +2330,7 @@ export const RHRecordingForm = ({
                                     avoidCollisions={false}
                                     className="max-w-[220px] text-[11px] z-50"
                                   >
-                                    <div className="space-y-0.5">
-                                      <div className="leading-snug">{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
-                                      <div className="text-gray-600 leading-snug">{diagnostic.reason}</div>
-                                    </div>
+                                    <div className="leading-snug">{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
