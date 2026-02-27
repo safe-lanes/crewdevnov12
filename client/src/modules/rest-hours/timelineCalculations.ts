@@ -841,7 +841,7 @@ export const WORK_ANCHORED_24H_WINDOW: {
 export const CODE_EF_EXPERIMENTAL: {
   enabled: boolean;
 } = {
-  enabled: true, // EXPERIMENTAL: Code EF detection logic is under active fine-tuning
+  enabled: true, // Code E/F detection enabled by default; set to false to disable
 };
 
 /**
