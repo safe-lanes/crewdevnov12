@@ -35,6 +35,7 @@ import {
   MAJORITY_DAY_ASSIGNMENT,
   TWENTY_FOUR_HOUR_VIOLATION_CODES,
   CODE_EF_EXPERIMENTAL,
+  WORK_ANCHORED_24H_WINDOW,
   type DateLineAdjustment,
   type TimelineSlot,
   type Violation as TimelineViolation,
@@ -58,7 +59,8 @@ interface RHRecordingFormProps {
 const VIOLATION_CODE_DESCRIPTIONS: Record<string, string> = {
   'A': "Minimum 10 hours of rest in any 24 hour period",
   'C': "Minimum hours of rest in any 7 day period = 77",
-  'EF': "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length (Experimental)",
+  'E': "1 period of 6 hrs Rest in any 24 hr Period (Experimental)",
+  'F': "Hrs of rest (10) may be divided into no more than 2 periods (Experimental)",
   'G': "Interval between rest periods not to exceed 14 hours",
   'B': "ILO Work - Maximum 14 hours of work in any 24 hour period",
   'D': "ILO Work - Maximum 72 hours of work in any 7 day period",
@@ -1135,34 +1137,95 @@ export const RHRecordingForm = ({
         });
       }
 
-      // EXPERIMENTAL: Derive Code EF from the same work-anchored window as Violation A
-      // Only when Violation A is present (rest < 10h), check rest period structure
-      if (CODE_EF_EXPERIMENTAL.enabled && metrics.anyPeriodRest24hr < 10 && worstWindowEndSlot !== null) {
-        const windowStartSlot = Math.max(0, worstWindowEndSlot - 47);
-        const { lengths: restPeriods } = analyzeRestPeriodsWithRanges(fullTimeline, worstWindowEndSlot);
-        const sorted = [...restPeriods].sort((a, b) => b - a);
-        const largest = sorted[0] || 0;
-        const secondLargest = sorted[1] || 0;
-        const largestHours = largest * 0.5;
-        const totalHours = (largest + secondLargest) * 0.5;
+      // EXPERIMENTAL: Derive Code E and F independently by scanning all 24h windows for this day
+      if (CODE_EF_EXPERIMENTAL.enabled && dayArrayIndices.length > 0) {
+        let hasCodeE = false;
+        let hasCodeF = false;
+        let codeEReason = '';
+        let codeFReason = '';
+        let codeEWindowEnd: number | null = null;
+        let codeFWindowEnd: number | null = null;
 
-        if (largestHours < 6 || totalHours < 10) {
-          violationNumbers.push('EF');
-          const numPeriods = restPeriods.length;
-          const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
-          let reason = '';
-          if (numPeriods === 0) {
-            reason = `No rest periods found in worst 24h window`;
-          } else if (numPeriods === 1) {
-            reason = `1 rest period: ${largestHours.toFixed(1)}h (need ≥6h and ≥10h total for single period)`;
-          } else {
-            reason = `${numPeriods} rest periods: ${allPeriodsHours}. Top 2: ${largestHours.toFixed(1)}h + ${(secondLargest * 0.5).toFixed(1)}h = ${totalHours.toFixed(1)}h (need ≥6h longest, ≥10h total)`;
+        for (const slotIdx of dayArrayIndices) {
+          if (slotIdx < 47) continue;
+
+          let shouldCheck = true;
+          if (WORK_ANCHORED_24H_WINDOW.enabled) {
+            const windowStartIdx = slotIdx - 47;
+            if (windowStartIdx >= 0) {
+              const windowStartStatus = fullTimeline[windowStartIdx].status.toLowerCase();
+              shouldCheck = windowStartStatus === 'w' || windowStartStatus === 'd';
+            }
           }
+          if (!shouldCheck) continue;
+
+          const { lengths: restPeriods } = analyzeRestPeriodsWithRanges(fullTimeline, slotIdx);
+          const sorted = [...restPeriods].sort((a, b) => b - a);
+          const largest = sorted[0] || 0;
+          const largestHours = largest * 0.5;
+
+          if (!hasCodeE && (restPeriods.length === 0 || largestHours < 6)) {
+            hasCodeE = true;
+            codeEWindowEnd = slotIdx;
+            codeEReason = restPeriods.length === 0
+              ? `No rest periods found in 24h window`
+              : `Largest rest period: ${largestHours.toFixed(1)}h (need ≥6h)`;
+          }
+
+          if (!hasCodeF && restPeriods.length > 2) {
+            const secondLargest = sorted[1] || 0;
+            const topTwoHours = (largest + secondLargest) * 0.5;
+            if (topTwoHours < 10) {
+              hasCodeF = true;
+              codeFWindowEnd = slotIdx;
+              const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
+              codeFReason = `${restPeriods.length} rest periods: ${allPeriodsHours}. Top 2 sum: ${topTwoHours.toFixed(1)}h (< 10h, exception not met)`;
+            }
+          }
+
+          if (hasCodeE && hasCodeF) break;
+        }
+
+        const buildRangesForWindow = (windowEndSlot: number | null): Array<{ startCell: number; endCell: number; startDay: number }> => {
+          if (windowEndSlot === null) return [];
+          const winStart = Math.max(0, windowEndSlot - 47);
+          const slotsInWindow = fullTimeline.slice(winStart, windowEndSlot + 1);
+          const dayRanges = new Map<number, { minCell: number; maxCell: number }>();
+          for (const slot of slotsInWindow) {
+            if (slot.sourceDay < 1) continue;
+            const existing = dayRanges.get(slot.sourceDay);
+            if (!existing) {
+              dayRanges.set(slot.sourceDay, { minCell: slot.halfHourIndex, maxCell: slot.halfHourIndex });
+            } else {
+              existing.minCell = Math.min(existing.minCell, slot.halfHourIndex);
+              existing.maxCell = Math.max(existing.maxCell, slot.halfHourIndex);
+            }
+          }
+          return Array.from(dayRanges.entries()).map(([day, range]) => ({
+            startDay: day,
+            startCell: range.minCell,
+            endCell: range.maxCell,
+          }));
+        };
+
+        if (hasCodeE) {
+          violationNumbers.push('E');
           diagnostics.push({
-            code: 'EF',
+            code: 'E',
             windowStart: 'Timeline window',
-            reason,
-            violatingRanges: buildViolatingRanges(),
+            reason: codeEReason,
+            violatingRanges: buildRangesForWindow(codeEWindowEnd),
+            majorityDay: record.day,
+          });
+        }
+
+        if (hasCodeF) {
+          violationNumbers.push('F');
+          diagnostics.push({
+            code: 'F',
+            windowStart: 'Timeline window',
+            reason: codeFReason,
+            violatingRanges: buildRangesForWindow(codeFWindowEnd),
             majorityDay: record.day,
           });
         }

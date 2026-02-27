@@ -15,7 +15,8 @@ import { restHoursApiV2 } from '../api/restHoursApiV2';
 const VIOLATION_CODE_DESCRIPTIONS: Record<string, string> = {
   'A': "Minimum 10 hours of rest in any 24 hour period",
   'C': "Minimum hours of rest in any 7 day period = 77",
-  'EF': "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length (Experimental)",
+  'E': "1 period of 6 hrs Rest in any 24 hr Period (Experimental)",
+  'F': "Hrs of rest (10) may be divided into no more than 2 periods (Experimental)",
   'G': "Interval between rest periods not to exceed 14 hours",
   'B': "ILO Work - Maximum 14 hours of work in any 24 hour period",
   'D': "ILO Work - Maximum 72 hours of work in any 7 day period",

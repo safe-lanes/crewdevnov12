@@ -25,7 +25,7 @@ export interface PersistedDailyRecord {
   hours: string[];          // 48 entries (2 per hour for 00:00-23:30): "w", "d", "a", "" (blank = rest)
   isPlan: boolean;          // True if planned hours (grey), false if recorded
   comments: string;         // Daily comments
-  violations: string[];     // Violation code letters (A, B, C, D, EF, G, H, I)
+  violations: string[];     // Violation code letters (A, B, C, D, E, F, G, H, I)
 }
 
 /**

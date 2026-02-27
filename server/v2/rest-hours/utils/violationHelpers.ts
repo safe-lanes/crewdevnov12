@@ -2,7 +2,7 @@ export function filterViolationsByMode(violations: string[], complianceMode: 'Re
   const visibleCodes: string[] = [];
 
   if (complianceMode === 'Rest') {
-    visibleCodes.push('A', 'C', 'EF', 'G');
+    visibleCodes.push('A', 'C', 'E', 'F', 'G');
   } else {
     visibleCodes.push('B', 'D');
   }

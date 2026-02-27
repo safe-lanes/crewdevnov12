@@ -240,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const codes: string[] = [];
     
     if (complianceMode === 'Rest') {
-      codes.push('A', 'C', 'EF', 'G');
+      codes.push('A', 'C', 'E', 'F', 'G');
     } else {
       codes.push('B', 'D');
     }

@@ -2,7 +2,7 @@
  * Violation Filtering Helper Functions for V2
  * 
  * Compliance Modes:
- * - Rest Mode (MLC Option 2): Shows violations A, C, EF, G
+ * - Rest Mode (MLC Option 2): Shows violations A, C, E, F, G
  * - Work Mode (MLC Option 1): Shows violations B, D
  * - OPA Mode: Always shows violations I, H when enabled (additive to other modes)
  */
@@ -23,7 +23,7 @@ export function getVisibleViolationCodes(
   const codes: string[] = [];
 
   if (complianceMode === 'Rest') {
-    codes.push('A', 'C', 'EF', 'G');
+    codes.push('A', 'C', 'E', 'F', 'G');
   } else {
     codes.push('B', 'D');
   }
