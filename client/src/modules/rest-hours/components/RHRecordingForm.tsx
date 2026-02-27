@@ -29,6 +29,7 @@ import {
   groupViolationObjectsByDay,
   prependPreviousMonthTimeline,
   analyzeRestPeriodsWithRanges,
+  analyzeCodeFViolation,
   checkCode4ViolationWithRange,
   calculateMajorityDayFor24HourWindow,
   sortViolationCodes,
@@ -1035,6 +1036,12 @@ export const RHRecordingForm = ({
     // Build result map with violations and metrics for each day
     const resultMap = new Map<number, { violations: string[]; diagnostics: ViolationDiagnostic[]; metrics: any }>();
 
+    const deferredCodeF = new Map<number, {
+      reason: string;
+      violatingRanges: Array<{ startCell: number; endCell: number; startDay: number }>;
+      majorityDay: number;
+    }>();
+
     // Pre-build a map of dayIndex → array indices in fullTimeline (primary occurrence only).
     // Skip prepended previous-month slots (slotIndex < 0) to avoid sourceDay collisions
     // (e.g., Nov Day 30 matching Dec Day 30 by day number). The work-anchored window
@@ -1140,11 +1147,15 @@ export const RHRecordingForm = ({
       // EXPERIMENTAL: Derive Code E and F independently by scanning all 24h windows for this day
       if (CODE_EF_EXPERIMENTAL.enabled && dayArrayIndices.length > 0) {
         let hasCodeE = false;
-        let hasCodeF = false;
         let codeEReason = '';
-        let codeFReason = '';
         let codeEWindowEnd: number | null = null;
+
+        let codeFTriggered = false;
+        let codeFReason = '';
         let codeFWindowEnd: number | null = null;
+        let codeFIsExceptionCandidate = false;
+
+        const hasCodeA = violationNumbers.includes('A');
 
         for (const slotIdx of dayArrayIndices) {
           if (slotIdx < 47) continue;
@@ -1172,18 +1183,18 @@ export const RHRecordingForm = ({
               : `Largest rest period: ${largestHours.toFixed(1)}h (need ≥6h)`;
           }
 
-          if (!hasCodeF && restPeriods.length > 2) {
-            const secondLargest = sorted[1] || 0;
-            const topTwoHours = (largest + secondLargest) * 0.5;
-            if (topTwoHours < 10) {
-              hasCodeF = true;
+          if (!codeFTriggered) {
+            const analysis = analyzeCodeFViolation(fullTimeline, slotIdx);
+            if (analysis.hasViolation) {
+              codeFTriggered = true;
               codeFWindowEnd = slotIdx;
-              const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
-              codeFReason = `${restPeriods.length} rest periods: ${allPeriodsHours}. Top 2 sum: ${topTwoHours.toFixed(1)}h (< 10h, alternate not met)`;
+              const allPeriodsHours = analysis.sortedPeriodHours.map(h => h.toFixed(1)).join('h, ') + 'h';
+              codeFReason = `${analysis.periodCount} rest periods: ${allPeriodsHours}. Top 2 sum: ${analysis.topTwoSum.toFixed(1)}h (< 10h, alternate not met)`;
+              codeFIsExceptionCandidate = !hasCodeA && analysis.isExceptionCandidate;
             }
           }
 
-          if (hasCodeE && hasCodeF) break;
+          if (hasCodeE && codeFTriggered) break;
         }
 
         const buildRangesForWindow = (windowEndSlot: number | null): Array<{ startCell: number; endCell: number; startDay: number }> => {
@@ -1219,15 +1230,23 @@ export const RHRecordingForm = ({
           });
         }
 
-        if (hasCodeF) {
-          violationNumbers.push('F');
-          diagnostics.push({
-            code: 'F',
-            windowStart: 'Timeline window',
-            reason: codeFReason,
-            violatingRanges: buildRangesForWindow(codeFWindowEnd),
-            majorityDay: record.day,
-          });
+        if (codeFTriggered) {
+          if (codeFIsExceptionCandidate) {
+            deferredCodeF.set(dayIndex, {
+              reason: codeFReason,
+              violatingRanges: buildRangesForWindow(codeFWindowEnd),
+              majorityDay: record.day,
+            });
+          } else {
+            violationNumbers.push('F');
+            diagnostics.push({
+              code: 'F',
+              windowStart: 'Timeline window',
+              reason: codeFReason,
+              violatingRanges: buildRangesForWindow(codeFWindowEnd),
+              majorityDay: record.day,
+            });
+          }
         }
       }
 
@@ -1328,6 +1347,37 @@ export const RHRecordingForm = ({
         diagnostics,
         metrics,
       });
+    }
+
+    if (deferredCodeF.size > 0) {
+      const exceptionGranted = new Set<number>();
+
+      for (let dayIndex = 0; dayIndex < dailyRecords.length; dayIndex++) {
+        if (!deferredCodeF.has(dayIndex)) continue;
+
+        let exceptionsInWindow = 0;
+        for (let prev = Math.max(0, dayIndex - 6); prev < dayIndex; prev++) {
+          if (exceptionGranted.has(prev)) exceptionsInWindow++;
+        }
+
+        if (exceptionsInWindow < 2) {
+          exceptionGranted.add(dayIndex);
+        } else {
+          const entry = resultMap.get(dayIndex);
+          const codeFData = deferredCodeF.get(dayIndex)!;
+          if (entry) {
+            entry.violations.push('F');
+            entry.violations = sortViolationCodes(entry.violations);
+            entry.diagnostics.push({
+              code: 'F',
+              windowStart: 'Timeline window',
+              reason: codeFData.reason,
+              violatingRanges: codeFData.violatingRanges,
+              majorityDay: codeFData.majorityDay,
+            });
+          }
+        }
+      }
     }
     
     return {

@@ -542,6 +542,38 @@ function checkCodeFViolation(timeline: TimelineSlot[], slotIdx: number): boolean
   return true;
 }
 
+export interface CodeFAnalysis {
+  hasViolation: boolean;
+  periodCount: number;
+  sortedPeriodHours: number[];
+  topTwoSum: number;
+  topThreeSum: number;
+  isExceptionCandidate: boolean;
+}
+
+export function analyzeCodeFViolation(timeline: TimelineSlot[], slotIdx: number): CodeFAnalysis {
+  const restPeriods = analyzeRestPeriods(timeline, slotIdx);
+  const sorted = [...restPeriods].sort((a, b) => b - a);
+  const sortedHours = sorted.map(p => p * 0.5);
+  const topTwoSum = (sortedHours[0] || 0) + (sortedHours[1] || 0);
+  const topThreeSum = topTwoSum + (sortedHours[2] || 0);
+
+  if (restPeriods.length <= 2) {
+    return { hasViolation: false, periodCount: restPeriods.length, sortedPeriodHours: sortedHours, topTwoSum, topThreeSum, isExceptionCandidate: false };
+  }
+
+  if (topTwoSum >= 10) {
+    return { hasViolation: false, periodCount: restPeriods.length, sortedPeriodHours: sortedHours, topTwoSum, topThreeSum, isExceptionCandidate: false };
+  }
+
+  const largestOk = sortedHours[0] >= 6;
+  const secondOk = sortedHours[1] >= 1;
+  const thirdOk = sortedHours[2] >= 1;
+  const isExceptionCandidate = topThreeSum >= 10 && largestOk && secondOk && thirdOk;
+
+  return { hasViolation: true, periodCount: restPeriods.length, sortedPeriodHours: sortedHours, topTwoSum, topThreeSum, isExceptionCandidate };
+}
+
 /**
  * Checks Code [4]: Work interval between rest periods must not exceed 14 hours
  * Returns violation status and the violating work gap range if found
@@ -659,6 +691,9 @@ export function detectViolations(
       }
       
       // EXPERIMENTAL: Check for Code E and F violations independently
+      // NOTE: The 7-day exception rule for Code F (allowing up to 2 days with 3 rest periods
+      // per rolling 7-day window) is handled at the per-day level in RHRecordingForm, not here.
+      // This per-slot pipeline does not have cross-day awareness needed for that rule.
       let shouldCheckEF = CODE_EF_EXPERIMENTAL.enabled;
       if (shouldCheckEF && WORK_ANCHORED_24H_WINDOW.enabled) {
         if (windowStartIdx24h >= 0) {
