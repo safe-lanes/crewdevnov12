@@ -289,7 +289,12 @@ export const RestHoursVesselOverview = (): JSX.Element => {
           vesselName: vesselName,
         },
         fetchDailyRecords,
-        (current, total) => setExportProgress({ current, total })
+        (current, total) => setExportProgress({ current, total }),
+        {
+          complianceMode: 'Rest',
+          opaMode: false,
+          showPlanning: true,
+        }
       );
 
       toast({

@@ -1,16 +1,16 @@
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from 'pdf-lib';
 import JSZip from 'jszip';
 import type { ExtendedDailyRecord } from '@/modules/rest-hours/types';
+import { filterViolations } from '@/modules/rest-hours/violationFilters';
 
-// A4 Landscape dimensions (842 x 595 pts)
 const A4_WIDTH = 842;
 const A4_HEIGHT = 595;
 const MARGIN = 15;
 const CONTENT_WIDTH = A4_WIDTH - 2 * MARGIN;
 
-// Colors (black-and-white styling)
 const BORDER_COLOR = rgb(0.6, 0.6, 0.6);
 const RED_COLOR = rgb(0.8, 0, 0);
+const PLAN_TEXT_COLOR = rgb(0.6, 0.6, 0.6);
 
 export interface RestHoursPDFData {
   vesselName: string;
@@ -22,6 +22,9 @@ export interface RestHoursPDFData {
   flagOfShip?: string;
   watchkeeper?: boolean;
   seafarerFullName?: string;
+  complianceMode?: 'Rest' | 'Work';
+  opaMode?: boolean;
+  showPlanning?: boolean;
 }
 
 class RestHoursPDFGenerator {
@@ -33,7 +36,6 @@ class RestHoursPDFGenerator {
   private fontBoldOblique!: PDFFont;
   private yPosition: number = A4_HEIGHT - MARGIN;
   
-  // Column widths (all 48 half-hour cells)
   private readonly dateColWidth = 28;
   private readonly dayColWidth = 24;
   private readonly halfHourCellWidth = 12;
@@ -100,11 +102,9 @@ class RestHoursPDFGenerator {
     });
   }
   
-  // Draw checkbox (small square with optional checkmark using stroke paths)
   private drawCheckbox(x: number, y: number, checked: boolean, size: number = 8): void {
     this.drawRect(x, y, size, size, BORDER_COLOR);
     if (checked) {
-      // Draw a checkmark using lines
       const startX = x + 1.5;
       const startY = y + size / 2;
       const midX = x + size / 3;
@@ -124,31 +124,27 @@ class RestHoursPDFGenerator {
            this.restPeriodColWidth * 2;
   }
   
-  // Draw document header matching reference design
   private drawDocumentHeader(data: RestHoursPDFData): number {
+    const isWorkMode = data.complianceMode === 'Work';
     let currentY = this.yPosition;
     const pageWidth = A4_WIDTH;
     const leftMargin = MARGIN;
     
-    // Draw horizontal line at top
     this.drawLine(leftMargin, currentY, pageWidth - MARGIN, currentY, 1, rgb(0.3, 0.3, 0.3));
     currentY -= 18;
     
-    // Centered title: "RECORD OF HOURS OF WORK"
-    const title = 'RECORD OF HOURS OF WORK';
+    const title = isWorkMode ? 'RECORD OF HOURS OF WORK' : 'RECORD OF HOURS OF REST';
     const titleWidth = this.fontBold.widthOfTextAtSize(title, 14);
     const titleX = (pageWidth - titleWidth) / 2;
     this.drawText(title, titleX, currentY, 14, 'bold');
     currentY -= 16;
     
-    // Three-column layout for metadata
     const col1X = leftMargin;
     const col2X = 320;
     const col3X = 560;
     const labelFontSize = 8;
     const valueFontSize = 8;
     
-    // Row 1: Name Of Ship, IMO Number, Flag of ship
     this.drawText('Name Of Ship :', col1X, currentY, labelFontSize, 'bold');
     this.drawText(data.vesselName || '', col1X + 80, currentY, valueFontSize);
     
@@ -159,7 +155,6 @@ class RestHoursPDFGenerator {
     this.drawText(data.flagOfShip || '', col3X + 70, currentY, valueFontSize);
     currentY -= 12;
     
-    // Row 2: Seafarer FullName, (blank), Position/Rank
     this.drawText('Seafarer FullName :', col1X, currentY, labelFontSize, 'bold');
     this.drawText(data.seafarerFullName || data.crewMemberName || '', col1X + 100, currentY, valueFontSize);
     
@@ -167,27 +162,26 @@ class RestHoursPDFGenerator {
     this.drawText(data.rank || '', col3X + 80, currentY, valueFontSize);
     currentY -= 12;
     
-    // Row 3: Month and Year, (blank), Watchkeeper with checkboxes
     this.drawText('Month and Year :', col1X, currentY, labelFontSize, 'bold');
     this.drawText(data.monthYear || '', col1X + 90, currentY, valueFontSize);
     
     this.drawText('Watchkeeper :', col3X, currentY, labelFontSize, 'bold');
     const watchkeeperX = col3X + 75;
-    this.drawCheckbox(watchkeeperX, currentY - 2, false, 8);
+    const isWatchkeeper = data.watchkeeper === true;
+    this.drawCheckbox(watchkeeperX, currentY - 2, isWatchkeeper, 8);
     this.drawText('Yes', watchkeeperX + 12, currentY, 7);
-    this.drawCheckbox(watchkeeperX + 35, currentY - 2, false, 8);
+    this.drawCheckbox(watchkeeperX + 35, currentY - 2, !isWatchkeeper, 8);
     this.drawText('No', watchkeeperX + 47, currentY, 7);
     currentY -= 12;
     
-    // Instruction text
     this.drawText('Please mark periods of work with a "d", "a", and "w"', col1X, currentY, 7);
     currentY -= 10;
     
     return currentY;
   }
   
-  // Draw table header (reusable for each page)
-  private drawTableHeader(tableStartX: number, startY: number): number {
+  private drawTableHeader(tableStartX: number, startY: number, complianceMode: 'Rest' | 'Work'): number {
+    const isWorkMode = complianceMode === 'Work';
     const tableWidth = this.getTableWidth();
     const headerHeight = 28;
     
@@ -197,17 +191,14 @@ class RestHoursPDFGenerator {
     const headerTextY = startY - 10;
     const headerTextY2 = startY - 20;
     
-    // Date column header
     this.drawText('Date', headerX + 3, headerTextY, 6, 'bold');
     this.drawLine(headerX + this.dateColWidth, startY, headerX + this.dateColWidth, startY - headerHeight);
     headerX += this.dateColWidth;
     
-    // Day column header
     this.drawText('Day', headerX + 3, headerTextY, 6, 'bold');
     this.drawLine(headerX + this.dayColWidth, startY, headerX + this.dayColWidth, startY - headerHeight);
     headerX += this.dayColWidth;
     
-    // Hours columns header (00-23)
     for (let h = 0; h < 24; h++) {
       const hourStr = h.toString().padStart(2, '0');
       this.drawText(hourStr, headerX + 3, headerTextY, 5, 'normal');
@@ -219,28 +210,26 @@ class RestHoursPDFGenerator {
       headerX += hourWidth;
     }
     
-    // Hours of Rest in 24-Hours period column
+    const modeLabel = isWorkMode ? 'Work in' : 'Rest in';
     this.drawText('Hours of', headerX + 1, headerTextY + 2, 3.5, 'bold');
-    this.drawText('Rest in', headerX + 1, headerTextY2 + 9, 3.5, 'bold');
+    this.drawText(modeLabel, headerX + 1, headerTextY2 + 9, 3.5, 'bold');
     this.drawText('24-Hours', headerX + 1, headerTextY2 + 2, 3.5, 'bold');
     this.drawText('period', headerX + 1, headerTextY2 - 5, 3.5, 'bold');
     this.drawLine(headerX + this.rhColWidth, startY, headerX + this.rhColWidth, startY - headerHeight);
     headerX += this.rhColWidth;
     
-    // Violations column
     this.drawText('Viol.', headerX + 2, headerTextY, 5, 'bold');
     this.drawLine(headerX + this.violationsColWidth, startY, headerX + this.violationsColWidth, startY - headerHeight);
     headerX += this.violationsColWidth;
     
-    // Comments column
     this.drawText('Comments', headerX + 2, headerTextY, 5, 'bold');
     this.drawLine(headerX + this.commentsColWidth, startY, headerX + this.commentsColWidth, startY - headerHeight);
     headerX += this.commentsColWidth;
     
-    // Hours of Rest in any section
     const restSectionWidth = this.restPeriodColWidth * 2;
     this.drawRect(headerX, startY - headerHeight, restSectionWidth, headerHeight, BORDER_COLOR);
-    this.drawText('Rest in any', headerX + 3, headerTextY, 5, 'bold');
+    const anyLabel = isWorkMode ? 'Work in any' : 'Rest in any';
+    this.drawText(anyLabel, headerX + 3, headerTextY, 5, 'bold');
     
     this.drawText('24hr', headerX + 3, headerTextY2, 5, 'normal');
     this.drawLine(headerX + this.restPeriodColWidth, startY - 12, headerX + this.restPeriodColWidth, startY - headerHeight);
@@ -259,8 +248,8 @@ class RestHoursPDFGenerator {
     return normalized;
   }
   
-  // Draw the second page with footnotes and signature lines
-  private drawSecondPage(): void {
+  private drawSecondPage(complianceMode: 'Rest' | 'Work'): void {
+    const isWorkMode = complianceMode === 'Work';
     this.addNewPage();
     let currentY = this.yPosition - 30;
     const leftMargin = MARGIN + 15;
@@ -268,47 +257,39 @@ class RestHoursPDFGenerator {
     const lineWidth = rightMargin - leftMargin;
     const signatureLineWidth = 380;
     
-    // Footnote 1
     this.drawText('1', leftMargin, currentY, 7);
     const footnote1 = 'For completion and use in accordance with the procedures established by the competent authority in compliance with the relevant requirements of the Seafarers\' Hours of Work and the Manning of Ships Convention, 1996 (Convention No. 180).';
     this.drawWrappedText(footnote1, leftMargin + 12, currentY, 7, lineWidth - 12);
     currentY -= 30;
     
-    // Footnote 2
     this.drawText('2', leftMargin, currentY, 7);
     const footnote2 = 'Additional calculations or verifications may be necessary to ensure compliance with the relevant requirements of the seafarers\' Hours of Work and the Manning of Ships Convention, 1996 (Convention No. 180) and the International Convention on Standards of Training, Certification and Watchkeeping, 1978, as amended (STCW Convention).';
     this.drawWrappedText(footnote2, leftMargin + 12, currentY, 7, lineWidth - 12);
     currentY -= 50;
     
-    // National laws section
     this.drawText('The following national laws, regulations and/or collective limitations on working hours:', leftMargin, currentY, 8);
     currentY -= 25;
     
-    // Empty line for national laws input
     this.drawLine(leftMargin, currentY, rightMargin, currentY, 0.5);
     currentY -= 50;
     
-    // Agreement statement (bold italic)
-    const agreementText = 'I agree that this record is an accurate reflection of the hours of rest of the seafarer concerned.';
+    const hoursType = isWorkMode ? 'hours of work' : 'hours of rest';
+    const agreementText = `I agree that this record is an accurate reflection of the ${hoursType} of the seafarer concerned.`;
     this.drawText(agreementText, leftMargin, currentY, 9, 'boldItalic');
     currentY -= 30;
     
-    // Master name line with underline
     this.drawText('Name of master or person authorized by master to sign this record', leftMargin, currentY, 8);
     this.drawLine(leftMargin + 330, currentY - 2, leftMargin + 330 + signatureLineWidth, currentY - 2, 0.5);
     currentY -= 22;
     
-    // Signature of master or authorized person
     this.drawText('Signature of master or authorized person', leftMargin, currentY, 8);
     this.drawLine(leftMargin + 230, currentY - 2, leftMargin + 230 + signatureLineWidth + 100, currentY - 2, 0.5);
     currentY -= 35;
     
-    // Seafarer signature (left-aligned on its own line)
     this.drawText('Signature of seafarer', leftMargin, currentY, 8);
     this.drawLine(leftMargin + 120, currentY - 2, leftMargin + 120 + signatureLineWidth, currentY - 2, 0.5);
   }
   
-  // Helper to draw wrapped text
   private drawWrappedText(text: string, x: number, startY: number, fontSize: number, maxWidth: number): void {
     const words = text.split(' ');
     let line = '';
@@ -335,103 +316,119 @@ class RestHoursPDFGenerator {
   async generate(data: RestHoursPDFData): Promise<Uint8Array> {
     await this.initialize();
     
+    const complianceMode = data.complianceMode || 'Rest';
+    const opaMode = data.opaMode ?? false;
+    const showPlanning = data.showPlanning ?? true;
+    const isWorkMode = complianceMode === 'Work';
+    
     const tableStartX = MARGIN;
     const tableWidth = this.getTableWidth();
     const rowHeight = 12;
     
-    // Draw document header
     let currentY = this.drawDocumentHeader(data);
     
-    // Draw table header
-    currentY = this.drawTableHeader(tableStartX, currentY);
+    currentY = this.drawTableHeader(tableStartX, currentY, complianceMode);
     
-    // Draw data rows
-    for (let i = 0; i < data.records.length; i++) {
-      const record = data.records[i];
+    const visibleRecords = showPlanning
+      ? data.records
+      : data.records.filter(r => !r.isPlan);
+    
+    for (let i = 0; i < visibleRecords.length; i++) {
+      const record = visibleRecords[i];
       
-      // Check if we need a new page
       if (currentY - rowHeight < MARGIN + 40) {
         this.addNewPage();
         currentY = this.yPosition - 10;
         
-        // Redraw header on new page
-        this.drawText('RECORD OF HOURS OF WORK (continued)', MARGIN, currentY, 10, 'bold');
+        const continuedTitle = isWorkMode
+          ? 'RECORD OF HOURS OF WORK (continued)'
+          : 'RECORD OF HOURS OF REST (continued)';
+        this.drawText(continuedTitle, MARGIN, currentY, 10, 'bold');
         currentY -= 15;
         
-        currentY = this.drawTableHeader(tableStartX, currentY);
+        currentY = this.drawTableHeader(tableStartX, currentY, complianceMode);
       }
       
       const rowY = currentY - rowHeight;
       let cellX = tableStartX;
       
-      // Row background (based on isPlan)
-      const rowBgColor = record.isPlan ? rgb(0.96, 0.96, 0.96) : undefined;
+      const isPlan = record.isPlan;
+      const rowBgColor = isPlan ? rgb(0.9, 0.9, 0.9) : undefined;
+      const textColor = isPlan ? PLAN_TEXT_COLOR : rgb(0, 0, 0);
+      
       if (rowBgColor) {
         this.drawRect(tableStartX, rowY, tableWidth, rowHeight, BORDER_COLOR, rowBgColor);
       }
       
-      // Date cell
       this.drawRect(cellX, rowY, this.dateColWidth, rowHeight, BORDER_COLOR);
-      this.drawText(record.day.toString(), cellX + 8, rowY + 3, 6);
+      this.drawText(record.day.toString(), cellX + 8, rowY + 3, 6, 'normal', textColor);
       cellX += this.dateColWidth;
       
-      // Day cell
       this.drawRect(cellX, rowY, this.dayColWidth, rowHeight, BORDER_COLOR);
-      this.drawText(record.dayOfWeek || '', cellX + 3, rowY + 3, 6);
+      this.drawText(record.dayOfWeek || '', cellX + 3, rowY + 3, 6, 'normal', textColor);
       cellX += this.dayColWidth;
       
-      // Normalize hours array
       const normalizedHours = this.normalizeHours(record.hours);
       
-      // 48 Half-hour cells (black-and-white, no background colors)
       for (let halfHourIdx = 0; halfHourIdx < 48; halfHourIdx++) {
         const cellValue = normalizedHours[halfHourIdx];
         
         this.drawRect(cellX, rowY, this.halfHourCellWidth, rowHeight, BORDER_COLOR);
         
         if (cellValue) {
-          this.drawText(cellValue.toLowerCase(), cellX + 3, rowY + 3, 5);
+          this.drawText(cellValue.toLowerCase(), cellX + 3, rowY + 3, 5, 'normal', textColor);
         }
         
         cellX += this.halfHourCellWidth;
       }
       
-      // RH in 24 Hr cell
       this.drawRect(cellX, rowY, this.rhColWidth, rowHeight, BORDER_COLOR);
-      this.drawText(record.hoursOfRest24hr?.toString() || '', cellX + 5, rowY + 3, 6);
+      const hoursIn24 = isWorkMode ? record.hoursOfWork24hr : record.hoursOfRest24hr;
+      this.drawText(hoursIn24?.toString() || '', cellX + 5, rowY + 3, 6, 'normal', textColor);
       cellX += this.rhColWidth;
       
-      // Violations cell
       this.drawRect(cellX, rowY, this.violationsColWidth, rowHeight, BORDER_COLOR);
       if (record.violations && record.violations.length > 0) {
-        const violationsText = record.violations.join(', ');
-        this.drawText(violationsText, cellX + 2, rowY + 3, 5, 'normal', RED_COLOR);
+        const visibleViolations = filterViolations(record.violations, complianceMode, opaMode);
+        if (visibleViolations.length > 0) {
+          const violationsText = visibleViolations.join(', ');
+          const violColor = isPlan ? PLAN_TEXT_COLOR : RED_COLOR;
+          this.drawText(violationsText, cellX + 2, rowY + 3, 5, 'normal', violColor);
+        }
       }
       cellX += this.violationsColWidth;
       
-      // Comments cell
       this.drawRect(cellX, rowY, this.commentsColWidth, rowHeight, BORDER_COLOR);
       const truncatedComment = (record.comments || '').substring(0, 15);
-      this.drawText(truncatedComment, cellX + 2, rowY + 3, 5);
+      this.drawText(truncatedComment, cellX + 2, rowY + 3, 5, 'normal', textColor);
       cellX += this.commentsColWidth;
       
-      // 24 Hr Period cell
       this.drawRect(cellX, rowY, this.restPeriodColWidth, rowHeight, BORDER_COLOR);
-      const rest24hr = record.anyPeriodRest24hr?.toFixed(1) || '';
-      const is24hrViolation = (record.anyPeriodRest24hr || 0) < 10;
-      this.drawText(rest24hr, cellX + 3, rowY + 3, 5, 'normal', is24hrViolation ? RED_COLOR : rgb(0, 0, 0));
+      if (isWorkMode) {
+        const work24hr = record.anyPeriodWork24hr?.toFixed(1) || '';
+        const is24hrViolation = !isPlan && (record.anyPeriodWork24hr || 0) > 14;
+        this.drawText(work24hr, cellX + 3, rowY + 3, 5, 'normal', isPlan ? PLAN_TEXT_COLOR : (is24hrViolation ? RED_COLOR : rgb(0, 0, 0)));
+      } else {
+        const rest24hr = record.anyPeriodRest24hr?.toFixed(1) || '';
+        const is24hrViolation = !isPlan && (record.anyPeriodRest24hr || 0) < 10;
+        this.drawText(rest24hr, cellX + 3, rowY + 3, 5, 'normal', isPlan ? PLAN_TEXT_COLOR : (is24hrViolation ? RED_COLOR : rgb(0, 0, 0)));
+      }
       cellX += this.restPeriodColWidth;
       
-      // 7 days cell
       this.drawRect(cellX, rowY, this.restPeriodColWidth, rowHeight, BORDER_COLOR);
-      const rest7day = record.anyPeriodRest7day?.toFixed(1) || '';
-      const is7dayViolation = (record.anyPeriodRest7day || 0) < 77;
-      this.drawText(rest7day, cellX + 2, rowY + 3, 5, 'normal', is7dayViolation ? RED_COLOR : rgb(0, 0, 0));
+      if (isWorkMode) {
+        const work7day = record.anyPeriodWork7day?.toFixed(1) || '';
+        const is7dayViolation = !isPlan && (record.anyPeriodWork7day || 0) > 72;
+        this.drawText(work7day, cellX + 2, rowY + 3, 5, 'normal', isPlan ? PLAN_TEXT_COLOR : (is7dayViolation ? RED_COLOR : rgb(0, 0, 0)));
+      } else {
+        const rest7day = record.anyPeriodRest7day?.toFixed(1) || '';
+        const is7dayViolation = !isPlan && (record.anyPeriodRest7day || 0) < 77;
+        this.drawText(rest7day, cellX + 2, rowY + 3, 5, 'normal', isPlan ? PLAN_TEXT_COLOR : (is7dayViolation ? RED_COLOR : rgb(0, 0, 0)));
+      }
       
       currentY = rowY;
     }
     
-    // Legend
     const legendHeight = 25;
     if (currentY - legendHeight < MARGIN + 10) {
       this.addNewPage();
@@ -441,8 +438,7 @@ class RestHoursPDFGenerator {
     const legendY = currentY - 15;
     this.drawText('Legend: w: Watch, a: Additional Work, d: Day Work, blank: Rest', tableStartX, legendY, 6);
     
-    // Draw second page with footnotes and signature lines
-    this.drawSecondPage();
+    this.drawSecondPage(complianceMode);
     
     return this.pdfDoc.save();
   }
@@ -502,11 +498,20 @@ export async function exportAllRestHoursPDFs(
     flagOfShip?: string;
   },
   fetchDailyRecords: (crewMemberId: string, vesselId: string, monthYear: string) => Promise<ExtendedDailyRecord[]>,
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
+  options?: {
+    complianceMode?: 'Rest' | 'Work';
+    opaMode?: boolean;
+    showPlanning?: boolean;
+  }
 ): Promise<void> {
   try {
     const zip = new JSZip();
     const total = crewRecords.length;
+    
+    const complianceMode = options?.complianceMode || 'Rest';
+    const opaMode = options?.opaMode ?? false;
+    const showPlanning = options?.showPlanning ?? true;
     
     for (let i = 0; i < crewRecords.length; i++) {
       const crew = crewRecords[i];
@@ -529,6 +534,9 @@ export async function exportAllRestHoursPDFs(
         flagOfShip: vesselInfo.flagOfShip,
         watchkeeper: false,
         seafarerFullName: `${crew.rank}-${crew.name.toUpperCase()}`,
+        complianceMode,
+        opaMode,
+        showPlanning,
       };
       
       const pdfBytes = await generateRestHoursPDFBytes(pdfData);

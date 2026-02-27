@@ -1619,6 +1619,9 @@ export const RHRecordingForm = ({
         flagOfShip,
         watchkeeper,
         seafarerFullName,
+        complianceMode,
+        opaMode,
+        showPlanning,
       });
       
       toast({
