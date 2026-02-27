@@ -5714,8 +5714,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
     
     // V2: Use crewUuid as primary identifier for updates
-    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
-    if (crewMember && crewIdentifier) {
+    // Also check createdCrewId — after first save of a new crew, crewMember is still null
+    // but createdCrewId holds the UUID of the just-created record
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id || createdCrewId;
+    if (crewIdentifier) {
       // Update existing crew member using crewUuid
       updateCrewMutation.mutate({ id: crewIdentifier, data: dataWithPhoto });
       
