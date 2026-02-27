@@ -1268,16 +1268,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeChild = (index: number) => {
-    setFormData(prev => {
-      const childToRemove = prev.children[index];
-      if (childToRemove?.childUuid) {
-        setDeletedChildUuids(prevUuids => [...prevUuids, childToRemove.childUuid!]);
-      }
-      return {
-        ...prev,
-        children: prev.children.filter((_, i) => i !== index)
-      };
-    });
+    const childToRemove = formData.children[index];
+    if (childToRemove?.childUuid) {
+      setDeletedChildUuids(prev => [...prev, childToRemove.childUuid!]);
+    }
+    setFormData(prev => ({
+      ...prev,
+      children: prev.children.filter((_, i) => i !== index)
+    }));
   };
 
   // Helper function to get next unique ID based on prefix
