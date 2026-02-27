@@ -2358,24 +2358,32 @@ export const RHRecordingForm = ({
         )}
 
         {/* Footer Actions */}
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleRequestClose}
-            disabled={saveMutation.isPending}
-            data-testid="button-cancel"
-          >
-            {saveMutation.isPending ? 'Saving...' : 'Close'}
-          </Button>
-          {!isLocked && (
+        <div className="flex justify-between items-center gap-2 pt-4 border-t">
+          <div className="text-xs text-muted-foreground border rounded px-3 py-1.5" data-testid="text-field-guidance">
+            <span className="font-medium">Enter fields</span>
+            <span className="mx-3">w: watch</span>
+            <span className="mx-3">d: daywork (routine)</span>
+            <span className="mx-3">a: additional work</span>
+          </div>
+          <div className="flex gap-2">
             <Button
-              onClick={handleSave}
+              variant="outline"
+              onClick={handleRequestClose}
               disabled={saveMutation.isPending}
-              data-testid="button-save"
+              data-testid="button-cancel"
             >
-              {saveMutation.isPending ? 'Saving...' : 'Save'}
+              {saveMutation.isPending ? 'Saving...' : 'Close'}
             </Button>
-          )}
+            {!isLocked && (
+              <Button
+                onClick={handleSave}
+                disabled={saveMutation.isPending}
+                data-testid="button-save"
+              >
+                {saveMutation.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
