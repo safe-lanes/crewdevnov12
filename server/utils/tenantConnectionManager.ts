@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { eq, and } from "drizzle-orm";
 import { tenants } from "@shared/v2/tenant/schema";
-import 'dotenv/config';
+// import 'dotenv/config';
 
 type DrizzleInstance = ReturnType<typeof drizzle>;
 
