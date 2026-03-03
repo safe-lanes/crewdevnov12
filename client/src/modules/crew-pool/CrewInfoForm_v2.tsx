@@ -432,37 +432,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return '';
   };
 
-  const runSeaServiceOverlapCheck = useCallback(() => {
-    const allSeaRows = [
-      ...(formData.currentCompanySeaService || []).filter((r: any) => !r.isVesselSynced),
-      ...(formData.externalSeaService || []),
-    ].filter((r: any) => !!(r.from || r.fromDate));
-
-    const newErrors: Record<string, string> = {};
-    for (let i = 0; i < allSeaRows.length; i++) {
-      for (let j = i + 1; j < allSeaRows.length; j++) {
-        const a = allSeaRows[i] as any;
-        const b = allSeaRows[j] as any;
-        const aFrom = a.from || a.fromDate || '';
-        const aTo = (a.to && a.to !== '') ? a.to : ((a.toDate && a.toDate !== '') ? a.toDate : null);
-        const bFrom = b.from || b.fromDate || '';
-        const bTo = (b.to && b.to !== '') ? b.to : ((b.toDate && b.toDate !== '') ? b.toDate : null);
-        if (!aFrom || !bFrom) continue;
-        const noOverlap =
-          (aTo !== null && aTo < bFrom) ||
-          (bTo !== null && bTo < aFrom);
-        if (!noOverlap) {
-          const aKey = a.id || a.seaUuid || `sea-${aFrom}`;
-          const bKey = b.id || b.seaUuid || `sea-${bFrom}`;
-          newErrors[aKey] = 'Sea service dates overlap with another record.';
-          newErrors[bKey] = 'Sea service dates overlap with another record.';
-        }
-      }
-    }
-    setSeaServiceDateErrors(newErrors);
-    return newErrors;
-  }, [formData.currentCompanySeaService, formData.externalSeaService]);
-  
   // State for issues popup dialog
   const [issuesDialogOpen, setIssuesDialogOpen] = useState(false);
   const [issuesDialogData, setIssuesDialogData] = useState<{
@@ -873,6 +842,37 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     // F2. Doctor Visits
     doctorVisits: []
   });
+
+  const runSeaServiceOverlapCheck = useCallback(() => {
+    const allSeaRows = [
+      ...(formData.currentCompanySeaService || []).filter((r: any) => !r.isVesselSynced),
+      ...(formData.externalSeaService || []),
+    ].filter((r: any) => !!(r.from || r.fromDate));
+
+    const newErrors: Record<string, string> = {};
+    for (let i = 0; i < allSeaRows.length; i++) {
+      for (let j = i + 1; j < allSeaRows.length; j++) {
+        const a = allSeaRows[i] as any;
+        const b = allSeaRows[j] as any;
+        const aFrom = a.from || a.fromDate || '';
+        const aTo = (a.to && a.to !== '') ? a.to : ((a.toDate && a.toDate !== '') ? a.toDate : null);
+        const bFrom = b.from || b.fromDate || '';
+        const bTo = (b.to && b.to !== '') ? b.to : ((b.toDate && b.toDate !== '') ? b.toDate : null);
+        if (!aFrom || !bFrom) continue;
+        const noOverlap =
+          (aTo !== null && aTo < bFrom) ||
+          (bTo !== null && bTo < aFrom);
+        if (!noOverlap) {
+          const aKey = a.id || a.seaUuid || `sea-${aFrom}`;
+          const bKey = b.id || b.seaUuid || `sea-${bFrom}`;
+          newErrors[aKey] = 'Sea service dates overlap with another record.';
+          newErrors[bKey] = 'Sea service dates overlap with another record.';
+        }
+      }
+    }
+    setSeaServiceDateErrors(newErrors);
+    return newErrors;
+  }, [formData.currentCompanySeaService, formData.externalSeaService]);
 
   // Helper function to calculate period in months between two dates (used for hydration)
   // Uses average days per month (30.44) for accurate calculation
