@@ -330,6 +330,7 @@ export function mapV2DocumentToLegacy(v2: any): any {
     expiry: v2?.expiry || v2?.expiryDate || '',
     issuingAuthority: v2?.issuingAuthority || '',
     issuingCountry: v2?.issuingCountryUuid || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -387,6 +388,7 @@ export function mapV2VisaToLegacy(v2: any): any {
     issued: v2?.issued || v2?.issuedDate || '',
     expiry: v2?.expiry || v2?.expiryDate || '',
     visaType: v2?.visaType || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -438,6 +440,7 @@ export function mapV2EducationToLegacy(v2: any): LegacyEducation {
     schoolCollegeUniversity: v2?.institution || '',
     subjectsField: v2?.subjectsField || '',
     qualifications: v2?.qualifications || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -500,6 +503,7 @@ export function mapV2LicenseToLegacy(v2: any): LegacyLicense {
     issued: v2?.issued || '',
     expiry: v2?.expiry || '',
     archivedAt: v2?.archivedAt || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -566,6 +570,7 @@ export function mapV2TrainingCourseToLegacy(v2: any): LegacyTrainingCourse {
     issuingCountry: v2?.issuingCountryUuid || '',
     issued: v2?.issued || '',
     expiry: v2?.expiry || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -644,6 +649,7 @@ export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
     toDate: v2?.toDate || '',
     periodMonths: v2?.periodMonths?.toString() || '',
     experienceCategories: v2?.experienceCategories || [],
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -706,6 +712,7 @@ export function mapV2PreJoiningMedicalToLegacy(v2: any): LegacyPreJoiningMedical
     fitnessForDuty: v2?.fitForDuty || '',
     expiryDate: v2?.expiryDate || '',
     expiry: v2?.expiryDate || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -765,6 +772,7 @@ export function mapV2DoctorVisitToLegacy(v2: any): LegacyDoctorVisit {
     diagnosis: v2?.diagnosis || '',
     treatment: v2?.treatment || '',
     followUpDate: v2?.followUpDate || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
