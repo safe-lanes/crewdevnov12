@@ -107,15 +107,18 @@ export const crewPoolApiV2 = {
   },
 
   async createChild(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/children`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/children`, data);
+    return response.json();
   },
 
   async updateChild(crewUuid: string, childUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/children/${childUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/children/${childUuid}`, data);
+    return response.json();
   },
 
   async deleteChild(crewUuid: string, childUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/children/${childUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/children/${childUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async getNextOfKin(crewUuid: string) {
@@ -125,7 +128,8 @@ export const crewPoolApiV2 = {
   },
 
   async saveNextOfKin(crewUuid: string, data: any) {
-    return apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/next-of-kin`, data);
+    const response = await apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/next-of-kin`, data);
+    return response.json();
   },
 
   async getDocuments(crewUuid: string) {
@@ -135,23 +139,28 @@ export const crewPoolApiV2 = {
   },
 
   async createDocument(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/documents`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/documents`, data);
+    return response.json();
   },
 
   async updateDocument(crewUuid: string, docUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}`, data);
+    return response.json();
   },
 
   async deleteDocument(crewUuid: string, docUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async addDocumentAttachment(crewUuid: string, docUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}/attachments`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}/attachments`, data);
+    return response.json();
   },
 
   async removeDocumentAttachment(crewUuid: string, docUuid: string, attUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}/attachments/${attUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/documents/${docUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async getVisas(crewUuid: string) {
@@ -161,23 +170,28 @@ export const crewPoolApiV2 = {
   },
 
   async createVisa(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/visas`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/visas`, data);
+    return response.json();
   },
 
   async updateVisa(crewUuid: string, visaUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}`, data);
+    return response.json();
   },
 
   async deleteVisa(crewUuid: string, visaUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async addVisaAttachment(crewUuid: string, visaUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}/attachments`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}/attachments`, data);
+    return response.json();
   },
 
   async removeVisaAttachment(crewUuid: string, visaUuid: string, attUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}/attachments/${attUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/visas/${visaUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async getEducation(crewUuid: string) {
@@ -187,23 +201,28 @@ export const crewPoolApiV2 = {
   },
 
   async createEducation(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/education`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/education`, data);
+    return response.json();
   },
 
   async updateEducation(crewUuid: string, eduUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}`, data);
+    return response.json();
   },
 
   async deleteEducation(crewUuid: string, eduUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async addEducationAttachment(crewUuid: string, eduUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}/attachments`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}/attachments`, data);
+    return response.json();
   },
 
   async removeEducationAttachment(crewUuid: string, eduUuid: string, attUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}/attachments/${attUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/education/${eduUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async getLicenses(crewUuid: string) {
@@ -213,27 +232,33 @@ export const crewPoolApiV2 = {
   },
 
   async createLicense(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/licenses`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/licenses`, data);
+    return response.json();
   },
 
   async updateLicense(crewUuid: string, licUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}`, data);
+    return response.json();
   },
 
   async deleteLicense(crewUuid: string, licUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async archiveLicense(crewUuid: string, licUuid: string) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}/archive`, {});
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}/archive`, {});
+    return response.json();
   },
 
   async addLicenseAttachment(crewUuid: string, licUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}/attachments`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}/attachments`, data);
+    return response.json();
   },
 
   async removeLicenseAttachment(crewUuid: string, licUuid: string, attUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}/attachments/${attUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/licenses/${licUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async getTrainingCourses(crewUuid: string) {
@@ -243,23 +268,28 @@ export const crewPoolApiV2 = {
   },
 
   async createTrainingCourse(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/training`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/training`, data);
+    return response.json();
   },
 
   async updateTrainingCourse(crewUuid: string, trainUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}`, data);
+    return response.json();
   },
 
   async deleteTrainingCourse(crewUuid: string, trainUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async addTrainingAttachment(crewUuid: string, trainUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}/attachments`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}/attachments`, data);
+    return response.json();
   },
 
   async removeTrainingAttachment(crewUuid: string, trainUuid: string, attUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}/attachments/${attUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/training/${trainUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async getSeaService(crewUuid: string) {
@@ -269,23 +299,28 @@ export const crewPoolApiV2 = {
   },
 
   async createSeaService(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sea-service`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sea-service`, data);
+    return response.json();
   },
 
   async updateSeaService(crewUuid: string, seaUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}`, data);
+    return response.json();
   },
 
   async deleteSeaService(crewUuid: string, seaUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async addSeaServiceAttachment(crewUuid: string, seaUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}/attachments`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}/attachments`, data);
+    return response.json();
   },
 
   async removeSeaServiceAttachment(crewUuid: string, seaUuid: string, attUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}/attachments/${attUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/sea-service/${seaUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async getMedicals(crewUuid: string) {
@@ -295,23 +330,28 @@ export const crewPoolApiV2 = {
   },
 
   async createMedical(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/medicals`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/medicals`, data);
+    return response.json();
   },
 
   async updateMedical(crewUuid: string, medUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}`, data);
+    return response.json();
   },
 
   async deleteMedical(crewUuid: string, medUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async addMedicalAttachment(crewUuid: string, medUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}/attachments`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}/attachments`, data);
+    return response.json();
   },
 
   async removeMedicalAttachment(crewUuid: string, medUuid: string, attUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}/attachments/${attUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/medicals/${medUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async getDoctorVisits(crewUuid: string) {
@@ -321,23 +361,28 @@ export const crewPoolApiV2 = {
   },
 
   async createDoctorVisit(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/doctor-visits`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/doctor-visits`, data);
+    return response.json();
   },
 
   async updateDoctorVisit(crewUuid: string, visitUuid: string, data: any) {
-    return apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}`, data);
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}`, data);
+    return response.json();
   },
 
   async deleteDoctorVisit(crewUuid: string, visitUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async addDoctorVisitAttachment(crewUuid: string, visitUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}/attachments`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}/attachments`, data);
+    return response.json();
   },
 
   async removeDoctorVisitAttachment(crewUuid: string, visitUuid: string, attUuid: string) {
-    return apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}/attachments/${attUuid}`);
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/doctor-visits/${visitUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
   },
 
   async getVesselTypesApplied(crewUuid: string) {
@@ -347,7 +392,8 @@ export const crewPoolApiV2 = {
   },
 
   async saveVesselTypesApplied(crewUuid: string, vesselTypeUuids: string[]) {
-    return apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/vessel-types`, { vesselTypeUuids });
+    const response = await apiRequest('PUT', `${V2_BASE}/crew/${crewUuid}/vessel-types`, { vesselTypeUuids });
+    return response.json();
   },
 
   async getAssignments(crewUuid: string) {
@@ -357,10 +403,12 @@ export const crewPoolApiV2 = {
   },
 
   async assignToVessel(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/assign`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/assign`, data);
+    return response.json();
   },
 
   async signOff(crewUuid: string, data: any) {
-    return apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sign-off`, data);
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sign-off`, data);
+    return response.json();
   },
 };

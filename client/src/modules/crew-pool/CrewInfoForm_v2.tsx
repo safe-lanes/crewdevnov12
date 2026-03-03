@@ -85,8 +85,41 @@ import {
   mapLegacyCrewToV2, 
   mapLegacyPersonalDetailsToV2, 
   mapLegacyAddressToV2, 
-  mapLegacyFamilyInfoToV2 
+  mapLegacyFamilyInfoToV2,
+  mapLegacyDocumentToV2,
+  mapLegacyVisaToV2,
+  mapLegacyEducationToV2,
+  mapLegacyLicenseToV2,
+  mapLegacyTrainingCourseToV2,
+  mapLegacySeaServiceToV2,
+  mapLegacyPreJoiningMedicalToV2,
+  mapLegacyDoctorVisitToV2,
 } from './mappers/v2ToLegacyMapper';
+
+function getCrewUserId(): string | null {
+  try {
+    return localStorage.getItem("crewUserId") || null;
+  } catch {
+    return null;
+  }
+}
+
+function withAuditUser<T>(data: T): T {
+  const auditUserUuid = getCrewUserId();
+  if (Array.isArray(data)) {
+    return data.map(item => 
+      typeof item === 'object' && item !== null 
+        ? { ...item, auditUserUuid } 
+        : item
+    ) as T;
+  }
+  if (typeof data === 'object' && data !== null) {
+    return { ...data, auditUserUuid };
+  }
+  return data;
+}
+
+const V2_QUERY_KEY = '/api/v2/crew-pool';
 
 interface CrewMember {
   id: string;
@@ -5720,656 +5753,713 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     // but createdCrewId holds the UUID of the just-created record
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (crewIdentifier) {
-      // Update existing crew member using crewUuid
-      updateCrewMutation.mutate({ id: crewIdentifier, data: dataWithPhoto });
-      
-      // V2: Also save section data to their respective tables
-      // Personal Details (A1.1 fields like height, weight, DOB, languages, etc.)
-      const personalDetailsData = {
-        height: formData.heightCm,
-        weight: formData.weightKg,
-        bmi: formData.bmi,
-        dob: formData.dateOfBirth,
-        placeOfBirthCity: formData.placeOfBirthCity,
-        placeOfBirthCountry: formData.placeOfBirthCountry,
-        nativeLanguage: formData.nativeLanguage,
-        foreignLanguages: formData.foreignLanguages,
-        englishProficiency: formData.englishProficiency,
-        manningAgent: formData.manningAgent,
-        crewPool: formData.crewPool,
-      };
-      console.log('V2 Saving Personal Details:', { crewUuid: crewIdentifier, data: personalDetailsData });
-      savePersonalDetailsMutationV2.mutate({ crewUuid: crewIdentifier, data: personalDetailsData });
-      
-      // Address (A1.2 fields)
-      const addressData = {
-        countryOfResidence: formData.countryOfResidence,
-        nearestAirport: formData.nearestAirport,
-        residentialAddressLine1: formData.residentialAddressLine1,
-        residentialAddressLine2: formData.residentialAddressLine2,
-        contactLandline: formData.contactLandline,
-        mobile: formData.mobile,
-        email: formData.email,
-      };
-      console.log('V2 Saving Address:', { crewUuid: crewIdentifier, data: addressData });
-      saveAddressMutationV2.mutate({ crewUuid: crewIdentifier, data: addressData });
-      
-      // Family Info (A1.3 fields)
-      const familyInfoData = {
-        maritalStatus: formData.maritalStatus,
-        numberOfDependentChildren: formData.numberOfDependentChildren,
-        fatherName: formData.fatherName,
-        motherName: formData.motherName,
-        spouseFirstName: formData.spouseFirstName,
-        spouseMiddleName: formData.spouseMiddleName,
-        spouseFamilyName: formData.spouseFamilyName,
-        spouseDateOfBirth: formData.spouseDateOfBirth,
-      };
-      console.log('V2 Saving Family Info:', { crewUuid: crewIdentifier, data: familyInfoData });
-      saveFamilyInfoMutationV2.mutate({ crewUuid: crewIdentifier, data: familyInfoData });
-      
-      // Children (A1.3 - array of child records)
-      if (deletedChildUuids.length > 0) {
-        console.log('V2 Deleting Children:', { crewUuid: crewIdentifier, count: deletedChildUuids.length, uuids: deletedChildUuids });
-        deletedChildUuids.forEach(childUuid => {
-          deleteChildMutationV2.mutate({ crewUuid: crewIdentifier, childUuid });
-        });
-        setDeletedChildUuids([]);
-      }
-      if (formData.children && formData.children.length > 0) {
-        console.log('V2 Saving Children:', { crewUuid: crewIdentifier, count: formData.children.length });
-        formData.children.forEach((child: any) => {
-          const childData = {
-            firstName: child.firstName,
-            middleName: child.middleName,
-            familyName: child.familyName,
-            dateOfBirth: child.dateOfBirth,
-            gender: child.gender,
-          };
-          saveChildMutationV2.mutate({ 
-            crewUuid: crewIdentifier, 
-            data: childData, 
-            childUuid: child.childUuid 
-          });
-        });
-      }
-      
-      // Next of Kin (NOK) - single record
-      const nokData = {
-        firstName: formData.nokFirstName,
-        middleName: formData.nokMiddleName,
-        familyName: formData.nokFamilyName,
-        relationship: formData.nokRelationship,
-        telephone: formData.nokTelephone,
-        email: formData.nokEmail,
-        address: formData.nokAddress,
-      };
-      // Only save if any NOK field has a value
-      if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
-        console.log('V2 Saving Next of Kin:', { crewUuid: crewIdentifier, data: nokData });
-        saveNextOfKinMutationV2.mutate({ crewUuid: crewIdentifier, data: nokData });
-      }
-      
-      // Vessel Types Applied (A5 - array of vessel type UUIDs)
-      // The form stores vesselType as an array of vessel type names/UUIDs
-      if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
-        console.log('V2 Saving Vessel Types:', { crewUuid: crewIdentifier, vesselTypes: formData.vesselType });
-        saveVesselTypesMutationV2.mutate({ crewUuid: crewIdentifier, vesselTypeUuids: formData.vesselType });
-      }
-      
-      // BATCHED SAVE: Process saves in sequential batches to prevent database connection exhaustion
-      // This is a production-critical pattern that prevents "too many clients" errors
-      const batchErrors: string[] = [];
-      const uuidUpdates: { section: string; localId: string; uuid: string }[] = [];
-      const processBatch = async (batchName: string, operations: (() => Promise<any>)[]) => {
-        if (operations.length === 0) return;
-        console.log(`V2 Processing batch: ${batchName} (${operations.length} operations)`);
-        
-        // Process operations in smaller sub-batches of 3 to prevent connection spikes
-        const subBatchSize = 3;
-        for (let i = 0; i < operations.length; i += subBatchSize) {
-          const subBatch = operations.slice(i, i + subBatchSize);
-          const results = await Promise.allSettled(subBatch.map(op => op()));
-          results.forEach((result, idx) => {
-            if (result.status === 'rejected') {
-              const errMsg = result.reason?.message || String(result.reason);
-              console.error(`V2 Error in batch ${batchName}, item ${i + idx + 1}:`, result.reason);
-              batchErrors.push(`${batchName}: ${errMsg}`);
-            }
-          });
-        }
-        console.log(`V2 Completed batch: ${batchName}`);
-      };
-      
-      // Collect operations into batches instead of firing immediately
-      const batch1Operations: (() => Promise<any>)[] = []; // Documents + Visas
-      const batch2Operations: (() => Promise<any>)[] = []; // Education + Licenses
-      const batch3Operations: (() => Promise<any>)[] = []; // Training + Sea Service
-      const batch4Operations: (() => Promise<any>)[] = []; // Medicals + Doctor Visits
-      
-      // Documents (Part C - C1 Travel and Identification Docs) - Add to Batch 1
-      if (formData.documents && formData.documents.length > 0) {
-        console.log('V2 Preparing Documents for batch:', { crewUuid: crewIdentifier, count: formData.documents.length });
-        formData.documents.forEach((doc: any, index: number) => {
-          const docAttachments = doc.attachments || [];
-          const capturedNewAttachments = [...docAttachments.filter((att: any) => !att.attUuid || att.isNew)];
-          const capturedDeletedAttachments = [...docAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const docData = {
-            docUuid: doc.docUuid,
-            documentId: doc.documentId || doc.document || '',
-            documentName: doc.document || doc.documentId || '',
-            number: doc.number || '',
-            issued: doc.issued || '',
-            expiry: doc.expiry || '',
-            issuingAuthority: doc.issuingAuthority || '',
-            issuingCountryUuid: doc.issuingCountry || '',
-            sortOrder: index,
-          };
-          
-          const capturedLocalId = doc.id;
-          batch1Operations.push(async () => {
-            const savedDoc = await saveDocumentMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: docData, 
-              docUuid: doc.docUuid 
-            });
-            const savedDocUuid = savedDoc?.docUuid || doc.docUuid;
-            if (savedDocUuid && !doc.docUuid) {
-              uuidUpdates.push({ section: 'documents', localId: capturedLocalId, uuid: savedDocUuid });
-            }
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeDocumentAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                docUuid: savedDocUuid,
-                attUuid: att.attUuid
-              });
-            }
-            for (const att of capturedNewAttachments) {
-              await addDocumentAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                docUuid: savedDocUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-              });
-            }
-            return savedDoc;
-          });
-        });
-      }
-      
-      // Visas (Part C - C2 Visas) - Add to Batch 1
-      if (formData.visas && formData.visas.length > 0) {
-        console.log('V2 Preparing Visas for batch:', { crewUuid: crewIdentifier, count: formData.visas.length });
-        formData.visas.forEach((visa: any, index: number) => {
-          const visaAttachments = visa.attachments || [];
-          const capturedNewAttachments = [...visaAttachments.filter((att: any) => !att.attUuid || att.isNew)];
-          const capturedDeletedAttachments = [...visaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const visaData = {
-            visaUuid: visa.visaUuid,
-            country: visa.issuingCountry || visa.country || '',
-            serialNo: visa.serialNo || visa.serialNumber || '',
-            issued: visa.issued || '',
-            expiry: visa.expiry || '',
-            visaType: visa.visaType || '',
-            sortOrder: index,
-          };
-          
-          const capturedVisaLocalId = visa.id;
-          batch1Operations.push(async () => {
-            const savedVisa = await saveVisaMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: visaData, 
-              visaUuid: visa.visaUuid 
-            });
-            const savedVisaUuid = savedVisa?.visaUuid || visa.visaUuid;
-            if (savedVisaUuid && !visa.visaUuid) {
-              uuidUpdates.push({ section: 'visas', localId: capturedVisaLocalId, uuid: savedVisaUuid });
-            }
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeVisaAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                visaUuid: savedVisaUuid,
-                attUuid: att.attUuid
-              });
-            }
-            for (const att of capturedNewAttachments) {
-              await addVisaAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                visaUuid: savedVisaUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
-              });
-            }
-            return savedVisa;
-          });
-        });
-      }
-      
-      // Education (Part D - D1) - Add to Batch 2
-      if (formData.education && formData.education.length > 0) {
-        console.log('V2 Preparing Education for batch:', { crewUuid: crewIdentifier, count: formData.education.length });
-        formData.education.forEach((edu: any, index: number) => {
-          const eduAttachments = edu.attachments || [];
-          const capturedNewAttachments = [...eduAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...eduAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const eduData = {
-            id: edu.id,
-            eduUuid: edu.eduUuid,
-            dateOfCompletion: edu.dateOfCompletion || '',
-            schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
-            subjectsField: edu.subjectsField || '',
-            qualifications: edu.qualifications || '',
-            sortOrder: index,
-          };
-          
-          const capturedEduLocalId = edu.id;
-          batch2Operations.push(async () => {
-            const savedEduUuid = edu.eduUuid;
-            if (savedEduUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeEducationAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  eduUuid: savedEduUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            const savedEdu = await saveEducationMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: eduData, 
-              eduUuid: edu.eduUuid,
-              attachments: capturedNewAttachments
-            });
-            const returnedEduUuid = savedEdu?.eduUuid || edu.eduUuid;
-            if (returnedEduUuid && !edu.eduUuid) {
-              uuidUpdates.push({ section: 'education', localId: capturedEduLocalId, uuid: returnedEduUuid });
-            }
-            return savedEdu;
-          });
-        });
-      }
-      
-      // Licenses (Part D - D2) - Add to Batch 2
-      if (formData.licenses && formData.licenses.length > 0) {
-        console.log('V2 Preparing Licenses for batch:', { crewUuid: crewIdentifier, count: formData.licenses.length });
-        formData.licenses.forEach((lic: any, index: number) => {
-          const licAttachments = lic.attachments || [];
-          const capturedNewAttachments = [...licAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...licAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const licData = {
-            id: lic.id,
-            licUuid: lic.licUuid,
-            licenseId: lic.licenseId || '',
-            certificateDocument: lic.certificateDocument || '',
-            abbr: lic.abbr || '',
-            requirement: lic.requirement || '',
-            certificateNo: lic.certificateNo || '',
-            issuingAuthority: lic.issuingAuthority || '',
-            issuingCountry: lic.issuingCountry || '',
-            issued: lic.issued || '',
-            expiry: lic.expiry || '',
-            archivedAt: lic.archivedAt || '',
-            sortOrder: index,
-          };
-          
-          const capturedLicLocalId = lic.id;
-          batch2Operations.push(async () => {
-            const savedLicUuid = lic.licUuid;
-            if (savedLicUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeLicenseAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  licUuid: savedLicUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            const savedLic = await saveLicenseMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: licData, 
-              licUuid: lic.licUuid,
-              attachments: capturedNewAttachments
-            });
-            const returnedLicUuid = savedLic?.licUuid || lic.licUuid;
-            if (returnedLicUuid && !lic.licUuid) {
-              uuidUpdates.push({ section: 'licenses', localId: capturedLicLocalId, uuid: returnedLicUuid });
-            }
-            return savedLic;
-          });
-        });
-      }
-      
-      // Training Courses (Part D - D3) - Add to Batch 3
-      if (formData.trainingCourses && formData.trainingCourses.length > 0) {
-        console.log('V2 Preparing Training Courses for batch:', { crewUuid: crewIdentifier, count: formData.trainingCourses.length });
-        formData.trainingCourses.forEach((train: any, index: number) => {
-          const trainAttachments = train.attachments || [];
-          const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...trainAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const trainData = {
-            id: train.id,
-            trainUuid: train.trainUuid,
-            courseId: train.courseId || '',
-            trainingCourse: train.trainingCourse || '',
-            abbr: train.abbr || '',
-            requirement: train.requirement || '',
-            certificateNo: train.certificateNo || '',
-            issuingAuthority: train.issuingAuthority || '',
-            issuingCountry: train.issuingCountry || '',
-            issued: train.issued || '',
-            expiry: train.expiry || '',
-            sortOrder: index,
-          };
-          
-          const capturedTrainLocalId = train.id;
-          batch3Operations.push(async () => {
-            const savedTrainUuid = train.trainUuid;
-            if (savedTrainUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeTrainingAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  trainUuid: savedTrainUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            const savedTrain = await saveTrainingCourseMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: trainData, 
-              trainUuid: train.trainUuid,
-              attachments: capturedNewAttachments
-            });
-            const returnedTrainUuid = savedTrain?.trainUuid || train.trainUuid;
-            if (returnedTrainUuid && !train.trainUuid) {
-              uuidUpdates.push({ section: 'trainingCourses', localId: capturedTrainLocalId, uuid: returnedTrainUuid });
-            }
-            return savedTrain;
-          });
-        });
-      }
-      
-      // Sea Service - Company (Part E - E1) - Add to Batch 3
-      if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
-        console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.currentCompanySeaService.length });
-        formData.currentCompanySeaService.forEach((sea: any, index: number) => {
-          const seaAttachments = sea.attachments || [];
-          const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          // For vessel-synced rows, pass locked fields through unchanged to avoid overwriting vessel assignment data
-          const isSeaSynced = !!sea.isVesselSynced && !!sea.seaUuid;
-          const seaData: LegacySeaService = {
-            seaUuid: sea.seaUuid,
-            isCompanyService: true,
-            vesselName: sea.vesselName || '',
-            vesselCode: sea.vesselCode || '',
-            vesselType: sea.vesselType || '',
-            rank: sea.rank || '',
-            from: sea.from || sea.fromDate || '',
-            to: sea.to || sea.toDate || '',
-            fromDate: sea.from || sea.fromDate || '',
-            toDate: sea.to || sea.toDate || '',
-            // Always editable
-            deadweight: sea.deadweight || '',
-            engineTypePower: sea.engineTypePower || '',
-            ownerOperator: sea.ownerOperator || '',
-            periodMonths: sea.periodMonths || '',
-            experienceCategories: sea.experienceCategories || [],
-            sortOrder: index,
-            ...(isSeaSynced ? { _skipLockedFields: true } : {}),
-          } as LegacySeaService;
-          
-          const capturedCompanySeaLocalId = sea.id;
-          batch3Operations.push(async () => {
-            const savedSeaUuid = sea.seaUuid;
-            if (savedSeaUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeSeaServiceAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  seaUuid: savedSeaUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            const savedSea = await saveSeaServiceMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: seaData, 
-              seaUuid: sea.seaUuid,
-              attachments: capturedNewAttachments
-            });
-            const returnedSeaUuid = savedSea?.seaUuid || sea.seaUuid;
-            if (returnedSeaUuid && !sea.seaUuid) {
-              uuidUpdates.push({ section: 'currentCompanySeaService', localId: capturedCompanySeaLocalId, uuid: returnedSeaUuid });
-            }
-            return savedSea;
-          });
-        });
-      }
-      
-      // Sea Service - External (Part E - E2) - Add to Batch 3
-      if (formData.externalSeaService && formData.externalSeaService.length > 0) {
-        console.log('V2 Preparing External Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.externalSeaService.length });
-        formData.externalSeaService.forEach((sea: any, index: number) => {
-          const seaAttachments = sea.attachments || [];
-          const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const seaData: LegacySeaService = {
-            seaUuid: sea.seaUuid,
-            isCompanyService: false,
-            vesselName: sea.vesselName || '',
-            vesselCode: sea.vesselCode || '',
-            vesselType: sea.vesselType || '',
-            deadweight: sea.deadweight || '',
-            engineTypePower: sea.engineTypePower || '',
-            ownerOperator: sea.ownerOperator || '',
-            rank: sea.rank || '',
-            from: sea.from || sea.fromDate || '',
-            to: sea.to || sea.toDate || '',
-            fromDate: sea.from || sea.fromDate || '',
-            toDate: sea.to || sea.toDate || '',
-            periodMonths: sea.periodMonths || '',
-            experienceCategories: sea.experienceCategories || [],
-            sortOrder: index,
-          };
-          
-          const capturedExtSeaLocalId = sea.id;
-          batch3Operations.push(async () => {
-            const savedSeaUuid = sea.seaUuid;
-            if (savedSeaUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeSeaServiceAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  seaUuid: savedSeaUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            const savedSea = await saveSeaServiceMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: seaData, 
-              seaUuid: sea.seaUuid,
-              attachments: capturedNewAttachments
-            });
-            const returnedSeaUuid = savedSea?.seaUuid || sea.seaUuid;
-            if (returnedSeaUuid && !sea.seaUuid) {
-              uuidUpdates.push({ section: 'externalSeaService', localId: capturedExtSeaLocalId, uuid: returnedSeaUuid });
-            }
-            return savedSea;
-          });
-        });
-      }
-      
-      // Pre-Joining Medicals (Part F - F1) - Add to Batch 4
-      const nonEmptyMedicals = (formData.preJoiningMedicals || []).filter((med: any) => {
-        if (med.medUuid) return true;
-        const hasAttachments = (med.attachments || []).some((att: any) => !att.isDeleted);
-        return (med.vesselCode || med.vessel || med.dateOfMedical || med.bp || med.weight || med.anyMedicationPrescribed || med.clinicHospital || med.fitnessForDuty || med.expiry || hasAttachments);
-      });
-      if (nonEmptyMedicals.length > 0) {
-        console.log('V2 Preparing Pre-Joining Medicals for batch:', { crewUuid: crewIdentifier, count: nonEmptyMedicals.length });
-        nonEmptyMedicals.forEach((med: any, index: number) => {
-          const medAttachments = med.attachments || [];
-          const capturedNewAttachments = [...medAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...medAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const medData: LegacyPreJoiningMedical = {
-            medUuid: med.medUuid,
-            vesselCode: med.vesselCode || '',
-            vesselName: med.vessel || '',
-            vessel: med.vessel || '',
-            dateOfMedical: med.dateOfMedical || '',
-            bp: med.bp || '',
-            weight: med.weight || '',
-            anyMedicationPrescribed: med.anyMedicationPrescribed || '',
-            clinicHospital: med.clinicHospital || '',
-            fitnessForDuty: med.fitnessForDuty || '',
-            expiryDate: med.expiry || '',
-            expiry: med.expiry || '',
-            sortOrder: index,
-          };
-          
-          const capturedMedLocalId = med.id;
-          batch4Operations.push(async () => {
-            const savedMedUuid = med.medUuid;
-            if (savedMedUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeMedicalAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  medUuid: savedMedUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            const savedMed = await saveMedicalMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: medData, 
-              medUuid: med.medUuid,
-              attachments: capturedNewAttachments
-            });
-            const returnedMedUuid = savedMed?.medUuid || med.medUuid;
-            if (returnedMedUuid && !med.medUuid) {
-              uuidUpdates.push({ section: 'preJoiningMedicals', localId: capturedMedLocalId, uuid: returnedMedUuid });
-            }
-            return savedMed;
-          });
-        });
-      }
-      
-      // Doctor Visits (Part F - F2) - Add to Batch 4
-      const nonEmptyVisits = (formData.doctorVisits || []).filter((visit: any) => {
-        if (visit.visitUuid) return true;
-        const hasAttachments = (visit.attachments || []).some((att: any) => !att.isDeleted);
-        return (visit.vessel || visit.port || visit.date || visit.complaint || visit.doctorComments || visit.doctorName || visit.clinicHospital || visit.diagnosis || visit.treatment || visit.followUpDate || hasAttachments);
-      });
-      if (nonEmptyVisits.length > 0) {
-        console.log('V2 Preparing Doctor Visits for batch:', { crewUuid: crewIdentifier, count: nonEmptyVisits.length });
-        nonEmptyVisits.forEach((visit: any, index: number) => {
-          const visitAttachments = visit.attachments || [];
-          const capturedNewAttachments = [...visitAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...visitAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const visitData: LegacyDoctorVisit = {
-            visitUuid: visit.visitUuid,
-            vessel: visit.vessel || '',
-            port: visit.port || '',
-            date: visit.date || '',
-            visitDate: visit.date || '',
-            doctorName: visit.doctorName || '',
-            clinicHospital: visit.clinicHospital || '',
-            complaint: visit.complaint || '',
-            doctorComments: visit.doctorComments || '',
-            diagnosis: visit.diagnosis || '',
-            treatment: visit.treatment || '',
-            followUpDate: visit.followUpDate || '',
-            sortOrder: index,
-          };
-          
-          const capturedVisitLocalId = visit.id;
-          batch4Operations.push(async () => {
-            const savedVisitUuid = visit.visitUuid;
-            if (savedVisitUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeDoctorVisitAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  visitUuid: savedVisitUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            const savedVisit = await saveDoctorVisitMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: visitData, 
-              visitUuid: visit.visitUuid,
-              attachments: capturedNewAttachments
-            });
-            const returnedVisitUuid = savedVisit?.visitUuid || visit.visitUuid;
-            if (returnedVisitUuid && !visit.visitUuid) {
-              uuidUpdates.push({ section: 'doctorVisits', localId: capturedVisitLocalId, uuid: returnedVisitUuid });
-            }
-            return savedVisit;
-          });
-        });
-      }
-      
-      // EXECUTE BATCHES SEQUENTIALLY - Critical for preventing database connection exhaustion
-      // This pattern ensures we never have more than ~3 concurrent connections
       isBatchSavingRef.current = true;
       (async () => {
+        const batchErrors: string[] = [];
+        const uuidUpdates: { section: string; localId: string; uuid: string }[] = [];
         try {
+          console.log('V2 Starting save — all operations use direct API calls to prevent mid-save cache invalidation');
+
+          const nonBatchOps: (() => Promise<any>)[] = [];
+          nonBatchOps.push(async () => {
+            const v2Crew = withAuditUser(mapLegacyCrewToV2(dataWithPhoto));
+            await crewPoolApiV2.updateCrew(crewIdentifier, v2Crew);
+          });
+          const personalDetailsData = {
+            height: formData.heightCm,
+            weight: formData.weightKg,
+            bmi: formData.bmi,
+            dob: formData.dateOfBirth,
+            placeOfBirthCity: formData.placeOfBirthCity,
+            placeOfBirthCountry: formData.placeOfBirthCountry,
+            nativeLanguage: formData.nativeLanguage,
+            foreignLanguages: formData.foreignLanguages,
+            englishProficiency: formData.englishProficiency,
+            manningAgent: formData.manningAgent,
+            crewPool: formData.crewPool,
+          };
+          nonBatchOps.push(async () => {
+            const v2Personal = withAuditUser(mapLegacyPersonalDetailsToV2(personalDetailsData));
+            await crewPoolApiV2.savePersonalDetails(crewIdentifier, v2Personal);
+          });
+          const addressData = {
+            countryOfResidence: formData.countryOfResidence,
+            nearestAirport: formData.nearestAirport,
+            residentialAddressLine1: formData.residentialAddressLine1,
+            residentialAddressLine2: formData.residentialAddressLine2,
+            contactLandline: formData.contactLandline,
+            mobile: formData.mobile,
+            email: formData.email,
+          };
+          nonBatchOps.push(async () => {
+            const v2Address = withAuditUser(mapLegacyAddressToV2(addressData));
+            await crewPoolApiV2.saveAddress(crewIdentifier, v2Address);
+          });
+          const familyInfoData = {
+            maritalStatus: formData.maritalStatus,
+            numberOfDependentChildren: formData.numberOfDependentChildren,
+            fatherName: formData.fatherName,
+            motherName: formData.motherName,
+            spouseFirstName: formData.spouseFirstName,
+            spouseMiddleName: formData.spouseMiddleName,
+            spouseFamilyName: formData.spouseFamilyName,
+            spouseDateOfBirth: formData.spouseDateOfBirth,
+          };
+          nonBatchOps.push(async () => {
+            const v2Family = withAuditUser(mapLegacyFamilyInfoToV2(familyInfoData));
+            await crewPoolApiV2.saveFamilyInfo(crewIdentifier, v2Family);
+          });
+
+          const nonBatchResults = await Promise.allSettled(nonBatchOps.map(op => op()));
+          nonBatchResults.forEach((result, idx) => {
+            if (result.status === 'rejected') {
+              const errMsg = result.reason?.message || String(result.reason);
+              console.error(`V2 Error in non-batch op ${idx + 1}:`, result.reason);
+              batchErrors.push(`Non-batch: ${errMsg}`);
+            }
+          });
+
+          const miscOps: (() => Promise<any>)[] = [];
+          if (deletedChildUuids.length > 0) {
+            for (const childUuid of deletedChildUuids) {
+              miscOps.push(async () => {
+                try { await crewPoolApiV2.deleteChild(crewIdentifier, childUuid); } catch (e) { /* ignore */ }
+              });
+            }
+            setDeletedChildUuids([]);
+          }
+          if (formData.children && formData.children.length > 0) {
+            formData.children.forEach((child: any) => {
+              const childData = {
+                firstName: child.firstName,
+                middleName: child.middleName,
+                familyName: child.familyName,
+                dateOfBirth: child.dateOfBirth,
+                gender: child.gender,
+              };
+              miscOps.push(async () => {
+                if (child.childUuid) {
+                  await crewPoolApiV2.updateChild(crewIdentifier, child.childUuid, childData);
+                } else {
+                  await crewPoolApiV2.createChild(crewIdentifier, childData);
+                }
+              });
+            });
+          }
+
+          const nokData = {
+            firstName: formData.nokFirstName,
+            middleName: formData.nokMiddleName,
+            familyName: formData.nokFamilyName,
+            relationship: formData.nokRelationship,
+            telephone: formData.nokTelephone,
+            email: formData.nokEmail,
+            address: formData.nokAddress,
+          };
+          if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
+            miscOps.push(async () => {
+              await crewPoolApiV2.saveNextOfKin(crewIdentifier, nokData);
+            });
+          }
+
+          if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
+            miscOps.push(async () => {
+              await crewPoolApiV2.saveVesselTypesApplied(crewIdentifier, formData.vesselType);
+            });
+          }
+
+          if (miscOps.length > 0) {
+            const miscResults = await Promise.allSettled(miscOps.map(op => op()));
+            miscResults.forEach((result, idx) => {
+              if (result.status === 'rejected') {
+                console.error(`V2 Error in misc op ${idx + 1}:`, result.reason);
+              }
+            });
+          }
+
+          const processBatch = async (batchName: string, operations: (() => Promise<any>)[]) => {
+            if (operations.length === 0) return;
+            console.log(`V2 Processing batch: ${batchName} (${operations.length} operations)`);
+            const subBatchSize = 3;
+            for (let i = 0; i < operations.length; i += subBatchSize) {
+              const subBatch = operations.slice(i, i + subBatchSize);
+              const results = await Promise.allSettled(subBatch.map(op => op()));
+              results.forEach((result, idx) => {
+                if (result.status === 'rejected') {
+                  const errMsg = result.reason?.message || String(result.reason);
+                  console.error(`V2 Error in batch ${batchName}, item ${i + idx + 1}:`, result.reason);
+                  batchErrors.push(`${batchName}: ${errMsg}`);
+                }
+              });
+            }
+            console.log(`V2 Completed batch: ${batchName}`);
+          };
+
+          const batch1Operations: (() => Promise<any>)[] = [];
+          const batch2Operations: (() => Promise<any>)[] = [];
+          const batch3Operations: (() => Promise<any>)[] = [];
+          const batch4Operations: (() => Promise<any>)[] = [];
+
+          if (formData.documents && formData.documents.length > 0) {
+            console.log('V2 Preparing Documents for batch:', { crewUuid: crewIdentifier, count: formData.documents.length });
+            formData.documents.forEach((doc: any, index: number) => {
+              const docAttachments = doc.attachments || [];
+              const capturedNewAttachments = [...docAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+              const capturedDeletedAttachments = [...docAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const docData = {
+                docUuid: doc.docUuid,
+                documentId: doc.documentId || doc.document || '',
+                documentName: doc.document || doc.documentId || '',
+                number: doc.number || '',
+                issued: doc.issued || '',
+                expiry: doc.expiry || '',
+                issuingAuthority: doc.issuingAuthority || '',
+                issuingCountryUuid: doc.issuingCountry || '',
+                sortOrder: index,
+              };
+
+              const capturedLocalId = doc.id;
+              batch1Operations.push(async () => {
+                const v2Data = withAuditUser(mapLegacyDocumentToV2(docData));
+                let savedDoc: any;
+                if (doc.docUuid) {
+                  savedDoc = await crewPoolApiV2.updateDocument(crewIdentifier, doc.docUuid, v2Data);
+                } else {
+                  savedDoc = await crewPoolApiV2.createDocument(crewIdentifier, v2Data);
+                }
+                const savedDocUuid = savedDoc?.docUuid || savedDoc?.doc_uuid || doc.docUuid;
+                if (savedDocUuid && !doc.docUuid) {
+                  uuidUpdates.push({ section: 'documents', localId: capturedLocalId, uuid: savedDocUuid });
+                }
+
+                for (const att of capturedDeletedAttachments) {
+                  await crewPoolApiV2.removeDocumentAttachment(crewIdentifier, savedDocUuid, att.attUuid);
+                }
+                for (const att of capturedNewAttachments) {
+                  await crewPoolApiV2.addDocumentAttachment(crewIdentifier, savedDocUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                }
+                return savedDoc;
+              });
+            });
+          }
+
+          if (formData.visas && formData.visas.length > 0) {
+            console.log('V2 Preparing Visas for batch:', { crewUuid: crewIdentifier, count: formData.visas.length });
+            formData.visas.forEach((visa: any, index: number) => {
+              const visaAttachments = visa.attachments || [];
+              const capturedNewAttachments = [...visaAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+              const capturedDeletedAttachments = [...visaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const visaData = {
+                visaUuid: visa.visaUuid,
+                country: visa.issuingCountry || visa.country || '',
+                serialNo: visa.serialNo || visa.serialNumber || '',
+                issued: visa.issued || '',
+                expiry: visa.expiry || '',
+                visaType: visa.visaType || '',
+                sortOrder: index,
+              };
+
+              const capturedVisaLocalId = visa.id;
+              batch1Operations.push(async () => {
+                const v2Data = withAuditUser(mapLegacyVisaToV2(visaData));
+                let savedVisa: any;
+                if (visa.visaUuid) {
+                  savedVisa = await crewPoolApiV2.updateVisa(crewIdentifier, visa.visaUuid, v2Data);
+                } else {
+                  savedVisa = await crewPoolApiV2.createVisa(crewIdentifier, v2Data);
+                }
+                const savedVisaUuid = savedVisa?.visaUuid || savedVisa?.visa_uuid || visa.visaUuid;
+                if (savedVisaUuid && !visa.visaUuid) {
+                  uuidUpdates.push({ section: 'visas', localId: capturedVisaLocalId, uuid: savedVisaUuid });
+                }
+
+                for (const att of capturedDeletedAttachments) {
+                  await crewPoolApiV2.removeVisaAttachment(crewIdentifier, savedVisaUuid, att.attUuid);
+                }
+                for (const att of capturedNewAttachments) {
+                  await crewPoolApiV2.addVisaAttachment(crewIdentifier, savedVisaUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                }
+                return savedVisa;
+              });
+            });
+          }
+
+          if (formData.education && formData.education.length > 0) {
+            console.log('V2 Preparing Education for batch:', { crewUuid: crewIdentifier, count: formData.education.length });
+            formData.education.forEach((edu: any, index: number) => {
+              const eduAttachments = edu.attachments || [];
+              const capturedNewAttachments = [...eduAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...eduAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const eduData = {
+                id: edu.id,
+                eduUuid: edu.eduUuid,
+                dateOfCompletion: edu.dateOfCompletion || '',
+                schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
+                subjectsField: edu.subjectsField || '',
+                qualifications: edu.qualifications || '',
+                sortOrder: index,
+              };
+
+              const capturedEduLocalId = edu.id;
+              batch2Operations.push(async () => {
+                if (edu.eduUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeEducationAttachment(crewIdentifier, edu.eduUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyEducationToV2(eduData));
+                let savedEdu: any;
+                let entityUuid: string;
+                if (edu.eduUuid) {
+                  savedEdu = await crewPoolApiV2.updateEducation(crewIdentifier, edu.eduUuid, v2Data);
+                  entityUuid = edu.eduUuid;
+                } else {
+                  savedEdu = await crewPoolApiV2.createEducation(crewIdentifier, v2Data);
+                  entityUuid = savedEdu?.eduUuid || savedEdu?.edu_uuid;
+                }
+                if (entityUuid && !edu.eduUuid) {
+                  uuidUpdates.push({ section: 'education', localId: capturedEduLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addEducationAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedEdu;
+              });
+            });
+          }
+
+          if (formData.licenses && formData.licenses.length > 0) {
+            console.log('V2 Preparing Licenses for batch:', { crewUuid: crewIdentifier, count: formData.licenses.length });
+            formData.licenses.forEach((lic: any, index: number) => {
+              const licAttachments = lic.attachments || [];
+              const capturedNewAttachments = [...licAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...licAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const licData = {
+                id: lic.id,
+                licUuid: lic.licUuid,
+                licenseId: lic.licenseId || '',
+                certificateDocument: lic.certificateDocument || '',
+                abbr: lic.abbr || '',
+                requirement: lic.requirement || '',
+                certificateNo: lic.certificateNo || '',
+                issuingAuthority: lic.issuingAuthority || '',
+                issuingCountry: lic.issuingCountry || '',
+                issued: lic.issued || '',
+                expiry: lic.expiry || '',
+                archivedAt: lic.archivedAt || '',
+                sortOrder: index,
+              };
+
+              const capturedLicLocalId = lic.id;
+              batch2Operations.push(async () => {
+                if (lic.licUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeLicenseAttachment(crewIdentifier, lic.licUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyLicenseToV2(licData));
+                let savedLic: any;
+                let entityUuid: string;
+                if (lic.licUuid) {
+                  savedLic = await crewPoolApiV2.updateLicense(crewIdentifier, lic.licUuid, v2Data);
+                  entityUuid = lic.licUuid;
+                } else {
+                  savedLic = await crewPoolApiV2.createLicense(crewIdentifier, v2Data);
+                  entityUuid = savedLic?.licUuid || savedLic?.lic_uuid;
+                }
+                if (entityUuid && !lic.licUuid) {
+                  uuidUpdates.push({ section: 'licenses', localId: capturedLicLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addLicenseAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedLic;
+              });
+            });
+          }
+
+          if (formData.trainingCourses && formData.trainingCourses.length > 0) {
+            console.log('V2 Preparing Training Courses for batch:', { crewUuid: crewIdentifier, count: formData.trainingCourses.length });
+            formData.trainingCourses.forEach((train: any, index: number) => {
+              const trainAttachments = train.attachments || [];
+              const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...trainAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const trainData = {
+                id: train.id,
+                trainUuid: train.trainUuid,
+                courseId: train.courseId || '',
+                trainingCourse: train.trainingCourse || '',
+                abbr: train.abbr || '',
+                requirement: train.requirement || '',
+                certificateNo: train.certificateNo || '',
+                issuingAuthority: train.issuingAuthority || '',
+                issuingCountry: train.issuingCountry || '',
+                issued: train.issued || '',
+                expiry: train.expiry || '',
+                sortOrder: index,
+              };
+
+              const capturedTrainLocalId = train.id;
+              batch3Operations.push(async () => {
+                if (train.trainUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeTrainingAttachment(crewIdentifier, train.trainUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyTrainingCourseToV2(trainData));
+                let savedTrain: any;
+                let entityUuid: string;
+                if (train.trainUuid) {
+                  savedTrain = await crewPoolApiV2.updateTrainingCourse(crewIdentifier, train.trainUuid, v2Data);
+                  entityUuid = train.trainUuid;
+                } else {
+                  savedTrain = await crewPoolApiV2.createTrainingCourse(crewIdentifier, v2Data);
+                  entityUuid = savedTrain?.trainUuid || savedTrain?.train_uuid;
+                }
+                if (entityUuid && !train.trainUuid) {
+                  uuidUpdates.push({ section: 'trainingCourses', localId: capturedTrainLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addTrainingAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedTrain;
+              });
+            });
+          }
+
+          if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
+            console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.currentCompanySeaService.length });
+            formData.currentCompanySeaService.forEach((sea: any, index: number) => {
+              const seaAttachments = sea.attachments || [];
+              const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const isSeaSynced = !!sea.isVesselSynced && !!sea.seaUuid;
+              const seaData: LegacySeaService = {
+                seaUuid: sea.seaUuid,
+                isCompanyService: true,
+                vesselName: sea.vesselName || '',
+                vesselCode: sea.vesselCode || '',
+                vesselType: sea.vesselType || '',
+                rank: sea.rank || '',
+                from: sea.from || sea.fromDate || '',
+                to: sea.to || sea.toDate || '',
+                fromDate: sea.from || sea.fromDate || '',
+                toDate: sea.to || sea.toDate || '',
+                deadweight: sea.deadweight || '',
+                engineTypePower: sea.engineTypePower || '',
+                ownerOperator: sea.ownerOperator || '',
+                periodMonths: sea.periodMonths || '',
+                experienceCategories: sea.experienceCategories || [],
+                sortOrder: index,
+                ...(isSeaSynced ? { _skipLockedFields: true } : {}),
+              } as LegacySeaService;
+
+              const capturedCompanySeaLocalId = sea.id;
+              batch3Operations.push(async () => {
+                if (sea.seaUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeSeaServiceAttachment(crewIdentifier, sea.seaUuid, att.attUuid);
+                  }
+                }
+
+                const rawV2Data = mapLegacySeaServiceToV2(seaData);
+                if ((seaData as any)._skipLockedFields) {
+                  delete rawV2Data.vesselName;
+                  delete rawV2Data.vesselUuid;
+                  delete rawV2Data.vesselTypeUuid;
+                  delete rawV2Data.rank;
+                  delete rawV2Data.fromDate;
+                  delete rawV2Data.toDate;
+                }
+                const v2Data = withAuditUser(rawV2Data);
+                let savedSea: any;
+                let entityUuid: string;
+                if (sea.seaUuid) {
+                  savedSea = await crewPoolApiV2.updateSeaService(crewIdentifier, sea.seaUuid, v2Data);
+                  entityUuid = sea.seaUuid;
+                } else {
+                  savedSea = await crewPoolApiV2.createSeaService(crewIdentifier, v2Data);
+                  entityUuid = savedSea?.seaUuid || savedSea?.sea_uuid;
+                }
+                if (entityUuid && !sea.seaUuid) {
+                  uuidUpdates.push({ section: 'currentCompanySeaService', localId: capturedCompanySeaLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addSeaServiceAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedSea;
+              });
+            });
+          }
+
+          if (formData.externalSeaService && formData.externalSeaService.length > 0) {
+            console.log('V2 Preparing External Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.externalSeaService.length });
+            formData.externalSeaService.forEach((sea: any, index: number) => {
+              const seaAttachments = sea.attachments || [];
+              const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const seaData: LegacySeaService = {
+                seaUuid: sea.seaUuid,
+                isCompanyService: false,
+                vesselName: sea.vesselName || '',
+                vesselCode: sea.vesselCode || '',
+                vesselType: sea.vesselType || '',
+                deadweight: sea.deadweight || '',
+                engineTypePower: sea.engineTypePower || '',
+                ownerOperator: sea.ownerOperator || '',
+                rank: sea.rank || '',
+                from: sea.from || sea.fromDate || '',
+                to: sea.to || sea.toDate || '',
+                fromDate: sea.from || sea.fromDate || '',
+                toDate: sea.to || sea.toDate || '',
+                periodMonths: sea.periodMonths || '',
+                experienceCategories: sea.experienceCategories || [],
+                sortOrder: index,
+              };
+
+              const capturedExtSeaLocalId = sea.id;
+              batch3Operations.push(async () => {
+                if (sea.seaUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeSeaServiceAttachment(crewIdentifier, sea.seaUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacySeaServiceToV2(seaData));
+                let savedSea: any;
+                let entityUuid: string;
+                if (sea.seaUuid) {
+                  savedSea = await crewPoolApiV2.updateSeaService(crewIdentifier, sea.seaUuid, v2Data);
+                  entityUuid = sea.seaUuid;
+                } else {
+                  savedSea = await crewPoolApiV2.createSeaService(crewIdentifier, v2Data);
+                  entityUuid = savedSea?.seaUuid || savedSea?.sea_uuid;
+                }
+                if (entityUuid && !sea.seaUuid) {
+                  uuidUpdates.push({ section: 'externalSeaService', localId: capturedExtSeaLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addSeaServiceAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedSea;
+              });
+            });
+          }
+
+          const nonEmptyMedicals = (formData.preJoiningMedicals || []).filter((med: any) => {
+            if (med.medUuid) return true;
+            const hasAttachments = (med.attachments || []).some((att: any) => !att.isDeleted);
+            return (med.vesselCode || med.vessel || med.dateOfMedical || med.bp || med.weight || med.anyMedicationPrescribed || med.clinicHospital || med.fitnessForDuty || med.expiry || hasAttachments);
+          });
+          if (nonEmptyMedicals.length > 0) {
+            console.log('V2 Preparing Pre-Joining Medicals for batch:', { crewUuid: crewIdentifier, count: nonEmptyMedicals.length });
+            nonEmptyMedicals.forEach((med: any, index: number) => {
+              const medAttachments = med.attachments || [];
+              const capturedNewAttachments = [...medAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...medAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const medData: LegacyPreJoiningMedical = {
+                medUuid: med.medUuid,
+                vesselCode: med.vesselCode || '',
+                vesselName: med.vessel || '',
+                vessel: med.vessel || '',
+                dateOfMedical: med.dateOfMedical || '',
+                bp: med.bp || '',
+                weight: med.weight || '',
+                anyMedicationPrescribed: med.anyMedicationPrescribed || '',
+                clinicHospital: med.clinicHospital || '',
+                fitnessForDuty: med.fitnessForDuty || '',
+                expiryDate: med.expiry || '',
+                expiry: med.expiry || '',
+                sortOrder: index,
+              };
+
+              const capturedMedLocalId = med.id;
+              batch4Operations.push(async () => {
+                if (med.medUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeMedicalAttachment(crewIdentifier, med.medUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyPreJoiningMedicalToV2(medData));
+                let savedMed: any;
+                let entityUuid: string;
+                if (med.medUuid) {
+                  savedMed = await crewPoolApiV2.updateMedical(crewIdentifier, med.medUuid, v2Data);
+                  entityUuid = med.medUuid;
+                } else {
+                  savedMed = await crewPoolApiV2.createMedical(crewIdentifier, v2Data);
+                  entityUuid = savedMed?.medUuid || savedMed?.med_uuid;
+                }
+                if (entityUuid && !med.medUuid) {
+                  uuidUpdates.push({ section: 'preJoiningMedicals', localId: capturedMedLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addMedicalAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedMed;
+              });
+            });
+          }
+
+          const nonEmptyVisits = (formData.doctorVisits || []).filter((visit: any) => {
+            if (visit.visitUuid) return true;
+            const hasAttachments = (visit.attachments || []).some((att: any) => !att.isDeleted);
+            return (visit.vessel || visit.port || visit.date || visit.complaint || visit.doctorComments || visit.doctorName || visit.clinicHospital || visit.diagnosis || visit.treatment || visit.followUpDate || hasAttachments);
+          });
+          if (nonEmptyVisits.length > 0) {
+            console.log('V2 Preparing Doctor Visits for batch:', { crewUuid: crewIdentifier, count: nonEmptyVisits.length });
+            nonEmptyVisits.forEach((visit: any, index: number) => {
+              const visitAttachments = visit.attachments || [];
+              const capturedNewAttachments = [...visitAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...visitAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const visitData: LegacyDoctorVisit = {
+                visitUuid: visit.visitUuid,
+                vessel: visit.vessel || '',
+                port: visit.port || '',
+                date: visit.date || '',
+                visitDate: visit.date || '',
+                doctorName: visit.doctorName || '',
+                clinicHospital: visit.clinicHospital || '',
+                complaint: visit.complaint || '',
+                doctorComments: visit.doctorComments || '',
+                diagnosis: visit.diagnosis || '',
+                treatment: visit.treatment || '',
+                followUpDate: visit.followUpDate || '',
+                sortOrder: index,
+              };
+
+              const capturedVisitLocalId = visit.id;
+              batch4Operations.push(async () => {
+                if (visit.visitUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeDoctorVisitAttachment(crewIdentifier, visit.visitUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyDoctorVisitToV2(visitData));
+                let savedVisit: any;
+                let entityUuid: string;
+                if (visit.visitUuid) {
+                  savedVisit = await crewPoolApiV2.updateDoctorVisit(crewIdentifier, visit.visitUuid, v2Data);
+                  entityUuid = visit.visitUuid;
+                } else {
+                  savedVisit = await crewPoolApiV2.createDoctorVisit(crewIdentifier, v2Data);
+                  entityUuid = savedVisit?.visitUuid || savedVisit?.visit_uuid;
+                }
+                if (entityUuid && !visit.visitUuid) {
+                  uuidUpdates.push({ section: 'doctorVisits', localId: capturedVisitLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addDoctorVisitAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedVisit;
+              });
+            });
+          }
+
           console.log('V2 Starting sequential batch execution...');
           await processBatch('Batch 1: Documents + Visas', batch1Operations);
           await processBatch('Batch 2: Education + Licenses', batch2Operations);
           await processBatch('Batch 3: Training + Sea Service', batch3Operations);
           await processBatch('Batch 4: Medicals + Doctor Visits', batch4Operations);
-          
+
           if (uuidUpdates.length > 0) {
             console.log('V2: Applying UUID updates to form data:', uuidUpdates);
             const uuidKeyMap: Record<string, string> = {
@@ -6396,7 +6486,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               return updated;
             });
           }
-          
+
           if (batchErrors.length > 0) {
             console.error('V2: Batch execution completed with errors:', batchErrors);
             toast({
@@ -6407,7 +6497,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           } else {
             console.log('V2: All batches completed successfully');
+            toast({
+              title: "Saved",
+              description: "Crew member updated successfully.",
+              duration: 3000,
+            });
           }
+
+          queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+          await queryClient.refetchQueries({ queryKey: [V2_QUERY_KEY, 'crew', crewIdentifier, 'full-profile'] });
+          console.log('V2: Post-save cache refreshed');
         } catch (error) {
           console.error('V2: Error during batch execution:', error);
           toast({
