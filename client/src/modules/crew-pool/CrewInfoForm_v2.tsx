@@ -403,11 +403,65 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (!value) return '';
     if (/\s/.test(value)) return 'Email must not contain spaces.';
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(value)) return 'Please enter a valid email address (e.g., name@domain.com).';
+    if (!emailPattern.test(value)) return 'Please enter a valid email address (e.g., user@domain.com).';
     return '';
   };
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const validateIssuedDate = (dateStr: string): string => {
+    if (!dateStr) return '';
+    if (dateStr > todayStr) return 'Issued date cannot be in the future.';
+    return '';
+  };
+
+  const validateExpiryDate = (expiryStr: string, issuedStr: string): string => {
+    if (!expiryStr || !issuedStr) return '';
+    if (expiryStr < issuedStr) return 'Expiry date must be on or after the issued date.';
+    return '';
+  };
+
+  const validateDob = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const dobDate = new Date(dateStr);
+    const today = new Date();
+    if (dobDate > today) return 'Date of birth cannot be a future date.';
+    const minDob = new Date();
+    minDob.setFullYear(minDob.getFullYear() - 18);
+    if (dobDate > minDob) return 'Crew member must be at least 18 years old.';
+    return '';
+  };
+
+  const runSeaServiceOverlapCheck = useCallback(() => {
+    const allSeaRows = [
+      ...(formData.currentCompanySeaService || []).filter((r: any) => !r.isVesselSynced),
+      ...(formData.externalSeaService || []),
+    ].filter((r: any) => !!(r.from || r.fromDate));
+
+    const newErrors: Record<string, string> = {};
+    for (let i = 0; i < allSeaRows.length; i++) {
+      for (let j = i + 1; j < allSeaRows.length; j++) {
+        const a = allSeaRows[i] as any;
+        const b = allSeaRows[j] as any;
+        const aFrom = a.from || a.fromDate || '';
+        const aTo = (a.to && a.to !== '') ? a.to : ((a.toDate && a.toDate !== '') ? a.toDate : null);
+        const bFrom = b.from || b.fromDate || '';
+        const bTo = (b.to && b.to !== '') ? b.to : ((b.toDate && b.toDate !== '') ? b.toDate : null);
+        if (!aFrom || !bFrom) continue;
+        const noOverlap =
+          (aTo !== null && aTo < bFrom) ||
+          (bTo !== null && bTo < aFrom);
+        if (!noOverlap) {
+          const aKey = a.id || a.seaUuid || `sea-${aFrom}`;
+          const bKey = b.id || b.seaUuid || `sea-${bFrom}`;
+          newErrors[aKey] = 'Sea service dates overlap with another record.';
+          newErrors[bKey] = 'Sea service dates overlap with another record.';
+        }
+      }
+    }
+    setSeaServiceDateErrors(newErrors);
+    return newErrors;
+  }, [formData.currentCompanySeaService, formData.externalSeaService]);
   
   // State for issues popup dialog
   const [issuesDialogOpen, setIssuesDialogOpen] = useState(false);
@@ -539,9 +593,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   const [seaServiceDateErrors, setSeaServiceDateErrors] = useState<Record<string, string>>({});
   const [spouseValidationError, setSpouseValidationError] = useState('');
+  const [spouseFirstNameError, setSpouseFirstNameError] = useState('');
+  const [spouseFamilyNameError, setSpouseFamilyNameError] = useState('');
+  const [spouseDobError, setSpouseDobError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [nokEmailError, setNokEmailError] = useState('');
   const [mobileError, setMobileError] = useState('');
+  const [firstNameError, setFirstNameError] = useState('');
+  const [dobError, setDobError] = useState('');
+  const [docDateErrors, setDocDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
+  const [visaDateErrors, setVisaDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
+  const [licDateErrors, setLicDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
+  const [trainDateErrors, setTrainDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
+  const [docRequiredErrors, setDocRequiredErrors] = useState<Record<string, string>>({});
+  const [visaRequiredErrors, setVisaRequiredErrors] = useState<Record<string, { issuingCountry?: string; visaType?: string }>>({});
+  const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, string>>({});
+  const [licRequiredErrors, setLicRequiredErrors] = useState<Record<string, string>>({});
+  const [trainRequiredErrors, setTrainRequiredErrors] = useState<Record<string, string>>({});
+  const [seaServiceRequiredErrors, setSeaServiceRequiredErrors] = useState<Record<string, string[]>>({});
   const [deletedChildUuids, setDeletedChildUuids] = useState<string[]>([]);
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
@@ -3101,16 +3170,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Row 1: First Name | Middle Name | Family Name */}
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">First Name <span className="text-red-500">*</span></Label>
             {isEditing ? (
               <Input
                 value={formData.firstName}
-                onChange={(e) => updateFormData('firstName', e.target.value)}
-                className="mt-1"
+                onChange={(e) => { updateFormData('firstName', e.target.value); if (firstNameError) setFirstNameError(''); }}
+                onBlur={() => { if (!(formData.firstName || '').trim()) setFirstNameError('First name is required.'); else setFirstNameError(''); }}
+                className={`mt-1 ${firstNameError ? 'border-red-500' : ''}`}
+                data-testid="input-first-name"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.firstName}</div>
             )}
+            {firstNameError && <p className="text-xs text-red-500 mt-1" data-testid="text-firstname-error">{firstNameError}</p>}
           </div>
           
           <div>
@@ -3264,17 +3336,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
           
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Date of birth <span className="text-red-500">*</span></Label>
             {isEditing ? (
               <Input
                 type="date"
                 value={formData.dateOfBirth}
-                onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
-                className="mt-1"
+                onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) setDobError(''); }}
+                onBlur={() => { const err = validateDob(formData.dateOfBirth); setDobError(err); }}
+                className={`mt-1 ${dobError ? 'border-red-500' : ''}`}
+                data-testid="input-date-of-birth"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.dateOfBirth}</div>
             )}
+            {dobError && <p className="text-xs text-red-500 mt-1" data-testid="text-dob-error">{dobError}</p>}
           </div>
           
           <div>
@@ -3602,12 +3677,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <Input
                 value={formData.mobile}
                 onChange={(e) => { updateFormData('mobile', e.target.value); if (mobileError) setMobileError(''); }}
-                className="mt-1"
+                onBlur={() => { const trimmed = (formData.mobile || '').trim(); if (trimmed) { const err = validateMobileNumber(formData.countryOfResidence, trimmed); setMobileError(err || ''); } else { setMobileError(''); } }}
+                className={`mt-1 ${mobileError ? 'border-red-500' : ''}`}
+                data-testid="input-mobile"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.mobile}</div>
             )}
-            {mobileError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-mobile-error">{mobileError}</p>}
+            {mobileError && <p className="text-xs text-red-500 mt-1" data-testid="text-mobile-error">{mobileError}</p>}
           </div>
           
           <div>
@@ -3617,12 +3694,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 type="email"
                 value={formData.email}
                 onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(''); }}
-                className="mt-1"
+                onBlur={() => { setEmailError(validateEmail(formData.email || '')); }}
+                className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
+                data-testid="input-email"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.email}</div>
             )}
-            {emailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-email-error">{emailError}</p>}
+            {emailError && <p className="text-xs text-red-500 mt-1" data-testid="text-email-error">{emailError}</p>}
           </div>
         </div>
       </div>
@@ -3713,17 +3792,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           {/* Spouse Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <Input
                   value={formData.spouseFirstName}
-                  onChange={(e) => { updateFormData('spouseFirstName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
-                  className="mt-1"
+                  onChange={(e) => { updateFormData('spouseFirstName', e.target.value); if (spouseFirstNameError) setSpouseFirstNameError(''); if (spouseValidationError) setSpouseValidationError(''); }}
+                  onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseFirstName || '').trim()) setSpouseFirstNameError('Spouse first name is required.'); else setSpouseFirstNameError(''); }}
+                  className={`mt-1 ${spouseFirstNameError ? 'border-red-500' : ''}`}
+                  data-testid="input-spouse-first-name"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFirstName}</div>
               )}
-              {spouseValidationError && !(formData.spouseFirstName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-firstname-error">Required</p>}
+              {spouseFirstNameError && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-firstname-error">{spouseFirstNameError}</p>}
             </div>
             
             <div>
@@ -3740,33 +3821,37 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </div>
             
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <Input
                   value={formData.spouseFamilyName}
-                  onChange={(e) => { updateFormData('spouseFamilyName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
-                  className="mt-1"
+                  onChange={(e) => { updateFormData('spouseFamilyName', e.target.value); if (spouseFamilyNameError) setSpouseFamilyNameError(''); if (spouseValidationError) setSpouseValidationError(''); }}
+                  onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseFamilyName || '').trim()) setSpouseFamilyNameError('Spouse family name is required.'); else setSpouseFamilyNameError(''); }}
+                  className={`mt-1 ${spouseFamilyNameError ? 'border-red-500' : ''}`}
+                  data-testid="input-spouse-family-name"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFamilyName}</div>
               )}
-              {spouseValidationError && !(formData.spouseFamilyName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-familyname-error">Required</p>}
+              {spouseFamilyNameError && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-familyname-error">{spouseFamilyNameError}</p>}
             </div>
             
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <Input
                   type="date"
                   value={formData.spouseDateOfBirth}
-                  onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
-                  className="mt-1"
+                  onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseDobError) setSpouseDobError(''); if (spouseValidationError) setSpouseValidationError(''); }}
+                  onBlur={() => { if (formData.maritalStatus === 'Married') { if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); } else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); } else { setSpouseDobError(''); } } else { setSpouseDobError(''); } }}
+                  className={`mt-1 ${spouseDobError ? 'border-red-500' : ''}`}
                   max={todayStr}
+                  data-testid="input-spouse-dob"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth}</div>
               )}
-              {spouseValidationError && !(formData.spouseDateOfBirth || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-dob-error">Required</p>}
+              {spouseDobError && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-dob-error">{spouseDobError}</p>}
             </div>
           </div>
 
@@ -3963,12 +4048,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   type="email"
                   value={formData.nokEmail}
                   onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(''); }}
-                  className="mt-1"
+                  onBlur={() => { setNokEmailError(validateEmail(formData.nokEmail || '')); }}
+                  className={`mt-1 ${nokEmailError ? 'border-red-500' : ''}`}
+                  data-testid="input-nok-email"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nokEmail}</div>
               )}
-              {nokEmailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-nokemail-error">{nokEmailError}</p>}
+              {nokEmailError && <p className="text-xs text-red-500 mt-1" data-testid="text-nokemail-error">{nokEmailError}</p>}
             </div>
             
             <div>
@@ -4022,7 +4109,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Number</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
@@ -4039,10 +4126,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   ) : (
                     <Input
                       value={doc.document}
-                      onChange={(e) => updateDocument(doc.id, 'document', e.target.value)}
-                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                      onChange={(e) => { updateDocument(doc.id, 'document', e.target.value); if (docRequiredErrors[doc.id]) setDocRequiredErrors(prev => { const n = {...prev}; delete n[doc.id]; return n; }); }}
+                      onBlur={() => { if (!(doc.document || '').trim()) setDocRequiredErrors(prev => ({...prev, [doc.id]: 'Document name is required.'})); else setDocRequiredErrors(prev => { const n = {...prev}; delete n[doc.id]; return n; }); }}
+                      className={`text-[#4f5863] text-[13px] border ${docRequiredErrors[doc.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                     />
                   )}
+                  {docRequiredErrors[doc.id] && <p className="text-xs text-red-500 mt-1">{docRequiredErrors[doc.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4055,19 +4144,23 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     type="date"
                     value={doc.issued}
-                    onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)}
+                    onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); if (docDateErrors[doc.id]?.issued) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
+                    onBlur={() => { const err = validateIssuedDate(doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), issued: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
                     max={todayStr}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    className={`text-[#4f5863] text-[13px] border ${docDateErrors[doc.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {docDateErrors[doc.id]?.issued && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     type="date"
                     value={doc.expiry}
-                    onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)}
+                    onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); if (docDateErrors[doc.id]?.expiry) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
+                    onBlur={() => { const err = validateExpiryDate(doc.expiry, doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), expiry: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
                     min={doc.issued || undefined}
-                    className={`${getExpiryColorClass(doc.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(doc.expiry)} text-[13px] border ${docDateErrors[doc.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {docDateErrors[doc.id]?.expiry && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4143,11 +4236,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">S.No.( If Applicable )</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -4160,10 +4253,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   ) : (
                     <Input
                       value={visa.issuingCountry}
-                      onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)}
-                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                      onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaRequiredErrors[visa.id]?.issuingCountry) setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
+                      onBlur={() => { if (!(visa.issuingCountry || '').trim()) setVisaRequiredErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issuingCountry: 'Issuing country is required.'}})); else setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
+                      className={`text-[#4f5863] text-[13px] border ${visaRequiredErrors[visa.id]?.issuingCountry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                     />
                   )}
+                  {visaRequiredErrors[visa.id]?.issuingCountry && <p className="text-xs text-red-500 mt-1">{visaRequiredErrors[visa.id].issuingCountry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4176,26 +4271,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     type="date"
                     value={visa.issued}
-                    onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)}
+                    onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); if (visaDateErrors[visa.id]?.issued) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
+                    onBlur={() => { const err = validateIssuedDate(visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issued: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
                     max={todayStr}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    className={`text-[#4f5863] text-[13px] border ${visaDateErrors[visa.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {visaDateErrors[visa.id]?.issued && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     type="date"
                     value={visa.expiry}
-                    onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)}
+                    onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); if (visaDateErrors[visa.id]?.expiry) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
+                    onBlur={() => { const err = validateExpiryDate(visa.expiry, visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), expiry: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
                     min={visa.issued || undefined}
-                    className={`${getExpiryColorClass(visa.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(visa.expiry)} text-[13px] border ${visaDateErrors[visa.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {visaDateErrors[visa.id]?.expiry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={visa.visaType}
-                    onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    onChange={(e) => { updateVisa(visa.id, 'visaType', e.target.value); if (visaRequiredErrors[visa.id]?.visaType) setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].visaType; if (!n[visa.id].issuingCountry) delete n[visa.id]; } return n; }); }}
+                    onBlur={() => { if (!(visa.visaType || '').trim()) setVisaRequiredErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), visaType: 'Visa type is required.'}})); else setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].visaType; if (!n[visa.id].issuingCountry) delete n[visa.id]; } return n; }); }}
+                    className={`text-[#4f5863] text-[13px] border ${visaRequiredErrors[visa.id]?.visaType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {visaRequiredErrors[visa.id]?.visaType && <p className="text-xs text-red-500 mt-1">{visaRequiredErrors[visa.id].visaType}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4252,7 +4353,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
@@ -4265,9 +4366,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <TableCell className="p-3">
                   <Input
                     value={edu.qualifications}
-                    onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    onChange={(e) => { updateEducation(edu.id, 'qualifications', e.target.value); if (eduRequiredErrors[edu.id]) setEduRequiredErrors(prev => { const n = {...prev}; delete n[edu.id]; return n; }); }}
+                    onBlur={() => { if (!(edu.qualifications || '').trim()) setEduRequiredErrors(prev => ({...prev, [edu.id]: 'Qualifications is required.'})); else setEduRequiredErrors(prev => { const n = {...prev}; delete n[edu.id]; return n; }); }}
+                    className={`text-[#4f5863] text-[13px] border ${eduRequiredErrors[edu.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {eduRequiredErrors[edu.id] && <p className="text-xs text-red-500 mt-1">{eduRequiredErrors[edu.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4358,7 +4461,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/Document <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
@@ -4392,11 +4495,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   ) : (
                     <Input
                       value={license.certificateDocument}
-                      onChange={(e) => updateLicense(license.id, 'certificateDocument', e.target.value)}
-                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                      onChange={(e) => { updateLicense(license.id, 'certificateDocument', e.target.value); if (licRequiredErrors[license.id]) setLicRequiredErrors(prev => { const n = {...prev}; delete n[license.id]; return n; }); }}
+                      onBlur={() => { if (!(license.certificateDocument || '').trim()) setLicRequiredErrors(prev => ({...prev, [license.id]: 'Certificate/Document is required.'})); else setLicRequiredErrors(prev => { const n = {...prev}; delete n[license.id]; return n; }); }}
+                      className={`text-[#4f5863] text-[13px] border ${licRequiredErrors[license.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                       disabled={!!license.archivedAt}
                     />
                   )}
+                  {licRequiredErrors[license.id] && <p className="text-xs text-red-500 mt-1">{licRequiredErrors[license.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   {license.fromDatabase ? (
@@ -4446,19 +4551,23 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     type="date"
                     value={license.issued}
-                    onChange={(e) => updateLicense(license.id, 'issued', e.target.value)}
+                    onChange={(e) => { updateLicense(license.id, 'issued', e.target.value); if (licDateErrors[license.id]?.issued) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
+                    onBlur={() => { const err = validateIssuedDate(license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), issued: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
                     max={todayStr}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    className={`text-[#4f5863] text-[13px] border ${licDateErrors[license.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {licDateErrors[license.id]?.issued && <p className="text-xs text-red-500 mt-1">{licDateErrors[license.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     type="date"
                     value={license.expiry}
-                    onChange={(e) => updateLicense(license.id, 'expiry', e.target.value)}
+                    onChange={(e) => { updateLicense(license.id, 'expiry', e.target.value); if (licDateErrors[license.id]?.expiry) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
+                    onBlur={() => { const err = validateExpiryDate(license.expiry, license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), expiry: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
                     min={license.issued || undefined}
-                    className={`${getExpiryColorClass(license.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(license.expiry)} text-[13px] border ${licDateErrors[license.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {licDateErrors[license.id]?.expiry && <p className="text-xs text-red-500 mt-1">{licDateErrors[license.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4527,7 +4636,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Company ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training Course</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training Course <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
@@ -4549,10 +4658,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   ) : (
                     <Input
                       value={course.trainingCourse}
-                      onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)}
-                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                      onChange={(e) => { updateTrainingCourse(course.id, 'trainingCourse', e.target.value); if (trainRequiredErrors[course.id]) setTrainRequiredErrors(prev => { const n = {...prev}; delete n[course.id]; return n; }); }}
+                      onBlur={() => { if (!(course.trainingCourse || '').trim()) setTrainRequiredErrors(prev => ({...prev, [course.id]: 'Training course is required.'})); else setTrainRequiredErrors(prev => { const n = {...prev}; delete n[course.id]; return n; }); }}
+                      className={`text-[#4f5863] text-[13px] border ${trainRequiredErrors[course.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                     />
                   )}
+                  {trainRequiredErrors[course.id] && <p className="text-xs text-red-500 mt-1">{trainRequiredErrors[course.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
@@ -4594,19 +4705,23 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     type="date"
                     value={course.issued}
-                    onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)}
+                    onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); if (trainDateErrors[course.id]?.issued) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
+                    onBlur={() => { const err = validateIssuedDate(course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), issued: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
                     max={todayStr}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    className={`text-[#4f5863] text-[13px] border ${trainDateErrors[course.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {trainDateErrors[course.id]?.issued && <p className="text-xs text-red-500 mt-1">{trainDateErrors[course.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     type="date"
                     value={course.expiry}
-                    onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)}
+                    onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); if (trainDateErrors[course.id]?.expiry) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
+                    onBlur={() => { const err = validateExpiryDate(course.expiry, course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), expiry: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
                     min={course.issued || undefined}
-                    className={`${getExpiryColorClass(course.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(course.expiry)} text-[13px] border ${trainDateErrors[course.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {trainDateErrors[course.id]?.expiry && <p className="text-xs text-red-500 mt-1">{trainDateErrors[course.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4666,14 +4781,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <table className="w-full min-w-[1000px]">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Deadweight</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Engine Type/ Power</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Owner / operator</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Experience</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
@@ -4829,6 +4944,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             type="date"
                             value={service.from}
                             onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
+                            onBlur={() => runSeaServiceOverlapCheck()}
                             className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           />
                         )}
@@ -4868,13 +4984,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                 type="date"
                                 value={service.to}
                                 onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
+                                onBlur={() => runSeaServiceOverlapCheck()}
                                 className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                                 data-testid={`input-date-to-${service.id}`}
                               />
                             );
                           }
                         })()}
-                        {seaServiceDateErrors[service.id || (service as any).seaUuid] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-e1-to-error-${service.id}`}>{seaServiceDateErrors[service.id || (service as any).seaUuid]}</p>}
+                        {seaServiceDateErrors[service.id || (service as any).seaUuid] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e1-to-error-${service.id}`}>{seaServiceDateErrors[service.id || (service as any).seaUuid]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
@@ -4986,6 +5103,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
+                        {seaServiceRequiredErrors[service.id || `e1-${formData.currentCompanySeaService.indexOf(service)}`] && (
+                          <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e1-${formData.currentCompanySeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
+                        )}
                       </td>
                     </tr>
                       );
@@ -5028,9 +5148,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Deadweight</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Engine Type/ Power</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Owner / operator</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Experience</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
@@ -5132,6 +5252,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.from}
                           onChange={(e) => updateExternalSeaService(service.id, 'from', e.target.value)}
+                          onBlur={() => runSeaServiceOverlapCheck()}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                       </td>
@@ -5140,9 +5261,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.to}
                           onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
+                          onBlur={() => runSeaServiceOverlapCheck()}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
-                        {seaServiceDateErrors[service.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
+                        {seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -5232,6 +5354,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
+                        {seaServiceRequiredErrors[service.id || `e2-${formData.externalSeaService.indexOf(service)}`] && (
+                          <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e2-${formData.externalSeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -5531,117 +5656,57 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const handleSaveDraft = () => {
     console.log('Saving crew info (V2):', formData);
 
-    // Required field validation
+    let hasErrors = false;
+
+    // B1: First Name
     const trimmedFirstName = (formData.firstName || '').trim();
     if (!trimmedFirstName) {
-      toast({
-        title: "Validation Error",
-        description: "First Name is required.",
-        variant: "destructive",
-      });
-      return;
+      setFirstNameError('First name is required.');
+      hasErrors = true;
+    } else {
+      setFirstNameError('');
     }
 
-    // DOB validation
+    // B1: DOB
     if (formData.dateOfBirth) {
-      const dobDate = new Date(formData.dateOfBirth);
-      const today = new Date();
-      if (dobDate > today) {
-        toast({ title: "Validation Error", description: "Date of Birth cannot be a future date.", variant: "destructive" });
-        return;
-      }
-      const minDob = new Date();
-      minDob.setFullYear(minDob.getFullYear() - 18);
-      if (dobDate > minDob) {
-        toast({ title: "Validation Error", description: "Crew member must be at least 18 years old.", variant: "destructive" });
-        return;
-      }
-    }
+      const dErr = validateDob(formData.dateOfBirth);
+      if (dErr) { setDobError(dErr); hasErrors = true; } else { setDobError(''); }
+    } else { setDobError(''); }
 
-    // Mobile validation
+    // B2: Mobile
     const trimmedMobile = (formData.mobile || '').trim();
     if (trimmedMobile && formData.countryOfResidence) {
       const mobileErr = validateMobileNumber(formData.countryOfResidence, trimmedMobile);
-      if (mobileErr) {
-        setMobileError(mobileErr);
-        toast({ title: "Validation Error", description: mobileErr, variant: "destructive" });
-        return;
-      }
-    }
-    setMobileError('');
+      if (mobileErr) { setMobileError(mobileErr); hasErrors = true; } else { setMobileError(''); }
+    } else { setMobileError(''); }
 
-    // Email validation
+    // B2: Email
     const trimmedEmail = (formData.email || '').trim();
-    const trimmedNokEmail = (formData.nokEmail || '').trim();
     if (trimmedEmail) {
       const emailErr = validateEmail(trimmedEmail);
-      if (emailErr) {
-        setEmailError(emailErr);
-        toast({ title: "Validation Error", description: emailErr, variant: "destructive" });
-        return;
-      }
-    }
-    setEmailError('');
+      if (emailErr) { setEmailError(emailErr); hasErrors = true; } else { setEmailError(''); }
+    } else { setEmailError(''); }
+
+    // B3: NOK Email
+    const trimmedNokEmail = (formData.nokEmail || '').trim();
     if (trimmedNokEmail) {
       const nokErr = validateEmail(trimmedNokEmail);
-      if (nokErr) {
-        setNokEmailError(nokErr);
-        toast({ title: "Validation Error", description: nokErr, variant: "destructive" });
-        return;
-      }
-    }
-    setNokEmailError('');
+      if (nokErr) { setNokEmailError(nokErr); hasErrors = true; } else { setNokEmailError(''); }
+    } else { setNokEmailError(''); }
 
-    // Spouse validation when married
+    // B3: Spouse validation
     if (formData.maritalStatus === 'Married') {
-      const missingSpouseFields: string[] = [];
-      if (!(formData.spouseFirstName || '').trim()) missingSpouseFields.push('Spouse First Name');
-      if (!(formData.spouseFamilyName || '').trim()) missingSpouseFields.push('Spouse Family Name');
-      if (!(formData.spouseDateOfBirth || '').trim()) missingSpouseFields.push('Spouse Date of Birth');
-      if (missingSpouseFields.length > 0) {
-        setSpouseValidationError(`Required when Married: ${missingSpouseFields.join(', ')}`);
-        toast({ title: "Validation Error", description: `Required when Married: ${missingSpouseFields.join(', ')}`, variant: "destructive" });
-        return;
-      }
-    }
-    const spouseDobVal = (formData.spouseDateOfBirth || '').trim();
-    if (spouseDobVal) {
-      const [sy, sm, sd] = spouseDobVal.split('-').map(Number);
-      const spouseDobLocal = new Date(sy, sm - 1, sd);
-      const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0);
-      if (spouseDobLocal > todayLocal) {
-        setSpouseValidationError('Spouse Date of Birth cannot be a future date.');
-        toast({ title: "Validation Error", description: "Spouse Date of Birth cannot be a future date.", variant: "destructive" });
-        return;
-      }
+      if (!(formData.spouseFirstName || '').trim()) { setSpouseFirstNameError('Spouse first name is required.'); hasErrors = true; } else { setSpouseFirstNameError(''); }
+      if (!(formData.spouseFamilyName || '').trim()) { setSpouseFamilyNameError('Spouse family name is required.'); hasErrors = true; } else { setSpouseFamilyNameError(''); }
+      if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); hasErrors = true; }
+      else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); hasErrors = true; }
+      else { setSpouseDobError(''); }
+    } else {
+      setSpouseFirstNameError(''); setSpouseFamilyNameError(''); setSpouseDobError('');
     }
     setSpouseValidationError('');
 
-    // Sea service To < From validation (E2 + manual E1 rows)
-    const newSeaErrors: Record<string, string> = {};
-    (formData.currentCompanySeaService || []).forEach((sea: any) => {
-      if (!sea.seaUuid) {
-        const from = sea.from || sea.fromDate || '';
-        const to = sea.to || sea.toDate || '';
-        if (from && to && to < from) {
-          newSeaErrors[sea.id || sea.seaUuid || `e1-${from}`] = '"To" date cannot be earlier than "From" date.';
-        }
-      }
-    });
-    (formData.externalSeaService || []).forEach((sea: any) => {
-      const from = sea.from || sea.fromDate || '';
-      const to = sea.to || sea.toDate || '';
-      if (from && to && to < from) {
-        newSeaErrors[sea.id || sea.seaUuid || `e2-${from}`] = '"To" date cannot be earlier than "From" date.';
-      }
-    });
-    setSeaServiceDateErrors(newSeaErrors);
-    if (Object.keys(newSeaErrors).length > 0) {
-      toast({ title: "Validation Error", description: '"To" date cannot be earlier than "From" date in Sea Service.', variant: "destructive" });
-      return;
-    }
-
-    // Row mandatory field validation + blank row cleanup for docs/visas/edu/lic/training
+    // Row blank detection helpers
     const hasAttachments = (atts: any) => Array.isArray(atts) && atts.filter((a: any) => !a.isDeleted).length > 0;
     const isDocBlank = (doc: typeof formData.documents[0]) => !(doc.document || '').trim() && !(doc.number || '').trim() && !(doc.issued || '').trim() && !(doc.expiry || '').trim() && !(doc.issuingAuthority || '').trim() && !hasAttachments(doc.attachments);
     const isVisaBlank = (visa: typeof formData.visas[0]) => !(visa.issuingCountry || '').trim() && !(visa.serialNo || '').trim() && !(visa.issued || '').trim() && !(visa.expiry || '').trim() && !(visa.visaType || '').trim() && !hasAttachments(visa.attachments);
@@ -5649,14 +5714,132 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const isLicBlank = (lic: typeof formData.licenses[0]) => !(lic.certificateDocument || '').trim() && !(lic.abbr || '').trim() && !(lic.requirement || '').trim() && !(lic.certificateNo || '').trim() && !(lic.issuingAuthority || '').trim() && !(lic.issued || '').trim() && !(lic.expiry || '').trim() && !hasAttachments(lic.attachments);
     const isTrainBlank = (t: typeof formData.trainingCourses[0]) => !(t.trainingCourse || '').trim() && !(t.abbr || '').trim() && !(t.requirement || '').trim() && !(t.certificateNo || '').trim() && !(t.issuingAuthority || '').trim() && !(t.issued || '').trim() && !(t.expiry || '').trim() && !hasAttachments(t.attachments);
 
-    const mandatoryErrors: string[] = [];
-    formData.documents.forEach((doc, i) => { if (!isDocBlank(doc) && !(doc.document || '').trim()) mandatoryErrors.push(`Documents Row ${i + 1}: 'Document Name' is required to save this row.`); });
-    formData.visas.forEach((visa, i) => { if (!isVisaBlank(visa) && !(visa.issuingCountry || '').trim()) mandatoryErrors.push(`Visas Row ${i + 1}: 'Issuing Country' is required to save this row.`); });
-    formData.education.forEach((edu, i) => { if (!isEduBlank(edu) && !(edu.qualifications || '').trim()) mandatoryErrors.push(`Education Row ${i + 1}: 'Qualifications' is required to save this row.`); });
-    formData.licenses.forEach((lic, i) => { if (!isLicBlank(lic) && !(lic.certificateDocument || '').trim()) mandatoryErrors.push(`License & DCE Row ${i + 1}: 'Certificate/Document' is required to save this row.`); });
-    formData.trainingCourses.forEach((t, i) => { if (!isTrainBlank(t) && !(t.trainingCourse || '').trim()) mandatoryErrors.push(`Training Course Row ${i + 1}: 'Training/Course' is required to save this row.`); });
-    if (mandatoryErrors.length > 0) {
-      toast({ title: "Validation Error", description: mandatoryErrors.join('\n'), variant: "destructive" });
+    // C1: Document required + date validation
+    const newDocReqErrors: Record<string, string> = {};
+    const newDocDateErrors: Record<string, { issued?: string; expiry?: string }> = {};
+    formData.documents.forEach((doc) => {
+      if (!isDocBlank(doc)) {
+        if (!(doc.document || '').trim()) { newDocReqErrors[doc.id] = 'Document name is required.'; hasErrors = true; }
+        const ie = validateIssuedDate(doc.issued); if (ie) { newDocDateErrors[doc.id] = {...(newDocDateErrors[doc.id] || {}), issued: ie}; hasErrors = true; }
+        const ee = validateExpiryDate(doc.expiry, doc.issued); if (ee) { newDocDateErrors[doc.id] = {...(newDocDateErrors[doc.id] || {}), expiry: ee}; hasErrors = true; }
+      }
+    });
+    setDocRequiredErrors(newDocReqErrors);
+    setDocDateErrors(newDocDateErrors);
+
+    // C2: Visa required + date validation
+    const newVisaReqErrors: Record<string, { issuingCountry?: string; visaType?: string }> = {};
+    const newVisaDateErrors: Record<string, { issued?: string; expiry?: string }> = {};
+    formData.visas.forEach((visa) => {
+      if (!isVisaBlank(visa)) {
+        const vReq: { issuingCountry?: string; visaType?: string } = {};
+        if (!(visa.issuingCountry || '').trim()) { vReq.issuingCountry = 'Issuing country is required.'; hasErrors = true; }
+        if (!(visa.visaType || '').trim()) { vReq.visaType = 'Visa type is required.'; hasErrors = true; }
+        if (vReq.issuingCountry || vReq.visaType) newVisaReqErrors[visa.id] = vReq;
+        const ie = validateIssuedDate(visa.issued); if (ie) { newVisaDateErrors[visa.id] = {...(newVisaDateErrors[visa.id] || {}), issued: ie}; hasErrors = true; }
+        const ee = validateExpiryDate(visa.expiry, visa.issued); if (ee) { newVisaDateErrors[visa.id] = {...(newVisaDateErrors[visa.id] || {}), expiry: ee}; hasErrors = true; }
+      }
+    });
+    setVisaRequiredErrors(newVisaReqErrors);
+    setVisaDateErrors(newVisaDateErrors);
+
+    // D1: Education required
+    const newEduReqErrors: Record<string, string> = {};
+    formData.education.forEach((edu) => {
+      if (!isEduBlank(edu) && !(edu.qualifications || '').trim()) { newEduReqErrors[edu.id] = 'Qualifications is required.'; hasErrors = true; }
+    });
+    setEduRequiredErrors(newEduReqErrors);
+
+    // D2: License required + date validation
+    const newLicReqErrors: Record<string, string> = {};
+    const newLicDateErrors: Record<string, { issued?: string; expiry?: string }> = {};
+    formData.licenses.forEach((lic) => {
+      if (!isLicBlank(lic)) {
+        if (!(lic.certificateDocument || '').trim()) { newLicReqErrors[lic.id] = 'Certificate/Document is required.'; hasErrors = true; }
+        const ie = validateIssuedDate(lic.issued); if (ie) { newLicDateErrors[lic.id] = {...(newLicDateErrors[lic.id] || {}), issued: ie}; hasErrors = true; }
+        const ee = validateExpiryDate(lic.expiry, lic.issued); if (ee) { newLicDateErrors[lic.id] = {...(newLicDateErrors[lic.id] || {}), expiry: ee}; hasErrors = true; }
+      }
+    });
+    setLicRequiredErrors(newLicReqErrors);
+    setLicDateErrors(newLicDateErrors);
+
+    // D3: Training required + date validation
+    const newTrainReqErrors: Record<string, string> = {};
+    const newTrainDateErrors: Record<string, { issued?: string; expiry?: string }> = {};
+    formData.trainingCourses.forEach((t) => {
+      if (!isTrainBlank(t)) {
+        if (!(t.trainingCourse || '').trim()) { newTrainReqErrors[t.id] = 'Training course is required.'; hasErrors = true; }
+        const ie = validateIssuedDate(t.issued); if (ie) { newTrainDateErrors[t.id] = {...(newTrainDateErrors[t.id] || {}), issued: ie}; hasErrors = true; }
+        const ee = validateExpiryDate(t.expiry, t.issued); if (ee) { newTrainDateErrors[t.id] = {...(newTrainDateErrors[t.id] || {}), expiry: ee}; hasErrors = true; }
+      }
+    });
+    setTrainRequiredErrors(newTrainReqErrors);
+    setTrainDateErrors(newTrainDateErrors);
+
+    // E1/E2: Sea service date + mandatory field validation (all non-synced rows)
+    const newSeaErrors: Record<string, string> = {};
+    const newSeaReqErrors: Record<string, string[]> = {};
+    (formData.currentCompanySeaService || []).forEach((sea: any, i: number) => {
+      const isVesselSynced = !!sea.isVesselSynced;
+      if (!isVesselSynced) {
+        const from = sea.from || sea.fromDate || '';
+        const to = sea.to || sea.toDate || '';
+        if (from && to && to < from) {
+          newSeaErrors[sea.id || sea.seaUuid || `e1-${from}`] = '"To" date cannot be earlier than "From" date.';
+          hasErrors = true;
+        }
+        const missing: string[] = [];
+        if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
+        if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
+        if (!(sea.rank || '').trim()) missing.push('Rank');
+        if (!from) missing.push('From Date');
+        if (!to) missing.push('To Date');
+        if (missing.length > 0) { newSeaReqErrors[sea.id || `e1-${i}`] = missing; hasErrors = true; }
+      }
+    });
+    (formData.externalSeaService || []).forEach((sea: any, i: number) => {
+      const from = sea.from || sea.fromDate || '';
+      const to = sea.to || sea.toDate || '';
+      if (from && to && to < from) {
+        newSeaErrors[sea.id || sea.seaUuid || `e2-${from}`] = '"To" date cannot be earlier than "From" date.';
+        hasErrors = true;
+      }
+      const missing: string[] = [];
+      if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
+      if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
+      if (!(sea.rank || '').trim()) missing.push('Rank');
+      if (!from) missing.push('From Date');
+      if (!to) missing.push('To Date');
+      if (missing.length > 0) { newSeaReqErrors[sea.id || `e2-${i}`] = missing; hasErrors = true; }
+    });
+    setSeaServiceRequiredErrors(newSeaReqErrors);
+
+    // Cross-section period overlap validation — merge with to<from errors
+    const overlapErrors = runSeaServiceOverlapCheck();
+    const mergedSeaErrors = { ...newSeaErrors };
+    Object.entries(overlapErrors).forEach(([key, msg]) => {
+      if (mergedSeaErrors[key]) {
+        mergedSeaErrors[key] = `${mergedSeaErrors[key]} ${msg}`;
+      } else {
+        mergedSeaErrors[key] = msg;
+      }
+    });
+    setSeaServiceDateErrors(mergedSeaErrors);
+    if (Object.keys(mergedSeaErrors).length > 0) hasErrors = true;
+
+    // If any errors, scroll to first error and show toast
+    if (hasErrors) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the highlighted errors before saving.",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        const firstError = document.querySelector('p.text-red-500, input.border-red-500, [class*="border-red-500"]');
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
       return;
     }
 
@@ -5681,68 +5864,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         licenses: nonEmptyLicenses,
         trainingCourses: nonEmptyTraining,
       }));
-    }
-    
-    const seaServiceErrors: string[] = [];
-    (formData.currentCompanySeaService || []).forEach((sea: any, i: number) => {
-      if (!sea.seaUuid) {
-        const missing: string[] = [];
-        if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
-        if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
-        if (!(sea.rank || '').trim()) missing.push('Rank');
-        if (!(sea.from || sea.fromDate || '').trim()) missing.push('From Date');
-        if (!(sea.to || sea.toDate || '').trim()) missing.push('To Date');
-        if (missing.length > 0) seaServiceErrors.push(`E1 Company Sea Service Row ${i + 1}: ${missing.map(f => `'${f}'`).join(', ')} required to save this row.`);
-      }
-    });
-    (formData.externalSeaService || []).forEach((sea: any, i: number) => {
-      if (!sea.seaUuid) {
-        const missing: string[] = [];
-        if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
-        if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
-        if (!(sea.rank || '').trim()) missing.push('Rank');
-        if (!(sea.from || sea.fromDate || '').trim()) missing.push('From Date');
-        if (!(sea.to || sea.toDate || '').trim()) missing.push('To Date');
-        if (missing.length > 0) seaServiceErrors.push(`E2 External Sea Service Row ${i + 1}: ${missing.map(f => `'${f}'`).join(', ')} required to save this row.`);
-      }
-    });
-    if (seaServiceErrors.length > 0) {
-      toast({
-        title: "Validation Error",
-        description: seaServiceErrors.join('\n'),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Cross-section period overlap validation (E1 + E2 combined)
-    const allSeaRows = [
-      ...(formData.currentCompanySeaService || []),
-      ...(formData.externalSeaService || []),
-    ].filter((r: any) => !!(r.from || r.fromDate));
-
-    for (let i = 0; i < allSeaRows.length; i++) {
-      for (let j = i + 1; j < allSeaRows.length; j++) {
-        const a = allSeaRows[i] as any;
-        const b = allSeaRows[j] as any;
-        const aFrom = a.from || a.fromDate || '';
-        const aTo   = (a.to && a.to !== '') ? a.to : ((a.toDate && a.toDate !== '') ? a.toDate : null);
-        const bFrom = b.from || b.fromDate || '';
-        const bTo   = (b.to && b.to !== '') ? b.to : ((b.toDate && b.toDate !== '') ? b.toDate : null);
-        if (!aFrom || !bFrom) continue;
-        // No overlap only if one period ends strictly before the other starts
-        const noOverlap =
-          (aTo !== null && aTo < bFrom) ||
-          (bTo !== null && bTo < aFrom);
-        if (!noOverlap) {
-          toast({
-            title: "Validation Error",
-            description: "Sea service already exists for the selected period.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
     }
 
     // Include the uploaded photo in the data to be saved
