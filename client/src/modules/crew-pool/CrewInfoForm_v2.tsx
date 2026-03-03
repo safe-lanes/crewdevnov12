@@ -530,6 +530,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const sectionDRef = useRef<HTMLDivElement>(null);
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
+  const isBatchSavingRef = useRef(false);
 
   // Refs for click-outside detection on B1/B2/B3
   const sectionB1Ref = useRef<HTMLDivElement>(null);
@@ -795,6 +796,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // Update form data when detailed crew data loads from API
   // V2: Check both crewUuid and id for compatibility
   useEffect(() => {
+    if (isBatchSavingRef.current) return;
     if (detailedCrewData && (crewMember?.crewUuid || crewMember?.id)) {
       setDeletedChildUuids([]);
       setFormData(prev => ({
@@ -5818,6 +5820,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // BATCHED SAVE: Process saves in sequential batches to prevent database connection exhaustion
       // This is a production-critical pattern that prevents "too many clients" errors
       const batchErrors: string[] = [];
+      const uuidUpdates: { section: string; localId: string; uuid: string }[] = [];
       const processBatch = async (batchName: string, operations: (() => Promise<any>)[]) => {
         if (operations.length === 0) return;
         console.log(`V2 Processing batch: ${batchName} (${operations.length} operations)`);
@@ -5864,7 +5867,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             sortOrder: index,
           };
           
-          // Push operation factory to batch instead of executing immediately
+          const capturedLocalId = doc.id;
           batch1Operations.push(async () => {
             const savedDoc = await saveDocumentMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
@@ -5872,8 +5875,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               docUuid: doc.docUuid 
             });
             const savedDocUuid = savedDoc?.docUuid || doc.docUuid;
+            if (savedDocUuid && !doc.docUuid) {
+              uuidUpdates.push({ section: 'documents', localId: capturedLocalId, uuid: savedDocUuid });
+            }
             
-            // Handle attachments sequentially
             for (const att of capturedDeletedAttachments) {
               await removeDocumentAttachmentV2.mutateAsync({
                 crewUuid: crewIdentifier,
@@ -5911,6 +5916,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             sortOrder: index,
           };
           
+          const capturedVisaLocalId = visa.id;
           batch1Operations.push(async () => {
             const savedVisa = await saveVisaMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
@@ -5918,6 +5924,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               visaUuid: visa.visaUuid 
             });
             const savedVisaUuid = savedVisa?.visaUuid || visa.visaUuid;
+            if (savedVisaUuid && !visa.visaUuid) {
+              uuidUpdates.push({ section: 'visas', localId: capturedVisaLocalId, uuid: savedVisaUuid });
+            }
             
             for (const att of capturedDeletedAttachments) {
               await removeVisaAttachmentV2.mutateAsync({
@@ -5961,8 +5970,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             sortOrder: index,
           };
           
+          const capturedEduLocalId = edu.id;
           batch2Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
             const savedEduUuid = edu.eduUuid;
             if (savedEduUuid) {
               for (const att of capturedDeletedAttachments) {
@@ -5974,13 +5983,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               }
             }
             
-            // Save record with attachments - hook handles attachment saves internally
             const savedEdu = await saveEducationMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: eduData, 
               eduUuid: edu.eduUuid,
               attachments: capturedNewAttachments
             });
+            const returnedEduUuid = savedEdu?.eduUuid || edu.eduUuid;
+            if (returnedEduUuid && !edu.eduUuid) {
+              uuidUpdates.push({ section: 'education', localId: capturedEduLocalId, uuid: returnedEduUuid });
+            }
             return savedEdu;
           });
         });
@@ -6015,8 +6027,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             sortOrder: index,
           };
           
+          const capturedLicLocalId = lic.id;
           batch2Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
             const savedLicUuid = lic.licUuid;
             if (savedLicUuid) {
               for (const att of capturedDeletedAttachments) {
@@ -6028,13 +6040,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               }
             }
             
-            // Save record with attachments - hook handles attachment saves internally
             const savedLic = await saveLicenseMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: licData, 
               licUuid: lic.licUuid,
               attachments: capturedNewAttachments
             });
+            const returnedLicUuid = savedLic?.licUuid || lic.licUuid;
+            if (returnedLicUuid && !lic.licUuid) {
+              uuidUpdates.push({ section: 'licenses', localId: capturedLicLocalId, uuid: returnedLicUuid });
+            }
             return savedLic;
           });
         });
@@ -6068,8 +6083,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             sortOrder: index,
           };
           
+          const capturedTrainLocalId = train.id;
           batch3Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
             const savedTrainUuid = train.trainUuid;
             if (savedTrainUuid) {
               for (const att of capturedDeletedAttachments) {
@@ -6081,13 +6096,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               }
             }
             
-            // Save record with attachments - hook handles attachment saves internally
             const savedTrain = await saveTrainingCourseMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: trainData, 
               trainUuid: train.trainUuid,
               attachments: capturedNewAttachments
             });
+            const returnedTrainUuid = savedTrain?.trainUuid || train.trainUuid;
+            if (returnedTrainUuid && !train.trainUuid) {
+              uuidUpdates.push({ section: 'trainingCourses', localId: capturedTrainLocalId, uuid: returnedTrainUuid });
+            }
             return savedTrain;
           });
         });
@@ -6129,8 +6147,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             ...(isSeaSynced ? { _skipLockedFields: true } : {}),
           } as LegacySeaService;
           
+          const capturedCompanySeaLocalId = sea.id;
           batch3Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
             const savedSeaUuid = sea.seaUuid;
             if (savedSeaUuid) {
               for (const att of capturedDeletedAttachments) {
@@ -6142,13 +6160,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               }
             }
             
-            // Save record with attachments - hook handles attachment saves internally
             const savedSea = await saveSeaServiceMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: seaData, 
               seaUuid: sea.seaUuid,
               attachments: capturedNewAttachments
             });
+            const returnedSeaUuid = savedSea?.seaUuid || sea.seaUuid;
+            if (returnedSeaUuid && !sea.seaUuid) {
+              uuidUpdates.push({ section: 'currentCompanySeaService', localId: capturedCompanySeaLocalId, uuid: returnedSeaUuid });
+            }
             return savedSea;
           });
         });
@@ -6186,8 +6207,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             sortOrder: index,
           };
           
+          const capturedExtSeaLocalId = sea.id;
           batch3Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
             const savedSeaUuid = sea.seaUuid;
             if (savedSeaUuid) {
               for (const att of capturedDeletedAttachments) {
@@ -6199,13 +6220,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               }
             }
             
-            // Save record with attachments - hook handles attachment saves internally
             const savedSea = await saveSeaServiceMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: seaData, 
               seaUuid: sea.seaUuid,
               attachments: capturedNewAttachments
             });
+            const returnedSeaUuid = savedSea?.seaUuid || sea.seaUuid;
+            if (returnedSeaUuid && !sea.seaUuid) {
+              uuidUpdates.push({ section: 'externalSeaService', localId: capturedExtSeaLocalId, uuid: returnedSeaUuid });
+            }
             return savedSea;
           });
         });
@@ -6245,8 +6269,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             sortOrder: index,
           };
           
+          const capturedMedLocalId = med.id;
           batch4Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
             const savedMedUuid = med.medUuid;
             if (savedMedUuid) {
               for (const att of capturedDeletedAttachments) {
@@ -6258,13 +6282,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               }
             }
             
-            // Save record with attachments - hook handles attachment saves internally
             const savedMed = await saveMedicalMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: medData, 
               medUuid: med.medUuid,
               attachments: capturedNewAttachments
             });
+            const returnedMedUuid = savedMed?.medUuid || med.medUuid;
+            if (returnedMedUuid && !med.medUuid) {
+              uuidUpdates.push({ section: 'preJoiningMedicals', localId: capturedMedLocalId, uuid: returnedMedUuid });
+            }
             return savedMed;
           });
         });
@@ -6304,8 +6331,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             sortOrder: index,
           };
           
+          const capturedVisitLocalId = visit.id;
           batch4Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
             const savedVisitUuid = visit.visitUuid;
             if (savedVisitUuid) {
               for (const att of capturedDeletedAttachments) {
@@ -6317,13 +6344,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               }
             }
             
-            // Save record with attachments - hook handles attachment saves internally
             const savedVisit = await saveDoctorVisitMutationV2.mutateAsync({ 
               crewUuid: crewIdentifier, 
               data: visitData, 
               visitUuid: visit.visitUuid,
               attachments: capturedNewAttachments
             });
+            const returnedVisitUuid = savedVisit?.visitUuid || visit.visitUuid;
+            if (returnedVisitUuid && !visit.visitUuid) {
+              uuidUpdates.push({ section: 'doctorVisits', localId: capturedVisitLocalId, uuid: returnedVisitUuid });
+            }
             return savedVisit;
           });
         });
@@ -6331,6 +6361,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       
       // EXECUTE BATCHES SEQUENTIALLY - Critical for preventing database connection exhaustion
       // This pattern ensures we never have more than ~3 concurrent connections
+      isBatchSavingRef.current = true;
       (async () => {
         try {
           console.log('V2 Starting sequential batch execution...');
@@ -6338,6 +6369,33 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           await processBatch('Batch 2: Education + Licenses', batch2Operations);
           await processBatch('Batch 3: Training + Sea Service', batch3Operations);
           await processBatch('Batch 4: Medicals + Doctor Visits', batch4Operations);
+          
+          if (uuidUpdates.length > 0) {
+            console.log('V2: Applying UUID updates to form data:', uuidUpdates);
+            const uuidKeyMap: Record<string, string> = {
+              documents: 'docUuid',
+              visas: 'visaUuid',
+              education: 'eduUuid',
+              licenses: 'licUuid',
+              trainingCourses: 'trainUuid',
+              currentCompanySeaService: 'seaUuid',
+              externalSeaService: 'seaUuid',
+              preJoiningMedicals: 'medUuid',
+              doctorVisits: 'visitUuid',
+            };
+            setFormData(prev => {
+              const updated = { ...prev };
+              for (const { section, localId, uuid } of uuidUpdates) {
+                const uuidField = uuidKeyMap[section];
+                if (uuidField && Array.isArray((updated as any)[section])) {
+                  (updated as any)[section] = (updated as any)[section].map((item: any) =>
+                    item.id === localId ? { ...item, [uuidField]: uuid } : item
+                  );
+                }
+              }
+              return updated;
+            });
+          }
           
           if (batchErrors.length > 0) {
             console.error('V2: Batch execution completed with errors:', batchErrors);
@@ -6358,6 +6416,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             variant: "destructive",
             duration: 5000,
           });
+        } finally {
+          isBatchSavingRef.current = false;
         }
       })();
     } else {
