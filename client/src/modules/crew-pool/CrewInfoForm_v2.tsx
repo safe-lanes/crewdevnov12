@@ -3604,7 +3604,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Country of Residence</Label>
             {isEditing ? (
-              <Select value={formData.countryOfResidence} onValueChange={(value) => updateFormData('countryOfResidence', value)}>
+              <Select value={formData.countryOfResidence} onValueChange={(value) => { setFormData(prev => ({ ...prev, countryOfResidence: value, mobile: applyDialingCode(value, prev.mobile) })); if (mobileError) setMobileError(''); }}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select country of residence" />
                 </SelectTrigger>
@@ -3676,7 +3676,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {isEditing ? (
               <Input
                 value={formData.mobile}
-                onChange={(e) => { updateFormData('mobile', e.target.value); if (mobileError) setMobileError(''); }}
+                onChange={(e) => { const normalized = normalizeMobileInput(formData.countryOfResidence, e.target.value); updateFormData('mobile', normalized); if (mobileError) setMobileError(''); }}
                 onBlur={() => { const trimmed = (formData.mobile || '').trim(); if (trimmed) { const err = validateMobileNumber(formData.countryOfResidence, trimmed); setMobileError(err || ''); } else { setMobileError(''); } }}
                 className={`mt-1 ${mobileError ? 'border-red-500' : ''}`}
                 data-testid="input-mobile"
@@ -5713,6 +5713,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const isEduBlank = (edu: typeof formData.education[0]) => !(edu.qualifications || '').trim() && !(edu.subjectsField || '').trim() && !(edu.schoolCollegeUniversity || '').trim() && !(edu.dateOfCompletion || '').trim() && !hasAttachments(edu.attachments);
     const isLicBlank = (lic: typeof formData.licenses[0]) => !(lic.certificateDocument || '').trim() && !(lic.abbr || '').trim() && !(lic.requirement || '').trim() && !(lic.certificateNo || '').trim() && !(lic.issuingAuthority || '').trim() && !(lic.issued || '').trim() && !(lic.expiry || '').trim() && !hasAttachments(lic.attachments);
     const isTrainBlank = (t: typeof formData.trainingCourses[0]) => !(t.trainingCourse || '').trim() && !(t.abbr || '').trim() && !(t.requirement || '').trim() && !(t.certificateNo || '').trim() && !(t.issuingAuthority || '').trim() && !(t.issued || '').trim() && !(t.expiry || '').trim() && !hasAttachments(t.attachments);
+    const isSeaServiceBlank = (sea: any) => !(sea.vesselName || '').trim() && !(sea.vesselType || '').trim() && !(sea.rank || '').trim() && !(sea.from || sea.fromDate || '').trim() && !(sea.to || sea.toDate || '').trim() && !(sea.ownerOperator || '').trim() && !(sea.deadweight || '').trim() && !(sea.engineTypePower || '').trim();
+    const isMedicalBlank = (med: any) => !(med.vessel || '').trim() && !(med.dateOfMedical || '').trim() && !(med.bp || '').trim() && !(med.weight || '').trim() && !(med.fitnessForDuty || '').trim() && !(med.expiry || '').trim() && !(med.anyMedicationPrescribed || '').trim() && !hasAttachments(med.attachments);
+    const isDoctorVisitBlank = (dv: any) => !(dv.vessel || '').trim() && !(dv.port || '').trim() && !(dv.date || '').trim() && !(dv.complaint || '').trim() && !(dv.doctorComments || '').trim() && !hasAttachments(dv.attachments);
 
     // C1: Document required + date validation
     const newDocReqErrors: Record<string, string> = {};
@@ -5843,31 +5846,33 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       return;
     }
 
-    // Remove fully blank rows before saving
-    const nonEmptyDocuments = formData.documents.filter(doc => !isDocBlank(doc));
-    const nonEmptyVisas = formData.visas.filter(visa => !isVisaBlank(visa));
-    const nonEmptyEducation = formData.education.filter(edu => !isEduBlank(edu));
-    const nonEmptyLicenses = formData.licenses.filter(lic => !isLicBlank(lic));
-    const nonEmptyTraining = formData.trainingCourses.filter(t => !isTrainBlank(t));
-    if (
-      nonEmptyDocuments.length !== formData.documents.length ||
-      nonEmptyVisas.length !== formData.visas.length ||
-      nonEmptyEducation.length !== formData.education.length ||
-      nonEmptyLicenses.length !== formData.licenses.length ||
-      nonEmptyTraining.length !== formData.trainingCourses.length
-    ) {
-      setFormData(prev => ({
-        ...prev,
-        documents: nonEmptyDocuments,
-        visas: nonEmptyVisas,
-        education: nonEmptyEducation,
-        licenses: nonEmptyLicenses,
-        trainingCourses: nonEmptyTraining,
-      }));
-    }
+    // Remove fully blank rows before saving — filter all 9 array sections
+    const nonEmptyDocuments = formData.documents.filter(doc => doc.docUuid || !isDocBlank(doc));
+    const nonEmptyVisas = formData.visas.filter(visa => visa.visaUuid || !isVisaBlank(visa));
+    const nonEmptyEducation = formData.education.filter(edu => (edu as any).eduUuid || !isEduBlank(edu));
+    const nonEmptyLicenses = formData.licenses.filter(lic => (lic as any).licUuid || !isLicBlank(lic));
+    const nonEmptyTraining = formData.trainingCourses.filter(t => (t as any).trainUuid || !isTrainBlank(t));
+    const nonEmptyCurrentSea = formData.currentCompanySeaService.filter((sea: any) => sea.seaUuid || sea.isVesselSynced || !isSeaServiceBlank(sea));
+    const nonEmptyExternalSea = formData.externalSeaService.filter((sea: any) => sea.seaUuid || !isSeaServiceBlank(sea));
+    const nonEmptyMedicals = formData.preJoiningMedicals.filter((med: any) => med.medUuid || !isMedicalBlank(med));
+    const nonEmptyDoctorVisits = formData.doctorVisits.filter((dv: any) => dv.visitUuid || !isDoctorVisitBlank(dv));
 
-    // Include the uploaded photo in the data to be saved
-    const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
+    const cleanedFormData = {
+      ...formData,
+      documents: nonEmptyDocuments,
+      visas: nonEmptyVisas,
+      education: nonEmptyEducation,
+      licenses: nonEmptyLicenses,
+      trainingCourses: nonEmptyTraining,
+      currentCompanySeaService: nonEmptyCurrentSea,
+      externalSeaService: nonEmptyExternalSea,
+      preJoiningMedicals: nonEmptyMedicals,
+      doctorVisits: nonEmptyDoctorVisits,
+    };
+    setFormData(cleanedFormData);
+
+    // Include the uploaded photo in the data to be saved — use cleaned data
+    const dataWithPhoto = { ...cleanedFormData, uploadedPhoto: uploadedPhoto || null };
     
     // V2: Use crewUuid as primary identifier for updates
     // Also check createdCrewId — after first save of a new crew, crewMember is still null
@@ -6021,9 +6026,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const batch3Operations: (() => Promise<any>)[] = [];
           const batch4Operations: (() => Promise<any>)[] = [];
 
-          if (formData.documents && formData.documents.length > 0) {
-            console.log('V2 Preparing Documents for batch:', { crewUuid: crewIdentifier, count: formData.documents.length });
-            formData.documents.forEach((doc: any, index: number) => {
+          if (cleanedFormData.documents && cleanedFormData.documents.length > 0) {
+            console.log('V2 Preparing Documents for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.documents.length });
+            cleanedFormData.documents.forEach((doc: any, index: number) => {
               const docAttachments = doc.attachments || [];
               const capturedNewAttachments = [...docAttachments.filter((att: any) => !att.attUuid || att.isNew)];
               const capturedDeletedAttachments = [...docAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
@@ -6065,9 +6070,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          if (formData.visas && formData.visas.length > 0) {
-            console.log('V2 Preparing Visas for batch:', { crewUuid: crewIdentifier, count: formData.visas.length });
-            formData.visas.forEach((visa: any, index: number) => {
+          if (cleanedFormData.visas && cleanedFormData.visas.length > 0) {
+            console.log('V2 Preparing Visas for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.visas.length });
+            cleanedFormData.visas.forEach((visa: any, index: number) => {
               const visaAttachments = visa.attachments || [];
               const capturedNewAttachments = [...visaAttachments.filter((att: any) => !att.attUuid || att.isNew)];
               const capturedDeletedAttachments = [...visaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
@@ -6107,9 +6112,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          if (formData.education && formData.education.length > 0) {
-            console.log('V2 Preparing Education for batch:', { crewUuid: crewIdentifier, count: formData.education.length });
-            formData.education.forEach((edu: any, index: number) => {
+          if (cleanedFormData.education && cleanedFormData.education.length > 0) {
+            console.log('V2 Preparing Education for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.education.length });
+            cleanedFormData.education.forEach((edu: any, index: number) => {
               const eduAttachments = edu.attachments || [];
               const capturedNewAttachments = [...eduAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
                 attUuid: att.attUuid,
@@ -6165,9 +6170,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          if (formData.licenses && formData.licenses.length > 0) {
-            console.log('V2 Preparing Licenses for batch:', { crewUuid: crewIdentifier, count: formData.licenses.length });
-            formData.licenses.forEach((lic: any, index: number) => {
+          if (cleanedFormData.licenses && cleanedFormData.licenses.length > 0) {
+            console.log('V2 Preparing Licenses for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.licenses.length });
+            cleanedFormData.licenses.forEach((lic: any, index: number) => {
               const licAttachments = lic.attachments || [];
               const capturedNewAttachments = [...licAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
                 attUuid: att.attUuid,
@@ -6229,9 +6234,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          if (formData.trainingCourses && formData.trainingCourses.length > 0) {
-            console.log('V2 Preparing Training Courses for batch:', { crewUuid: crewIdentifier, count: formData.trainingCourses.length });
-            formData.trainingCourses.forEach((train: any, index: number) => {
+          if (cleanedFormData.trainingCourses && cleanedFormData.trainingCourses.length > 0) {
+            console.log('V2 Preparing Training Courses for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.trainingCourses.length });
+            cleanedFormData.trainingCourses.forEach((train: any, index: number) => {
               const trainAttachments = train.attachments || [];
               const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
                 attUuid: att.attUuid,
@@ -6292,9 +6297,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
-            console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.currentCompanySeaService.length });
-            formData.currentCompanySeaService.forEach((sea: any, index: number) => {
+          if (cleanedFormData.currentCompanySeaService && cleanedFormData.currentCompanySeaService.length > 0) {
+            console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.currentCompanySeaService.length });
+            cleanedFormData.currentCompanySeaService.forEach((sea: any, index: number) => {
               const seaAttachments = sea.attachments || [];
               const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
                 attUuid: att.attUuid,
@@ -6370,9 +6375,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          if (formData.externalSeaService && formData.externalSeaService.length > 0) {
-            console.log('V2 Preparing External Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.externalSeaService.length });
-            formData.externalSeaService.forEach((sea: any, index: number) => {
+          if (cleanedFormData.externalSeaService && cleanedFormData.externalSeaService.length > 0) {
+            console.log('V2 Preparing External Sea Service for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.externalSeaService.length });
+            cleanedFormData.externalSeaService.forEach((sea: any, index: number) => {
               const seaAttachments = sea.attachments || [];
               const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
                 attUuid: att.attUuid,
@@ -6437,7 +6442,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          const nonEmptyMedicals = (formData.preJoiningMedicals || []).filter((med: any) => {
+          const nonEmptyMedicals = (cleanedFormData.preJoiningMedicals || []).filter((med: any) => {
             if (med.medUuid) return true;
             const hasAttachments = (med.attachments || []).some((att: any) => !att.isDeleted);
             return (med.vesselCode || med.vessel || med.dateOfMedical || med.bp || med.weight || med.anyMedicationPrescribed || med.clinicHospital || med.fitnessForDuty || med.expiry || hasAttachments);
@@ -6506,7 +6511,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          const nonEmptyVisits = (formData.doctorVisits || []).filter((visit: any) => {
+          const nonEmptyVisits = (cleanedFormData.doctorVisits || []).filter((visit: any) => {
             if (visit.visitUuid) return true;
             const hasAttachments = (visit.attachments || []).some((att: any) => !att.isDeleted);
             return (visit.vessel || visit.port || visit.date || visit.complaint || visit.doctorComments || visit.doctorName || visit.clinicHospital || visit.diagnosis || visit.treatment || visit.followUpDate || hasAttachments);
