@@ -6883,7 +6883,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       createCrewMutationV2.mutate(data, {
         onSuccess: (responseData: any) => {
           const crewUuid = responseData?.crewUuid;
-          console.log('V2 Create crew response - crewUuid:', crewUuid);
+          const generatedEmpNo = responseData?.empNo || responseData?.employeeId;
+          console.log('V2 Create crew response - crewUuid:', crewUuid, 'empNo:', generatedEmpNo);
+          
+          if (generatedEmpNo) {
+            setFormData(prev => ({ ...prev, employeeId: generatedEmpNo }));
+          }
           
           if (crewUuid) {
             setCreatedCrewId(crewUuid);
