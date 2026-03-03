@@ -3351,7 +3351,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
           
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">Date of birth <span className="text-red-500">*</span></Label>
+            <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
             {isEditing ? (
               <Input
                 type="date"
