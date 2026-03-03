@@ -874,6 +874,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return newErrors;
   }, [formData.currentCompanySeaService, formData.externalSeaService]);
 
+  const validateSeaServiceFieldOnBlur = useCallback((serviceId: string, service: any) => {
+    const missing: string[] = [];
+    if (!(service.vesselName || '').trim()) missing.push('Vessel Name');
+    if (!(service.vesselType || '').trim()) missing.push('Vessel Type');
+    if (!(service.rank || '').trim()) missing.push('Rank');
+    if (!(service.from || service.fromDate || '').trim()) missing.push('From Date');
+    if (!(service.to || service.toDate || '').trim()) missing.push('To Date');
+    setSeaServiceRequiredErrors(prev => {
+      if (missing.length > 0) return { ...prev, [serviceId]: missing };
+      const next = { ...prev };
+      delete next[serviceId];
+      return next;
+    });
+  }, []);
+
   // Helper function to calculate period in months between two dates (used for hydration)
   // Uses average days per month (30.44) for accurate calculation
   const calculateSeaServicePeriod = (fromDate: string, toDate: string): string => {
@@ -4839,6 +4854,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                   updateCurrentCompanySeaService(service.id, 'vesselType', vesselTypeName);
                                 }
                               }
+                              setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselCode: value, vesselName: selectedVessel?.name || '', vesselType: selectedVessel?.vtuid ? (vesselTypeIdToNameMap.get(selectedVessel.vtuid) || service.vesselType) : service.vesselType }), 0);
                             }}
                           >
                             <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
@@ -4868,7 +4884,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <Select
                             value={service.vesselType}
-                            onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'vesselType', value)}
+                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'vesselType', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
                           >
                             <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                               <SelectValue placeholder="Select vessel type" />
@@ -4913,7 +4929,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <Select
                             value={service.rank}
-                            onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'rank', value)}
+                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'rank', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                           >
                             <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                               <SelectValue placeholder="Select rank" />
@@ -4944,7 +4960,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             type="date"
                             value={service.from}
                             onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
-                            onBlur={() => runSeaServiceOverlapCheck()}
+                            onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
                             className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           />
                         )}
@@ -4984,7 +5000,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                 type="date"
                                 value={service.to}
                                 onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
-                                onBlur={() => runSeaServiceOverlapCheck()}
+                                onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
                                 className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                                 data-testid={`input-date-to-${service.id}`}
                               />
@@ -5143,8 +5159,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <table className="w-full min-w-[1000px]">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Deadweight</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Engine Type/ Power</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Owner / operator</th>
@@ -5177,6 +5193,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={service.vesselName}
                           onChange={(e) => updateExternalSeaService(service.id, 'vesselName', e.target.value)}
+                          onBlur={() => validateSeaServiceFieldOnBlur(service.id, service)}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter vessel name"
                         />
@@ -5184,7 +5201,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
                           value={service.vesselType}
-                          onValueChange={(value) => updateExternalSeaService(service.id, 'vesselType', value)}
+                          onValueChange={(value) => { updateExternalSeaService(service.id, 'vesselType', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select vessel type" />
@@ -5225,7 +5242,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
                           value={service.rank}
-                          onValueChange={(value) => updateExternalSeaService(service.id, 'rank', value)}
+                          onValueChange={(value) => { updateExternalSeaService(service.id, 'rank', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select rank" />
@@ -5252,7 +5269,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.from}
                           onChange={(e) => updateExternalSeaService(service.id, 'from', e.target.value)}
-                          onBlur={() => runSeaServiceOverlapCheck()}
+                          onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                       </td>
@@ -5261,7 +5278,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.to}
                           onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
-                          onBlur={() => runSeaServiceOverlapCheck()}
+                          onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                         {seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
