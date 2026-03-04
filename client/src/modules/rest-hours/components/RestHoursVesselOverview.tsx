@@ -64,15 +64,17 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     setOpaMode,
   } = useRestHoursFiltersStore();
 
-  // Convert store's PeriodFilterValue to string format for dropdown
+  // Use URL monthValue as initial period, fall back to store then first option
   const periodValueString = useMemo(() => {
+    if (urlMonthValue) {
+      return urlMonthValue;
+    }
     if (storePeriodValue.mode === 'year-month' && storePeriodValue.year && storePeriodValue.month) {
       return `${storePeriodValue.year}-${String(storePeriodValue.month).padStart(2, '0')}`;
     }
     return periodOptions[0]?.value || "";
-  }, [storePeriodValue, periodOptions]);
+  }, [urlMonthValue, storePeriodValue, periodOptions]);
 
-  // Store is the source of truth - dropdown changes update store
   const periodValue = periodValueString;
   
   // Store is the source of truth for vessel selection
@@ -178,17 +180,15 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     setSearchText("");
   };
 
-  // Track the last synced URL params to detect when URL actually changes
-  // This prevents dropdown changes from being overwritten by stale URL params
-  const prevUrlParams = useRef<{ vesselId?: string; monthValue?: string }>({
+  // Track the last synced URL vessel ID to detect when URL actually changes
+  const prevUrlParams = useRef<{ vesselId?: string }>({
     vesselId: undefined,
-    monthValue: undefined,
   });
 
-  // Sync URL params to store only when URL actually changes (not when store changes)
+  // Sync vessel ID from URL to store (but NOT period filter — that would
+  // overwrite quarter/date-range mode with year-month, breaking the Back button)
   useEffect(() => {
     const prevVessel = prevUrlParams.current.vesselId;
-    const prevMonth = prevUrlParams.current.monthValue;
     
     if (!isShipUser && urlVesselId !== prevVessel) {
       prevUrlParams.current.vesselId = urlVesselId;
@@ -196,17 +196,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         setPlanVesselId(urlVesselId);
       }
     }
-    
-    if (urlMonthValue !== prevMonth) {
-      prevUrlParams.current.monthValue = urlMonthValue;
-      if (urlMonthValue) {
-        const [year, month] = urlMonthValue.split('-').map(Number);
-        if (year && month) {
-          setStorePeriodValue({ mode: 'year-month', year, month });
-        }
-      }
-    }
-  }, [urlVesselId, urlMonthValue, setPlanVesselId, setStorePeriodValue]);
+  }, [urlVesselId, setPlanVesselId]);
 
   // Handle sidebar navigation
   const setSelectedRestHoursPage = (page: string) => {
