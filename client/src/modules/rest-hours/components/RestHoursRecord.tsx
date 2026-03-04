@@ -70,12 +70,32 @@ export const RestHoursRecord = (): JSX.Element => {
     }
   }, [isShipUser, myVessels, vessels]);
 
-  // Convert PeriodFilterValue to string format for queries (YYYY-MM)
-  const selectedMonthString = useMemo(() => {
+  const selectedMonths = useMemo((): string[] => {
     if (periodValue.mode === 'year-month' && periodValue.year && periodValue.month) {
-      return `${periodValue.year}-${String(periodValue.month).padStart(2, '0')}`;
+      return [`${periodValue.year}-${String(periodValue.month).padStart(2, '0')}`];
     }
-    return '';
+    if (periodValue.mode === 'year-quarter' && periodValue.year && periodValue.quarter) {
+      const startMonth = (periodValue.quarter - 1) * 3 + 1;
+      return [0, 1, 2].map(offset =>
+        `${periodValue.year}-${String(startMonth + offset).padStart(2, '0')}`
+      );
+    }
+    if (periodValue.mode === 'date-range' && periodValue.dateFrom && periodValue.dateTo) {
+      const from = periodValue.dateFrom;
+      const to = periodValue.dateTo;
+      const months: string[] = [];
+      let y = from.getFullYear();
+      let m = from.getMonth();
+      const endY = to.getFullYear();
+      const endM = to.getMonth();
+      while (y < endY || (y === endY && m <= endM)) {
+        months.push(`${y}-${String(m + 1).padStart(2, '0')}`);
+        m++;
+        if (m > 11) { m = 0; y++; }
+      }
+      return months;
+    }
+    return [];
   }, [periodValue]);
 
   // Parse URL parameters on mount (localStorage is handled by the store automatically)
@@ -453,10 +473,10 @@ export const RestHoursRecord = (): JSX.Element => {
 
       {/* RH Records Table */}
       <div className="pr-4 pb-4">
-        {selectedMonthString ? (
+        {selectedMonths.length > 0 ? (
           <RHRecordsTable 
             selectedVessels={filterType === 'vessel' ? selectedVessels : []}
-            selectedMonth={selectedMonthString}
+            selectedMonths={selectedMonths}
             complianceMode={complianceMode}
             opaMode={opaMode}
           />
