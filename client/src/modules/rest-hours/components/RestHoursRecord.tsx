@@ -84,8 +84,8 @@ export const RestHoursRecord = (): JSX.Element => {
         `${periodValue.year}-${String(startMonth + offset).padStart(2, '0')}`
       );
     } else if (periodValue.mode === 'date-range' && periodValue.dateFrom && periodValue.dateTo) {
-      const from = periodValue.dateFrom;
-      const to = periodValue.dateTo;
+      const from = new Date(periodValue.dateFrom);
+      const to = new Date(periodValue.dateTo);
       let y = from.getFullYear();
       let m = from.getMonth();
       const endY = to.getFullYear();

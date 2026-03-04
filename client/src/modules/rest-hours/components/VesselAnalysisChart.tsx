@@ -56,7 +56,7 @@ export const VesselAnalysisChart = ({
     if (periodFilter.mode === 'year-month') {
       return periodFilter.year || currentYear;
     } else if (periodFilter.mode === 'date-range' && periodFilter.dateFrom) {
-      return periodFilter.dateFrom.getFullYear();
+      return new Date(periodFilter.dateFrom).getFullYear();
     }
     
     return currentYear;
