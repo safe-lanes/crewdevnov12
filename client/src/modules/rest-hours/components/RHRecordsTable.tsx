@@ -1036,7 +1036,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonths, complianceMode
           }}
           animateRows={true}
           pagination={true}
-          paginationPageSize={20}
+          paginationPageSize={100}
           domLayout="normal"
           rowHeight={56}
         />
