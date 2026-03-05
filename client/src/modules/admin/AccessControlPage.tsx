@@ -74,6 +74,11 @@ const CP_FORM_SECTION_MENUS = new Set([
 ]);
 const CP_FORM_DISABLED_KEYS = new Set<keyof Permission>(["candelete"]);
 
+const PM_FORM_SECTION_MENUS = new Set([
+  "pm criteria review", "pm approval", "pm execution"
+]);
+const PM_FORM_DISABLED_KEYS = new Set<keyof Permission>(["cancreate", "canedit", "candelete"]);
+
 function buildMenuTree(menus: MenuItemApi[]): MenuTreeItem[] {
   const map = new Map<string, MenuTreeItem>();
   const roots: MenuTreeItem[] = [];
@@ -189,14 +194,14 @@ export default function AccessControlPage() {
   );
 
   const handleSelectAll = useCallback(
-    (menuMuid: string, checked: boolean, restricted = false, noDelete = false) => {
+    (menuMuid: string, checked: boolean, restricted = false, noDelete = false, viewOnly = false) => {
       setLocalPermissions((prev) => ({
         ...prev,
         [menuMuid]: {
           canview: checked,
-          cancreate: checked,
-          canedit: restricted ? false : checked,
-          candelete: (restricted || noDelete) ? false : checked,
+          cancreate: viewOnly ? false : checked,
+          canedit: (restricted || viewOnly) ? false : checked,
+          candelete: (restricted || noDelete || viewOnly) ? false : checked,
         },
       }));
       setIsDirty(true);
@@ -241,18 +246,21 @@ export default function AccessControlPage() {
     const isExpanded = expandedMenus?.has(item.muid) ?? false;
     const isLockMenu = LOCK_ACTION_MENUS.has(item.name.toLowerCase());
     const isCpFormMenu = CP_FORM_SECTION_MENUS.has(item.name.toLowerCase());
+    const isPmFormMenu = PM_FORM_SECTION_MENUS.has(item.name.toLowerCase());
     const perms = localPermissions[item.muid] || {
       canview: false,
       cancreate: false,
       canedit: false,
       candelete: false,
     };
-    const allSelected = isLockMenu
-      ? perms.canview && perms.cancreate
-      : isCpFormMenu
-        ? perms.canview && perms.cancreate && perms.canedit
-        : perms.canview && perms.cancreate && perms.canedit && perms.candelete;
-    const someSelected = !allSelected && (perms.canview || perms.cancreate || (!isLockMenu && (perms.canedit || (!isCpFormMenu && perms.candelete))));
+    const allSelected = isPmFormMenu
+      ? perms.canview
+      : isLockMenu
+        ? perms.canview && perms.cancreate
+        : isCpFormMenu
+          ? perms.canview && perms.cancreate && perms.canedit
+          : perms.canview && perms.cancreate && perms.canedit && perms.candelete;
+    const someSelected = !allSelected && (perms.canview || (!isPmFormMenu && (perms.cancreate || (!isLockMenu && (perms.canedit || (!isCpFormMenu && perms.candelete))))));
 
     return (
       <div key={item.muid}>
@@ -287,14 +295,14 @@ export default function AccessControlPage() {
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}
               onCheckedChange={() =>
-                handleSelectAll(item.muid, !allSelected, isLockMenu, isCpFormMenu)
+                handleSelectAll(item.muid, !allSelected, isLockMenu, isCpFormMenu, isPmFormMenu)
               }
               className="h-[18px] w-[18px] border-gray-300 data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3] data-[state=indeterminate]:bg-[#52baf3] data-[state=indeterminate]:border-[#52baf3]"
               data-testid={`checkbox-select-all-${item.muid}`}
             />
           </div>
           {PERMISSION_KEYS.map((key) => {
-            const isDisabledKey = (isLockMenu && LOCK_ACTION_DISABLED_KEYS.has(key)) || (isCpFormMenu && CP_FORM_DISABLED_KEYS.has(key));
+            const isDisabledKey = (isLockMenu && LOCK_ACTION_DISABLED_KEYS.has(key)) || (isCpFormMenu && CP_FORM_DISABLED_KEYS.has(key)) || (isPmFormMenu && PM_FORM_DISABLED_KEYS.has(key));
             return (
               <div
                 key={key}

@@ -16,6 +16,7 @@ import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { calculateChecklistProgressFromJson } from '@/modules/promotions/checklistProgressUtils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -57,11 +58,31 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   onClose,
 }) => {
   const { toast } = useToast();
-  const sections = [
+  const { permissions, canView } = usePermissions();
+
+  const pmSectionMenuMap: Record<string, string> = {
+    a: 'PM Criteria Review',
+    b: 'PM Approval',
+    c: 'PM Execution',
+  };
+
+  const canViewSection = useCallback((sectionId: string): boolean => {
+    const menuName = pmSectionMenuMap[sectionId];
+    if (!menuName) return true;
+    if (permissions.length === 0) return true;
+    return canView(menuName);
+  }, [permissions, canView]);
+
+  const allSections = [
     { id: 'a', title: 'Part A: Promotion Criteria Review', letter: 'A' },
     { id: 'b', title: 'Part B: Approval', letter: 'B' },
     { id: 'c', title: 'Part C: Execution', letter: 'C' },
   ];
+
+  const sections = useMemo(() =>
+    allSections.filter(s => canViewSection(s.id)),
+    [permissions]
+  );
 
   const { data: formsData } = useQuery<Form[]>({
     queryKey: ['/api/v2/admin/forms'],
@@ -1279,7 +1300,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       >
       {({ activeSection, form }) => (
         <>
-          {activeSection === 'a' && (
+          {activeSection === 'a' && canViewSection('a') && (
             <div className="bg-white rounded-lg p-6">
               <div className="space-y-6">
                 {rankGroupLookupResult.attempted && !rankGroupLookupResult.found && rankGroupLookupResult.targetRank && (
@@ -1513,7 +1534,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             </div>
           )}
 
-          {activeSection === 'b' && (
+          {activeSection === 'b' && canViewSection('b') && (
             <PartBApproval
               approvers={approvers}
               onAddApprover={addApprover}
@@ -1529,7 +1550,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             />
           )}
 
-          {activeSection === 'c' && (
+          {activeSection === 'c' && canViewSection('c') && (
             <PartCExecution
               promotionConfirmed={promotionConfirmed}
               onSetPromotionConfirmed={setPromotionConfirmed}
