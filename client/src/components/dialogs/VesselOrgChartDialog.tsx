@@ -126,33 +126,44 @@ function getNodeColor(node: OrgChartNode, allNodes: OrgChartNode[]): string {
 }
 
 function OrgChartTreeView({ roots, allNodes }: { roots: TreeNode[]; allNodes: OrgChartNode[] }) {
-  const renderNode = (node: TreeNode, isLast: boolean, depth: number) => {
+  const NODE_HEIGHT = 36;
+  const INDENT = 24;
+
+  const renderNode = (node: TreeNode, depth: number, isLast: boolean, isRoot: boolean) => {
     const colorClass = getNodeColor(node, allNodes);
-    const isRoot = depth === 0;
+    const hasChildren = node.children.length > 0;
 
     return (
-      <div key={node.rankId} className="relative" data-testid={`org-node-${node.rankId}`}>
-        <div className={`flex items-center ${isRoot ? '' : 'ml-6'} relative`}>
-          {!isRoot && (
-            <div className="absolute left-0 top-0 bottom-0 w-6">
-              <div
-                className="absolute left-3 w-3 border-t border-gray-300"
-                style={{ top: '50%' }}
-              />
-              <div
-                className="absolute left-3 top-0 border-l border-gray-300"
-                style={{ height: isLast ? '50%' : '100%' }}
-              />
-            </div>
-          )}
-          <div className={`px-4 py-2 rounded-md text-sm font-medium shadow-sm min-w-[130px] text-center my-1 ${colorClass}`}>
-            {node.rank}
-          </div>
+      <div
+        key={node.rankId}
+        className="relative"
+        style={{ paddingLeft: isRoot ? 0 : INDENT }}
+        data-testid={`org-node-${node.rankId}`}
+      >
+        {!isRoot && (
+          <>
+            <span
+              className="absolute border-l border-gray-300"
+              style={{ left: 0, top: 0, height: isLast ? NODE_HEIGHT / 2 : '100%' }}
+              aria-hidden="true"
+            />
+            <span
+              className="absolute border-t border-gray-300"
+              style={{ left: 0, top: NODE_HEIGHT / 2, width: INDENT }}
+              aria-hidden="true"
+            />
+          </>
+        )}
+        <div
+          className={`inline-flex items-center px-4 rounded-md text-sm font-medium shadow-sm ${colorClass}`}
+          style={{ height: NODE_HEIGHT }}
+        >
+          {node.rank}
         </div>
-        {node.children.length > 0 && (
-          <div className={`relative ${isRoot ? 'ml-4' : 'ml-10'}`}>
+        {hasChildren && (
+          <div>
             {node.children.map((child, idx) => (
-              renderNode(child, idx === node.children.length - 1, depth + 1)
+              renderNode(child, depth + 1, idx === node.children.length - 1, false)
             ))}
           </div>
         )}
@@ -170,9 +181,9 @@ function OrgChartTreeView({ roots, allNodes }: { roots: TreeNode[]; allNodes: Or
 
   return (
     <div className="p-4 sm:p-6">
-      {roots.map((root, idx) => (
-        <div key={root.rankId} className="mb-3">
-          {renderNode(root, idx === roots.length - 1, 0)}
+      {roots.map((root) => (
+        <div key={root.rankId} className="mb-2">
+          {renderNode(root, 0, true, true)}
         </div>
       ))}
     </div>
