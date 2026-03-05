@@ -127,6 +127,7 @@ function getNodeColor(node: OrgChartNode, allNodes: OrgChartNode[]): string {
 
 function OrgChartTreeView({ roots, allNodes }: { roots: TreeNode[]; allNodes: OrgChartNode[] }) {
   const NODE_HEIGHT = 36;
+  const NODE_GAP = 6;
   const INDENT = 24;
 
   const renderNode = (node: TreeNode, depth: number, isLast: boolean, isRoot: boolean) => {
@@ -137,19 +138,19 @@ function OrgChartTreeView({ roots, allNodes }: { roots: TreeNode[]; allNodes: Or
       <div
         key={node.rankId}
         className="relative"
-        style={{ paddingLeft: isRoot ? 0 : INDENT }}
+        style={{ paddingLeft: isRoot ? 0 : INDENT, paddingTop: isRoot ? 0 : NODE_GAP }}
         data-testid={`org-node-${node.rankId}`}
       >
         {!isRoot && (
           <>
             <span
               className="absolute border-l border-gray-300"
-              style={{ left: 0, top: 0, height: isLast ? NODE_HEIGHT / 2 : '100%' }}
+              style={{ left: 0, top: 0, height: isLast ? NODE_GAP + NODE_HEIGHT / 2 : '100%' }}
               aria-hidden="true"
             />
             <span
               className="absolute border-t border-gray-300"
-              style={{ left: 0, top: NODE_HEIGHT / 2, width: INDENT }}
+              style={{ left: 0, top: NODE_GAP + NODE_HEIGHT / 2, width: INDENT }}
               aria-hidden="true"
             />
           </>
