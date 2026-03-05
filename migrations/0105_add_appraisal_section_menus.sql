@@ -14,7 +14,7 @@ FROM (VALUES
   ('AP Summary', 'Summary & Recommendations', '/appraisals/summary', 7),
   ('AP Office Review', 'Office Review & Followup', '/appraisals/office-review', 8)
 ) AS s(name, display_name, route, sort_order)
-CROSS JOIN (SELECT muid FROM adm_menumaster_ac WHERE name = 'Appraisals' AND parent_menu IS NULL LIMIT 1) p
+CROSS JOIN (SELECT muid FROM adm_menumaster_ac WHERE name = 'Crewing' AND parent_menu IS NULL LIMIT 1) p
 ON CONFLICT (name) DO NOTHING;
 
 -- Grant canview=true (and other perms false) to all existing roles for the new menus
