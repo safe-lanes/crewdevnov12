@@ -585,7 +585,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { canView, permissions } = usePermissions();
+  const { canView, canEdit, permissions } = usePermissions();
 
   const sectionMenuMap: Record<string, string | null> = {
     A: 'CP Dashboard',
@@ -602,6 +602,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (permissions.length === 0) return true;
     return canView(menuName);
   }, [permissions, canView]);
+
+  const canEditSection = useCallback((sectionId: string): boolean => {
+    const menuName = sectionMenuMap[sectionId];
+    if (!menuName) return true;
+    if (permissions.length === 0) return true;
+    return canEdit(menuName);
+  }, [permissions, canEdit]);
+
+  const canEditCrewDatabase = permissions.length === 0 || canEdit('Crew Database');
 
   const allSections = [
     { id: 'A', title: 'Dashboard', number: 'A' },
@@ -2547,6 +2556,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 alt="Uploaded photo" 
                 className="w-full h-full object-cover"
               />
+              {canEditCrewDatabase && (
               <Button
                 type="button"
                 variant="destructive"
@@ -2557,8 +2567,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               >
                 <X className="h-3 w-3" />
               </Button>
+              )}
             </div>
-          ) : (
+          ) : canEditCrewDatabase ? (
             <label htmlFor="sidebar-photo-upload" className="cursor-pointer block">
               <div className="w-full aspect-[4/5] max-w-[120px] mx-auto bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors">
                 <div className="text-center">
@@ -2568,9 +2579,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </div>
             </label>
+          ) : (
+            <div className="w-full aspect-[4/5] max-w-[120px] mx-auto bg-gray-100 rounded-lg flex items-center justify-center border-2 border-gray-300">
+              <div className="text-center">
+                <Camera className="h-6 w-6 mx-auto mb-1 text-gray-300" />
+              </div>
+            </div>
           )}
           
-          {uploadedPhoto && (
+          {uploadedPhoto && canEditCrewDatabase && (
             <Button 
               type="button" 
               variant="outline" 
@@ -2604,6 +2621,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-status">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Status</h3>
+                {canEditSection('A') && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -2613,6 +2631,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 >
                   <Pencil className="h-3 w-3" />
                 </Button>
+                )}
               </div>
               <div className="space-y-3">
                 {isDashboardLoading ? (
@@ -2668,6 +2687,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                               {statusData?.nextAvailability || formData.nextAvailability || '—'}
                             </div>
                           </div>
+                          {canEditSection('A') && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -2677,6 +2697,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
+                          )}
                         </div>
                       )}
                       
@@ -3194,6 +3215,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div ref={sectionB1Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B1 General Particulars</h3>
+          {canEditCrewDatabase && (
           <Button
             variant="ghost"
             size="sm"
@@ -3203,6 +3225,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           >
             <Edit className="h-4 w-4" />
           </Button>
+          )}
         </div>
           
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -3627,6 +3650,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div ref={sectionB2Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B2 Address & Contact Info</h3>
+          {canEditCrewDatabase && (
           <Button
             variant="ghost"
             size="sm"
@@ -3636,6 +3660,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           >
             <Edit className="h-4 w-4" />
           </Button>
+          )}
         </div>
           
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -3754,6 +3779,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div ref={sectionB3Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B3 Family and NOK</h3>
+          {canEditCrewDatabase && (
           <Button
             variant="ghost"
             size="sm"
@@ -3763,6 +3789,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           >
             <Edit className="h-4 w-4" />
           </Button>
+          )}
         </div>
           
         <div className="space-y-6">
@@ -4120,6 +4147,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C1 Travel and Identification Docs</h3>
+          {canEditSection('C') && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -4142,6 +4170,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ADD
             </Button>
           </div>
+          )}
         </div>
         
         <Table className="w-full">
@@ -4152,7 +4181,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              {canEditSection('C') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -4207,6 +4236,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
+                {canEditSection('C') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -4233,6 +4263,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -4247,6 +4278,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C2 Visas</h3>
+          {canEditSection('C') && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -4269,6 +4301,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ADD
             </Button>
           </div>
+          )}
         </div>
         
         <Table className="w-full">
@@ -4279,7 +4312,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type <span className="text-red-500">*</span></TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              {canEditSection('C') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -4336,6 +4369,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                   {visaRequiredErrors[visa.id]?.visaType && <p className="text-xs text-red-500 mt-1">{visaRequiredErrors[visa.id].visaType}</p>}
                 </TableCell>
+                {canEditSection('C') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -4362,6 +4396,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -4376,6 +4411,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D1 Education</h3>
+          {canEditSection('D') && (
           <Button
             variant="outline"
             size="sm"
@@ -4386,6 +4422,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4 mr-2" />
             ADD
           </Button>
+          )}
         </div>
         
         <Table className="w-full">
@@ -4395,7 +4432,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              {canEditSection('D') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -4432,6 +4469,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
+                {canEditSection('D') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -4458,6 +4496,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -4472,6 +4511,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D2 License & DCE</h3>
+          {canEditSection('D') && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -4493,6 +4533,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ADD
             </Button>
           </div>
+          )}
         </div>
         
         <Table className="w-full">
@@ -4506,7 +4547,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              {canEditSection('D') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -4607,6 +4648,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                   {licDateErrors[license.id]?.expiry && <p className="text-xs text-red-500 mt-1">{licDateErrors[license.id].expiry}</p>}
                 </TableCell>
+                {canEditSection('D') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -4633,6 +4675,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -4647,6 +4690,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D3 Training Course</h3>
+          {canEditSection('D') && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -4668,6 +4712,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ADD
             </Button>
           </div>
+          )}
         </div>
         
         <Table className="w-full">
@@ -4681,7 +4726,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              {canEditSection('D') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -4761,6 +4806,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                   {trainDateErrors[course.id]?.expiry && <p className="text-xs text-red-500 mt-1">{trainDateErrors[course.id].expiry}</p>}
                 </TableCell>
+                {canEditSection('D') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -4787,6 +4833,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -4801,6 +4848,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>E1. Details of Sea Service (Company)</h3>
+          {canEditSection('E') && (
           <Button
             type="button"
             variant="outline"
@@ -4812,6 +4860,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4" />
             ADD
           </Button>
+          )}
         </div>
         
         <div className="border rounded-lg overflow-hidden">
@@ -4829,7 +4878,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Experience</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                  {canEditSection('E') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -5116,6 +5165,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <span className="text-gray-400 text-[11px]">—</span>
                         )}
                       </td>
+                      {canEditSection('E') && (
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">
                           <Button 
@@ -5146,6 +5196,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e1-${formData.currentCompanySeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
                         )}
                       </td>
+                      )}
                     </tr>
                       );
                     })
@@ -5164,6 +5215,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>E2. Details of Sea Service (External)</h3>
+          {canEditSection('E') && (
           <Button
             type="button"
             variant="outline"
@@ -5175,6 +5227,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4" />
             ADD
           </Button>
+          )}
         </div>
         
         <div className="border rounded-lg overflow-hidden">
@@ -5192,7 +5245,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Experience</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                  {canEditSection('E') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -5368,6 +5421,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <span className="text-gray-400 text-[11px]">—</span>
                         )}
                       </td>
+                      {canEditSection('E') && (
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">
                           <Button 
@@ -5398,6 +5452,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e2-${formData.externalSeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
                         )}
                       </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -5415,6 +5470,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>F1. Pre Joining Medicals</h3>
+          {canEditSection('F') && (
           <Button
             type="button"
             variant="outline"
@@ -5426,6 +5482,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4" />
             ADD
           </Button>
+          )}
         </div>
         
         <div className="border rounded-lg overflow-hidden">
@@ -5440,7 +5497,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Any Medication Prescribed</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Fitness for Sea Service</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Expiry</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                  {canEditSection('F') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -5534,6 +5591,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           className={`border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 ${getExpiryColorClass(medical.expiry)} text-[13px] font-normal h-6`}
                         />
                       </td>
+                      {canEditSection('F') && (
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">
                           <Button 
@@ -5561,6 +5619,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           </Button>
                         </div>
                       </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -5578,6 +5637,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>F2. Doctor Visits</h3>
+          {canEditSection('F') && (
           <Button
             type="button"
             variant="outline"
@@ -5589,6 +5649,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4" />
             ADD
           </Button>
+          )}
         </div>
         
         <div className="border rounded-lg overflow-hidden">
@@ -5601,7 +5662,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Complaint / Illness / Injury</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Doctor Comments</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                  {canEditSection('F') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -5654,6 +5715,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           placeholder="Enter doctor comments"
                         />
                       </td>
+                      {canEditSection('F') && (
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">
                           <Button 
@@ -5681,6 +5743,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           </Button>
                         </div>
                       </td>
+                      )}
                     </tr>
                   ))
                 )}
