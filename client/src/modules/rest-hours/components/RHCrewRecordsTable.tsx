@@ -595,7 +595,7 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
           context={{ onEditRecord: handleEditRecord, onViewViolations: handleViewViolations, onViewPredictedViolations: handleViewPredictedViolations, onViewNCReport: handleViewNCReport, onViewPredictedNC: handleViewPredictedNC, isLocked }}
           animateRows={true}
           pagination={true}
-          paginationPageSize={100}
+          paginationPageSize={2000}
           domLayout="normal"
           rowHeight={56}
         />
