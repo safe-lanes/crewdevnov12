@@ -264,6 +264,75 @@ export const crewRecordsService = {
       const records = await crewRecordsRepository.findAll({ vesselId, monthValue });
       allRecords.push(...records);
     }
+
+    {
+      const monthsToLookup = monthValue
+        ? [monthValue]
+        : Array.from(new Set(allRecords.map(r => r.monthValue).filter(Boolean)));
+
+      const db = getDb();
+
+      for (const vesselId of vesselIds) {
+        for (const mv of monthsToLookup) {
+          const { firstDay, lastDay } = getMonthBounds(mv);
+
+          const crewData = await db
+            .select({
+              crewUuid: crewAssignments.crewUuid,
+              vesselUuid: crewAssignments.vesselUuid,
+              signOnDate: crewAssignments.signOnDate,
+              signOffDate: crewAssignments.signOffDate,
+              isCurrent: crewAssignments.isCurrent,
+              empNo: crewMembersV2.empNo,
+            })
+            .from(crewAssignments)
+            .innerJoin(
+              crewMembersV2,
+              eq(crewAssignments.crewUuid, crewMembersV2.crewUuid)
+            )
+            .where(
+              and(
+                eq(crewAssignments.vesselUuid, vesselId),
+                or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
+                lte(crewAssignments.signOnDate, lastDay),
+                or(
+                  isNull(crewAssignments.signOffDate),
+                  eq(crewAssignments.signOffDate, ''),
+                  gte(crewAssignments.signOffDate, firstDay)
+                )
+              )
+            );
+
+          const assignmentByCrewId = new Map<string, typeof crewData[0]>();
+          for (const crew of crewData) {
+            const crewId = crew.empNo || crew.crewUuid;
+            const existing = assignmentByCrewId.get(crewId);
+            if (!existing) {
+              assignmentByCrewId.set(crewId, crew);
+            } else {
+              const existingDate = existing.signOnDate || '';
+              const newDate = crew.signOnDate || '';
+              if (newDate > existingDate) {
+                assignmentByCrewId.set(crewId, crew);
+              } else if (newDate === existingDate && crew.isCurrent && !existing.isCurrent) {
+                assignmentByCrewId.set(crewId, crew);
+              }
+            }
+          }
+
+          for (const record of allRecords) {
+            if (record.vesselId !== vesselId || record.monthValue !== mv) continue;
+            const assignment = assignmentByCrewId.get(record.crewMemberId);
+            if (assignment) {
+              const effectiveSignOffDate = assignment.isCurrent ? null : assignment.signOffDate;
+              record._signOnDate = assignment.signOnDate;
+              record._signOffDate = effectiveSignOffDate;
+            }
+          }
+        }
+      }
+    }
+
     return enrichRecordsWithComputedFields(allRecords);
   },
 
