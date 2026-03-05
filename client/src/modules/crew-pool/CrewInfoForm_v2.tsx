@@ -27,6 +27,7 @@ import { validateMobileNumber, normalizeMobileInput, applyDialingCode, getDialin
 import { TravelDocumentSelectionDialog } from './TravelDocumentSelectionDialog';
 import { VisaSelectionDialog } from './VisaSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
@@ -584,8 +585,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Sections for stepper navigation  
-  const sections = [
+  const { canView, permissions } = usePermissions();
+
+  const sectionMenuMap: Record<string, string | null> = {
+    A: 'CP Dashboard',
+    B: null,
+    C: 'CP Travel ID Documents',
+    D: 'CP Training Certificates',
+    E: 'CP Sea Service',
+    F: 'CP Medical',
+  };
+
+  const canViewSection = useCallback((sectionId: string): boolean => {
+    const menuName = sectionMenuMap[sectionId];
+    if (!menuName) return true;
+    if (permissions.length === 0) return true;
+    return canView(menuName);
+  }, [permissions, canView]);
+
+  const allSections = [
     { id: 'A', title: 'Dashboard', number: 'A' },
     { id: 'B', title: 'Seafarers\' Particulars', number: 'B' },
     { id: 'C', title: 'Travel & ID Documents', number: 'C' },
@@ -593,6 +611,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     { id: 'E', title: 'Sea Service', number: 'E' },
     { id: 'F', title: 'Medical', number: 'F' }
   ];
+
+  const sections = useMemo(() =>
+    allSections.filter(s => canViewSection(s.id)),
+    [permissions]
+  );
 
   // Refs for scroll detection
   const sectionARef = useRef<HTMLDivElement>(null);
@@ -7457,9 +7480,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     const observer = new IntersectionObserver(observerCallback, observerOptions);
 
-    // Observe all section refs
-    [sectionARef, sectionBRef, sectionCRef, sectionDRef, sectionERef, sectionFRef].forEach((ref) => {
-      if (ref.current) {
+    const sectionRefMap: Record<string, React.RefObject<HTMLDivElement | null>> = {
+      A: sectionARef, B: sectionBRef, C: sectionCRef,
+      D: sectionDRef, E: sectionERef, F: sectionFRef,
+    };
+    sections.forEach((s) => {
+      const ref = sectionRefMap[s.id];
+      if (ref?.current) {
         observer.observe(ref.current);
       }
     });
@@ -7467,7 +7494,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return () => {
       observer.disconnect();
     };
-  }, [isOpen, activeSection]);
+  }, [isOpen, activeSection, sections]);
 
   // Scroll to section functionality
   const scrollToSection = (sectionId: string) => {
@@ -7740,13 +7767,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           {/* Main Content Area - Continuous Scroll */}
           <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb] space-y-6">
             {/* A - Dashboard */}
+            {canViewSection('A') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionARef} data-section="A">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 {renderDashboard()}
               </CardContent>
             </Card>
+            )}
 
-            {/* B - Seafarers' Particulars */}
+            {/* B - Seafarers' Particulars (always visible) */}
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionBRef} data-section="B">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7781,6 +7810,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </Card>
 
             {/* C - Travel & ID Documents */}
+            {canViewSection('C') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionCRef} data-section="C">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7794,8 +7824,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* D - Training & Certificates */}
+            {canViewSection('D') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionDRef} data-section="D">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7810,8 +7842,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* E - Sea Service */}
+            {canViewSection('E') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionERef} data-section="E">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7825,8 +7859,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* F - Medical Records */}
+            {canViewSection('F') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionFRef} data-section="F">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7840,6 +7876,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </CardContent>
             </Card>
+            )}
           </div>
         </div>
       </div>
