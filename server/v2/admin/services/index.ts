@@ -13,3 +13,4 @@ export { vesselRevisionsService } from "./vesselRevisionsService";
 export { trainingMatrixVesselDraftsService } from "./trainingMatrixVesselDraftsService";
 export { trainingMatrixVesselRevisionsService } from "./trainingMatrixVesselRevisionsService";
 export { accessControlService } from "./accessControlService";
+export { vesselOrgChartService } from "./vesselOrgChartService";

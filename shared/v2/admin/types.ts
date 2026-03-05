@@ -19,6 +19,7 @@ import {
   admMenuMasterAc,
   admRoleMasterAc,
   admRoleAccessAc,
+  admVesselOrgChartV2,
 } from "./schema";
 
 export const insertAdmFormV2Schema = createInsertSchema(admFormsV2).omit({
@@ -191,3 +192,12 @@ export type InsertAdmRoleMasterAc = z.infer<typeof insertAdmRoleMasterAcSchema>;
 
 export type AdmRoleAccessAc = typeof admRoleAccessAc.$inferSelect;
 export type InsertAdmRoleAccessAc = z.infer<typeof insertAdmRoleAccessAcSchema>;
+
+export const insertAdmVesselOrgChartV2Schema = createInsertSchema(admVesselOrgChartV2).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AdmVesselOrgChartV2 = typeof admVesselOrgChartV2.$inferSelect;
+export type InsertAdmVesselOrgChartV2 = z.infer<typeof insertAdmVesselOrgChartV2Schema>;

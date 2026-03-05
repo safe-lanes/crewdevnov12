@@ -9,6 +9,7 @@ import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, Ch
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
+import { VesselOrgChartDialog } from "@/components/dialogs/VesselOrgChartDialog";
 import {
   Table,
   TableBody,
@@ -1027,6 +1028,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Promotion Hierarchy Dialog state
   const [isPromotionHierarchyOpen, setIsPromotionHierarchyOpen] = useState(false);
+  const [isVesselOrgChartOpen, setIsVesselOrgChartOpen] = useState(false);
 
   // Vessel Group Form setup
   const vesselGroupForm = useForm({
@@ -4366,7 +4368,7 @@ const AdminModuleInner = (): JSX.Element => {
                 <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
                   <Button
                     variant="outline"
-                    onClick={() => {}}
+                    onClick={() => setIsVesselOrgChartOpen(true)}
                     className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
                     data-testid="button-vessel-org-chart-mobile"
                   >
@@ -4481,7 +4483,7 @@ const AdminModuleInner = (): JSX.Element => {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => {}}
+                  onClick={() => setIsVesselOrgChartOpen(true)}
                   className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
                   data-testid="button-vessel-org-chart"
                 >
@@ -8672,6 +8674,21 @@ const AdminModuleInner = (): JSX.Element => {
         open={isPromotionHierarchyOpen}
         onOpenChange={setIsPromotionHierarchyOpen}
         apiBasePath="/api/v2/admin/promotion-hierarchies"
+      />
+      <VesselOrgChartDialog
+        open={isVesselOrgChartOpen}
+        onOpenChange={setIsVesselOrgChartOpen}
+        companyRanks={(() => {
+          const seen = new Set<string>();
+          return companyRankData
+            .filter(r => {
+              if (r.isRoleRow || seen.has(r.rank)) return false;
+              seen.add(r.rank);
+              return true;
+            })
+            .map(r => ({ rank: r.rank, rankId: r.rankId }));
+        })()}
+        canEdit={permissions.length === 0 || canEdit("Rank Admin")}
       />
     </>
   );
