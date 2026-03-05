@@ -76,7 +76,11 @@ export const RestHoursRecord = (): JSX.Element => {
 
     let months: string[] = [];
 
-    if (periodValue.mode === 'year-month' && periodValue.year && periodValue.month) {
+    if (periodValue.mode === 'year' && periodValue.year) {
+      months = Array.from({ length: 12 }, (_, i) =>
+        `${periodValue.year}-${String(i + 1).padStart(2, '0')}`
+      );
+    } else if (periodValue.mode === 'year-month' && periodValue.year && periodValue.month) {
       months = [`${periodValue.year}-${String(periodValue.month).padStart(2, '0')}`];
     } else if (periodValue.mode === 'year-quarter' && periodValue.year && periodValue.quarter) {
       const startMonth = (periodValue.quarter - 1) * 3 + 1;
