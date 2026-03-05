@@ -80,7 +80,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   // Store is the source of truth for vessel selection
   const selectedVessel = planVesselId || "";
 
-  // Update store when period changes via dropdown
+  // Update store and URL when period changes via dropdown
   const handlePeriodChange = (value: string) => {
     const [year, month] = value.split('-').map(Number);
     setStorePeriodValue({
@@ -88,6 +88,9 @@ export const RestHoursVesselOverview = (): JSX.Element => {
       year,
       month,
     });
+    if (urlVesselId) {
+      setLocation(`/rest-hours/vessel/${urlVesselId}/${value}`);
+    }
   };
 
   // Update store when vessel changes via dropdown
