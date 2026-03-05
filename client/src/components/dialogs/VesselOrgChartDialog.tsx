@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronUp, ChevronDown, Plus, X, Edit2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -129,53 +128,33 @@ function getNodeColor(node: OrgChartNode, allNodes: OrgChartNode[]): string {
 function OrgChartTreeView({ roots, allNodes }: { roots: TreeNode[]; allNodes: OrgChartNode[] }) {
   const renderNode = (node: TreeNode, isLast: boolean, depth: number) => {
     const colorClass = getNodeColor(node, allNodes);
+    const isRoot = depth === 0;
+
     return (
-      <div key={node.rankId} className="flex flex-col items-center" data-testid={`org-node-${node.rankId}`}>
-        <div className={`px-4 py-2 rounded-md text-sm font-medium shadow-sm min-w-[120px] text-center ${colorClass}`}>
-          {node.rank}
+      <div key={node.rankId} className="relative" data-testid={`org-node-${node.rankId}`}>
+        <div className={`flex items-center ${isRoot ? '' : 'ml-6'} relative`}>
+          {!isRoot && (
+            <div className="absolute left-0 top-0 bottom-0 w-6">
+              <div
+                className="absolute left-3 w-3 border-t border-gray-300"
+                style={{ top: '50%' }}
+              />
+              <div
+                className="absolute left-3 top-0 border-l border-gray-300"
+                style={{ height: isLast ? '50%' : '100%' }}
+              />
+            </div>
+          )}
+          <div className={`px-4 py-2 rounded-md text-sm font-medium shadow-sm min-w-[130px] text-center my-1 ${colorClass}`}>
+            {node.rank}
+          </div>
         </div>
         {node.children.length > 0 && (
-          <>
-            <div className="w-px h-4 bg-gray-300" />
-            <div className="flex relative">
-              {node.children.length > 1 && (
-                <div
-                  className="absolute top-0 bg-gray-300"
-                  style={{
-                    height: "1px",
-                    left: "50%",
-                    right: "50%",
-                    transform: "none",
-                  }}
-                  ref={(el) => {
-                    if (el && node.children.length > 1) {
-                      const parent = el.parentElement;
-                      if (parent) {
-                        const children = Array.from(parent.children).filter(c => c !== el && c.classList.contains("flex-col"));
-                        if (children.length >= 2) {
-                          const first = children[0] as HTMLElement;
-                          const last = children[children.length - 1] as HTMLElement;
-                          const parentRect = parent.getBoundingClientRect();
-                          const firstRect = first.getBoundingClientRect();
-                          const lastRect = last.getBoundingClientRect();
-                          const leftPos = firstRect.left + firstRect.width / 2 - parentRect.left;
-                          const rightPos = parentRect.right - (lastRect.left + lastRect.width / 2);
-                          el.style.left = `${leftPos}px`;
-                          el.style.right = `${rightPos}px`;
-                        }
-                      }
-                    }
-                  }}
-                />
-              )}
-              {node.children.map((child, idx) => (
-                <div key={child.rankId} className="flex flex-col items-center mx-3">
-                  <div className="w-px h-4 bg-gray-300" />
-                  {renderNode(child, idx === node.children.length - 1, depth + 1)}
-                </div>
-              ))}
-            </div>
-          </>
+          <div className={`relative ${isRoot ? 'ml-4' : 'ml-10'}`}>
+            {node.children.map((child, idx) => (
+              renderNode(child, idx === node.children.length - 1, depth + 1)
+            ))}
+          </div>
         )}
       </div>
     );
@@ -190,14 +169,12 @@ function OrgChartTreeView({ roots, allNodes }: { roots: TreeNode[]; allNodes: Or
   }
 
   return (
-    <div className="flex justify-center p-6 min-w-max">
-      <div className="flex flex-col items-center gap-0">
-        {roots.map((root, idx) => (
-          <div key={root.rankId} className="mb-4">
-            {renderNode(root, idx === roots.length - 1, 0)}
-          </div>
-        ))}
-      </div>
+    <div className="p-4 sm:p-6">
+      {roots.map((root, idx) => (
+        <div key={root.rankId} className="mb-3">
+          {renderNode(root, idx === roots.length - 1, 0)}
+        </div>
+      ))}
     </div>
   );
 }
@@ -290,7 +267,7 @@ function OrgChartEditView({
 
     return (
       <div key={node.rankId} className="mb-2" data-testid={`org-edit-node-${node.rankId}`}>
-        <div className="flex items-center gap-2 py-1" style={{ paddingLeft: `${depth * 32}px` }}>
+        <div className="flex items-center gap-1 sm:gap-2 py-1" style={{ paddingLeft: `${depth * 24}px` }}>
           <div className="flex flex-col">
             <button
               onClick={() => handleMoveSibling(node.rankId, "up")}
@@ -316,7 +293,7 @@ function OrgChartEditView({
             value={node.parentRankId || "__root__"}
             onValueChange={(val) => handleChangeParent(node.rankId, val === "__root__" ? null : val)}
           >
-            <SelectTrigger className="w-[160px] h-7 text-xs" data-testid={`select-parent-${node.rankId}`}>
+            <SelectTrigger className="w-[120px] sm:w-[160px] h-7 text-xs" data-testid={`select-parent-${node.rankId}`}>
               <SelectValue placeholder="Parent" />
             </SelectTrigger>
             <SelectContent>
@@ -367,7 +344,7 @@ function OrgChartEditView({
                     value=""
                     onValueChange={(parentId) => handleAddRank(r, parentId)}
                   >
-                    <SelectTrigger className="w-[130px] h-6 text-xs border-dashed" data-testid={`select-add-under-${r.rankId}`}>
+                    <SelectTrigger className="w-[100px] sm:w-[130px] h-6 text-xs border-dashed" data-testid={`select-add-under-${r.rankId}`}>
                       <SelectValue placeholder="Add under..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -447,8 +424,8 @@ export function VesselOrgChartDialog({ open, onOpenChange, companyRanks, canEdit
       }
       onOpenChange(val);
     }}>
-      <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col" data-testid="vessel-org-chart-dialog">
-        <DialogHeader className="flex flex-row items-center justify-between pr-8">
+      <DialogContent className="w-[95vw] sm:w-[85vw] md:w-[75vw] lg:max-w-[900px] max-h-[90vh] overflow-hidden flex flex-col" data-testid="vessel-org-chart-dialog">
+        <DialogHeader className="flex flex-row items-center justify-between pr-8 flex-wrap gap-2">
           <DialogTitle className="text-lg font-semibold">Vessel Org Chart</DialogTitle>
           <div className="flex gap-2">
             {!isEditing && canEdit && (
@@ -489,7 +466,7 @@ export function VesselOrgChartDialog({ open, onOpenChange, companyRanks, canEdit
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-40 text-gray-500 text-sm">
               Loading org chart...
@@ -505,7 +482,7 @@ export function VesselOrgChartDialog({ open, onOpenChange, companyRanks, canEdit
           ) : (
             <OrgChartTreeView roots={tree} allNodes={currentNodes} />
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
