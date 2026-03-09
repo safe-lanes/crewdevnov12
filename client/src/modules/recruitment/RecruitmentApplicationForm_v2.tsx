@@ -1109,13 +1109,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: doc.issuingAuthority || '',
         attachments: mapApiAttachments(doc.attachments),
       }));
-      const sorted = [...mapped].sort((a, b) => {
-        if (!a.expiry && !b.expiry) return 0;
-        if (!a.expiry) return 1;
-        if (!b.expiry) return -1;
-        return a.expiry.localeCompare(b.expiry);
-      });
-      setFormData(prev => ({ ...prev, documents: sorted }));
+      setFormData(prev => ({ ...prev, documents: mapped }));
     }
   }, [documentsData]);
 
@@ -1132,13 +1126,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         visaType: visa.visaType || '',
         attachments: mapApiAttachments(visa.attachments),
       }));
-      const sorted = [...mapped].sort((a, b) => {
-        if (!a.expiry && !b.expiry) return 0;
-        if (!a.expiry) return 1;
-        if (!b.expiry) return -1;
-        return a.expiry.localeCompare(b.expiry);
-      });
-      setFormData(prev => ({ ...prev, visas: sorted }));
+      setFormData(prev => ({ ...prev, visas: mapped }));
     }
   }, [visasData]);
 
@@ -1175,13 +1163,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         fromDatabase: !!(lic.abbr || lic.requirement),
         attachments: mapApiAttachments(lic.attachments),
       }));
-      const sorted = [...mapped].sort((a, b) => {
-        if (!a.expiry && !b.expiry) return 0;
-        if (!a.expiry) return 1;
-        if (!b.expiry) return -1;
-        return a.expiry.localeCompare(b.expiry);
-      });
-      setFormData(prev => ({ ...prev, licenses: sorted }));
+      setFormData(prev => ({ ...prev, licenses: mapped }));
     }
   }, [licensesData]);
 
@@ -1821,15 +1803,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const removeDocument = (id: string) => {
     setFormData(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }));
     setDocDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
-  };
-
-  const sortByExpiry = <T extends { expiry: string }>(items: T[]): T[] => {
-    return [...items].sort((a, b) => {
-      if (!a.expiry && !b.expiry) return 0;
-      if (!a.expiry) return 1;
-      if (!b.expiry) return -1;
-      return a.expiry.localeCompare(b.expiry);
-    });
   };
 
   const updateDocument = (id: string, field: string, value: string) => {
@@ -3058,13 +3031,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           query.queryKey.includes(currentUuid)
       });
       
-      setFormData(prev => ({
-        ...prev,
-        documents: sortByExpiry(prev.documents),
-        visas: sortByExpiry(prev.visas),
-        licenses: sortByExpiry(prev.licenses),
-        trainingCourses: sortByExpiry(prev.trainingCourses),
-      }));
       toast({
         title: "Saved",
         description: "Form data saved successfully",
@@ -3312,7 +3278,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const currentB8Uuid = b8Result?.b8Uuid || b8Uuid;
 
       const serverB2ItemMap = new Map((screeningB2Items || []).map((i: any) => [i.refUuid, i.id]));
-      for (const item of formData.b2References) {
+      for (let index = 0; index < formData.b2References.length; index++) {
+        const item = formData.b2References[index];
         if (serverB2ItemMap.has(item.id) && currentB2Uuid) {
           await updateB2ItemMutation.mutateAsync({
             refUuid: item.id,
@@ -3321,6 +3288,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               refDate: item.date || undefined,
               nameDesignation: item.nameDesignation || undefined,
               contactInfo: item.contactInfo || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB2ItemMap.has(item.id) && currentB2Uuid && (item.date || item.nameDesignation || item.contactInfo)) {
@@ -3330,13 +3298,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               refDate: item.date || undefined,
               nameDesignation: item.nameDesignation || undefined,
               contactInfo: item.contactInfo || undefined,
+              sortOrder: index,
             } as any,
           });
         }
       }
 
       const serverB3AuthMap = new Map((screeningB3Authorities || []).map((a: any) => [a.authUuid, a.id]));
-      for (const auth of formData.b3Authorities) {
+      for (let index = 0; index < formData.b3Authorities.length; index++) {
+        const auth = formData.b3Authorities[index];
         if (serverB3AuthMap.has(auth.id) && currentB3Uuid) {
           await updateB3AuthorityMutation.mutateAsync({
             authUuid: auth.id,
@@ -3344,6 +3314,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             data: {
               checkDate: auth.date || undefined,
               authority: auth.authority || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB3AuthMap.has(auth.id) && currentB3Uuid && (auth.date || auth.authority)) {
@@ -3352,13 +3323,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             data: {
               checkDate: auth.date || undefined,
               authority: auth.authority || undefined,
+              sortOrder: index,
             } as any,
           });
         }
       }
 
       const serverB4CertMap = new Map((screeningB4CertItems || []).map((c: any) => [c.certUuid, c.id]));
-      for (const cert of formData.b4Certs) {
+      for (let index = 0; index < formData.b4Certs.length; index++) {
+        const cert = formData.b4Certs[index];
         if (serverB4CertMap.has(cert.id) && currentB4Uuid) {
           await updateB4CertItemMutation.mutateAsync({
             certUuid: cert.id,
@@ -3367,6 +3340,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               authDate: cert.date || undefined,
               certificate: cert.certificate || undefined,
               authority: cert.authority || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB4CertMap.has(cert.id) && currentB4Uuid && (cert.date || cert.certificate || cert.authority)) {
@@ -3376,13 +3350,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               authDate: cert.date || undefined,
               certificate: cert.certificate || undefined,
               authority: cert.authority || undefined,
+              sortOrder: index,
             } as any,
           });
         }
       }
 
       const serverB5TestMap = new Map((screeningB5TestItems || []).map((t: any) => [t.testUuid, t.id]));
-      for (const test of formData.b5Tests) {
+      for (let index = 0; index < formData.b5Tests.length; index++) {
+        const test = formData.b5Tests[index];
         if (serverB5TestMap.has(test.id) && currentB5Uuid) {
           await updateB5TestItemMutation.mutateAsync({
             testUuid: test.id,
@@ -3392,6 +3368,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               subject: test.subject || undefined,
               score: test.score || undefined,
               result: test.result || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB5TestMap.has(test.id) && currentB5Uuid && (test.date || test.subject || test.score || test.result)) {
@@ -3402,13 +3379,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               subject: test.subject || undefined,
               score: test.score || undefined,
               result: test.result || undefined,
+              sortOrder: index,
             } as any,
           });
         }
       }
 
       const serverB6InterviewMap = new Map((screeningB6InterviewItems || []).map((i: any) => [i.intUuid, i.id]));
-      for (const interview of formData.b6Interviews) {
+      for (let index = 0; index < formData.b6Interviews.length; index++) {
+        const interview = formData.b6Interviews[index];
         if (serverB6InterviewMap.has(interview.id) && currentB6Uuid) {
           await updateB6InterviewItemMutation.mutateAsync({
             intUuid: interview.id,
@@ -3419,6 +3398,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               status: interview.status || undefined,
               result: interview.result || undefined,
               comments: interview.comments || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid && (interview.date || interview.interviewer || interview.status || interview.result)) {
@@ -3430,6 +3410,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               status: interview.status || undefined,
               result: interview.result || undefined,
               comments: interview.comments || undefined,
+              sortOrder: index,
             } as any,
           });
         }
@@ -3452,7 +3433,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
 
       const serverB7TrainingMap = new Map((screeningB7TrainingItems || []).map(t => [t.trainItemUuid, t.id]));
-      for (const training of nonEmptyB7Training) {
+      for (let index = 0; index < nonEmptyB7Training.length; index++) {
+        const training = nonEmptyB7Training[index];
         if (serverB7TrainingMap.has(training.id) && currentB7Uuid) {
           await updateB7TrainingItemMutation.mutateAsync({
             trainItemUuid: training.id,
@@ -3463,6 +3445,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               identifiedByUuid: training.identifiedBy || undefined,
               dueDate: training.dueDate || undefined,
               comments: training.comments || undefined,
+              sortOrder: index,
             },
           });
         } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate)) {
@@ -3474,6 +3457,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               identifiedByUuid: training.identifiedBy || undefined,
               dueDate: training.dueDate || undefined,
               comments: training.comments || undefined,
+              sortOrder: index,
             },
           });
         }

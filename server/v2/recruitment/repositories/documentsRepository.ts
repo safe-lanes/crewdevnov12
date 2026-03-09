@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   candDocuments,
@@ -52,7 +52,7 @@ export class DocumentsRepository {
     const db = getDb();
     return db.select().from(candDocuments).where(
       and(eq(candDocuments.recCanUuid, recCanUuid), eq(candDocuments.isDeleted, false))
-    );
+    ).orderBy(asc(candDocuments.sortOrder), asc(candDocuments.createdAt));
   }
 
   async findByUuid(docUuid: string): Promise<CandDocument | undefined> {
@@ -87,7 +87,7 @@ export class DocumentAttachmentsRepository {
     const db = getDb();
     return db.select().from(candDocumentsAttachments).where(
       and(eq(candDocumentsAttachments.docUuid, docUuid), eq(candDocumentsAttachments.isDeleted, false))
-    );
+    ).orderBy(asc(candDocumentsAttachments.sortOrder), asc(candDocumentsAttachments.createdAt));
   }
 
   async create(data: InsertDocumentAttachment): Promise<CandDocumentAttachment> {
@@ -114,7 +114,7 @@ export class VisasRepository {
     const db = getDb();
     return db.select().from(candVisas).where(
       and(eq(candVisas.recCanUuid, recCanUuid), eq(candVisas.isDeleted, false))
-    );
+    ).orderBy(asc(candVisas.sortOrder), asc(candVisas.createdAt));
   }
 
   async findByUuid(visaUuid: string): Promise<CandVisa | undefined> {
@@ -149,7 +149,7 @@ export class VisaAttachmentsRepository {
     const db = getDb();
     return db.select().from(candVisasAttachments).where(
       and(eq(candVisasAttachments.visaUuid, visaUuid), eq(candVisasAttachments.isDeleted, false))
-    );
+    ).orderBy(asc(candVisasAttachments.sortOrder), asc(candVisasAttachments.createdAt));
   }
 
   async create(data: InsertVisaAttachment): Promise<CandVisaAttachment> {
@@ -176,7 +176,7 @@ export class EducationRepository {
     const db = getDb();
     return db.select().from(candEducation).where(
       and(eq(candEducation.recCanUuid, recCanUuid), eq(candEducation.isDeleted, false))
-    );
+    ).orderBy(asc(candEducation.sortOrder), asc(candEducation.createdAt));
   }
 
   async findByUuid(eduUuid: string): Promise<CandEducation | undefined> {
@@ -211,7 +211,7 @@ export class EducationAttachmentsRepository {
     const db = getDb();
     return db.select().from(candEducationAttachments).where(
       and(eq(candEducationAttachments.eduUuid, eduUuid), eq(candEducationAttachments.isDeleted, false))
-    );
+    ).orderBy(asc(candEducationAttachments.sortOrder), asc(candEducationAttachments.createdAt));
   }
 
   async create(data: InsertEducationAttachment): Promise<CandEducationAttachment> {
@@ -238,7 +238,7 @@ export class LicensesRepository {
     const db = getDb();
     return db.select().from(candLicenses).where(
       and(eq(candLicenses.recCanUuid, recCanUuid), eq(candLicenses.isDeleted, false))
-    );
+    ).orderBy(asc(candLicenses.sortOrder), asc(candLicenses.createdAt));
   }
 
   async findByUuid(licUuid: string): Promise<CandLicense | undefined> {
@@ -273,7 +273,7 @@ export class LicenseAttachmentsRepository {
     const db = getDb();
     return db.select().from(candLicensesAttachments).where(
       and(eq(candLicensesAttachments.licUuid, licUuid), eq(candLicensesAttachments.isDeleted, false))
-    );
+    ).orderBy(asc(candLicensesAttachments.sortOrder), asc(candLicensesAttachments.createdAt));
   }
 
   async create(data: InsertLicenseAttachment): Promise<CandLicenseAttachment> {
@@ -300,7 +300,7 @@ export class TrainingCoursesRepository {
     const db = getDb();
     return db.select().from(candTrainingCourses).where(
       and(eq(candTrainingCourses.recCanUuid, recCanUuid), eq(candTrainingCourses.isDeleted, false))
-    );
+    ).orderBy(asc(candTrainingCourses.sortOrder), asc(candTrainingCourses.createdAt));
   }
 
   async findByUuid(trainUuid: string): Promise<CandTrainingCourse | undefined> {
@@ -335,7 +335,7 @@ export class TrainingAttachmentsRepository {
     const db = getDb();
     return db.select().from(candTrainingAttachments).where(
       and(eq(candTrainingAttachments.trainUuid, trainUuid), eq(candTrainingAttachments.isDeleted, false))
-    );
+    ).orderBy(asc(candTrainingAttachments.sortOrder), asc(candTrainingAttachments.createdAt));
   }
 
   async create(data: InsertTrainingAttachment): Promise<CandTrainingAttachment> {
@@ -362,7 +362,7 @@ export class SeaServiceRepository {
     const db = getDb();
     return db.select().from(candSeaService).where(
       and(eq(candSeaService.recCanUuid, recCanUuid), eq(candSeaService.isDeleted, false))
-    );
+    ).orderBy(asc(candSeaService.sortOrder), asc(candSeaService.createdAt));
   }
 
   async findByUuid(seaUuid: string): Promise<CandSeaService | undefined> {
@@ -397,7 +397,7 @@ export class SeaServiceAttachmentsRepository {
     const db = getDb();
     return db.select().from(candSeaServiceAttachments).where(
       and(eq(candSeaServiceAttachments.seaUuid, seaUuid), eq(candSeaServiceAttachments.isDeleted, false))
-    );
+    ).orderBy(asc(candSeaServiceAttachments.sortOrder), asc(candSeaServiceAttachments.createdAt));
   }
 
   async create(data: InsertSeaServiceAttachment): Promise<CandSeaServiceAttachment> {
@@ -424,7 +424,7 @@ export class AdditionalInfoRepository {
     const db = getDb();
     return db.select().from(candAdditionalInfo).where(
       and(eq(candAdditionalInfo.recCanUuid, recCanUuid), eq(candAdditionalInfo.isDeleted, false))
-    );
+    ).orderBy(asc(candAdditionalInfo.sortOrder), asc(candAdditionalInfo.createdAt));
   }
 
   async findByUuid(infoUuid: string): Promise<CandAdditionalInfo | undefined> {
@@ -459,7 +459,7 @@ export class AdditionalInfoAttachmentsRepository {
     const db = getDb();
     return db.select().from(candAdditionalInfoAttachments).where(
       and(eq(candAdditionalInfoAttachments.infoUuid, infoUuid), eq(candAdditionalInfoAttachments.isDeleted, false))
-    );
+    ).orderBy(asc(candAdditionalInfoAttachments.sortOrder), asc(candAdditionalInfoAttachments.createdAt));
   }
 
   async create(data: InsertAdditionalInfoAttachment): Promise<CandAdditionalInfoAttachment> {

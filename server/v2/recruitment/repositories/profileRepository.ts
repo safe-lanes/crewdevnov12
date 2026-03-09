@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   candPersonalDetails,
@@ -151,7 +151,8 @@ export class ChildrenRepository {
           eq(candChildren.recCanUuid, recCanUuid),
           eq(candChildren.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(candChildren.sortOrder), asc(candChildren.createdAt));
   }
 
   async create(data: InsertChild): Promise<CandChild> {

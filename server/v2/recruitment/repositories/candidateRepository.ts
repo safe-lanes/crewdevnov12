@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   recruitmentCandidatesV2,
@@ -115,7 +115,8 @@ export class VesselTypesAppliedRepository {
           eq(candVesselTypesApplied.recCanUuid, recCanUuid),
           eq(candVesselTypesApplied.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(candVesselTypesApplied.sortOrder), asc(candVesselTypesApplied.createdAt));
   }
 
   async create(data: InsertVesselTypeApplied): Promise<CandVesselTypeApplied> {
