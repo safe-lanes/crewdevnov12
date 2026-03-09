@@ -3215,7 +3215,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     });
   };
 
-  const handleSaveScreening = async (skipToasts: boolean = false, isMainSubmit: boolean = false) => {
+  const handleSaveScreening = async (skipToasts: boolean = false, isMainSubmit: boolean = false, overrides?: Record<string, string>) => {
     if (!recCanUuid) {
       toast({
         title: "Error",
@@ -3241,8 +3241,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             rankMeetsCriteria: formData.b1RankMeetsCriteria || undefined,
             certificatesValid: formData.b1CertificatesValid || undefined,
             shortlisted: formData.b1Shortlisted || undefined,
-            submittedByUuid: formData.b1SubmittedBy || undefined,
-            submittedDate: formData.b1SubmittedDate || undefined,
+            submittedByUuid: overrides?.b1SubmittedBy || formData.b1SubmittedBy || undefined,
+            submittedDate: overrides?.b1SubmittedDate || formData.b1SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB2Mutation.mutateAsync({
@@ -3250,8 +3250,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           data: {
             referencesCompleted: formData.b2ReferencesCompleted || undefined,
             employerFeedback: formData.b2EmployerFeedback || undefined,
-            submittedByUuid: formData.b2SubmittedBy || undefined,
-            submittedDate: formData.b2SubmittedDate || undefined,
+            submittedByUuid: overrides?.b2SubmittedBy || formData.b2SubmittedBy || undefined,
+            submittedDate: overrides?.b2SubmittedDate || formData.b2SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB3Mutation.mutateAsync({
@@ -3259,8 +3259,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           data: {
             checksCompleted: formData.b3ChecksCompleted || undefined,
             results: formData.b3Results || undefined,
-            submittedByUuid: formData.b3SubmittedBy || undefined,
-            submittedDate: formData.b3SubmittedDate || undefined,
+            submittedByUuid: overrides?.b3SubmittedBy || formData.b3SubmittedBy || undefined,
+            submittedDate: overrides?.b3SubmittedDate || formData.b3SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB4Mutation.mutateAsync({
@@ -3268,39 +3268,39 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           data: {
             certificatesAuthenticated: formData.b4CertificatesAuthenticated || undefined,
             results: formData.b4Results || undefined,
-            submittedByUuid: formData.b4SubmittedBy || undefined,
-            submittedDate: formData.b4SubmittedDate || undefined,
+            submittedByUuid: overrides?.b4SubmittedBy || formData.b4SubmittedBy || undefined,
+            submittedDate: overrides?.b4SubmittedDate || formData.b4SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB5Mutation.mutateAsync({
           recCanUuid,
           data: {
             testsCompleted: formData.b5TestsCompleted || undefined,
-            submittedByUuid: formData.b5SubmittedBy || undefined,
-            submittedDate: formData.b5SubmittedDate || undefined,
+            submittedByUuid: overrides?.b5SubmittedBy || formData.b5SubmittedBy || undefined,
+            submittedDate: overrides?.b5SubmittedDate || formData.b5SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB6Mutation.mutateAsync({
           recCanUuid,
           data: {
             interviewCompleted: formData.b6InterviewCompleted || undefined,
-            submittedByUuid: formData.b6SubmittedBy || undefined,
-            submittedDate: formData.b6SubmittedDate || undefined,
+            submittedByUuid: overrides?.b6SubmittedBy || formData.b6SubmittedBy || undefined,
+            submittedDate: overrides?.b6SubmittedDate || formData.b6SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB7Mutation.mutateAsync({
           recCanUuid,
           data: {
-            submittedByUuid: formData.b7SubmittedBy || undefined,
-            submittedDate: formData.b7SubmittedDate || undefined,
+            submittedByUuid: overrides?.b7SubmittedBy || formData.b7SubmittedBy || undefined,
+            submittedDate: overrides?.b7SubmittedDate || formData.b7SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB8Mutation.mutateAsync({
           recCanUuid,
           data: {
             shortlisted: formData.b8Shortlisted || undefined,
-            submittedByUuid: formData.b8SubmittedBy || undefined,
-            submittedDate: formData.b8SubmittedDate || undefined,
+            submittedByUuid: overrides?.b8SubmittedBy || formData.b8SubmittedBy || undefined,
+            submittedDate: overrides?.b8SubmittedDate || formData.b8SubmittedDate || undefined,
             selectedApproverUuids: formData.selectedApproversForSubmission || [],
           } as any,
         }),
@@ -5767,7 +5767,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         type="button"
                         size="sm"
                         className="bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => handleSaveScreening()}
+                        onClick={() => {
+                          const currentDate = new Date().toLocaleDateString();
+                          setFormData(prev => ({ ...prev, b1SubmittedBy: currentUserDisplay, b1SubmittedDate: currentDate }));
+                          handleSaveScreening(false, false, { b1SubmittedBy: currentUserDisplay, b1SubmittedDate: currentDate });
+                        }}
                         data-testid="button-b1-submit"
                       >
                         Submit
@@ -6242,7 +6246,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate });
                           }}
                           data-testid="button-b2-submit"
                         >
@@ -6699,7 +6703,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate });
                           }}
                           data-testid="button-b3-submit"
                         >
@@ -7177,7 +7181,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate });
                           }}
                           data-testid="button-b4-submit"
                         >
@@ -7535,7 +7539,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate });
                           }}
                           data-testid="button-b5-submit"
                         >
@@ -7954,7 +7958,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate });
                           }}
                           data-testid="button-b6-submit"
                         >
@@ -8157,7 +8161,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate });
                           }}
                           data-testid="button-b7-submit"
                         >
@@ -8362,7 +8366,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate });
                           }}
                           data-testid="button-b8-submit"
                         >
