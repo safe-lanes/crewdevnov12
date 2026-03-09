@@ -4422,10 +4422,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     const err = validateMobileNumber(formData.countryOfResidence, formData.mobile);
                     setMobileError(err || '');
                   }}
-                  className="mt-1"
+                  className={`mt-1 ${mobileError ? 'border-red-500' : ''}`}
                   data-testid="input-mobile"
                 />
-                {mobileError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-mobile-error">{mobileError}</p>}
+                {mobileError && <p className="text-xs text-red-500 mt-1" data-testid="text-mobile-error">{mobileError}</p>}
               </>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.mobile}</div>
@@ -4440,10 +4440,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   value={formData.email}
                   onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(validateEmail(e.target.value)); }}
                   onBlur={(e) => setEmailError(validateEmail(e.target.value.trim()))}
-                  className="mt-1"
+                  className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
                   data-testid="input-email"
                 />
-                {emailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-email-error">{emailError}</p>}
+                {emailError && <p className="text-xs text-red-500 mt-1" data-testid="text-email-error">{emailError}</p>}
               </>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.email}</div>
@@ -4767,8 +4767,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Email</Label>
               {isEditing ? (
                 <>
-                  <Input type="email" value={formData.nokEmail} onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(validateEmail(e.target.value)); }} onBlur={(e) => setNokEmailError(validateEmail(e.target.value.trim()))} className="mt-1" data-testid="input-nok-email" />
-                  {nokEmailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-nok-email-error">{nokEmailError}</p>}
+                  <Input type="email" value={formData.nokEmail} onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(validateEmail(e.target.value)); }} onBlur={(e) => setNokEmailError(validateEmail(e.target.value.trim()))} className={`mt-1 ${nokEmailError ? 'border-red-500' : ''}`} data-testid="input-nok-email" />
+                  {nokEmailError && <p className="text-xs text-red-500 mt-1" data-testid="text-nok-email-error">{nokEmailError}</p>}
                 </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nokEmail}</div>
