@@ -4046,7 +4046,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           {/* Form Fields - Right Column */}
           <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">First Name <span className="text-red-500">*</span></Label>
               {isEditing ? (
                 <>
                   <Input
@@ -4143,7 +4143,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Date of birth <span className="text-red-500">*</span></Label>
               {isEditing ? (
                 <>
                   <Input
@@ -4579,7 +4579,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <>
                   <Input
@@ -4609,7 +4609,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <>
                   <Input
@@ -4626,7 +4626,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <>
                   <Input
@@ -4823,7 +4823,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Number</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
@@ -4899,7 +4899,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Serial No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
@@ -4970,7 +4970,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
@@ -5035,7 +5035,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/Document <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
@@ -5129,7 +5129,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/Course</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/Course <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
@@ -5217,14 +5217,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-40">Vessel Name</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-40">Vessel Name <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">Vessel Type</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Deadweight</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Engine Type/Power</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Owner/Operator</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Rank</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">From</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">To</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">From <span className="text-red-500">*</span></TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">To <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-16">Period(M)</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Actions</TableHead>
             </TableRow>
