@@ -21,3 +21,5 @@ attached_assets/
 # Fork-specific config (local only, not pushed)
 .forkname.replit
 replit.md
+.replit
+replit.md
