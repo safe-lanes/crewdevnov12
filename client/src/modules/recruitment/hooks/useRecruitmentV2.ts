@@ -2203,7 +2203,6 @@ export function useV2ScreeningB2Items(b2Uuid: string | null) {
 }
 
 export function useV2CreateScreeningB2Item() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       b2Uuid,
@@ -2212,16 +2211,10 @@ export function useV2CreateScreeningB2Item() {
       b2Uuid: string;
       data: Partial<ScreeningB2Item>;
     }) => postApi<ScreeningB2Item>(`/screening/b2/${b2Uuid}/items`, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b2-items", variables.b2Uuid],
-      });
-    },
   });
 }
 
 export function useV2UpdateScreeningB2Item() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       refUuid,
@@ -2232,11 +2225,6 @@ export function useV2UpdateScreeningB2Item() {
       b2Uuid: string;
       data: Partial<ScreeningB2Item>;
     }) => putApi<ScreeningB2Item>(`/screening/b2/items/${refUuid}`, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b2-items", variables.b2Uuid],
-      });
-    },
   });
 }
 
@@ -2261,7 +2249,6 @@ export function useV2ScreeningB3Authorities(b3Uuid: string | null) {
 }
 
 export function useV2CreateScreeningB3Authority() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       b3Uuid,
@@ -2274,16 +2261,10 @@ export function useV2CreateScreeningB3Authority() {
         `/screening/b3/${b3Uuid}/authorities`,
         data,
       ),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b3-authorities", variables.b3Uuid],
-      });
-    },
   });
 }
 
 export function useV2UpdateScreeningB3Authority() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       authUuid,
@@ -2298,11 +2279,6 @@ export function useV2UpdateScreeningB3Authority() {
         `/screening/b3/authorities/${authUuid}`,
         data,
       ),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b3-authorities", variables.b3Uuid],
-      });
-    },
   });
 }
 
@@ -2327,7 +2303,6 @@ export function useV2ScreeningB4CertItems(b4Uuid: string | null) {
 }
 
 export function useV2CreateScreeningB4CertItem() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       b4Uuid,
@@ -2337,16 +2312,10 @@ export function useV2CreateScreeningB4CertItem() {
       data: Partial<ScreeningB4CertItem>;
     }) =>
       postApi<ScreeningB4CertItem>(`/screening/b4/${b4Uuid}/cert-items`, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b4-cert-items", variables.b4Uuid],
-      });
-    },
   });
 }
 
 export function useV2UpdateScreeningB4CertItem() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       certUuid,
@@ -2358,11 +2327,6 @@ export function useV2UpdateScreeningB4CertItem() {
       data: Partial<ScreeningB4CertItem>;
     }) =>
       putApi<ScreeningB4CertItem>(`/screening/b4/cert-items/${certUuid}`, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b4-cert-items", variables.b4Uuid],
-      });
-    },
   });
 }
 
@@ -2387,7 +2351,6 @@ export function useV2ScreeningB5TestItems(b5Uuid: string | null) {
 }
 
 export function useV2CreateScreeningB5TestItem() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       b5Uuid,
@@ -2397,16 +2360,10 @@ export function useV2CreateScreeningB5TestItem() {
       data: Partial<ScreeningB5TestItem>;
     }) =>
       postApi<ScreeningB5TestItem>(`/screening/b5/${b5Uuid}/test-items`, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b5-test-items", variables.b5Uuid],
-      });
-    },
   });
 }
 
 export function useV2UpdateScreeningB5TestItem() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       testUuid,
@@ -2418,11 +2375,6 @@ export function useV2UpdateScreeningB5TestItem() {
       data: Partial<ScreeningB5TestItem>;
     }) =>
       putApi<ScreeningB5TestItem>(`/screening/b5/test-items/${testUuid}`, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b5-test-items", variables.b5Uuid],
-      });
-    },
   });
 }
 
@@ -2449,7 +2401,6 @@ export function useV2ScreeningB6InterviewItems(b6Uuid: string | null) {
 }
 
 export function useV2CreateScreeningB6InterviewItem() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       b6Uuid,
@@ -2462,16 +2413,10 @@ export function useV2CreateScreeningB6InterviewItem() {
         `/screening/b6/${b6Uuid}/interview-items`,
         data,
       ),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b6-interview-items", variables.b6Uuid],
-      });
-    },
   });
 }
 
 export function useV2UpdateScreeningB6InterviewItem() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       intUuid,
@@ -2486,11 +2431,6 @@ export function useV2UpdateScreeningB6InterviewItem() {
         `/screening/b6/interview-items/${intUuid}`,
         data,
       ),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b6-interview-items", variables.b6Uuid],
-      });
-    },
   });
 }
 
@@ -2517,7 +2457,6 @@ export function useV2ScreeningB7TrainingItems(b7Uuid: string | null) {
 }
 
 export function useV2CreateScreeningB7TrainingItem() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       b7Uuid,
@@ -2530,16 +2469,10 @@ export function useV2CreateScreeningB7TrainingItem() {
         `/screening/b7/${b7Uuid}/training-items`,
         data,
       ),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b7-training-items", variables.b7Uuid],
-      });
-    },
   });
 }
 
 export function useV2UpdateScreeningB7TrainingItem() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       trainItemUuid,
@@ -2554,11 +2487,6 @@ export function useV2UpdateScreeningB7TrainingItem() {
         `/screening/b7/training-items/${trainItemUuid}`,
         data,
       ),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["v2", "screening-b7-training-items", variables.b7Uuid],
-      });
-    },
   });
 }
 
