@@ -179,6 +179,7 @@ import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
+import { resolveCountryUuidToName } from '@/utils/data/visaCountryTemplates';
 
 interface RecruitmentApplicationFormV2Props {
   candidate: V2CandidateListItem | null;
@@ -868,6 +869,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const { data: externalCountriesData } = useCountriesV2();
   const { data: externalLanguagesData } = useLanguagesV2();
   const { data: externalUsersData, isLoading: isLoadingUsers } = useUsersV2();
+  const { data: masterDataEntries } = useQuery<Array<{ id: number; nuid?: string; name: string; countryName?: string }>>({
+    queryKey: ['/api/v2/masters/data', '001', 'entries'],
+    queryFn: async () => {
+      const response = await fetch('/api/v2/masters/data/001/entries');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    },
+  });
 
   // Filter users by userType === "Office" and extract userUuid + displayName for approver/interviewer dropdown
   const approverMasterData = useMemo(() => {
@@ -1133,7 +1142,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         id: visa.visaUuid,
         serverId: visa.id,
         countryId: visa.countryUuid || '',
-        issuingCountry: visa.countryUuid || '',
+        issuingCountry: resolveCountryUuidToName(visa.countryUuid || '', masterDataEntries),
         serialNo: visa.serialNo || '',
         issued: visa.issued || '',
         expiry: visa.expiry || '',
@@ -1142,7 +1151,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }));
       setFormData(prev => ({ ...prev, visas: mapped }));
     }
-  }, [visasData]);
+  }, [visasData, masterDataEntries]);
 
   useEffect(() => {
     if (educationData && educationData.length > 0) {
