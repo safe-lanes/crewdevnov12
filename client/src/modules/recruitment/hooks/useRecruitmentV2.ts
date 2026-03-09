@@ -35,7 +35,7 @@ import type {
 const API_BASE = "/api/v2/recruitment";
 
 // Performance: Cache queries for 5 minutes to reduce network requests
-const QUERY_STALE_TIME = 1 * 60 * 1000; // 1 minutes
+const QUERY_STALE_TIME = 20 * 1000; // 20 seconds
 const QUERY_GC_TIME = 1 * 60 * 1000; // 1 minutes
 
 // Helper to get crewUserId from localStorage with null fallback
