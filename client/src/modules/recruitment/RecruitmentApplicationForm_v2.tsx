@@ -1175,7 +1175,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const mapped = licensesData.map(lic => ({
         id: lic.licUuid,
         serverId: lic.id,
-        licenseId: lic.licenseId || '',
+        licenseId: /^LIC-\d+$/.test(lic.licenseId || '') ? '' : (lic.licenseId || ''),
         certificateDocument: lic.certificateDocument || '',
         abbr: lic.abbr || '',
         requirement: lic.requirement || '',
@@ -1195,7 +1195,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const mapped = trainingData.map(course => ({
         id: course.trainUuid,
         serverId: course.id,
-        courseId: course.courseId || '',
+        courseId: /^TRN-\d+$/.test(course.courseId || '') ? '' : (course.courseId || ''),
         trainingCourse: course.trainingCourse || '',
         abbr: course.abbr || '',
         requirement: course.requirement || '',
@@ -1909,7 +1909,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     const nextId = getNextId(formData.licenses, 'LIC', 'licenseId');
     const newLic = {
       id: nextId,
-      licenseId: nextId,
+      licenseId: '',
       certificateDocument: '',
       abbr: '',
       requirement: '',
@@ -1937,7 +1937,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     const nextId = getNextId(formData.trainingCourses, 'TRN', 'courseId');
     const newCourse = {
       id: nextId,
-      courseId: nextId,
+      courseId: '',
       trainingCourse: '',
       abbr: '',
       requirement: '',
@@ -5128,7 +5128,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableBody>
             {formData.licenses.map((lic) => (
               <TableRow key={lic.id} className="border-b border-gray-200">
-                <TableCell className="p-3 text-[13px]">{lic.licenseId || lic.id}</TableCell>
+                <TableCell className="p-3 text-[13px]">{lic.licenseId || '-'}</TableCell>
                 <TableCell className="p-3">
                   {lic.fromDatabase ? (
                     <span className="text-[13px] text-gray-900">{lic.certificateDocument}</span>
@@ -5222,7 +5222,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableBody>
             {formData.trainingCourses.map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
-                <TableCell className="p-3 text-[13px]">{course.courseId || course.id}</TableCell>
+                <TableCell className="p-3 text-[13px]">{course.courseId || '-'}</TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
                     <span className="text-[13px] text-gray-900">{course.trainingCourse}</span>
