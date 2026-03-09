@@ -1261,6 +1261,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         b1RankMeetsCriteria: screeningB1Data.rankMeetsCriteria || '',
         b1CertificatesValid: screeningB1Data.certificatesValid || '',
         b1Shortlisted: screeningB1Data.shortlisted || '',
+        b1SubmittedBy: screeningB1Data.submittedByUuid || '',
+        b1SubmittedDate: screeningB1Data.submittedDate || '',
       }));
     }
   }, [screeningB1Data]);
@@ -1292,6 +1294,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b2ReferencesCompleted: screeningB2Data.referencesCompleted || '',
         b2EmployerFeedback: screeningB2Data.employerFeedback || '',
+        b2SubmittedBy: screeningB2Data.submittedByUuid || '',
+        b2SubmittedDate: screeningB2Data.submittedDate || '',
       }));
     }
   }, [screeningB2Data]);
@@ -1302,6 +1306,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b3ChecksCompleted: screeningB3Data.checksCompleted || '',
         b3Results: screeningB3Data.results || '',
+        b3SubmittedBy: screeningB3Data.submittedByUuid || '',
+        b3SubmittedDate: screeningB3Data.submittedDate || '',
       }));
     }
   }, [screeningB3Data]);
@@ -1312,6 +1318,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b4CertificatesAuthenticated: screeningB4Data.certificatesAuthenticated || '',
         b4Results: screeningB4Data.results || '',
+        b4SubmittedBy: screeningB4Data.submittedByUuid || '',
+        b4SubmittedDate: screeningB4Data.submittedDate || '',
       }));
     }
   }, [screeningB4Data]);
@@ -1321,6 +1329,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFormData(prev => ({
         ...prev,
         b5TestsCompleted: screeningB5Data.testsCompleted || '',
+        b5SubmittedBy: screeningB5Data.submittedByUuid || '',
+        b5SubmittedDate: screeningB5Data.submittedDate || '',
       }));
     }
   }, [screeningB5Data]);
@@ -1330,16 +1340,29 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFormData(prev => ({
         ...prev,
         b6InterviewCompleted: screeningB6Data.interviewCompleted || '',
+        b6SubmittedBy: screeningB6Data.submittedByUuid || '',
+        b6SubmittedDate: screeningB6Data.submittedDate || '',
       }));
     }
   }, [screeningB6Data]);
+
+  useEffect(() => {
+    if (screeningB7Data) {
+      setFormData(prev => ({
+        ...prev,
+        b7SubmittedBy: (screeningB7Data as any).submittedByUuid || '',
+        b7SubmittedDate: (screeningB7Data as any).submittedDate || '',
+      }));
+    }
+  }, [screeningB7Data]);
 
   useEffect(() => {
     if (screeningB8Data) {
       setFormData(prev => ({
         ...prev,
         b8Shortlisted: screeningB8Data.shortlisted || '',
-        // Load selectedApproverUuids from B8 record directly
+        b8SubmittedBy: (screeningB8Data as any).submittedByUuid || '',
+        b8SubmittedDate: (screeningB8Data as any).submittedDate || '',
         selectedApproversForSubmission: (screeningB8Data as any).selectedApproverUuids || [],
       }));
     }
@@ -3545,12 +3568,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             
             if (serverComment) {
               // Update if text changed
-              if (serverComment.commentText !== comment.text || serverComment.commentBy !== comment.user) {
+              if (serverComment.commentText !== comment.text || serverComment.userUuid !== comment.user) {
                 await updateMutation.mutateAsync({
                   commentUuid: comment.id,
                   data: {
                     commentText: comment.text,
-                    commentBy: comment.user,
+                    userUuid: comment.user,
                     fieldKey: fieldKey,
                   },
                 });
@@ -3561,7 +3584,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 [uuidFieldName]: sectionUuid,
                 data: {
                   commentText: comment.text,
-                  commentBy: comment.user,
+                  userUuid: comment.user,
                   fieldKey: fieldKey,
                 },
               });
