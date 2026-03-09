@@ -2617,3 +2617,94 @@ export function useV2ApproverDetails(userUuids: string[]) {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 }
+
+export function useV2DeleteScreeningB2Item() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ refUuid, b2Uuid }: { refUuid: string; b2Uuid: string }) =>
+      deleteApi(`/screening/b2/items/${refUuid}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b2-items", variables.b2Uuid],
+      });
+    },
+  });
+}
+
+export function useV2DeleteScreeningB3Authority() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ authUuid, b3Uuid }: { authUuid: string; b3Uuid: string }) =>
+      deleteApi(`/screening/b3/authorities/${authUuid}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b3-authorities", variables.b3Uuid],
+      });
+    },
+  });
+}
+
+export function useV2DeleteScreeningB4CertItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ certUuid, b4Uuid }: { certUuid: string; b4Uuid: string }) =>
+      deleteApi(`/screening/b4/certs/${certUuid}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b4-cert-items", variables.b4Uuid],
+      });
+    },
+  });
+}
+
+export function useV2DeleteScreeningB5TestItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ testUuid, b5Uuid }: { testUuid: string; b5Uuid: string }) =>
+      deleteApi(`/screening/b5/tests/${testUuid}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b5-test-items", variables.b5Uuid],
+      });
+    },
+  });
+}
+
+export function useV2DeleteScreeningB6InterviewItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ intUuid, b6Uuid }: { intUuid: string; b6Uuid: string }) =>
+      deleteApi(`/screening/b6/interviews/${intUuid}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b6-interview-items", variables.b6Uuid],
+      });
+    },
+  });
+}
+
+export function useV2DeleteScreeningB7TrainingItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ trainItemUuid, b7Uuid }: { trainItemUuid: string; b7Uuid: string }) =>
+      deleteApi(`/screening/b7/training/${trainItemUuid}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "screening-b7-training-items", variables.b7Uuid],
+      });
+    },
+  });
+}
+
+export function useV2DeleteApproval() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, recCanUuid }: { id: number; recCanUuid: string }) =>
+      deleteApi(`/approvals/${id}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["v2", "approvals", variables.recCanUuid],
+      });
+    },
+  });
+}

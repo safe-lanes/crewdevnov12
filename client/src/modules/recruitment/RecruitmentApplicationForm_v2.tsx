@@ -150,6 +150,13 @@ import {
   useV2Approvals,
   useV2SaveApproval,
   useV2UpdateApproval,
+  useV2DeleteApproval,
+  useV2DeleteScreeningB2Item,
+  useV2DeleteScreeningB3Authority,
+  useV2DeleteScreeningB4CertItem,
+  useV2DeleteScreeningB5TestItem,
+  useV2DeleteScreeningB6InterviewItem,
+  useV2DeleteScreeningB7TrainingItem,
   useV2Suitability,
   useV2SaveSuitability,
   useV2RecruitmentDecision,
@@ -824,9 +831,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const deleteB6CommentMutation = useV2DeleteScreeningB6Comment();
   const deleteB8CommentMutation = useV2DeleteScreeningB8Comment();
 
-  // Part C - Approval mutations
+  const deleteB2ItemMutation = useV2DeleteScreeningB2Item();
+  const deleteB3AuthorityMutation = useV2DeleteScreeningB3Authority();
+  const deleteB4CertItemMutation = useV2DeleteScreeningB4CertItem();
+  const deleteB5TestItemMutation = useV2DeleteScreeningB5TestItem();
+  const deleteB6InterviewItemMutation = useV2DeleteScreeningB6InterviewItem();
+  const deleteB7TrainingItemMutation = useV2DeleteScreeningB7TrainingItem();
+
   const saveApprovalMutation = useV2SaveApproval();
   const updateApprovalMutation = useV2UpdateApproval();
+  const deleteApprovalMutation = useV2DeleteApproval();
   const saveSuitabilityMutation = useV2SaveSuitability();
   const saveDecisionMutation = useV2SaveRecruitmentDecision();
   
@@ -3463,7 +3477,45 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
-      // Note: selectedApproverUuids are now saved directly with the B8 record (no separate approvers table needed)
+      const localB2RefIds = new Set(formData.b2References.map(r => r.id));
+      const localB3AuthIds = new Set(formData.b3Authorities.map(a => a.id));
+      const localB4CertIds = new Set(formData.b4Certs.map(c => c.id));
+      const localB5TestIds = new Set(formData.b5Tests.map(t => t.id));
+      const localB6IntIds = new Set(formData.b6Interviews.map(i => i.id));
+      const localB7TrainIds = new Set(nonEmptyB7Training.map(t => t.id));
+
+      const bItemDeletePromises: Promise<any>[] = [];
+      (screeningB2Items || []).forEach((item: any) => {
+        if (!localB2RefIds.has(item.refUuid) && item.refUuid && currentB2Uuid) {
+          bItemDeletePromises.push(deleteB2ItemMutation.mutateAsync({ refUuid: item.refUuid, b2Uuid: currentB2Uuid }));
+        }
+      });
+      (screeningB3Authorities || []).forEach((item: any) => {
+        if (!localB3AuthIds.has(item.authUuid) && item.authUuid && currentB3Uuid) {
+          bItemDeletePromises.push(deleteB3AuthorityMutation.mutateAsync({ authUuid: item.authUuid, b3Uuid: currentB3Uuid }));
+        }
+      });
+      (screeningB4CertItems || []).forEach((item: any) => {
+        if (!localB4CertIds.has(item.certUuid) && item.certUuid && currentB4Uuid) {
+          bItemDeletePromises.push(deleteB4CertItemMutation.mutateAsync({ certUuid: item.certUuid, b4Uuid: currentB4Uuid }));
+        }
+      });
+      (screeningB5TestItems || []).forEach((item: any) => {
+        if (!localB5TestIds.has(item.testUuid) && item.testUuid && currentB5Uuid) {
+          bItemDeletePromises.push(deleteB5TestItemMutation.mutateAsync({ testUuid: item.testUuid, b5Uuid: currentB5Uuid }));
+        }
+      });
+      (screeningB6InterviewItems || []).forEach((item: any) => {
+        if (!localB6IntIds.has(item.intUuid) && item.intUuid && currentB6Uuid) {
+          bItemDeletePromises.push(deleteB6InterviewItemMutation.mutateAsync({ intUuid: item.intUuid, b6Uuid: currentB6Uuid }));
+        }
+      });
+      (screeningB7TrainingItems || []).forEach((item: any) => {
+        if (!localB7TrainIds.has(item.trainItemUuid) && item.trainItemUuid && currentB7Uuid) {
+          bItemDeletePromises.push(deleteB7TrainingItemMutation.mutateAsync({ trainItemUuid: item.trainItemUuid, b7Uuid: currentB7Uuid }));
+        }
+      });
+      await Promise.all(bItemDeletePromises);
 
       // Save B1-B8 section comments using reconciliation pattern
       const currentB1Uuid = b1Result?.b1Uuid || b1Uuid;
@@ -3744,6 +3796,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           }
         }
       }
+
+      const localApprovalIds = new Set(
+        formData.c1Approvers
+          .filter(a => a.appUuid)
+          .map(a => a.appUuid)
+      );
+      const approvalDeletePromises: Promise<any>[] = [];
+      (approvalsData || []).forEach((serverApproval: any) => {
+        if (!localApprovalIds.has(serverApproval.approvalUuid) && serverApproval.id) {
+          approvalDeletePromises.push(deleteApprovalMutation.mutateAsync({ id: serverApproval.id, recCanUuid }));
+        }
+      });
+      await Promise.all(approvalDeletePromises);
 
       // Part C - Save suitability (C2)
       await saveSuitabilityMutation.mutateAsync({

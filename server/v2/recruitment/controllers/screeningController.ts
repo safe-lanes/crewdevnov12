@@ -245,6 +245,17 @@ export const screeningB2Controller = {
       res.status(500).json({ error: "Failed to delete B2 attachment" });
     }
   },
+
+  async deleteItem(req: Request, res: Response) {
+    try {
+      const { refUuid } = req.params;
+      const result = await screeningB2Service.deleteItem(refUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B2 item:", error);
+      res.status(500).json({ error: "Failed to delete B2 item" });
+    }
+  },
 };
 
 export const screeningB3Controller = {
@@ -378,6 +389,17 @@ export const screeningB3Controller = {
     } catch (error) {
       console.error("Error deleting B3 attachment:", error);
       res.status(500).json({ error: "Failed to delete B3 attachment" });
+    }
+  },
+
+  async deleteAuthority(req: Request, res: Response) {
+    try {
+      const { authUuid } = req.params;
+      const result = await screeningB3Service.deleteAuthority(authUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B3 authority:", error);
+      res.status(500).json({ error: "Failed to delete B3 authority" });
     }
   },
 };
@@ -515,6 +537,17 @@ export const screeningB4Controller = {
       res.status(500).json({ error: "Failed to delete B4 attachment" });
     }
   },
+
+  async deleteCertItem(req: Request, res: Response) {
+    try {
+      const { certUuid } = req.params;
+      const result = await screeningB4Service.deleteCertItem(certUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B4 cert item:", error);
+      res.status(500).json({ error: "Failed to delete B4 cert item" });
+    }
+  },
 };
 
 export const screeningB5Controller = {
@@ -648,6 +681,17 @@ export const screeningB5Controller = {
     } catch (error) {
       console.error("Error deleting B5 attachment:", error);
       res.status(500).json({ error: "Failed to delete B5 attachment" });
+    }
+  },
+
+  async deleteTestItem(req: Request, res: Response) {
+    try {
+      const { testUuid } = req.params;
+      const result = await screeningB5Service.deleteTestItem(testUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B5 test item:", error);
+      res.status(500).json({ error: "Failed to delete B5 test item" });
     }
   },
 };
@@ -785,6 +829,17 @@ export const screeningB6Controller = {
       res.status(500).json({ error: "Failed to delete B6 attachment" });
     }
   },
+
+  async deleteInterviewItem(req: Request, res: Response) {
+    try {
+      const { intUuid } = req.params;
+      const result = await screeningB6Service.deleteInterviewItem(intUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B6 interview item:", error);
+      res.status(500).json({ error: "Failed to delete B6 interview item" });
+    }
+  },
 };
 
 export const screeningB7Controller = {
@@ -843,6 +898,17 @@ export const screeningB7Controller = {
     } catch (error) {
       console.error("Error updating B7 training item:", error);
       res.status(500).json({ error: "Failed to update B7 training item" });
+    }
+  },
+
+  async deleteTrainingItem(req: Request, res: Response) {
+    try {
+      const { trainItemUuid } = req.params;
+      const result = await screeningB7Service.deleteTrainingItem(trainItemUuid);
+      res.json({ success: result });
+    } catch (error) {
+      console.error("Error deleting B7 training item:", error);
+      res.status(500).json({ error: "Failed to delete B7 training item" });
     }
   },
 };

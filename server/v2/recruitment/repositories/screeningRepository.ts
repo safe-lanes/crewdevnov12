@@ -276,6 +276,15 @@ export class ScreeningB2Repository {
       .returning();
     return results.length > 0;
   }
+
+  async softDeleteItem(refUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB2ReferenceItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB2ReferenceItems.refUuid, refUuid))
+      .returning();
+    return results.length > 0;
+  }
 }
 
 export class ScreeningB3Repository {
@@ -375,6 +384,15 @@ export class ScreeningB3Repository {
     const results = await db.update(screeningB3Attachments)
       .set({ isDeleted: true })
       .where(eq(screeningB3Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
+
+  async softDeleteAuthority(authUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB3Authorities)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB3Authorities.authUuid, authUuid))
       .returning();
     return results.length > 0;
   }
@@ -480,6 +498,15 @@ export class ScreeningB4Repository {
       .returning();
     return results.length > 0;
   }
+
+  async softDeleteCertItem(certUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB4CertItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB4CertItems.certUuid, certUuid))
+      .returning();
+    return results.length > 0;
+  }
 }
 
 export class ScreeningB5Repository {
@@ -579,6 +606,15 @@ export class ScreeningB5Repository {
     const results = await db.update(screeningB5Attachments)
       .set({ isDeleted: true })
       .where(eq(screeningB5Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
+
+  async softDeleteTestItem(testUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB5TestItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB5TestItems.testUuid, testUuid))
       .returning();
     return results.length > 0;
   }
@@ -705,6 +741,15 @@ export class ScreeningB6Repository {
       .returning();
     return results.length > 0;
   }
+
+  async softDeleteInterviewItem(intUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB6InterviewItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB6InterviewItems.intUuid, intUuid))
+      .returning();
+    return results.length > 0;
+  }
 }
 
 export class ScreeningB7Repository {
@@ -777,6 +822,15 @@ export class ScreeningB7Repository {
       .where(eq(screeningB7TrainingItems.trainItemUuid, trainItemUuid))
       .returning();
     return results[0];
+  }
+
+  async softDeleteTrainingItem(trainItemUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB7TrainingItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB7TrainingItems.trainItemUuid, trainItemUuid))
+      .returning();
+    return results.length > 0;
   }
 }
 
