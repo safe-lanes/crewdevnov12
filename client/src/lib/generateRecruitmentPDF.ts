@@ -710,14 +710,14 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
 
   builder.drawSubsectionHeader('A3.1 Education');
   if (formData.education && formData.education.length > 0) {
-    const eduColWidths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.32, CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.25];
-    builder.drawTableHeader(['Date of Completion', 'School/College/University', 'Subjects/Field', 'Qualifications'], eduColWidths);
+    const eduColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.32, CONTENT_WIDTH * 0.18];
+    builder.drawTableHeader(['Qualifications', 'Subjects/Field', 'School/College/University', 'Date of Completion'], eduColWidths);
     for (const edu of formData.education) {
       builder.drawTableRow([
-        formatDate(edu.dateOfCompletion),
-        edu.schoolCollegeUniversity || '',
-        edu.subjectsField || '',
         edu.qualifications || '',
+        edu.subjectsField || '',
+        edu.schoolCollegeUniversity || '',
+        formatDate(edu.dateOfCompletion),
       ], eduColWidths);
     }
   } else {
