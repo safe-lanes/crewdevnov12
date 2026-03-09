@@ -641,7 +641,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const validateRowDates = (issued: string, expiry: string): { issued?: string; expiry?: string } => {
     const errors: { issued?: string; expiry?: string } = {};
     if (issued) {
-      const issuedDate = new Date(issued);
+      const [iy, im, id] = issued.split('-').map(Number);
+      const issuedDate = new Date(iy, im - 1, id);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (issuedDate > today) errors.issued = 'Issued date cannot be in the future.';
@@ -2495,11 +2496,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     setSeaServiceDateErrors(newSeaErrors);
 
     if (hasErrors) {
-      toast({
-        title: "Validation Error",
-        description: "Please fix the highlighted errors before saving.",
-        variant: "destructive",
-      });
       setTimeout(() => {
         if (firstErrorTestIds.length > 0) {
           const el = document.querySelector(`[data-testid="${firstErrorTestIds[0]}"]`);
@@ -4368,11 +4364,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <Label className="text-xs text-gray-500 tracking-wide">Country of Residence</Label>
             {isEditing ? (
               <Select value={formData.countryOfResidence} onValueChange={(value) => {
+                const updatedMobile = applyDialingCode(value, formData.mobile);
                 setFormData(prev => ({
                   ...prev,
                   countryOfResidence: value,
-                  mobile: applyDialingCode(value, prev.mobile),
+                  mobile: updatedMobile,
                 }));
+                const err = validateMobileNumber(value, updatedMobile);
+                setMobileError(err || '');
               }}>
                 <SelectTrigger className="mt-1" data-testid="select-country-residence">
                   <SelectValue placeholder="Select country of residence" />
