@@ -762,7 +762,7 @@ export function VesselModule_v2(): JSX.Element {
     const { data: trainingMatrixRevisions = [] } = useTrainingMatrixVesselRevisions(selectedVessel?.vesselId || null);
     const { data: trainingMatrixDrafts = [] } = useTrainingMatrixVesselDraft(selectedVessel?.vesselId || null);
     
-    const { data: crewTrainingsV2 = [] } = useVesselCrewTrainingsV2(selectedVessel?.vesselUuid || null);
+    const { data: crewTrainingsV2 = [] } = useVesselCrewTrainingsV2(selectedVessel?.vesselId || null);
     
     const crewTrainingLookupByRole = useMemo(() => {
         const numericIdToCompanyId = new Map<string, string>();
