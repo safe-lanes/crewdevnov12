@@ -19,4 +19,5 @@ playwright-report/
 attached_assets/
 
 # Fork-specific config (local only, not pushed)
-.forkname
+.forkname.replit
+replit.md
