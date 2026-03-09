@@ -54,7 +54,12 @@ export const trainingController = {
             expiry: crewTrainingCourses.expiry,
           })
           .from(crewTrainingCourses)
-          .where(eq(crewTrainingCourses.crewUuid, entry.crewUuid));
+          .where(
+            and(
+              eq(crewTrainingCourses.crewUuid, entry.crewUuid),
+              eq(crewTrainingCourses.isDeleted, false)
+            )
+          );
         
         result.push({
           role: entry.rank || '',
