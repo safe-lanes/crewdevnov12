@@ -4984,7 +4984,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Serial No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
