@@ -27,6 +27,7 @@ import { validateMobileNumber, normalizeMobileInput, applyDialingCode, getDialin
 import { TravelDocumentSelectionDialog } from './TravelDocumentSelectionDialog';
 import { VisaSelectionDialog } from './VisaSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
@@ -85,8 +86,41 @@ import {
   mapLegacyCrewToV2, 
   mapLegacyPersonalDetailsToV2, 
   mapLegacyAddressToV2, 
-  mapLegacyFamilyInfoToV2 
+  mapLegacyFamilyInfoToV2,
+  mapLegacyDocumentToV2,
+  mapLegacyVisaToV2,
+  mapLegacyEducationToV2,
+  mapLegacyLicenseToV2,
+  mapLegacyTrainingCourseToV2,
+  mapLegacySeaServiceToV2,
+  mapLegacyPreJoiningMedicalToV2,
+  mapLegacyDoctorVisitToV2,
 } from './mappers/v2ToLegacyMapper';
+
+function getCrewUserId(): string | null {
+  try {
+    return localStorage.getItem("crewUserId") || null;
+  } catch {
+    return null;
+  }
+}
+
+function withAuditUser<T>(data: T): T {
+  const auditUserUuid = getCrewUserId();
+  if (Array.isArray(data)) {
+    return data.map(item => 
+      typeof item === 'object' && item !== null 
+        ? { ...item, auditUserUuid } 
+        : item
+    ) as T;
+  }
+  if (typeof data === 'object' && data !== null) {
+    return { ...data, auditUserUuid };
+  }
+  return data;
+}
+
+const V2_QUERY_KEY = '/api/v2/crew-pool';
 
 interface CrewMember {
   id: string;
@@ -190,6 +224,7 @@ interface FormData {
 }
 
 interface ChildInfo {
+  childUuid?: string;
   firstName: string;
   middleName: string;
   familyName: string;
@@ -238,6 +273,7 @@ interface License {
   issuingAuthority: string;
   issued: string;
   expiry: string;
+  fromDatabase?: boolean;
   attachments?: FileAttachment[];
   archivedAt?: string;       // ISO date when COC was archived (superseded by upgrade)
   archivedReason?: string;   // Reason for archiving
@@ -245,8 +281,8 @@ interface License {
 
 interface TrainingCourse {
   id: string;
-  courseId?: string;  // Template ID for duplicate detection
-  companyId?: string; // Company ID from Admin > Training Matrix > Company (e.g., SA001)
+  courseId?: string;
+  companyId?: string;
   trainingCourse: string;
   abbr: string;
   requirement: string;
@@ -254,6 +290,8 @@ interface TrainingCourse {
   issuingAuthority: string;
   issued: string;
   expiry: string;
+  fromDatabase?: boolean;
+  sortOrder?: number;
   attachments?: FileAttachment[];
 }
 
@@ -366,12 +404,35 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (!value) return '';
     if (/\s/.test(value)) return 'Email must not contain spaces.';
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(value)) return 'Please enter a valid email address (e.g., name@domain.com).';
+    if (!emailPattern.test(value)) return 'Please enter a valid email address (e.g., user@domain.com).';
     return '';
   };
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
-  
+
+  const validateIssuedDate = (dateStr: string): string => {
+    if (!dateStr) return '';
+    if (dateStr > todayStr) return 'Issued date cannot be in the future.';
+    return '';
+  };
+
+  const validateExpiryDate = (expiryStr: string, issuedStr: string): string => {
+    if (!expiryStr || !issuedStr) return '';
+    if (expiryStr < issuedStr) return 'Expiry date must be on or after the issued date.';
+    return '';
+  };
+
+  const validateDob = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const dobDate = new Date(dateStr);
+    const today = new Date();
+    if (dobDate > today) return 'Date of birth cannot be a future date.';
+    const minDob = new Date();
+    minDob.setFullYear(minDob.getFullYear() - 18);
+    if (dobDate > minDob) return 'Crew member must be at least 18 years old.';
+    return '';
+  };
+
   // State for issues popup dialog
   const [issuesDialogOpen, setIssuesDialogOpen] = useState(false);
   const [issuesDialogData, setIssuesDialogData] = useState<{
@@ -418,7 +479,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     enabled: !!crewUuid && isOpen,
   });
 
-  // Crew ID will be auto-assigned by the API during creation
+  const { data: adminCompanyTrainings = [] } = useQuery<Array<{ id: number; companyId: string }>>({
+    queryKey: ['/api/v2/admin/company-trainings'],
+  });
 
   // Get company ranks from shared hook
   const { data: companyRanks, isLoading: ranksLoading, rankOptions, error: ranksError } = useCompanyRanks();
@@ -500,14 +563,56 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   const [seaServiceDateErrors, setSeaServiceDateErrors] = useState<Record<string, string>>({});
   const [spouseValidationError, setSpouseValidationError] = useState('');
+  const [spouseFirstNameError, setSpouseFirstNameError] = useState('');
+  const [spouseFamilyNameError, setSpouseFamilyNameError] = useState('');
+  const [spouseDobError, setSpouseDobError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [nokEmailError, setNokEmailError] = useState('');
   const [mobileError, setMobileError] = useState('');
+  const [firstNameError, setFirstNameError] = useState('');
+  const [dobError, setDobError] = useState('');
+  const [docDateErrors, setDocDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
+  const [visaDateErrors, setVisaDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
+  const [licDateErrors, setLicDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
+  const [trainDateErrors, setTrainDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
+  const [docRequiredErrors, setDocRequiredErrors] = useState<Record<string, string>>({});
+  const [visaRequiredErrors, setVisaRequiredErrors] = useState<Record<string, { issuingCountry?: string; visaType?: string }>>({});
+  const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, string>>({});
+  const [licRequiredErrors, setLicRequiredErrors] = useState<Record<string, string>>({});
+  const [trainRequiredErrors, setTrainRequiredErrors] = useState<Record<string, string>>({});
+  const [seaServiceRequiredErrors, setSeaServiceRequiredErrors] = useState<Record<string, string[]>>({});
+  const [deletedChildUuids, setDeletedChildUuids] = useState<string[]>([]);
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Sections for stepper navigation  
-  const sections = [
+  const { canView, canEdit, permissions } = usePermissions();
+
+  const sectionMenuMap: Record<string, string | null> = {
+    A: 'CP Dashboard',
+    B: null,
+    C: 'CP Travel ID Documents',
+    D: 'CP Training Certificates',
+    E: 'CP Sea Service',
+    F: 'CP Medical',
+  };
+
+  const canViewSection = useCallback((sectionId: string): boolean => {
+    const menuName = sectionMenuMap[sectionId];
+    if (!menuName) return true;
+    if (permissions.length === 0) return true;
+    return canView(menuName);
+  }, [permissions, canView]);
+
+  const canEditSection = useCallback((sectionId: string): boolean => {
+    const menuName = sectionMenuMap[sectionId];
+    if (!menuName) return true;
+    if (permissions.length === 0) return true;
+    return canEdit(menuName);
+  }, [permissions, canEdit]);
+
+  const canEditCrewDatabase = permissions.length === 0 || canEdit('Crew Database');
+
+  const allSections = [
     { id: 'A', title: 'Dashboard', number: 'A' },
     { id: 'B', title: 'Seafarers\' Particulars', number: 'B' },
     { id: 'C', title: 'Travel & ID Documents', number: 'C' },
@@ -516,6 +621,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     { id: 'F', title: 'Medical', number: 'F' }
   ];
 
+  const sections = useMemo(() =>
+    allSections.filter(s => canViewSection(s.id)),
+    [permissions]
+  );
+
   // Refs for scroll detection
   const sectionARef = useRef<HTMLDivElement>(null);
   const sectionBRef = useRef<HTMLDivElement>(null);
@@ -523,6 +633,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const sectionDRef = useRef<HTMLDivElement>(null);
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
+  const isBatchSavingRef = useRef(false);
+
+  // Refs for click-outside detection on B1/B2/B3
+  const sectionB1Ref = useRef<HTMLDivElement>(null);
+  const sectionB2Ref = useRef<HTMLDivElement>(null);
+  const sectionB3Ref = useRef<HTMLDivElement>(null);
 
   // External API hooks for master data with 5-minute cache and 2 retry attempts
   const { data: externalVesselTypesData, isLoading: vesselTypesLoading } = useVesselTypesV2();
@@ -759,6 +875,52 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     doctorVisits: []
   });
 
+  const runSeaServiceOverlapCheck = useCallback(() => {
+    const allSeaRows = [
+      ...(formData.currentCompanySeaService || []).filter((r: any) => !r.isVesselSynced),
+      ...(formData.externalSeaService || []),
+    ].filter((r: any) => !!(r.from || r.fromDate));
+
+    const newErrors: Record<string, string> = {};
+    for (let i = 0; i < allSeaRows.length; i++) {
+      for (let j = i + 1; j < allSeaRows.length; j++) {
+        const a = allSeaRows[i] as any;
+        const b = allSeaRows[j] as any;
+        const aFrom = a.from || a.fromDate || '';
+        const aTo = (a.to && a.to !== '') ? a.to : ((a.toDate && a.toDate !== '') ? a.toDate : null);
+        const bFrom = b.from || b.fromDate || '';
+        const bTo = (b.to && b.to !== '') ? b.to : ((b.toDate && b.toDate !== '') ? b.toDate : null);
+        if (!aFrom || !bFrom) continue;
+        const noOverlap =
+          (aTo !== null && aTo < bFrom) ||
+          (bTo !== null && bTo < aFrom);
+        if (!noOverlap) {
+          const aKey = a.id || a.seaUuid || `sea-${aFrom}`;
+          const bKey = b.id || b.seaUuid || `sea-${bFrom}`;
+          newErrors[aKey] = 'Sea service dates overlap with another record.';
+          newErrors[bKey] = 'Sea service dates overlap with another record.';
+        }
+      }
+    }
+    setSeaServiceDateErrors(newErrors);
+    return newErrors;
+  }, [formData.currentCompanySeaService, formData.externalSeaService]);
+
+  const validateSeaServiceFieldOnBlur = useCallback((serviceId: string, service: any) => {
+    const missing: string[] = [];
+    if (!(service.vesselName || '').trim()) missing.push('Vessel Name');
+    if (!(service.vesselType || '').trim()) missing.push('Vessel Type');
+    if (!(service.rank || '').trim()) missing.push('Rank');
+    if (!(service.from || service.fromDate || '').trim()) missing.push('From Date');
+    if (!(service.to || service.toDate || '').trim()) missing.push('To Date');
+    setSeaServiceRequiredErrors(prev => {
+      if (missing.length > 0) return { ...prev, [serviceId]: missing };
+      const next = { ...prev };
+      delete next[serviceId];
+      return next;
+    });
+  }, []);
+
   // Helper function to calculate period in months between two dates (used for hydration)
   // Uses average days per month (30.44) for accurate calculation
   const calculateSeaServicePeriod = (fromDate: string, toDate: string): string => {
@@ -783,7 +945,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // Update form data when detailed crew data loads from API
   // V2: Check both crewUuid and id for compatibility
   useEffect(() => {
+    if (isBatchSavingRef.current) return;
     if (detailedCrewData && (crewMember?.crewUuid || crewMember?.id)) {
+      setDeletedChildUuids([]);
       setFormData(prev => ({
         ...prev,
         // A1.1 General Particulars
@@ -861,16 +1025,33 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           : detailedCrewData.education 
             ? JSON.parse(detailedCrewData.education) 
             : [],
-        licenses: Array.isArray(detailedCrewData.licenses) 
+        licenses: (Array.isArray(detailedCrewData.licenses) 
           ? detailedCrewData.licenses 
           : detailedCrewData.licenses 
             ? JSON.parse(detailedCrewData.licenses) 
-            : [],
-        trainingCourses: Array.isArray(detailedCrewData.trainingCourses) 
-          ? detailedCrewData.trainingCourses 
-          : detailedCrewData.trainingCourses 
-            ? JSON.parse(detailedCrewData.trainingCourses) 
-            : [],
+            : []).map((l: any) => ({ ...l, fromDatabase: !!(l.licenseId && l.licenseId.trim()) })),
+        trainingCourses: (() => {
+          const raw = (Array.isArray(detailedCrewData.trainingCourses) 
+            ? detailedCrewData.trainingCourses 
+            : detailedCrewData.trainingCourses 
+              ? JSON.parse(detailedCrewData.trainingCourses) 
+              : []).map((t: any) => ({ ...t, fromDatabase: !!(t.courseId && t.courseId.trim()) }));
+          if (adminCompanyTrainings.length > 0) {
+            const orderMap = new Map<string, number>();
+            adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+            raw.forEach((t: any) => {
+              if (t.courseId && orderMap.has(t.courseId)) {
+                t.sortOrder = orderMap.get(t.courseId);
+              }
+            });
+            raw.sort((a: any, b: any) => {
+              const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+              const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+              return aOrder - bOrder;
+            });
+          }
+          return raw;
+        })(),
         currentCompanySeaService: (() => {
           const services = Array.isArray(detailedCrewData.currentCompanySeaService) 
             ? detailedCrewData.currentCompanySeaService 
@@ -923,7 +1104,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Also load the uploaded photo from crew data (or reset if no photo)
       setUploadedPhoto(detailedCrewData.uploadedPhoto || null);
     }
-  }, [detailedCrewData, crewMember?.crewUuid, crewMember?.id]);
+  }, [detailedCrewData, crewMember?.crewUuid, crewMember?.id, adminCompanyTrainings]);
 
   // Mark E1 rows that were auto-generated via vessel sign-on as isVesselSynced
   useEffect(() => {
@@ -1063,6 +1244,57 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   }, [isOpen, crewMember]);
 
+  // Click-outside detection for B1/B2/B3: auto-save and close editing section
+  useEffect(() => {
+    const isInsidePortal = (el: Element | null): boolean => {
+      while (el) {
+        if (
+          el.hasAttribute?.('data-radix-popper-content-wrapper') ||
+          el.hasAttribute?.('data-radix-portal') ||
+          el.getAttribute?.('role') === 'listbox' ||
+          el.getAttribute?.('role') === 'dialog' ||
+          el.classList?.contains('rdp') ||
+          el.hasAttribute?.('data-radix-select-viewport') ||
+          el.closest?.('[data-radix-popper-content-wrapper]') ||
+          el.closest?.('[data-radix-portal]')
+        ) {
+          return true;
+        }
+        el = el.parentElement;
+      }
+      return false;
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (isInsidePortal(target)) return;
+
+      const sectionRefs: Record<string, React.RefObject<HTMLDivElement>> = {
+        'B1': sectionB1Ref,
+        'B2': sectionB2Ref,
+        'B3': sectionB3Ref,
+      };
+
+      Object.entries(editingSections).forEach(([sectionId, isEditing]) => {
+        if (!isEditing) return;
+        const ref = sectionRefs[sectionId];
+        if (ref?.current && !ref.current.contains(target)) {
+          const crewUuid = getEffectiveCrewUuid();
+          if (crewUuid) {
+            handleSectionAutoSave(sectionId);
+          }
+          setEditingSections(prev => ({ ...prev, [sectionId]: false }));
+        }
+      });
+    };
+
+    const hasEditingSection = Object.values(editingSections).some(Boolean);
+    if (hasEditingSection) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [editingSections, formData]);
+
   // Helper function to calculate BMI
   const calculateBMI = (height: string, weight: string) => {
     const heightInM = parseFloat(height) / 100; // Convert cm to meters
@@ -1187,6 +1419,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const removeChild = (index: number) => {
+    const childToRemove = formData.children[index];
+    if (childToRemove?.childUuid) {
+      setDeletedChildUuids(prev => [...prev, childToRemove.childUuid!]);
+    }
     setFormData(prev => ({
       ...prev,
       children: prev.children.filter((_, i) => i !== index)
@@ -1430,7 +1666,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         certificateNo: '',
         issuingAuthority: '',
         issued: '',
-        expiry: ''
+        expiry: '',
+        fromDatabase: true,
       }));
       return { 
         ...prev, 
@@ -1447,7 +1684,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       const maxId = getMaxIdNum(prev.trainingCourses, 'TRN');
       const newCourses: TrainingCourse[] = selectedTemplates.map((template, index) => ({
         id: `TRN-${maxId + index + 1}`,
-        courseId: template.id,
+        courseId: template.companyId,
         companyId: template.companyId,
         trainingCourse: template.name,
         abbr: template.abbr,
@@ -1455,11 +1692,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         certificateNo: '',
         issuingAuthority: '',
         issued: '',
-        expiry: ''
+        expiry: '',
+        fromDatabase: true,
+        sortOrder: template.sortOrder,
       }));
+      const allCourses = [...existingCourses, ...newCourses];
+      allCourses.sort((a, b) => {
+        const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+        const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+        return aOrder - bOrder;
+      });
       return { 
         ...prev, 
-        trainingCourses: [...existingCourses, ...newCourses] 
+        trainingCourses: allCourses 
       };
     });
     setIsTrainingDialogOpen(false);
@@ -2311,6 +2556,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 alt="Uploaded photo" 
                 className="w-full h-full object-cover"
               />
+              {canEditCrewDatabase && (
               <Button
                 type="button"
                 variant="destructive"
@@ -2321,8 +2567,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               >
                 <X className="h-3 w-3" />
               </Button>
+              )}
             </div>
-          ) : (
+          ) : canEditCrewDatabase ? (
             <label htmlFor="sidebar-photo-upload" className="cursor-pointer block">
               <div className="w-full aspect-[4/5] max-w-[120px] mx-auto bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors">
                 <div className="text-center">
@@ -2332,9 +2579,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </div>
             </label>
+          ) : (
+            <div className="w-full aspect-[4/5] max-w-[120px] mx-auto bg-gray-100 rounded-lg flex items-center justify-center border-2 border-gray-300">
+              <div className="text-center">
+                <Camera className="h-6 w-6 mx-auto mb-1 text-gray-300" />
+              </div>
+            </div>
           )}
           
-          {uploadedPhoto && (
+          {uploadedPhoto && canEditCrewDatabase && (
             <Button 
               type="button" 
               variant="outline" 
@@ -2368,6 +2621,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-status">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Status</h3>
+                {canEditSection('A') && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -2377,6 +2631,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 >
                   <Pencil className="h-3 w-3" />
                 </Button>
+                )}
               </div>
               <div className="space-y-3">
                 {isDashboardLoading ? (
@@ -2432,6 +2687,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                               {statusData?.nextAvailability || formData.nextAvailability || '—'}
                             </div>
                           </div>
+                          {canEditSection('A') && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -2441,6 +2697,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
+                          )}
                         </div>
                       )}
                       
@@ -2955,9 +3212,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const isEditing = editingSections['B1'];
     
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div ref={sectionB1Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B1 General Particulars</h3>
+          {canEditCrewDatabase && (
           <Button
             variant="ghost"
             size="sm"
@@ -2967,21 +3225,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           >
             <Edit className="h-4 w-4" />
           </Button>
+          )}
         </div>
           
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Row 1: First Name | Middle Name | Family Name */}
           <div>
-            <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
+            <Label className="text-xs text-gray-500 tracking-wide">First Name <span className="text-red-500">*</span></Label>
             {isEditing ? (
               <Input
                 value={formData.firstName}
-                onChange={(e) => updateFormData('firstName', e.target.value)}
-                className="mt-1"
+                onChange={(e) => { updateFormData('firstName', e.target.value); if (firstNameError) setFirstNameError(''); }}
+                onBlur={() => { if (!(formData.firstName || '').trim()) setFirstNameError('First name is required.'); else setFirstNameError(''); }}
+                className={`mt-1 ${firstNameError ? 'border-red-500' : ''}`}
+                data-testid="input-first-name"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.firstName}</div>
             )}
+            {firstNameError && <p className="text-xs text-red-500 mt-1" data-testid="text-firstname-error">{firstNameError}</p>}
           </div>
           
           <div>
@@ -3140,12 +3402,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <Input
                 type="date"
                 value={formData.dateOfBirth}
-                onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
-                className="mt-1"
+                onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) setDobError(''); }}
+                onBlur={() => { const err = validateDob(formData.dateOfBirth); setDobError(err); }}
+                className={`mt-1 ${dobError ? 'border-red-500' : ''}`}
+                data-testid="input-date-of-birth"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.dateOfBirth}</div>
             )}
+            {dobError && <p className="text-xs text-red-500 mt-1" data-testid="text-dob-error">{dobError}</p>}
           </div>
           
           <div>
@@ -3382,9 +3647,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const isEditing = editingSections['B2'];
     
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div ref={sectionB2Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B2 Address & Contact Info</h3>
+          {canEditCrewDatabase && (
           <Button
             variant="ghost"
             size="sm"
@@ -3394,13 +3660,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           >
             <Edit className="h-4 w-4" />
           </Button>
+          )}
         </div>
           
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Country of Residence</Label>
             {isEditing ? (
-              <Select value={formData.countryOfResidence} onValueChange={(value) => updateFormData('countryOfResidence', value)}>
+              <Select value={formData.countryOfResidence} onValueChange={(value) => { setFormData(prev => ({ ...prev, countryOfResidence: value, mobile: applyDialingCode(value, prev.mobile) })); if (mobileError) setMobileError(''); }}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select country of residence" />
                 </SelectTrigger>
@@ -3472,13 +3739,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {isEditing ? (
               <Input
                 value={formData.mobile}
-                onChange={(e) => { updateFormData('mobile', e.target.value); if (mobileError) setMobileError(''); }}
-                className="mt-1"
+                onChange={(e) => { const normalized = normalizeMobileInput(formData.countryOfResidence, e.target.value); updateFormData('mobile', normalized); if (mobileError) setMobileError(''); }}
+                onBlur={() => { const trimmed = (formData.mobile || '').trim(); if (trimmed) { const err = validateMobileNumber(formData.countryOfResidence, trimmed); setMobileError(err || ''); } else { setMobileError(''); } }}
+                className={`mt-1 ${mobileError ? 'border-red-500' : ''}`}
+                data-testid="input-mobile"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.mobile}</div>
             )}
-            {mobileError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-mobile-error">{mobileError}</p>}
+            {mobileError && <p className="text-xs text-red-500 mt-1" data-testid="text-mobile-error">{mobileError}</p>}
           </div>
           
           <div>
@@ -3488,12 +3757,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 type="email"
                 value={formData.email}
                 onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(''); }}
-                className="mt-1"
+                onBlur={() => { setEmailError(validateEmail(formData.email || '')); }}
+                className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
+                data-testid="input-email"
               />
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.email}</div>
             )}
-            {emailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-email-error">{emailError}</p>}
+            {emailError && <p className="text-xs text-red-500 mt-1" data-testid="text-email-error">{emailError}</p>}
           </div>
         </div>
       </div>
@@ -3505,9 +3776,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const isEditing = editingSections['B3'];
     
     return (
-      <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
+      <div ref={sectionB3Ref} className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B3 Family and NOK</h3>
+          {canEditCrewDatabase && (
           <Button
             variant="ghost"
             size="sm"
@@ -3517,6 +3789,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           >
             <Edit className="h-4 w-4" />
           </Button>
+          )}
         </div>
           
         <div className="space-y-6">
@@ -3584,17 +3857,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           {/* Spouse Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <Input
                   value={formData.spouseFirstName}
-                  onChange={(e) => { updateFormData('spouseFirstName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
-                  className="mt-1"
+                  onChange={(e) => { updateFormData('spouseFirstName', e.target.value); if (spouseFirstNameError) setSpouseFirstNameError(''); if (spouseValidationError) setSpouseValidationError(''); }}
+                  onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseFirstName || '').trim()) setSpouseFirstNameError('Spouse first name is required.'); else setSpouseFirstNameError(''); }}
+                  className={`mt-1 ${spouseFirstNameError ? 'border-red-500' : ''}`}
+                  data-testid="input-spouse-first-name"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFirstName}</div>
               )}
-              {spouseValidationError && !(formData.spouseFirstName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-firstname-error">Required</p>}
+              {spouseFirstNameError && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-firstname-error">{spouseFirstNameError}</p>}
             </div>
             
             <div>
@@ -3611,33 +3886,37 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </div>
             
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <Input
                   value={formData.spouseFamilyName}
-                  onChange={(e) => { updateFormData('spouseFamilyName', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
-                  className="mt-1"
+                  onChange={(e) => { updateFormData('spouseFamilyName', e.target.value); if (spouseFamilyNameError) setSpouseFamilyNameError(''); if (spouseValidationError) setSpouseValidationError(''); }}
+                  onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseFamilyName || '').trim()) setSpouseFamilyNameError('Spouse family name is required.'); else setSpouseFamilyNameError(''); }}
+                  className={`mt-1 ${spouseFamilyNameError ? 'border-red-500' : ''}`}
+                  data-testid="input-spouse-family-name"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFamilyName}</div>
               )}
-              {spouseValidationError && !(formData.spouseFamilyName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-familyname-error">Required</p>}
+              {spouseFamilyNameError && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-familyname-error">{spouseFamilyNameError}</p>}
             </div>
             
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <Input
                   type="date"
                   value={formData.spouseDateOfBirth}
-                  onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
-                  className="mt-1"
+                  onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseDobError) setSpouseDobError(''); if (spouseValidationError) setSpouseValidationError(''); }}
+                  onBlur={() => { if (formData.maritalStatus === 'Married') { if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); } else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); } else { setSpouseDobError(''); } } else { setSpouseDobError(''); } }}
+                  className={`mt-1 ${spouseDobError ? 'border-red-500' : ''}`}
                   max={todayStr}
+                  data-testid="input-spouse-dob"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth}</div>
               )}
-              {spouseValidationError && !(formData.spouseDateOfBirth || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-dob-error">Required</p>}
+              {spouseDobError && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-dob-error">{spouseDobError}</p>}
             </div>
           </div>
 
@@ -3834,12 +4113,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   type="email"
                   value={formData.nokEmail}
                   onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(''); }}
-                  className="mt-1"
+                  onBlur={() => { setNokEmailError(validateEmail(formData.nokEmail || '')); }}
+                  className={`mt-1 ${nokEmailError ? 'border-red-500' : ''}`}
+                  data-testid="input-nok-email"
                 />
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nokEmail}</div>
               )}
-              {nokEmailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-nokemail-error">{nokEmailError}</p>}
+              {nokEmailError && <p className="text-xs text-red-500 mt-1" data-testid="text-nokemail-error">{nokEmailError}</p>}
             </div>
             
             <div>
@@ -3866,6 +4147,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C1 Travel and Identification Docs</h3>
+          {canEditSection('C') && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -3888,28 +4170,35 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ADD
             </Button>
           </div>
+          )}
         </div>
         
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Number</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              {canEditSection('C') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {formData.documents.map((doc) => (
               <TableRow key={doc.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input
-                    value={doc.document}
-                    onChange={(e) => updateDocument(doc.id, 'document', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {doc.documentId ? (
+                    <span className="text-[#4f5863] text-[13px]">{doc.document}</span>
+                  ) : (
+                    <Input
+                      value={doc.document}
+                      onChange={(e) => { updateDocument(doc.id, 'document', e.target.value); if (docRequiredErrors[doc.id]) setDocRequiredErrors(prev => { const n = {...prev}; delete n[doc.id]; return n; }); }}
+                      onBlur={() => { if (!(doc.document || '').trim()) setDocRequiredErrors(prev => ({...prev, [doc.id]: 'Document name is required.'})); else setDocRequiredErrors(prev => { const n = {...prev}; delete n[doc.id]; return n; }); }}
+                      className={`text-[#4f5863] text-[13px] border ${docRequiredErrors[doc.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
+                    />
+                  )}
+                  {docRequiredErrors[doc.id] && <p className="text-xs text-red-500 mt-1">{docRequiredErrors[doc.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -3922,19 +4211,23 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     type="date"
                     value={doc.issued}
-                    onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)}
+                    onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); if (docDateErrors[doc.id]?.issued) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
+                    onBlur={() => { const err = validateIssuedDate(doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), issued: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
                     max={todayStr}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    className={`text-[#4f5863] text-[13px] border ${docDateErrors[doc.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {docDateErrors[doc.id]?.issued && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     type="date"
                     value={doc.expiry}
-                    onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)}
+                    onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); if (docDateErrors[doc.id]?.expiry) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
+                    onBlur={() => { const err = validateExpiryDate(doc.expiry, doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), expiry: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
                     min={doc.issued || undefined}
-                    className={`${getExpiryColorClass(doc.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(doc.expiry)} text-[13px] border ${docDateErrors[doc.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {docDateErrors[doc.id]?.expiry && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -3943,6 +4236,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
+                {canEditSection('C') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -3969,6 +4263,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -3983,6 +4278,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>C2 Visas</h3>
+          {canEditSection('C') && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -4005,28 +4301,35 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ADD
             </Button>
           </div>
+          )}
         </div>
         
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">S.No.( If Applicable )</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type <span className="text-red-500">*</span></TableHead>
+              {canEditSection('C') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input
-                    value={visa.issuingCountry}
-                    onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {visa.countryId ? (
+                    <span className="text-[#4f5863] text-[13px]">{visa.issuingCountry}</span>
+                  ) : (
+                    <Input
+                      value={visa.issuingCountry}
+                      onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaRequiredErrors[visa.id]?.issuingCountry) setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
+                      onBlur={() => { if (!(visa.issuingCountry || '').trim()) setVisaRequiredErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issuingCountry: 'Issuing country is required.'}})); else setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issuingCountry; if (!n[visa.id].visaType) delete n[visa.id]; } return n; }); }}
+                      className={`text-[#4f5863] text-[13px] border ${visaRequiredErrors[visa.id]?.issuingCountry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
+                    />
+                  )}
+                  {visaRequiredErrors[visa.id]?.issuingCountry && <p className="text-xs text-red-500 mt-1">{visaRequiredErrors[visa.id].issuingCountry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4039,27 +4342,34 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     type="date"
                     value={visa.issued}
-                    onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)}
+                    onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); if (visaDateErrors[visa.id]?.issued) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
+                    onBlur={() => { const err = validateIssuedDate(visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issued: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
                     max={todayStr}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    className={`text-[#4f5863] text-[13px] border ${visaDateErrors[visa.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {visaDateErrors[visa.id]?.issued && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     type="date"
                     value={visa.expiry}
-                    onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)}
+                    onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); if (visaDateErrors[visa.id]?.expiry) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
+                    onBlur={() => { const err = validateExpiryDate(visa.expiry, visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), expiry: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
                     min={visa.issued || undefined}
-                    className={`${getExpiryColorClass(visa.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(visa.expiry)} text-[13px] border ${visaDateErrors[visa.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {visaDateErrors[visa.id]?.expiry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     value={visa.visaType}
-                    onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    onChange={(e) => { updateVisa(visa.id, 'visaType', e.target.value); if (visaRequiredErrors[visa.id]?.visaType) setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].visaType; if (!n[visa.id].issuingCountry) delete n[visa.id]; } return n; }); }}
+                    onBlur={() => { if (!(visa.visaType || '').trim()) setVisaRequiredErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), visaType: 'Visa type is required.'}})); else setVisaRequiredErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].visaType; if (!n[visa.id].issuingCountry) delete n[visa.id]; } return n; }); }}
+                    className={`text-[#4f5863] text-[13px] border ${visaRequiredErrors[visa.id]?.visaType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {visaRequiredErrors[visa.id]?.visaType && <p className="text-xs text-red-500 mt-1">{visaRequiredErrors[visa.id].visaType}</p>}
                 </TableCell>
+                {canEditSection('C') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -4086,6 +4396,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -4100,6 +4411,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D1 Education</h3>
+          {canEditSection('D') && (
           <Button
             variant="outline"
             size="sm"
@@ -4110,16 +4422,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4 mr-2" />
             ADD
           </Button>
+          )}
         </div>
         
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              {canEditSection('D') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -4128,9 +4441,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <TableCell className="p-3">
                   <Input
                     value={edu.qualifications}
-                    onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    onChange={(e) => { updateEducation(edu.id, 'qualifications', e.target.value); if (eduRequiredErrors[edu.id]) setEduRequiredErrors(prev => { const n = {...prev}; delete n[edu.id]; return n; }); }}
+                    onBlur={() => { if (!(edu.qualifications || '').trim()) setEduRequiredErrors(prev => ({...prev, [edu.id]: 'Qualifications is required.'})); else setEduRequiredErrors(prev => { const n = {...prev}; delete n[edu.id]; return n; }); }}
+                    className={`text-[#4f5863] text-[13px] border ${eduRequiredErrors[edu.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {eduRequiredErrors[edu.id] && <p className="text-xs text-red-500 mt-1">{eduRequiredErrors[edu.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4154,6 +4469,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
                 </TableCell>
+                {canEditSection('D') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -4180,6 +4496,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -4194,6 +4511,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D2 License & DCE</h3>
+          {canEditSection('D') && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -4215,20 +4533,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ADD
             </Button>
           </div>
+          )}
         </div>
         
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/Document <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              {canEditSection('D') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -4250,26 +4569,40 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </div>
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={license.certificateDocument}
-                    onChange={(e) => updateLicense(license.id, 'certificateDocument', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                    disabled={!!license.archivedAt}
-                  />
+                  {license.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{license.certificateDocument}</span>
+                  ) : (
+                    <Input
+                      value={license.certificateDocument}
+                      onChange={(e) => { updateLicense(license.id, 'certificateDocument', e.target.value); if (licRequiredErrors[license.id]) setLicRequiredErrors(prev => { const n = {...prev}; delete n[license.id]; return n; }); }}
+                      onBlur={() => { if (!(license.certificateDocument || '').trim()) setLicRequiredErrors(prev => ({...prev, [license.id]: 'Certificate/Document is required.'})); else setLicRequiredErrors(prev => { const n = {...prev}; delete n[license.id]; return n; }); }}
+                      className={`text-[#4f5863] text-[13px] border ${licRequiredErrors[license.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
+                      disabled={!!license.archivedAt}
+                    />
+                  )}
+                  {licRequiredErrors[license.id] && <p className="text-xs text-red-500 mt-1">{licRequiredErrors[license.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={license.abbr}
-                    onChange={(e) => updateLicense(license.id, 'abbr', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {license.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{license.abbr}</span>
+                  ) : (
+                    <Input
+                      value={license.abbr}
+                      onChange={(e) => updateLicense(license.id, 'abbr', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={license.requirement}
-                    onChange={(e) => updateLicense(license.id, 'requirement', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {license.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{license.requirement}</span>
+                  ) : (
+                    <Input
+                      value={license.requirement}
+                      onChange={(e) => updateLicense(license.id, 'requirement', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4297,20 +4630,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     type="date"
                     value={license.issued}
-                    onChange={(e) => updateLicense(license.id, 'issued', e.target.value)}
+                    onChange={(e) => { updateLicense(license.id, 'issued', e.target.value); if (licDateErrors[license.id]?.issued) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
+                    onBlur={() => { const err = validateIssuedDate(license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), issued: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
                     max={todayStr}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    className={`text-[#4f5863] text-[13px] border ${licDateErrors[license.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {licDateErrors[license.id]?.issued && <p className="text-xs text-red-500 mt-1">{licDateErrors[license.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     type="date"
                     value={license.expiry}
-                    onChange={(e) => updateLicense(license.id, 'expiry', e.target.value)}
+                    onChange={(e) => { updateLicense(license.id, 'expiry', e.target.value); if (licDateErrors[license.id]?.expiry) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
+                    onBlur={() => { const err = validateExpiryDate(license.expiry, license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), expiry: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
                     min={license.issued || undefined}
-                    className={`${getExpiryColorClass(license.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(license.expiry)} text-[13px] border ${licDateErrors[license.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {licDateErrors[license.id]?.expiry && <p className="text-xs text-red-500 mt-1">{licDateErrors[license.id].expiry}</p>}
                 </TableCell>
+                {canEditSection('D') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -4337,6 +4675,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -4351,6 +4690,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>D3 Training Course</h3>
+          {canEditSection('D') && (
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -4372,20 +4712,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ADD
             </Button>
           </div>
+          )}
         </div>
         
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Company ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training Course</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training Course <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
+              {canEditSection('D') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -4395,25 +4736,39 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <div className="text-[#4f5863] text-[13px] font-mono">{course.courseId || '-'}</div>
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={course.trainingCourse}
-                    onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {course.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{course.trainingCourse}</span>
+                  ) : (
+                    <Input
+                      value={course.trainingCourse}
+                      onChange={(e) => { updateTrainingCourse(course.id, 'trainingCourse', e.target.value); if (trainRequiredErrors[course.id]) setTrainRequiredErrors(prev => { const n = {...prev}; delete n[course.id]; return n; }); }}
+                      onBlur={() => { if (!(course.trainingCourse || '').trim()) setTrainRequiredErrors(prev => ({...prev, [course.id]: 'Training course is required.'})); else setTrainRequiredErrors(prev => { const n = {...prev}; delete n[course.id]; return n; }); }}
+                      className={`text-[#4f5863] text-[13px] border ${trainRequiredErrors[course.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
+                    />
+                  )}
+                  {trainRequiredErrors[course.id] && <p className="text-xs text-red-500 mt-1">{trainRequiredErrors[course.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={course.abbr}
-                    onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {course.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{course.abbr}</span>
+                  ) : (
+                    <Input
+                      value={course.abbr}
+                      onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    value={course.requirement}
-                    onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
-                  />
+                  {course.fromDatabase ? (
+                    <span className="text-[#4f5863] text-[13px]">{course.requirement}</span>
+                  ) : (
+                    <Input
+                      value={course.requirement}
+                      onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)}
+                      className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
@@ -4433,20 +4788,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <Input
                     type="date"
                     value={course.issued}
-                    onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)}
+                    onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); if (trainDateErrors[course.id]?.issued) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
+                    onBlur={() => { const err = validateIssuedDate(course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), issued: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
                     max={todayStr}
-                    className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                    className={`text-[#4f5863] text-[13px] border ${trainDateErrors[course.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {trainDateErrors[course.id]?.issued && <p className="text-xs text-red-500 mt-1">{trainDateErrors[course.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input
                     type="date"
                     value={course.expiry}
-                    onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)}
+                    onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); if (trainDateErrors[course.id]?.expiry) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
+                    onBlur={() => { const err = validateExpiryDate(course.expiry, course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), expiry: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
                     min={course.issued || undefined}
-                    className={`${getExpiryColorClass(course.expiry)} text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto`}
+                    className={`${getExpiryColorClass(course.expiry)} text-[13px] border ${trainDateErrors[course.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                   />
+                  {trainDateErrors[course.id]?.expiry && <p className="text-xs text-red-500 mt-1">{trainDateErrors[course.id].expiry}</p>}
                 </TableCell>
+                {canEditSection('D') && (
                 <TableCell className="p-3">
                   <div className="flex gap-1">
                     <Button 
@@ -4473,6 +4833,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     </Button>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -4487,6 +4848,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>E1. Details of Sea Service (Company)</h3>
+          {canEditSection('E') && (
           <Button
             type="button"
             variant="outline"
@@ -4498,6 +4860,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4" />
             ADD
           </Button>
+          )}
         </div>
         
         <div className="border rounded-lg overflow-hidden">
@@ -4505,17 +4868,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <table className="w-full min-w-[1000px]">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Deadweight</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Engine Type/ Power</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Owner / operator</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Experience</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                  {canEditSection('E') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -4563,6 +4926,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                   updateCurrentCompanySeaService(service.id, 'vesselType', vesselTypeName);
                                 }
                               }
+                              setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselCode: value, vesselName: selectedVessel?.name || '', vesselType: selectedVessel?.vtuid ? (vesselTypeIdToNameMap.get(selectedVessel.vtuid) || service.vesselType) : service.vesselType }), 0);
                             }}
                           >
                             <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
@@ -4592,7 +4956,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <Select
                             value={service.vesselType}
-                            onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'vesselType', value)}
+                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'vesselType', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
                           >
                             <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                               <SelectValue placeholder="Select vessel type" />
@@ -4637,7 +5001,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <Select
                             value={service.rank}
-                            onValueChange={(value) => updateCurrentCompanySeaService(service.id, 'rank', value)}
+                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'rank', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                           >
                             <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                               <SelectValue placeholder="Select rank" />
@@ -4668,6 +5032,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             type="date"
                             value={service.from}
                             onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
+                            onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
                             className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           />
                         )}
@@ -4707,13 +5072,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                 type="date"
                                 value={service.to}
                                 onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
+                                onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
                                 className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                                 data-testid={`input-date-to-${service.id}`}
                               />
                             );
                           }
                         })()}
-                        {seaServiceDateErrors[service.id || (service as any).seaUuid] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-e1-to-error-${service.id}`}>{seaServiceDateErrors[service.id || (service as any).seaUuid]}</p>}
+                        {seaServiceDateErrors[service.id || (service as any).seaUuid] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e1-to-error-${service.id}`}>{seaServiceDateErrors[service.id || (service as any).seaUuid]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
@@ -4799,6 +5165,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <span className="text-gray-400 text-[11px]">—</span>
                         )}
                       </td>
+                      {canEditSection('E') && (
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">
                           <Button 
@@ -4825,7 +5192,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
+                        {seaServiceRequiredErrors[service.id || `e1-${formData.currentCompanySeaService.indexOf(service)}`] && (
+                          <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e1-${formData.currentCompanySeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
+                        )}
                       </td>
+                      )}
                     </tr>
                       );
                     })
@@ -4844,6 +5215,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>E2. Details of Sea Service (External)</h3>
+          {canEditSection('E') && (
           <Button
             type="button"
             variant="outline"
@@ -4855,6 +5227,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4" />
             ADD
           </Button>
+          )}
         </div>
         
         <div className="border rounded-lg overflow-hidden">
@@ -4862,17 +5235,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <table className="w-full min-w-[1000px]">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Deadweight</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Engine Type/ Power</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Owner / operator</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">From <span className="text-red-500">*</span></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Experience</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                  {canEditSection('E') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -4896,6 +5269,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Input
                           value={service.vesselName}
                           onChange={(e) => updateExternalSeaService(service.id, 'vesselName', e.target.value)}
+                          onBlur={() => validateSeaServiceFieldOnBlur(service.id, service)}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           placeholder="Enter vessel name"
                         />
@@ -4903,7 +5277,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
                           value={service.vesselType}
-                          onValueChange={(value) => updateExternalSeaService(service.id, 'vesselType', value)}
+                          onValueChange={(value) => { updateExternalSeaService(service.id, 'vesselType', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select vessel type" />
@@ -4944,7 +5318,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
                           value={service.rank}
-                          onValueChange={(value) => updateExternalSeaService(service.id, 'rank', value)}
+                          onValueChange={(value) => { updateExternalSeaService(service.id, 'rank', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select rank" />
@@ -4971,6 +5345,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.from}
                           onChange={(e) => updateExternalSeaService(service.id, 'from', e.target.value)}
+                          onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                       </td>
@@ -4979,9 +5354,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.to}
                           onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
+                          onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
-                        {seaServiceDateErrors[service.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
+                        {seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -5045,6 +5421,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <span className="text-gray-400 text-[11px]">—</span>
                         )}
                       </td>
+                      {canEditSection('E') && (
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">
                           <Button 
@@ -5071,7 +5448,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
+                        {seaServiceRequiredErrors[service.id || `e2-${formData.externalSeaService.indexOf(service)}`] && (
+                          <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e2-${formData.externalSeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
+                        )}
                       </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -5089,6 +5470,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>F1. Pre Joining Medicals</h3>
+          {canEditSection('F') && (
           <Button
             type="button"
             variant="outline"
@@ -5100,6 +5482,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4" />
             ADD
           </Button>
+          )}
         </div>
         
         <div className="border rounded-lg overflow-hidden">
@@ -5114,7 +5497,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Any Medication Prescribed</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Fitness for Sea Service</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Expiry</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                  {canEditSection('F') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -5208,6 +5591,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           className={`border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 ${getExpiryColorClass(medical.expiry)} text-[13px] font-normal h-6`}
                         />
                       </td>
+                      {canEditSection('F') && (
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">
                           <Button 
@@ -5235,6 +5619,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           </Button>
                         </div>
                       </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -5252,6 +5637,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>F2. Doctor Visits</h3>
+          {canEditSection('F') && (
           <Button
             type="button"
             variant="outline"
@@ -5263,6 +5649,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Plus className="h-4 w-4" />
             ADD
           </Button>
+          )}
         </div>
         
         <div className="border rounded-lg overflow-hidden">
@@ -5275,7 +5662,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Complaint / Illness / Injury</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Doctor Comments</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>
+                  {canEditSection('F') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -5328,6 +5715,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           placeholder="Enter doctor comments"
                         />
                       </td>
+                      {canEditSection('F') && (
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <div className="flex gap-1">
                           <Button 
@@ -5355,6 +5743,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           </Button>
                         </div>
                       </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -5370,841 +5759,963 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const handleSaveDraft = () => {
     console.log('Saving crew info (V2):', formData);
 
-    // Required field validation
+    let hasErrors = false;
+
+    // B1: First Name
     const trimmedFirstName = (formData.firstName || '').trim();
-    const trimmedFamilyName = (formData.familyName || '').trim();
-    if (!trimmedFirstName || !trimmedFamilyName) {
-      toast({
-        title: "Validation Error",
-        description: "First Name and Family Name are required.",
-        variant: "destructive",
-      });
-      return;
+    if (!trimmedFirstName) {
+      setFirstNameError('First name is required.');
+      hasErrors = true;
+    } else {
+      setFirstNameError('');
     }
 
-    // DOB validation
+    // B1: DOB
     if (formData.dateOfBirth) {
-      const dobDate = new Date(formData.dateOfBirth);
-      const today = new Date();
-      if (dobDate > today) {
-        toast({ title: "Validation Error", description: "Date of Birth cannot be a future date.", variant: "destructive" });
-        return;
-      }
-      const minDob = new Date();
-      minDob.setFullYear(minDob.getFullYear() - 18);
-      if (dobDate > minDob) {
-        toast({ title: "Validation Error", description: "Crew member must be at least 18 years old.", variant: "destructive" });
-        return;
-      }
-    }
+      const dErr = validateDob(formData.dateOfBirth);
+      if (dErr) { setDobError(dErr); hasErrors = true; } else { setDobError(''); }
+    } else { setDobError(''); }
 
-    // Mobile validation
+    // B2: Mobile
     const trimmedMobile = (formData.mobile || '').trim();
     if (trimmedMobile && formData.countryOfResidence) {
       const mobileErr = validateMobileNumber(formData.countryOfResidence, trimmedMobile);
-      if (mobileErr) {
-        setMobileError(mobileErr);
-        toast({ title: "Validation Error", description: mobileErr, variant: "destructive" });
-        return;
-      }
-    }
-    setMobileError('');
+      if (mobileErr) { setMobileError(mobileErr); hasErrors = true; } else { setMobileError(''); }
+    } else { setMobileError(''); }
 
-    // Email validation
+    // B2: Email
     const trimmedEmail = (formData.email || '').trim();
-    const trimmedNokEmail = (formData.nokEmail || '').trim();
     if (trimmedEmail) {
       const emailErr = validateEmail(trimmedEmail);
-      if (emailErr) {
-        setEmailError(emailErr);
-        toast({ title: "Validation Error", description: emailErr, variant: "destructive" });
-        return;
-      }
-    }
-    setEmailError('');
+      if (emailErr) { setEmailError(emailErr); hasErrors = true; } else { setEmailError(''); }
+    } else { setEmailError(''); }
+
+    // B3: NOK Email
+    const trimmedNokEmail = (formData.nokEmail || '').trim();
     if (trimmedNokEmail) {
       const nokErr = validateEmail(trimmedNokEmail);
-      if (nokErr) {
-        setNokEmailError(nokErr);
-        toast({ title: "Validation Error", description: nokErr, variant: "destructive" });
-        return;
-      }
-    }
-    setNokEmailError('');
+      if (nokErr) { setNokEmailError(nokErr); hasErrors = true; } else { setNokEmailError(''); }
+    } else { setNokEmailError(''); }
 
-    // Spouse validation when married
+    // B3: Spouse validation
     if (formData.maritalStatus === 'Married') {
-      const missingSpouseFields: string[] = [];
-      if (!(formData.spouseFirstName || '').trim()) missingSpouseFields.push('Spouse First Name');
-      if (!(formData.spouseFamilyName || '').trim()) missingSpouseFields.push('Spouse Family Name');
-      if (!(formData.spouseDateOfBirth || '').trim()) missingSpouseFields.push('Spouse Date of Birth');
-      if (missingSpouseFields.length > 0) {
-        setSpouseValidationError(`Required when Married: ${missingSpouseFields.join(', ')}`);
-        toast({ title: "Validation Error", description: `Required when Married: ${missingSpouseFields.join(', ')}`, variant: "destructive" });
-        return;
-      }
-    }
-    const spouseDobVal = (formData.spouseDateOfBirth || '').trim();
-    if (spouseDobVal) {
-      const [sy, sm, sd] = spouseDobVal.split('-').map(Number);
-      const spouseDobLocal = new Date(sy, sm - 1, sd);
-      const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0);
-      if (spouseDobLocal > todayLocal) {
-        setSpouseValidationError('Spouse Date of Birth cannot be a future date.');
-        toast({ title: "Validation Error", description: "Spouse Date of Birth cannot be a future date.", variant: "destructive" });
-        return;
-      }
+      if (!(formData.spouseFirstName || '').trim()) { setSpouseFirstNameError('Spouse first name is required.'); hasErrors = true; } else { setSpouseFirstNameError(''); }
+      if (!(formData.spouseFamilyName || '').trim()) { setSpouseFamilyNameError('Spouse family name is required.'); hasErrors = true; } else { setSpouseFamilyNameError(''); }
+      if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); hasErrors = true; }
+      else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); hasErrors = true; }
+      else { setSpouseDobError(''); }
+    } else {
+      setSpouseFirstNameError(''); setSpouseFamilyNameError(''); setSpouseDobError('');
     }
     setSpouseValidationError('');
 
-    // Sea service To < From validation (E2 + manual E1 rows)
-    const newSeaErrors: Record<string, string> = {};
-    (formData.currentCompanySeaService || []).forEach((sea: any) => {
-      if (!sea.seaUuid) {
-        const from = sea.from || sea.fromDate || '';
-        const to = sea.to || sea.toDate || '';
-        if (from && to && to < from) {
-          newSeaErrors[sea.id || sea.seaUuid || `e1-${from}`] = '"To" date cannot be earlier than "From" date.';
-        }
-      }
-    });
-    (formData.externalSeaService || []).forEach((sea: any) => {
-      const from = sea.from || sea.fromDate || '';
-      const to = sea.to || sea.toDate || '';
-      if (from && to && to < from) {
-        newSeaErrors[sea.id || sea.seaUuid || `e2-${from}`] = '"To" date cannot be earlier than "From" date.';
-      }
-    });
-    setSeaServiceDateErrors(newSeaErrors);
-    if (Object.keys(newSeaErrors).length > 0) {
-      toast({ title: "Validation Error", description: '"To" date cannot be earlier than "From" date in Sea Service.', variant: "destructive" });
-      return;
-    }
-
-    // Row mandatory field validation + blank row cleanup for docs/visas/edu/lic/training
+    // Row blank detection helpers
     const hasAttachments = (atts: any) => Array.isArray(atts) && atts.filter((a: any) => !a.isDeleted).length > 0;
     const isDocBlank = (doc: typeof formData.documents[0]) => !(doc.document || '').trim() && !(doc.number || '').trim() && !(doc.issued || '').trim() && !(doc.expiry || '').trim() && !(doc.issuingAuthority || '').trim() && !hasAttachments(doc.attachments);
     const isVisaBlank = (visa: typeof formData.visas[0]) => !(visa.issuingCountry || '').trim() && !(visa.serialNo || '').trim() && !(visa.issued || '').trim() && !(visa.expiry || '').trim() && !(visa.visaType || '').trim() && !hasAttachments(visa.attachments);
     const isEduBlank = (edu: typeof formData.education[0]) => !(edu.qualifications || '').trim() && !(edu.subjectsField || '').trim() && !(edu.schoolCollegeUniversity || '').trim() && !(edu.dateOfCompletion || '').trim() && !hasAttachments(edu.attachments);
     const isLicBlank = (lic: typeof formData.licenses[0]) => !(lic.certificateDocument || '').trim() && !(lic.abbr || '').trim() && !(lic.requirement || '').trim() && !(lic.certificateNo || '').trim() && !(lic.issuingAuthority || '').trim() && !(lic.issued || '').trim() && !(lic.expiry || '').trim() && !hasAttachments(lic.attachments);
     const isTrainBlank = (t: typeof formData.trainingCourses[0]) => !(t.trainingCourse || '').trim() && !(t.abbr || '').trim() && !(t.requirement || '').trim() && !(t.certificateNo || '').trim() && !(t.issuingAuthority || '').trim() && !(t.issued || '').trim() && !(t.expiry || '').trim() && !hasAttachments(t.attachments);
+    const isSeaServiceBlank = (sea: any) => !(sea.vesselName || '').trim() && !(sea.vesselType || '').trim() && !(sea.rank || '').trim() && !(sea.from || sea.fromDate || '').trim() && !(sea.to || sea.toDate || '').trim() && !(sea.ownerOperator || '').trim() && !(sea.deadweight || '').trim() && !(sea.engineTypePower || '').trim();
+    const isMedicalBlank = (med: any) => !(med.vessel || '').trim() && !(med.dateOfMedical || '').trim() && !(med.bp || '').trim() && !(med.weight || '').trim() && !(med.fitnessForDuty || '').trim() && !(med.expiry || '').trim() && !(med.anyMedicationPrescribed || '').trim() && !hasAttachments(med.attachments);
+    const isDoctorVisitBlank = (dv: any) => !(dv.vessel || '').trim() && !(dv.port || '').trim() && !(dv.date || '').trim() && !(dv.complaint || '').trim() && !(dv.doctorComments || '').trim() && !hasAttachments(dv.attachments);
 
-    const mandatoryErrors: string[] = [];
-    formData.documents.forEach((doc, i) => { if (!isDocBlank(doc) && !(doc.document || '').trim()) mandatoryErrors.push(`Documents Row ${i + 1}: 'Document Name' is required to save this row.`); });
-    formData.visas.forEach((visa, i) => { if (!isVisaBlank(visa) && !(visa.issuingCountry || '').trim()) mandatoryErrors.push(`Visas Row ${i + 1}: 'Issuing Country' is required to save this row.`); });
-    formData.education.forEach((edu, i) => { if (!isEduBlank(edu) && !(edu.qualifications || '').trim()) mandatoryErrors.push(`Education Row ${i + 1}: 'Qualifications' is required to save this row.`); });
-    formData.licenses.forEach((lic, i) => { if (!isLicBlank(lic) && !(lic.certificateDocument || '').trim()) mandatoryErrors.push(`License & DCE Row ${i + 1}: 'Certificate/Document' is required to save this row.`); });
-    formData.trainingCourses.forEach((t, i) => { if (!isTrainBlank(t) && !(t.trainingCourse || '').trim()) mandatoryErrors.push(`Training Course Row ${i + 1}: 'Training/Course' is required to save this row.`); });
-    if (mandatoryErrors.length > 0) {
-      toast({ title: "Validation Error", description: mandatoryErrors.join('\n'), variant: "destructive" });
-      return;
-    }
+    // C1: Document required + date validation
+    const newDocReqErrors: Record<string, string> = {};
+    const newDocDateErrors: Record<string, { issued?: string; expiry?: string }> = {};
+    formData.documents.forEach((doc) => {
+      if (!isDocBlank(doc)) {
+        if (!(doc.document || '').trim()) { newDocReqErrors[doc.id] = 'Document name is required.'; hasErrors = true; }
+        const ie = validateIssuedDate(doc.issued); if (ie) { newDocDateErrors[doc.id] = {...(newDocDateErrors[doc.id] || {}), issued: ie}; hasErrors = true; }
+        const ee = validateExpiryDate(doc.expiry, doc.issued); if (ee) { newDocDateErrors[doc.id] = {...(newDocDateErrors[doc.id] || {}), expiry: ee}; hasErrors = true; }
+      }
+    });
+    setDocRequiredErrors(newDocReqErrors);
+    setDocDateErrors(newDocDateErrors);
 
-    // Remove fully blank rows before saving
-    const nonEmptyDocuments = formData.documents.filter(doc => !isDocBlank(doc));
-    const nonEmptyVisas = formData.visas.filter(visa => !isVisaBlank(visa));
-    const nonEmptyEducation = formData.education.filter(edu => !isEduBlank(edu));
-    const nonEmptyLicenses = formData.licenses.filter(lic => !isLicBlank(lic));
-    const nonEmptyTraining = formData.trainingCourses.filter(t => !isTrainBlank(t));
-    if (
-      nonEmptyDocuments.length !== formData.documents.length ||
-      nonEmptyVisas.length !== formData.visas.length ||
-      nonEmptyEducation.length !== formData.education.length ||
-      nonEmptyLicenses.length !== formData.licenses.length ||
-      nonEmptyTraining.length !== formData.trainingCourses.length
-    ) {
-      setFormData(prev => ({
-        ...prev,
-        documents: nonEmptyDocuments,
-        visas: nonEmptyVisas,
-        education: nonEmptyEducation,
-        licenses: nonEmptyLicenses,
-        trainingCourses: nonEmptyTraining,
-      }));
-    }
-    
-    const seaServiceErrors: string[] = [];
+    // C2: Visa required + date validation
+    const newVisaReqErrors: Record<string, { issuingCountry?: string; visaType?: string }> = {};
+    const newVisaDateErrors: Record<string, { issued?: string; expiry?: string }> = {};
+    formData.visas.forEach((visa) => {
+      if (!isVisaBlank(visa)) {
+        const vReq: { issuingCountry?: string; visaType?: string } = {};
+        if (!(visa.issuingCountry || '').trim()) { vReq.issuingCountry = 'Issuing country is required.'; hasErrors = true; }
+        if (!(visa.visaType || '').trim()) { vReq.visaType = 'Visa type is required.'; hasErrors = true; }
+        if (vReq.issuingCountry || vReq.visaType) newVisaReqErrors[visa.id] = vReq;
+        const ie = validateIssuedDate(visa.issued); if (ie) { newVisaDateErrors[visa.id] = {...(newVisaDateErrors[visa.id] || {}), issued: ie}; hasErrors = true; }
+        const ee = validateExpiryDate(visa.expiry, visa.issued); if (ee) { newVisaDateErrors[visa.id] = {...(newVisaDateErrors[visa.id] || {}), expiry: ee}; hasErrors = true; }
+      }
+    });
+    setVisaRequiredErrors(newVisaReqErrors);
+    setVisaDateErrors(newVisaDateErrors);
+
+    // D1: Education required
+    const newEduReqErrors: Record<string, string> = {};
+    formData.education.forEach((edu) => {
+      if (!isEduBlank(edu) && !(edu.qualifications || '').trim()) { newEduReqErrors[edu.id] = 'Qualifications is required.'; hasErrors = true; }
+    });
+    setEduRequiredErrors(newEduReqErrors);
+
+    // D2: License required + date validation
+    const newLicReqErrors: Record<string, string> = {};
+    const newLicDateErrors: Record<string, { issued?: string; expiry?: string }> = {};
+    formData.licenses.forEach((lic) => {
+      if (!isLicBlank(lic)) {
+        if (!(lic.certificateDocument || '').trim()) { newLicReqErrors[lic.id] = 'Certificate/Document is required.'; hasErrors = true; }
+        const ie = validateIssuedDate(lic.issued); if (ie) { newLicDateErrors[lic.id] = {...(newLicDateErrors[lic.id] || {}), issued: ie}; hasErrors = true; }
+        const ee = validateExpiryDate(lic.expiry, lic.issued); if (ee) { newLicDateErrors[lic.id] = {...(newLicDateErrors[lic.id] || {}), expiry: ee}; hasErrors = true; }
+      }
+    });
+    setLicRequiredErrors(newLicReqErrors);
+    setLicDateErrors(newLicDateErrors);
+
+    // D3: Training required + date validation
+    const newTrainReqErrors: Record<string, string> = {};
+    const newTrainDateErrors: Record<string, { issued?: string; expiry?: string }> = {};
+    formData.trainingCourses.forEach((t) => {
+      if (!isTrainBlank(t)) {
+        if (!(t.trainingCourse || '').trim()) { newTrainReqErrors[t.id] = 'Training course is required.'; hasErrors = true; }
+        const ie = validateIssuedDate(t.issued); if (ie) { newTrainDateErrors[t.id] = {...(newTrainDateErrors[t.id] || {}), issued: ie}; hasErrors = true; }
+        const ee = validateExpiryDate(t.expiry, t.issued); if (ee) { newTrainDateErrors[t.id] = {...(newTrainDateErrors[t.id] || {}), expiry: ee}; hasErrors = true; }
+      }
+    });
+    setTrainRequiredErrors(newTrainReqErrors);
+    setTrainDateErrors(newTrainDateErrors);
+
+    // E1/E2: Sea service date + mandatory field validation (all non-synced rows)
+    const newSeaErrors: Record<string, string> = {};
+    const newSeaReqErrors: Record<string, string[]> = {};
     (formData.currentCompanySeaService || []).forEach((sea: any, i: number) => {
-      if (!sea.seaUuid) {
+      const isVesselSynced = !!sea.isVesselSynced;
+      if (!isVesselSynced) {
+        const from = sea.from || sea.fromDate || '';
+        const to = sea.to || sea.toDate || '';
+        if (from && to && to < from) {
+          newSeaErrors[sea.id || sea.seaUuid || `e1-${from}`] = '"To" date cannot be earlier than "From" date.';
+          hasErrors = true;
+        }
         const missing: string[] = [];
         if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
         if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
         if (!(sea.rank || '').trim()) missing.push('Rank');
-        if (!(sea.from || sea.fromDate || '').trim()) missing.push('From Date');
-        if (!(sea.to || sea.toDate || '').trim()) missing.push('To Date');
-        if (missing.length > 0) seaServiceErrors.push(`E1 Company Sea Service Row ${i + 1}: ${missing.map(f => `'${f}'`).join(', ')} required to save this row.`);
+        if (!from) missing.push('From Date');
+        if (!to) missing.push('To Date');
+        if (missing.length > 0) { newSeaReqErrors[sea.id || `e1-${i}`] = missing; hasErrors = true; }
       }
     });
     (formData.externalSeaService || []).forEach((sea: any, i: number) => {
-      if (!sea.seaUuid) {
-        const missing: string[] = [];
-        if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
-        if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
-        if (!(sea.rank || '').trim()) missing.push('Rank');
-        if (!(sea.from || sea.fromDate || '').trim()) missing.push('From Date');
-        if (!(sea.to || sea.toDate || '').trim()) missing.push('To Date');
-        if (missing.length > 0) seaServiceErrors.push(`E2 External Sea Service Row ${i + 1}: ${missing.map(f => `'${f}'`).join(', ')} required to save this row.`);
+      const from = sea.from || sea.fromDate || '';
+      const to = sea.to || sea.toDate || '';
+      if (from && to && to < from) {
+        newSeaErrors[sea.id || sea.seaUuid || `e2-${from}`] = '"To" date cannot be earlier than "From" date.';
+        hasErrors = true;
+      }
+      const missing: string[] = [];
+      if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
+      if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
+      if (!(sea.rank || '').trim()) missing.push('Rank');
+      if (!from) missing.push('From Date');
+      if (!to) missing.push('To Date');
+      if (missing.length > 0) { newSeaReqErrors[sea.id || `e2-${i}`] = missing; hasErrors = true; }
+    });
+    setSeaServiceRequiredErrors(newSeaReqErrors);
+
+    // Cross-section period overlap validation — merge with to<from errors
+    const overlapErrors = runSeaServiceOverlapCheck();
+    const mergedSeaErrors = { ...newSeaErrors };
+    Object.entries(overlapErrors).forEach(([key, msg]) => {
+      if (mergedSeaErrors[key]) {
+        mergedSeaErrors[key] = `${mergedSeaErrors[key]} ${msg}`;
+      } else {
+        mergedSeaErrors[key] = msg;
       }
     });
-    if (seaServiceErrors.length > 0) {
+    setSeaServiceDateErrors(mergedSeaErrors);
+    if (Object.keys(mergedSeaErrors).length > 0) hasErrors = true;
+
+    // If any errors, scroll to first error and show toast
+    if (hasErrors) {
       toast({
         title: "Validation Error",
-        description: seaServiceErrors.join('\n'),
+        description: "Please fix the highlighted errors before saving.",
         variant: "destructive",
       });
+      setTimeout(() => {
+        const firstError = document.querySelector('p.text-red-500, input.border-red-500, [class*="border-red-500"]');
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
       return;
     }
 
-    // Cross-section period overlap validation (E1 + E2 combined)
-    const allSeaRows = [
-      ...(formData.currentCompanySeaService || []),
-      ...(formData.externalSeaService || []),
-    ].filter((r: any) => !!(r.from || r.fromDate));
+    // Remove fully blank rows before saving — filter all 9 array sections
+    const nonEmptyDocuments = formData.documents.filter(doc => doc.docUuid || !isDocBlank(doc));
+    const nonEmptyVisas = formData.visas.filter(visa => visa.visaUuid || !isVisaBlank(visa));
+    const nonEmptyEducation = formData.education.filter(edu => (edu as any).eduUuid || !isEduBlank(edu));
+    const nonEmptyLicenses = formData.licenses.filter(lic => (lic as any).licUuid || !isLicBlank(lic));
+    const nonEmptyTraining = formData.trainingCourses.filter(t => (t as any).trainUuid || !isTrainBlank(t));
+    const nonEmptyCurrentSea = formData.currentCompanySeaService.filter((sea: any) => sea.seaUuid || sea.isVesselSynced || !isSeaServiceBlank(sea));
+    const nonEmptyExternalSea = formData.externalSeaService.filter((sea: any) => sea.seaUuid || !isSeaServiceBlank(sea));
+    const nonEmptyMedicals = formData.preJoiningMedicals.filter((med: any) => med.medUuid || !isMedicalBlank(med));
+    const nonEmptyDoctorVisits = formData.doctorVisits.filter((dv: any) => dv.visitUuid || !isDoctorVisitBlank(dv));
 
-    for (let i = 0; i < allSeaRows.length; i++) {
-      for (let j = i + 1; j < allSeaRows.length; j++) {
-        const a = allSeaRows[i] as any;
-        const b = allSeaRows[j] as any;
-        const aFrom = a.from || a.fromDate || '';
-        const aTo   = (a.to && a.to !== '') ? a.to : ((a.toDate && a.toDate !== '') ? a.toDate : null);
-        const bFrom = b.from || b.fromDate || '';
-        const bTo   = (b.to && b.to !== '') ? b.to : ((b.toDate && b.toDate !== '') ? b.toDate : null);
-        if (!aFrom || !bFrom) continue;
-        // No overlap only if one period ends strictly before the other starts
-        const noOverlap =
-          (aTo !== null && aTo < bFrom) ||
-          (bTo !== null && bTo < aFrom);
-        if (!noOverlap) {
-          toast({
-            title: "Validation Error",
-            description: "Sea service already exists for the selected period.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-    }
+    const cleanedFormData = {
+      ...formData,
+      documents: nonEmptyDocuments,
+      visas: nonEmptyVisas,
+      education: nonEmptyEducation,
+      licenses: nonEmptyLicenses,
+      trainingCourses: nonEmptyTraining,
+      currentCompanySeaService: nonEmptyCurrentSea,
+      externalSeaService: nonEmptyExternalSea,
+      preJoiningMedicals: nonEmptyMedicals,
+      doctorVisits: nonEmptyDoctorVisits,
+    };
+    setFormData(cleanedFormData);
 
-    // Include the uploaded photo in the data to be saved
-    const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
+    // Include the uploaded photo in the data to be saved — use cleaned data
+    const dataWithPhoto = { ...cleanedFormData, uploadedPhoto: uploadedPhoto || null };
     
     // V2: Use crewUuid as primary identifier for updates
-    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
-    if (crewMember && crewIdentifier) {
-      // Update existing crew member using crewUuid
-      updateCrewMutation.mutate({ id: crewIdentifier, data: dataWithPhoto });
-      
-      // V2: Also save section data to their respective tables
-      // Personal Details (A1.1 fields like height, weight, DOB, languages, etc.)
-      const personalDetailsData = {
-        height: formData.heightCm,
-        weight: formData.weightKg,
-        bmi: formData.bmi,
-        dob: formData.dateOfBirth,
-        placeOfBirthCity: formData.placeOfBirthCity,
-        placeOfBirthCountry: formData.placeOfBirthCountry,
-        nativeLanguage: formData.nativeLanguage,
-        foreignLanguages: formData.foreignLanguages,
-        englishProficiency: formData.englishProficiency,
-        manningAgent: formData.manningAgent,
-        crewPool: formData.crewPool,
-      };
-      console.log('V2 Saving Personal Details:', { crewUuid: crewIdentifier, data: personalDetailsData });
-      savePersonalDetailsMutationV2.mutate({ crewUuid: crewIdentifier, data: personalDetailsData });
-      
-      // Address (A1.2 fields)
-      const addressData = {
-        countryOfResidence: formData.countryOfResidence,
-        nearestAirport: formData.nearestAirport,
-        residentialAddressLine1: formData.residentialAddressLine1,
-        residentialAddressLine2: formData.residentialAddressLine2,
-        contactLandline: formData.contactLandline,
-        mobile: formData.mobile,
-        email: formData.email,
-      };
-      console.log('V2 Saving Address:', { crewUuid: crewIdentifier, data: addressData });
-      saveAddressMutationV2.mutate({ crewUuid: crewIdentifier, data: addressData });
-      
-      // Family Info (A1.3 fields)
-      const familyInfoData = {
-        maritalStatus: formData.maritalStatus,
-        numberOfDependentChildren: formData.numberOfDependentChildren,
-        fatherName: formData.fatherName,
-        motherName: formData.motherName,
-        spouseFirstName: formData.spouseFirstName,
-        spouseMiddleName: formData.spouseMiddleName,
-        spouseFamilyName: formData.spouseFamilyName,
-        spouseDateOfBirth: formData.spouseDateOfBirth,
-      };
-      console.log('V2 Saving Family Info:', { crewUuid: crewIdentifier, data: familyInfoData });
-      saveFamilyInfoMutationV2.mutate({ crewUuid: crewIdentifier, data: familyInfoData });
-      
-      // Children (A1.3 - array of child records)
-      if (formData.children && formData.children.length > 0) {
-        console.log('V2 Saving Children:', { crewUuid: crewIdentifier, count: formData.children.length });
-        formData.children.forEach((child: any) => {
-          const childData = {
-            firstName: child.firstName,
-            middleName: child.middleName,
-            familyName: child.familyName,
-            dateOfBirth: child.dateOfBirth,
-            gender: child.gender,
-          };
-          saveChildMutationV2.mutate({ 
-            crewUuid: crewIdentifier, 
-            data: childData, 
-            childUuid: child.childUuid 
+    // Also check createdCrewId — after first save of a new crew, crewMember is still null
+    // but createdCrewId holds the UUID of the just-created record
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id || createdCrewId;
+    if (crewIdentifier) {
+      isBatchSavingRef.current = true;
+      (async () => {
+        const batchErrors: string[] = [];
+        const uuidUpdates: { section: string; localId: string; uuid: string }[] = [];
+        try {
+          console.log('V2 Starting save — all operations use direct API calls to prevent mid-save cache invalidation');
+
+          const nonBatchOps: (() => Promise<any>)[] = [];
+          nonBatchOps.push(async () => {
+            const v2Crew = withAuditUser(mapLegacyCrewToV2(dataWithPhoto));
+            await crewPoolApiV2.updateCrew(crewIdentifier, v2Crew);
           });
-        });
-      }
-      
-      // Next of Kin (NOK) - single record
-      const nokData = {
-        firstName: formData.nokFirstName,
-        middleName: formData.nokMiddleName,
-        familyName: formData.nokFamilyName,
-        relationship: formData.nokRelationship,
-        telephone: formData.nokTelephone,
-        email: formData.nokEmail,
-        address: formData.nokAddress,
-      };
-      // Only save if any NOK field has a value
-      if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
-        console.log('V2 Saving Next of Kin:', { crewUuid: crewIdentifier, data: nokData });
-        saveNextOfKinMutationV2.mutate({ crewUuid: crewIdentifier, data: nokData });
-      }
-      
-      // Vessel Types Applied (A5 - array of vessel type UUIDs)
-      // The form stores vesselType as an array of vessel type names/UUIDs
-      if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
-        console.log('V2 Saving Vessel Types:', { crewUuid: crewIdentifier, vesselTypes: formData.vesselType });
-        saveVesselTypesMutationV2.mutate({ crewUuid: crewIdentifier, vesselTypeUuids: formData.vesselType });
-      }
-      
-      // BATCHED SAVE: Process saves in sequential batches to prevent database connection exhaustion
-      // This is a production-critical pattern that prevents "too many clients" errors
-      const batchErrors: string[] = [];
-      const processBatch = async (batchName: string, operations: (() => Promise<any>)[]) => {
-        if (operations.length === 0) return;
-        console.log(`V2 Processing batch: ${batchName} (${operations.length} operations)`);
-        
-        // Process operations in smaller sub-batches of 3 to prevent connection spikes
-        const subBatchSize = 3;
-        for (let i = 0; i < operations.length; i += subBatchSize) {
-          const subBatch = operations.slice(i, i + subBatchSize);
-          const results = await Promise.allSettled(subBatch.map(op => op()));
-          results.forEach((result, idx) => {
+          const personalDetailsData = {
+            height: formData.heightCm,
+            weight: formData.weightKg,
+            bmi: formData.bmi,
+            dob: formData.dateOfBirth,
+            placeOfBirthCity: formData.placeOfBirthCity,
+            placeOfBirthCountry: formData.placeOfBirthCountry,
+            nativeLanguage: formData.nativeLanguage,
+            foreignLanguages: formData.foreignLanguages,
+            englishProficiency: formData.englishProficiency,
+            manningAgent: formData.manningAgent,
+            crewPool: formData.crewPool,
+          };
+          nonBatchOps.push(async () => {
+            const v2Personal = withAuditUser(mapLegacyPersonalDetailsToV2(personalDetailsData));
+            await crewPoolApiV2.savePersonalDetails(crewIdentifier, v2Personal);
+          });
+          const addressData = {
+            countryOfResidence: formData.countryOfResidence,
+            nearestAirport: formData.nearestAirport,
+            residentialAddressLine1: formData.residentialAddressLine1,
+            residentialAddressLine2: formData.residentialAddressLine2,
+            contactLandline: formData.contactLandline,
+            mobile: formData.mobile,
+            email: formData.email,
+          };
+          nonBatchOps.push(async () => {
+            const v2Address = withAuditUser(mapLegacyAddressToV2(addressData));
+            await crewPoolApiV2.saveAddress(crewIdentifier, v2Address);
+          });
+          const familyInfoData = {
+            maritalStatus: formData.maritalStatus,
+            numberOfDependentChildren: formData.numberOfDependentChildren,
+            fatherName: formData.fatherName,
+            motherName: formData.motherName,
+            spouseFirstName: formData.spouseFirstName,
+            spouseMiddleName: formData.spouseMiddleName,
+            spouseFamilyName: formData.spouseFamilyName,
+            spouseDateOfBirth: formData.spouseDateOfBirth,
+          };
+          nonBatchOps.push(async () => {
+            const v2Family = withAuditUser(mapLegacyFamilyInfoToV2(familyInfoData));
+            await crewPoolApiV2.saveFamilyInfo(crewIdentifier, v2Family);
+          });
+
+          const nonBatchResults = await Promise.allSettled(nonBatchOps.map(op => op()));
+          nonBatchResults.forEach((result, idx) => {
             if (result.status === 'rejected') {
               const errMsg = result.reason?.message || String(result.reason);
-              console.error(`V2 Error in batch ${batchName}, item ${i + idx + 1}:`, result.reason);
-              batchErrors.push(`${batchName}: ${errMsg}`);
+              console.error(`V2 Error in non-batch op ${idx + 1}:`, result.reason);
+              batchErrors.push(`Non-batch: ${errMsg}`);
             }
           });
-        }
-        console.log(`V2 Completed batch: ${batchName}`);
-      };
-      
-      // Collect operations into batches instead of firing immediately
-      const batch1Operations: (() => Promise<any>)[] = []; // Documents + Visas
-      const batch2Operations: (() => Promise<any>)[] = []; // Education + Licenses
-      const batch3Operations: (() => Promise<any>)[] = []; // Training + Sea Service
-      const batch4Operations: (() => Promise<any>)[] = []; // Medicals + Doctor Visits
-      
-      // Documents (Part C - C1 Travel and Identification Docs) - Add to Batch 1
-      if (formData.documents && formData.documents.length > 0) {
-        console.log('V2 Preparing Documents for batch:', { crewUuid: crewIdentifier, count: formData.documents.length });
-        formData.documents.forEach((doc: any, index: number) => {
-          const docAttachments = doc.attachments || [];
-          const capturedNewAttachments = [...docAttachments.filter((att: any) => !att.attUuid || att.isNew)];
-          const capturedDeletedAttachments = [...docAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const docData = {
-            docUuid: doc.docUuid,
-            documentId: doc.documentId || doc.document || '',
-            documentName: doc.document || doc.documentId || '',
-            number: doc.number || '',
-            issued: doc.issued || '',
-            expiry: doc.expiry || '',
-            issuingAuthority: doc.issuingAuthority || '',
-            issuingCountryUuid: doc.issuingCountry || '',
-            sortOrder: index,
-          };
-          
-          // Push operation factory to batch instead of executing immediately
-          batch1Operations.push(async () => {
-            const savedDoc = await saveDocumentMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: docData, 
-              docUuid: doc.docUuid 
-            });
-            const savedDocUuid = savedDoc?.docUuid || doc.docUuid;
-            
-            // Handle attachments sequentially
-            for (const att of capturedDeletedAttachments) {
-              await removeDocumentAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                docUuid: savedDocUuid,
-                attUuid: att.attUuid
+
+          const miscOps: (() => Promise<any>)[] = [];
+          if (deletedChildUuids.length > 0) {
+            for (const childUuid of deletedChildUuids) {
+              miscOps.push(async () => {
+                try { await crewPoolApiV2.deleteChild(crewIdentifier, childUuid); } catch (e) { /* ignore */ }
               });
             }
-            for (const att of capturedNewAttachments) {
-              await addDocumentAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                docUuid: savedDocUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+            setDeletedChildUuids([]);
+          }
+          if (formData.children && formData.children.length > 0) {
+            formData.children.forEach((child: any) => {
+              const childData = {
+                firstName: child.firstName,
+                middleName: child.middleName,
+                familyName: child.familyName,
+                dateOfBirth: child.dateOfBirth,
+                gender: child.gender,
+              };
+              miscOps.push(async () => {
+                if (child.childUuid) {
+                  await crewPoolApiV2.updateChild(crewIdentifier, child.childUuid, childData);
+                } else {
+                  await crewPoolApiV2.createChild(crewIdentifier, childData);
+                }
+              });
+            });
+          }
+
+          const nokData = {
+            firstName: formData.nokFirstName,
+            middleName: formData.nokMiddleName,
+            familyName: formData.nokFamilyName,
+            relationship: formData.nokRelationship,
+            telephone: formData.nokTelephone,
+            email: formData.nokEmail,
+            address: formData.nokAddress,
+          };
+          if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
+            miscOps.push(async () => {
+              await crewPoolApiV2.saveNextOfKin(crewIdentifier, nokData);
+            });
+          }
+
+          if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
+            miscOps.push(async () => {
+              await crewPoolApiV2.saveVesselTypesApplied(crewIdentifier, formData.vesselType);
+            });
+          }
+
+          if (miscOps.length > 0) {
+            const miscResults = await Promise.allSettled(miscOps.map(op => op()));
+            miscResults.forEach((result, idx) => {
+              if (result.status === 'rejected') {
+                console.error(`V2 Error in misc op ${idx + 1}:`, result.reason);
+              }
+            });
+          }
+
+          const processBatch = async (batchName: string, operations: (() => Promise<any>)[]) => {
+            if (operations.length === 0) return;
+            console.log(`V2 Processing batch: ${batchName} (${operations.length} operations)`);
+            const subBatchSize = 3;
+            for (let i = 0; i < operations.length; i += subBatchSize) {
+              const subBatch = operations.slice(i, i + subBatchSize);
+              const results = await Promise.allSettled(subBatch.map(op => op()));
+              results.forEach((result, idx) => {
+                if (result.status === 'rejected') {
+                  const errMsg = result.reason?.message || String(result.reason);
+                  console.error(`V2 Error in batch ${batchName}, item ${i + idx + 1}:`, result.reason);
+                  batchErrors.push(`${batchName}: ${errMsg}`);
+                }
               });
             }
-            return savedDoc;
-          });
-        });
-      }
-      
-      // Visas (Part C - C2 Visas) - Add to Batch 1
-      if (formData.visas && formData.visas.length > 0) {
-        console.log('V2 Preparing Visas for batch:', { crewUuid: crewIdentifier, count: formData.visas.length });
-        formData.visas.forEach((visa: any, index: number) => {
-          const visaAttachments = visa.attachments || [];
-          const capturedNewAttachments = [...visaAttachments.filter((att: any) => !att.attUuid || att.isNew)];
-          const capturedDeletedAttachments = [...visaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const visaData = {
-            visaUuid: visa.visaUuid,
-            country: visa.issuingCountry || visa.country || '',
-            serialNo: visa.serialNo || visa.serialNumber || '',
-            issued: visa.issued || '',
-            expiry: visa.expiry || '',
-            visaType: visa.visaType || '',
-            sortOrder: index,
+            console.log(`V2 Completed batch: ${batchName}`);
           };
-          
-          batch1Operations.push(async () => {
-            const savedVisa = await saveVisaMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: visaData, 
-              visaUuid: visa.visaUuid 
-            });
-            const savedVisaUuid = savedVisa?.visaUuid || visa.visaUuid;
-            
-            for (const att of capturedDeletedAttachments) {
-              await removeVisaAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                visaUuid: savedVisaUuid,
-                attUuid: att.attUuid
+
+          const batch1Operations: (() => Promise<any>)[] = [];
+          const batch2Operations: (() => Promise<any>)[] = [];
+          const batch3Operations: (() => Promise<any>)[] = [];
+          const batch4Operations: (() => Promise<any>)[] = [];
+
+          if (cleanedFormData.documents && cleanedFormData.documents.length > 0) {
+            console.log('V2 Preparing Documents for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.documents.length });
+            cleanedFormData.documents.forEach((doc: any, index: number) => {
+              const docAttachments = doc.attachments || [];
+              const capturedNewAttachments = [...docAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+              const capturedDeletedAttachments = [...docAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const docData = {
+                docUuid: doc.docUuid,
+                documentId: doc.documentId || doc.document || '',
+                documentName: doc.document || doc.documentId || '',
+                number: doc.number || '',
+                issued: doc.issued || '',
+                expiry: doc.expiry || '',
+                issuingAuthority: doc.issuingAuthority || '',
+                issuingCountryUuid: doc.issuingCountry || '',
+                sortOrder: index,
+              };
+
+              const capturedLocalId = doc.id;
+              batch1Operations.push(async () => {
+                const v2Data = withAuditUser(mapLegacyDocumentToV2(docData));
+                let savedDoc: any;
+                if (doc.docUuid) {
+                  savedDoc = await crewPoolApiV2.updateDocument(crewIdentifier, doc.docUuid, v2Data);
+                } else {
+                  savedDoc = await crewPoolApiV2.createDocument(crewIdentifier, v2Data);
+                }
+                const savedDocUuid = savedDoc?.docUuid || savedDoc?.doc_uuid || doc.docUuid;
+                if (savedDocUuid && !doc.docUuid) {
+                  uuidUpdates.push({ section: 'documents', localId: capturedLocalId, uuid: savedDocUuid });
+                }
+
+                for (const att of capturedDeletedAttachments) {
+                  await crewPoolApiV2.removeDocumentAttachment(crewIdentifier, savedDocUuid, att.attUuid);
+                }
+                for (const att of capturedNewAttachments) {
+                  await crewPoolApiV2.addDocumentAttachment(crewIdentifier, savedDocUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                }
+                return savedDoc;
               });
-            }
-            for (const att of capturedNewAttachments) {
-              await addVisaAttachmentV2.mutateAsync({
-                crewUuid: crewIdentifier,
-                visaUuid: savedVisaUuid,
-                data: { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type }
+            });
+          }
+
+          if (cleanedFormData.visas && cleanedFormData.visas.length > 0) {
+            console.log('V2 Preparing Visas for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.visas.length });
+            cleanedFormData.visas.forEach((visa: any, index: number) => {
+              const visaAttachments = visa.attachments || [];
+              const capturedNewAttachments = [...visaAttachments.filter((att: any) => !att.attUuid || att.isNew)];
+              const capturedDeletedAttachments = [...visaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const visaData = {
+                visaUuid: visa.visaUuid,
+                country: visa.issuingCountry || visa.country || '',
+                serialNo: visa.serialNo || visa.serialNumber || '',
+                issued: visa.issued || '',
+                expiry: visa.expiry || '',
+                visaType: visa.visaType || '',
+                sortOrder: index,
+              };
+
+              const capturedVisaLocalId = visa.id;
+              batch1Operations.push(async () => {
+                const v2Data = withAuditUser(mapLegacyVisaToV2(visaData));
+                let savedVisa: any;
+                if (visa.visaUuid) {
+                  savedVisa = await crewPoolApiV2.updateVisa(crewIdentifier, visa.visaUuid, v2Data);
+                } else {
+                  savedVisa = await crewPoolApiV2.createVisa(crewIdentifier, v2Data);
+                }
+                const savedVisaUuid = savedVisa?.visaUuid || savedVisa?.visa_uuid || visa.visaUuid;
+                if (savedVisaUuid && !visa.visaUuid) {
+                  uuidUpdates.push({ section: 'visas', localId: capturedVisaLocalId, uuid: savedVisaUuid });
+                }
+
+                for (const att of capturedDeletedAttachments) {
+                  await crewPoolApiV2.removeVisaAttachment(crewIdentifier, savedVisaUuid, att.attUuid);
+                }
+                for (const att of capturedNewAttachments) {
+                  await crewPoolApiV2.addVisaAttachment(crewIdentifier, savedVisaUuid, { fileName: att.name, fileUrl: att.data, fileSize: String(att.size || 0), mimeType: att.type });
+                }
+                return savedVisa;
               });
-            }
-            return savedVisa;
-          });
-        });
-      }
-      
-      // Education (Part D - D1) - Add to Batch 2
-      if (formData.education && formData.education.length > 0) {
-        console.log('V2 Preparing Education for batch:', { crewUuid: crewIdentifier, count: formData.education.length });
-        formData.education.forEach((edu: any, index: number) => {
-          const eduAttachments = edu.attachments || [];
-          const capturedNewAttachments = [...eduAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...eduAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const eduData = {
-            id: edu.id,
-            eduUuid: edu.eduUuid,
-            dateOfCompletion: edu.dateOfCompletion || '',
-            schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
-            subjectsField: edu.subjectsField || '',
-            qualifications: edu.qualifications || '',
-            sortOrder: index,
-          };
-          
-          batch2Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
-            const savedEduUuid = edu.eduUuid;
-            if (savedEduUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeEducationAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  eduUuid: savedEduUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            // Save record with attachments - hook handles attachment saves internally
-            const savedEdu = await saveEducationMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: eduData, 
-              eduUuid: edu.eduUuid,
-              attachments: capturedNewAttachments
             });
-            return savedEdu;
-          });
-        });
-      }
-      
-      // Licenses (Part D - D2) - Add to Batch 2
-      if (formData.licenses && formData.licenses.length > 0) {
-        console.log('V2 Preparing Licenses for batch:', { crewUuid: crewIdentifier, count: formData.licenses.length });
-        formData.licenses.forEach((lic: any, index: number) => {
-          const licAttachments = lic.attachments || [];
-          const capturedNewAttachments = [...licAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...licAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const licData = {
-            id: lic.id,
-            licUuid: lic.licUuid,
-            licenseId: lic.licenseId || '',
-            certificateDocument: lic.certificateDocument || '',
-            abbr: lic.abbr || '',
-            requirement: lic.requirement || '',
-            certificateNo: lic.certificateNo || '',
-            issuingAuthority: lic.issuingAuthority || '',
-            issuingCountry: lic.issuingCountry || '',
-            issued: lic.issued || '',
-            expiry: lic.expiry || '',
-            archivedAt: lic.archivedAt || '',
-            sortOrder: index,
-          };
-          
-          batch2Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
-            const savedLicUuid = lic.licUuid;
-            if (savedLicUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeLicenseAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  licUuid: savedLicUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            // Save record with attachments - hook handles attachment saves internally
-            const savedLic = await saveLicenseMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: licData, 
-              licUuid: lic.licUuid,
-              attachments: capturedNewAttachments
+          }
+
+          if (cleanedFormData.education && cleanedFormData.education.length > 0) {
+            console.log('V2 Preparing Education for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.education.length });
+            cleanedFormData.education.forEach((edu: any, index: number) => {
+              const eduAttachments = edu.attachments || [];
+              const capturedNewAttachments = [...eduAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...eduAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const eduData = {
+                id: edu.id,
+                eduUuid: edu.eduUuid,
+                dateOfCompletion: edu.dateOfCompletion || '',
+                schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
+                subjectsField: edu.subjectsField || '',
+                qualifications: edu.qualifications || '',
+                sortOrder: index,
+              };
+
+              const capturedEduLocalId = edu.id;
+              batch2Operations.push(async () => {
+                if (edu.eduUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeEducationAttachment(crewIdentifier, edu.eduUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyEducationToV2(eduData));
+                let savedEdu: any;
+                let entityUuid: string;
+                if (edu.eduUuid) {
+                  savedEdu = await crewPoolApiV2.updateEducation(crewIdentifier, edu.eduUuid, v2Data);
+                  entityUuid = edu.eduUuid;
+                } else {
+                  savedEdu = await crewPoolApiV2.createEducation(crewIdentifier, v2Data);
+                  entityUuid = savedEdu?.eduUuid || savedEdu?.edu_uuid;
+                }
+                if (entityUuid && !edu.eduUuid) {
+                  uuidUpdates.push({ section: 'education', localId: capturedEduLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addEducationAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedEdu;
+              });
             });
-            return savedLic;
-          });
-        });
-      }
-      
-      // Training Courses (Part D - D3) - Add to Batch 3
-      if (formData.trainingCourses && formData.trainingCourses.length > 0) {
-        console.log('V2 Preparing Training Courses for batch:', { crewUuid: crewIdentifier, count: formData.trainingCourses.length });
-        formData.trainingCourses.forEach((train: any, index: number) => {
-          const trainAttachments = train.attachments || [];
-          const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...trainAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const trainData = {
-            id: train.id,
-            trainUuid: train.trainUuid,
-            courseId: train.courseId || '',
-            trainingCourse: train.trainingCourse || '',
-            abbr: train.abbr || '',
-            requirement: train.requirement || '',
-            certificateNo: train.certificateNo || '',
-            issuingAuthority: train.issuingAuthority || '',
-            issuingCountry: train.issuingCountry || '',
-            issued: train.issued || '',
-            expiry: train.expiry || '',
-            sortOrder: index,
-          };
-          
-          batch3Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
-            const savedTrainUuid = train.trainUuid;
-            if (savedTrainUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeTrainingAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  trainUuid: savedTrainUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            // Save record with attachments - hook handles attachment saves internally
-            const savedTrain = await saveTrainingCourseMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: trainData, 
-              trainUuid: train.trainUuid,
-              attachments: capturedNewAttachments
+          }
+
+          if (cleanedFormData.licenses && cleanedFormData.licenses.length > 0) {
+            console.log('V2 Preparing Licenses for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.licenses.length });
+            cleanedFormData.licenses.forEach((lic: any, index: number) => {
+              const licAttachments = lic.attachments || [];
+              const capturedNewAttachments = [...licAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...licAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const licData = {
+                id: lic.id,
+                licUuid: lic.licUuid,
+                licenseId: lic.licenseId || '',
+                certificateDocument: lic.certificateDocument || '',
+                abbr: lic.abbr || '',
+                requirement: lic.requirement || '',
+                certificateNo: lic.certificateNo || '',
+                issuingAuthority: lic.issuingAuthority || '',
+                issuingCountry: lic.issuingCountry || '',
+                issued: lic.issued || '',
+                expiry: lic.expiry || '',
+                archivedAt: lic.archivedAt || '',
+                sortOrder: index,
+              };
+
+              const capturedLicLocalId = lic.id;
+              batch2Operations.push(async () => {
+                if (lic.licUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeLicenseAttachment(crewIdentifier, lic.licUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyLicenseToV2(licData));
+                let savedLic: any;
+                let entityUuid: string;
+                if (lic.licUuid) {
+                  savedLic = await crewPoolApiV2.updateLicense(crewIdentifier, lic.licUuid, v2Data);
+                  entityUuid = lic.licUuid;
+                } else {
+                  savedLic = await crewPoolApiV2.createLicense(crewIdentifier, v2Data);
+                  entityUuid = savedLic?.licUuid || savedLic?.lic_uuid;
+                }
+                if (entityUuid && !lic.licUuid) {
+                  uuidUpdates.push({ section: 'licenses', localId: capturedLicLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addLicenseAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedLic;
+              });
             });
-            return savedTrain;
-          });
-        });
-      }
-      
-      // Sea Service - Company (Part E - E1) - Add to Batch 3
-      if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
-        console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.currentCompanySeaService.length });
-        formData.currentCompanySeaService.forEach((sea: any, index: number) => {
-          const seaAttachments = sea.attachments || [];
-          const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          // For vessel-synced rows, pass locked fields through unchanged to avoid overwriting vessel assignment data
-          const isSeaSynced = !!sea.isVesselSynced && !!sea.seaUuid;
-          const seaData: LegacySeaService = {
-            seaUuid: sea.seaUuid,
-            isCompanyService: true,
-            vesselName: sea.vesselName || '',
-            vesselCode: sea.vesselCode || '',
-            vesselType: sea.vesselType || '',
-            rank: sea.rank || '',
-            from: sea.from || sea.fromDate || '',
-            to: sea.to || sea.toDate || '',
-            fromDate: sea.from || sea.fromDate || '',
-            toDate: sea.to || sea.toDate || '',
-            // Always editable
-            deadweight: sea.deadweight || '',
-            engineTypePower: sea.engineTypePower || '',
-            ownerOperator: sea.ownerOperator || '',
-            periodMonths: sea.periodMonths || '',
-            experienceCategories: sea.experienceCategories || [],
-            sortOrder: index,
-            ...(isSeaSynced ? { _skipLockedFields: true } : {}),
-          } as LegacySeaService;
-          
-          batch3Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
-            const savedSeaUuid = sea.seaUuid;
-            if (savedSeaUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeSeaServiceAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  seaUuid: savedSeaUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            // Save record with attachments - hook handles attachment saves internally
-            const savedSea = await saveSeaServiceMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: seaData, 
-              seaUuid: sea.seaUuid,
-              attachments: capturedNewAttachments
+          }
+
+          if (cleanedFormData.trainingCourses && cleanedFormData.trainingCourses.length > 0) {
+            console.log('V2 Preparing Training Courses for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.trainingCourses.length });
+            cleanedFormData.trainingCourses.forEach((train: any, index: number) => {
+              const trainAttachments = train.attachments || [];
+              const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...trainAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const trainData = {
+                id: train.id,
+                trainUuid: train.trainUuid,
+                courseId: train.courseId || '',
+                trainingCourse: train.trainingCourse || '',
+                abbr: train.abbr || '',
+                requirement: train.requirement || '',
+                certificateNo: train.certificateNo || '',
+                issuingAuthority: train.issuingAuthority || '',
+                issuingCountry: train.issuingCountry || '',
+                issued: train.issued || '',
+                expiry: train.expiry || '',
+                sortOrder: index,
+              };
+
+              const capturedTrainLocalId = train.id;
+              batch3Operations.push(async () => {
+                if (train.trainUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeTrainingAttachment(crewIdentifier, train.trainUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyTrainingCourseToV2(trainData));
+                let savedTrain: any;
+                let entityUuid: string;
+                if (train.trainUuid) {
+                  savedTrain = await crewPoolApiV2.updateTrainingCourse(crewIdentifier, train.trainUuid, v2Data);
+                  entityUuid = train.trainUuid;
+                } else {
+                  savedTrain = await crewPoolApiV2.createTrainingCourse(crewIdentifier, v2Data);
+                  entityUuid = savedTrain?.trainUuid || savedTrain?.train_uuid;
+                }
+                if (entityUuid && !train.trainUuid) {
+                  uuidUpdates.push({ section: 'trainingCourses', localId: capturedTrainLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addTrainingAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedTrain;
+              });
             });
-            return savedSea;
-          });
-        });
-      }
-      
-      // Sea Service - External (Part E - E2) - Add to Batch 3
-      if (formData.externalSeaService && formData.externalSeaService.length > 0) {
-        console.log('V2 Preparing External Sea Service for batch:', { crewUuid: crewIdentifier, count: formData.externalSeaService.length });
-        formData.externalSeaService.forEach((sea: any, index: number) => {
-          const seaAttachments = sea.attachments || [];
-          const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const seaData: LegacySeaService = {
-            seaUuid: sea.seaUuid,
-            isCompanyService: false,
-            vesselName: sea.vesselName || '',
-            vesselCode: sea.vesselCode || '',
-            vesselType: sea.vesselType || '',
-            deadweight: sea.deadweight || '',
-            engineTypePower: sea.engineTypePower || '',
-            ownerOperator: sea.ownerOperator || '',
-            rank: sea.rank || '',
-            from: sea.from || sea.fromDate || '',
-            to: sea.to || sea.toDate || '',
-            fromDate: sea.from || sea.fromDate || '',
-            toDate: sea.to || sea.toDate || '',
-            periodMonths: sea.periodMonths || '',
-            experienceCategories: sea.experienceCategories || [],
-            sortOrder: index,
-          };
-          
-          batch3Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
-            const savedSeaUuid = sea.seaUuid;
-            if (savedSeaUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeSeaServiceAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  seaUuid: savedSeaUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            // Save record with attachments - hook handles attachment saves internally
-            const savedSea = await saveSeaServiceMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: seaData, 
-              seaUuid: sea.seaUuid,
-              attachments: capturedNewAttachments
+          }
+
+          if (cleanedFormData.currentCompanySeaService && cleanedFormData.currentCompanySeaService.length > 0) {
+            console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.currentCompanySeaService.length });
+            cleanedFormData.currentCompanySeaService.forEach((sea: any, index: number) => {
+              const seaAttachments = sea.attachments || [];
+              const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const isSeaSynced = !!sea.isVesselSynced && !!sea.seaUuid;
+              const seaData: LegacySeaService = {
+                seaUuid: sea.seaUuid,
+                isCompanyService: true,
+                vesselName: sea.vesselName || '',
+                vesselCode: sea.vesselCode || '',
+                vesselType: sea.vesselType || '',
+                rank: sea.rank || '',
+                from: sea.from || sea.fromDate || '',
+                to: sea.to || sea.toDate || '',
+                fromDate: sea.from || sea.fromDate || '',
+                toDate: sea.to || sea.toDate || '',
+                deadweight: sea.deadweight || '',
+                engineTypePower: sea.engineTypePower || '',
+                ownerOperator: sea.ownerOperator || '',
+                periodMonths: sea.periodMonths || '',
+                experienceCategories: sea.experienceCategories || [],
+                sortOrder: index,
+                ...(isSeaSynced ? { _skipLockedFields: true } : {}),
+              } as LegacySeaService;
+
+              const capturedCompanySeaLocalId = sea.id;
+              batch3Operations.push(async () => {
+                if (sea.seaUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeSeaServiceAttachment(crewIdentifier, sea.seaUuid, att.attUuid);
+                  }
+                }
+
+                const rawV2Data = mapLegacySeaServiceToV2(seaData);
+                if ((seaData as any)._skipLockedFields) {
+                  delete rawV2Data.vesselName;
+                  delete rawV2Data.vesselUuid;
+                  delete rawV2Data.vesselTypeUuid;
+                  delete rawV2Data.rank;
+                  delete rawV2Data.fromDate;
+                  delete rawV2Data.toDate;
+                }
+                const v2Data = withAuditUser(rawV2Data);
+                let savedSea: any;
+                let entityUuid: string;
+                if (sea.seaUuid) {
+                  savedSea = await crewPoolApiV2.updateSeaService(crewIdentifier, sea.seaUuid, v2Data);
+                  entityUuid = sea.seaUuid;
+                } else {
+                  savedSea = await crewPoolApiV2.createSeaService(crewIdentifier, v2Data);
+                  entityUuid = savedSea?.seaUuid || savedSea?.sea_uuid;
+                }
+                if (entityUuid && !sea.seaUuid) {
+                  uuidUpdates.push({ section: 'currentCompanySeaService', localId: capturedCompanySeaLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addSeaServiceAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedSea;
+              });
             });
-            return savedSea;
-          });
-        });
-      }
-      
-      // Pre-Joining Medicals (Part F - F1) - Add to Batch 4
-      const nonEmptyMedicals = (formData.preJoiningMedicals || []).filter((med: any) => {
-        if (med.medUuid) return true;
-        const hasAttachments = (med.attachments || []).some((att: any) => !att.isDeleted);
-        return (med.vesselCode || med.vessel || med.dateOfMedical || med.bp || med.weight || med.anyMedicationPrescribed || med.clinicHospital || med.fitnessForDuty || med.expiry || hasAttachments);
-      });
-      if (nonEmptyMedicals.length > 0) {
-        console.log('V2 Preparing Pre-Joining Medicals for batch:', { crewUuid: crewIdentifier, count: nonEmptyMedicals.length });
-        nonEmptyMedicals.forEach((med: any, index: number) => {
-          const medAttachments = med.attachments || [];
-          const capturedNewAttachments = [...medAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...medAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const medData: LegacyPreJoiningMedical = {
-            medUuid: med.medUuid,
-            vesselCode: med.vesselCode || '',
-            vesselName: med.vessel || '',
-            vessel: med.vessel || '',
-            dateOfMedical: med.dateOfMedical || '',
-            bp: med.bp || '',
-            weight: med.weight || '',
-            anyMedicationPrescribed: med.anyMedicationPrescribed || '',
-            clinicHospital: med.clinicHospital || '',
-            fitnessForDuty: med.fitnessForDuty || '',
-            expiryDate: med.expiry || '',
-            expiry: med.expiry || '',
-            sortOrder: index,
-          };
-          
-          batch4Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
-            const savedMedUuid = med.medUuid;
-            if (savedMedUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeMedicalAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  medUuid: savedMedUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            // Save record with attachments - hook handles attachment saves internally
-            const savedMed = await saveMedicalMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: medData, 
-              medUuid: med.medUuid,
-              attachments: capturedNewAttachments
+          }
+
+          if (cleanedFormData.externalSeaService && cleanedFormData.externalSeaService.length > 0) {
+            console.log('V2 Preparing External Sea Service for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.externalSeaService.length });
+            cleanedFormData.externalSeaService.forEach((sea: any, index: number) => {
+              const seaAttachments = sea.attachments || [];
+              const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const seaData: LegacySeaService = {
+                seaUuid: sea.seaUuid,
+                isCompanyService: false,
+                vesselName: sea.vesselName || '',
+                vesselCode: sea.vesselCode || '',
+                vesselType: sea.vesselType || '',
+                deadweight: sea.deadweight || '',
+                engineTypePower: sea.engineTypePower || '',
+                ownerOperator: sea.ownerOperator || '',
+                rank: sea.rank || '',
+                from: sea.from || sea.fromDate || '',
+                to: sea.to || sea.toDate || '',
+                fromDate: sea.from || sea.fromDate || '',
+                toDate: sea.to || sea.toDate || '',
+                periodMonths: sea.periodMonths || '',
+                experienceCategories: sea.experienceCategories || [],
+                sortOrder: index,
+              };
+
+              const capturedExtSeaLocalId = sea.id;
+              batch3Operations.push(async () => {
+                if (sea.seaUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeSeaServiceAttachment(crewIdentifier, sea.seaUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacySeaServiceToV2(seaData));
+                let savedSea: any;
+                let entityUuid: string;
+                if (sea.seaUuid) {
+                  savedSea = await crewPoolApiV2.updateSeaService(crewIdentifier, sea.seaUuid, v2Data);
+                  entityUuid = sea.seaUuid;
+                } else {
+                  savedSea = await crewPoolApiV2.createSeaService(crewIdentifier, v2Data);
+                  entityUuid = savedSea?.seaUuid || savedSea?.sea_uuid;
+                }
+                if (entityUuid && !sea.seaUuid) {
+                  uuidUpdates.push({ section: 'externalSeaService', localId: capturedExtSeaLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addSeaServiceAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedSea;
+              });
             });
-            return savedMed;
+          }
+
+          const nonEmptyMedicals = (cleanedFormData.preJoiningMedicals || []).filter((med: any) => {
+            if (med.medUuid) return true;
+            const hasAttachments = (med.attachments || []).some((att: any) => !att.isDeleted);
+            return (med.vesselCode || med.vessel || med.dateOfMedical || med.bp || med.weight || med.anyMedicationPrescribed || med.clinicHospital || med.fitnessForDuty || med.expiry || hasAttachments);
           });
-        });
-      }
-      
-      // Doctor Visits (Part F - F2) - Add to Batch 4
-      const nonEmptyVisits = (formData.doctorVisits || []).filter((visit: any) => {
-        if (visit.visitUuid) return true;
-        const hasAttachments = (visit.attachments || []).some((att: any) => !att.isDeleted);
-        return (visit.vessel || visit.port || visit.date || visit.complaint || visit.doctorComments || visit.doctorName || visit.clinicHospital || visit.diagnosis || visit.treatment || visit.followUpDate || hasAttachments);
-      });
-      if (nonEmptyVisits.length > 0) {
-        console.log('V2 Preparing Doctor Visits for batch:', { crewUuid: crewIdentifier, count: nonEmptyVisits.length });
-        nonEmptyVisits.forEach((visit: any, index: number) => {
-          const visitAttachments = visit.attachments || [];
-          const capturedNewAttachments = [...visitAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
-            attUuid: att.attUuid,
-            isNew: att.isNew || !att.attUuid,
-            fileName: att.name || att.fileName || '',
-            fileData: att.data || att.fileData || '',
-          }));
-          const capturedDeletedAttachments = [...visitAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
-          
-          const visitData: LegacyDoctorVisit = {
-            visitUuid: visit.visitUuid,
-            vessel: visit.vessel || '',
-            port: visit.port || '',
-            date: visit.date || '',
-            visitDate: visit.date || '',
-            doctorName: visit.doctorName || '',
-            clinicHospital: visit.clinicHospital || '',
-            complaint: visit.complaint || '',
-            doctorComments: visit.doctorComments || '',
-            diagnosis: visit.diagnosis || '',
-            treatment: visit.treatment || '',
-            followUpDate: visit.followUpDate || '',
-            sortOrder: index,
-          };
-          
-          batch4Operations.push(async () => {
-            // Delete attachments first (if any marked for deletion)
-            const savedVisitUuid = visit.visitUuid;
-            if (savedVisitUuid) {
-              for (const att of capturedDeletedAttachments) {
-                await removeDoctorVisitAttachmentV2.mutateAsync({
-                  crewUuid: crewIdentifier,
-                  visitUuid: savedVisitUuid,
-                  attUuid: att.attUuid
-                });
-              }
-            }
-            
-            // Save record with attachments - hook handles attachment saves internally
-            const savedVisit = await saveDoctorVisitMutationV2.mutateAsync({ 
-              crewUuid: crewIdentifier, 
-              data: visitData, 
-              visitUuid: visit.visitUuid,
-              attachments: capturedNewAttachments
+          if (nonEmptyMedicals.length > 0) {
+            console.log('V2 Preparing Pre-Joining Medicals for batch:', { crewUuid: crewIdentifier, count: nonEmptyMedicals.length });
+            nonEmptyMedicals.forEach((med: any, index: number) => {
+              const medAttachments = med.attachments || [];
+              const capturedNewAttachments = [...medAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...medAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const medData: LegacyPreJoiningMedical = {
+                medUuid: med.medUuid,
+                vesselCode: med.vesselCode || '',
+                vesselName: med.vessel || '',
+                vessel: med.vessel || '',
+                dateOfMedical: med.dateOfMedical || '',
+                bp: med.bp || '',
+                weight: med.weight || '',
+                anyMedicationPrescribed: med.anyMedicationPrescribed || '',
+                clinicHospital: med.clinicHospital || '',
+                fitnessForDuty: med.fitnessForDuty || '',
+                expiryDate: med.expiry || '',
+                expiry: med.expiry || '',
+                sortOrder: index,
+              };
+
+              const capturedMedLocalId = med.id;
+              batch4Operations.push(async () => {
+                if (med.medUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeMedicalAttachment(crewIdentifier, med.medUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyPreJoiningMedicalToV2(medData));
+                let savedMed: any;
+                let entityUuid: string;
+                if (med.medUuid) {
+                  savedMed = await crewPoolApiV2.updateMedical(crewIdentifier, med.medUuid, v2Data);
+                  entityUuid = med.medUuid;
+                } else {
+                  savedMed = await crewPoolApiV2.createMedical(crewIdentifier, v2Data);
+                  entityUuid = savedMed?.medUuid || savedMed?.med_uuid;
+                }
+                if (entityUuid && !med.medUuid) {
+                  uuidUpdates.push({ section: 'preJoiningMedicals', localId: capturedMedLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addMedicalAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedMed;
+              });
             });
-            return savedVisit;
+          }
+
+          const nonEmptyVisits = (cleanedFormData.doctorVisits || []).filter((visit: any) => {
+            if (visit.visitUuid) return true;
+            const hasAttachments = (visit.attachments || []).some((att: any) => !att.isDeleted);
+            return (visit.vessel || visit.port || visit.date || visit.complaint || visit.doctorComments || visit.doctorName || visit.clinicHospital || visit.diagnosis || visit.treatment || visit.followUpDate || hasAttachments);
           });
-        });
-      }
-      
-      // EXECUTE BATCHES SEQUENTIALLY - Critical for preventing database connection exhaustion
-      // This pattern ensures we never have more than ~3 concurrent connections
-      (async () => {
-        try {
+          if (nonEmptyVisits.length > 0) {
+            console.log('V2 Preparing Doctor Visits for batch:', { crewUuid: crewIdentifier, count: nonEmptyVisits.length });
+            nonEmptyVisits.forEach((visit: any, index: number) => {
+              const visitAttachments = visit.attachments || [];
+              const capturedNewAttachments = [...visitAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+              }));
+              const capturedDeletedAttachments = [...visitAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const visitData: LegacyDoctorVisit = {
+                visitUuid: visit.visitUuid,
+                vessel: visit.vessel || '',
+                port: visit.port || '',
+                date: visit.date || '',
+                visitDate: visit.date || '',
+                doctorName: visit.doctorName || '',
+                clinicHospital: visit.clinicHospital || '',
+                complaint: visit.complaint || '',
+                doctorComments: visit.doctorComments || '',
+                diagnosis: visit.diagnosis || '',
+                treatment: visit.treatment || '',
+                followUpDate: visit.followUpDate || '',
+                sortOrder: index,
+              };
+
+              const capturedVisitLocalId = visit.id;
+              batch4Operations.push(async () => {
+                if (visit.visitUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeDoctorVisitAttachment(crewIdentifier, visit.visitUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyDoctorVisitToV2(visitData));
+                let savedVisit: any;
+                let entityUuid: string;
+                if (visit.visitUuid) {
+                  savedVisit = await crewPoolApiV2.updateDoctorVisit(crewIdentifier, visit.visitUuid, v2Data);
+                  entityUuid = visit.visitUuid;
+                } else {
+                  savedVisit = await crewPoolApiV2.createDoctorVisit(crewIdentifier, v2Data);
+                  entityUuid = savedVisit?.visitUuid || savedVisit?.visit_uuid;
+                }
+                if (entityUuid && !visit.visitUuid) {
+                  uuidUpdates.push({ section: 'doctorVisits', localId: capturedVisitLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addDoctorVisitAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                    });
+                  }
+                }
+                return savedVisit;
+              });
+            });
+          }
+
           console.log('V2 Starting sequential batch execution...');
           await processBatch('Batch 1: Documents + Visas', batch1Operations);
           await processBatch('Batch 2: Education + Licenses', batch2Operations);
           await processBatch('Batch 3: Training + Sea Service', batch3Operations);
           await processBatch('Batch 4: Medicals + Doctor Visits', batch4Operations);
-          
+
+          if (uuidUpdates.length > 0) {
+            console.log('V2: Applying UUID updates to form data:', uuidUpdates);
+            const uuidKeyMap: Record<string, string> = {
+              documents: 'docUuid',
+              visas: 'visaUuid',
+              education: 'eduUuid',
+              licenses: 'licUuid',
+              trainingCourses: 'trainUuid',
+              currentCompanySeaService: 'seaUuid',
+              externalSeaService: 'seaUuid',
+              preJoiningMedicals: 'medUuid',
+              doctorVisits: 'visitUuid',
+            };
+            setFormData(prev => {
+              const updated = { ...prev };
+              for (const { section, localId, uuid } of uuidUpdates) {
+                const uuidField = uuidKeyMap[section];
+                if (uuidField && Array.isArray((updated as any)[section])) {
+                  (updated as any)[section] = (updated as any)[section].map((item: any) =>
+                    item.id === localId ? { ...item, [uuidField]: uuid } : item
+                  );
+                }
+              }
+              return updated;
+            });
+          }
+
           if (batchErrors.length > 0) {
             console.error('V2: Batch execution completed with errors:', batchErrors);
             toast({
@@ -6215,7 +6726,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           } else {
             console.log('V2: All batches completed successfully');
+            toast({
+              title: "Saved",
+              description: "Crew member updated successfully.",
+              duration: 3000,
+            });
           }
+
+          queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+          await queryClient.refetchQueries({ queryKey: [V2_QUERY_KEY, 'crew', crewIdentifier, 'full-profile'] });
+          console.log('V2: Post-save cache refreshed');
         } catch (error) {
           console.error('V2: Error during batch execution:', error);
           toast({
@@ -6224,6 +6744,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             variant: "destructive",
             duration: 5000,
           });
+        } finally {
+          isBatchSavingRef.current = false;
         }
       })();
     } else {
@@ -6423,12 +6945,80 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
-  // Auto-save functionality
-  const handleAutoSave = () => {
-    console.log('Auto-saving current section:', activeSection);
+  // Auto-save functionality — saves the specific section's data to the backend
+  const handleSectionAutoSave = (sectionId: string) => {
+    const crewUuid = getEffectiveCrewUuid();
+    if (!crewUuid) return;
+
+    if (sectionId === 'B1') {
+      const personalDetailsData = {
+        height: formData.heightCm,
+        weight: formData.weightKg,
+        bmi: formData.bmi,
+        dob: formData.dateOfBirth,
+        placeOfBirthCity: formData.placeOfBirthCity,
+        placeOfBirthCountry: formData.placeOfBirthCountry,
+        nativeLanguage: formData.nativeLanguage,
+        foreignLanguages: formData.foreignLanguages,
+        englishProficiency: formData.englishProficiency,
+        manningAgent: formData.manningAgent,
+        crewPool: formData.crewPool,
+      };
+      updateCrewMutation.mutate({ id: crewUuid, data: { ...formData, uploadedPhoto: uploadedPhoto || null } });
+      savePersonalDetailsMutationV2.mutate({ crewUuid, data: personalDetailsData });
+      if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
+        saveVesselTypesMutationV2.mutate({ crewUuid, vesselTypeUuids: formData.vesselType });
+      }
+    } else if (sectionId === 'B2') {
+      const addressData = {
+        countryOfResidence: formData.countryOfResidence,
+        nearestAirport: formData.nearestAirport,
+        residentialAddressLine1: formData.residentialAddressLine1,
+        residentialAddressLine2: formData.residentialAddressLine2,
+        contactLandline: formData.contactLandline,
+        mobile: formData.mobile,
+        email: formData.email,
+      };
+      saveAddressMutationV2.mutate({ crewUuid, data: addressData });
+    } else if (sectionId === 'B3') {
+      const familyInfoData = {
+        maritalStatus: formData.maritalStatus,
+        numberOfDependentChildren: formData.numberOfDependentChildren,
+        fatherName: formData.fatherName,
+        motherName: formData.motherName,
+        spouseFirstName: formData.spouseFirstName,
+        spouseMiddleName: formData.spouseMiddleName,
+        spouseFamilyName: formData.spouseFamilyName,
+        spouseDateOfBirth: formData.spouseDateOfBirth,
+      };
+      saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData });
+      const nokData = {
+        firstName: formData.nokFirstName,
+        middleName: formData.nokMiddleName,
+        familyName: formData.nokFamilyName,
+        relationship: formData.nokRelationship,
+        telephone: formData.nokTelephone,
+        email: formData.nokEmail,
+        address: formData.nokAddress,
+      };
+      if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
+        saveNextOfKinMutationV2.mutate({ crewUuid, data: nokData });
+      }
+      if (formData.children && formData.children.length > 0) {
+        formData.children.forEach((child: any) => {
+          saveChildMutationV2.mutate({
+            crewUuid,
+            data: { firstName: child.firstName, middleName: child.middleName, familyName: child.familyName, dateOfBirth: child.dateOfBirth, gender: child.gender },
+            childUuid: child.childUuid,
+          });
+        });
+      }
+    }
+
+    console.log(`[V2] Auto-saved section ${sectionId}`);
     toast({
       title: "Auto-saved",
-      description: `Section ${activeSection} has been auto-saved.`,
+      description: `Section ${sectionId} has been saved.`,
       duration: 1500,
     });
   };
@@ -6596,20 +7186,27 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const toggleEditSection = async (sectionId: 'B1' | 'B2' | 'B3') => {
     const isCurrentlyEditing = editingSections[sectionId];
     
-    // For B2 and B3, ensure crew exists before entering edit mode
-    // B1 is the primary data entry section - no auto-save needed
+    // For B2 and B3, validate mandatory fields before allowing edit on new crew
     if (!isCurrentlyEditing && sectionId !== 'B1') {
+      if (!(formData.firstName || '').trim()) {
+        toast({
+          title: "Missing Required Field",
+          description: "Please fill in 'First Name' in Section B1 (General Particulars) before editing this section.",
+          variant: "destructive",
+        });
+        return;
+      }
       const crewUuidResult = await ensureCrewExists();
       if (!crewUuidResult) {
-        // Failed to create crew - don't enter edit mode
         return;
       }
     }
     
-    // If turning off edit mode and another section is being edited, auto-save
+    // If another section is being edited, auto-save it before switching
     const currentlyEditing = Object.keys(editingSections).find(key => editingSections[key]);
     if (currentlyEditing && currentlyEditing !== sectionId && editingSections[currentlyEditing]) {
-      handleAutoSave();
+      handleSectionAutoSave(currentlyEditing);
+      setEditingSections(prev => ({ ...prev, [currentlyEditing]: false }));
     }
     
     setEditingSections(prev => ({
@@ -6674,7 +7271,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       createCrewMutationV2.mutate(data, {
         onSuccess: (responseData: any) => {
           const crewUuid = responseData?.crewUuid;
-          console.log('V2 Create crew response - crewUuid:', crewUuid);
+          const generatedEmpNo = responseData?.empNo || responseData?.employeeId;
+          console.log('V2 Create crew response - crewUuid:', crewUuid, 'empNo:', generatedEmpNo);
+          
+          if (generatedEmpNo) {
+            setFormData(prev => ({ ...prev, employeeId: generatedEmpNo }));
+          }
           
           if (crewUuid) {
             setCreatedCrewId(crewUuid);
@@ -6941,9 +7543,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     const observer = new IntersectionObserver(observerCallback, observerOptions);
 
-    // Observe all section refs
-    [sectionARef, sectionBRef, sectionCRef, sectionDRef, sectionERef, sectionFRef].forEach((ref) => {
-      if (ref.current) {
+    const sectionRefMap: Record<string, React.RefObject<HTMLDivElement | null>> = {
+      A: sectionARef, B: sectionBRef, C: sectionCRef,
+      D: sectionDRef, E: sectionERef, F: sectionFRef,
+    };
+    sections.forEach((s) => {
+      const ref = sectionRefMap[s.id];
+      if (ref?.current) {
         observer.observe(ref.current);
       }
     });
@@ -6951,7 +7557,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return () => {
       observer.disconnect();
     };
-  }, [isOpen, activeSection]);
+  }, [isOpen, activeSection, sections]);
 
   // Scroll to section functionality
   const scrollToSection = (sectionId: string) => {
@@ -7224,13 +7830,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           {/* Main Content Area - Continuous Scroll */}
           <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb] space-y-6">
             {/* A - Dashboard */}
+            {canViewSection('A') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionARef} data-section="A">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 {renderDashboard()}
               </CardContent>
             </Card>
+            )}
 
-            {/* B - Seafarers' Particulars */}
+            {/* B - Seafarers' Particulars (always visible) */}
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionBRef} data-section="B">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7265,6 +7873,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </Card>
 
             {/* C - Travel & ID Documents */}
+            {canViewSection('C') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionCRef} data-section="C">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7278,8 +7887,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* D - Training & Certificates */}
+            {canViewSection('D') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionDRef} data-section="D">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7294,8 +7905,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* E - Sea Service */}
+            {canViewSection('E') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionERef} data-section="E">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7309,8 +7922,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* F - Medical Records */}
+            {canViewSection('F') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionFRef} data-section="F">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
@@ -7324,6 +7939,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </div>
               </CardContent>
             </Card>
+            )}
           </div>
         </div>
       </div>

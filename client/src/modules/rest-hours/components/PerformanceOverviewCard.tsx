@@ -49,8 +49,8 @@ export const PerformanceOverviewCard = ({
       const month = periodFilter.month || currentMonth;
       months.push(`${year}-${String(month).padStart(2, '0')}`);
     } else if (periodFilter.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
-      const startDate = periodFilter.dateFrom;
-      const endDate = periodFilter.dateTo;
+      const startDate = new Date(periodFilter.dateFrom);
+      const endDate = new Date(periodFilter.dateTo);
       
       const startYear = startDate.getFullYear();
       const startMonth = startDate.getMonth() + 1;

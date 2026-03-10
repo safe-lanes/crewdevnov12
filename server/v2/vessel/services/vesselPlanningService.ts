@@ -715,8 +715,8 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.update(planUuid, resolvedData);
   },
 
-  async findByVesselAndRank(vesselUuid: string, rankId: string) {
-    return vesselPlanningRepository.findByVesselAndRank(vesselUuid, rankId);
+  async findByVesselAndRank(vesselUuid: string, rankId: string, rank?: string) {
+    return vesselPlanningRepository.findByVesselAndRank(vesselUuid, rankId, rank);
   },
 
   /**
@@ -1100,7 +1100,7 @@ export const vesselPlanningService = {
     const planningConflict = activePlanningOnOtherVessels.find((p: { vesselUuid: string; vesselName: string | null; joiningStatus: string | null; crewStatus: string | null }) => {
       if (p.vesselUuid === currentVesselUuid) return false;
       if (p.joiningStatus === "In Transit" || p.joiningStatus === "Signed On") return true;
-      if (p.crewStatus === "primary") return true;
+      // if (p.crewStatus === "primary") return true;
       return false;
     });
 

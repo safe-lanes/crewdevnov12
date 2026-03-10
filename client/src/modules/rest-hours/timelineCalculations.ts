@@ -419,14 +419,23 @@ export function prependPreviousMonthTimeline(
  * Violation codes for regulatory non-compliance
  */
 export enum ViolationCode {
-  VIOLATION_1 = '[1]',
-  VIOLATION_2 = '[2]',
-  VIOLATION_3 = '[3]',
-  VIOLATION_4 = '[4]',
-  VIOLATION_5 = '[5]',
-  VIOLATION_6 = '[6]',
-  VIOLATION_7 = '[7]',
-  VIOLATION_8 = '[8]',
+  VIOLATION_1 = 'A',
+  VIOLATION_2 = 'C',
+  VIOLATION_3E = 'E',
+  VIOLATION_3F = 'F',
+  VIOLATION_4 = 'G',
+  VIOLATION_5 = 'B',
+  VIOLATION_6 = 'D',
+  VIOLATION_7 = 'I',
+  VIOLATION_8 = 'H',
+}
+
+export const VIOLATION_SORT_ORDER: Record<string, number> = {
+  'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8, 'I': 9,
+};
+
+export function sortViolationCodes(codes: string[]): string[] {
+  return [...codes].sort((a, b) => (VIOLATION_SORT_ORDER[a] ?? 99) - (VIOLATION_SORT_ORDER[b] ?? 99));
 }
 
 export interface Violation {
@@ -516,24 +525,53 @@ function analyzeRestPeriods(timeline: TimelineSlot[], endIdx: number): number[] 
  */
 export { analyzeRestPeriodsWithRanges, checkCode4ViolationWithRange };
 
-/**
- * Checks Code [3]: Hours of rest may be divided into periods,
- * where the TWO LARGEST periods must sum to ≥10h, and at least one must be ≥6h
- */
-function checkCode3Violation(timeline: TimelineSlot[], slotIdx: number): boolean {
+function checkCodeEViolation(timeline: TimelineSlot[], slotIdx: number): boolean {
   const restPeriods = analyzeRestPeriods(timeline, slotIdx);
-  
   if (restPeriods.length === 0) return true;
-  
-  // Take the two largest periods (any number of periods is allowed)
   const sorted = [...restPeriods].sort((a, b) => b - a);
-  const largest = sorted[0] || 0;
-  const secondLargest = sorted[1] || 0;
-  
-  const largestHours = largest * 0.5;
-  const totalHours = (largest + secondLargest) * 0.5;
-  
-  return largestHours < 6 || totalHours < 10;
+  const largestHours = (sorted[0] || 0) * 0.5;
+  return largestHours < 6;
+}
+
+function checkCodeFViolation(timeline: TimelineSlot[], slotIdx: number): boolean {
+  const restPeriods = analyzeRestPeriods(timeline, slotIdx);
+  if (restPeriods.length <= 2) return false;
+  const sorted = [...restPeriods].sort((a, b) => b - a);
+  const topTwoHours = ((sorted[0] || 0) + (sorted[1] || 0)) * 0.5;
+  if (topTwoHours >= 10) return false;
+  return true;
+}
+
+export interface CodeFAnalysis {
+  hasViolation: boolean;
+  periodCount: number;
+  sortedPeriodHours: number[];
+  topTwoSum: number;
+  topThreeSum: number;
+  isExceptionCandidate: boolean;
+}
+
+export function analyzeCodeFViolation(timeline: TimelineSlot[], slotIdx: number): CodeFAnalysis {
+  const restPeriods = analyzeRestPeriods(timeline, slotIdx);
+  const sorted = [...restPeriods].sort((a, b) => b - a);
+  const sortedHours = sorted.map(p => p * 0.5);
+  const topTwoSum = (sortedHours[0] || 0) + (sortedHours[1] || 0);
+  const topThreeSum = topTwoSum + (sortedHours[2] || 0);
+
+  if (restPeriods.length <= 2) {
+    return { hasViolation: false, periodCount: restPeriods.length, sortedPeriodHours: sortedHours, topTwoSum, topThreeSum, isExceptionCandidate: false };
+  }
+
+  if (topTwoSum >= 10) {
+    return { hasViolation: false, periodCount: restPeriods.length, sortedPeriodHours: sortedHours, topTwoSum, topThreeSum, isExceptionCandidate: false };
+  }
+
+  const largestOk = sortedHours[0] >= 6;
+  const secondOk = sortedHours[1] >= 1;
+  const thirdOk = sortedHours[2] >= 1;
+  const isExceptionCandidate = topThreeSum >= 10 && largestOk && secondOk && thirdOk;
+
+  return { hasViolation: true, periodCount: restPeriods.length, sortedPeriodHours: sortedHours, topTwoSum, topThreeSum, isExceptionCandidate };
 }
 
 /**
@@ -652,52 +690,52 @@ export function detectViolations(
         });
       }
       
-      // Check for Code [3] violation with optional work-anchored window filtering
-      // When WORK_ANCHORED_24H_WINDOW.enabled is true, only check windows that START with work ('w') or duty ('d')
-      let shouldCheckCode3 = true;
-      if (WORK_ANCHORED_24H_WINDOW.enabled) {
-        // The 24-hour window starts 47 slots before the current slot (48 slots total, 0-indexed)
+      // EXPERIMENTAL: Check for Code E and F violations independently
+      // NOTE: The 7-day exception rule for Code F (allowing up to 2 days with 3 rest periods
+      // per rolling 7-day window) is handled at the per-day level in RHRecordingForm, not here.
+      // This per-slot pipeline does not have cross-day awareness needed for that rule.
+      let shouldCheckEF = CODE_EF_EXPERIMENTAL.enabled;
+      if (shouldCheckEF && WORK_ANCHORED_24H_WINDOW.enabled) {
         if (windowStartIdx24h >= 0) {
           const windowStartStatus = timeline[windowStartIdx24h].status.toLowerCase();
-          // Only check if window starts with work 'w' or duty 'd' (not blank/rest)
-          shouldCheckCode3 = windowStartStatus === 'w' || windowStartStatus === 'd';
+          shouldCheckEF = windowStartStatus === 'w' || windowStartStatus === 'd';
         }
       }
       
-      if (shouldCheckCode3 && checkCode3Violation(timeline, slotIdx)) {
-        // Get actual rest period lengths for diagnostic message
+      if (shouldCheckEF) {
         const restPeriods = analyzeRestPeriods(timeline, slotIdx);
-        const sorted = [...restPeriods].sort((a, b) => b - a); // Clone to avoid mutation
+        const sorted = [...restPeriods].sort((a, b) => b - a);
         const largest = sorted[0] || 0;
-        const secondLargest = sorted[1] || 0;
         const largestHours = (largest * 0.5).toFixed(1);
-        const secondLargestHours = (secondLargest * 0.5).toFixed(1);
-        const totalHours = ((largest + secondLargest) * 0.5).toFixed(1);
-        const numPeriods = restPeriods.length;
         
-        // Show all period lengths for transparency
-        const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
-        
-        let reason = ``;
-        if (numPeriods === 0) {
-          reason = `No rest periods found (only blank cells count as rest, not 'd' or 'a')`;
-        } else if (numPeriods > 2) {
-          reason = `${numPeriods} rest periods: ${allPeriodsHours}. Top 2: ${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest, ≥10h total)`;
-        } else if (numPeriods === 1) {
-          reason = `1 rest period: ${largestHours}h (need ≥6h and ≥10h total for single period)`;
-        } else {
-          reason = `2 rest periods: ${largestHours}h + ${secondLargestHours}h = ${totalHours}h (need ≥6h longest, ≥10h total)`;
+        if (checkCodeEViolation(timeline, slotIdx)) {
+          violations.push({
+            code: ViolationCode.VIOLATION_3E,
+            reason: restPeriods.length === 0
+              ? `No rest periods found in 24h window`
+              : `Largest rest period: ${largestHours}h (need ≥6h)`,
+            slotIndex: slotIdx,
+            sourceDay: slot.sourceDay,
+            occurrence: slot.occurrence,
+            metrics,
+            windowStartDay: windowStartDay24h,
+          });
         }
         
-        violations.push({
-          code: ViolationCode.VIOLATION_3,
-          reason,
-          slotIndex: slotIdx,
-          sourceDay: slot.sourceDay,
-          occurrence: slot.occurrence,
-          metrics,
-          windowStartDay: windowStartDay24h,
-        });
+        if (checkCodeFViolation(timeline, slotIdx)) {
+          const secondLargest = sorted[1] || 0;
+          const topTwoHours = ((largest + secondLargest) * 0.5).toFixed(1);
+          const allPeriodsHours = sorted.map(p => (p * 0.5).toFixed(1)).join('h, ') + 'h';
+          violations.push({
+            code: ViolationCode.VIOLATION_3F,
+            reason: `${restPeriods.length} rest periods: ${allPeriodsHours}. Top 2 sum: ${topTwoHours}h (< 10h, alternate not met)`,
+            slotIndex: slotIdx,
+            sourceDay: slot.sourceDay,
+            occurrence: slot.occurrence,
+            metrics,
+            windowStartDay: windowStartDay24h,
+          });
+        }
       }
       
       if (checkCode4Violation(timeline, slotIdx)) {
@@ -835,6 +873,12 @@ export const WORK_ANCHORED_24H_WINDOW: {
   enabled: true, // Set to false to revert to MLC-compliant behavior
 };
 
+export const CODE_EF_EXPERIMENTAL: {
+  enabled: boolean;
+} = {
+  enabled: true, // Code E/F detection enabled by default; set to false to disable
+};
+
 /**
  * 24-hour violation codes that use majority-day or END-day assignment.
  * These violations span a 24-hour (48 half-hour slots) window.
@@ -842,11 +886,12 @@ export const WORK_ANCHORED_24H_WINDOW: {
  * Otherwise, uses END-day assignment.
  */
 export const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
-  '[1]', // MIN_REST_10H_IN_24H
-  '[3]', // REST_PERIOD_STRUCTURE
-  '[4]', // MAX_WORK_INTERVAL
-  '[5]', // MAX_WORK_14H_IN_24H
-  '[7]', // OPA 90: MAX_WORK_15H_IN_24H
+  'A', // MIN_REST_10H_IN_24H
+  'E', // REST_PERIOD_MIN_6H
+  'F', // REST_PERIOD_MAX_2_PERIODS
+  'G', // MAX_WORK_INTERVAL
+  'B', // MAX_WORK_14H_IN_24H
+  'I', // OPA 90: MAX_WORK_15H_IN_24H
 ];
 
 /**
@@ -855,7 +900,7 @@ export const TWENTY_FOUR_HOUR_VIOLATION_CODES = [
  * so majority-day logic is not applied.
  */
 const SEVENTY_TWO_HOUR_VIOLATION_CODES = [
-  '[8]', // OPA 90: MAX_WORK_36H_IN_72H
+  'H', // OPA 90: MAX_WORK_36H_IN_72H
 ];
 
 /**
@@ -864,8 +909,8 @@ const SEVENTY_TWO_HOUR_VIOLATION_CODES = [
  * If the first day is in the previous month (negative sourceDay), clamp to day 1.
  */
 const START_DAY_VIOLATION_CODES = [
-  '[2]', // MIN_REST_77H_IN_168H
-  '[6]', // MAX_WORK_72H_IN_168H
+  'C', // MIN_REST_77H_IN_168H
+  'D', // MAX_WORK_72H_IN_168H
 ];
 
 /**

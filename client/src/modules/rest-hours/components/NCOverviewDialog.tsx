@@ -5,25 +5,26 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { filterViolations } from '../violationFilters';
+import { sortViolationCodes } from '../timelineCalculations';
 import { NCReportDialog } from './NCReportDialog';
 import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 
-// Violation code descriptions mapping
-const VIOLATION_CODE_DESCRIPTIONS: Record<number, string> = {
-  1: "Minimum 10 hours of rest in any 24 hour period",
-  2: "Minimum hours of rest in any 7 day period = 77",
-  3: "Hours of rest may be divided into no more than two periods, one of which shall be at least six hours in length",
-  4: "Interval between rest periods not to exceed 14 hours",
-  5: "ILO Work - Maximum 14 hours of work in any 24 hour period",
-  6: "ILO Work - Maximum 72 hours of work in any 7 day period",
-  7: "OPA - Maximum 15 hours of work in any 24 hour period",
-  8: "OPA - Maximum 36 hours of work in 72 hours",
+const VIOLATION_CODE_DESCRIPTIONS: Record<string, string> = {
+  'A': "Minimum 10 hours of rest in any 24 hour period",
+  'C': "Minimum hours of rest in any 7 day period = 77",
+  'E': "1 period of 6 hrs Rest in any 24 hr Period",
+  'F': "Hrs of rest (10) may be divided into no more than 2 periods",
+  'G': "Interval between rest periods not to exceed 14 hours",
+  'B': "ILO Work - Maximum 14 hours of work in any 24 hour period",
+  'D': "ILO Work - Maximum 72 hours of work in any 7 day period",
+  'I': "OPA - Maximum 15 hours of work in any 24 hour period",
+  'H': "OPA - Maximum 36 hours of work in 72 hours",
 };
 
 interface ViolationDiagnostic {
-  code: number;
+  code: string;
   windowStart: string;
   reason: string;
   violatingRanges?: Array<{ startCell: number; endCell: number; startDay: number; monthName?: string }>;
@@ -48,7 +49,7 @@ interface DailyRecord {
   hours: string[];
   isPlan: boolean;
   comments: string;
-  violations: number[];
+  violations: string[];
   violationDiagnostics?: ViolationDiagnostic[];
   hoursOfRest24hr: number;
   hoursOfWork24hr: number;
@@ -66,7 +67,7 @@ interface NCRecord {
   vesselId: string;
   vesselName: string;
   day: number;
-  filteredViolations: number[];
+  filteredViolations: string[];
   filteredDiagnostics: ViolationDiagnostic[];
   comments: string;
   status: 'Open' | 'Closed';
@@ -299,7 +300,7 @@ export function NCOverviewDialog({
             vesselId: crew.vesselId,
             vesselName: vesselNameMap.get(crew.vesselId) || crew.vesselId,
             day: day,
-            filteredViolations: filteredViolations.sort((a, b) => a - b),
+            filteredViolations: sortViolationCodes(filteredViolations),
             filteredDiagnostics,
             comments: dayRecord.comments || '',
             status: ncStatus,
@@ -400,47 +401,39 @@ export function NCOverviewDialog({
           ) : ncRecords.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No non-conformities found</div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-blue-50">
+            <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
+              <table className="w-full border-collapse table-fixed">
+                <thead className="bg-blue-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Vessel</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Rank</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Name</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Date</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Violations</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold">Comments</th>
+                    <th className="w-[13%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Vessel</th>
+                    <th className="w-[10%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Rank</th>
+                    <th className="w-[15%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Name</th>
+                    <th className="w-[12%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Date</th>
+                    <th className="w-[12%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Violations</th>
+                    <th className="w-[18%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Comments</th>
                     {!isPredicted && (
-                      <th className="px-4 py-2 text-left text-sm font-semibold">Status</th>
+                      <th className="w-[10%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Status</th>
                     )}
                     {!isPredicted && (
-                      <th className="px-4 py-2 text-center text-sm font-semibold">View Report</th>
+                      <th className="w-[10%] px-4 py-2 text-center text-sm font-semibold bg-blue-50 border-b border-blue-200">View Report</th>
                     )}
                   </tr>
                 </thead>
                 <tbody>
                   {ncRecords.map((record, index) => {
-                    // Only show vessel, rank and name on the first row for each crew member
                     const isFirstRowForCrew = index === 0 || ncRecords[index - 1].crewMemberId !== record.crewMemberId;
-                    const rowSpan = isFirstRowForCrew ? crewRowCounts.get(record.crewMemberId) || 1 : undefined;
                     
                     return (
-                    <tr key={`${record.crewMemberId}-${record.day}-${index}`} className="border-t hover:bg-gray-50">
-                      {isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
-                          {record.vesselName}
-                        </td>
-                      )}
-                      {isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
-                          {record.rank}
-                        </td>
-                      )}
-                      {isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
-                          {record.crewMemberName}
-                        </td>
-                      )}
+                    <tr key={`${record.crewMemberId}-${record.day}-${index}`} className={`hover:bg-gray-50 ${isFirstRowForCrew ? 'border-t-2 border-gray-300' : 'border-t border-gray-100'}`}>
+                      <td className="px-4 py-2 text-sm">
+                        {isFirstRowForCrew ? record.vesselName : ''}
+                      </td>
+                      <td className="px-4 py-2 text-sm">
+                        {isFirstRowForCrew ? record.rank : ''}
+                      </td>
+                      <td className="px-4 py-2 text-sm">
+                        {isFirstRowForCrew ? record.crewMemberName : ''}
+                      </td>
                       <td className="px-4 py-2 text-sm">{formatDay(record.day, monthValue)}</td>
                       <td className="px-4 py-2 text-sm">
                         {record.filteredViolations.map((code, idx) => {
@@ -483,25 +476,24 @@ export function NCOverviewDialog({
                         })}
                       </td>
                       <td className="px-4 py-2 text-sm">{record.comments}</td>
-                      {!isPredicted && isFirstRowForCrew && (
-                        <td className="px-4 py-2 text-sm align-middle" rowSpan={rowSpan}>
-                          <StatusBadge status={record.status} />
+                      {!isPredicted && (
+                        <td className="px-4 py-2 text-sm">
+                          {isFirstRowForCrew ? <StatusBadge status={record.status} /> : ''}
                         </td>
                       )}
-                      {!isPredicted && isFirstRowForCrew && (
-                        <td 
-                          className="px-4 py-2 text-center align-middle" 
-                          rowSpan={rowSpan}
-                        >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewNCReport(record.crewMemberId, record.vesselId)}
-                            data-testid={`button-view-nc-report-${record.crewMemberId}`}
-                            className="text-xs"
-                          >
-                            View Report
-                          </Button>
+                      {!isPredicted && (
+                        <td className="px-4 py-2 text-center">
+                          {isFirstRowForCrew ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewNCReport(record.crewMemberId, record.vesselId)}
+                              data-testid={`button-view-nc-report-${record.crewMemberId}`}
+                              className="text-xs"
+                            >
+                              View Report
+                            </Button>
+                          ) : ''}
                         </td>
                       )}
                     </tr>

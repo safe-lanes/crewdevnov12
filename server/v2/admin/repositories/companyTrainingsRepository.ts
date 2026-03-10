@@ -1,17 +1,41 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { getDb } from "../../db";
-import { admCompanyTrainingsV2, admTrainingMasterV2 } from "../../../../shared/v2/admin/schema";
+import { admCompanyTrainingsV2, admTrainingMasterV2, admCompanyTrainingGroupsV2 } from "../../../../shared/v2/admin/schema";
 import type { AdmCompanyTrainingV2, InsertAdmCompanyTrainingV2 } from "../../../../shared/v2/admin/types";
 import { v4 as uuidv4 } from "uuid";
 
 export class CompanyTrainingsRepository {
   async findAll(): Promise<AdmCompanyTrainingV2[]> {
     const db = getDb();
-    return db
-      .select()
+    const results = await db
+      .select({
+        id: admCompanyTrainingsV2.id,
+        ctUuid: admCompanyTrainingsV2.ctUuid,
+        trainingMasterId: admCompanyTrainingsV2.trainingMasterId,
+        companyId: admCompanyTrainingsV2.companyId,
+        trainingLabel: admCompanyTrainingsV2.trainingLabel,
+        abr: admCompanyTrainingsV2.abr,
+        requirement: admCompanyTrainingsV2.requirement,
+        groupCode: admCompanyTrainingsV2.groupCode,
+        sortOrder: admCompanyTrainingsV2.sortOrder,
+        isDeleted: admCompanyTrainingsV2.isDeleted,
+        isSync: admCompanyTrainingsV2.isSync,
+        createdAt: admCompanyTrainingsV2.createdAt,
+        updatedAt: admCompanyTrainingsV2.updatedAt,
+        createdByUuid: admCompanyTrainingsV2.createdByUuid,
+        updatedByUuid: admCompanyTrainingsV2.updatedByUuid,
+      })
       .from(admCompanyTrainingsV2)
+      .leftJoin(
+        admCompanyTrainingGroupsV2,
+        eq(admCompanyTrainingsV2.groupCode, admCompanyTrainingGroupsV2.code)
+      )
       .where(eq(admCompanyTrainingsV2.isDeleted, false))
-      .orderBy(desc(admCompanyTrainingsV2.createdAt));
+      .orderBy(
+        asc(sql`COALESCE(${admCompanyTrainingGroupsV2.displayOrder}, 999)`),
+        asc(sql`COALESCE(${admCompanyTrainingsV2.sortOrder}, 999)`)
+      );
+    return results as AdmCompanyTrainingV2[];
   }
 
   async findById(id: number): Promise<AdmCompanyTrainingV2 | undefined> {

@@ -211,6 +211,16 @@ export const admRoleMasterAc = pgTable("adm_rolemaster_ac", {
   ...auditColumns,
 });
 
+export const admVesselOrgChartV2 = pgTable("adm_vessel_org_chart_v2", {
+  id: serial("id").primaryKey(),
+  ocUuid: text("oc_uuid").notNull().unique(),
+  rank: text("rank").notNull(),
+  rankId: text("rank_id").notNull(),
+  parentRankId: text("parent_rank_id"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  ...auditColumns,
+});
+
 export const admRoleAccessAc = pgTable("adm_roleaccess_ac", {
   id: serial("id").primaryKey(),
   rauid: text("rauid").notNull().unique(),

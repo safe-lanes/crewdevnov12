@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 
-type FilterMode = 'year-quarter' | 'year-month' | 'date-range';
+type FilterMode = 'year' | 'year-quarter' | 'year-month' | 'date-range';
 
 export interface PeriodFilterValue {
   mode: FilterMode;
@@ -83,13 +83,21 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
   }, [value, currentYear, currentMonth]);
 
   const handleQuarterClick = (quarter: 1 | 2 | 3 | 4) => {
-    setSelectedQuarter(quarter);
-    setSelectedMonth(null); // Clear month selection when quarter is selected
+    if (selectedQuarter === quarter) {
+      setSelectedQuarter(null);
+    } else {
+      setSelectedQuarter(quarter);
+      setSelectedMonth(null);
+    }
   };
 
   const handleMonthClick = (month: number) => {
-    setSelectedMonth(month);
-    setSelectedQuarter(null); // Clear quarter selection when month is selected
+    if (selectedMonth === month) {
+      setSelectedMonth(null);
+    } else {
+      setSelectedMonth(month);
+      setSelectedQuarter(null);
+    }
   };
 
   const handleApply = () => {
@@ -106,6 +114,11 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
           year: selectedYear,
           month: selectedMonth,
         });
+      } else {
+        onChange({
+          mode: 'year',
+          year: selectedYear,
+        });
       }
     } else {
       onChange({
@@ -121,6 +134,10 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
   const getDisplayText = () => {
     if (!value) {
       return `${months[currentMonth - 1].label}-${currentYear}`;
+    }
+
+    if (value.mode === 'year' && value.year) {
+      return `${value.year}`;
     }
 
     if (value.mode === 'year-quarter' && value.year && value.quarter) {

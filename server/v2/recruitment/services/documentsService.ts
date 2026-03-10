@@ -88,7 +88,7 @@ export class DocumentsService {
           eq(candDocuments.isDeleted, false)
         )
       )
-      .orderBy(asc(candDocuments.sortOrder), asc(candDocumentsAttachments.sortOrder));
+      .orderBy(asc(candDocuments.sortOrder), asc(candDocuments.createdAt), asc(candDocumentsAttachments.sortOrder), asc(candDocumentsAttachments.createdAt));
 
     // Group by document UUID
     const docMap = new Map<string, CandDocument & { attachments: CandDocumentAttachment[] }>();
@@ -163,7 +163,7 @@ export class DocumentsService {
           eq(candVisas.isDeleted, false)
         )
       )
-      .orderBy(asc(candVisas.sortOrder), asc(candVisasAttachments.sortOrder));
+      .orderBy(asc(candVisas.sortOrder), asc(candVisas.createdAt), asc(candVisasAttachments.sortOrder), asc(candVisasAttachments.createdAt));
 
     const visaMap = new Map<string, CandVisa & { attachments: CandVisaAttachment[] }>();
     for (const row of rows) {
@@ -237,7 +237,7 @@ export class DocumentsService {
           eq(candEducation.isDeleted, false)
         )
       )
-      .orderBy(asc(candEducation.sortOrder), asc(candEducationAttachments.sortOrder));
+      .orderBy(asc(candEducation.sortOrder), asc(candEducation.createdAt), asc(candEducationAttachments.sortOrder), asc(candEducationAttachments.createdAt));
 
     const eduMap = new Map<string, CandEducation & { attachments: CandEducationAttachment[] }>();
     for (const row of rows) {
@@ -311,7 +311,7 @@ export class DocumentsService {
           eq(candLicenses.isDeleted, false)
         )
       )
-      .orderBy(asc(candLicenses.sortOrder), asc(candLicensesAttachments.sortOrder));
+      .orderBy(asc(candLicenses.sortOrder), asc(candLicenses.createdAt), asc(candLicensesAttachments.sortOrder), asc(candLicensesAttachments.createdAt));
 
     const licMap = new Map<string, CandLicense & { attachments: CandLicenseAttachment[] }>();
     for (const row of rows) {
@@ -385,7 +385,7 @@ export class DocumentsService {
           eq(candTrainingCourses.isDeleted, false)
         )
       )
-      .orderBy(asc(candTrainingCourses.sortOrder), asc(candTrainingAttachments.sortOrder));
+      .orderBy(asc(candTrainingCourses.sortOrder), asc(candTrainingCourses.createdAt), asc(candTrainingAttachments.sortOrder), asc(candTrainingAttachments.createdAt));
 
     const trainMap = new Map<string, CandTrainingCourse & { attachments: CandTrainingAttachment[] }>();
     for (const row of rows) {
@@ -459,7 +459,7 @@ export class DocumentsService {
           eq(candSeaService.isDeleted, false)
         )
       )
-      .orderBy(asc(candSeaService.sortOrder), asc(candSeaServiceAttachments.sortOrder));
+      .orderBy(asc(candSeaService.sortOrder), asc(candSeaService.createdAt), asc(candSeaServiceAttachments.sortOrder), asc(candSeaServiceAttachments.createdAt));
 
     const seaMap = new Map<string, CandSeaService & { attachments: CandSeaServiceAttachment[] }>();
     for (const row of rows) {
@@ -533,7 +533,7 @@ export class DocumentsService {
           eq(candAdditionalInfo.isDeleted, false)
         )
       )
-      .orderBy(asc(candAdditionalInfo.sortOrder), asc(candAdditionalInfoAttachments.sortOrder));
+      .orderBy(asc(candAdditionalInfo.sortOrder), asc(candAdditionalInfo.createdAt), asc(candAdditionalInfoAttachments.sortOrder), asc(candAdditionalInfoAttachments.createdAt));
 
     const infoMap = new Map<string, CandAdditionalInfo & { attachments: CandAdditionalInfoAttachment[] }>();
     for (const row of rows) {

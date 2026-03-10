@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -286,6 +287,25 @@ interface AppraisalFormProps {
 }
 
 export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, appraisalId: propAppraisalId, initialStatus = 'draft', onClose }) => {
+  const { permissions, canView } = usePermissions();
+
+  const apSectionMenuMap: Record<string, string> = {
+    A: 'AP Seafarer Info',
+    B: 'AP Start Info',
+    C: 'AP Competence',
+    D: 'AP Behavioural',
+    E: 'AP Training Needs',
+    F: 'AP Summary',
+    G: 'AP Office Review',
+  };
+
+  const canViewSection = useCallback((sectionId: string): boolean => {
+    const menuName = apSectionMenuMap[sectionId];
+    if (!menuName) return true;
+    if (permissions.length === 0) return true;
+    return canView(menuName);
+  }, [permissions, canView]);
+
   const [activeSection, setActiveSection] = useState("A");
   const [activeContinuousSection1, setActiveContinuousSection1] = useState('A'); // For A&B continuous scroll
   const [activeContinuousSection2, setActiveContinuousSection2] = useState('C'); // For C-F continuous scroll
@@ -1597,13 +1617,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Filter sections based on visibility configuration
   const sections = useMemo(() => {
     return allSections.filter(section => {
+      if (!canViewSection(section.id)) return false;
       const hiddenKey = sectionIdToHiddenKey[section.id];
       if (hiddenKey) {
         return isSectionVisible(hiddenKey);
       }
-      return true; // Sections without a hiddenKey are always visible
+      return true;
     });
-  }, [allSections, hiddenSections]);
+  }, [allSections, hiddenSections, permissions]);
 
   // Synchronize activeSection state when sections are hidden
   // If current active section is hidden, navigate to the first visible section
@@ -1756,6 +1777,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     return (
       <div className="space-y-4 sm:space-y-6">
         {/* Part A: Seafarer's Information - Extracted Component */}
+        {canViewSection('A') && (
         <PartA
           form={form}
           partRef={partARef}
@@ -1767,8 +1789,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           isSectionVisible={isSectionVisible}
           showConfirmDialog={showConfirmDialog}
         />
+        )}
 
         {/* Part B: Information at Start of Appraisal Period - Extracted Component */}
+        {canViewSection('B') && (
         <PartB
           form={form}
           partRef={partBRef}
@@ -1796,6 +1820,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           updateTarget={updateTarget}
           deleteTarget={deleteTarget}
         />
+        )}
 
         {/* Stage 1 Action Buttons - kept in parent for form-level control */}
         {isSectionVisible('partB') && (
@@ -1825,6 +1850,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
     return (
       <div className="space-y-4 sm:space-y-6">
+        {canViewSection('C') && (
         <PartC
           form={form}
           partRef={partCRef}
@@ -1840,7 +1866,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           competenceSectionScore={competenceSectionScore}
           getScoreColors={getScoreColors}
         />
+        )}
 
+        {canViewSection('D') && (
         <PartD
           form={form}
           partRef={partDRef}
@@ -1856,7 +1884,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           behaviouralSectionScore={behaviouralSectionScore}
           getScoreColors={getScoreColors}
         />
+        )}
 
+        {canViewSection('E') && (
         <PartE
           form={form}
           partRef={partERef}
@@ -1875,7 +1905,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           deleteTrainingNeed={deleteTrainingNeed}
           handleTrainingNeedsSelect={handleTrainingNeedsSelect}
         />
+        )}
 
+        {canViewSection('F') && (
         <PartF
           form={form}
           partRef={partFRef}
@@ -1907,6 +1939,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           stage2Mutation={stage2Mutation}
           saveAppraisalMutation={saveAppraisalMutation}
         />
+        )}
       </div>
     );
   };
@@ -2065,7 +2098,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 )}
                 
                 {/* Part G: Office Review & Followup - Traditional Stepper */}
-                {activeSection === "G" && (
+                {activeSection === "G" && canViewSection('G') && (
                   <PartG
                     form={form}
                     partRef={partGRef}

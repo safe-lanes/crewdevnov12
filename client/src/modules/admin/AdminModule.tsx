@@ -5,10 +5,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw, Network } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
+import { VesselOrgChartDialog } from "@/components/dialogs/VesselOrgChartDialog";
 import {
   Table,
   TableBody,
@@ -1027,6 +1028,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Promotion Hierarchy Dialog state
   const [isPromotionHierarchyOpen, setIsPromotionHierarchyOpen] = useState(false);
+  const [isVesselOrgChartOpen, setIsVesselOrgChartOpen] = useState(false);
 
   // Vessel Group Form setup
   const vesselGroupForm = useForm({
@@ -4362,6 +4364,19 @@ const AdminModuleInner = (): JSX.Element => {
                   </Button>
                 </div>
               )}
+              {selectedRankAdminTab === "company" && (
+                <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsVesselOrgChartOpen(true)}
+                    className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
+                    data-testid="button-vessel-org-chart-mobile"
+                  >
+                    <Network className="h-4 w-4 mr-1" />
+                    Vessel Org Chart
+                  </Button>
+                </div>
+              )}
               {selectedRankAdminTab === "vessel" && (
                 <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
                   {!revisionMode ? (
@@ -4461,6 +4476,19 @@ const AdminModuleInner = (): JSX.Element => {
                 >
                   <Settings className="h-4 w-4 mr-1" />
                   Promotion Hierarchy
+                </Button>
+              </div>
+            )}
+            {selectedRankAdminTab === "company" && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsVesselOrgChartOpen(true)}
+                  className="h-8 text-xs border-[#e1e8ed] text-[#16569e] hover:bg-[#f3f4f6]"
+                  data-testid="button-vessel-org-chart"
+                >
+                  <Network className="h-4 w-4 mr-1" />
+                  Vessel Org Chart
                 </Button>
               </div>
             )}
@@ -8646,6 +8674,21 @@ const AdminModuleInner = (): JSX.Element => {
         open={isPromotionHierarchyOpen}
         onOpenChange={setIsPromotionHierarchyOpen}
         apiBasePath="/api/v2/admin/promotion-hierarchies"
+      />
+      <VesselOrgChartDialog
+        open={isVesselOrgChartOpen}
+        onOpenChange={setIsVesselOrgChartOpen}
+        companyRanks={(() => {
+          const seen = new Set<string>();
+          return companyRankData
+            .filter(r => {
+              if (r.isRoleRow || seen.has(r.rank)) return false;
+              seen.add(r.rank);
+              return true;
+            })
+            .map(r => ({ rank: r.rank, rankId: r.rankId }));
+        })()}
+        canEdit={permissions.length === 0 || canEdit("Rank Admin")}
       />
     </>
   );

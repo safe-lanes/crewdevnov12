@@ -130,11 +130,7 @@ export const crewCertificatesService = {
       data.issuingCountryUuid = countryUuid;
     }
 
-    // Auto-generate license ID if not provided
-    let licenseId = data.licenseId;
-    if (!licenseId) {
-      licenseId = await generateLicenseId();
-    }
+    const licenseId = data.licenseId || null;
 
     // Remove non-schema fields and apply audit user
     const { issuingCountry, ...cleanData } = data as any;
@@ -315,11 +311,7 @@ export const crewCertificatesService = {
       throw new Error("Training course is required");
     }
 
-    // Auto-generate course ID if not provided
-    let courseId = data.courseId;
-    if (!courseId) {
-      courseId = await generateCourseId();
-    }
+    const courseId = data.courseId || null;
 
     const dataWithAudit = applyAuditUser(data, true);
 

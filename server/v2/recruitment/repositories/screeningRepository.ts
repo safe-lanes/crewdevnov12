@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import { masterUsers } from "../../../../shared/schema";
 import {
@@ -126,7 +126,7 @@ export class ScreeningB1Repository {
     const db = getDb();
     return db.select().from(screeningB1Comments).where(
       and(eq(screeningB1Comments.b1Uuid, b1Uuid), eq(screeningB1Comments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB1Comments.sortOrder), asc(screeningB1Comments.createdAt));
   }
 
   async createComment(data: InsertScreeningB1Comment): Promise<ScreeningB1Comment> {
@@ -157,7 +157,7 @@ export class ScreeningB1Repository {
     const db = getDb();
     return db.select().from(screeningB1Attachments).where(
       and(eq(screeningB1Attachments.b1Uuid, b1Uuid), eq(screeningB1Attachments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB1Attachments.sortOrder), asc(screeningB1Attachments.createdAt));
   }
 
   async createAttachment(data: InsertScreeningB1Attachment): Promise<ScreeningB1Attachment> {
@@ -209,7 +209,7 @@ export class ScreeningB2Repository {
     const db = getDb();
     return db.select().from(screeningB2ReferenceItems).where(
       and(eq(screeningB2ReferenceItems.b2Uuid, b2Uuid), eq(screeningB2ReferenceItems.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB2ReferenceItems.sortOrder), asc(screeningB2ReferenceItems.createdAt));
   }
 
   async createItem(data: InsertScreeningB2ReferenceItem): Promise<ScreeningB2ReferenceItem> {
@@ -228,7 +228,7 @@ export class ScreeningB2Repository {
     const db = getDb();
     return db.select().from(screeningB2Comments).where(
       and(eq(screeningB2Comments.b2Uuid, b2Uuid), eq(screeningB2Comments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB2Comments.sortOrder), asc(screeningB2Comments.createdAt));
   }
 
   async createComment(data: InsertScreeningB2Comment): Promise<ScreeningB2Comment> {
@@ -259,7 +259,7 @@ export class ScreeningB2Repository {
     const db = getDb();
     return db.select().from(screeningB2Attachments).where(
       and(eq(screeningB2Attachments.b2Uuid, b2Uuid), eq(screeningB2Attachments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB2Attachments.sortOrder), asc(screeningB2Attachments.createdAt));
   }
 
   async createAttachment(data: InsertScreeningB2Attachment): Promise<ScreeningB2Attachment> {
@@ -273,6 +273,15 @@ export class ScreeningB2Repository {
     const results = await db.update(screeningB2Attachments)
       .set({ isDeleted: true })
       .where(eq(screeningB2Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
+
+  async softDeleteItem(refUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB2ReferenceItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB2ReferenceItems.refUuid, refUuid))
       .returning();
     return results.length > 0;
   }
@@ -311,7 +320,7 @@ export class ScreeningB3Repository {
     const db = getDb();
     return db.select().from(screeningB3Authorities).where(
       and(eq(screeningB3Authorities.b3Uuid, b3Uuid), eq(screeningB3Authorities.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB3Authorities.sortOrder), asc(screeningB3Authorities.createdAt));
   }
 
   async createAuthority(data: InsertScreeningB3Authority): Promise<ScreeningB3Authority> {
@@ -330,7 +339,7 @@ export class ScreeningB3Repository {
     const db = getDb();
     return db.select().from(screeningB3Comments).where(
       and(eq(screeningB3Comments.b3Uuid, b3Uuid), eq(screeningB3Comments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB3Comments.sortOrder), asc(screeningB3Comments.createdAt));
   }
 
   async createComment(data: InsertScreeningB3Comment): Promise<ScreeningB3Comment> {
@@ -361,7 +370,7 @@ export class ScreeningB3Repository {
     const db = getDb();
     return db.select().from(screeningB3Attachments).where(
       and(eq(screeningB3Attachments.b3Uuid, b3Uuid), eq(screeningB3Attachments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB3Attachments.sortOrder), asc(screeningB3Attachments.createdAt));
   }
 
   async createAttachment(data: InsertScreeningB3Attachment): Promise<ScreeningB3Attachment> {
@@ -375,6 +384,15 @@ export class ScreeningB3Repository {
     const results = await db.update(screeningB3Attachments)
       .set({ isDeleted: true })
       .where(eq(screeningB3Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
+
+  async softDeleteAuthority(authUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB3Authorities)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB3Authorities.authUuid, authUuid))
       .returning();
     return results.length > 0;
   }
@@ -413,7 +431,7 @@ export class ScreeningB4Repository {
     const db = getDb();
     return db.select().from(screeningB4CertItems).where(
       and(eq(screeningB4CertItems.b4Uuid, b4Uuid), eq(screeningB4CertItems.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB4CertItems.sortOrder), asc(screeningB4CertItems.createdAt));
   }
 
   async createCertItem(data: InsertScreeningB4CertItem): Promise<ScreeningB4CertItem> {
@@ -432,7 +450,7 @@ export class ScreeningB4Repository {
     const db = getDb();
     return db.select().from(screeningB4Comments).where(
       and(eq(screeningB4Comments.b4Uuid, b4Uuid), eq(screeningB4Comments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB4Comments.sortOrder), asc(screeningB4Comments.createdAt));
   }
 
   async createComment(data: InsertScreeningB4Comment): Promise<ScreeningB4Comment> {
@@ -463,7 +481,7 @@ export class ScreeningB4Repository {
     const db = getDb();
     return db.select().from(screeningB4Attachments).where(
       and(eq(screeningB4Attachments.b4Uuid, b4Uuid), eq(screeningB4Attachments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB4Attachments.sortOrder), asc(screeningB4Attachments.createdAt));
   }
 
   async createAttachment(data: InsertScreeningB4Attachment): Promise<ScreeningB4Attachment> {
@@ -477,6 +495,15 @@ export class ScreeningB4Repository {
     const results = await db.update(screeningB4Attachments)
       .set({ isDeleted: true })
       .where(eq(screeningB4Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
+
+  async softDeleteCertItem(certUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB4CertItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB4CertItems.certUuid, certUuid))
       .returning();
     return results.length > 0;
   }
@@ -515,7 +542,7 @@ export class ScreeningB5Repository {
     const db = getDb();
     return db.select().from(screeningB5TestItems).where(
       and(eq(screeningB5TestItems.b5Uuid, b5Uuid), eq(screeningB5TestItems.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB5TestItems.sortOrder), asc(screeningB5TestItems.createdAt));
   }
 
   async createTestItem(data: InsertScreeningB5TestItem): Promise<ScreeningB5TestItem> {
@@ -534,7 +561,7 @@ export class ScreeningB5Repository {
     const db = getDb();
     return db.select().from(screeningB5Comments).where(
       and(eq(screeningB5Comments.b5Uuid, b5Uuid), eq(screeningB5Comments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB5Comments.sortOrder), asc(screeningB5Comments.createdAt));
   }
 
   async createComment(data: InsertScreeningB5Comment): Promise<ScreeningB5Comment> {
@@ -565,7 +592,7 @@ export class ScreeningB5Repository {
     const db = getDb();
     return db.select().from(screeningB5Attachments).where(
       and(eq(screeningB5Attachments.b5Uuid, b5Uuid), eq(screeningB5Attachments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB5Attachments.sortOrder), asc(screeningB5Attachments.createdAt));
   }
 
   async createAttachment(data: InsertScreeningB5Attachment): Promise<ScreeningB5Attachment> {
@@ -579,6 +606,15 @@ export class ScreeningB5Repository {
     const results = await db.update(screeningB5Attachments)
       .set({ isDeleted: true })
       .where(eq(screeningB5Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
+
+  async softDeleteTestItem(testUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB5TestItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB5TestItems.testUuid, testUuid))
       .returning();
     return results.length > 0;
   }
@@ -636,7 +672,8 @@ export class ScreeningB6Repository {
     .leftJoin(masterUsers, eq(screeningB6InterviewItems.interviewerUuid, masterUsers.userUuid))
     .where(
       and(eq(screeningB6InterviewItems.b6Uuid, b6Uuid), eq(screeningB6InterviewItems.isDeleted, false))
-    );
+    )
+    .orderBy(asc(screeningB6InterviewItems.sortOrder), asc(screeningB6InterviewItems.createdAt));
     return results;
   }
 
@@ -656,7 +693,7 @@ export class ScreeningB6Repository {
     const db = getDb();
     return db.select().from(screeningB6Comments).where(
       and(eq(screeningB6Comments.b6Uuid, b6Uuid), eq(screeningB6Comments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB6Comments.sortOrder), asc(screeningB6Comments.createdAt));
   }
 
   async createComment(data: InsertScreeningB6Comment): Promise<ScreeningB6Comment> {
@@ -687,7 +724,7 @@ export class ScreeningB6Repository {
     const db = getDb();
     return db.select().from(screeningB6Attachments).where(
       and(eq(screeningB6Attachments.b6Uuid, b6Uuid), eq(screeningB6Attachments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB6Attachments.sortOrder), asc(screeningB6Attachments.createdAt));
   }
 
   async createAttachment(data: InsertScreeningB6Attachment): Promise<ScreeningB6Attachment> {
@@ -701,6 +738,15 @@ export class ScreeningB6Repository {
     const results = await db.update(screeningB6Attachments)
       .set({ isDeleted: true })
       .where(eq(screeningB6Attachments.id, id))
+      .returning();
+    return results.length > 0;
+  }
+
+  async softDeleteInterviewItem(intUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB6InterviewItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB6InterviewItems.intUuid, intUuid))
       .returning();
     return results.length > 0;
   }
@@ -758,7 +804,8 @@ export class ScreeningB7Repository {
     .leftJoin(masterUsers, eq(screeningB7TrainingItems.identifiedByUuid, masterUsers.userUuid))
     .where(
       and(eq(screeningB7TrainingItems.b7Uuid, b7Uuid), eq(screeningB7TrainingItems.isDeleted, false))
-    );
+    )
+    .orderBy(asc(screeningB7TrainingItems.sortOrder), asc(screeningB7TrainingItems.createdAt));
     return results;
   }
 
@@ -775,6 +822,15 @@ export class ScreeningB7Repository {
       .where(eq(screeningB7TrainingItems.trainItemUuid, trainItemUuid))
       .returning();
     return results[0];
+  }
+
+  async softDeleteTrainingItem(trainItemUuid: string): Promise<boolean> {
+    const db = getDb();
+    const results = await db.update(screeningB7TrainingItems)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(eq(screeningB7TrainingItems.trainItemUuid, trainItemUuid))
+      .returning();
+    return results.length > 0;
   }
 }
 
@@ -811,7 +867,7 @@ export class ScreeningB8Repository {
     const db = getDb();
     return db.select().from(screeningB8SelectedApprovers).where(
       and(eq(screeningB8SelectedApprovers.b8Uuid, b8Uuid), eq(screeningB8SelectedApprovers.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB8SelectedApprovers.sortOrder), asc(screeningB8SelectedApprovers.createdAt));
   }
 
   // Fetch approver details by joining with master_users using the selectedApproverUuids array
@@ -844,7 +900,7 @@ export class ScreeningB8Repository {
     const db = getDb();
     return db.select().from(screeningB8Comments).where(
       and(eq(screeningB8Comments.b8Uuid, b8Uuid), eq(screeningB8Comments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB8Comments.sortOrder), asc(screeningB8Comments.createdAt));
   }
 
   async createComment(data: InsertScreeningB8Comment): Promise<ScreeningB8Comment> {
@@ -875,7 +931,7 @@ export class ScreeningB8Repository {
     const db = getDb();
     return db.select().from(screeningB8Attachments).where(
       and(eq(screeningB8Attachments.b8Uuid, b8Uuid), eq(screeningB8Attachments.isDeleted, false))
-    );
+    ).orderBy(asc(screeningB8Attachments.sortOrder), asc(screeningB8Attachments.createdAt));
   }
 
   async createAttachment(data: InsertScreeningB8Attachment): Promise<ScreeningB8Attachment> {

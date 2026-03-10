@@ -1,4 +1,4 @@
-import { eq, and, desc, or, ilike, sql, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, or, ilike, sql, isNull, isNotNull, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { CrewMembersRepository } from "../repositories";
@@ -214,8 +214,8 @@ export const crewMembersService = {
   async create(
     data: Omit<InsertCrewMemberV2, "crewUuid"> & { nationality?: string; vesselType?: string }
   ): Promise<CrewMemberV2> {
-    if (!data.firstName || !data.familyName) {
-      throw new Error("First name and family name are required");
+    if (!data.firstName) {
+      throw new Error("First name is required");
     }
     
     // Auto-generate empNo if not provided
@@ -892,7 +892,8 @@ export const crewMembersService = {
           eq(crewSeaService.crewUuid, crewUuid),
           eq(crewSeaService.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(crewSeaService.sortOrder), asc(crewSeaService.createdAt));
 
     // Batch 1: Family-related queries (4 queries)
     const [familyInfo, children, nextOfKin, documents] = await Promise.all([
@@ -933,7 +934,8 @@ export const crewMembersService = {
             eq(crewDocuments.crewUuid, crewUuid),
             eq(crewDocuments.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(crewDocuments.sortOrder), asc(crewDocuments.createdAt)),
     ]);
 
     // Batch 2: Credentials queries (4 queries)
@@ -946,7 +948,8 @@ export const crewMembersService = {
             eq(crewVisas.crewUuid, crewUuid),
             eq(crewVisas.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(crewVisas.sortOrder), asc(crewVisas.createdAt)),
       db
         .select()
         .from(crewEducation)
@@ -955,7 +958,8 @@ export const crewMembersService = {
             eq(crewEducation.crewUuid, crewUuid),
             eq(crewEducation.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(crewEducation.sortOrder), asc(crewEducation.createdAt)),
       db
         .select()
         .from(crewLicenses)
@@ -964,7 +968,8 @@ export const crewMembersService = {
             eq(crewLicenses.crewUuid, crewUuid),
             eq(crewLicenses.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(crewLicenses.sortOrder), asc(crewLicenses.createdAt)),
       db
         .select()
         .from(crewTrainingCourses)
@@ -973,7 +978,8 @@ export const crewMembersService = {
             eq(crewTrainingCourses.crewUuid, crewUuid),
             eq(crewTrainingCourses.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(crewTrainingCourses.sortOrder), asc(crewTrainingCourses.createdAt)),
     ]);
 
     // Batch 3: Medical and vessel types queries (3 queries)
@@ -993,7 +999,8 @@ export const crewMembersService = {
             eq(crewPreJoiningMedicals.crewUuid, crewUuid),
             eq(crewPreJoiningMedicals.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(crewPreJoiningMedicals.sortOrder), asc(crewPreJoiningMedicals.createdAt)),
       db
         .select()
         .from(crewDoctorVisits)
@@ -1002,7 +1009,8 @@ export const crewMembersService = {
             eq(crewDoctorVisits.crewUuid, crewUuid),
             eq(crewDoctorVisits.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(crewDoctorVisits.sortOrder), asc(crewDoctorVisits.createdAt)),
       db
         .select({
           cvta: crewVesselTypesApplied,

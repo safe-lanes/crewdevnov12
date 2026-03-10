@@ -49,14 +49,14 @@ export function TrainingCourseSelectionDialog({
     retry: false,
   });
 
-  // Map company trainings to TrainingCourseTemplate format
   const templates = useMemo(() => {
-    return companyTrainings.map((training): TrainingCourseTemplate => ({
+    return companyTrainings.map((training, index): TrainingCourseTemplate => ({
       id: training.id.toString(),
       companyId: training.companyId,
       name: training.trainingLabel,
       abbr: training.abr || '',
       requirement: training.requirement || '',
+      sortOrder: index,
     }));
   }, [companyTrainings]);
 
@@ -88,7 +88,7 @@ export function TrainingCourseSelectionDialog({
 
   const handleSelectAll = () => {
     const allIds = filteredTemplates
-      .filter(t => !alreadyAddedIds.has(t.id))
+      .filter(t => !alreadyAddedIds.has(t.companyId || t.id))
       .map(t => t.id);
     setSelectedIds(new Set(allIds));
   };
@@ -110,7 +110,7 @@ export function TrainingCourseSelectionDialog({
     onClose();
   };
 
-  const availableCount = filteredTemplates.filter(t => !alreadyAddedIds.has(t.id)).length;
+  const availableCount = filteredTemplates.filter(t => !alreadyAddedIds.has(t.companyId || t.id)).length;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
@@ -203,7 +203,7 @@ export function TrainingCourseSelectionDialog({
             ) : (
               <div className="divide-y">
                 {filteredTemplates.map((template) => {
-                  const isAlreadyAdded = alreadyAddedIds.has(template.id);
+                  const isAlreadyAdded = alreadyAddedIds.has(template.companyId || template.id);
                   const isSelected = selectedIds.has(template.id);
 
                   return (

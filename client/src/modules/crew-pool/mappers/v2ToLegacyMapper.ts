@@ -330,6 +330,7 @@ export function mapV2DocumentToLegacy(v2: any): any {
     expiry: v2?.expiry || v2?.expiryDate || '',
     issuingAuthority: v2?.issuingAuthority || '',
     issuingCountry: v2?.issuingCountryUuid || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -352,6 +353,7 @@ export function mapLegacyDocumentToV2(legacy: any): any {
     expiry: legacy.expiryDate || legacy.expiry || undefined,
     issuingAuthority: legacy.issuingAuthority || undefined,
     issuingCountryUuid: legacy.issuingCountry || undefined,
+    sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter((att: any) => att.isNew || att.isDeleted)
       .map((att: any) => ({
@@ -386,6 +388,7 @@ export function mapV2VisaToLegacy(v2: any): any {
     issued: v2?.issued || v2?.issuedDate || '',
     expiry: v2?.expiry || v2?.expiryDate || '',
     visaType: v2?.visaType || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -406,6 +409,7 @@ export function mapLegacyVisaToV2(legacy: any): any {
     issued: legacy.issuedDate || legacy.issued || undefined,
     expiry: legacy.expiryDate || legacy.expiry || undefined,
     visaType: legacy.visaType || undefined,
+    sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter((att: any) => att.isNew || att.isDeleted)
       .map((att: any) => ({
@@ -436,6 +440,7 @@ export function mapV2EducationToLegacy(v2: any): LegacyEducation {
     schoolCollegeUniversity: v2?.institution || '',
     subjectsField: v2?.subjectsField || '',
     qualifications: v2?.qualifications || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -455,6 +460,7 @@ export function mapLegacyEducationToV2(legacy: LegacyEducation): any {
     institution: legacy.schoolCollegeUniversity || undefined,
     subjectsField: legacy.subjectsField || undefined,
     qualifications: legacy.qualifications || undefined,
+    sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
       .map(att => ({
@@ -497,6 +503,7 @@ export function mapV2LicenseToLegacy(v2: any): LegacyLicense {
     issued: v2?.issued || '',
     expiry: v2?.expiry || '',
     archivedAt: v2?.archivedAt || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -522,6 +529,7 @@ export function mapLegacyLicenseToV2(legacy: LegacyLicense): any {
     issued: legacy.issued || undefined,
     expiry: legacy.expiry || undefined,
     archivedAt: legacy.archivedAt || undefined,
+    sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
       .map(att => ({
@@ -562,6 +570,7 @@ export function mapV2TrainingCourseToLegacy(v2: any): LegacyTrainingCourse {
     issuingCountry: v2?.issuingCountryUuid || '',
     issued: v2?.issued || '',
     expiry: v2?.expiry || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -586,6 +595,7 @@ export function mapLegacyTrainingCourseToV2(legacy: LegacyTrainingCourse): any {
     issuingCountryUuid: legacy.issuingCountry || undefined,
     issued: legacy.issued || undefined,
     expiry: legacy.expiry || undefined,
+    sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
       .map(att => ({
@@ -639,6 +649,7 @@ export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
     toDate: v2?.toDate || '',
     periodMonths: v2?.periodMonths?.toString() || '',
     experienceCategories: v2?.experienceCategories || [],
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -666,6 +677,7 @@ export function mapLegacySeaServiceToV2(legacy: LegacySeaService): any {
     toDate: legacy.toDate || legacy.to || undefined,
     periodMonths: legacy.periodMonths ? String(legacy.periodMonths) : undefined,
     experienceCategories: legacy.experienceCategories?.length ? legacy.experienceCategories : undefined,
+    sortOrder: legacy.sortOrder,
   };
 }
 
@@ -700,6 +712,7 @@ export function mapV2PreJoiningMedicalToLegacy(v2: any): LegacyPreJoiningMedical
     fitnessForDuty: v2?.fitForDuty || '',
     expiryDate: v2?.expiryDate || '',
     expiry: v2?.expiryDate || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -724,6 +737,7 @@ export function mapLegacyPreJoiningMedicalToV2(legacy: LegacyPreJoiningMedical):
     clinicHospital: legacy.clinicHospital || undefined,
     fitForDuty: legacy.fitnessForDuty || undefined,
     expiryDate: legacy.expiryDate || legacy.expiry || undefined,
+    sortOrder: legacy.sortOrder,
   };
 }
 
@@ -758,6 +772,7 @@ export function mapV2DoctorVisitToLegacy(v2: any): LegacyDoctorVisit {
     diagnosis: v2?.diagnosis || '',
     treatment: v2?.treatment || '',
     followUpDate: v2?.followUpDate || '',
+    sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',
       attUuid: att.attUuid,
@@ -783,6 +798,7 @@ export function mapLegacyDoctorVisitToV2(legacy: LegacyDoctorVisit): any {
     diagnosis: legacy.diagnosis || undefined,
     treatment: legacy.treatment || undefined,
     followUpDate: legacy.followUpDate || undefined,
+    sortOrder: legacy.sortOrder,
   };
 }
 

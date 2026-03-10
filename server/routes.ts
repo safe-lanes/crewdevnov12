@@ -281,20 +281,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Helper function to get visible violation codes based on compliance mode and OPA mode
-  function getVisibleViolationCodes(complianceMode: string, opaMode: boolean): number[] {
-    const codes: number[] = [];
+  function getVisibleViolationCodes(complianceMode: string, opaMode: boolean): string[] {
+    const codes: string[] = [];
     
-    // Add codes based on compliance mode
     if (complianceMode === 'Rest') {
-      codes.push(1, 2, 3, 4); // Rest mode violations
+      codes.push('A', 'C', 'E', 'F', 'G');
     } else {
-      codes.push(5, 6); // Work mode violations
+      codes.push('B', 'D');
     }
     
-    // Add OPA codes if OPA mode is enabled
     if (opaMode) {
-      codes.push(7, 8);
+      codes.push('I', 'H');
     }
     
     return codes;

@@ -213,6 +213,10 @@ export class ScreeningB2Service {
     return screeningB2Repository.deleteComment(commentUuid);
   }
 
+  async deleteItem(refUuid: string) {
+    return screeningB2Repository.softDeleteItem(refUuid);
+  }
+
   async getAttachments(b2Uuid: string) {
     return screeningB2Repository.findAttachments(b2Uuid);
   }
@@ -297,6 +301,10 @@ export class ScreeningB3Service {
 
   async deleteComment(commentUuid: string) {
     return screeningB3Repository.deleteComment(commentUuid);
+  }
+
+  async deleteAuthority(authUuid: string) {
+    return screeningB3Repository.softDeleteAuthority(authUuid);
   }
 
   async getAttachments(b3Uuid: string) {
@@ -385,6 +393,10 @@ export class ScreeningB4Service {
     return screeningB4Repository.deleteComment(commentUuid);
   }
 
+  async deleteCertItem(certUuid: string) {
+    return screeningB4Repository.softDeleteCertItem(certUuid);
+  }
+
   async getAttachments(b4Uuid: string) {
     return screeningB4Repository.findAttachments(b4Uuid);
   }
@@ -469,6 +481,10 @@ export class ScreeningB5Service {
 
   async deleteComment(commentUuid: string) {
     return screeningB5Repository.deleteComment(commentUuid);
+  }
+
+  async deleteTestItem(testUuid: string) {
+    return screeningB5Repository.softDeleteTestItem(testUuid);
   }
 
   async getAttachments(b5Uuid: string) {
@@ -571,6 +587,10 @@ export class ScreeningB6Service {
     return screeningB6Repository.deleteComment(commentUuid);
   }
 
+  async deleteInterviewItem(intUuid: string) {
+    return screeningB6Repository.softDeleteInterviewItem(intUuid);
+  }
+
   async getAttachments(b6Uuid: string) {
     return screeningB6Repository.findAttachments(b6Uuid);
   }
@@ -642,6 +662,10 @@ export class ScreeningB7Service {
       ...resolvedData,
       updatedByUuid: auditUser,
     } as any);
+  }
+
+  async deleteTrainingItem(trainItemUuid: string) {
+    return screeningB7Repository.softDeleteTrainingItem(trainItemUuid);
   }
 }
 

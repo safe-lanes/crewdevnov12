@@ -99,16 +99,14 @@ export const PeriodicAnalysisChart = ({
         months.push(`${year}-${String(month).padStart(2, '0')}`);
       }
     } else if (periodFilter.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
-      // Calculate quarters between start and end dates
-      const startDate = periodFilter.dateFrom;
-      const endDate = periodFilter.dateTo;
+      const startDate = new Date(periodFilter.dateFrom);
+      const endDate = new Date(periodFilter.dateTo);
       
       const startYear = startDate.getFullYear();
-      const startMonth = startDate.getMonth() + 1; // 1-12
+      const startMonth = startDate.getMonth() + 1;
       const endYear = endDate.getFullYear();
-      const endMonth = endDate.getMonth() + 1; // 1-12
+      const endMonth = endDate.getMonth() + 1;
       
-      // Generate all months between start and end
       let currentIterYear = startYear;
       let currentIterMonth = startMonth;
       
@@ -133,22 +131,19 @@ export const PeriodicAnalysisChart = ({
     const months: string[] = [];
     
     if (periodFilter.mode === 'year-month') {
-      // Show all 12 months of the selected year (ignore month selection)
       const year = periodFilter.year || currentYear;
       for (let month = 1; month <= 12; month++) {
         months.push(`${year}-${String(month).padStart(2, '0')}`);
       }
     } else if (periodFilter.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
-      // Show all months between start and end dates
-      const startDate = periodFilter.dateFrom;
-      const endDate = periodFilter.dateTo;
+      const startDate = new Date(periodFilter.dateFrom);
+      const endDate = new Date(periodFilter.dateTo);
       
       const startYear = startDate.getFullYear();
-      const startMonth = startDate.getMonth() + 1; // 1-12
+      const startMonth = startDate.getMonth() + 1;
       const endYear = endDate.getFullYear();
-      const endMonth = endDate.getMonth() + 1; // 1-12
+      const endMonth = endDate.getMonth() + 1;
       
-      // Generate all months between start and end
       let currentIterYear = startYear;
       let currentIterMonth = startMonth;
       
@@ -307,8 +302,8 @@ export const PeriodicAnalysisChart = ({
         });
       }
     } else if (periodFilter && periodFilter.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
-      const startDate = periodFilter.dateFrom;
-      const endDate = periodFilter.dateTo;
+      const startDate = new Date(periodFilter.dateFrom);
+      const endDate = new Date(periodFilter.dateTo);
       
       const startYear = startDate.getFullYear();
       const startMonth = startDate.getMonth() + 1;
@@ -318,7 +313,6 @@ export const PeriodicAnalysisChart = ({
       const startQuarter = getQuarter(startMonth);
       const endQuarter = getQuarter(endMonth);
       
-      // Generate all quarters between start and end
       for (let year = startYear; year <= endYear; year++) {
         const firstQ = year === startYear ? startQuarter : 1;
         const lastQ = year === endYear ? endQuarter : 4;
@@ -413,8 +407,8 @@ export const PeriodicAnalysisChart = ({
         allMonths.push(`${year}-${String(month).padStart(2, '0')}`);
       }
     } else if (periodFilter && periodFilter.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
-      const startDate = periodFilter.dateFrom;
-      const endDate = periodFilter.dateTo;
+      const startDate = new Date(periodFilter.dateFrom);
+      const endDate = new Date(periodFilter.dateTo);
       
       const startYear = startDate.getFullYear();
       const startMonth = startDate.getMonth() + 1;

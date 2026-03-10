@@ -126,6 +126,38 @@ export function mergeWithDefaultCountries(
   return sortCountriesWithPriority(allCountries);
 }
 
+export function resolveCountryUuidToName(
+  countryUuid: string,
+  apiEntries?: Array<{ id?: number; nuid?: string; name: string; countryName?: string; nationality?: string }>
+): string {
+  if (!countryUuid) return '';
+
+  const defaultById = new Map(DEFAULT_VISA_COUNTRIES.map(c => [c.id, c.name]));
+  if (defaultById.has(countryUuid)) {
+    return defaultById.get(countryUuid)!;
+  }
+
+  if (apiEntries) {
+    const countryIdMatch = countryUuid.match(/^COUNTRY-(\d+)$/);
+    if (countryIdMatch) {
+      const numericId = parseInt(countryIdMatch[1], 10);
+      const entry = apiEntries.find(e => e.id === numericId);
+      if (entry) {
+        const name = entry.countryName || entry.name || '';
+        return normalizeNationalityToCountry(name);
+      }
+    }
+
+    const nuidEntry = apiEntries.find(e => e.nuid === countryUuid);
+    if (nuidEntry) {
+      const name = nuidEntry.countryName || nuidEntry.name || '';
+      return normalizeNationalityToCountry(name);
+    }
+  }
+
+  return countryUuid;
+}
+
 export const DEFAULT_VISA_COUNTRIES: VisaCountryTemplate[] = [
   { id: 'USA', name: 'United States', isPriority: true },
   { id: 'SCHENGEN', name: 'Schengen', isPriority: true },

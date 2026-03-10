@@ -14,3 +14,4 @@ export { VesselRevisionsRepository } from "./vesselRevisionsRepository";
 export { TrainingMatrixVesselDraftsRepository } from "./trainingMatrixVesselDraftsRepository";
 export { TrainingMatrixVesselRevisionsRepository } from "./trainingMatrixVesselRevisionsRepository";
 export { AccessControlRepository } from "./accessControlRepository";
+export { VesselOrgChartRepository } from "./vesselOrgChartRepository";

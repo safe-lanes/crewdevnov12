@@ -2,7 +2,7 @@ import type { PeriodFilterValue } from '@/components/filters/PeriodFilter';
 
 export interface RestHoursFilters {
   // Period filter
-  periodMode?: 'year-month' | 'year-quarter' | 'date-range';
+  periodMode?: 'year' | 'year-month' | 'year-quarter' | 'date-range';
   year?: number;
   month?: number;
   quarter?: 1 | 2 | 3 | 4;
@@ -82,7 +82,7 @@ export function parseRestHoursFilters(search: string): RestHoursFilters {
   
   // Period parameters
   const periodMode = params.get('periodMode');
-  if (periodMode === 'year-month' || periodMode === 'year-quarter' || periodMode === 'date-range') {
+  if (periodMode === 'year' || periodMode === 'year-month' || periodMode === 'year-quarter' || periodMode === 'date-range') {
     filters.periodMode = periodMode;
   }
   

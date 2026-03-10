@@ -150,6 +150,13 @@ import {
   useV2Approvals,
   useV2SaveApproval,
   useV2UpdateApproval,
+  useV2DeleteApproval,
+  useV2DeleteScreeningB2Item,
+  useV2DeleteScreeningB3Authority,
+  useV2DeleteScreeningB4CertItem,
+  useV2DeleteScreeningB5TestItem,
+  useV2DeleteScreeningB6InterviewItem,
+  useV2DeleteScreeningB7TrainingItem,
   useV2Suitability,
   useV2SaveSuitability,
   useV2RecruitmentDecision,
@@ -172,6 +179,7 @@ import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
+import { resolveCountryUuidToName } from '@/utils/data/visaCountryTemplates';
 
 interface RecruitmentApplicationFormV2Props {
   candidate: V2CandidateListItem | null;
@@ -286,6 +294,7 @@ interface LocalFormData {
     issued: string;
     expiry: string;
     fromDatabase?: boolean;
+    sortOrder?: number;
     attachments?: FileAttachment[];
   }>;
   seaService: Array<{
@@ -581,6 +590,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const { data: adminCompanyTrainings = [] } = useQuery<Array<{ id: number; companyId: string }>>({
+    queryKey: ['/api/v2/admin/company-trainings'],
+  });
   
   const a1Ref = useRef<HTMLDivElement>(null);
   const a2Ref = useRef<HTMLDivElement>(null);
@@ -600,8 +613,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [emailError, setEmailError] = useState('');
   const [mobileError, setMobileError] = useState('');
   const [nokEmailError, setNokEmailError] = useState('');
-  const [spouseValidationError, setSpouseValidationError] = useState('');
+  const [spouseErrors, setSpouseErrors] = useState<Record<string, string>>({});
   const [seaServiceDateErrors, setSeaServiceDateErrors] = useState<Record<string, string>>({});
+  const [firstNameError, setFirstNameError] = useState('');
+  const [dobError, setDobError] = useState('');
+  const [docDateErrors, setDocDateErrors] = useState<Record<string, Record<string, string>>>({});
+  const [visaDateErrors, setVisaDateErrors] = useState<Record<string, Record<string, string>>>({});
+  const [licDateErrors, setLicDateErrors] = useState<Record<string, Record<string, string>>>({});
+  const [trainingDateErrors, setTrainingDateErrors] = useState<Record<string, Record<string, string>>>({});
+  const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, Record<string, string>>>({});
+  const [seaRequiredErrors, setSeaRequiredErrors] = useState<Record<string, Record<string, string>>>({});
 
   const validateEmail = (value: string): string => {
     if (!value) return '';
@@ -613,6 +634,32 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const sanitizeName = (value: string): string => value.replace(/[^a-zA-Z'-]/g, '');
   const isValidName = (value: string): boolean => !value || /^[a-zA-Z'-]+$/.test(value);
+
+  const validateDob = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const dobDate = new Date(dateStr);
+    const today = new Date();
+    if (dobDate > today) return 'Date of Birth cannot be a future date.';
+    const minDob = new Date();
+    minDob.setFullYear(minDob.getFullYear() - 18);
+    if (dobDate > minDob) return 'Crew member must be at least 18 years old.';
+    return '';
+  };
+
+  const validateRowDates = (issued: string, expiry: string): { issued?: string; expiry?: string } => {
+    const errors: { issued?: string; expiry?: string } = {};
+    if (issued) {
+      const [iy, im, id] = issued.split('-').map(Number);
+      const issuedDate = new Date(iy, im - 1, id);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (issuedDate > today) errors.issued = 'Issued date cannot be in the future.';
+    }
+    if (expiry && issued && expiry < issued) {
+      errors.expiry = 'Expiry date must be on or after the issued date.';
+    }
+    return errors;
+  };
 
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
@@ -785,9 +832,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const deleteB6CommentMutation = useV2DeleteScreeningB6Comment();
   const deleteB8CommentMutation = useV2DeleteScreeningB8Comment();
 
-  // Part C - Approval mutations
+  const deleteB2ItemMutation = useV2DeleteScreeningB2Item();
+  const deleteB3AuthorityMutation = useV2DeleteScreeningB3Authority();
+  const deleteB4CertItemMutation = useV2DeleteScreeningB4CertItem();
+  const deleteB5TestItemMutation = useV2DeleteScreeningB5TestItem();
+  const deleteB6InterviewItemMutation = useV2DeleteScreeningB6InterviewItem();
+  const deleteB7TrainingItemMutation = useV2DeleteScreeningB7TrainingItem();
+
   const saveApprovalMutation = useV2SaveApproval();
   const updateApprovalMutation = useV2UpdateApproval();
+  const deleteApprovalMutation = useV2DeleteApproval();
   const saveSuitabilityMutation = useV2SaveSuitability();
   const saveDecisionMutation = useV2SaveRecruitmentDecision();
   
@@ -815,6 +869,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const { data: externalCountriesData } = useCountriesV2();
   const { data: externalLanguagesData } = useLanguagesV2();
   const { data: externalUsersData, isLoading: isLoadingUsers } = useUsersV2();
+  const { data: masterDataEntries } = useQuery<Array<{ id: number; nuid?: string; name: string; countryName?: string }>>({
+    queryKey: ['/api/v2/masters/data', '001', 'entries'],
+    queryFn: async () => {
+      const response = await fetch('/api/v2/masters/data/001/entries');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    },
+  });
 
   // Filter users by userType === "Office" and extract userUuid + displayName for approver/interviewer dropdown
   const approverMasterData = useMemo(() => {
@@ -1070,13 +1132,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: doc.issuingAuthority || '',
         attachments: mapApiAttachments(doc.attachments),
       }));
-      const sorted = [...mapped].sort((a, b) => {
-        if (!a.expiry && !b.expiry) return 0;
-        if (!a.expiry) return 1;
-        if (!b.expiry) return -1;
-        return a.expiry.localeCompare(b.expiry);
-      });
-      setFormData(prev => ({ ...prev, documents: sorted }));
+      setFormData(prev => ({ ...prev, documents: mapped }));
     }
   }, [documentsData]);
 
@@ -1086,22 +1142,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         id: visa.visaUuid,
         serverId: visa.id,
         countryId: visa.countryUuid || '',
-        issuingCountry: visa.countryUuid || '',
+        issuingCountry: resolveCountryUuidToName(visa.countryUuid || '', masterDataEntries),
         serialNo: visa.serialNo || '',
         issued: visa.issued || '',
         expiry: visa.expiry || '',
         visaType: visa.visaType || '',
         attachments: mapApiAttachments(visa.attachments),
       }));
-      const sorted = [...mapped].sort((a, b) => {
-        if (!a.expiry && !b.expiry) return 0;
-        if (!a.expiry) return 1;
-        if (!b.expiry) return -1;
-        return a.expiry.localeCompare(b.expiry);
-      });
-      setFormData(prev => ({ ...prev, visas: sorted }));
+      setFormData(prev => ({ ...prev, visas: mapped }));
     }
-  }, [visasData]);
+  }, [visasData, masterDataEntries]);
 
   useEffect(() => {
     if (educationData && educationData.length > 0) {
@@ -1125,7 +1175,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const mapped = licensesData.map(lic => ({
         id: lic.licUuid,
         serverId: lic.id,
-        licenseId: lic.licenseId || '',
+        licenseId: /^LIC-\d+$/.test(lic.licenseId || '') ? '' : (lic.licenseId || ''),
         certificateDocument: lic.certificateDocument || '',
         abbr: lic.abbr || '',
         requirement: lic.requirement || '',
@@ -1136,13 +1186,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         fromDatabase: !!(lic.abbr || lic.requirement),
         attachments: mapApiAttachments(lic.attachments),
       }));
-      const sorted = [...mapped].sort((a, b) => {
-        if (!a.expiry && !b.expiry) return 0;
-        if (!a.expiry) return 1;
-        if (!b.expiry) return -1;
-        return a.expiry.localeCompare(b.expiry);
-      });
-      setFormData(prev => ({ ...prev, licenses: sorted }));
+      setFormData(prev => ({ ...prev, licenses: mapped }));
     }
   }, [licensesData]);
 
@@ -1151,7 +1195,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const mapped = trainingData.map(course => ({
         id: course.trainUuid,
         serverId: course.id,
-        courseId: course.courseId || '',
+        courseId: /^TRN-\d+$/.test(course.courseId || '') ? '' : (course.courseId || ''),
         trainingCourse: course.trainingCourse || '',
         abbr: course.abbr || '',
         requirement: course.requirement || '',
@@ -1160,17 +1204,26 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: course.issued || '',
         expiry: course.expiry || '',
         fromDatabase: !!(course.abbr || course.requirement),
+        sortOrder: undefined as number | undefined,
         attachments: mapApiAttachments(course.attachments),
       }));
-      const sorted = [...mapped].sort((a, b) => {
-        if (!a.expiry && !b.expiry) return 0;
-        if (!a.expiry) return 1;
-        if (!b.expiry) return -1;
-        return a.expiry.localeCompare(b.expiry);
-      });
-      setFormData(prev => ({ ...prev, trainingCourses: sorted }));
+      if (adminCompanyTrainings.length > 0) {
+        const orderMap = new Map<string, number>();
+        adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+        mapped.forEach(t => {
+          if (t.courseId && orderMap.has(t.courseId)) {
+            t.sortOrder = orderMap.get(t.courseId);
+          }
+        });
+        mapped.sort((a, b) => {
+          const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+          const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+          return aOrder - bOrder;
+        });
+      }
+      setFormData(prev => ({ ...prev, trainingCourses: mapped }));
     }
-  }, [trainingData]);
+  }, [trainingData, adminCompanyTrainings]);
 
   useEffect(() => {
     if (seaServiceData && seaServiceData.length > 0) {
@@ -1217,6 +1270,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         b1RankMeetsCriteria: screeningB1Data.rankMeetsCriteria || '',
         b1CertificatesValid: screeningB1Data.certificatesValid || '',
         b1Shortlisted: screeningB1Data.shortlisted || '',
+        b1SubmittedBy: screeningB1Data.submittedByUuid || '',
+        b1SubmittedDate: screeningB1Data.submittedDate || '',
       }));
     }
   }, [screeningB1Data]);
@@ -1248,6 +1303,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b2ReferencesCompleted: screeningB2Data.referencesCompleted || '',
         b2EmployerFeedback: screeningB2Data.employerFeedback || '',
+        b2SubmittedBy: screeningB2Data.submittedByUuid || '',
+        b2SubmittedDate: screeningB2Data.submittedDate || '',
       }));
     }
   }, [screeningB2Data]);
@@ -1258,6 +1315,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b3ChecksCompleted: screeningB3Data.checksCompleted || '',
         b3Results: screeningB3Data.results || '',
+        b3SubmittedBy: screeningB3Data.submittedByUuid || '',
+        b3SubmittedDate: screeningB3Data.submittedDate || '',
       }));
     }
   }, [screeningB3Data]);
@@ -1268,6 +1327,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         b4CertificatesAuthenticated: screeningB4Data.certificatesAuthenticated || '',
         b4Results: screeningB4Data.results || '',
+        b4SubmittedBy: screeningB4Data.submittedByUuid || '',
+        b4SubmittedDate: screeningB4Data.submittedDate || '',
       }));
     }
   }, [screeningB4Data]);
@@ -1277,6 +1338,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFormData(prev => ({
         ...prev,
         b5TestsCompleted: screeningB5Data.testsCompleted || '',
+        b5SubmittedBy: screeningB5Data.submittedByUuid || '',
+        b5SubmittedDate: screeningB5Data.submittedDate || '',
       }));
     }
   }, [screeningB5Data]);
@@ -1286,16 +1349,29 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFormData(prev => ({
         ...prev,
         b6InterviewCompleted: screeningB6Data.interviewCompleted || '',
+        b6SubmittedBy: screeningB6Data.submittedByUuid || '',
+        b6SubmittedDate: screeningB6Data.submittedDate || '',
       }));
     }
   }, [screeningB6Data]);
+
+  useEffect(() => {
+    if (screeningB7Data) {
+      setFormData(prev => ({
+        ...prev,
+        b7SubmittedBy: (screeningB7Data as any).submittedByUuid || '',
+        b7SubmittedDate: (screeningB7Data as any).submittedDate || '',
+      }));
+    }
+  }, [screeningB7Data]);
 
   useEffect(() => {
     if (screeningB8Data) {
       setFormData(prev => ({
         ...prev,
         b8Shortlisted: screeningB8Data.shortlisted || '',
-        // Load selectedApproverUuids from B8 record directly
+        b8SubmittedBy: (screeningB8Data as any).submittedByUuid || '',
+        b8SubmittedDate: (screeningB8Data as any).submittedDate || '',
         selectedApproversForSubmission: (screeningB8Data as any).selectedApproverUuids || [],
       }));
     }
@@ -1775,15 +1851,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     setDocDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
-  const sortByExpiry = <T extends { expiry: string }>(items: T[]): T[] => {
-    return [...items].sort((a, b) => {
-      if (!a.expiry && !b.expiry) return 0;
-      if (!a.expiry) return 1;
-      if (!b.expiry) return -1;
-      return a.expiry.localeCompare(b.expiry);
-    });
-  };
-
   const updateDocument = (id: string, field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -1842,7 +1909,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     const nextId = getNextId(formData.licenses, 'LIC', 'licenseId');
     const newLic = {
       id: nextId,
-      licenseId: nextId,
+      licenseId: '',
       certificateDocument: '',
       abbr: '',
       requirement: '',
@@ -1870,7 +1937,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     const nextId = getNextId(formData.trainingCourses, 'TRN', 'courseId');
     const newCourse = {
       id: nextId,
-      courseId: nextId,
+      courseId: '',
       trainingCourse: '',
       abbr: '',
       requirement: '',
@@ -2108,7 +2175,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const formattedId = `LIC-${String(maxNum + index + 1).padStart(3, '0')}`;
       return {
         id: formattedId,
-        licenseId: formattedId,
+        licenseId: license.id,
         certificateDocument: license.name,
         abbr: license.abbr || '',
         requirement: license.requirement || '',
@@ -2138,7 +2205,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const formattedId = `TRN-${String(maxNum + index + 1).padStart(3, '0')}`;
       return {
         id: formattedId,
-        courseId: formattedId,
+        courseId: course.companyId || formattedId,
         trainingCourse: course.name,
         abbr: course.abbr || '',
         requirement: course.requirement || '',
@@ -2147,10 +2214,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: '',
         expiry: '',
         fromDatabase: true,
+        sortOrder: course.sortOrder,
         attachments: []
       };
     });
-    setFormData(prev => ({ ...prev, trainingCourses: [...existingCourses, ...newCourses] }));
+    const allCourses = [...existingCourses, ...newCourses];
+    allCourses.sort((a, b) => {
+      const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      return aOrder - bOrder;
+    });
+    setFormData(prev => ({ ...prev, trainingCourses: allCourses }));
     setIsTrainingDialogOpen(false);
   };
 
@@ -2283,79 +2357,72 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const handleSaveAndContinue = async () => {
+    let hasErrors = false;
+    const firstErrorTestIds: string[] = [];
+
     const trimmedFirstName = (formData.firstName || '').trim();
-    const trimmedFamilyName = (formData.familyName || '').trim();
-    if (!trimmedFirstName || !trimmedFamilyName) {
-      toast({
-        title: "Validation Error",
-        description: "First Name and Family Name are required.",
-        variant: "destructive",
-      });
-      return;
+    if (!trimmedFirstName) {
+      setFirstNameError('First name is required.');
+      firstErrorTestIds.push('input-first-name');
+      hasErrors = true;
+    } else {
+      setFirstNameError('');
     }
-    if (formData.dateOfBirth) {
-      const dobDate = new Date(formData.dateOfBirth);
-      const today = new Date();
-      if (dobDate > today) {
-        toast({
-          title: "Validation Error",
-          description: "Date of Birth cannot be a future date.",
-          variant: "destructive",
-        });
-        return;
-      }
-      const minDob = new Date();
-      minDob.setFullYear(minDob.getFullYear() - 18);
-      if (dobDate > minDob) {
-        toast({
-          title: "Validation Error",
-          description: "Candidate must be at least 18 years old.",
-          variant: "destructive",
-        });
-        return;
-      }
+
+    const dobErr = validateDob(formData.dateOfBirth);
+    if (dobErr) {
+      setDobError(dobErr);
+      firstErrorTestIds.push('input-dob');
+      hasErrors = true;
+    } else {
+      setDobError('');
     }
+
     const trimmedMobile = (formData.mobile || '').trim();
     if (trimmedMobile && formData.countryOfResidence) {
       const mobileErr = validateMobileNumber(formData.countryOfResidence, trimmedMobile);
       if (mobileErr) {
         setMobileError(mobileErr);
-        toast({
-          title: "Validation Error",
-          description: mobileErr,
-          variant: "destructive",
-        });
-        return;
+        firstErrorTestIds.push('input-mobile');
+        hasErrors = true;
+      } else {
+        setMobileError('');
       }
+    } else {
+      setMobileError('');
     }
-    setMobileError('');
+
     const trimmedEmail = (formData.email || '').trim();
-    const trimmedNokEmail = (formData.nokEmail || '').trim();
     if (trimmedEmail) {
       const emailErr = validateEmail(trimmedEmail);
       if (emailErr) {
         setEmailError(emailErr);
-        return;
+        firstErrorTestIds.push('input-email');
+        hasErrors = true;
+      } else {
+        setEmailError('');
+        updateFormData('email', trimmedEmail);
       }
-      updateFormData('email', trimmedEmail);
     }
+
+    const trimmedNokEmail = (formData.nokEmail || '').trim();
     if (trimmedNokEmail) {
       const nokErr = validateEmail(trimmedNokEmail);
       if (nokErr) {
         setNokEmailError(nokErr);
-        return;
+        firstErrorTestIds.push('input-nok-email');
+        hasErrors = true;
+      } else {
+        setNokEmailError('');
+        updateFormData('nokEmail', trimmedNokEmail);
       }
-      updateFormData('nokEmail', trimmedNokEmail);
     }
+
+    const newSpouseErrors: Record<string, string> = {};
     if (formData.maritalStatus === 'Married') {
-      const missingSpouseFields: string[] = [];
-      if (!(formData.spouseFirstName || '').trim()) missingSpouseFields.push('Spouse First Name');
-      if (!(formData.spouseFamilyName || '').trim()) missingSpouseFields.push('Spouse Family Name');
-      if (!(formData.spouseDateOfBirth || '').trim()) missingSpouseFields.push('Spouse Date of Birth');
-      if (missingSpouseFields.length > 0) {
-        setSpouseValidationError(`Required when Married: ${missingSpouseFields.join(', ')}`);
-        return;
-      }
+      if (!(formData.spouseFirstName || '').trim()) { newSpouseErrors.spouseFirstName = 'Spouse first name is required.'; firstErrorTestIds.push('input-spouse-first-name'); hasErrors = true; }
+      if (!(formData.spouseFamilyName || '').trim()) { newSpouseErrors.spouseFamilyName = 'Spouse family name is required.'; firstErrorTestIds.push('input-spouse-family-name'); hasErrors = true; }
+      if (!(formData.spouseDateOfBirth || '').trim()) { newSpouseErrors.spouseDateOfBirth = 'Spouse date of birth is required.'; firstErrorTestIds.push('input-spouse-dob'); hasErrors = true; }
     }
     const spouseDobVal = (formData.spouseDateOfBirth || '').trim();
     if (spouseDobVal) {
@@ -2363,28 +2430,103 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const spouseDobLocal = new Date(sy, sm - 1, sd);
       const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0);
       if (spouseDobLocal > todayLocal) {
-        setSpouseValidationError('Spouse Date of Birth cannot be a future date.');
-        return;
+        newSpouseErrors.spouseDateOfBirth = 'Spouse Date of Birth cannot be a future date.';
+        if (!firstErrorTestIds.includes('input-spouse-dob')) firstErrorTestIds.push('input-spouse-dob');
+        hasErrors = true;
       }
     }
-    setSpouseValidationError('');
-    const seaDateIssues: string[] = [];
+    setSpouseErrors(newSpouseErrors);
+
+    const hasAtts = (atts?: any[]) => (atts || []).filter((a: any) => !a.isDeleted).length > 0;
+    const isDocBlankLocal = (doc: typeof formData.documents[0]) => !(doc.document || '').trim() && !(doc.number || '').trim() && !(doc.issued || '').trim() && !(doc.expiry || '').trim() && !(doc.issuingAuthority || '').trim() && !hasAtts(doc.attachments);
+    const isVisaBlankLocal = (visa: typeof formData.visas[0]) => !(visa.issuingCountry || '').trim() && !(visa.serialNo || '').trim() && !(visa.issued || '').trim() && !(visa.expiry || '').trim() && !(visa.visaType || '').trim() && !hasAtts(visa.attachments);
+    const isLicBlankLocal = (lic: typeof formData.licenses[0]) => !(lic.certificateDocument || '').trim() && !(lic.abbr || '').trim() && !(lic.requirement || '').trim() && !(lic.certificateNo || '').trim() && !(lic.issuingAuthority || '').trim() && !(lic.issued || '').trim() && !(lic.expiry || '').trim() && !hasAtts(lic.attachments);
+    const isTrainBlankLocal = (t: typeof formData.trainingCourses[0]) => !(t.trainingCourse || '').trim() && !(t.abbr || '').trim() && !(t.requirement || '').trim() && !(t.certificateNo || '').trim() && !(t.issuingAuthority || '').trim() && !(t.issued || '').trim() && !(t.expiry || '').trim() && !hasAtts(t.attachments);
+    const isEduBlankLocal = (edu: typeof formData.education[0]) => !(edu.qualifications || '').trim() && !(edu.subjectsField || '').trim() && !(edu.schoolCollegeUniversity || '').trim() && !(edu.dateOfCompletion || '').trim() && !hasAtts(edu.attachments);
+    const isSeaBlankLocal = (s: typeof formData.seaService[0]) => !(s.vesselName || '').trim() && !(s.vesselType || '').trim() && !(s.deadweight || '').trim() && !(s.engineTypePower || '').trim() && !(s.ownerOperator || '').trim() && !(s.rank || '').trim() && !(s.from || '').trim() && !(s.to || '').trim() && !(s.periodMonths || '').trim() && !hasAtts(s.attachments);
+
+    const newDocDateErrors: Record<string, Record<string, string>> = {};
+    formData.documents.forEach(doc => {
+      if (isDocBlankLocal(doc)) return;
+      const rowErrs: Record<string, string> = {};
+      if (!(doc.document || '').trim()) rowErrs.document = 'Document type is required.';
+      const dateErrs = validateRowDates(doc.issued, doc.expiry);
+      if (dateErrs.issued) rowErrs.issued = dateErrs.issued;
+      if (dateErrs.expiry) rowErrs.expiry = dateErrs.expiry;
+      if (Object.keys(rowErrs).length > 0) { newDocDateErrors[doc.id] = rowErrs; hasErrors = true; }
+    });
+    setDocDateErrors(newDocDateErrors);
+
+    const newVisaDateErrors: Record<string, Record<string, string>> = {};
+    formData.visas.forEach(visa => {
+      if (isVisaBlankLocal(visa)) return;
+      const rowErrs: Record<string, string> = {};
+      if (!(visa.issuingCountry || '').trim()) rowErrs.issuingCountry = 'Issuing country is required.';
+      const dateErrs = validateRowDates(visa.issued, visa.expiry);
+      if (dateErrs.issued) rowErrs.issued = dateErrs.issued;
+      if (dateErrs.expiry) rowErrs.expiry = dateErrs.expiry;
+      if (Object.keys(rowErrs).length > 0) { newVisaDateErrors[visa.id] = rowErrs; hasErrors = true; }
+    });
+    setVisaDateErrors(newVisaDateErrors);
+
+    const newLicDateErrors: Record<string, Record<string, string>> = {};
+    formData.licenses.forEach(lic => {
+      if (isLicBlankLocal(lic)) return;
+      const rowErrs: Record<string, string> = {};
+      if (!(lic.certificateDocument || '').trim()) rowErrs.certificateDocument = 'Certificate/Document is required.';
+      const dateErrs = validateRowDates(lic.issued, lic.expiry);
+      if (dateErrs.issued) rowErrs.issued = dateErrs.issued;
+      if (dateErrs.expiry) rowErrs.expiry = dateErrs.expiry;
+      if (Object.keys(rowErrs).length > 0) { newLicDateErrors[lic.id] = rowErrs; hasErrors = true; }
+    });
+    setLicDateErrors(newLicDateErrors);
+
+    const newTrainingDateErrors: Record<string, Record<string, string>> = {};
+    formData.trainingCourses.forEach(course => {
+      if (isTrainBlankLocal(course)) return;
+      const rowErrs: Record<string, string> = {};
+      if (!(course.trainingCourse || '').trim()) rowErrs.trainingCourse = 'Training course is required.';
+      const dateErrs = validateRowDates(course.issued, course.expiry);
+      if (dateErrs.issued) rowErrs.issued = dateErrs.issued;
+      if (dateErrs.expiry) rowErrs.expiry = dateErrs.expiry;
+      if (Object.keys(rowErrs).length > 0) { newTrainingDateErrors[course.id] = rowErrs; hasErrors = true; }
+    });
+    setTrainingDateErrors(newTrainingDateErrors);
+
+    const newEduRequiredErrors: Record<string, Record<string, string>> = {};
+    formData.education.forEach(edu => {
+      if (isEduBlankLocal(edu)) return;
+      if (!(edu.qualifications || '').trim()) { newEduRequiredErrors[edu.id] = { qualifications: 'Qualification is required.' }; hasErrors = true; }
+    });
+    setEduRequiredErrors(newEduRequiredErrors);
+
+    const newSeaRequiredErrors: Record<string, Record<string, string>> = {};
     const newSeaErrors: Record<string, string> = {};
-    for (const sea of formData.seaService) {
-      if (sea.from && sea.to && sea.to < sea.from) {
-        seaDateIssues.push(sea.vesselName || 'A sea service entry');
-        newSeaErrors[sea.id] = '"To" date cannot be earlier than "From" date.';
-      }
-    }
+    formData.seaService.forEach(sea => {
+      if (isSeaBlankLocal(sea)) return;
+      const rowErrs: Record<string, string> = {};
+      if (!(sea.vesselName || '').trim()) rowErrs.vesselName = 'Vessel name is required.';
+      if (!(sea.from || '').trim()) rowErrs.from = 'From date is required.';
+      if (!(sea.to || '').trim()) { rowErrs.to = 'To date is required.'; }
+      else if (sea.from && sea.to < sea.from) { rowErrs.to = 'To date cannot be earlier than from date.'; newSeaErrors[sea.id] = '"To" date cannot be earlier than "From" date.'; }
+      if (Object.keys(rowErrs).length > 0) { newSeaRequiredErrors[sea.id] = rowErrs; hasErrors = true; }
+    });
+    setSeaRequiredErrors(newSeaRequiredErrors);
     setSeaServiceDateErrors(newSeaErrors);
-    if (seaDateIssues.length > 0) {
-      toast({
-        title: "Validation Error",
-        description: '"To" date cannot be earlier than "From" date in Sea Service. Please correct the highlighted entries.',
-        variant: "destructive",
-      });
+
+    if (hasErrors) {
+      setTimeout(() => {
+        if (firstErrorTestIds.length > 0) {
+          const el = document.querySelector(`[data-testid="${firstErrorTestIds[0]}"]`);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          const errorEl = document.querySelector('.border-red-500');
+          if (errorEl) errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
       return;
     }
+
     const nameFieldsToValidate = [
       { value: formData.fatherName, label: "Father's Name" },
       { value: formData.motherName, label: "Mother's Name" },
@@ -2538,8 +2680,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
       }
       
-      const mandatoryErrors: string[] = [];
-
       const hasAttachments = (atts?: FileAttachment[]) => (atts || []).filter(a => !(a as any).isDeleted).length > 0;
       const isDocBlank = (doc: typeof formData.documents[0]) => !(doc.document || '').trim() && !(doc.number || '').trim() && !(doc.issued || '').trim() && !(doc.expiry || '').trim() && !(doc.issuingAuthority || '').trim() && !hasAttachments(doc.attachments);
       const isVisaBlank = (visa: typeof formData.visas[0]) => !(visa.issuingCountry || '').trim() && !(visa.serialNo || '').trim() && !(visa.issued || '').trim() && !(visa.expiry || '').trim() && !(visa.visaType || '').trim() && !hasAttachments(visa.attachments);
@@ -2547,22 +2687,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const isLicBlank = (lic: typeof formData.licenses[0]) => !(lic.certificateDocument || '').trim() && !(lic.abbr || '').trim() && !(lic.requirement || '').trim() && !(lic.certificateNo || '').trim() && !(lic.issuingAuthority || '').trim() && !(lic.issued || '').trim() && !(lic.expiry || '').trim() && !hasAttachments(lic.attachments);
       const isTrainBlank = (t: typeof formData.trainingCourses[0]) => !(t.trainingCourse || '').trim() && !(t.abbr || '').trim() && !(t.requirement || '').trim() && !(t.certificateNo || '').trim() && !(t.issuingAuthority || '').trim() && !(t.issued || '').trim() && !(t.expiry || '').trim() && !hasAttachments(t.attachments);
       const isSeaBlank = (s: typeof formData.seaService[0]) => !(s.vesselName || '').trim() && !(s.vesselType || '').trim() && !(s.deadweight || '').trim() && !(s.engineTypePower || '').trim() && !(s.ownerOperator || '').trim() && !(s.rank || '').trim() && !(s.from || '').trim() && !(s.to || '').trim() && !(s.periodMonths || '').trim() && !hasAttachments(s.attachments);
-
-      formData.documents.forEach((doc, i) => { if (!isDocBlank(doc) && !(doc.document || '').trim()) mandatoryErrors.push(`Documents Row ${i + 1}: 'Document Name' is required to save this row.`); });
-      formData.visas.forEach((visa, i) => { if (!isVisaBlank(visa) && !(visa.issuingCountry || '').trim()) mandatoryErrors.push(`Visas Row ${i + 1}: 'Issuing Country' is required to save this row.`); });
-      formData.education.forEach((edu, i) => { if (!isEduBlank(edu) && !(edu.qualifications || '').trim()) mandatoryErrors.push(`Education Row ${i + 1}: 'Qualifications' is required to save this row.`); });
-      formData.licenses.forEach((lic, i) => { if (!isLicBlank(lic) && !(lic.certificateDocument || '').trim()) mandatoryErrors.push(`License & DCE Row ${i + 1}: 'Certificate/Document' is required to save this row.`); });
-      formData.trainingCourses.forEach((t, i) => { if (!isTrainBlank(t) && !(t.trainingCourse || '').trim()) mandatoryErrors.push(`Training Course Row ${i + 1}: 'Training/Course' is required to save this row.`); });
-      formData.seaService.forEach((s, i) => { if (!isSeaBlank(s) && !(s.vesselName || '').trim()) mandatoryErrors.push(`Sea Service Row ${i + 1}: 'Vessel Name' is required to save this row.`); });
-
-      if (mandatoryErrors.length > 0) {
-        toast({
-          title: "Validation Error",
-          description: mandatoryErrors.join('\n'),
-          variant: "destructive",
-        });
-        return;
-      }
 
       const nonEmptyDocuments = formData.documents.filter(doc => !isDocBlank(doc));
       const nonEmptyVisas = formData.visas.filter(visa => !isVisaBlank(visa));
@@ -2953,13 +3077,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           query.queryKey.includes(currentUuid)
       });
       
-      setFormData(prev => ({
-        ...prev,
-        documents: sortByExpiry(prev.documents),
-        visas: sortByExpiry(prev.visas),
-        licenses: sortByExpiry(prev.licenses),
-        trainingCourses: sortByExpiry(prev.trainingCourses),
-      }));
       toast({
         title: "Saved",
         description: "Form data saved successfully",
@@ -3107,7 +3224,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     });
   };
 
-  const handleSaveScreening = async (skipToasts: boolean = false, isMainSubmit: boolean = false) => {
+  const handleSaveScreening = async (skipToasts: boolean = false, isMainSubmit: boolean = false, overrides?: Record<string, string>) => {
     if (!recCanUuid) {
       toast({
         title: "Error",
@@ -3133,8 +3250,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             rankMeetsCriteria: formData.b1RankMeetsCriteria || undefined,
             certificatesValid: formData.b1CertificatesValid || undefined,
             shortlisted: formData.b1Shortlisted || undefined,
-            submittedByUuid: formData.b1SubmittedBy || undefined,
-            submittedDate: formData.b1SubmittedDate || undefined,
+            submittedByUuid: overrides?.b1SubmittedBy || formData.b1SubmittedBy || undefined,
+            submittedDate: overrides?.b1SubmittedDate || formData.b1SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB2Mutation.mutateAsync({
@@ -3142,8 +3259,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           data: {
             referencesCompleted: formData.b2ReferencesCompleted || undefined,
             employerFeedback: formData.b2EmployerFeedback || undefined,
-            submittedByUuid: formData.b2SubmittedBy || undefined,
-            submittedDate: formData.b2SubmittedDate || undefined,
+            submittedByUuid: overrides?.b2SubmittedBy || formData.b2SubmittedBy || undefined,
+            submittedDate: overrides?.b2SubmittedDate || formData.b2SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB3Mutation.mutateAsync({
@@ -3151,8 +3268,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           data: {
             checksCompleted: formData.b3ChecksCompleted || undefined,
             results: formData.b3Results || undefined,
-            submittedByUuid: formData.b3SubmittedBy || undefined,
-            submittedDate: formData.b3SubmittedDate || undefined,
+            submittedByUuid: overrides?.b3SubmittedBy || formData.b3SubmittedBy || undefined,
+            submittedDate: overrides?.b3SubmittedDate || formData.b3SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB4Mutation.mutateAsync({
@@ -3160,39 +3277,39 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           data: {
             certificatesAuthenticated: formData.b4CertificatesAuthenticated || undefined,
             results: formData.b4Results || undefined,
-            submittedByUuid: formData.b4SubmittedBy || undefined,
-            submittedDate: formData.b4SubmittedDate || undefined,
+            submittedByUuid: overrides?.b4SubmittedBy || formData.b4SubmittedBy || undefined,
+            submittedDate: overrides?.b4SubmittedDate || formData.b4SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB5Mutation.mutateAsync({
           recCanUuid,
           data: {
             testsCompleted: formData.b5TestsCompleted || undefined,
-            submittedByUuid: formData.b5SubmittedBy || undefined,
-            submittedDate: formData.b5SubmittedDate || undefined,
+            submittedByUuid: overrides?.b5SubmittedBy || formData.b5SubmittedBy || undefined,
+            submittedDate: overrides?.b5SubmittedDate || formData.b5SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB6Mutation.mutateAsync({
           recCanUuid,
           data: {
             interviewCompleted: formData.b6InterviewCompleted || undefined,
-            submittedByUuid: formData.b6SubmittedBy || undefined,
-            submittedDate: formData.b6SubmittedDate || undefined,
+            submittedByUuid: overrides?.b6SubmittedBy || formData.b6SubmittedBy || undefined,
+            submittedDate: overrides?.b6SubmittedDate || formData.b6SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB7Mutation.mutateAsync({
           recCanUuid,
           data: {
-            submittedByUuid: formData.b7SubmittedBy || undefined,
-            submittedDate: formData.b7SubmittedDate || undefined,
+            submittedByUuid: overrides?.b7SubmittedBy || formData.b7SubmittedBy || undefined,
+            submittedDate: overrides?.b7SubmittedDate || formData.b7SubmittedDate || undefined,
           } as any,
         }),
         saveScreeningB8Mutation.mutateAsync({
           recCanUuid,
           data: {
             shortlisted: formData.b8Shortlisted || undefined,
-            submittedByUuid: formData.b8SubmittedBy || undefined,
-            submittedDate: formData.b8SubmittedDate || undefined,
+            submittedByUuid: overrides?.b8SubmittedBy || formData.b8SubmittedBy || undefined,
+            submittedDate: overrides?.b8SubmittedDate || formData.b8SubmittedDate || undefined,
             selectedApproverUuids: formData.selectedApproversForSubmission || [],
           } as any,
         }),
@@ -3207,7 +3324,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const currentB8Uuid = b8Result?.b8Uuid || b8Uuid;
 
       const serverB2ItemMap = new Map((screeningB2Items || []).map((i: any) => [i.refUuid, i.id]));
-      for (const item of formData.b2References) {
+      for (let index = 0; index < formData.b2References.length; index++) {
+        const item = formData.b2References[index];
         if (serverB2ItemMap.has(item.id) && currentB2Uuid) {
           await updateB2ItemMutation.mutateAsync({
             refUuid: item.id,
@@ -3216,6 +3334,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               refDate: item.date || undefined,
               nameDesignation: item.nameDesignation || undefined,
               contactInfo: item.contactInfo || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB2ItemMap.has(item.id) && currentB2Uuid && (item.date || item.nameDesignation || item.contactInfo)) {
@@ -3225,13 +3344,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               refDate: item.date || undefined,
               nameDesignation: item.nameDesignation || undefined,
               contactInfo: item.contactInfo || undefined,
+              sortOrder: index,
             } as any,
           });
         }
       }
 
       const serverB3AuthMap = new Map((screeningB3Authorities || []).map((a: any) => [a.authUuid, a.id]));
-      for (const auth of formData.b3Authorities) {
+      for (let index = 0; index < formData.b3Authorities.length; index++) {
+        const auth = formData.b3Authorities[index];
         if (serverB3AuthMap.has(auth.id) && currentB3Uuid) {
           await updateB3AuthorityMutation.mutateAsync({
             authUuid: auth.id,
@@ -3239,6 +3360,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             data: {
               checkDate: auth.date || undefined,
               authority: auth.authority || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB3AuthMap.has(auth.id) && currentB3Uuid && (auth.date || auth.authority)) {
@@ -3247,13 +3369,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             data: {
               checkDate: auth.date || undefined,
               authority: auth.authority || undefined,
+              sortOrder: index,
             } as any,
           });
         }
       }
 
       const serverB4CertMap = new Map((screeningB4CertItems || []).map((c: any) => [c.certUuid, c.id]));
-      for (const cert of formData.b4Certs) {
+      for (let index = 0; index < formData.b4Certs.length; index++) {
+        const cert = formData.b4Certs[index];
         if (serverB4CertMap.has(cert.id) && currentB4Uuid) {
           await updateB4CertItemMutation.mutateAsync({
             certUuid: cert.id,
@@ -3262,6 +3386,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               authDate: cert.date || undefined,
               certificate: cert.certificate || undefined,
               authority: cert.authority || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB4CertMap.has(cert.id) && currentB4Uuid && (cert.date || cert.certificate || cert.authority)) {
@@ -3271,13 +3396,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               authDate: cert.date || undefined,
               certificate: cert.certificate || undefined,
               authority: cert.authority || undefined,
+              sortOrder: index,
             } as any,
           });
         }
       }
 
       const serverB5TestMap = new Map((screeningB5TestItems || []).map((t: any) => [t.testUuid, t.id]));
-      for (const test of formData.b5Tests) {
+      for (let index = 0; index < formData.b5Tests.length; index++) {
+        const test = formData.b5Tests[index];
         if (serverB5TestMap.has(test.id) && currentB5Uuid) {
           await updateB5TestItemMutation.mutateAsync({
             testUuid: test.id,
@@ -3287,6 +3414,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               subject: test.subject || undefined,
               score: test.score || undefined,
               result: test.result || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB5TestMap.has(test.id) && currentB5Uuid && (test.date || test.subject || test.score || test.result)) {
@@ -3297,13 +3425,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               subject: test.subject || undefined,
               score: test.score || undefined,
               result: test.result || undefined,
+              sortOrder: index,
             } as any,
           });
         }
       }
 
       const serverB6InterviewMap = new Map((screeningB6InterviewItems || []).map((i: any) => [i.intUuid, i.id]));
-      for (const interview of formData.b6Interviews) {
+      for (let index = 0; index < formData.b6Interviews.length; index++) {
+        const interview = formData.b6Interviews[index];
         if (serverB6InterviewMap.has(interview.id) && currentB6Uuid) {
           await updateB6InterviewItemMutation.mutateAsync({
             intUuid: interview.id,
@@ -3314,6 +3444,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               status: interview.status || undefined,
               result: interview.result || undefined,
               comments: interview.comments || undefined,
+              sortOrder: index,
             } as any,
           });
         } else if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid && (interview.date || interview.interviewer || interview.status || interview.result)) {
@@ -3325,6 +3456,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               status: interview.status || undefined,
               result: interview.result || undefined,
               comments: interview.comments || undefined,
+              sortOrder: index,
             } as any,
           });
         }
@@ -3347,7 +3479,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
 
       const serverB7TrainingMap = new Map((screeningB7TrainingItems || []).map(t => [t.trainItemUuid, t.id]));
-      for (const training of nonEmptyB7Training) {
+      for (let index = 0; index < nonEmptyB7Training.length; index++) {
+        const training = nonEmptyB7Training[index];
         if (serverB7TrainingMap.has(training.id) && currentB7Uuid) {
           await updateB7TrainingItemMutation.mutateAsync({
             trainItemUuid: training.id,
@@ -3358,6 +3491,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               identifiedByUuid: training.identifiedBy || undefined,
               dueDate: training.dueDate || undefined,
               comments: training.comments || undefined,
+              sortOrder: index,
             },
           });
         } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate)) {
@@ -3369,12 +3503,51 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               identifiedByUuid: training.identifiedBy || undefined,
               dueDate: training.dueDate || undefined,
               comments: training.comments || undefined,
+              sortOrder: index,
             },
           });
         }
       }
 
-      // Note: selectedApproverUuids are now saved directly with the B8 record (no separate approvers table needed)
+      const localB2RefIds = new Set(formData.b2References.map(r => r.id));
+      const localB3AuthIds = new Set(formData.b3Authorities.map(a => a.id));
+      const localB4CertIds = new Set(formData.b4Certs.map(c => c.id));
+      const localB5TestIds = new Set(formData.b5Tests.map(t => t.id));
+      const localB6IntIds = new Set(formData.b6Interviews.map(i => i.id));
+      const localB7TrainIds = new Set(nonEmptyB7Training.map(t => t.id));
+
+      const bItemDeletePromises: Promise<any>[] = [];
+      (screeningB2Items || []).forEach((item: any) => {
+        if (!localB2RefIds.has(item.refUuid) && item.refUuid && currentB2Uuid) {
+          bItemDeletePromises.push(deleteB2ItemMutation.mutateAsync({ refUuid: item.refUuid, b2Uuid: currentB2Uuid }));
+        }
+      });
+      (screeningB3Authorities || []).forEach((item: any) => {
+        if (!localB3AuthIds.has(item.authUuid) && item.authUuid && currentB3Uuid) {
+          bItemDeletePromises.push(deleteB3AuthorityMutation.mutateAsync({ authUuid: item.authUuid, b3Uuid: currentB3Uuid }));
+        }
+      });
+      (screeningB4CertItems || []).forEach((item: any) => {
+        if (!localB4CertIds.has(item.certUuid) && item.certUuid && currentB4Uuid) {
+          bItemDeletePromises.push(deleteB4CertItemMutation.mutateAsync({ certUuid: item.certUuid, b4Uuid: currentB4Uuid }));
+        }
+      });
+      (screeningB5TestItems || []).forEach((item: any) => {
+        if (!localB5TestIds.has(item.testUuid) && item.testUuid && currentB5Uuid) {
+          bItemDeletePromises.push(deleteB5TestItemMutation.mutateAsync({ testUuid: item.testUuid, b5Uuid: currentB5Uuid }));
+        }
+      });
+      (screeningB6InterviewItems || []).forEach((item: any) => {
+        if (!localB6IntIds.has(item.intUuid) && item.intUuid && currentB6Uuid) {
+          bItemDeletePromises.push(deleteB6InterviewItemMutation.mutateAsync({ intUuid: item.intUuid, b6Uuid: currentB6Uuid }));
+        }
+      });
+      (screeningB7TrainingItems || []).forEach((item: any) => {
+        if (!localB7TrainIds.has(item.trainItemUuid) && item.trainItemUuid && currentB7Uuid) {
+          bItemDeletePromises.push(deleteB7TrainingItemMutation.mutateAsync({ trainItemUuid: item.trainItemUuid, b7Uuid: currentB7Uuid }));
+        }
+      });
+      await Promise.all(bItemDeletePromises);
 
       // Save B1-B8 section comments using reconciliation pattern
       const currentB1Uuid = b1Result?.b1Uuid || b1Uuid;
@@ -3404,12 +3577,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             
             if (serverComment) {
               // Update if text changed
-              if (serverComment.commentText !== comment.text || serverComment.commentBy !== comment.user) {
+              if (serverComment.commentText !== comment.text || serverComment.userUuid !== comment.user) {
                 await updateMutation.mutateAsync({
                   commentUuid: comment.id,
                   data: {
                     commentText: comment.text,
-                    commentBy: comment.user,
+                    userUuid: comment.user,
                     fieldKey: fieldKey,
                   },
                 });
@@ -3420,7 +3593,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 [uuidFieldName]: sectionUuid,
                 data: {
                   commentText: comment.text,
-                  commentBy: comment.user,
+                  userUuid: comment.user,
                   fieldKey: fieldKey,
                 },
               });
@@ -3655,6 +3828,19 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           }
         }
       }
+
+      const localApprovalIds = new Set(
+        formData.c1Approvers
+          .filter(a => a.appUuid)
+          .map(a => a.appUuid)
+      );
+      const approvalDeletePromises: Promise<any>[] = [];
+      (approvalsData || []).forEach((serverApproval: any) => {
+        if (!localApprovalIds.has(serverApproval.approvalUuid) && serverApproval.id) {
+          approvalDeletePromises.push(deleteApprovalMutation.mutateAsync({ id: serverApproval.id, recCanUuid }));
+        }
+      });
+      await Promise.all(approvalDeletePromises);
 
       // Part C - Save suitability (C2)
       await saveSuitabilityMutation.mutateAsync({
@@ -3937,14 +4123,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           {/* Form Fields - Right Column */}
           <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">First Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">First Name <span className="text-red-500">*</span></Label>
               {isEditing ? (
-                <Input
-                  value={formData.firstName}
-                  onChange={(e) => updateFormData('firstName', e.target.value)}
-                  className="mt-1"
-                  data-testid="input-first-name"
-                />
+                <>
+                  <Input
+                    value={formData.firstName}
+                    onChange={(e) => { updateFormData('firstName', e.target.value); if (firstNameError && e.target.value.trim()) setFirstNameError(''); }}
+                    onBlur={() => { if (!(formData.firstName || '').trim()) setFirstNameError('First name is required.'); }}
+                    className={`mt-1 ${firstNameError ? 'border-red-500' : ''}`}
+                    data-testid="input-first-name"
+                  />
+                  {firstNameError && <p className="text-xs text-red-500 mt-1" data-testid="text-first-name-error">{firstNameError}</p>}
+                </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900" data-testid="text-first-name">{formData.firstName}</div>
               )}
@@ -4030,16 +4220,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Date of birth <span className="text-red-500">*</span></Label>
               {isEditing ? (
-                <Input
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
-                  max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()}
-                  className="mt-1"
-                  data-testid="input-dob"
-                />
+                <>
+                  <Input
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) { const err = validateDob(e.target.value); setDobError(err); } }}
+                    onBlur={() => setDobError(validateDob(formData.dateOfBirth))}
+                    max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()}
+                    className={`mt-1 ${dobError ? 'border-red-500' : ''}`}
+                    data-testid="input-dob"
+                  />
+                  {dobError && <p className="text-xs text-red-500 mt-1" data-testid="text-dob-error">{dobError}</p>}
+                </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900" data-testid="text-dob">{formData.dateOfBirth ? formatDate(formData.dateOfBirth) : ''}</div>
               )}
@@ -4251,11 +4445,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <Label className="text-xs text-gray-500 tracking-wide">Country of Residence</Label>
             {isEditing ? (
               <Select value={formData.countryOfResidence} onValueChange={(value) => {
+                const updatedMobile = applyDialingCode(value, formData.mobile);
                 setFormData(prev => ({
                   ...prev,
                   countryOfResidence: value,
-                  mobile: applyDialingCode(value, prev.mobile),
+                  mobile: updatedMobile,
                 }));
+                const err = validateMobileNumber(value, updatedMobile);
+                setMobileError(err || '');
               }}>
                 <SelectTrigger className="mt-1" data-testid="select-country-residence">
                   <SelectValue placeholder="Select country of residence" />
@@ -4305,10 +4502,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     const err = validateMobileNumber(formData.countryOfResidence, formData.mobile);
                     setMobileError(err || '');
                   }}
-                  className="mt-1"
+                  className={`mt-1 ${mobileError ? 'border-red-500' : ''}`}
                   data-testid="input-mobile"
                 />
-                {mobileError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-mobile-error">{mobileError}</p>}
+                {mobileError && <p className="text-xs text-red-500 mt-1" data-testid="text-mobile-error">{mobileError}</p>}
               </>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.mobile}</div>
@@ -4323,10 +4520,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   value={formData.email}
                   onChange={(e) => { updateFormData('email', e.target.value); if (emailError) setEmailError(validateEmail(e.target.value)); }}
                   onBlur={(e) => setEmailError(validateEmail(e.target.value.trim()))}
-                  className="mt-1"
+                  className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
                   data-testid="input-email"
                 />
-                {emailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-email-error">{emailError}</p>}
+                {emailError && <p className="text-xs text-red-500 mt-1" data-testid="text-email-error">{emailError}</p>}
               </>
             ) : (
               <div className="mt-1 text-sm text-gray-900">{formData.email}</div>
@@ -4404,7 +4601,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Marital Status</Label>
               {isEditing ? (
-                <Select value={formData.maritalStatus} onValueChange={(value) => { updateFormData('maritalStatus', value); if (value !== 'Married') setSpouseValidationError(''); }}>
+                <Select value={formData.maritalStatus} onValueChange={(value) => { updateFormData('maritalStatus', value); if (value !== 'Married') setSpouseErrors({}); }}>
                   <SelectTrigger className="mt-1" data-testid="select-marital-status">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -4462,16 +4659,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse First Name {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <>
                   <Input
                     value={formData.spouseFirstName}
-                    onChange={(e) => { updateFormData('spouseFirstName', sanitizeName(e.target.value)); if (spouseValidationError) setSpouseValidationError(''); }}
-                    className="mt-1"
+                    onChange={(e) => { updateFormData('spouseFirstName', sanitizeName(e.target.value)); if (spouseErrors.spouseFirstName && e.target.value.trim()) setSpouseErrors(prev => { const { spouseFirstName: _, ...rest } = prev; return rest; }); }}
+                    onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseFirstName || '').trim()) setSpouseErrors(prev => ({ ...prev, spouseFirstName: 'Spouse first name is required.' })); }}
+                    className={`mt-1 ${spouseErrors.spouseFirstName ? 'border-red-500' : ''}`}
                     data-testid="input-spouse-first-name"
                   />
-                  {spouseValidationError && !(formData.spouseFirstName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-first-name-error">Required</p>}
+                  {spouseErrors.spouseFirstName && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-first-name-error">{spouseErrors.spouseFirstName}</p>}
                 </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFirstName}</div>
@@ -4491,35 +4689,36 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Family Name {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <>
                   <Input
                     value={formData.spouseFamilyName}
-                    onChange={(e) => { updateFormData('spouseFamilyName', sanitizeName(e.target.value)); if (spouseValidationError) setSpouseValidationError(''); }}
-                    className="mt-1"
+                    onChange={(e) => { updateFormData('spouseFamilyName', sanitizeName(e.target.value)); if (spouseErrors.spouseFamilyName && e.target.value.trim()) setSpouseErrors(prev => { const { spouseFamilyName: _, ...rest } = prev; return rest; }); }}
+                    onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseFamilyName || '').trim()) setSpouseErrors(prev => ({ ...prev, spouseFamilyName: 'Spouse family name is required.' })); }}
+                    className={`mt-1 ${spouseErrors.spouseFamilyName ? 'border-red-500' : ''}`}
                     data-testid="input-spouse-family-name"
                   />
-                  {spouseValidationError && !(formData.spouseFamilyName || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-family-name-error">Required</p>}
+                  {spouseErrors.spouseFamilyName && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-family-name-error">{spouseErrors.spouseFamilyName}</p>}
                 </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseFamilyName}</div>
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <>
                   <Input
                     type="date"
                     value={formData.spouseDateOfBirth}
-                    onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseValidationError) setSpouseValidationError(''); }}
+                    onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseErrors.spouseDateOfBirth) setSpouseErrors(prev => { const { spouseDateOfBirth: _, ...rest } = prev; return rest; }); }}
+                    onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseDateOfBirth || '').trim()) setSpouseErrors(prev => ({ ...prev, spouseDateOfBirth: 'Spouse date of birth is required.' })); }}
                     max={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()}
-                    className="mt-1"
+                    className={`mt-1 ${spouseErrors.spouseDateOfBirth ? 'border-red-500' : ''}`}
                     data-testid="input-spouse-dob"
                   />
-                  {spouseValidationError && !(formData.spouseDateOfBirth || '').trim() && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-dob-error">Required</p>}
-                  {spouseValidationError && spouseValidationError.includes('future') && <p className="text-xs text-muted-foreground mt-1" data-testid="text-spouse-dob-future-error">Spouse Date of Birth cannot be a future date.</p>}
+                  {spouseErrors.spouseDateOfBirth && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-dob-error">{spouseErrors.spouseDateOfBirth}</p>}
                 </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth ? formatDate(formData.spouseDateOfBirth) : ''}</div>
@@ -4648,8 +4847,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Email</Label>
               {isEditing ? (
                 <>
-                  <Input type="email" value={formData.nokEmail} onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(validateEmail(e.target.value)); }} onBlur={(e) => setNokEmailError(validateEmail(e.target.value.trim()))} className="mt-1" data-testid="input-nok-email" />
-                  {nokEmailError && <p className="text-xs text-muted-foreground mt-1" data-testid="text-nok-email-error">{nokEmailError}</p>}
+                  <Input type="email" value={formData.nokEmail} onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(validateEmail(e.target.value)); }} onBlur={(e) => setNokEmailError(validateEmail(e.target.value.trim()))} className={`mt-1 ${nokEmailError ? 'border-red-500' : ''}`} data-testid="input-nok-email" />
+                  {nokEmailError && <p className="text-xs text-red-500 mt-1" data-testid="text-nok-email-error">{nokEmailError}</p>}
                 </>
               ) : (
                 <div className="mt-1 text-sm text-gray-900">{formData.nokEmail}</div>
@@ -4704,7 +4903,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Document <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Number</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
@@ -4719,17 +4918,24 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {doc.documentId ? (
                     <span className="text-[13px] text-gray-900">{doc.document}</span>
                   ) : (
-                    <Input value={doc.document} onChange={(e) => updateDocument(doc.id, 'document', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                    <>
+                      <Input value={doc.document} onChange={(e) => { updateDocument(doc.id, 'document', e.target.value); if (docDateErrors[doc.id]?.document && e.target.value.trim()) setDocDateErrors(prev => { const n = { ...prev }; if (n[doc.id]) { const { document: _, ...rest } = n[doc.id]; n[doc.id] = rest; } return n; }); }}
+                        onBlur={() => { if (!(doc.document || '').trim()) setDocDateErrors(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], document: 'Document type is required.' } })); }}
+                        className={`text-[13px] border ${docDateErrors[doc.id]?.document ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                      {docDateErrors[doc.id]?.document && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].document}</p>}
+                    </>
                   )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={doc.number} onChange={(e) => updateDocument(doc.id, 'number', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={doc.issued} onChange={(e) => updateDocument(doc.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={doc.issued} onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, doc.expiry); setDocDateErrors(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], ...(errs.issued ? { issued: errs.issued } : {}), ...(!errs.issued ? (() => { const n = { ...prev[doc.id] }; delete n.issued; return n; })() : {}) } })); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${docDateErrors[doc.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {docDateErrors[doc.id]?.issued && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={doc.expiry} onChange={(e) => updateDocument(doc.id, 'expiry', e.target.value)} min={doc.issued || undefined} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={doc.expiry} onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); const errs = validateRowDates(doc.issued, e.target.value); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} min={doc.issued || undefined} className={`text-[13px] border ${docDateErrors[doc.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {docDateErrors[doc.id]?.expiry && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={doc.issuingAuthority} onChange={(e) => updateDocument(doc.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -4773,7 +4979,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Serial No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
@@ -4788,17 +4994,24 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {visa.countryId ? (
                     <span className="text-[13px] text-gray-900">{visa.issuingCountry}</span>
                   ) : (
-                    <Input value={visa.issuingCountry} onChange={(e) => updateVisa(visa.id, 'issuingCountry', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                    <>
+                      <Input value={visa.issuingCountry} onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaDateErrors[visa.id]?.issuingCountry && e.target.value.trim()) setVisaDateErrors(prev => { const n = { ...prev }; if (n[visa.id]) { const { issuingCountry: _, ...rest } = n[visa.id]; n[visa.id] = rest; } return n; }); }}
+                        onBlur={() => { if (!(visa.issuingCountry || '').trim()) setVisaDateErrors(prev => ({ ...prev, [visa.id]: { ...prev[visa.id], issuingCountry: 'Issuing country is required.' } })); }}
+                        className={`text-[13px] border ${visaDateErrors[visa.id]?.issuingCountry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                      {visaDateErrors[visa.id]?.issuingCountry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issuingCountry}</p>}
+                    </>
                   )}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={visa.serialNo} onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={visa.issued} onChange={(e) => updateVisa(visa.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={visa.issued} onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${visaDateErrors[visa.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {visaDateErrors[visa.id]?.issued && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={visa.expiry} onChange={(e) => updateVisa(visa.id, 'expiry', e.target.value)} min={visa.issued || undefined} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={visa.expiry} onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); const errs = validateRowDates(visa.issued, e.target.value); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} min={visa.issued || undefined} className={`text-[13px] border ${visaDateErrors[visa.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {visaDateErrors[visa.id]?.expiry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={visa.visaType} onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -4837,7 +5050,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Qualifications <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Subjects/Field</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">School/College/University</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Date of Completion</TableHead>
@@ -4848,7 +5061,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.education.map((edu) => (
               <TableRow key={edu.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input value={edu.qualifications} onChange={(e) => updateEducation(edu.id, 'qualifications', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={edu.qualifications} onChange={(e) => { updateEducation(edu.id, 'qualifications', e.target.value); if (eduRequiredErrors[edu.id]?.qualifications && e.target.value.trim()) setEduRequiredErrors(prev => { const n = { ...prev }; if (n[edu.id]) { const { qualifications: _, ...rest } = n[edu.id]; n[edu.id] = rest; } return n; }); }}
+                    onBlur={() => { if (!(edu.qualifications || '').trim()) setEduRequiredErrors(prev => ({ ...prev, [edu.id]: { ...prev[edu.id], qualifications: 'Qualification is required.' } })); }}
+                    className={`text-[13px] border ${eduRequiredErrors[edu.id]?.qualifications ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {eduRequiredErrors[edu.id]?.qualifications && <p className="text-xs text-red-500 mt-1">{eduRequiredErrors[edu.id].qualifications}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={edu.subjectsField} onChange={(e) => updateEducation(edu.id, 'subjectsField', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -4899,7 +5115,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/Document</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate/Document <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
@@ -4912,12 +5128,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableBody>
             {formData.licenses.map((lic) => (
               <TableRow key={lic.id} className="border-b border-gray-200">
-                <TableCell className="p-3 text-[13px]">{lic.licenseId || lic.id}</TableCell>
+                <TableCell className="p-3 text-[13px]">{lic.licenseId || '-'}</TableCell>
                 <TableCell className="p-3">
                   {lic.fromDatabase ? (
                     <span className="text-[13px] text-gray-900">{lic.certificateDocument}</span>
                   ) : (
-                    <Input value={lic.certificateDocument} onChange={(e) => updateLicense(lic.id, 'certificateDocument', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                    <>
+                      <Input value={lic.certificateDocument} onChange={(e) => { updateLicense(lic.id, 'certificateDocument', e.target.value); if (licDateErrors[lic.id]?.certificateDocument && e.target.value.trim()) setLicDateErrors(prev => { const n = { ...prev }; if (n[lic.id]) { const { certificateDocument: _, ...rest } = n[lic.id]; n[lic.id] = rest; } return n; }); }}
+                        onBlur={() => { if (!(lic.certificateDocument || '').trim()) setLicDateErrors(prev => ({ ...prev, [lic.id]: { ...prev[lic.id], certificateDocument: 'Certificate/Document is required.' } })); }}
+                        className={`text-[13px] border ${licDateErrors[lic.id]?.certificateDocument ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                      {licDateErrors[lic.id]?.certificateDocument && <p className="text-xs text-red-500 mt-1">{licDateErrors[lic.id].certificateDocument}</p>}
+                    </>
                   )}
                 </TableCell>
                 <TableCell className="p-3">
@@ -4941,10 +5162,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={lic.issuingAuthority} onChange={(e) => updateLicense(lic.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={lic.issued} onChange={(e) => updateLicense(lic.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={lic.issued} onChange={(e) => { updateLicense(lic.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${licDateErrors[lic.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {licDateErrors[lic.id]?.issued && <p className="text-xs text-red-500 mt-1">{licDateErrors[lic.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={lic.expiry} onChange={(e) => updateLicense(lic.id, 'expiry', e.target.value)} min={lic.issued || undefined} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={lic.expiry} onChange={(e) => { updateLicense(lic.id, 'expiry', e.target.value); const errs = validateRowDates(lic.issued, e.target.value); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} min={lic.issued || undefined} className={`text-[13px] border ${licDateErrors[lic.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {licDateErrors[lic.id]?.expiry && <p className="text-xs text-red-500 mt-1">{licDateErrors[lic.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -4986,7 +5209,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/Course</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/Course <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
@@ -4999,12 +5222,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableBody>
             {formData.trainingCourses.map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
-                <TableCell className="p-3 text-[13px]">{course.courseId || course.id}</TableCell>
+                <TableCell className="p-3 text-[13px]">{course.courseId || '-'}</TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
                     <span className="text-[13px] text-gray-900">{course.trainingCourse}</span>
                   ) : (
-                    <Input value={course.trainingCourse} onChange={(e) => updateTrainingCourse(course.id, 'trainingCourse', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                    <>
+                      <Input value={course.trainingCourse} onChange={(e) => { updateTrainingCourse(course.id, 'trainingCourse', e.target.value); if (trainingDateErrors[course.id]?.trainingCourse && e.target.value.trim()) setTrainingDateErrors(prev => { const n = { ...prev }; if (n[course.id]) { const { trainingCourse: _, ...rest } = n[course.id]; n[course.id] = rest; } return n; }); }}
+                        onBlur={() => { if (!(course.trainingCourse || '').trim()) setTrainingDateErrors(prev => ({ ...prev, [course.id]: { ...prev[course.id], trainingCourse: 'Training course is required.' } })); }}
+                        className={`text-[13px] border ${trainingDateErrors[course.id]?.trainingCourse ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                      {trainingDateErrors[course.id]?.trainingCourse && <p className="text-xs text-red-500 mt-1">{trainingDateErrors[course.id].trainingCourse}</p>}
+                    </>
                   )}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5028,10 +5256,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={course.issuingAuthority} onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={course.issued} onChange={(e) => updateTrainingCourse(course.id, 'issued', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={course.issued} onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${trainingDateErrors[course.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {trainingDateErrors[course.id]?.issued && <p className="text-xs text-red-500 mt-1">{trainingDateErrors[course.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={course.expiry} onChange={(e) => updateTrainingCourse(course.id, 'expiry', e.target.value)} min={course.issued || undefined} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={course.expiry} onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); const errs = validateRowDates(course.issued, e.target.value); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} min={course.issued || undefined} className={`text-[13px] border ${trainingDateErrors[course.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {trainingDateErrors[course.id]?.expiry && <p className="text-xs text-red-500 mt-1">{trainingDateErrors[course.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -5067,14 +5297,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-40">Vessel Name</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-40">Vessel Name <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">Vessel Type</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Deadweight</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Engine Type/Power</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Owner/Operator</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Rank</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">From</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">To</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">From <span className="text-red-500">*</span></TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">To <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-16">Period(M)</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Actions</TableHead>
             </TableRow>
@@ -5083,7 +5313,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.seaService.map((service) => (
               <TableRow key={service.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input value={service.vesselName} onChange={(e) => updateSeaService(service.id, 'vesselName', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" placeholder="Enter vessel name" />
+                  <Input value={service.vesselName} onChange={(e) => { updateSeaService(service.id, 'vesselName', e.target.value); if (seaRequiredErrors[service.id]?.vesselName && e.target.value.trim()) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
+                    onBlur={() => { if (!(service.vesselName || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], vesselName: 'Vessel name is required.' } })); }}
+                    className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} placeholder="Enter vessel name" />
+                  {seaRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselName}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Select value={service.vesselType} onValueChange={(value) => updateSeaService(service.id, 'vesselType', value)}>
@@ -5123,11 +5356,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </Select>
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={service.from} onChange={(e) => updateSeaService(service.id, 'from', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input type="date" value={service.from} onChange={(e) => { updateSeaService(service.id, 'from', e.target.value); if (seaRequiredErrors[service.id]?.from && e.target.value) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
+                    onBlur={() => { if (!(service.from || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], from: 'From date is required.' } })); }}
+                    className={`text-[13px] border ${seaRequiredErrors[service.id]?.from ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {seaRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].from}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={service.to} onChange={(e) => updateSeaService(service.id, 'to', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
-                  {seaServiceDateErrors[service.id] && <p className="text-xs text-muted-foreground mt-1" data-testid={`text-sea-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
+                  <Input type="date" value={service.to} onChange={(e) => { updateSeaService(service.id, 'to', e.target.value); if (e.target.value) { const errs = { ...seaRequiredErrors[service.id] }; delete errs.to; if (service.from && e.target.value < service.from) errs.to = 'To date cannot be earlier than from date.'; setSeaRequiredErrors(prev => ({ ...prev, [service.id]: errs })); } }} onBlur={() => { if (!(service.to || '').trim()) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date is required.' } })); } else if (service.from && service.to < service.from) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date cannot be earlier than from date.' } })); } }}
+                    className={`text-[13px] border ${(seaRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  {seaRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-${service.id}`}>{seaRequiredErrors[service.id].to}</p>}
+                  {!seaRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-legacy-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={service.periodMonths} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-gray-50 cursor-not-allowed" title="Auto-calculated" />
@@ -5538,7 +5776,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         type="button"
                         size="sm"
                         className="bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => handleSaveScreening()}
+                        onClick={() => {
+                          const currentDate = new Date().toLocaleDateString();
+                          setFormData(prev => ({ ...prev, b1SubmittedBy: currentUserDisplay, b1SubmittedDate: currentDate }));
+                          handleSaveScreening(false, false, { b1SubmittedBy: currentUserDisplay, b1SubmittedDate: currentDate });
+                        }}
                         data-testid="button-b1-submit"
                       >
                         Submit
@@ -6013,7 +6255,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate });
                           }}
                           data-testid="button-b2-submit"
                         >
@@ -6470,7 +6712,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate });
                           }}
                           data-testid="button-b3-submit"
                         >
@@ -6948,7 +7190,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate });
                           }}
                           data-testid="button-b4-submit"
                         >
@@ -7306,7 +7548,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate });
                           }}
                           data-testid="button-b5-submit"
                         >
@@ -7725,7 +7967,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate });
                           }}
                           data-testid="button-b6-submit"
                         >
@@ -7928,7 +8170,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate });
                           }}
                           data-testid="button-b7-submit"
                         >
@@ -8133,7 +8375,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           onClick={() => {
                             const currentDate = new Date().toLocaleDateString();
                             setFormData(prev => ({ ...prev, b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate }));
-                            setTimeout(() => handleSaveScreening(), 100);
+                            handleSaveScreening(false, false, { b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate });
                           }}
                           data-testid="button-b8-submit"
                         >

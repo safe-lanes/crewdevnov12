@@ -319,7 +319,7 @@ export default function HeaderComponent({
                                 return (
                                     <Link key={href} href={href}>
                                         <div
-                                            className="flex flex-col items-center justify-center w-[100px] h-full border-r border-gray-300 cursor-pointer hover:bg-gray-300"
+                                            className="flex flex-col items-center justify-center w-[100px] h-full cursor-pointer hover:bg-gray-300"
                                             style={{
                                                 backgroundColor: isActive ? activeBg : inactiveBg,
                                             }}
@@ -347,7 +347,7 @@ export default function HeaderComponent({
                                 return (
                                     <Link key={href} href={href}>
                                         <div
-                                            className="flex flex-col items-center justify-center w-[80px] lg:w-[90px] h-full border-r border-gray-300 cursor-pointer hover:bg-gray-300 flex-shrink-0"
+                                            className="flex flex-col items-center justify-center w-[80px] lg:w-[90px] h-full cursor-pointer hover:bg-gray-300 flex-shrink-0"
                                             style={{
                                                 backgroundColor: isActive ? activeBg : inactiveBg,
                                             }}
