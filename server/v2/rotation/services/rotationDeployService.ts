@@ -137,7 +137,9 @@ export const rotationDeployService = {
         createdByUuid: effectiveAuditUser,
       });
 
-      // Set any existing current assignments for this crew to false
+      // Set any existing Planned assignments for this crew to false
+      // NOTE: Do NOT deactivate OnBoard assignments - crew is still on board their current vessel
+      // until they are explicitly signed off. Only deactivate Planned assignments.
       await db
         .update(crewAssignments)
         .set({ 
@@ -147,7 +149,8 @@ export const rotationDeployService = {
         .where(
           and(
             eq(crewAssignments.crewUuid, entry.crewUuid),
-            eq(crewAssignments.isCurrent, true)
+            eq(crewAssignments.isCurrent, true),
+            eq(crewAssignments.assignmentType, "Planned")
           )
         );
 
