@@ -2462,6 +2462,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       if (isVisaBlankLocal(visa)) return;
       const rowErrs: Record<string, string> = {};
       if (!(visa.issuingCountry || '').trim()) rowErrs.issuingCountry = 'Issuing country is required.';
+      if (!(visa.visaType || '').trim()) rowErrs.visaType = 'Visa type is required.';
       const dateErrs = validateRowDates(visa.issued, visa.expiry);
       if (dateErrs.issued) rowErrs.issued = dateErrs.issued;
       if (dateErrs.expiry) rowErrs.expiry = dateErrs.expiry;
@@ -5014,7 +5015,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {visaDateErrors[visa.id]?.expiry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={visa.visaType} onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={visa.visaType} onChange={(e) => { updateVisa(visa.id, 'visaType', e.target.value); if (visaDateErrors[visa.id]?.visaType && e.target.value.trim()) setVisaDateErrors(prev => { const n = { ...prev }; if (n[visa.id]) { const { visaType: _, ...rest } = n[visa.id]; n[visa.id] = rest; } return n; }); }}
+                        onBlur={() => { if (!(visa.visaType || '').trim()) setVisaDateErrors(prev => ({ ...prev, [visa.id]: { ...prev[visa.id], visaType: 'Visa type is required.' } })); }}
+                        className={`text-[13px] border ${visaDateErrors[visa.id]?.visaType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                      {visaDateErrors[visa.id]?.visaType && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].visaType}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
