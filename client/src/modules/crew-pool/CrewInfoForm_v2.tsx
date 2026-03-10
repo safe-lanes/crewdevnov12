@@ -5032,7 +5032,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             type="date"
                             value={service.from}
                             onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
-                            onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
+                            onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, from: e.target.value }); }}
                             className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                           />
                         )}
@@ -5072,7 +5072,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                 type="date"
                                 value={service.to}
                                 onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
-                                onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
+                                onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, to: e.target.value }); }}
                                 className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                                 data-testid={`input-date-to-${service.id}`}
                               />
@@ -5345,7 +5345,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.from}
                           onChange={(e) => updateExternalSeaService(service.id, 'from', e.target.value)}
-                          onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
+                          onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, from: e.target.value }); }}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                       </td>
@@ -5354,7 +5354,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           type="date"
                           value={service.to}
                           onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
-                          onBlur={() => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, service); }}
+                          onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, to: e.target.value }); }}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                         />
                         {seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
