@@ -3476,16 +3476,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
 
       const isB7Blank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
-      const b7MandatoryErrors: string[] = [];
-      formData.b7TrainingNeeds.forEach((t, i) => { if (!isB7Blank(t) && !(t.training || '').trim()) b7MandatoryErrors.push(`Training Needs Row ${i + 1}: 'Training' is required to save this row.`); });
-      if (b7MandatoryErrors.length > 0) {
-        toast({
-          title: "Validation Error",
-          description: b7MandatoryErrors.join('\n'),
-          variant: "destructive",
-        });
-        return;
-      }
       const nonEmptyB7Training = formData.b7TrainingNeeds.filter(t => !isB7Blank(t));
       if (nonEmptyB7Training.length !== formData.b7TrainingNeeds.length) {
         setFormData(prev => ({ ...prev, b7TrainingNeeds: nonEmptyB7Training }));
@@ -3507,7 +3497,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               sortOrder: index,
             },
           });
-        } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate)) {
+        } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate || training.comments)) {
           await createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {
