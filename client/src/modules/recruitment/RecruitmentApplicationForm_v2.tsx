@@ -919,6 +919,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  const existingB7CourseIds = useMemo(() => {
+    const nameToCompanyId = new Map<string, string>();
+    adminCompanyTrainings.forEach(ct => {
+      if (ct.trainingLabel && ct.companyId) nameToCompanyId.set(ct.trainingLabel, ct.companyId);
+    });
+    return formData.b7TrainingNeeds
+      .map(t => nameToCompanyId.get(t.training || ''))
+      .filter((id): id is string => Boolean(id));
+  }, [adminCompanyTrainings, formData.b7TrainingNeeds]);
+
   const countryMasterData: string[] = useMemo(() => {
     const countries = (externalCountriesData as any)?.countries || externalCountriesData || [];
     if (countries.length > 0) {
@@ -8999,15 +9009,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         open={isB7TrainingDialogOpen}
         onClose={() => setIsB7TrainingDialogOpen(false)}
         onConfirm={addB7TrainingFromDatabase}
-        existingCourseIds={(() => {
-          const nameToCompanyId = new Map<string, string>();
-          adminCompanyTrainings.forEach(ct => {
-            if (ct.trainingLabel && ct.companyId) nameToCompanyId.set(ct.trainingLabel, ct.companyId);
-          });
-          return formData.b7TrainingNeeds
-            .map(t => nameToCompanyId.get(t.training || ''))
-            .filter((id): id is string => Boolean(id));
-        })()}
+        existingCourseIds={existingB7CourseIds}
       />
       
       <TravelDocumentSelectionDialog
