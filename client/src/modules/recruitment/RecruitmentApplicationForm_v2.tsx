@@ -3890,7 +3890,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   description: `Candidate transferred to Crew Pool with Employee No: ${transferResult.data.empNo}`,
                 });
               } else if (transferResult.error?.includes('already been transferred')) {
-                // Already transferred, no need to show error
+                toast({
+                  title: "Crew Pool",
+                  description: "This candidate has already been transferred to the Crew Pool.",
+                });
               } else if (transferResult.error) {
                 console.error('Transfer error:', transferResult.error);
               }
