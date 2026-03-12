@@ -4412,7 +4412,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <SelectContent className="max-h-[200px]">
                     {manningAgentOptions.map((agent: any) => (
                       <SelectItem key={agent.id} value={agent.name}>
-                        {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                        {agent.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -24,7 +24,7 @@ import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useNationalitiesV2, useVesselsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useVesselsV2, useCrewPoolsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { useCrewListV2, useDeleteCrewV2 } from './hooks/useCrewPoolV2';
 
 const formatCompactDate = (value: any): string => {
@@ -126,6 +126,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     // Fetch Crew Pool master data from V2 dedicated table
     const { data: crewPoolMasterData = [], isLoading: poolLoading } = useCrewPoolsV2();
 
+    const { data: manningAgentsData } = useManningAgentsV2();
+
     // Fetch crew members from V2 API (returns legacy-formatted data via mapper)
     const { data: rawCrewData = [], isLoading: isCrewLoading, error: crewError } = useCrewListV2();
 
@@ -188,9 +190,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     }, [rawCrewData, normalizeRank, filters]);
 
     const manningAgentOptions = useMemo(() => {
-        if (!rawCrewData || rawCrewData.length === 0) return [];
-        return [...new Set(rawCrewData.map((c: any) => c.manningAgent).filter(Boolean))].sort() as string[];
-    }, [rawCrewData]);
+        if (!manningAgentsData || (manningAgentsData as any[]).length === 0) return [];
+        return (manningAgentsData as any[])
+            .filter((a: any) => a.name && !a.isDeleted)
+            .map((a: any) => a.name)
+            .sort() as string[];
+    }, [manningAgentsData]);
 
     // Actions cell renderer for edit button
     const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {

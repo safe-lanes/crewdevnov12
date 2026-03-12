@@ -21,7 +21,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useNationalitiesV2, useVesselTypesV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useVesselTypesV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { useV2Candidates, useV2DeleteCandidate } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
@@ -76,6 +76,8 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   }, [externalVesselTypesData]);
 
   const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
+
+  const { data: manningAgentsData } = useManningAgentsV2();
 
   const nationalityMasterData = useMemo(() => {
     const nationalities = (externalNationalitiesData as any)?.nationalities || externalNationalitiesData || [];
@@ -415,9 +417,12 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   }, [allCandidates, selectedRecruitmentPage, filters, normalizeRank, nationalityLookup, vesselTypeLookup]);
 
   const manningAgentOptions = useMemo(() => {
-    if (!allCandidates || allCandidates.length === 0) return [];
-    return [...new Set(allCandidates.map((c: any) => c.manningAgent).filter(Boolean))].sort() as string[];
-  }, [allCandidates]);
+    if (!manningAgentsData || (manningAgentsData as any[]).length === 0) return [];
+    return (manningAgentsData as any[])
+        .filter((a: any) => a.name && !a.isDeleted)
+        .map((a: any) => a.name)
+        .sort() as string[];
+  }, [manningAgentsData]);
 
   const getTitle = () => {
     switch (selectedRecruitmentPage) {
