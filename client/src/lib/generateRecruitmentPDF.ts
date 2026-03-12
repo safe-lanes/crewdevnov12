@@ -199,8 +199,13 @@ function formatDate(dateStr: string | undefined): string {
   }
 }
 
+function sanitizeText(text: string): string {
+  return text.replace(/[\t\n\r]/g, ' ').replace(/[\x00-\x1F]/g, '');
+}
+
 function displayValue(value: string | undefined | null): string {
-  return value && value.trim() ? value : '-';
+  if (!value || !value.trim()) return '-';
+  return sanitizeText(value);
 }
 
 class PDFBuilder {
@@ -259,7 +264,7 @@ class PDFBuilder {
 
   drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
-    this.currentPage.drawText(text || '', {
+    this.currentPage.drawText(sanitizeText(text || ''), {
       x,
       y: this.yPosition,
       size: fontSize,
@@ -270,7 +275,7 @@ class PDFBuilder {
 
   drawTextAt(text: string, x: number, y: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
-    this.currentPage.drawText(text || '', {
+    this.currentPage.drawText(sanitizeText(text || ''), {
       x,
       y,
       size: fontSize,
@@ -518,7 +523,7 @@ class PDFBuilder {
     this.moveDown(12);
     
     const maxWidth = CONTENT_WIDTH - 40;
-    const words = text.split(' ');
+    const words = sanitizeText(text).split(' ');
     let line = '';
     
     for (const word of words) {
