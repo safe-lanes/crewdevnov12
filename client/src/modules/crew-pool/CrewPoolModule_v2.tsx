@@ -24,7 +24,7 @@ import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useNationalitiesV2, useVesselsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useVesselsV2, useCrewPoolsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { useCrewListV2, useDeleteCrewV2 } from './hooks/useCrewPoolV2';
 
 const formatCompactDate = (value: any): string => {
@@ -119,11 +119,13 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         nationality: "",
         status: "",
         reliefDue: "",
-        pool: ""
+        pool: "",
+        manningAgent: ""
     });
     
     // Fetch Crew Pool master data from V2 dedicated table
     const { data: crewPoolMasterData = [], isLoading: poolLoading } = useCrewPoolsV2();
+    const { data: manningAgentsData = [] } = useManningAgentsV2();
 
     // Fetch crew members from V2 API (returns legacy-formatted data via mapper)
     const { data: rawCrewData = [], isLoading: isCrewLoading, error: crewError } = useCrewListV2();
@@ -161,6 +163,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 matchesStatus = crew.status === filters.status;
             }
             const matchesPool = filters.pool === "" || crew.crewPool === filters.pool || crew.crew_pool === filters.pool;
+            const matchesManningAgent = filters.manningAgent === "" || crew.manningAgent === filters.manningAgent;
             
             // Relief due filter logic
             let matchesReliefDue = true;
@@ -181,7 +184,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 }
             }
             
-            return matchesName && matchesVessel && matchesRank && matchesNationality && matchesStatus && matchesReliefDue && matchesPool;
+            return matchesName && matchesVessel && matchesRank && matchesNationality && matchesStatus && matchesReliefDue && matchesPool && matchesManningAgent;
         });
     }, [rawCrewData, normalizeRank, filters]);
 
@@ -666,6 +669,21 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                     </Select>
                                 </div>
 
+                                <div className="min-w-[120px]">
+                                    <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent">
+                                            <SelectValue placeholder="Manning Agent" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {manningAgentsData.map((agent: any) => (
+                                                <SelectItem key={agent.id} value={agent.name} data-testid={`manning-agent-option-${agent.id}`}>
+                                                    {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
                                 <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] px-4 shrink-0" data-testid="button-apply">
                                     Apply
                                 </Button>
@@ -673,7 +691,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                 <Button 
                                     variant="outline" 
                                     className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
-                                    onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "" })}
+                                    onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "", manningAgent: "" })}
                                     data-testid="button-clear"
                                 >
                                     Clear
@@ -776,6 +794,21 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                     </Select>
                                 </div>
 
+                                <div>
+                                    <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent">
+                                            <SelectValue placeholder="Manning Agent" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {manningAgentsData.map((agent: any) => (
+                                                <SelectItem key={agent.id} value={agent.name} data-testid={`manning-agent-option-${agent.id}`}>
+                                                    {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
                                 <div className="flex gap-2">
                                     <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] w-20" data-testid="button-apply">
                                         Apply
@@ -783,7 +816,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                     <Button 
                                         variant="outline" 
                                         className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] w-16"
-                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "" })}
+                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "", manningAgent: "" })}
                                         data-testid="button-clear"
                                     >
                                         Clear
@@ -887,6 +920,21 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                     </Select>
                                 </div>
 
+                                <div>
+                                    <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent">
+                                            <SelectValue placeholder="Manning Agent" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {manningAgentsData.map((agent: any) => (
+                                                <SelectItem key={agent.id} value={agent.name} data-testid={`manning-agent-option-${agent.id}`}>
+                                                    {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
                                 <div className="flex gap-2">
                                     <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] flex-1" data-testid="button-apply">
                                         Apply
@@ -894,7 +942,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                     <Button 
                                         variant="outline" 
                                         className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] flex-1"
-                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "" })}
+                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "", manningAgent: "" })}
                                         data-testid="button-clear"
                                     >
                                         Clear

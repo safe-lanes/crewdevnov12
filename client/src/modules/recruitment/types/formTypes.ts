@@ -453,6 +453,7 @@ export interface V2CandidateListItem {
   presentRank: string;
   rankAppliedFor: string;
   status: string;
+  manningAgent: string;
   createdAt: string;
   updatedAt: string;
 }

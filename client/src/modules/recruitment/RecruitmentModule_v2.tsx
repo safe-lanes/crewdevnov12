@@ -21,7 +21,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useNationalitiesV2, useVesselTypesV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useVesselTypesV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { useV2Candidates, useV2DeleteCandidate } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
@@ -106,9 +106,11 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     rankAppliedFor: "",
     vesselType: "",
     nationality: "",
-    status: ""
+    status: "",
+    manningAgent: ""
   });
 
+  const { data: manningAgentsData = [] } = useManningAgentsV2();
   const { data: allCandidates = [], isLoading, error, refetch } = useV2Candidates();
 
   const deleteMutation = useV2DeleteCandidate();
@@ -399,8 +401,9 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
       const matchesVesselType = filters.vesselType === "" || vesselTypeDisplay === filters.vesselType;
       const matchesNationality = filters.nationality === "" || nationalityDisplay === filters.nationality;
       const matchesStatus = filters.status === "" || candidate.status === filters.status;
+      const matchesManningAgent = filters.manningAgent === "" || candidate.manningAgent === filters.manningAgent;
       
-      return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesStatus;
+      return matchesName && matchesRank && matchesVesselType && matchesNationality && matchesStatus && matchesManningAgent;
     });
     
     return filtered.map(candidate => ({
@@ -525,6 +528,21 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                   </Select>
                 </div>
 
+                <div className="min-w-[120px]">
+                  <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent-filter-v2">
+                      <SelectValue placeholder="Manning Agent" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {manningAgentsData.map((agent: any) => (
+                        <SelectItem key={agent.id} value={agent.name} data-testid={`manning-agent-option-${agent.id}`}>
+                          {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] px-4 shrink-0" data-testid="button-apply-filters-v2">
                   Apply
                 </Button>
@@ -532,7 +550,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                 <Button 
                   variant="outline" 
                   className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
-                  onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+                  onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "", manningAgent: "" })}
                   data-testid="button-clear-filters-v2"
                 >
                   Clear
@@ -604,6 +622,19 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                       {getStatusOptions()}
                     </SelectContent>
                   </Select>
+
+                  <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent-filter-v2">
+                      <SelectValue placeholder="Manning Agent" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {manningAgentsData.map((agent: any) => (
+                        <SelectItem key={agent.id} value={agent.name} data-testid={`manning-agent-option-${agent.id}`}>
+                          {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="flex gap-2">
@@ -613,7 +644,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                   <Button 
                     variant="outline" 
                     className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3"
-                    onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+                    onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "", manningAgent: "" })}
                     data-testid="button-clear-filters-v2"
                   >
                     Clear
@@ -656,6 +687,19 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                       {getStatusOptions()}
                     </SelectContent>
                   </Select>
+
+                  <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                    <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent-filter-v2">
+                      <SelectValue placeholder="Manning Agent" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {manningAgentsData.map((agent: any) => (
+                        <SelectItem key={agent.id} value={agent.name} data-testid={`manning-agent-option-${agent.id}`}>
+                          {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="flex gap-2">
@@ -665,7 +709,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                   <Button 
                     variant="outline" 
                     className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3"
-                    onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "" })}
+                    onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "", manningAgent: "" })}
                     data-testid="button-clear-filters-v2"
                   >
                     Clear

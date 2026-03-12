@@ -26,6 +26,7 @@ export interface LegacyCrewMember {
   contractPeriodMonths: string;
   assignmentReason: string;
   reason: string;
+  manningAgent?: string;
 }
 
 function calculateAge(dob: string): string {
@@ -71,6 +72,7 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     contractPeriodMonths: v2Crew.contractPeriodMonths || v2Crew.contractPeriod || '',
     assignmentReason: v2Crew.assignmentReason || '',
     reason: v2Crew.reason || '',
+    manningAgent: v2Crew.manningAgentName || v2Crew.manningAgent || '',
   };
 }
 

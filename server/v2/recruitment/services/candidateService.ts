@@ -24,6 +24,7 @@ import {
   masterPorts,
   masterFleetGroups,
   masterVessels,
+  masterManningAgents,
 } from "../../../../shared/schema";
 
 import type {
@@ -56,6 +57,7 @@ function applyAuditUser<T extends object>(data: T): T & { createdByUuid: string 
 export interface CandidateListItem extends RecruitmentCandidate {
   nationality: string;
   vesselType: string;
+  manningAgent: string;
 }
 
 export class CandidateService {
@@ -294,11 +296,20 @@ export class CandidateService {
 
         // Resolved master data (ACTUAL NAMES, NOT UUIDs)
         nationalityName: masterNationalities.nationality,
+        manningAgentName: masterManningAgents.name,
 
         // Vessel type UUID (will be resolved in next step)
         vesselTypeUuid: candVesselTypesApplied.vesselTypeUuid,
       })
       .from(recruitmentCandidatesV2)
+      .leftJoin(
+        candPersonalDetails,
+        eq(recruitmentCandidatesV2.recCanUuid, candPersonalDetails.recCanUuid)
+      )
+      .leftJoin(
+        masterManningAgents,
+        sql`${candPersonalDetails.manningAgent} = ${masterManningAgents.id}::text`
+      )
       .leftJoin(
         masterNationalities,
         eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid)
@@ -317,13 +328,14 @@ export class CandidateService {
     const candidateMap = new Map<string, CandidateListItem>();
 
     for (const row of candidatesWithMasterData) {
-      const { nationalityName, vesselTypeUuid, ...candidateData } = row;
+      const { nationalityName, manningAgentName, vesselTypeUuid, ...candidateData } = row;
 
       if (!candidateMap.has(row.recCanUuid)) {
         // First time seeing this candidate
         candidateMap.set(row.recCanUuid, {
           ...candidateData,
           nationality: nationalityName || row.nationalityUuid || '',
+          manningAgent: manningAgentName || '',
           vesselType: '',
         });
       }
