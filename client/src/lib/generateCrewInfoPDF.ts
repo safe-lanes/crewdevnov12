@@ -401,7 +401,16 @@ class PDFBuilder {
     for (const field of fields) {
       if (field.label) {
         this.drawTextAt(field.label, x, this.yPosition, 8, 'normal', LABEL_COLOR);
-        this.drawTextAt(displayValue(field.value), x, this.yPosition - 12, 9, 'normal');
+        const maxWidth = colWidth - 6;
+        let val = displayValue(field.value);
+        const textWidth = this.font.widthOfTextAtSize(val, 9);
+        if (textWidth > maxWidth && val.length > 3) {
+          while (val.length > 3 && this.font.widthOfTextAtSize(val + '...', 9) > maxWidth) {
+            val = val.slice(0, -1);
+          }
+          val += '...';
+        }
+        this.drawTextAt(val, x, this.yPosition - 12, 9, 'normal');
       }
       x += colWidth;
     }
