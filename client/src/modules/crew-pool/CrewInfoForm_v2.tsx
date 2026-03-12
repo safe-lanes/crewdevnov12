@@ -558,8 +558,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     itemName: ''
   });
   
-  // State for tracking if we're saving before opening attachment dialog
-  const [isSavingBeforeAttachment, setIsSavingBeforeAttachment] = useState(false);
+
 
   const [seaServiceDateErrors, setSeaServiceDateErrors] = useState<Record<string, string>>({});
   const [spouseValidationError, setSpouseValidationError] = useState('');
@@ -2157,11 +2156,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
-  // Save-before-attachment handler: saves record first if no UUID exists
-  const handleAttachmentClick = async (section: typeof attachmentDialog.section, itemId: string, itemName: string) => {
+  const handleAttachmentClick = (section: typeof attachmentDialog.section, itemId: string, itemName: string) => {
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
-    // Check if crew member exists - must save crew first
     if (!crewIdentifier) {
       toast({
         title: 'Save Required',
@@ -2171,267 +2168,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       return;
     }
 
-    // Check if record has UUID (already saved)
     const recordUuid = getRecordUuid(section, itemId);
     
     if (recordUuid) {
-      // Record already saved, open attachment dialog directly
       openAttachmentDialog(section, itemId, itemName);
       return;
     }
 
-    // Record not saved - save it first using DIRECT API call (bypasses query invalidation)
-    // This preserves local form state (unsaved rows) while only updating the saved record's UUID
-    setIsSavingBeforeAttachment(true);
-    
-    try {
-      let savedUuid: string | undefined;
-      
-      switch (section) {
-        case 'document': {
-          const doc = formData.documents.find(d => d.id === itemId);
-          if (!doc) throw new Error('Document not found');
-          // Use direct API call to avoid query invalidation that overwrites form state
-          const response = await crewPoolApiV2.createDocument(crewIdentifier, {
-            documentId: doc.documentId || '',
-            documentName: doc.document || '',
-            number: doc.number || '',
-            issued: doc.issued || '',
-            expiry: doc.expiry || '',
-            issuingAuthority: doc.issuingAuthority || '',
-          });
-          const result = await response.json() as { docUuid?: string };
-          savedUuid = result?.docUuid;
-          // Update local state with new UUID - preserves other unsaved rows
-          setFormData(prev => ({
-            ...prev,
-            documents: prev.documents.map(d =>
-              d.id === itemId ? { ...d, docUuid: savedUuid } as any : d
-            )
-          }));
-          break;
-        }
-        
-        case 'visa': {
-          const visa = formData.visas.find(v => v.id === itemId);
-          if (!visa) throw new Error('Visa not found');
-          const response = await crewPoolApiV2.createVisa(crewIdentifier, {
-            issuingCountry: visa.issuingCountry || '',
-            serialNo: visa.serialNo || '',
-            issued: visa.issued || '',
-            expiry: visa.expiry || '',
-            visaType: visa.visaType || '',
-          });
-          const result = await response.json() as { visaUuid?: string };
-          savedUuid = result?.visaUuid;
-          setFormData(prev => ({
-            ...prev,
-            visas: prev.visas.map(v =>
-              v.id === itemId ? { ...v, visaUuid: savedUuid } as any : v
-            )
-          }));
-          break;
-        }
-        
-        case 'education': {
-          const edu = formData.education.find(e => e.id === itemId);
-          if (!edu) throw new Error('Education not found');
-          const response = await crewPoolApiV2.createEducation(crewIdentifier, {
-            dateOfCompletion: edu.dateOfCompletion || '',
-            schoolCollegeUniversity: edu.schoolCollegeUniversity || '',
-            subjectsField: edu.subjectsField || '',
-            qualifications: edu.qualifications || '',
-          });
-          const result = await response.json() as { eduUuid?: string };
-          savedUuid = result?.eduUuid;
-          setFormData(prev => ({
-            ...prev,
-            education: prev.education.map(e =>
-              e.id === itemId ? { ...e, eduUuid: savedUuid } as any : e
-            )
-          }));
-          break;
-        }
-        
-        case 'license': {
-          const license = formData.licenses.find(l => l.id === itemId);
-          if (!license) throw new Error('License not found');
-          const response = await crewPoolApiV2.createLicense(crewIdentifier, {
-            licenseId: license.licenseId || '',
-            certificateDocument: license.certificateDocument || '',
-            abbr: license.abbr || '',
-            requirement: license.requirement || '',
-            certificateNo: license.certificateNo || '',
-            issuingAuthority: license.issuingAuthority || '',
-            issued: license.issued || '',
-            expiry: license.expiry || '',
-          });
-          const result = await response.json() as { licUuid?: string };
-          savedUuid = result?.licUuid;
-          setFormData(prev => ({
-            ...prev,
-            licenses: prev.licenses.map(l =>
-              l.id === itemId ? { ...l, licUuid: savedUuid } as any : l
-            )
-          }));
-          break;
-        }
-        
-        case 'training': {
-          const course = formData.trainingCourses.find(t => t.id === itemId);
-          if (!course) throw new Error('Training course not found');
-          const response = await crewPoolApiV2.createTrainingCourse(crewIdentifier, {
-            courseId: course.courseId || '',
-            trainingCourse: course.trainingCourse || '',
-            abbr: course.abbr || '',
-            requirement: course.requirement || '',
-            certificateNo: course.certificateNo || '',
-            issuingAuthority: course.issuingAuthority || '',
-            issued: course.issued || '',
-            expiry: course.expiry || '',
-          });
-          const result = await response.json() as { trainUuid?: string };
-          savedUuid = result?.trainUuid;
-          setFormData(prev => ({
-            ...prev,
-            trainingCourses: prev.trainingCourses.map(t =>
-              t.id === itemId ? { ...t, trainUuid: savedUuid } as any : t
-            )
-          }));
-          break;
-        }
-        
-        case 'currentSeaService': {
-          const service = formData.currentCompanySeaService.find(s => s.id === itemId);
-          if (!service) throw new Error('Sea service not found');
-          const response = await crewPoolApiV2.createSeaService(crewIdentifier, {
-            isCompanyService: true,
-            vesselName: service.vesselName || '',
-            vesselCode: service.vesselCode || '',
-            vesselType: service.vesselType || '',
-            deadweight: service.deadweight || '',
-            engineTypePower: service.engineTypePower || '',
-            ownerOperator: service.ownerOperator || '',
-            rank: service.rank || '',
-            from: service.from || '',
-            to: service.to || '',
-            fromDate: service.from || '',
-            toDate: service.to || '',
-            periodMonths: service.periodMonths || '',
-            experienceCategories: service.experienceCategories || [],
-          });
-          const result = await response.json() as { seaUuid?: string };
-          savedUuid = result?.seaUuid;
-          setFormData(prev => ({
-            ...prev,
-            currentCompanySeaService: prev.currentCompanySeaService.map(s =>
-              s.id === itemId ? { ...s, seaUuid: savedUuid } as any : s
-            )
-          }));
-          break;
-        }
-        
-        case 'externalSeaService': {
-          const service = formData.externalSeaService.find(s => s.id === itemId);
-          if (!service) throw new Error('Sea service not found');
-          const response = await crewPoolApiV2.createSeaService(crewIdentifier, {
-            isCompanyService: false,
-            vesselName: service.vesselName || '',
-            vesselCode: service.vesselCode || '',
-            vesselType: service.vesselType || '',
-            deadweight: service.deadweight || '',
-            engineTypePower: service.engineTypePower || '',
-            ownerOperator: service.ownerOperator || '',
-            rank: service.rank || '',
-            from: service.from || '',
-            to: service.to || '',
-            fromDate: service.from || '',
-            toDate: service.to || '',
-            periodMonths: service.periodMonths || '',
-            experienceCategories: service.experienceCategories || [],
-          });
-          const result = await response.json() as { seaUuid?: string };
-          savedUuid = result?.seaUuid;
-          setFormData(prev => ({
-            ...prev,
-            externalSeaService: prev.externalSeaService.map(s =>
-              s.id === itemId ? { ...s, seaUuid: savedUuid } as any : s
-            )
-          }));
-          break;
-        }
-        
-        case 'preJoiningMedical': {
-          const medical = formData.preJoiningMedicals.find(m => m.id === itemId);
-          if (!medical) throw new Error('Medical record not found');
-          const response = await crewPoolApiV2.createMedical(crewIdentifier, {
-            vesselUuid: medical.vesselCode || undefined,
-            vesselName: medical.vessel || undefined,
-            examinationDate: medical.dateOfMedical || undefined,
-            bp: medical.bp || undefined,
-            weight: medical.weight || undefined,
-            anyMedicationPrescribed: medical.anyMedicationPrescribed || undefined,
-            clinicHospital: (medical as any).clinicHospital || undefined,
-            fitForDuty: medical.fitnessForDuty || undefined,
-            expiryDate: medical.expiry || undefined,
-          });
-          const result = await response.json() as { medUuid?: string };
-          savedUuid = result?.medUuid;
-          setFormData(prev => ({
-            ...prev,
-            preJoiningMedicals: prev.preJoiningMedicals.map(m =>
-              m.id === itemId ? { ...m, medUuid: savedUuid } as any : m
-            )
-          }));
-          break;
-        }
-        
-        case 'doctorVisit': {
-          const visit = formData.doctorVisits.find(v => v.id === itemId);
-          if (!visit) throw new Error('Doctor visit not found');
-          const response = await crewPoolApiV2.createDoctorVisit(crewIdentifier, {
-            vessel: visit.vessel || '',
-            port: visit.port || '',
-            date: visit.date || '',
-            visitDate: visit.date || '',
-            doctorName: (visit as any).doctorName || '',
-            clinicHospital: (visit as any).clinicHospital || '',
-            complaint: visit.complaint || '',
-            doctorComments: visit.doctorComments || '',
-            diagnosis: (visit as any).diagnosis || '',
-            treatment: (visit as any).treatment || '',
-            followUpDate: (visit as any).followUpDate || '',
-          });
-          const result = await response.json() as { visitUuid?: string };
-          savedUuid = result?.visitUuid;
-          setFormData(prev => ({
-            ...prev,
-            doctorVisits: prev.doctorVisits.map(v =>
-              v.id === itemId ? { ...v, visitUuid: savedUuid } as any : v
-            )
-          }));
-          break;
-        }
-      }
-      
-      toast({
-        title: 'Record Saved',
-        description: 'Record saved. You can now add attachments.',
-      });
-      
-      // Now open the attachment dialog
-      openAttachmentDialog(section, itemId, itemName);
-      
-    } catch (error) {
-      console.error('Error saving record before attachment:', error);
-      toast({
-        title: 'Save Failed',
-        description: 'Failed to save record. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsSavingBeforeAttachment(false);
-    }
+    toast({
+      title: 'Save Required',
+      description: 'Please save the record first before adding attachments.',
+      variant: 'destructive'
+    });
   };
 
   const getAttachmentsForItem = (): FileAttachment[] => {
