@@ -919,6 +919,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  const b7TrainingNamesKey = formData.b7TrainingNeeds.map(t => t.training || '').join('||');
   const existingB7CourseIds = useMemo(() => {
     const nameToCompanyId = new Map<string, string>();
     adminCompanyTrainings.forEach(ct => {
@@ -927,7 +928,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return formData.b7TrainingNeeds
       .map(t => nameToCompanyId.get(t.training || ''))
       .filter((id): id is string => Boolean(id));
-  }, [adminCompanyTrainings, formData.b7TrainingNeeds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminCompanyTrainings, b7TrainingNamesKey]);
 
   const countryMasterData: string[] = useMemo(() => {
     const countries = (externalCountriesData as any)?.countries || externalCountriesData || [];
