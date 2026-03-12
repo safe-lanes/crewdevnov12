@@ -2775,7 +2775,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Visas - save with attachments
       nonEmptyVisas.forEach((visa, index) => {
         const visaPayload = {
-          countryUuid: visa.countryId || visa.issuingCountry || undefined,
+          countryUuid: visa.issuingCountry || visa.countryId || undefined,
           serialNo: visa.serialNo || undefined,
           issued: visa.issued || undefined,
           expiry: visa.expiry || undefined,
@@ -9010,7 +9010,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         open={isVisaDialogOpen}
         onClose={() => setIsVisaDialogOpen(false)}
         onConfirm={addVisasFromDatabase}
-        existingCountryIds={formData.visas.map(v => v.countryId).filter((id): id is string => Boolean(id))}
+        existingCountryIds={formData.visas.flatMap(v => [v.countryId, v.issuingCountry]).filter((id): id is string => Boolean(id))}
       />
       
       <FileAttachmentDialog

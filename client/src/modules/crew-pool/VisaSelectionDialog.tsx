@@ -75,7 +75,9 @@ export function VisaSelectionDialog({
   }, [countries, searchTerm]);
 
   const alreadyAddedIds = useMemo(() => {
-    return new Set(existingCountryIds);
+    const idSet = new Set(existingCountryIds);
+    const nameSet = new Set(existingCountryIds.map(id => id.toLowerCase()));
+    return { has: (id: string, name?: string) => idSet.has(id) || (name ? nameSet.has(name.toLowerCase()) : false) };
   }, [existingCountryIds]);
 
   const handleToggle = (id: string) => {
@@ -92,7 +94,7 @@ export function VisaSelectionDialog({
 
   const handleSelectAllPriority = () => {
     const priorityIds = filteredCountries
-      .filter(c => c.isPriority && !alreadyAddedIds.has(c.id))
+      .filter(c => c.isPriority && !alreadyAddedIds.has(c.id, c.name))
       .map(c => c.id);
     setSelectedIds(new Set(priorityIds));
   };
@@ -114,7 +116,7 @@ export function VisaSelectionDialog({
     onClose();
   };
 
-  const availableCount = filteredCountries.filter(c => !alreadyAddedIds.has(c.id)).length;
+  const availableCount = filteredCountries.filter(c => !alreadyAddedIds.has(c.id, c.name)).length;
   const priorityCount = filteredCountries.filter(c => c.isPriority).length;
 
   return (
@@ -191,7 +193,7 @@ export function VisaSelectionDialog({
                   </tr>
                 )}
                 {filteredCountries.filter(c => c.isPriority).map((country) => {
-                  const isAlreadyAdded = alreadyAddedIds.has(country.id);
+                  const isAlreadyAdded = alreadyAddedIds.has(country.id, country.name);
                   const isSelected = selectedIds.has(country.id);
 
                   return (
@@ -232,7 +234,7 @@ export function VisaSelectionDialog({
                   </tr>
                 )}
                 {filteredCountries.filter(c => !c.isPriority).map((country) => {
-                  const isAlreadyAdded = alreadyAddedIds.has(country.id);
+                  const isAlreadyAdded = alreadyAddedIds.has(country.id, country.name);
                   const isSelected = selectedIds.has(country.id);
 
                   return (

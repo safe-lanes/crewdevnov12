@@ -8032,7 +8032,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         open={isVisaDialogOpen}
         onClose={() => setIsVisaDialogOpen(false)}
         onConfirm={addVisasFromDatabase}
-        existingCountryIds={formData.visas.map(v => v.countryId).filter(Boolean)}
+        existingCountryIds={formData.visas.flatMap(v => [v.countryId, v.issuingCountry]).filter(Boolean)}
       />
       
       {/* File Attachment Dialog */}
