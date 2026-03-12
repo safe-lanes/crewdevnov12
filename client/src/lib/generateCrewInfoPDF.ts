@@ -182,10 +182,14 @@ const CONTENT_WIDTH = A4_WIDTH - 2 * MARGIN;
 const LINE_HEIGHT = 14;
 const SECTION_SPACING = 16;
 const PRIMARY_COLOR = rgb(22/255, 86/255, 158/255);
-const LIGHT_GRAY = rgb(0.95, 0.95, 0.95);
-const BORDER_COLOR = rgb(0.85, 0.85, 0.85);
-const LABEL_COLOR = rgb(0.4, 0.4, 0.4);
-const PLACEHOLDER_COLOR = rgb(0.6, 0.6, 0.6);
+const PRIMARY_LIGHT = rgb(230/255, 240/255, 250/255);
+const LIGHT_GRAY = rgb(0.96, 0.96, 0.96);
+const BORDER_COLOR = rgb(0.82, 0.82, 0.82);
+const TEXT_COLOR = rgb(0.15, 0.15, 0.15);
+const LABEL_COLOR = rgb(0.35, 0.35, 0.35);
+const MUTED_COLOR = rgb(0.45, 0.45, 0.45);
+const PLACEHOLDER_COLOR = rgb(0.55, 0.55, 0.55);
+const FOOTER_Y = 25;
 
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '';
@@ -214,29 +218,63 @@ class PDFBuilder {
   private fontItalic: PDFFont;
   private yPosition: number;
   private pageNumber: number = 1;
+  private crewName: string = '';
 
-  constructor(pdfDoc: PDFDocument, font: PDFFont, fontBold: PDFFont, fontItalic: PDFFont) {
+  constructor(pdfDoc: PDFDocument, font: PDFFont, fontBold: PDFFont, fontItalic: PDFFont, crewName: string = '') {
     this.pdfDoc = pdfDoc;
     this.font = font;
     this.fontBold = fontBold;
     this.fontItalic = fontItalic;
+    this.crewName = crewName;
     this.currentPage = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
     this.yPosition = A4_HEIGHT - MARGIN;
   }
 
   checkPageBreak(requiredHeight: number = LINE_HEIGHT * 2): void {
-    if (this.yPosition - requiredHeight < MARGIN + 30) {
+    if (this.yPosition - requiredHeight < MARGIN + FOOTER_Y) {
       this.addNewPage();
     }
   }
 
+  private drawPageFooter(): void {
+    this.currentPage.drawLine({
+      start: { x: MARGIN, y: FOOTER_Y + 10 },
+      end: { x: MARGIN + CONTENT_WIDTH, y: FOOTER_Y + 10 },
+      thickness: 0.3,
+      color: BORDER_COLOR,
+    });
+    const pageText = `Page ${this.pageNumber}`;
+    const pageTextWidth = this.font.widthOfTextAtSize(pageText, 7);
+    this.currentPage.drawText(pageText, {
+      x: MARGIN + CONTENT_WIDTH - pageTextWidth,
+      y: FOOTER_Y,
+      size: 7,
+      font: this.font,
+      color: MUTED_COLOR,
+    });
+    if (this.crewName) {
+      this.currentPage.drawText(this.crewName, {
+        x: MARGIN,
+        y: FOOTER_Y,
+        size: 7,
+        font: this.fontItalic,
+        color: MUTED_COLOR,
+      });
+    }
+  }
+
   private addNewPage(): void {
+    this.drawPageFooter();
     this.pageNumber++;
     this.currentPage = this.pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
     this.yPosition = A4_HEIGHT - MARGIN;
   }
 
-  drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = rgb(0, 0, 0)): void {
+  finalizeDocument(): void {
+    this.drawPageFooter();
+  }
+
+  drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
     this.currentPage.drawText(text || '', {
       x,
@@ -247,7 +285,7 @@ class PDFBuilder {
     });
   }
 
-  drawTextAt(text: string, x: number, y: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = rgb(0, 0, 0)): void {
+  drawTextAt(text: string, x: number, y: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
     this.currentPage.drawText(text || '', {
       x,
@@ -417,15 +455,39 @@ class PDFBuilder {
     this.moveDown(LINE_HEIGHT * 2);
   }
 
+  private drawCellDividers(colWidths: number[], rowY: number, rowHeight: number): void {
+    let x = MARGIN;
+    for (let i = 0; i < colWidths.length - 1; i++) {
+      x += colWidths[i];
+      this.drawLine(x, rowY, x, rowY + rowHeight, 0.3, BORDER_COLOR);
+    }
+  }
+
   drawTableHeader(headers: string[], colWidths: number[]): void {
     this.checkPageBreak(30);
     let x = MARGIN;
-    const headerHeight = 18;
+    const headerHeight = 20;
     
-    this.drawRect(MARGIN, this.yPosition - headerHeight, CONTENT_WIDTH, headerHeight, true);
+    this.currentPage.drawRectangle({
+      x: MARGIN,
+      y: this.yPosition - headerHeight,
+      width: CONTENT_WIDTH,
+      height: headerHeight,
+      color: PRIMARY_LIGHT,
+    });
+    this.currentPage.drawRectangle({
+      x: MARGIN,
+      y: this.yPosition - headerHeight,
+      width: CONTENT_WIDTH,
+      height: headerHeight,
+      borderColor: BORDER_COLOR,
+      borderWidth: 0.5,
+    });
+    
+    this.drawCellDividers(colWidths, this.yPosition - headerHeight, headerHeight);
     
     for (let i = 0; i < headers.length; i++) {
-      this.drawTextAt(headers[i], x + 3, this.yPosition - 12, 7, 'bold', rgb(0.3, 0.3, 0.3));
+      this.drawTextAt(headers[i], x + 4, this.yPosition - 13, 7, 'bold', TEXT_COLOR);
       x += colWidths[i];
     }
     this.moveDown(headerHeight);
@@ -436,9 +498,10 @@ class PDFBuilder {
     let x = MARGIN;
     
     this.drawRect(MARGIN, this.yPosition - rowHeight, CONTENT_WIDTH, rowHeight);
+    this.drawCellDividers(colWidths, this.yPosition - rowHeight, rowHeight);
     
     for (let i = 0; i < values.length; i++) {
-      const maxWidth = colWidths[i] - 6;
+      const maxWidth = colWidths[i] - 8;
       let displayVal = displayValue(values[i]);
       const textWidth = this.font.widthOfTextAtSize(displayVal, 7);
       if (textWidth > maxWidth && displayVal.length > 3) {
@@ -447,7 +510,7 @@ class PDFBuilder {
         }
         displayVal += '...';
       }
-      this.drawTextAt(displayVal, x + 3, this.yPosition - 11, 7, 'normal');
+      this.drawTextAt(displayVal, x + 4, this.yPosition - 11, 7, 'normal', TEXT_COLOR);
       x += colWidths[i];
     }
     this.moveDown(rowHeight);
@@ -471,7 +534,7 @@ export async function generateCrewInfoPDF(
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
-  const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic);
+  const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic, crewName);
 
   builder.drawText('CREW INFORMATION FORM', MARGIN, 14, 'bold', PRIMARY_COLOR);
   builder.moveDown(LINE_HEIGHT + 6);
@@ -503,6 +566,8 @@ export async function generateCrewInfoPDF(
   drawPartD(builder, formData);
   drawPartE(builder, formData);
   drawPartF(builder, formData);
+
+  builder.finalizeDocument();
 
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });

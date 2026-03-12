@@ -177,10 +177,15 @@ const CONTENT_WIDTH = A4_WIDTH - 2 * MARGIN;
 const LINE_HEIGHT = 14;
 const SECTION_SPACING = 16;
 const PRIMARY_COLOR = rgb(22/255, 86/255, 158/255);
-const LIGHT_GRAY = rgb(0.95, 0.95, 0.95);
-const BORDER_COLOR = rgb(0.85, 0.85, 0.85);
-const LABEL_COLOR = rgb(0.4, 0.4, 0.4);
-const PLACEHOLDER_COLOR = rgb(0.6, 0.6, 0.6);
+const PRIMARY_LIGHT = rgb(230/255, 240/255, 250/255);
+const LIGHT_GRAY = rgb(0.96, 0.96, 0.96);
+const BORDER_COLOR = rgb(0.82, 0.82, 0.82);
+const TEXT_COLOR = rgb(0.15, 0.15, 0.15);
+const LABEL_COLOR = rgb(0.35, 0.35, 0.35);
+const MUTED_COLOR = rgb(0.45, 0.45, 0.45);
+const PLACEHOLDER_COLOR = rgb(0.55, 0.55, 0.55);
+const COMMENT_COLOR = rgb(0.3, 0.3, 0.3);
+const FOOTER_Y = 25;
 
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '';
@@ -210,28 +215,63 @@ class PDFBuilder {
   private yPosition: number;
   private pageNumber: number = 1;
 
-  constructor(pdfDoc: PDFDocument, font: PDFFont, fontBold: PDFFont, fontItalic: PDFFont) {
+  private candidateName: string = '';
+
+  constructor(pdfDoc: PDFDocument, font: PDFFont, fontBold: PDFFont, fontItalic: PDFFont, candidateName: string = '') {
     this.pdfDoc = pdfDoc;
     this.font = font;
     this.fontBold = fontBold;
     this.fontItalic = fontItalic;
+    this.candidateName = candidateName;
     this.currentPage = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
     this.yPosition = A4_HEIGHT - MARGIN;
   }
 
   checkPageBreak(requiredHeight: number = LINE_HEIGHT * 2): void {
-    if (this.yPosition - requiredHeight < MARGIN + 30) {
+    if (this.yPosition - requiredHeight < MARGIN + FOOTER_Y) {
       this.addNewPage();
     }
   }
 
+  private drawPageFooter(): void {
+    this.currentPage.drawLine({
+      start: { x: MARGIN, y: FOOTER_Y + 10 },
+      end: { x: MARGIN + CONTENT_WIDTH, y: FOOTER_Y + 10 },
+      thickness: 0.3,
+      color: BORDER_COLOR,
+    });
+    const pageText = `Page ${this.pageNumber}`;
+    const pageTextWidth = this.font.widthOfTextAtSize(pageText, 7);
+    this.currentPage.drawText(pageText, {
+      x: MARGIN + CONTENT_WIDTH - pageTextWidth,
+      y: FOOTER_Y,
+      size: 7,
+      font: this.font,
+      color: MUTED_COLOR,
+    });
+    if (this.candidateName) {
+      this.currentPage.drawText(this.candidateName, {
+        x: MARGIN,
+        y: FOOTER_Y,
+        size: 7,
+        font: this.fontItalic,
+        color: MUTED_COLOR,
+      });
+    }
+  }
+
   private addNewPage(): void {
+    this.drawPageFooter();
     this.pageNumber++;
     this.currentPage = this.pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
     this.yPosition = A4_HEIGHT - MARGIN;
   }
 
-  drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = rgb(0, 0, 0)): void {
+  finalizeDocument(): void {
+    this.drawPageFooter();
+  }
+
+  drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
     this.currentPage.drawText(text || '', {
       x,
@@ -242,7 +282,7 @@ class PDFBuilder {
     });
   }
 
-  drawTextAt(text: string, x: number, y: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = rgb(0, 0, 0)): void {
+  drawTextAt(text: string, x: number, y: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
     this.currentPage.drawText(text || '', {
       x,
@@ -282,12 +322,12 @@ class PDFBuilder {
     });
   }
 
-  drawFilledCircle(x: number, y: number, radius: number): void {
+  drawFilledCircle(x: number, y: number, radius: number, color = PRIMARY_COLOR): void {
     this.currentPage.drawCircle({
       x,
       y,
       size: radius,
-      color: rgb(0, 0, 0),
+      color,
     });
   }
 
@@ -296,17 +336,17 @@ class PDFBuilder {
       x,
       y,
       size: radius,
-      borderColor: rgb(0.4, 0.4, 0.4),
-      borderWidth: 0.5,
+      borderColor: BORDER_COLOR,
+      borderWidth: 0.75,
     });
   }
 
   drawRadioButton(x: number, y: number, selected: boolean): number {
-    this.drawEmptyCircle(x, y, 4);
+    this.drawEmptyCircle(x, y, 5);
     if (selected) {
-      this.drawFilledCircle(x, y, 2.5);
+      this.drawFilledCircle(x, y, 3, PRIMARY_COLOR);
     }
-    return x + 8;
+    return x + 10;
   }
 
   moveDown(amount: number = LINE_HEIGHT): void {
@@ -410,15 +450,39 @@ class PDFBuilder {
     this.moveDown(LINE_HEIGHT * 2);
   }
 
+  private drawCellDividers(colWidths: number[], rowY: number, rowHeight: number): void {
+    let x = MARGIN;
+    for (let i = 0; i < colWidths.length - 1; i++) {
+      x += colWidths[i];
+      this.drawLine(x, rowY, x, rowY + rowHeight, 0.3, BORDER_COLOR);
+    }
+  }
+
   drawTableHeader(headers: string[], colWidths: number[]): void {
     this.checkPageBreak(30);
     let x = MARGIN;
-    const headerHeight = 18;
+    const headerHeight = 20;
     
-    this.drawRect(MARGIN, this.yPosition - headerHeight, CONTENT_WIDTH, headerHeight, true);
+    this.currentPage.drawRectangle({
+      x: MARGIN,
+      y: this.yPosition - headerHeight,
+      width: CONTENT_WIDTH,
+      height: headerHeight,
+      color: PRIMARY_LIGHT,
+    });
+    this.currentPage.drawRectangle({
+      x: MARGIN,
+      y: this.yPosition - headerHeight,
+      width: CONTENT_WIDTH,
+      height: headerHeight,
+      borderColor: BORDER_COLOR,
+      borderWidth: 0.5,
+    });
+    
+    this.drawCellDividers(colWidths, this.yPosition - headerHeight, headerHeight);
     
     for (let i = 0; i < headers.length; i++) {
-      this.drawTextAt(headers[i], x + 3, this.yPosition - 12, 7, 'bold', rgb(0.3, 0.3, 0.3));
+      this.drawTextAt(headers[i], x + 4, this.yPosition - 13, 7, 'bold', TEXT_COLOR);
       x += colWidths[i];
     }
     this.moveDown(headerHeight);
@@ -429,9 +493,10 @@ class PDFBuilder {
     let x = MARGIN;
     
     this.drawRect(MARGIN, this.yPosition - rowHeight, CONTENT_WIDTH, rowHeight);
+    this.drawCellDividers(colWidths, this.yPosition - rowHeight, rowHeight);
     
     for (let i = 0; i < values.length; i++) {
-      const maxWidth = colWidths[i] - 6;
+      const maxWidth = colWidths[i] - 8;
       let displayVal = displayValue(values[i]);
       const textWidth = this.font.widthOfTextAtSize(displayVal, 7);
       if (textWidth > maxWidth && displayVal.length > 3) {
@@ -440,7 +505,7 @@ class PDFBuilder {
         }
         displayVal += '...';
       }
-      this.drawTextAt(displayVal, x + 3, this.yPosition - 11, 7, 'normal');
+      this.drawTextAt(displayVal, x + 4, this.yPosition - 11, 7, 'normal', TEXT_COLOR);
       x += colWidths[i];
     }
     this.moveDown(rowHeight);
@@ -448,14 +513,14 @@ class PDFBuilder {
 
   drawRadioQuestion(label: string, options: Array<{label: string, value: string}>, selectedValue: string, hasNA: boolean = false): void {
     this.checkPageBreak(20);
-    this.drawText(label, MARGIN, 9, 'normal');
+    this.drawText(label, MARGIN, 9, 'normal', TEXT_COLOR);
     
-    let x = MARGIN + CONTENT_WIDTH - (hasNA ? 180 : 120);
+    let x = MARGIN + CONTENT_WIDTH - (hasNA ? 190 : 130);
     for (const option of options) {
       const isSelected = selectedValue?.toLowerCase() === option.value.toLowerCase();
       const nextX = this.drawRadioButton(x, this.yPosition + 3, isSelected);
-      this.drawTextAt(option.label, nextX, this.yPosition, 8, 'normal');
-      x += hasNA ? 55 : 50;
+      this.drawTextAt(option.label, nextX + 2, this.yPosition, 8, 'normal', TEXT_COLOR);
+      x += hasNA ? 60 : 55;
     }
     this.moveDown(LINE_HEIGHT + 4);
   }
@@ -463,7 +528,7 @@ class PDFBuilder {
   drawComment(user: string, text: string): void {
     if (!text || !text.trim()) return;
     this.checkPageBreak(30);
-    this.drawText(`${user}:`, MARGIN + 20, 8, 'italic', rgb(0.2, 0.4, 0.8));
+    this.drawText(`${user}:`, MARGIN + 20, 8, 'bold', COMMENT_COLOR);
     this.moveDown(12);
     
     const maxWidth = CONTENT_WIDTH - 40;
@@ -474,7 +539,7 @@ class PDFBuilder {
       const testLine = line + (line ? ' ' : '') + word;
       const width = this.fontItalic.widthOfTextAtSize(testLine, 8);
       if (width > maxWidth && line) {
-        this.drawText(line, MARGIN + 20, 8, 'italic', rgb(0.2, 0.4, 0.8));
+        this.drawText(line, MARGIN + 20, 8, 'italic', COMMENT_COLOR);
         this.moveDown(12);
         line = word;
       } else {
@@ -482,17 +547,17 @@ class PDFBuilder {
       }
     }
     if (line) {
-      this.drawText(line, MARGIN + 20, 8, 'italic', rgb(0.2, 0.4, 0.8));
+      this.drawText(line, MARGIN + 20, 8, 'italic', COMMENT_COLOR);
       this.moveDown(12);
     }
   }
 
   drawSubmissionInfo(submittedBy: string, submittedDate: string): void {
     if (submittedBy || submittedDate) {
-      this.moveDown(6);
+      this.moveDown(8);
       this.checkPageBreak();
       const text = `Submitted by: ${displayValue(submittedBy)}${submittedDate ? ` on ${formatDate(submittedDate)}` : ''}`;
-      this.drawText(text, MARGIN, 8, 'normal', rgb(0.5, 0.5, 0.5));
+      this.drawText(text, MARGIN, 8, 'italic', MUTED_COLOR);
       this.moveDown(LINE_HEIGHT);
     }
   }
@@ -513,7 +578,7 @@ export async function generateRecruitmentPDF(formData: FormData, candidateName: 
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
-  const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic);
+  const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic, candidateName);
 
   builder.drawText('RECRUITMENT APPLICATION FORM', MARGIN, 14, 'bold', PRIMARY_COLOR);
   builder.moveDown(LINE_HEIGHT * 2);
@@ -521,6 +586,8 @@ export async function generateRecruitmentPDF(formData: FormData, candidateName: 
   await drawPartA(builder, formData);
   drawPartB(builder, formData);
   drawPartC(builder, formData);
+
+  builder.finalizeDocument();
 
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -823,7 +890,6 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   }
 
   builder.drawPartHeader('A5 — Additional Information');
-  builder.drawSubsectionHeader('A5 Additional Information');
   if (formData.additionalInfo && formData.additionalInfo.length > 0) {
     for (const info of formData.additionalInfo) {
       builder.checkPageBreak(40);
