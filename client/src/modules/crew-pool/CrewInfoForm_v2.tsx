@@ -633,6 +633,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
   const isBatchSavingRef = useRef(false);
+  const [isBatchSaving, setIsBatchSaving] = useState(false);
 
   // Refs for click-outside detection on B1/B2/B3
   const sectionB1Ref = useRef<HTMLDivElement>(null);
@@ -5505,6 +5506,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Save Draft functionality
   const handleSaveDraft = () => {
+    if (isBatchSavingRef.current) return;
     console.log('Saving crew info (V2):', formData);
 
     let hasErrors = false;
@@ -5731,6 +5733,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (crewIdentifier) {
       isBatchSavingRef.current = true;
+      setIsBatchSaving(true);
       (async () => {
         const batchErrors: string[] = [];
         const uuidUpdates: { section: string; localId: string; uuid: string }[] = [];
@@ -6494,6 +6497,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           });
         } finally {
           isBatchSavingRef.current = false;
+          setIsBatchSaving(false);
         }
       })();
     } else {
@@ -7251,7 +7255,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
-  const isSaving = isCreatingCrew || createCrewMutation.isPending || updateCrewMutation.isPending || 
+  const isSaving = isBatchSaving || isCreatingCrew || createCrewMutation.isPending || updateCrewMutation.isPending || 
     savePersonalDetailsMutationV2.isPending || saveAddressMutationV2.isPending || saveFamilyInfoMutationV2.isPending;
 
   const handleCancel = () => {
