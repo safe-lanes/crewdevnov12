@@ -24,7 +24,6 @@ import {
   masterPorts,
   masterFleetGroups,
   masterVessels,
-  masterManningAgents,
 } from "../../../../shared/schema";
 
 import type {
@@ -296,7 +295,7 @@ export class CandidateService {
 
         // Resolved master data (ACTUAL NAMES, NOT UUIDs)
         nationalityName: masterNationalities.nationality,
-        manningAgentName: masterManningAgents.name,
+        manningAgentName: candPersonalDetails.manningAgent,
 
         // Vessel type UUID (will be resolved in next step)
         vesselTypeUuid: candVesselTypesApplied.vesselTypeUuid,
@@ -305,10 +304,6 @@ export class CandidateService {
       .leftJoin(
         candPersonalDetails,
         eq(recruitmentCandidatesV2.recCanUuid, candPersonalDetails.recCanUuid)
-      )
-      .leftJoin(
-        masterManningAgents,
-        sql`${candPersonalDetails.manningAgent} = ${masterManningAgents.id}::text`
       )
       .leftJoin(
         masterNationalities,
