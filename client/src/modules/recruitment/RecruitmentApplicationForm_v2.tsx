@@ -591,7 +591,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: adminCompanyTrainings = [] } = useQuery<Array<{ id: number; companyId: string }>>({
+  const { data: adminCompanyTrainings = [] } = useQuery<Array<{ id: number; companyId: string; trainingLabel?: string }>>({
     queryKey: ['/api/v2/admin/company-trainings'],
   });
   
@@ -8999,7 +8999,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         open={isB7TrainingDialogOpen}
         onClose={() => setIsB7TrainingDialogOpen(false)}
         onConfirm={addB7TrainingFromDatabase}
-        existingCourseIds={[]}
+        existingCourseIds={(() => {
+          const nameToCompanyId = new Map<string, string>();
+          adminCompanyTrainings.forEach(ct => {
+            if (ct.trainingLabel && ct.companyId) nameToCompanyId.set(ct.trainingLabel, ct.companyId);
+          });
+          return formData.b7TrainingNeeds
+            .map(t => nameToCompanyId.get(t.training || ''))
+            .filter((id): id is string => Boolean(id));
+        })()}
       />
       
       <TravelDocumentSelectionDialog
