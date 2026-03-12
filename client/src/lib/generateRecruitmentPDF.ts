@@ -182,9 +182,6 @@ const LIGHT_GRAY = rgb(0.96, 0.96, 0.96);
 const BORDER_COLOR = rgb(0.82, 0.82, 0.82);
 const TEXT_COLOR = rgb(0.15, 0.15, 0.15);
 const LABEL_COLOR = rgb(0.35, 0.35, 0.35);
-const MUTED_COLOR = rgb(0.45, 0.45, 0.45);
-const PLACEHOLDER_COLOR = rgb(0.55, 0.55, 0.55);
-const COMMENT_COLOR = rgb(0.3, 0.3, 0.3);
 const FOOTER_Y = 25;
 
 function formatDate(dateStr: string | undefined): string {
@@ -215,14 +212,11 @@ class PDFBuilder {
   private yPosition: number;
   private pageNumber: number = 1;
 
-  private candidateName: string = '';
-
-  constructor(pdfDoc: PDFDocument, font: PDFFont, fontBold: PDFFont, fontItalic: PDFFont, candidateName: string = '') {
+  constructor(pdfDoc: PDFDocument, font: PDFFont, fontBold: PDFFont, fontItalic: PDFFont) {
     this.pdfDoc = pdfDoc;
     this.font = font;
     this.fontBold = fontBold;
     this.fontItalic = fontItalic;
-    this.candidateName = candidateName;
     this.currentPage = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
     this.yPosition = A4_HEIGHT - MARGIN;
   }
@@ -233,42 +227,34 @@ class PDFBuilder {
     }
   }
 
-  private drawPageFooter(): void {
-    this.currentPage.drawLine({
-      start: { x: MARGIN, y: FOOTER_Y + 10 },
-      end: { x: MARGIN + CONTENT_WIDTH, y: FOOTER_Y + 10 },
-      thickness: 0.3,
-      color: BORDER_COLOR,
-    });
-    const pageText = `Page ${this.pageNumber}`;
-    const pageTextWidth = this.font.widthOfTextAtSize(pageText, 7);
-    this.currentPage.drawText(pageText, {
-      x: MARGIN + CONTENT_WIDTH - pageTextWidth,
-      y: FOOTER_Y,
-      size: 7,
-      font: this.font,
-      color: MUTED_COLOR,
-    });
-    if (this.candidateName) {
-      this.currentPage.drawText(this.candidateName, {
-        x: MARGIN,
-        y: FOOTER_Y,
-        size: 7,
-        font: this.fontItalic,
-        color: MUTED_COLOR,
-      });
-    }
-  }
-
   private addNewPage(): void {
-    this.drawPageFooter();
     this.pageNumber++;
     this.currentPage = this.pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
     this.yPosition = A4_HEIGHT - MARGIN;
   }
 
   finalizeDocument(): void {
-    this.drawPageFooter();
+    const totalPages = this.pdfDoc.getPageCount();
+    const pages = this.pdfDoc.getPages();
+    for (let i = 0; i < totalPages; i++) {
+      const page = pages[i];
+      page.drawLine({
+        start: { x: MARGIN, y: FOOTER_Y + 10 },
+        end: { x: MARGIN + CONTENT_WIDTH, y: FOOTER_Y + 10 },
+        thickness: 0.3,
+        color: BORDER_COLOR,
+      });
+      const pageText = `Page ${i + 1} of ${totalPages}`;
+      const pageTextWidth = this.font.widthOfTextAtSize(pageText, 7);
+      const centerX = MARGIN + (CONTENT_WIDTH - pageTextWidth) / 2;
+      page.drawText(pageText, {
+        x: centerX,
+        y: FOOTER_Y,
+        size: 7,
+        font: this.font,
+        color: LABEL_COLOR,
+      });
+    }
   }
 
   drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
@@ -528,7 +514,7 @@ class PDFBuilder {
   drawComment(user: string, text: string): void {
     if (!text || !text.trim()) return;
     this.checkPageBreak(30);
-    this.drawText(`${user}:`, MARGIN + 20, 8, 'bold', COMMENT_COLOR);
+    this.drawText(`${user}:`, MARGIN + 20, 8, 'bold', LABEL_COLOR);
     this.moveDown(12);
     
     const maxWidth = CONTENT_WIDTH - 40;
@@ -539,7 +525,7 @@ class PDFBuilder {
       const testLine = line + (line ? ' ' : '') + word;
       const width = this.fontItalic.widthOfTextAtSize(testLine, 8);
       if (width > maxWidth && line) {
-        this.drawText(line, MARGIN + 20, 8, 'italic', COMMENT_COLOR);
+        this.drawText(line, MARGIN + 20, 8, 'italic', LABEL_COLOR);
         this.moveDown(12);
         line = word;
       } else {
@@ -547,7 +533,7 @@ class PDFBuilder {
       }
     }
     if (line) {
-      this.drawText(line, MARGIN + 20, 8, 'italic', COMMENT_COLOR);
+      this.drawText(line, MARGIN + 20, 8, 'italic', LABEL_COLOR);
       this.moveDown(12);
     }
   }
@@ -557,7 +543,7 @@ class PDFBuilder {
       this.moveDown(8);
       this.checkPageBreak();
       const text = `Submitted by: ${displayValue(submittedBy)}${submittedDate ? ` on ${formatDate(submittedDate)}` : ''}`;
-      this.drawText(text, MARGIN, 8, 'italic', MUTED_COLOR);
+      this.drawText(text, MARGIN, 8, 'italic', LABEL_COLOR);
       this.moveDown(LINE_HEIGHT);
     }
   }
@@ -578,7 +564,7 @@ export async function generateRecruitmentPDF(formData: FormData, candidateName: 
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
-  const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic, candidateName);
+  const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic);
 
   builder.drawText('RECRUITMENT APPLICATION FORM', MARGIN, 14, 'bold', PRIMARY_COLOR);
   builder.moveDown(LINE_HEIGHT * 2);
@@ -621,7 +607,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   
   if (!photoDrawn) {
     builder.drawRect(photoX, photoY - photoHeight, photoWidth, photoHeight);
-    builder.drawTextAt('No Photo', photoX + 18, photoY - 55, 8, 'normal', PLACEHOLDER_COLOR);
+    builder.drawTextAt('No Photo', photoX + 18, photoY - 55, 8, 'normal', LABEL_COLOR);
   }
   
   const fieldStartX = MARGIN + photoWidth + 20;
@@ -747,7 +733,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], childColWidths);
     }
   } else {
-    builder.drawText('No children recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No children recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   
@@ -785,7 +771,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], docColWidths);
     }
   } else {
-    builder.drawText('No documents recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No documents recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -803,7 +789,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], visaColWidths);
     }
   } else {
-    builder.drawText('No visas recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No visas recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -821,7 +807,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], eduColWidths);
     }
   } else {
-    builder.drawText('No education records', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No education records', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -841,7 +827,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], licColWidths);
     }
   } else {
-    builder.drawText('No licenses recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No licenses recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -861,7 +847,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], trainColWidths);
     }
   } else {
-    builder.drawText('No training courses recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No training courses recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -885,7 +871,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], seaColWidths);
     }
   } else {
-    builder.drawText('No sea service records', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No sea service records', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -899,7 +885,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       builder.moveDown(LINE_HEIGHT);
     }
   } else {
-    builder.drawText('No additional information', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No additional information', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 }
@@ -951,7 +937,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       builder.drawTableRow([formatDate(ref.date), ref.nameDesignation || '', ref.contactInfo || ''], refColWidths);
     }
   } else {
-    builder.drawText('No references recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No references recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b2SubmittedBy, formData.b2SubmittedDate);
@@ -977,7 +963,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       builder.drawTableRow([formatDate(auth.date), auth.authority || ''], authColWidths);
     }
   } else {
-    builder.drawText('No authorities recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No authorities recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b3SubmittedBy, formData.b3SubmittedDate);
@@ -1003,7 +989,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       builder.drawTableRow([formatDate(cert.date), cert.certificate || '', cert.authority || ''], certColWidths);
     }
   } else {
-    builder.drawText('No certificates recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No certificates recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b4SubmittedBy, formData.b4SubmittedDate);
@@ -1024,7 +1010,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       builder.drawTableRow([formatDate(test.date), test.subject || '', test.score || '', test.result || ''], testColWidths);
     }
   } else {
-    builder.drawText('No test results recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No test results recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b5SubmittedBy, formData.b5SubmittedDate);
@@ -1051,7 +1037,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       ], intColWidths);
     }
   } else {
-    builder.drawText('No interview records', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No interview records', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b6SubmittedBy, formData.b6SubmittedDate);
@@ -1070,7 +1056,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       ], trainColWidths);
     }
   } else {
-    builder.drawText('No training needs identified', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No training needs identified', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b7SubmittedBy, formData.b7SubmittedDate);
@@ -1126,7 +1112,7 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
       builder.moveDown(8);
     }
   } else {
-    builder.drawText('No approvers assigned', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No approvers assigned', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 

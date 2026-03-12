@@ -187,8 +187,6 @@ const LIGHT_GRAY = rgb(0.96, 0.96, 0.96);
 const BORDER_COLOR = rgb(0.82, 0.82, 0.82);
 const TEXT_COLOR = rgb(0.15, 0.15, 0.15);
 const LABEL_COLOR = rgb(0.35, 0.35, 0.35);
-const MUTED_COLOR = rgb(0.45, 0.45, 0.45);
-const PLACEHOLDER_COLOR = rgb(0.55, 0.55, 0.55);
 const FOOTER_Y = 25;
 
 function formatDate(dateStr: string | undefined): string {
@@ -218,14 +216,11 @@ class PDFBuilder {
   private fontItalic: PDFFont;
   private yPosition: number;
   private pageNumber: number = 1;
-  private crewName: string = '';
-
-  constructor(pdfDoc: PDFDocument, font: PDFFont, fontBold: PDFFont, fontItalic: PDFFont, crewName: string = '') {
+  constructor(pdfDoc: PDFDocument, font: PDFFont, fontBold: PDFFont, fontItalic: PDFFont) {
     this.pdfDoc = pdfDoc;
     this.font = font;
     this.fontBold = fontBold;
     this.fontItalic = fontItalic;
-    this.crewName = crewName;
     this.currentPage = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
     this.yPosition = A4_HEIGHT - MARGIN;
   }
@@ -236,42 +231,34 @@ class PDFBuilder {
     }
   }
 
-  private drawPageFooter(): void {
-    this.currentPage.drawLine({
-      start: { x: MARGIN, y: FOOTER_Y + 10 },
-      end: { x: MARGIN + CONTENT_WIDTH, y: FOOTER_Y + 10 },
-      thickness: 0.3,
-      color: BORDER_COLOR,
-    });
-    const pageText = `Page ${this.pageNumber}`;
-    const pageTextWidth = this.font.widthOfTextAtSize(pageText, 7);
-    this.currentPage.drawText(pageText, {
-      x: MARGIN + CONTENT_WIDTH - pageTextWidth,
-      y: FOOTER_Y,
-      size: 7,
-      font: this.font,
-      color: MUTED_COLOR,
-    });
-    if (this.crewName) {
-      this.currentPage.drawText(this.crewName, {
-        x: MARGIN,
-        y: FOOTER_Y,
-        size: 7,
-        font: this.fontItalic,
-        color: MUTED_COLOR,
-      });
-    }
-  }
-
   private addNewPage(): void {
-    this.drawPageFooter();
     this.pageNumber++;
     this.currentPage = this.pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
     this.yPosition = A4_HEIGHT - MARGIN;
   }
 
   finalizeDocument(): void {
-    this.drawPageFooter();
+    const totalPages = this.pdfDoc.getPageCount();
+    const pages = this.pdfDoc.getPages();
+    for (let i = 0; i < totalPages; i++) {
+      const page = pages[i];
+      page.drawLine({
+        start: { x: MARGIN, y: FOOTER_Y + 10 },
+        end: { x: MARGIN + CONTENT_WIDTH, y: FOOTER_Y + 10 },
+        thickness: 0.3,
+        color: BORDER_COLOR,
+      });
+      const pageText = `Page ${i + 1} of ${totalPages}`;
+      const pageTextWidth = this.font.widthOfTextAtSize(pageText, 7);
+      const centerX = MARGIN + (CONTENT_WIDTH - pageTextWidth) / 2;
+      page.drawText(pageText, {
+        x: centerX,
+        y: FOOTER_Y,
+        size: 7,
+        font: this.font,
+        color: LABEL_COLOR,
+      });
+    }
   }
 
   drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
@@ -534,7 +521,7 @@ export async function generateCrewInfoPDF(
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
-  const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic, crewName);
+  const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic);
 
   builder.drawText('CREW INFORMATION FORM', MARGIN, 14, 'bold', PRIMARY_COLOR);
   builder.moveDown(LINE_HEIGHT + 6);
