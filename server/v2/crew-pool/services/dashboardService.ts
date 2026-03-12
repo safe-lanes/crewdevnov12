@@ -1,4 +1,4 @@
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql, aliasedTable } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   crewMembersV2,
@@ -283,17 +283,20 @@ export const dashboardService = {
 
   async getSeaService(crewUuid: string) {
     const db = getDb();
+    const mvtByUuid = masterVesselTypes;
+    const mvtByName = aliasedTable(masterVesselTypes, "mvt_by_name");
+
     const result = await db
       .select({
         seaUuid: crewSeaService.seaUuid,
         serviceType: crewSeaService.serviceType,
         vesselName: crewSeaService.vesselName,
         vesselTypeUuid: crewSeaService.vesselTypeUuid,
-        vesselTypeName: masterVesselTypes.vesselType,
-        isTanker: masterVesselTypes.tanker,
-        isOilTanker: masterVesselTypes.oilTanker,
-        isGasTanker: masterVesselTypes.gasTanker,
-        isChemicalTanker: masterVesselTypes.chemicalTanker,
+        vesselTypeName: sql<string>`COALESCE(${mvtByUuid.vesselType}, ${mvtByName.vesselType})`,
+        isTanker: sql<boolean>`COALESCE(${mvtByUuid.tanker}, ${mvtByName.tanker})`,
+        isOilTanker: sql<boolean>`COALESCE(${mvtByUuid.oilTanker}, ${mvtByName.oilTanker})`,
+        isGasTanker: sql<boolean>`COALESCE(${mvtByUuid.gasTanker}, ${mvtByName.gasTanker})`,
+        isChemicalTanker: sql<boolean>`COALESCE(${mvtByUuid.chemicalTanker}, ${mvtByName.chemicalTanker})`,
         rank: crewSeaService.rank,
         fromDate: crewSeaService.fromDate,
         toDate: crewSeaService.toDate,
@@ -303,8 +306,15 @@ export const dashboardService = {
       })
       .from(crewSeaService)
       .leftJoin(
-        masterVesselTypes,
-        eq(crewSeaService.vesselTypeUuid, masterVesselTypes.vtUuid)
+        mvtByUuid,
+        eq(crewSeaService.vesselTypeUuid, mvtByUuid.vtUuid)
+      )
+      .leftJoin(
+        mvtByName,
+        and(
+          isNull(mvtByUuid.vtUuid),
+          eq(crewSeaService.vesselTypeUuid, mvtByName.vesselType)
+        )
       )
       .where(
         and(
