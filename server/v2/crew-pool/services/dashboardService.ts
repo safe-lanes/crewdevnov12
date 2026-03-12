@@ -574,9 +574,15 @@ export const dashboardService = {
         if (cert.includes("chem") || abbr.includes("DC_C")) {
           endorsements.push("DCE Chemical");
         }
-        if (!cert.includes("oil") && !cert.includes("chem") && !abbr.includes("DC_O") && !abbr.includes("DC_C")) {
+        if (cert.includes("gas") || abbr.includes("DC_G")) {
+          endorsements.push("DCE Gas");
+        }
+        if (!cert.includes("oil") && !cert.includes("chem") && !cert.includes("gas") && !abbr.includes("DC_O") && !abbr.includes("DC_C") && !abbr.includes("DC_G")) {
           endorsements.push("DCE");
         }
+      }
+      if (cert.includes("cop") || abbr.includes("COP")) {
+        endorsements.push("COP");
       }
     }
 
