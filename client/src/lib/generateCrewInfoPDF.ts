@@ -192,7 +192,14 @@ const FOOTER_Y = 25;
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '';
   try {
-    const date = new Date(dateStr);
+    let date: Date;
+    const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (ddmmyyyyMatch) {
+      const [, dd, mm, yyyy] = ddmmyyyyMatch;
+      date = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+    } else {
+      date = new Date(dateStr);
+    }
     if (isNaN(date.getTime())) return dateStr;
     const day = date.getDate().toString().padStart(2, '0');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -425,26 +432,71 @@ class PDFBuilder {
     this.moveDown(LINE_HEIGHT);
   }
 
+  private wrapText(text: string, maxWidth: number, fontSize: number): string[] {
+    if (this.font.widthOfTextAtSize(text, fontSize) <= maxWidth) return [text];
+    const words = text.split(/([,] )/);
+    const lines: string[] = [];
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine + word;
+      if (this.font.widthOfTextAtSize(testLine, fontSize) > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word.trimStart();
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    const result: string[] = [];
+    for (const line of lines) {
+      if (this.font.widthOfTextAtSize(line, fontSize) <= maxWidth) {
+        result.push(line);
+      } else {
+        let remaining = line;
+        while (remaining && this.font.widthOfTextAtSize(remaining, fontSize) > maxWidth) {
+          let end = remaining.length;
+          while (end > 1 && this.font.widthOfTextAtSize(remaining.slice(0, end), fontSize) > maxWidth) {
+            end--;
+          }
+          result.push(remaining.slice(0, end));
+          remaining = remaining.slice(end);
+        }
+        if (remaining) result.push(remaining);
+      }
+    }
+    return result;
+  }
+
   drawFieldRow(fields: Array<{label: string, value: string}>, colWidth: number = CONTENT_WIDTH / 3): void {
-    this.checkPageBreak();
+    const maxWidth = colWidth - 6;
+    let maxLinesUsed = 1;
+    const fieldLines: string[][] = [];
+    for (const field of fields) {
+      if (field.label) {
+        const val = displayValue(field.value);
+        const lines = this.wrapText(val, maxWidth, 9);
+        fieldLines.push(lines);
+        if (lines.length > maxLinesUsed) maxLinesUsed = lines.length;
+      } else {
+        fieldLines.push([]);
+      }
+    }
+    const requiredHeight = LINE_HEIGHT * 2 + (maxLinesUsed > 1 ? (maxLinesUsed - 1) * 11 : 0);
+    this.checkPageBreak(requiredHeight);
     let x = MARGIN;
+    let fieldIdx = 0;
     for (const field of fields) {
       if (field.label) {
         this.drawTextAt(field.label, x, this.yPosition, 8, 'normal', LABEL_COLOR);
-        const maxWidth = colWidth - 6;
-        let val = displayValue(field.value);
-        const textWidth = this.font.widthOfTextAtSize(val, 9);
-        if (textWidth > maxWidth && val.length > 3) {
-          while (val.length > 3 && this.font.widthOfTextAtSize(val + '...', 9) > maxWidth) {
-            val = val.slice(0, -1);
-          }
-          val += '...';
-        }
-        this.drawTextAt(val, x, this.yPosition - 12, 9, 'normal');
+        const lines = fieldLines[fieldIdx];
+        lines.forEach((line, lineIdx) => {
+          this.drawTextAt(line, x, this.yPosition - 12 - (lineIdx * 11), 9, 'normal');
+        });
       }
+      fieldIdx++;
       x += colWidth;
     }
-    this.moveDown(LINE_HEIGHT * 2);
+    this.moveDown(requiredHeight);
   }
 
   private drawCellDividers(colWidths: number[], rowY: number, rowHeight: number): void {
