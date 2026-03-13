@@ -622,6 +622,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [licDateErrors, setLicDateErrors] = useState<Record<string, Record<string, string>>>({});
   const [trainingDateErrors, setTrainingDateErrors] = useState<Record<string, Record<string, string>>>({});
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, Record<string, string>>>({});
+  const [b6InterviewerErrors, setB6InterviewerErrors] = useState<Record<string, string>>({});
+  const [b7TrainingNameErrors, setB7TrainingNameErrors] = useState<Record<string, string>>({});
   const [seaRequiredErrors, setSeaRequiredErrors] = useState<Record<string, Record<string, string>>>({});
 
   const validateEmail = (value: string): string => {
@@ -3242,6 +3244,38 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       toast({
         title: "Error",
         description: "Please save the candidate first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let screeningHasErrors = false;
+
+    if (formData.b6InterviewCompleted === 'yes') {
+      const newB6Errors: Record<string, string> = {};
+      formData.b6Interviews.forEach((interview) => {
+        if (!(interview.interviewer || '').trim()) {
+          newB6Errors[interview.id] = 'Interviewer is required';
+          screeningHasErrors = true;
+        }
+      });
+      setB6InterviewerErrors(newB6Errors);
+    }
+
+    const isB7RowBlank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
+    const newB7Errors: Record<string, string> = {};
+    formData.b7TrainingNeeds.forEach((training) => {
+      if (!isB7RowBlank(training) && !(training.training || '').trim()) {
+        newB7Errors[training.id] = 'Training name is required';
+        screeningHasErrors = true;
+      }
+    });
+    setB7TrainingNameErrors(newB7Errors);
+
+    if (screeningHasErrors) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields in B6/B7 sections",
         variant: "destructive",
       });
       return;
@@ -7588,7 +7622,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           <div className="flex gap-6 w-[200px]">
                             <RadioGroup 
                               value={formData.b6InterviewCompleted} 
-                              onValueChange={(value) => setFormData(prev => ({ ...prev, b6InterviewCompleted: value }))}
+                              onValueChange={(value) => {
+                                setFormData(prev => ({ ...prev, b6InterviewCompleted: value }));
+                                if (value !== 'yes') setB6InterviewerErrors({});
+                              }}
                               className="flex gap-6"
                             >
                               <div className="flex items-center space-x-2 w-[50px]">
@@ -7661,10 +7698,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                           : int
                                       )
                                     }));
+                                    if (value) {
+                                      setB6InterviewerErrors(prev => { const n = { ...prev }; delete n[interview.id]; return n; });
+                                    }
                                   }}
                                 >
-                                  <SelectTrigger className="text-sm" data-testid={`select-b6-interview-interviewer-${index}`}>
-                                    <SelectValue placeholder="Interviewer" />
+                                  <SelectTrigger
+                                    className={`text-sm ${b6InterviewerErrors[interview.id] ? 'border-red-500' : ''}`}
+                                    data-testid={`select-b6-interview-interviewer-${index}`}
+                                    onBlur={() => {
+                                      if (!(interview.interviewer || '').trim()) {
+                                        setB6InterviewerErrors(prev => ({ ...prev, [interview.id]: 'Interviewer is required' }));
+                                      }
+                                    }}
+                                  >
+                                    <SelectValue placeholder="Interviewer *" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {isLoadingUsers ? (
@@ -7680,6 +7728,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     )}
                                   </SelectContent>
                                 </Select>
+                                {b6InterviewerErrors[interview.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-b6-interviewer-error-${index}`}>{b6InterviewerErrors[interview.id]}</p>}
                               </div>
                               <div>
                                 <Select
@@ -8025,7 +8074,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     <Table className="w-full">
                       <TableHeader>
                         <TableRow className="bg-gray-100">
-                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/ Course</TableHead>
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/ Course <span className="text-red-500">*</span></TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Identified by</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Category</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Due Date</TableHead>
@@ -8046,11 +8095,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                       t.id === training.id ? { ...t, training: e.target.value } : t
                                     )
                                   }));
+                                  if (e.target.value.trim()) {
+                                    setB7TrainingNameErrors(prev => { const n = { ...prev }; delete n[training.id]; return n; });
+                                  }
                                 }}
-                                className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                                onBlur={(e) => {
+                                  const hasOtherData = (training.category || '').trim() || (training.identifiedBy || '').trim() || (training.dueDate || '').trim() || (training.comments || '').trim();
+                                  if (!e.target.value.trim() && hasOtherData) {
+                                    setB7TrainingNameErrors(prev => ({ ...prev, [training.id]: 'Training name is required' }));
+                                  }
+                                }}
+                                className={`text-[#4f5863] text-[13px] border ${b7TrainingNameErrors[training.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                                 placeholder="Enter training/course name"
                                 data-testid={`input-b7-training-name-${idx}`}
                               />
+                              {b7TrainingNameErrors[training.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-b7-training-name-error-${idx}`}>{b7TrainingNameErrors[training.id]}</p>}
                             </TableCell>
                             <TableCell className="p-3">
                               <Select
