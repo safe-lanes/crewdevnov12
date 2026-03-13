@@ -977,12 +977,12 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawRadioQuestion('B2.1 Reference checks completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b2ReferencesCompleted, false);
-  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-ref');
+  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-completed');
 
   builder.drawRadioQuestion('B2.2 Current employer feedback positive?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
     formData.b2EmployerFeedback, true);
-  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-feedback');
+  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-results');
 
   builder.checkPageBreak(50);
   builder.drawText('References:', MARGIN, 9, 'bold');
@@ -1003,7 +1003,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawRadioQuestion('B3.1 Security checks completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b3ChecksCompleted, false);
-  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-sec');
+  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-completed');
 
   builder.drawRadioQuestion('B3.2 Security checks results positive?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
