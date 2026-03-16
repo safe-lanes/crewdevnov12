@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "SiCsPjP1Pioa2gpq7Zp8M"
+uri = "file://multitenant-production-audit-report.md"
+type = "text"
+title = "SAIL Crewing — Multi-Tenant Production Audit Report"
