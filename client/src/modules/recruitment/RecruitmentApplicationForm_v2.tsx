@@ -634,8 +634,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return '';
   };
 
-  const sanitizeName = (value: string): string => value.replace(/[^a-zA-Z'-]/g, '');
-  const isValidName = (value: string): boolean => !value || /^[a-zA-Z'-]+$/.test(value);
+  const sanitizeName = (value: string): string => value.replace(/[^a-zA-Z' -]/g, '');
+  const isValidName = (value: string): boolean => !value || /^[a-zA-Z' -]+$/.test(value);
 
   const validateDob = (dateStr: string): string => {
     if (!dateStr) return '';
