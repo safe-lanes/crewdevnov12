@@ -761,7 +761,8 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   builder.drawFieldRow([
     { label: 'Spouse Family Name', value: formData.spouseFamilyName },
     { label: 'Spouse Date of Birth', value: formatDate(formData.spouseDateOfBirth) },
-  ], CONTENT_WIDTH / 2);
+    { label: '', value: '' },
+  ]);
   
   builder.checkPageBreak(50);
   builder.drawText('Children:', MARGIN, 9, 'bold');
