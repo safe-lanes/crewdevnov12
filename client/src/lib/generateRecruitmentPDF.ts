@@ -531,27 +531,69 @@ class PDFBuilder {
     this.moveDown(headerHeight);
   }
 
+  private wrapTableCell(text: string, maxWidth: number, fontSize: number): string[] {
+    if (this.font.widthOfTextAtSize(text, fontSize) <= maxWidth) return [text];
+    const words = text.split(/\s+/);
+    const lines: string[] = [];
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine ? currentLine + ' ' + word : word;
+      if (this.font.widthOfTextAtSize(testLine, fontSize) > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    const result: string[] = [];
+    for (const line of lines) {
+      if (this.font.widthOfTextAtSize(line, fontSize) <= maxWidth) {
+        result.push(line);
+      } else {
+        let remaining = line;
+        while (remaining && this.font.widthOfTextAtSize(remaining, fontSize) > maxWidth) {
+          let end = remaining.length;
+          while (end > 1 && this.font.widthOfTextAtSize(remaining.slice(0, end), fontSize) > maxWidth) {
+            end--;
+          }
+          result.push(remaining.slice(0, end));
+          remaining = remaining.slice(end);
+        }
+        if (remaining) result.push(remaining);
+      }
+    }
+    return result;
+  }
+
   drawTableRow(values: string[], colWidths: number[], rowHeight: number = 16): void {
-    this.checkPageBreak(rowHeight + 5);
-    let x = MARGIN;
-    
-    this.drawRect(MARGIN, this.yPosition - rowHeight, CONTENT_WIDTH, rowHeight);
-    this.drawCellDividers(colWidths, this.yPosition - rowHeight, rowHeight);
-    
+    const fontSize = 7;
+    const lineSpacing = 9;
+    const cellPadding = 4;
+    const cellLines: string[][] = [];
+    let maxLines = 1;
     for (let i = 0; i < values.length; i++) {
       const maxWidth = colWidths[i] - 8;
-      let displayVal = displayValue(values[i]);
-      const textWidth = this.font.widthOfTextAtSize(displayVal, 7);
-      if (textWidth > maxWidth && displayVal.length > 3) {
-        while (displayVal.length > 3 && this.font.widthOfTextAtSize(displayVal + '...', 7) > maxWidth) {
-          displayVal = displayVal.slice(0, -1);
-        }
-        displayVal += '...';
+      const val = displayValue(values[i]);
+      const lines = this.wrapTableCell(val, maxWidth, fontSize);
+      cellLines.push(lines);
+      if (lines.length > maxLines) maxLines = lines.length;
+    }
+    const dynamicHeight = Math.max(rowHeight, cellPadding + maxLines * lineSpacing + 3);
+    this.checkPageBreak(dynamicHeight + 5);
+    let x = MARGIN;
+
+    this.drawRect(MARGIN, this.yPosition - dynamicHeight, CONTENT_WIDTH, dynamicHeight);
+    this.drawCellDividers(colWidths, this.yPosition - dynamicHeight, dynamicHeight);
+
+    for (let i = 0; i < values.length; i++) {
+      const lines = cellLines[i];
+      for (let li = 0; li < lines.length; li++) {
+        this.drawTextAt(lines[li], x + 4, this.yPosition - 11 - (li * lineSpacing), fontSize, 'normal', TEXT_COLOR);
       }
-      this.drawTextAt(displayVal, x + 4, this.yPosition - 11, 7, 'normal', TEXT_COLOR);
       x += colWidths[i];
     }
-    this.moveDown(rowHeight);
+    this.moveDown(dynamicHeight);
   }
 
   drawRadioQuestion(label: string, options: Array<{label: string, value: string}>, selectedValue: string, hasNA: boolean = false): void {
