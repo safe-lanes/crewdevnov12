@@ -738,24 +738,24 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   builder.drawFieldRow([
     { label: 'Country of Residence', value: formData.countryOfResidence },
     { label: 'Nearest Airport', value: formData.nearestAirport },
-    { label: '', value: '' },
+    { label: 'Email', value: formData.email },
   ]);
   builder.drawFieldRow([
     { label: 'Address Line 1', value: formData.residentialAddressLine1 },
     { label: 'Address Line 2', value: formData.residentialAddressLine2 },
-    { label: '', value: '' },
+    { label: 'Landline', value: formData.contactLandline },
   ]);
   builder.drawFieldRow([
-    { label: 'Landline', value: formData.contactLandline },
     { label: 'Mobile', value: formData.mobile },
-    { label: 'Email', value: formData.email },
+    { label: '', value: '' },
+    { label: '', value: '' },
   ]);
 
   builder.drawSubsectionHeader('A1.3 Family & Next of Kin');
   builder.drawFieldRow([
     { label: 'Marital Status', value: formData.maritalStatus },
     { label: 'Dependent Children', value: formData.numberOfDependentChildren },
-    { label: '', value: '' },
+    { label: 'Spouse Date of Birth', value: formatDate(formData.spouseDateOfBirth) },
   ]);
   builder.drawFieldRow([
     { label: 'Father\'s Name', value: formData.fatherName },
@@ -767,11 +767,6 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     { label: 'Spouse First Name', value: formData.spouseFirstName },
     { label: 'Spouse Middle Name', value: formData.spouseMiddleName },
     { label: 'Spouse Family Name', value: formData.spouseFamilyName },
-  ]);
-  builder.drawFieldRow([
-    { label: 'Spouse Date of Birth', value: formatDate(formData.spouseDateOfBirth) },
-    { label: '', value: '' },
-    { label: '', value: '' },
   ]);
   
   builder.checkPageBreak(50);
@@ -870,7 +865,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
 
   builder.drawSubsectionHeader('A3.2 License & DCE');
   if (formData.licenses && formData.licenses.length > 0) {
-    const licColWidths = [CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14];
+    const licColWidths = [CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14];
     builder.drawTableHeader(['Certificate/Document', 'Abbr', 'Req', 'Cert No', 'Issuing Auth', 'Issued', 'Expiry'], licColWidths);
     for (const lic of formData.licenses) {
       builder.drawTableRow([
@@ -890,7 +885,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
 
   builder.drawSubsectionHeader('A3.3 Training Courses');
   if (formData.trainingCourses && formData.trainingCourses.length > 0) {
-    const trainColWidths = [CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14];
+    const trainColWidths = [CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14];
     builder.drawTableHeader(['Training Course', 'Abbr', 'Req', 'Cert No', 'Issuing Auth', 'Issued', 'Expiry'], trainColWidths);
     for (const course of formData.trainingCourses) {
       builder.drawTableRow([
@@ -911,8 +906,8 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   builder.drawPartHeader('A4 — Sea Service');
   builder.drawSubsectionHeader('A4.1 Sea Service');
   if (formData.seaService && formData.seaService.length > 0) {
-    const seaColWidths = [CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.07];
-    builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'DWT', 'Engine/Power', 'Owner/Operator', 'Rank', 'From', 'To', 'Months', ''], seaColWidths);
+    const seaColWidths = [CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.10];
+    builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'DWT', 'Engine/Power', 'Owner/Operator', 'Rank', 'From', 'To', 'Months'], seaColWidths);
     for (const service of formData.seaService) {
       builder.drawTableRow([
         service.vesselName || '',
@@ -924,7 +919,6 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
         formatDate(service.from),
         formatDate(service.to),
         service.periodMonths || '',
-        '',
       ], seaColWidths);
     }
   } else {
@@ -934,12 +928,13 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
 
   builder.drawPartHeader('A5 — Additional Information');
   if (formData.additionalInfo && formData.additionalInfo.length > 0) {
+    const addInfoColWidths = [CONTENT_WIDTH * 0.50, CONTENT_WIDTH * 0.50];
+    builder.drawTableHeader(['Information', 'Response'], addInfoColWidths);
     for (const info of formData.additionalInfo) {
-      builder.checkPageBreak(40);
-      builder.drawText(displayValue(info.information), MARGIN, 9, 'bold');
-      builder.moveDown(LINE_HEIGHT);
-      builder.drawText(displayValue(info.response), MARGIN + 10, 9, 'normal');
-      builder.moveDown(LINE_HEIGHT);
+      builder.drawTableRow([
+        info.information || '',
+        info.response || '',
+      ], addInfoColWidths);
     }
   } else {
     builder.drawText('No additional information', MARGIN + 10, 8, 'italic', LABEL_COLOR);
