@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 import { formatDate } from "../../utils/format";
+import { CalendarDays } from "lucide-react";
 
 interface FormattedDateInputProps {
   value: string;
@@ -13,15 +14,24 @@ interface FormattedDateInputProps {
   "data-testid"?: string;
 }
 
-const FormattedDateInput = React.forwardRef<HTMLInputElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, max, placeholder, "data-testid": dataTestId }, ref) => {
+const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
+  ({ value, onChange, onBlur, className, min, max, "data-testid": dataTestId }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
     const formatted = value ? formatDate(value) : "";
 
-    React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
-
     return (
-      <div className="relative">
+      <div
+        ref={ref}
+        className={cn(
+          "relative flex items-center h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base shadow-sm cursor-pointer md:text-sm",
+          className
+        )}
+        onClick={() => inputRef.current?.showPicker?.()}
+      >
+        <span className={cn("flex-1 select-none", !formatted && "text-muted-foreground")}>
+          {formatted || "dd-mm-yyyy"}
+        </span>
+        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 ml-1" />
         <input
           ref={inputRef}
           type="date"
@@ -31,22 +41,9 @@ const FormattedDateInput = React.forwardRef<HTMLInputElement, FormattedDateInput
           min={min}
           max={max}
           data-testid={dataTestId}
-          className={cn(
-            "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-            className
-          )}
+          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+          tabIndex={-1}
         />
-        {formatted && (
-          <div
-            className={cn(
-              "absolute inset-0 flex items-center px-3 pointer-events-none bg-white rounded-md text-base md:text-sm",
-              className
-            )}
-            style={{ paddingRight: '2rem' }}
-          >
-            {formatted}
-          </div>
-        )}
       </div>
     );
   }
