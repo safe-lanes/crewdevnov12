@@ -1022,7 +1022,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('No references recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
-  builder.moveDown(5);
+  builder.moveDown(LINE_HEIGHT);
 
   builder.drawRadioQuestion('B2.2 Current employer feedback positive?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
@@ -1049,7 +1049,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('No authorities recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
-  builder.moveDown(5);
+  builder.moveDown(LINE_HEIGHT);
 
   builder.drawRadioQuestion('B3.2 Security checks results positive?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
