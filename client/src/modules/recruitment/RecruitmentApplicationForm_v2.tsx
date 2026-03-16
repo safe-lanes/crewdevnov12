@@ -2383,11 +2383,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFirstNameError('');
     }
 
-    const dobErr = validateDob(formData.dateOfBirth);
-    if (dobErr) {
-      setDobError(dobErr);
-      firstErrorTestIds.push('input-dob');
-      hasErrors = true;
+    if (formData.dateOfBirth) {
+      const dobErr = validateDob(formData.dateOfBirth);
+      if (dobErr) {
+        setDobError(dobErr);
+        firstErrorTestIds.push('input-dob');
+        hasErrors = true;
+      } else {
+        setDobError('');
+      }
     } else {
       setDobError('');
     }
@@ -4262,7 +4266,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Date of birth <span className="text-red-500">*</span></Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
               {isEditing ? (
                 <>
                   <Input
@@ -4282,7 +4286,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             </div>
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Age( Years )</Label>
-              <div className="mt-1 text-sm text-gray-900" data-testid="text-age">{formData.ageInYears}</div>
+              {isEditing ? (
+                <Input
+                  value={formData.ageInYears}
+                  onChange={(e) => updateFormData('ageInYears', e.target.value)}
+                  className="mt-1"
+                  data-testid="input-age"
+                />
+              ) : (
+                <div className="mt-1 text-sm text-gray-900" data-testid="text-age">{formData.ageInYears}</div>
+              )}
             </div>
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Place of birth( City )</Label>
