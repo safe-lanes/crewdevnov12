@@ -71,8 +71,8 @@ function maskTuid(tuid: string): string {
   return tuid.substring(0, 8) + "***";
 }
 
-const CACHE_TTL_MS = 1 * 60 * 1000;
-const IDLE_EVICTION_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const IDLE_EVICTION_MS = 30 * 60 * 1000;
 const EVICTION_CHECK_INTERVAL_MS = 60 * 1000;
 const TUID_CACHE_MAX_SIZE = 500;
 
@@ -99,7 +99,7 @@ class TenantConnectionManager {
   public tenantStorage = new AsyncLocalStorage<TenantStore>();
 
   constructor() {
-    this.tenantPoolMax = parseInt(process.env.TENANT_POOL_MAX || "3", 10);
+    this.tenantPoolMax = parseInt(process.env.TENANT_POOL_MAX || "5", 10);
     this.globalMaxConnections = parseInt(process.env.GLOBAL_MAX_CONNECTIONS || "80", 10);
   }
 

@@ -13,7 +13,7 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 100,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests", message: "Please try again later." },
@@ -22,7 +22,7 @@ const apiLimiter = rateLimit({
 
 const tenantInitLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 10,
+  max: 15,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests", message: "Tenant init rate limit exceeded. Please try again later." },
