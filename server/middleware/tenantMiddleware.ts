@@ -46,20 +46,23 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
   req.tenantId = tenantId;
 
   tenantConnectionManager
-    .runInTenantContext(tenantId, () => {
-      return new Promise<void>((resolve, reject) => {
-        res.on("finish", resolve);
-        res.on("error", reject);
-        next();
+    .validateTuid(tenantId)
+    .then(() => {
+      return tenantConnectionManager.runInTenantContext(tenantId, () => {
+        return new Promise<void>((resolve, reject) => {
+          res.on("finish", resolve);
+          res.on("error", reject);
+          next();
+        });
       });
     })
     .catch((err) => {
       if (res.headersSent) return;
 
       if (err instanceof TenantNotFoundError) {
-        res.status(404).json({
-          error: "domain_not_found",
-          message: err.message,
+        res.status(403).json({
+          error: "invalid_tenant",
+          message: "The provided tenant identifier is not valid.",
         });
       } else if (err instanceof TenantInactiveError) {
         res.status(403).json({

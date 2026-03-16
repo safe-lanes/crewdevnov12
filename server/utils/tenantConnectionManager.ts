@@ -37,6 +37,11 @@ interface TenantCacheEntry {
   expiresAt: number;
 }
 
+interface TuidValidationCacheEntry {
+  status: "active" | "not_found" | "inactive";
+  expiresAt: number;
+}
+
 interface PoolCacheEntry {
   pool: Pool;
   db: DrizzleInstance;
@@ -51,11 +56,13 @@ interface TenantStore {
 const CACHE_TTL_MS = 1 * 60 * 1000;
 const IDLE_EVICTION_MS = 10 * 60 * 1000;
 const EVICTION_CHECK_INTERVAL_MS = 60 * 1000;
+const TUID_CACHE_MAX_SIZE = 500;
 
 class TenantConnectionManager {
   private masterPool: Pool | null = null;
   private masterDb: DrizzleInstance | null = null;
   private tenantCache = new Map<string, TenantCacheEntry>();
+  private tuidValidationCache = new Map<string, TuidValidationCacheEntry>();
   private poolCache = new Map<string, PoolCacheEntry>();
   private evictionTimer: ReturnType<typeof setInterval> | null = null;
   private _isMultiTenantEnabled = false;
@@ -160,6 +167,66 @@ class TenantConnectionManager {
     }
   }
 
+  async validateTuid(tuid: string): Promise<void> {
+    if (!this._isMultiTenantEnabled || !this.masterDb) {
+      throw new Error("Multi-tenant is not configured");
+    }
+
+    const cached = this.tuidValidationCache.get(tuid);
+    if (cached && cached.expiresAt > Date.now()) {
+      if (cached.status === "not_found") {
+        throw new TenantNotFoundError(tuid);
+      }
+      if (cached.status === "inactive") {
+        throw new TenantInactiveError(tuid);
+      }
+      return;
+    }
+
+    if (this.tuidValidationCache.size > TUID_CACHE_MAX_SIZE) {
+      this.evictExpiredTuidCache();
+    }
+
+    try {
+      const result = await this.masterDb
+        .select({
+          tuid: tenants.tuid,
+          isActive: tenants.isActive,
+          isDeleted: tenants.isDeleted,
+        })
+        .from(tenants)
+        .where(eq(tenants.tuid, tuid))
+        .limit(1);
+
+      if (result.length === 0) {
+        this.tuidValidationCache.set(tuid, {
+          status: "not_found",
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        });
+        throw new TenantNotFoundError(tuid);
+      }
+
+      const row = result[0];
+
+      if (!row.isActive || row.isDeleted) {
+        this.tuidValidationCache.set(tuid, {
+          status: "inactive",
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        });
+        throw new TenantInactiveError(tuid);
+      }
+
+      this.tuidValidationCache.set(tuid, {
+        status: "active",
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+    } catch (err) {
+      if (err instanceof TenantNotFoundError) throw err;
+      if (err instanceof TenantInactiveError) throw err;
+      throw new TenantDatabaseError("sails_master_crewing", (err as Error).message);
+    }
+  }
+
   async getTenantDb(tuid: string): Promise<DrizzleInstance> {
     const existing = this.poolCache.get(tuid);
     if (existing) {
@@ -225,6 +292,27 @@ class TenantConnectionManager {
         console.log(`♻️ Evicted idle tenant pool '${tuid}' (active pools: ${this.poolCache.size})`);
       }
     }
+
+    this.evictExpiredTuidCache();
+  }
+
+  private evictExpiredTuidCache(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.tuidValidationCache.entries()) {
+      if (entry.expiresAt <= now) {
+        this.tuidValidationCache.delete(key);
+      }
+    }
+
+    if (this.tuidValidationCache.size > TUID_CACHE_MAX_SIZE) {
+      const entriesToRemove = this.tuidValidationCache.size - TUID_CACHE_MAX_SIZE;
+      let removed = 0;
+      for (const key of this.tuidValidationCache.keys()) {
+        if (removed >= entriesToRemove) break;
+        this.tuidValidationCache.delete(key);
+        removed++;
+      }
+    }
   }
 
   async closeAll(): Promise<void> {
@@ -243,6 +331,7 @@ class TenantConnectionManager {
     }
     this.poolCache.clear();
     this.tenantCache.clear();
+    this.tuidValidationCache.clear();
 
     if (this.masterPool) {
       closePromises.push(
