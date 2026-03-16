@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { eq, and } from "drizzle-orm";
 import { tenants } from "@shared/v2/tenant/schema";
-// import 'dotenv/config';
+import { runMigrationsForTenant } from "../migrationRunner";
 
 type DrizzleInstance = ReturnType<typeof drizzle>;
 
@@ -53,10 +53,23 @@ interface TenantStore {
   tenantId: string;
 }
 
+interface CircuitBreakerEntry {
+  failures: number;
+  openUntil: number;
+}
+
+function maskTuid(tuid: string): string {
+  if (tuid.length <= 8) return tuid.substring(0, 4) + "***";
+  return tuid.substring(0, 8) + "***";
+}
+
 const CACHE_TTL_MS = 1 * 60 * 1000;
 const IDLE_EVICTION_MS = 10 * 60 * 1000;
 const EVICTION_CHECK_INTERVAL_MS = 60 * 1000;
 const TUID_CACHE_MAX_SIZE = 500;
+
+const CIRCUIT_BREAKER_THRESHOLD = 3;
+const CIRCUIT_BREAKER_COOLDOWN_MS = 30 * 1000;
 
 class TenantConnectionManager {
   private masterPool: Pool | null = null;
@@ -67,7 +80,20 @@ class TenantConnectionManager {
   private evictionTimer: ReturnType<typeof setInterval> | null = null;
   private _isMultiTenantEnabled = false;
 
+  private migratedTenants = new Set<string>();
+  private migrationFailures = new Map<string, number>();
+  private circuitBreakers = new Map<string, CircuitBreakerEntry>();
+  private pendingPoolCreations = new Map<string, Promise<DrizzleInstance>>();
+
+  private tenantPoolMax: number;
+  private globalMaxConnections: number;
+
   public tenantStorage = new AsyncLocalStorage<TenantStore>();
+
+  constructor() {
+    this.tenantPoolMax = parseInt(process.env.TENANT_POOL_MAX || "3", 10);
+    this.globalMaxConnections = parseInt(process.env.GLOBAL_MAX_CONNECTIONS || "80", 10);
+  }
 
   get isMultiTenantEnabled(): boolean {
     return this._isMultiTenantEnabled;
@@ -105,7 +131,7 @@ class TenantConnectionManager {
 
       this._isMultiTenantEnabled = true;
       console.log("🏢 Multi-tenant mode: ENABLED");
-      console.log("📡 Master database connected successfully");
+      console.log(`📡 Master database connected (pool/tenant: ${this.tenantPoolMax}, global cap: ${this.globalMaxConnections})`);
 
       this.evictionTimer = setInterval(() => this.evictIdlePools(), EVICTION_CHECK_INTERVAL_MS);
     } catch (err: any) {
@@ -227,11 +253,71 @@ class TenantConnectionManager {
     }
   }
 
+  private getTotalPoolConnections(): number {
+    let total = 0;
+    for (const entry of this.poolCache.values()) {
+      total += entry.pool.totalCount;
+    }
+    return total;
+  }
+
+  private isCircuitOpen(tuid: string): boolean {
+    const cb = this.circuitBreakers.get(tuid);
+    if (!cb) return false;
+    if (cb.openUntil > Date.now()) return true;
+    this.circuitBreakers.delete(tuid);
+    return false;
+  }
+
+  private recordConnectionFailure(tuid: string): void {
+    const cb = this.circuitBreakers.get(tuid) || { failures: 0, openUntil: 0 };
+    cb.failures++;
+    if (cb.failures >= CIRCUIT_BREAKER_THRESHOLD) {
+      cb.openUntil = Date.now() + CIRCUIT_BREAKER_COOLDOWN_MS;
+      console.warn(`⚡ Circuit breaker OPEN for tenant '${maskTuid(tuid)}' — ${CIRCUIT_BREAKER_COOLDOWN_MS / 1000}s cooldown`);
+    }
+    this.circuitBreakers.set(tuid, cb);
+  }
+
+  private clearCircuitBreaker(tuid: string): void {
+    this.circuitBreakers.delete(tuid);
+  }
+
   async getTenantDb(tuid: string): Promise<DrizzleInstance> {
     const existing = this.poolCache.get(tuid);
     if (existing) {
       existing.lastUsed = Date.now();
       return existing.db;
+    }
+
+    const pending = this.pendingPoolCreations.get(tuid);
+    if (pending) {
+      return pending;
+    }
+
+    const creationPromise = this.createTenantPool(tuid);
+    this.pendingPoolCreations.set(tuid, creationPromise);
+
+    try {
+      return await creationPromise;
+    } finally {
+      this.pendingPoolCreations.delete(tuid);
+    }
+  }
+
+  private async createTenantPool(tuid: string): Promise<DrizzleInstance> {
+    if (this.isCircuitOpen(tuid)) {
+      throw new TenantDatabaseError(tuid, "Temporarily unavailable due to repeated connection failures. Retrying shortly.");
+    }
+
+    const migrationFailedAt = this.migrationFailures.get(tuid);
+    if (migrationFailedAt && Date.now() - migrationFailedAt < CIRCUIT_BREAKER_COOLDOWN_MS) {
+      throw new TenantDatabaseError(tuid, "Schema migration recently failed. Retrying shortly.");
+    }
+
+    const currentTotal = this.getTotalPoolConnections();
+    if (currentTotal >= this.globalMaxConnections) {
+      throw new TenantDatabaseError(tuid, "Global connection limit reached. Please try again later.");
     }
 
     try {
@@ -242,12 +328,14 @@ class TenantConnectionManager {
       const requiresSsl =
         masterUrl.includes("sslmode=require") || masterUrl.includes("ssl=true");
 
+      const connectionString = url.toString();
+
       const pool = new Pool({
-        connectionString: url.toString(),
+        connectionString,
         ssl: requiresSsl
           ? { rejectUnauthorized: false, checkServerIdentity: () => undefined }
           : false,
-        max: 5,
+        max: this.tenantPoolMax,
         min: 1,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
@@ -257,13 +345,30 @@ class TenantConnectionManager {
       await client.query("SELECT 1");
       client.release();
 
+      this.clearCircuitBreaker(tuid);
+
+      if (!this.migratedTenants.has(tuid)) {
+        try {
+          await runMigrationsForTenant(connectionString, tuid);
+          this.migratedTenants.add(tuid);
+          this.migrationFailures.delete(tuid);
+        } catch (migErr: any) {
+          console.error(`❌ Tenant migration failed for '${maskTuid(tuid)}':`, migErr.message);
+          this.migrationFailures.set(tuid, Date.now());
+          await pool.end().catch(() => {});
+          throw new TenantDatabaseError(tuid, "Schema migration failed. Please contact your administrator.");
+        }
+      }
+
       const db = drizzle(pool);
 
       this.poolCache.set(tuid, { pool, db, lastUsed: Date.now() });
-      console.log(`🔗 Tenant pool created for '${tuid}' (active pools: ${this.poolCache.size})`);
+      console.log(`🔗 Tenant pool created for '${maskTuid(tuid)}' (active pools: ${this.poolCache.size})`);
 
       return db;
     } catch (err: any) {
+      if (err instanceof TenantDatabaseError) throw err;
+      this.recordConnectionFailure(tuid);
       throw new TenantDatabaseError(tuid, err.message);
     }
   }
@@ -281,15 +386,41 @@ class TenantConnectionManager {
     return this.tenantStorage.getStore()?.tenantId ?? null;
   }
 
+  getPoolMetrics(): {
+    activePools: number;
+    totalConnections: number;
+    globalMaxConnections: number;
+    poolMaxPerTenant: number;
+    migratedTenants: number;
+    openCircuitBreakers: string[];
+  } {
+    const now = Date.now();
+    const openCbs: string[] = [];
+    for (const [tuid, cb] of this.circuitBreakers.entries()) {
+      if (cb.openUntil > now) {
+        openCbs.push(maskTuid(tuid));
+      }
+    }
+
+    return {
+      activePools: this.poolCache.size,
+      totalConnections: this.getTotalPoolConnections(),
+      globalMaxConnections: this.globalMaxConnections,
+      poolMaxPerTenant: this.tenantPoolMax,
+      migratedTenants: this.migratedTenants.size,
+      openCircuitBreakers: openCbs,
+    };
+  }
+
   private evictIdlePools(): void {
     const now = Date.now();
     for (const [tuid, entry] of this.poolCache.entries()) {
       if (now - entry.lastUsed > IDLE_EVICTION_MS) {
         entry.pool.end().catch((err) =>
-          console.error(`Failed to close idle pool for '${tuid}':`, err.message),
+          console.error(`Failed to close idle pool for '${maskTuid(tuid)}':`, err.message),
         );
         this.poolCache.delete(tuid);
-        console.log(`♻️ Evicted idle tenant pool '${tuid}' (active pools: ${this.poolCache.size})`);
+        console.log(`♻️ Evicted idle tenant pool '${maskTuid(tuid)}' (active pools: ${this.poolCache.size})`);
       }
     }
 
@@ -325,13 +456,16 @@ class TenantConnectionManager {
     for (const [tuid, entry] of this.poolCache.entries()) {
       closePromises.push(
         entry.pool.end().catch((err) =>
-          console.error(`Error closing pool for '${tuid}':`, err.message),
+          console.error(`Error closing pool for '${maskTuid(tuid)}':`, err.message),
         ),
       );
     }
     this.poolCache.clear();
     this.tenantCache.clear();
     this.tuidValidationCache.clear();
+    this.migratedTenants.clear();
+    this.migrationFailures.clear();
+    this.circuitBreakers.clear();
 
     if (this.masterPool) {
       closePromises.push(

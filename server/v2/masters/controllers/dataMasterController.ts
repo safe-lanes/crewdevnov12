@@ -296,7 +296,7 @@ export const dataMasterController = {
         });
       }
 
-      console.log(`[Sync All] Fetching all master data from external API: ${apiBaseUrl} (domain: ${domain})`);
+      console.log(`[Sync All] Fetching all master data from external API: ${apiBaseUrl}`);
 
       const results: Record<string, { synced: number; error?: string }> = {};
 

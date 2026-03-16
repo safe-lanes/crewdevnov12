@@ -99,9 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount Swagger API documentation
   setupSwagger(app);
 
-  // Health check endpoint for database connectivity
   app.get("/api/health", async (req, res) => {
-    // Get connection manager metrics if available
     let connectionMetrics = null;
     try {
       if (storage && typeof (storage as any).getConnectionManager === 'function') {
@@ -111,13 +109,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
     } catch (e) {
-      // Ignore - metrics not available
+    }
+
+    let tenantPoolMetrics = null;
+    if (tenantConnectionManager.isMultiTenantEnabled) {
+      tenantPoolMetrics = tenantConnectionManager.getPoolMetrics();
     }
 
     const healthStatus = {
       server: "running",
       database: isConnected ? "connected" : "disconnected",
-      // Gate sensitive information behind development environment check
+      multiTenant: tenantConnectionManager.isMultiTenantEnabled,
+      ...(tenantPoolMetrics && { tenantPoolMetrics }),
       ...(process.env.NODE_ENV === 'development' && {
         rds_instance: "ls-d153072fe29fcd7dc7c484a33fd3130e29abae1b.cxock8yskd1i.ap-southeast-1.rds.amazonaws.com:3306",
         database_name: "crew_database",

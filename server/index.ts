@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { runMigrations } from "./migrationRunner";
@@ -6,9 +7,28 @@ import { tenantConnectionManager } from "./utils/tenantConnectionManager";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
 
 const app = express();
-// Increase body size limit to handle base64 encoded photos (max 10MB)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests", message: "Please try again later." },
+  skip: (req) => req.path === "/api/health",
+});
+
+const tenantInitLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests", message: "Tenant init rate limit exceeded. Please try again later." },
+});
+
+app.use("/api/", apiLimiter);
+app.use("/api/v2/tenant/init", tenantInitLimiter);
 
 app.use((req, res, next) => {
   const start = Date.now();

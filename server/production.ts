@@ -1,6 +1,9 @@
 import express, { type Request, Response, NextFunction } from "express";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { runMigrations } from "./migrationRunner";
+import { tenantConnectionManager } from "./utils/tenantConnectionManager";
+import { tenantMiddleware } from "./middleware/tenantMiddleware";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -15,6 +18,26 @@ function log(message: string, source = "express") {
   });
   console.log(`${formattedTime} [${source}] ${message}`);
 }
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests", message: "Please try again later." },
+  skip: (req) => req.path === "/api/health",
+});
+
+const tenantInitLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests", message: "Tenant init rate limit exceeded. Please try again later." },
+});
+
+app.use("/api/", apiLimiter);
+app.use("/api/v2/tenant/init", tenantInitLimiter);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -48,6 +71,10 @@ app.use((req, res, next) => {
 
 (async () => {
   await runMigrations();
+
+  await tenantConnectionManager.init();
+
+  app.use(tenantMiddleware);
 
   const server = await registerRoutes(app);
 
@@ -87,8 +114,9 @@ app.use((req, res, next) => {
     isShuttingDown = true;
 
     log(`${signal} received. Shutting down gracefully...`);
-    httpServer.close(() => {
+    httpServer.close(async () => {
       log('HTTP server closed.');
+      await tenantConnectionManager.closeAll();
       process.exit(0);
     });
 
