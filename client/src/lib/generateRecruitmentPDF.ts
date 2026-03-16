@@ -730,9 +730,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   
   builder.drawFieldRow([
     { label: 'Manning Agent', value: formData.manningAgent },
-    { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH);
 
   builder.drawSubsectionHeader('A1.2 Address & Contact Information');
   builder.drawFieldRow([
@@ -743,31 +741,27 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   builder.drawFieldRow([
     { label: 'Address Line 1', value: formData.residentialAddressLine1 },
     { label: 'Address Line 2', value: formData.residentialAddressLine2 },
-    { label: 'Landline', value: formData.contactLandline },
+    { label: 'Mobile', value: formData.mobile },
   ]);
   builder.drawFieldRow([
-    { label: 'Mobile', value: formData.mobile },
-    { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
+    { label: 'Landline', value: formData.contactLandline },
+  ], CONTENT_WIDTH);
 
   builder.drawSubsectionHeader('A1.3 Family & Next of Kin');
   builder.drawFieldRow([
     { label: 'Marital Status', value: formData.maritalStatus },
     { label: 'Dependent Children', value: formData.numberOfDependentChildren },
-    { label: 'Spouse Date of Birth', value: formatDate(formData.spouseDateOfBirth) },
-  ]);
-  builder.drawFieldRow([
     { label: 'Father\'s Name', value: formData.fatherName },
-    { label: 'Mother\'s Name', value: formData.motherName },
-    { label: '', value: '' },
   ]);
-  
   builder.drawFieldRow([
+    { label: 'Mother\'s Name', value: formData.motherName },
     { label: 'Spouse First Name', value: formData.spouseFirstName },
     { label: 'Spouse Middle Name', value: formData.spouseMiddleName },
-    { label: 'Spouse Family Name', value: formData.spouseFamilyName },
   ]);
+  builder.drawFieldRow([
+    { label: 'Spouse Family Name', value: formData.spouseFamilyName },
+    { label: 'Spouse Date of Birth', value: formatDate(formData.spouseDateOfBirth) },
+  ], CONTENT_WIDTH / 2);
   
   builder.checkPageBreak(50);
   builder.drawText('Children:', MARGIN, 9, 'bold');
@@ -804,9 +798,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   ]);
   builder.drawFieldRow([
     { label: 'NOK Address', value: formData.nokAddress },
-    { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH);
 
   builder.drawPartHeader('A2 — Documents');
   builder.drawSubsectionHeader('A2.1 Travel & Identification Documents');
