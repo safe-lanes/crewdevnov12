@@ -4839,7 +4839,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         {isEditing ? (
                           <Input type="date" value={child.dateOfBirth} onChange={(e) => updateChild(child.id, 'dateOfBirth', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                         ) : (
-                          <span className="text-[13px]">{child.dateOfBirth}</span>
+                          <span className="text-[13px]">{formatDate(child.dateOfBirth)}</span>
                         )}
                       </TableCell>
                       <TableCell className="p-3">
@@ -5826,7 +5826,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         {formData.b1SubmittedBy ? (
                           <>
                             <span className="font-medium">Submitted by:</span> {formData.b1SubmittedBy}
-                            {formData.b1SubmittedDate && ` on ${formData.b1SubmittedDate}`}
+                            {formData.b1SubmittedDate && ` on ${formatDate(formData.b1SubmittedDate) || formData.b1SubmittedDate}`}
                           </>
                         ) : (
                           <span className="text-gray-400">Not yet submitted</span>
@@ -5837,7 +5837,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         size="sm"
                         className="bg-green-600 hover:bg-green-700 text-white"
                         onClick={() => {
-                          const currentDate = new Date().toLocaleDateString();
+                          const currentDate = formatDate(new Date());
                           setFormData(prev => ({ ...prev, b1SubmittedBy: currentUserDisplay, b1SubmittedDate: currentDate }));
                           handleSaveScreening(false, false, { b1SubmittedBy: currentUserDisplay, b1SubmittedDate: currentDate });
                         }}
@@ -6302,7 +6302,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b2SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b2SubmittedBy}
-                              {formData.b2SubmittedDate && ` on ${formData.b2SubmittedDate}`}
+                              {formData.b2SubmittedDate && ` on ${formatDate(formData.b2SubmittedDate) || formData.b2SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -6313,7 +6313,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate });
                           }}
@@ -6759,7 +6759,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b3SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b3SubmittedBy}
-                              {formData.b3SubmittedDate && ` on ${formData.b3SubmittedDate}`}
+                              {formData.b3SubmittedDate && ` on ${formatDate(formData.b3SubmittedDate) || formData.b3SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -6770,7 +6770,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate });
                           }}
@@ -7237,7 +7237,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b4SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b4SubmittedBy}
-                              {formData.b4SubmittedDate && ` on ${formData.b4SubmittedDate}`}
+                              {formData.b4SubmittedDate && ` on ${formatDate(formData.b4SubmittedDate) || formData.b4SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -7248,7 +7248,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate });
                           }}
@@ -7595,7 +7595,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b5SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b5SubmittedBy}
-                              {formData.b5SubmittedDate && ` on ${formData.b5SubmittedDate}`}
+                              {formData.b5SubmittedDate && ` on ${formatDate(formData.b5SubmittedDate) || formData.b5SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -7606,7 +7606,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate });
                           }}
@@ -8029,7 +8029,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b6SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b6SubmittedBy}
-                              {formData.b6SubmittedDate && ` on ${formData.b6SubmittedDate}`}
+                              {formData.b6SubmittedDate && ` on ${formatDate(formData.b6SubmittedDate) || formData.b6SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -8040,7 +8040,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate });
                           }}
@@ -8242,7 +8242,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b7SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b7SubmittedBy}
-                              {formData.b7SubmittedDate && ` on ${formData.b7SubmittedDate}`}
+                              {formData.b7SubmittedDate && ` on ${formatDate(formData.b7SubmittedDate) || formData.b7SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -8253,7 +8253,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate });
                           }}
@@ -8447,7 +8447,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b8SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b8SubmittedBy}
-                              {formData.b8SubmittedDate && ` on ${formData.b8SubmittedDate}`}
+                              {formData.b8SubmittedDate && ` on ${formatDate(formData.b8SubmittedDate) || formData.b8SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -8458,7 +8458,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate });
                           }}
@@ -8882,7 +8882,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       </div>
                       <div className="text-xs text-gray-500">
                         {formData.c3SubmittedDate && (
-                          <>Date: {formData.c3SubmittedDate}</>
+                          <>Date: {formatDate(formData.c3SubmittedDate) || formData.c3SubmittedDate}</>
                         )}
                       </div>
                     </div>
