@@ -1009,11 +1009,6 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     formData.b2ReferencesCompleted, false);
   builder.drawCommentsForQuestion(formData.b2Comments, 'b2-completed');
 
-  builder.drawRadioQuestion('B2.2 Current employer feedback positive?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
-    formData.b2EmployerFeedback, true);
-  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-results');
-
   builder.checkPageBreak(50);
   builder.drawText('References:', MARGIN, 9, 'bold');
   builder.moveDown(LINE_HEIGHT);
@@ -1027,6 +1022,11 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('No references recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
+
+  builder.drawRadioQuestion('B2.2 Current employer feedback positive?',
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b2EmployerFeedback, true);
+  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-results');
   builder.drawSubmissionInfo(formData.b2SubmittedBy, formData.b2SubmittedDate);
 
   builder.drawSubsectionHeader('B3. Background Security Checks');
@@ -1034,11 +1034,6 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b3ChecksCompleted, false);
   builder.drawCommentsForQuestion(formData.b3Comments, 'b3-completed');
-
-  builder.drawRadioQuestion('B3.2 Security checks results positive?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
-    formData.b3Results, true);
-  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-results');
 
   builder.checkPageBreak(50);
   builder.drawText('Authorities Consulted:', MARGIN, 9, 'bold');
@@ -1053,6 +1048,11 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('No authorities recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
+
+  builder.drawRadioQuestion('B3.2 Security checks results positive?',
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b3Results, true);
+  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-results');
   builder.drawSubmissionInfo(formData.b3SubmittedBy, formData.b3SubmittedDate);
 
   builder.drawSubsectionHeader('B4. Authentication of Certificates & Documents');
