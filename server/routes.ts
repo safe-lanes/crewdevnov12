@@ -18,17 +18,6 @@ import { insertPayElementSchema, insertContractPayElementSchema } from "@shared/
 import { normalizeCrewMemberForTable, calculateCrewStatus } from "@shared/crew-mapping";
 import { tenantConnectionManager, TenantNotFoundError, TenantInactiveError } from "./utils/tenantConnectionManager";
 
-function blockV1InMultiTenant(res: import("express").Response): boolean {
-  if (tenantConnectionManager.isMultiTenantEnabled) {
-    res.status(410).json({
-      error: "V1 API disabled",
-      message: "This legacy endpoint is not available in multi-tenant mode. Use the V2 API instead.",
-    });
-    return true;
-  }
-  return false;
-}
-
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/v2/tenant/init", async (req, res) => {
     try {
@@ -318,7 +307,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Helpers (autoCreateVesselPlanning, syncVesselPlanning) migrated to v2 vessel revisions service
 
   app.get("/api/crew-members", async (req, res) => {
-    if (blockV1InMultiTenant(res)) return;
     try {
       // Parse query parameters for filtering
       const filters: {
@@ -514,7 +502,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Accounts Payable / Payroll Integration API Routes
   // Pay Elements API routes (Rate Tables & Rules)
   app.get("/api/pay-elements", async (req, res) => {
-    if (blockV1InMultiTenant(res)) return;
     try {
       const payElements = await storageAccount.getPayElements();
       res.json(payElements);
@@ -524,7 +511,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/pay-elements", async (req, res) => {
-    if (blockV1InMultiTenant(res)) return;
     try {
       const result = insertPayElementSchema.safeParse(req.body);
       if (!result.success) {
@@ -538,7 +524,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/pay-elements/:id", async (req, res) => {
-    if (blockV1InMultiTenant(res)) return;
+    try {
+      const id = req.params.id;
+      const result = insertPayElementSchema.partial().safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid pay element data", details: result.error.issues });
+      }
+      const payElement = await storageAccount.updatePayElement(id, result.data);
+      if (!payElement) {
+        return res.status(404).json({ error: "Pay element not found" });
+      }
+      res.json(payElement);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update pay element" });
+    }
+  });
+
+  app.put("/api/pay-elements/:id", async (req, res) => {
     try {
       const id = req.params.id;
       const result = insertPayElementSchema.partial().safeParse(req.body);
@@ -557,7 +559,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Contract Pay Elements API routes
   app.put("/api/contract-pay-elements/:id", async (req, res) => {
-    if (blockV1InMultiTenant(res)) return;
     try {
       const id = parseInt(req.params.id);
       const result = insertContractPayElementSchema.partial().safeParse(req.body);
@@ -575,7 +576,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/contract-pay-elements", async (req, res) => {
-    if (blockV1InMultiTenant(res)) return;
     try {
       const result = insertContractPayElementSchema.safeParse(req.body);
       if (!result.success) {
