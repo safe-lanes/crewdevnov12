@@ -2521,6 +2521,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       if (isSeaBlankLocal(sea)) return;
       const rowErrs: Record<string, string> = {};
       if (!(sea.vesselName || '').trim()) rowErrs.vesselName = 'Vessel name is required.';
+      if (!(sea.vesselType || '').trim()) rowErrs.vesselType = 'Vessel type is required.';
+      if (!(sea.rank || '').trim()) rowErrs.rank = 'Rank is required.';
       if (!(sea.from || '').trim()) rowErrs.from = 'From date is required.';
       if (!(sea.to || '').trim()) { rowErrs.to = 'To date is required.'; }
       else if (sea.from && sea.to < sea.from) { rowErrs.to = 'To date cannot be earlier than from date.'; newSeaErrors[sea.id] = '"To" date cannot be earlier than "From" date.'; }
@@ -5341,11 +5343,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-40">Vessel Name <span className="text-red-500">*</span></TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">Vessel Type</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">Vessel Type <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Deadweight</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Engine Type/Power</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Owner/Operator</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Rank</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Rank <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">From <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">To <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-16">Period(M)</TableHead>
@@ -5362,8 +5364,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {seaRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselName}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Select value={service.vesselType} onValueChange={(value) => updateSeaService(service.id, 'vesselType', value)}>
-                    <SelectTrigger className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto">
+                  <Select value={service.vesselType} onValueChange={(value) => { updateSeaService(service.id, 'vesselType', value); if (seaRequiredErrors[service.id]?.vesselType) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselType: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}>
+                    <SelectTrigger className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -5372,6 +5374,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       ))}
                     </SelectContent>
                   </Select>
+                  {seaRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselType}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={service.deadweight} onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -5383,8 +5386,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={service.ownerOperator} onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Select value={service.rank} onValueChange={(value) => updateSeaService(service.id, 'rank', value)}>
-                    <SelectTrigger className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto">
+                  <Select value={service.rank} onValueChange={(value) => { updateSeaService(service.id, 'rank', value); if (seaRequiredErrors[service.id]?.rank) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}>
+                    <SelectTrigger className={`text-[13px] border ${seaRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}>
                       <SelectValue placeholder="Select rank" />
                     </SelectTrigger>
                     <SelectContent>
@@ -5397,6 +5400,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       )}
                     </SelectContent>
                   </Select>
+                  {seaRequiredErrors[service.id]?.rank && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].rank}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input type="date" value={service.from} onChange={(e) => { updateSeaService(service.id, 'from', e.target.value); if (seaRequiredErrors[service.id]?.from && e.target.value) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
