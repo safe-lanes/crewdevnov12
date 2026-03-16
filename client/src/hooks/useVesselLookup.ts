@@ -1,9 +1,9 @@
 import { useMemo, useCallback } from 'react';
-import { useExternalVessels } from './useExternalVessels';
+import { useVesselsV2 } from './v2/useMasterDataV2';
 
 interface VesselMasterEntry {
   id: number;
-  entryId: string; // VSL-003
+  entryId: string; // vesselUuid (e.g., 743cf9d1-841a-11ed-aa7c-7003bca91a86)
   name: string;    // MT Nordic Star
   description?: string;
   vesselType?: string;
@@ -12,21 +12,22 @@ interface VesselMasterEntry {
 }
 
 export function useVesselLookup() {
-  // Fetch vessels from external SAIL ERP API (all 11 vessels)
-  const { data: externalVessels = [], isLoading } = useExternalVessels();
+  // Fetch vessels from local V2 masters API (tenant-aware, no external dependency)
+  const { data: v2Vessels = [], isLoading } = useVesselsV2();
 
-  // Normalize external vessels to match expected VesselMasterEntry format
+  // Normalize V2 vessels to match expected VesselMasterEntry format
+  // V2 API returns: { vesselUuid, vessel, uuid (alias), name (alias), vtuid, ... }
   const vessels: VesselMasterEntry[] = useMemo(() => {
-    return externalVessels.map((v: any, index: number) => ({
+    return v2Vessels.map((v: any, index: number) => ({
       id: index + 1,
-      entryId: v.vuid || v.entryId || `VSL-${String(index + 1).padStart(3, '0')}`,
+      entryId: v.vesselUuid || v.entryId || v.vuid || `VSL-${String(index + 1).padStart(3, '0')}`,
       name: v.vessel || v.name || 'Unknown Vessel',
       description: v.description,
       vesselType: v.vesselType,
       isActive: true,
       isDeleted: false,
     }));
-  }, [externalVessels]);
+  }, [v2Vessels]);
 
   // Create lookup maps for O(1) translation
   const { nameToId, idToName, vesselMap } = useMemo(() => {
