@@ -9,16 +9,24 @@ type DrizzleInstance = ReturnType<typeof drizzle>;
 
 export class TenantNotFoundError extends Error {
   status = 404;
-  constructor(domain: string) {
-    super(`No company registered for domain: ${domain}`);
+  constructor(identifier: string, type: "domain" | "tuid" = "domain") {
+    super(
+      type === "domain"
+        ? `No company registered for domain: ${identifier}`
+        : `No company registered for tenant ID: ${identifier}`
+    );
     this.name = "TenantNotFoundError";
   }
 }
 
 export class TenantInactiveError extends Error {
   status = 403;
-  constructor(domain: string) {
-    super(`Company account for domain '${domain}' is currently inactive. Please contact your administrator.`);
+  constructor(identifier: string, type: "domain" | "tuid" = "domain") {
+    super(
+      type === "domain"
+        ? `Company account for domain '${identifier}' is currently inactive. Please contact your administrator.`
+        : `Company account for tenant '${identifier}' is currently inactive. Please contact your administrator.`
+    );
     this.name = "TenantInactiveError";
   }
 }
@@ -201,10 +209,10 @@ class TenantConnectionManager {
     const cached = this.tuidValidationCache.get(tuid);
     if (cached && cached.expiresAt > Date.now()) {
       if (cached.status === "not_found") {
-        throw new TenantNotFoundError(tuid);
+        throw new TenantNotFoundError(tuid, "tuid");
       }
       if (cached.status === "inactive") {
-        throw new TenantInactiveError(tuid);
+        throw new TenantInactiveError(tuid, "tuid");
       }
       return;
     }
@@ -229,7 +237,7 @@ class TenantConnectionManager {
           status: "not_found",
           expiresAt: Date.now() + CACHE_TTL_MS,
         });
-        throw new TenantNotFoundError(tuid);
+        throw new TenantNotFoundError(tuid, "tuid");
       }
 
       const row = result[0];
@@ -239,7 +247,7 @@ class TenantConnectionManager {
           status: "inactive",
           expiresAt: Date.now() + CACHE_TTL_MS,
         });
-        throw new TenantInactiveError(tuid);
+        throw new TenantInactiveError(tuid, "tuid");
       }
 
       this.tuidValidationCache.set(tuid, {
