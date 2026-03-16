@@ -33,7 +33,8 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
     return;
   }
 
-  const tenantId = req.headers["x-tenant-id"] as string | undefined;
+  const rawTenantId = req.headers["x-tenant-id"];
+  const tenantId = typeof rawTenantId === "string" ? rawTenantId.trim() : undefined;
 
   if (!tenantId) {
     res.status(400).json({

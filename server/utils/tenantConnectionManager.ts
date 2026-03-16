@@ -183,7 +183,7 @@ class TenantConnectionManager {
       return;
     }
 
-    if (this.tuidValidationCache.size > TUID_CACHE_MAX_SIZE) {
+    if (this.tuidValidationCache.size >= TUID_CACHE_MAX_SIZE) {
       this.evictExpiredTuidCache();
     }
 
@@ -304,8 +304,8 @@ class TenantConnectionManager {
       }
     }
 
-    if (this.tuidValidationCache.size > TUID_CACHE_MAX_SIZE) {
-      const entriesToRemove = this.tuidValidationCache.size - TUID_CACHE_MAX_SIZE;
+    if (this.tuidValidationCache.size >= TUID_CACHE_MAX_SIZE) {
+      const entriesToRemove = this.tuidValidationCache.size - TUID_CACHE_MAX_SIZE + 1;
       let removed = 0;
       for (const key of this.tuidValidationCache.keys()) {
         if (removed >= entriesToRemove) break;
