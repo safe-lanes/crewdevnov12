@@ -591,7 +591,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: adminCompanyTrainings = [] } = useQuery<Array<{ id: number; companyId: string }>>({
+  const { data: adminCompanyTrainings = [] } = useQuery<Array<{ id: number; companyId: string; trainingLabel?: string }>>({
     queryKey: ['/api/v2/admin/company-trainings'],
   });
   
@@ -622,6 +622,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [licDateErrors, setLicDateErrors] = useState<Record<string, Record<string, string>>>({});
   const [trainingDateErrors, setTrainingDateErrors] = useState<Record<string, Record<string, string>>>({});
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, Record<string, string>>>({});
+  const [b6InterviewerErrors, setB6InterviewerErrors] = useState<Record<string, string>>({});
+  const [b7TrainingNameErrors, setB7TrainingNameErrors] = useState<Record<string, string>>({});
   const [seaRequiredErrors, setSeaRequiredErrors] = useState<Record<string, Record<string, string>>>({});
 
   const validateEmail = (value: string): string => {
@@ -918,6 +920,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [externalVesselTypesData]);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const b7TrainingNamesKey = formData.b7TrainingNeeds.map(t => t.training || '').join('||');
+  const existingB7CourseIds = useMemo(() => {
+    const nameToCompanyId = new Map<string, string>();
+    adminCompanyTrainings.forEach(ct => {
+      if (ct.trainingLabel && ct.companyId) nameToCompanyId.set(ct.trainingLabel, ct.companyId);
+    });
+    return formData.b7TrainingNeeds
+      .map(t => nameToCompanyId.get(t.training || ''))
+      .filter((id): id is string => Boolean(id));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminCompanyTrainings, b7TrainingNamesKey]);
 
   const countryMasterData: string[] = useMemo(() => {
     const countries = (externalCountriesData as any)?.countries || externalCountriesData || [];
@@ -2462,6 +2476,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       if (isVisaBlankLocal(visa)) return;
       const rowErrs: Record<string, string> = {};
       if (!(visa.issuingCountry || '').trim()) rowErrs.issuingCountry = 'Issuing country is required.';
+      if (!(visa.visaType || '').trim()) rowErrs.visaType = 'Visa type is required.';
       const dateErrs = validateRowDates(visa.issued, visa.expiry);
       if (dateErrs.issued) rowErrs.issued = dateErrs.issued;
       if (dateErrs.expiry) rowErrs.expiry = dateErrs.expiry;
@@ -2774,7 +2789,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Visas - save with attachments
       nonEmptyVisas.forEach((visa, index) => {
         const visaPayload = {
-          countryUuid: visa.countryId || visa.issuingCountry || undefined,
+          countryUuid: visa.issuingCountry || visa.countryId || undefined,
           serialNo: visa.serialNo || undefined,
           issued: visa.issued || undefined,
           expiry: visa.expiry || undefined,
@@ -3234,6 +3249,38 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       return;
     }
 
+    let screeningHasErrors = false;
+
+    if (formData.b6InterviewCompleted === 'yes') {
+      const newB6Errors: Record<string, string> = {};
+      formData.b6Interviews.forEach((interview) => {
+        if (!(interview.interviewer || '').trim()) {
+          newB6Errors[interview.id] = 'Interviewer is required';
+          screeningHasErrors = true;
+        }
+      });
+      setB6InterviewerErrors(newB6Errors);
+    }
+
+    const isB7RowBlank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
+    const newB7Errors: Record<string, string> = {};
+    formData.b7TrainingNeeds.forEach((training) => {
+      if (!isB7RowBlank(training) && !(training.training || '').trim()) {
+        newB7Errors[training.id] = 'Training name is required';
+        screeningHasErrors = true;
+      }
+    });
+    setB7TrainingNameErrors(newB7Errors);
+
+    if (screeningHasErrors) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields in B6/B7 sections",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       if (!skipToasts) {
         toast({
@@ -3463,16 +3510,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }
 
       const isB7Blank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
-      const b7MandatoryErrors: string[] = [];
-      formData.b7TrainingNeeds.forEach((t, i) => { if (!isB7Blank(t) && !(t.training || '').trim()) b7MandatoryErrors.push(`Training Needs Row ${i + 1}: 'Training' is required to save this row.`); });
-      if (b7MandatoryErrors.length > 0) {
-        toast({
-          title: "Validation Error",
-          description: b7MandatoryErrors.join('\n'),
-          variant: "destructive",
-        });
-        return;
-      }
       const nonEmptyB7Training = formData.b7TrainingNeeds.filter(t => !isB7Blank(t));
       if (nonEmptyB7Training.length !== formData.b7TrainingNeeds.length) {
         setFormData(prev => ({ ...prev, b7TrainingNeeds: nonEmptyB7Training }));
@@ -3494,7 +3531,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               sortOrder: index,
             },
           });
-        } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate)) {
+        } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate || training.comments)) {
           await createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {
@@ -3889,7 +3926,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   description: `Candidate transferred to Crew Pool with Employee No: ${transferResult.data.empNo}`,
                 });
               } else if (transferResult.error?.includes('already been transferred')) {
-                // Already transferred, no need to show error
+                toast({
+                  title: "Crew Pool",
+                  description: "This candidate has already been transferred to the Crew Pool.",
+                });
               } else if (transferResult.error) {
                 console.error('Transfer error:', transferResult.error);
               }
@@ -4406,7 +4446,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <SelectContent className="max-h-[200px]">
                     {manningAgentOptions.map((agent: any) => (
                       <SelectItem key={agent.id} value={agent.name}>
-                        {agent.name}{agent.country ? ` (${agent.country})` : ''}
+                        {agent.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -4983,7 +5023,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Serial No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Visa Type <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -5014,7 +5054,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {visaDateErrors[visa.id]?.expiry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={visa.visaType} onChange={(e) => updateVisa(visa.id, 'visaType', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={visa.visaType} onChange={(e) => { updateVisa(visa.id, 'visaType', e.target.value); if (visaDateErrors[visa.id]?.visaType && e.target.value.trim()) setVisaDateErrors(prev => { const n = { ...prev }; if (n[visa.id]) { const { visaType: _, ...rest } = n[visa.id]; n[visa.id] = rest; } return n; }); }}
+                        onBlur={() => { if (!(visa.visaType || '').trim()) setVisaDateErrors(prev => ({ ...prev, [visa.id]: { ...prev[visa.id], visaType: 'Visa type is required.' } })); }}
+                        className={`text-[13px] border ${visaDateErrors[visa.id]?.visaType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                      {visaDateErrors[visa.id]?.visaType && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].visaType}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -7579,7 +7622,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           <div className="flex gap-6 w-[200px]">
                             <RadioGroup 
                               value={formData.b6InterviewCompleted} 
-                              onValueChange={(value) => setFormData(prev => ({ ...prev, b6InterviewCompleted: value }))}
+                              onValueChange={(value) => {
+                                setFormData(prev => ({ ...prev, b6InterviewCompleted: value }));
+                                if (value !== 'yes') setB6InterviewerErrors({});
+                              }}
                               className="flex gap-6"
                             >
                               <div className="flex items-center space-x-2 w-[50px]">
@@ -7652,10 +7698,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                           : int
                                       )
                                     }));
+                                    if (value) {
+                                      setB6InterviewerErrors(prev => { const n = { ...prev }; delete n[interview.id]; return n; });
+                                    }
                                   }}
                                 >
-                                  <SelectTrigger className="text-sm" data-testid={`select-b6-interview-interviewer-${index}`}>
-                                    <SelectValue placeholder="Interviewer" />
+                                  <SelectTrigger
+                                    className={`text-sm ${b6InterviewerErrors[interview.id] ? 'border-red-500' : ''}`}
+                                    data-testid={`select-b6-interview-interviewer-${index}`}
+                                    onBlur={() => {
+                                      if (!(interview.interviewer || '').trim()) {
+                                        setB6InterviewerErrors(prev => ({ ...prev, [interview.id]: 'Interviewer is required' }));
+                                      }
+                                    }}
+                                  >
+                                    <SelectValue placeholder="Interviewer *" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {isLoadingUsers ? (
@@ -7671,6 +7728,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     )}
                                   </SelectContent>
                                 </Select>
+                                {b6InterviewerErrors[interview.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-b6-interviewer-error-${index}`}>{b6InterviewerErrors[interview.id]}</p>}
                               </div>
                               <div>
                                 <Select
@@ -8016,7 +8074,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     <Table className="w-full">
                       <TableHeader>
                         <TableRow className="bg-gray-100">
-                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/ Course</TableHead>
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/ Course <span className="text-red-500">*</span></TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Identified by</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Category</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Due Date</TableHead>
@@ -8037,11 +8095,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                       t.id === training.id ? { ...t, training: e.target.value } : t
                                     )
                                   }));
+                                  if (e.target.value.trim()) {
+                                    setB7TrainingNameErrors(prev => { const n = { ...prev }; delete n[training.id]; return n; });
+                                  }
                                 }}
-                                className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
+                                onBlur={(e) => {
+                                  const hasOtherData = (training.category || '').trim() || (training.identifiedBy || '').trim() || (training.dueDate || '').trim() || (training.comments || '').trim();
+                                  if (!e.target.value.trim() && hasOtherData) {
+                                    setB7TrainingNameErrors(prev => ({ ...prev, [training.id]: 'Training name is required' }));
+                                  }
+                                }}
+                                className={`text-[#4f5863] text-[13px] border ${b7TrainingNameErrors[training.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                                 placeholder="Enter training/course name"
                                 data-testid={`input-b7-training-name-${idx}`}
                               />
+                              {b7TrainingNameErrors[training.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-b7-training-name-error-${idx}`}>{b7TrainingNameErrors[training.id]}</p>}
                             </TableCell>
                             <TableCell className="p-3">
                               <Select
@@ -8992,7 +9060,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         open={isB7TrainingDialogOpen}
         onClose={() => setIsB7TrainingDialogOpen(false)}
         onConfirm={addB7TrainingFromDatabase}
-        existingCourseIds={[]}
+        existingCourseIds={existingB7CourseIds}
       />
       
       <TravelDocumentSelectionDialog
@@ -9006,7 +9074,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         open={isVisaDialogOpen}
         onClose={() => setIsVisaDialogOpen(false)}
         onConfirm={addVisasFromDatabase}
-        existingCountryIds={formData.visas.map(v => v.countryId).filter((id): id is string => Boolean(id))}
+        existingCountryIds={formData.visas.flatMap(v => [v.countryId, v.issuingCountry]).filter((id): id is string => Boolean(id))}
       />
       
       <FileAttachmentDialog

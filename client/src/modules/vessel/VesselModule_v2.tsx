@@ -762,22 +762,43 @@ export function VesselModule_v2(): JSX.Element {
     const { data: trainingMatrixRevisions = [] } = useTrainingMatrixVesselRevisions(selectedVessel?.vesselId || null);
     const { data: trainingMatrixDrafts = [] } = useTrainingMatrixVesselDraft(selectedVessel?.vesselId || null);
     
-    const { data: crewTrainingsV2 = [] } = useVesselCrewTrainingsV2(selectedVessel?.vesselUuid || null);
+    const { data: crewTrainingsV2 = [] } = useVesselCrewTrainingsV2(selectedVessel?.vesselId || null);
     
     const crewTrainingLookupByRole = useMemo(() => {
+        const numericIdToCompanyId = new Map<string, string>();
+        const abbrToCompanyId = new Map<string, string>();
+        companyTrainings.forEach((ct: any) => {
+            if (ct.id && ct.companyId) {
+                numericIdToCompanyId.set(String(ct.id), ct.companyId);
+            }
+            if (ct.abr && ct.companyId) {
+                abbrToCompanyId.set(ct.abr, ct.companyId);
+            }
+        });
+
         const lookup = new Map<string, Map<string, string>>();
         
         for (const crewTraining of crewTrainingsV2) {
             const roleKey = crewTraining.role;
             if (!roleKey) continue;
             
-            const trainingMap = new Map<string, string>();
+            const trainingMap = lookup.get(roleKey) || new Map<string, string>();
             for (const training of crewTraining.trainings) {
-                if (training.courseId && training.expiry) {
+                if (!training.expiry) continue;
+
+                if (training.courseId) {
                     trainingMap.set(training.courseId, training.expiry);
+                    const resolved = numericIdToCompanyId.get(training.courseId);
+                    if (resolved) {
+                        trainingMap.set(resolved, training.expiry);
+                    }
                 }
-                if (training.abbr && training.expiry) {
+                if (training.abbr) {
                     trainingMap.set(training.abbr, training.expiry);
+                    const resolved = abbrToCompanyId.get(training.abbr);
+                    if (resolved) {
+                        trainingMap.set(resolved, training.expiry);
+                    }
                 }
             }
             
@@ -787,7 +808,7 @@ export function VesselModule_v2(): JSX.Element {
         }
         
         return lookup;
-    }, [crewTrainingsV2]);
+    }, [crewTrainingsV2, companyTrainings]);
     
     const applicableTrainingIds = useMemo(() => {
         const ids = new Set<number>();

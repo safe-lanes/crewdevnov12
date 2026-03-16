@@ -182,15 +182,24 @@ const CONTENT_WIDTH = A4_WIDTH - 2 * MARGIN;
 const LINE_HEIGHT = 14;
 const SECTION_SPACING = 16;
 const PRIMARY_COLOR = rgb(22/255, 86/255, 158/255);
-const LIGHT_GRAY = rgb(0.95, 0.95, 0.95);
-const BORDER_COLOR = rgb(0.85, 0.85, 0.85);
-const LABEL_COLOR = rgb(0.4, 0.4, 0.4);
-const PLACEHOLDER_COLOR = rgb(0.6, 0.6, 0.6);
+const PRIMARY_LIGHT = rgb(230/255, 240/255, 250/255);
+const LIGHT_GRAY = rgb(0.96, 0.96, 0.96);
+const BORDER_COLOR = rgb(0.82, 0.82, 0.82);
+const TEXT_COLOR = rgb(0.15, 0.15, 0.15);
+const LABEL_COLOR = rgb(0.35, 0.35, 0.35);
+const FOOTER_Y = 25;
 
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '';
   try {
-    const date = new Date(dateStr);
+    let date: Date;
+    const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (ddmmyyyyMatch) {
+      const [, dd, mm, yyyy] = ddmmyyyyMatch;
+      date = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+    } else {
+      date = new Date(dateStr);
+    }
     if (isNaN(date.getTime())) return dateStr;
     const day = date.getDate().toString().padStart(2, '0');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -202,8 +211,13 @@ function formatDate(dateStr: string | undefined): string {
   }
 }
 
+function sanitizeText(text: string): string {
+  return text.replace(/[\t\n\r]/g, ' ').replace(/[\x00-\x1F]/g, '');
+}
+
 function displayValue(value: string | undefined | null): string {
-  return value && value.trim() ? value : '-';
+  if (!value || !value.trim()) return '-';
+  return sanitizeText(value);
 }
 
 class PDFBuilder {
@@ -214,7 +228,6 @@ class PDFBuilder {
   private fontItalic: PDFFont;
   private yPosition: number;
   private pageNumber: number = 1;
-
   constructor(pdfDoc: PDFDocument, font: PDFFont, fontBold: PDFFont, fontItalic: PDFFont) {
     this.pdfDoc = pdfDoc;
     this.font = font;
@@ -225,7 +238,7 @@ class PDFBuilder {
   }
 
   checkPageBreak(requiredHeight: number = LINE_HEIGHT * 2): void {
-    if (this.yPosition - requiredHeight < MARGIN + 30) {
+    if (this.yPosition - requiredHeight < MARGIN + FOOTER_Y) {
       this.addNewPage();
     }
   }
@@ -236,9 +249,33 @@ class PDFBuilder {
     this.yPosition = A4_HEIGHT - MARGIN;
   }
 
-  drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = rgb(0, 0, 0)): void {
+  finalizeDocument(): void {
+    const totalPages = this.pdfDoc.getPageCount();
+    const pages = this.pdfDoc.getPages();
+    for (let i = 0; i < totalPages; i++) {
+      const page = pages[i];
+      page.drawLine({
+        start: { x: MARGIN, y: FOOTER_Y + 10 },
+        end: { x: MARGIN + CONTENT_WIDTH, y: FOOTER_Y + 10 },
+        thickness: 0.3,
+        color: BORDER_COLOR,
+      });
+      const pageText = `Page ${i + 1} of ${totalPages}`;
+      const pageTextWidth = this.font.widthOfTextAtSize(pageText, 7);
+      const centerX = MARGIN + (CONTENT_WIDTH - pageTextWidth) / 2;
+      page.drawText(pageText, {
+        x: centerX,
+        y: FOOTER_Y,
+        size: 7,
+        font: this.font,
+        color: LABEL_COLOR,
+      });
+    }
+  }
+
+  drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
-    this.currentPage.drawText(text || '', {
+    this.currentPage.drawText(sanitizeText(text || ''), {
       x,
       y: this.yPosition,
       size: fontSize,
@@ -247,9 +284,9 @@ class PDFBuilder {
     });
   }
 
-  drawTextAt(text: string, x: number, y: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = rgb(0, 0, 0)): void {
+  drawTextAt(text: string, x: number, y: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
-    this.currentPage.drawText(text || '', {
+    this.currentPage.drawText(sanitizeText(text || ''), {
       x,
       y,
       size: fontSize,
@@ -395,28 +432,106 @@ class PDFBuilder {
     this.moveDown(LINE_HEIGHT);
   }
 
+  private wrapText(text: string, maxWidth: number, fontSize: number): string[] {
+    if (this.font.widthOfTextAtSize(text, fontSize) <= maxWidth) return [text];
+    const words = text.split(/([,] )/);
+    const lines: string[] = [];
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine + word;
+      if (this.font.widthOfTextAtSize(testLine, fontSize) > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word.trimStart();
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    const result: string[] = [];
+    for (const line of lines) {
+      if (this.font.widthOfTextAtSize(line, fontSize) <= maxWidth) {
+        result.push(line);
+      } else {
+        let remaining = line;
+        while (remaining && this.font.widthOfTextAtSize(remaining, fontSize) > maxWidth) {
+          let end = remaining.length;
+          while (end > 1 && this.font.widthOfTextAtSize(remaining.slice(0, end), fontSize) > maxWidth) {
+            end--;
+          }
+          result.push(remaining.slice(0, end));
+          remaining = remaining.slice(end);
+        }
+        if (remaining) result.push(remaining);
+      }
+    }
+    return result;
+  }
+
   drawFieldRow(fields: Array<{label: string, value: string}>, colWidth: number = CONTENT_WIDTH / 3): void {
-    this.checkPageBreak();
+    const maxWidth = colWidth - 6;
+    let maxLinesUsed = 1;
+    const fieldLines: string[][] = [];
+    for (const field of fields) {
+      if (field.label) {
+        const val = displayValue(field.value);
+        const lines = this.wrapText(val, maxWidth, 9);
+        fieldLines.push(lines);
+        if (lines.length > maxLinesUsed) maxLinesUsed = lines.length;
+      } else {
+        fieldLines.push([]);
+      }
+    }
+    const requiredHeight = LINE_HEIGHT * 2 + (maxLinesUsed > 1 ? (maxLinesUsed - 1) * 11 : 0);
+    this.checkPageBreak(requiredHeight);
     let x = MARGIN;
+    let fieldIdx = 0;
     for (const field of fields) {
       if (field.label) {
         this.drawTextAt(field.label, x, this.yPosition, 8, 'normal', LABEL_COLOR);
-        this.drawTextAt(displayValue(field.value), x, this.yPosition - 12, 9, 'normal');
+        const lines = fieldLines[fieldIdx];
+        lines.forEach((line, lineIdx) => {
+          this.drawTextAt(line, x, this.yPosition - 12 - (lineIdx * 11), 9, 'normal');
+        });
       }
+      fieldIdx++;
       x += colWidth;
     }
-    this.moveDown(LINE_HEIGHT * 2);
+    this.moveDown(requiredHeight);
+  }
+
+  private drawCellDividers(colWidths: number[], rowY: number, rowHeight: number): void {
+    let x = MARGIN;
+    for (let i = 0; i < colWidths.length - 1; i++) {
+      x += colWidths[i];
+      this.drawLine(x, rowY, x, rowY + rowHeight, 0.3, BORDER_COLOR);
+    }
   }
 
   drawTableHeader(headers: string[], colWidths: number[]): void {
     this.checkPageBreak(30);
     let x = MARGIN;
-    const headerHeight = 18;
+    const headerHeight = 20;
     
-    this.drawRect(MARGIN, this.yPosition - headerHeight, CONTENT_WIDTH, headerHeight, true);
+    this.currentPage.drawRectangle({
+      x: MARGIN,
+      y: this.yPosition - headerHeight,
+      width: CONTENT_WIDTH,
+      height: headerHeight,
+      color: PRIMARY_LIGHT,
+    });
+    this.currentPage.drawRectangle({
+      x: MARGIN,
+      y: this.yPosition - headerHeight,
+      width: CONTENT_WIDTH,
+      height: headerHeight,
+      borderColor: BORDER_COLOR,
+      borderWidth: 0.5,
+    });
+    
+    this.drawCellDividers(colWidths, this.yPosition - headerHeight, headerHeight);
     
     for (let i = 0; i < headers.length; i++) {
-      this.drawTextAt(headers[i], x + 3, this.yPosition - 12, 7, 'bold', rgb(0.3, 0.3, 0.3));
+      this.drawTextAt(headers[i], x + 4, this.yPosition - 13, 7, 'bold', TEXT_COLOR);
       x += colWidths[i];
     }
     this.moveDown(headerHeight);
@@ -427,9 +542,10 @@ class PDFBuilder {
     let x = MARGIN;
     
     this.drawRect(MARGIN, this.yPosition - rowHeight, CONTENT_WIDTH, rowHeight);
+    this.drawCellDividers(colWidths, this.yPosition - rowHeight, rowHeight);
     
     for (let i = 0; i < values.length; i++) {
-      const maxWidth = colWidths[i] - 6;
+      const maxWidth = colWidths[i] - 8;
       let displayVal = displayValue(values[i]);
       const textWidth = this.font.widthOfTextAtSize(displayVal, 7);
       if (textWidth > maxWidth && displayVal.length > 3) {
@@ -438,7 +554,7 @@ class PDFBuilder {
         }
         displayVal += '...';
       }
-      this.drawTextAt(displayVal, x + 3, this.yPosition - 11, 7, 'normal');
+      this.drawTextAt(displayVal, x + 4, this.yPosition - 11, 7, 'normal', TEXT_COLOR);
       x += colWidths[i];
     }
     this.moveDown(rowHeight);
@@ -494,6 +610,8 @@ export async function generateCrewInfoPDF(
   drawPartD(builder, formData);
   drawPartE(builder, formData);
   drawPartF(builder, formData);
+
+  builder.finalizeDocument();
 
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });

@@ -121,25 +121,26 @@ interface FormData {
   b1Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b1SubmittedBy: string;
   b1SubmittedDate: string;
-  b2ReferenceChecksCompleted: string;
-  b2CurrentEmployerFeedback: string;
+  b2ReferencesCompleted: string;
+  b2EmployerFeedback: string;
   b2Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b2References: Array<{id: string, date: string, nameDesignation: string, contactInfo: string}>;
+  b2ReferenceItems: Array<{id: string, date?: string, nameDesignation?: string, contactInfo?: string}>;
   b2SubmittedBy: string;
   b2SubmittedDate: string;
-  b3SecurityChecksCompleted: string;
-  b3SecurityChecksResults: string;
+  b3ChecksCompleted: string;
+  b3Results: string;
   b3Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
-  b3Authorities: Array<{id: string, date: string, authority: string}>;
+  b3Authorities: Array<{id: string, date?: string, authority?: string}>;
   b3SubmittedBy: string;
   b3SubmittedDate: string;
   b4CertificatesAuthenticated: string;
-  b4AuthenticationResults: string;
+  b4Results: string;
   b4Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
-  b4Certificates: Array<{id: string, date: string, certificate: string, authority: string}>;
+  b4Certs: Array<{id: string, date: string, certificate: string, authority: string}>;
   b4SubmittedBy: string;
   b4SubmittedDate: string;
-  b5CesTestsCompleted: string;
+  b5TestsCompleted: string;
   b5Comments: {[key: string]: Array<{user: string, text: string, id: string}>};
   b5Tests: Array<{id: string, date: string, subject: string, score: string, result: string}>;
   b5SubmittedBy: string;
@@ -176,15 +177,24 @@ const CONTENT_WIDTH = A4_WIDTH - 2 * MARGIN;
 const LINE_HEIGHT = 14;
 const SECTION_SPACING = 16;
 const PRIMARY_COLOR = rgb(22/255, 86/255, 158/255);
-const LIGHT_GRAY = rgb(0.95, 0.95, 0.95);
-const BORDER_COLOR = rgb(0.85, 0.85, 0.85);
-const LABEL_COLOR = rgb(0.4, 0.4, 0.4);
-const PLACEHOLDER_COLOR = rgb(0.6, 0.6, 0.6);
+const PRIMARY_LIGHT = rgb(230/255, 240/255, 250/255);
+const LIGHT_GRAY = rgb(0.96, 0.96, 0.96);
+const BORDER_COLOR = rgb(0.82, 0.82, 0.82);
+const TEXT_COLOR = rgb(0.15, 0.15, 0.15);
+const LABEL_COLOR = rgb(0.35, 0.35, 0.35);
+const FOOTER_Y = 25;
 
 function formatDate(dateStr: string | undefined): string {
   if (!dateStr) return '';
   try {
-    const date = new Date(dateStr);
+    let date: Date;
+    const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (ddmmyyyyMatch) {
+      const [, dd, mm, yyyy] = ddmmyyyyMatch;
+      date = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+    } else {
+      date = new Date(dateStr);
+    }
     if (isNaN(date.getTime())) return dateStr;
     const day = date.getDate().toString().padStart(2, '0');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -196,8 +206,13 @@ function formatDate(dateStr: string | undefined): string {
   }
 }
 
+function sanitizeText(text: string): string {
+  return text.replace(/[\t\n\r]/g, ' ').replace(/[\x00-\x1F]/g, '');
+}
+
 function displayValue(value: string | undefined | null): string {
-  return value && value.trim() ? value : '-';
+  if (!value || !value.trim()) return '-';
+  return sanitizeText(value);
 }
 
 class PDFBuilder {
@@ -219,7 +234,7 @@ class PDFBuilder {
   }
 
   checkPageBreak(requiredHeight: number = LINE_HEIGHT * 2): void {
-    if (this.yPosition - requiredHeight < MARGIN + 30) {
+    if (this.yPosition - requiredHeight < MARGIN + FOOTER_Y) {
       this.addNewPage();
     }
   }
@@ -230,9 +245,33 @@ class PDFBuilder {
     this.yPosition = A4_HEIGHT - MARGIN;
   }
 
-  drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = rgb(0, 0, 0)): void {
+  finalizeDocument(): void {
+    const totalPages = this.pdfDoc.getPageCount();
+    const pages = this.pdfDoc.getPages();
+    for (let i = 0; i < totalPages; i++) {
+      const page = pages[i];
+      page.drawLine({
+        start: { x: MARGIN, y: FOOTER_Y + 10 },
+        end: { x: MARGIN + CONTENT_WIDTH, y: FOOTER_Y + 10 },
+        thickness: 0.3,
+        color: BORDER_COLOR,
+      });
+      const pageText = `Page ${i + 1} of ${totalPages}`;
+      const pageTextWidth = this.font.widthOfTextAtSize(pageText, 7);
+      const centerX = MARGIN + (CONTENT_WIDTH - pageTextWidth) / 2;
+      page.drawText(pageText, {
+        x: centerX,
+        y: FOOTER_Y,
+        size: 7,
+        font: this.font,
+        color: LABEL_COLOR,
+      });
+    }
+  }
+
+  drawText(text: string, x: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
-    this.currentPage.drawText(text || '', {
+    this.currentPage.drawText(sanitizeText(text || ''), {
       x,
       y: this.yPosition,
       size: fontSize,
@@ -241,9 +280,9 @@ class PDFBuilder {
     });
   }
 
-  drawTextAt(text: string, x: number, y: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = rgb(0, 0, 0)): void {
+  drawTextAt(text: string, x: number, y: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): void {
     const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
-    this.currentPage.drawText(text || '', {
+    this.currentPage.drawText(sanitizeText(text || ''), {
       x,
       y,
       size: fontSize,
@@ -281,12 +320,12 @@ class PDFBuilder {
     });
   }
 
-  drawFilledCircle(x: number, y: number, radius: number): void {
+  drawFilledCircle(x: number, y: number, radius: number, color = PRIMARY_COLOR): void {
     this.currentPage.drawCircle({
       x,
       y,
       size: radius,
-      color: rgb(0, 0, 0),
+      color,
     });
   }
 
@@ -295,17 +334,17 @@ class PDFBuilder {
       x,
       y,
       size: radius,
-      borderColor: rgb(0.4, 0.4, 0.4),
-      borderWidth: 0.5,
+      borderColor: BORDER_COLOR,
+      borderWidth: 0.75,
     });
   }
 
   drawRadioButton(x: number, y: number, selected: boolean): number {
-    this.drawEmptyCircle(x, y, 4);
+    this.drawEmptyCircle(x, y, 5);
     if (selected) {
-      this.drawFilledCircle(x, y, 2.5);
+      this.drawFilledCircle(x, y, 3, PRIMARY_COLOR);
     }
-    return x + 8;
+    return x + 10;
   }
 
   moveDown(amount: number = LINE_HEIGHT): void {
@@ -366,6 +405,15 @@ class PDFBuilder {
     this.moveDown(LINE_HEIGHT);
   }
 
+  drawPartHeader(title: string): void {
+    this.checkPageBreak(25);
+    this.moveDown(12);
+    this.drawText(title, MARGIN, 11, 'bold', PRIMARY_COLOR);
+    this.moveDown(3);
+    this.drawLine(MARGIN, this.yPosition, MARGIN + CONTENT_WIDTH, this.yPosition, 0.5, PRIMARY_COLOR);
+    this.moveDown(LINE_HEIGHT);
+  }
+
   drawSubsectionHeader(title: string): void {
     this.checkPageBreak(25);
     this.moveDown(10);
@@ -378,28 +426,106 @@ class PDFBuilder {
     this.drawTextAt(displayValue(value), x, this.yPosition - 12, 9, 'normal');
   }
 
+  private wrapText(text: string, maxWidth: number, fontSize: number): string[] {
+    if (this.font.widthOfTextAtSize(text, fontSize) <= maxWidth) return [text];
+    const words = text.split(/([,] )/);
+    const lines: string[] = [];
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine + word;
+      if (this.font.widthOfTextAtSize(testLine, fontSize) > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word.trimStart();
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    const result: string[] = [];
+    for (const line of lines) {
+      if (this.font.widthOfTextAtSize(line, fontSize) <= maxWidth) {
+        result.push(line);
+      } else {
+        let remaining = line;
+        while (remaining && this.font.widthOfTextAtSize(remaining, fontSize) > maxWidth) {
+          let end = remaining.length;
+          while (end > 1 && this.font.widthOfTextAtSize(remaining.slice(0, end), fontSize) > maxWidth) {
+            end--;
+          }
+          result.push(remaining.slice(0, end));
+          remaining = remaining.slice(end);
+        }
+        if (remaining) result.push(remaining);
+      }
+    }
+    return result;
+  }
+
   drawFieldRow(fields: Array<{label: string, value: string}>, colWidth: number = CONTENT_WIDTH / 3): void {
-    this.checkPageBreak();
+    const maxWidth = colWidth - 6;
+    let maxLinesUsed = 1;
+    const fieldLines: string[][] = [];
+    for (const field of fields) {
+      if (field.label) {
+        const val = displayValue(field.value);
+        const lines = this.wrapText(val, maxWidth, 9);
+        fieldLines.push(lines);
+        if (lines.length > maxLinesUsed) maxLinesUsed = lines.length;
+      } else {
+        fieldLines.push([]);
+      }
+    }
+    const requiredHeight = LINE_HEIGHT * 2 + (maxLinesUsed > 1 ? (maxLinesUsed - 1) * 11 : 0);
+    this.checkPageBreak(requiredHeight);
     let x = MARGIN;
+    let fieldIdx = 0;
     for (const field of fields) {
       if (field.label) {
         this.drawTextAt(field.label, x, this.yPosition, 8, 'normal', LABEL_COLOR);
-        this.drawTextAt(displayValue(field.value), x, this.yPosition - 12, 9, 'normal');
+        const lines = fieldLines[fieldIdx];
+        lines.forEach((line, lineIdx) => {
+          this.drawTextAt(line, x, this.yPosition - 12 - (lineIdx * 11), 9, 'normal');
+        });
       }
+      fieldIdx++;
       x += colWidth;
     }
-    this.moveDown(LINE_HEIGHT * 2);
+    this.moveDown(requiredHeight);
+  }
+
+  private drawCellDividers(colWidths: number[], rowY: number, rowHeight: number): void {
+    let x = MARGIN;
+    for (let i = 0; i < colWidths.length - 1; i++) {
+      x += colWidths[i];
+      this.drawLine(x, rowY, x, rowY + rowHeight, 0.3, BORDER_COLOR);
+    }
   }
 
   drawTableHeader(headers: string[], colWidths: number[]): void {
     this.checkPageBreak(30);
     let x = MARGIN;
-    const headerHeight = 18;
+    const headerHeight = 20;
     
-    this.drawRect(MARGIN, this.yPosition - headerHeight, CONTENT_WIDTH, headerHeight, true);
+    this.currentPage.drawRectangle({
+      x: MARGIN,
+      y: this.yPosition - headerHeight,
+      width: CONTENT_WIDTH,
+      height: headerHeight,
+      color: PRIMARY_LIGHT,
+    });
+    this.currentPage.drawRectangle({
+      x: MARGIN,
+      y: this.yPosition - headerHeight,
+      width: CONTENT_WIDTH,
+      height: headerHeight,
+      borderColor: BORDER_COLOR,
+      borderWidth: 0.5,
+    });
+    
+    this.drawCellDividers(colWidths, this.yPosition - headerHeight, headerHeight);
     
     for (let i = 0; i < headers.length; i++) {
-      this.drawTextAt(headers[i], x + 3, this.yPosition - 12, 7, 'bold', rgb(0.3, 0.3, 0.3));
+      this.drawTextAt(headers[i], x + 4, this.yPosition - 13, 7, 'bold', TEXT_COLOR);
       x += colWidths[i];
     }
     this.moveDown(headerHeight);
@@ -410,9 +536,10 @@ class PDFBuilder {
     let x = MARGIN;
     
     this.drawRect(MARGIN, this.yPosition - rowHeight, CONTENT_WIDTH, rowHeight);
+    this.drawCellDividers(colWidths, this.yPosition - rowHeight, rowHeight);
     
     for (let i = 0; i < values.length; i++) {
-      const maxWidth = colWidths[i] - 6;
+      const maxWidth = colWidths[i] - 8;
       let displayVal = displayValue(values[i]);
       const textWidth = this.font.widthOfTextAtSize(displayVal, 7);
       if (textWidth > maxWidth && displayVal.length > 3) {
@@ -421,7 +548,7 @@ class PDFBuilder {
         }
         displayVal += '...';
       }
-      this.drawTextAt(displayVal, x + 3, this.yPosition - 11, 7, 'normal');
+      this.drawTextAt(displayVal, x + 4, this.yPosition - 11, 7, 'normal', TEXT_COLOR);
       x += colWidths[i];
     }
     this.moveDown(rowHeight);
@@ -429,14 +556,14 @@ class PDFBuilder {
 
   drawRadioQuestion(label: string, options: Array<{label: string, value: string}>, selectedValue: string, hasNA: boolean = false): void {
     this.checkPageBreak(20);
-    this.drawText(label, MARGIN, 9, 'normal');
+    this.drawText(label, MARGIN, 9, 'normal', TEXT_COLOR);
     
-    let x = MARGIN + CONTENT_WIDTH - (hasNA ? 180 : 120);
+    let x = MARGIN + CONTENT_WIDTH - (hasNA ? 190 : 130);
     for (const option of options) {
       const isSelected = selectedValue?.toLowerCase() === option.value.toLowerCase();
       const nextX = this.drawRadioButton(x, this.yPosition + 3, isSelected);
-      this.drawTextAt(option.label, nextX, this.yPosition, 8, 'normal');
-      x += hasNA ? 55 : 50;
+      this.drawTextAt(option.label, nextX + 2, this.yPosition, 8, 'normal', TEXT_COLOR);
+      x += hasNA ? 60 : 55;
     }
     this.moveDown(LINE_HEIGHT + 4);
   }
@@ -444,18 +571,18 @@ class PDFBuilder {
   drawComment(user: string, text: string): void {
     if (!text || !text.trim()) return;
     this.checkPageBreak(30);
-    this.drawText(`${user}:`, MARGIN + 20, 8, 'italic', rgb(0.2, 0.4, 0.8));
+    this.drawText(`${user}:`, MARGIN + 20, 8, 'bold', LABEL_COLOR);
     this.moveDown(12);
     
     const maxWidth = CONTENT_WIDTH - 40;
-    const words = text.split(' ');
+    const words = sanitizeText(text).split(' ');
     let line = '';
     
     for (const word of words) {
       const testLine = line + (line ? ' ' : '') + word;
       const width = this.fontItalic.widthOfTextAtSize(testLine, 8);
       if (width > maxWidth && line) {
-        this.drawText(line, MARGIN + 20, 8, 'italic', rgb(0.2, 0.4, 0.8));
+        this.drawText(line, MARGIN + 20, 8, 'italic', LABEL_COLOR);
         this.moveDown(12);
         line = word;
       } else {
@@ -463,16 +590,17 @@ class PDFBuilder {
       }
     }
     if (line) {
-      this.drawText(line, MARGIN + 20, 8, 'italic', rgb(0.2, 0.4, 0.8));
+      this.drawText(line, MARGIN + 20, 8, 'italic', LABEL_COLOR);
       this.moveDown(12);
     }
   }
 
   drawSubmissionInfo(submittedBy: string, submittedDate: string): void {
     if (submittedBy || submittedDate) {
+      this.moveDown(8);
       this.checkPageBreak();
       const text = `Submitted by: ${displayValue(submittedBy)}${submittedDate ? ` on ${formatDate(submittedDate)}` : ''}`;
-      this.drawText(text, MARGIN, 8, 'normal', rgb(0.5, 0.5, 0.5));
+      this.drawText(text, MARGIN, 8, 'italic', LABEL_COLOR);
       this.moveDown(LINE_HEIGHT);
     }
   }
@@ -502,6 +630,8 @@ export async function generateRecruitmentPDF(formData: FormData, candidateName: 
   drawPartB(builder, formData);
   drawPartC(builder, formData);
 
+  builder.finalizeDocument();
+
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
@@ -517,7 +647,10 @@ export async function generateRecruitmentPDF(formData: FormData, candidateName: 
 async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void> {
   builder.drawSectionHeader('PART A - SEAFARER\'S APPLICATION');
 
+  builder.drawPartHeader('A1 — Personal Details');
   builder.drawSubsectionHeader('A1.1 General Particulars');
+  
+  builder.checkPageBreak(130);
   
   const photoX = MARGIN;
   const photoY = builder.getY();
@@ -531,41 +664,49 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   
   if (!photoDrawn) {
     builder.drawRect(photoX, photoY - photoHeight, photoWidth, photoHeight);
-    builder.drawTextAt('No Photo', photoX + 18, photoY - 55, 8, 'normal', PLACEHOLDER_COLOR);
+    builder.drawTextAt('No Photo', photoX + 18, photoY - 55, 8, 'normal', LABEL_COLOR);
   }
   
   const fieldStartX = MARGIN + photoWidth + 20;
   const fieldColWidth = (CONTENT_WIDTH - photoWidth - 20) / 3;
   
   let currentY = builder.getY();
-  builder.drawTextAt('First Name', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.firstName), fieldStartX, currentY - 12, 9, 'normal');
+  const safeMinY = MARGIN + 30;
   
-  builder.drawTextAt('Middle Name', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.middleName), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
-  
-  builder.drawTextAt('Family Name', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.familyName), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
-  
-  currentY -= 30;
-  builder.drawTextAt('Gender', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.gender), fieldStartX, currentY - 12, 9, 'normal');
-  
-  builder.drawTextAt('Nationality', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.nationality), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
-  
-  builder.drawTextAt('Date of Birth', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formatDate(formData.dateOfBirth)), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+  if (currentY > safeMinY) {
+    builder.drawTextAt('First Name', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.firstName), fieldStartX, currentY - 12, 9, 'normal');
+    
+    builder.drawTextAt('Middle Name', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.middleName), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
+    
+    builder.drawTextAt('Family Name', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.familyName), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+  }
   
   currentY -= 30;
-  builder.drawTextAt('Place of Birth (City)', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.placeOfBirthCity), fieldStartX, currentY - 12, 9, 'normal');
+  if (currentY > safeMinY) {
+    builder.drawTextAt('Gender', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.gender), fieldStartX, currentY - 12, 9, 'normal');
+    
+    builder.drawTextAt('Nationality', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.nationality), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
+    
+    builder.drawTextAt('Date of Birth', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formatDate(formData.dateOfBirth)), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+  }
   
-  builder.drawTextAt('Place of Birth (Country)', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.placeOfBirthCountry), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
-  
-  builder.drawTextAt('Age (Years)', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.ageInYears), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+  currentY -= 30;
+  if (currentY > safeMinY) {
+    builder.drawTextAt('Place of Birth (City)', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.placeOfBirthCity), fieldStartX, currentY - 12, 9, 'normal');
+    
+    builder.drawTextAt('Place of Birth (Country)', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.placeOfBirthCountry), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
+    
+    builder.drawTextAt('Age (Years)', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.ageInYears), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+  }
   
   builder.setY(Math.min(currentY - 25, photoY - photoHeight - 10));
   
@@ -649,7 +790,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], childColWidths);
     }
   } else {
-    builder.drawText('No children recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No children recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   
@@ -672,6 +813,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     { label: '', value: '' },
   ]);
 
+  builder.drawPartHeader('A2 — Documents');
   builder.drawSubsectionHeader('A2.1 Travel & Identification Documents');
   if (formData.documents && formData.documents.length > 0) {
     const docColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.30];
@@ -686,7 +828,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], docColWidths);
     }
   } else {
-    builder.drawText('No documents recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No documents recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -704,10 +846,11 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], visaColWidths);
     }
   } else {
-    builder.drawText('No visas recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No visas recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
+  builder.drawPartHeader('A3 — Training & Certificates');
   builder.drawSubsectionHeader('A3.1 Education');
   if (formData.education && formData.education.length > 0) {
     const eduColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.32, CONTENT_WIDTH * 0.18];
@@ -721,7 +864,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], eduColWidths);
     }
   } else {
-    builder.drawText('No education records', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No education records', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -741,7 +884,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], licColWidths);
     }
   } else {
-    builder.drawText('No licenses recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No licenses recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -761,10 +904,11 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], trainColWidths);
     }
   } else {
-    builder.drawText('No training courses recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No training courses recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
+  builder.drawPartHeader('A4 — Sea Service');
   builder.drawSubsectionHeader('A4.1 Sea Service');
   if (formData.seaService && formData.seaService.length > 0) {
     const seaColWidths = [CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.07];
@@ -784,11 +928,11 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       ], seaColWidths);
     }
   } else {
-    builder.drawText('No sea service records', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No sea service records', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
-  builder.drawSubsectionHeader('A5 Additional Information');
+  builder.drawPartHeader('A5 — Additional Information');
   if (formData.additionalInfo && formData.additionalInfo.length > 0) {
     for (const info of formData.additionalInfo) {
       builder.checkPageBreak(40);
@@ -798,7 +942,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
       builder.moveDown(LINE_HEIGHT);
     }
   } else {
-    builder.drawText('No additional information', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No additional information', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 }
@@ -832,13 +976,13 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawSubsectionHeader('B2. Reference Checks');
   builder.drawRadioQuestion('B2.1 Reference checks completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b2ReferenceChecksCompleted, false);
-  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-ref');
+    formData.b2ReferencesCompleted, false);
+  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-completed');
 
   builder.drawRadioQuestion('B2.2 Current employer feedback positive?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
-    formData.b2CurrentEmployerFeedback, true);
-  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-feedback');
+    formData.b2EmployerFeedback, true);
+  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-results');
 
   builder.checkPageBreak(50);
   builder.drawText('References:', MARGIN, 9, 'bold');
@@ -850,7 +994,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       builder.drawTableRow([formatDate(ref.date), ref.nameDesignation || '', ref.contactInfo || ''], refColWidths);
     }
   } else {
-    builder.drawText('No references recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No references recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b2SubmittedBy, formData.b2SubmittedDate);
@@ -858,12 +1002,12 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawSubsectionHeader('B3. Background Security Checks');
   builder.drawRadioQuestion('B3.1 Security checks completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b3SecurityChecksCompleted, false);
-  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-sec');
+    formData.b3ChecksCompleted, false);
+  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-completed');
 
   builder.drawRadioQuestion('B3.2 Security checks results positive?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
-    formData.b3SecurityChecksResults, true);
+    formData.b3Results, true);
   builder.drawCommentsForQuestion(formData.b3Comments, 'b3-results');
 
   builder.checkPageBreak(50);
@@ -876,7 +1020,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       builder.drawTableRow([formatDate(auth.date), auth.authority || ''], authColWidths);
     }
   } else {
-    builder.drawText('No authorities recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No authorities recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b3SubmittedBy, formData.b3SubmittedDate);
@@ -889,20 +1033,20 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 
   builder.drawRadioQuestion('B4.2 Authentication results positive?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
-    formData.b4AuthenticationResults, true);
+    formData.b4Results, true);
   builder.drawCommentsForQuestion(formData.b4Comments, 'b4-results');
 
   builder.checkPageBreak(50);
   builder.drawText('Certificates Authenticated:', MARGIN, 9, 'bold');
   builder.moveDown(LINE_HEIGHT);
-  if (formData.b4Certificates && formData.b4Certificates.length > 0) {
+  if (formData.b4Certs && formData.b4Certs.length > 0) {
     const certColWidths = [CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.40, CONTENT_WIDTH * 0.40];
     builder.drawTableHeader(['Date', 'Certificate', 'Authority'], certColWidths);
-    for (const cert of formData.b4Certificates) {
+    for (const cert of formData.b4Certs) {
       builder.drawTableRow([formatDate(cert.date), cert.certificate || '', cert.authority || ''], certColWidths);
     }
   } else {
-    builder.drawText('No certificates recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No certificates recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b4SubmittedBy, formData.b4SubmittedDate);
@@ -910,7 +1054,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawSubsectionHeader('B5. CES/Language Test Results');
   builder.drawRadioQuestion('B5.1 CES tests completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b5CesTestsCompleted, false);
+    formData.b5TestsCompleted, false);
   builder.drawCommentsForQuestion(formData.b5Comments, 'b5-ces');
 
   builder.checkPageBreak(50);
@@ -923,7 +1067,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       builder.drawTableRow([formatDate(test.date), test.subject || '', test.score || '', test.result || ''], testColWidths);
     }
   } else {
-    builder.drawText('No test results recorded', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No test results recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b5SubmittedBy, formData.b5SubmittedDate);
@@ -950,7 +1094,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       ], intColWidths);
     }
   } else {
-    builder.drawText('No interview records', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No interview records', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b6SubmittedBy, formData.b6SubmittedDate);
@@ -969,7 +1113,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
       ], trainColWidths);
     }
   } else {
-    builder.drawText('No training needs identified', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No training needs identified', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
   builder.drawSubmissionInfo(formData.b7SubmittedBy, formData.b7SubmittedDate);
@@ -1025,7 +1169,7 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
       builder.moveDown(8);
     }
   } else {
-    builder.drawText('No approvers assigned', MARGIN + 10, 8, 'italic', PLACEHOLDER_COLOR);
+    builder.drawText('No approvers assigned', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
 
@@ -1053,10 +1197,13 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
   }
   builder.moveDown(LINE_HEIGHT + 5);
   
+  builder.drawText('C3.2 Vessel, Vessel Class/Fleet:', MARGIN, 9, 'normal');
+  builder.moveDown(LINE_HEIGHT);
   if (formData.c3AssignedGroups && formData.c3AssignedGroups.length > 0) {
-    builder.drawText('Assigned Groups:', MARGIN, 9, 'normal');
-    builder.moveDown(LINE_HEIGHT);
     builder.drawText(formData.c3AssignedGroups.join(', '), MARGIN + 10, 9, 'normal');
+    builder.moveDown(LINE_HEIGHT);
+  } else {
+    builder.drawText('-', MARGIN + 10, 9, 'normal');
     builder.moveDown(LINE_HEIGHT);
   }
   

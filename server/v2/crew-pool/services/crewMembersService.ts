@@ -148,8 +148,10 @@ export const crewMembersService = {
         nextAvailability: crewMembersV2.nextAvailability,
         vesselUuid: vesselPlanningV2.vesselUuid,
         vesselName: masterVessels.vessel,
+        manningAgentName: crewPersonalDetails.manningAgent,
       })
       .from(crewMembersV2)
+      .leftJoin(crewPersonalDetails, eq(crewMembersV2.crewUuid, crewPersonalDetails.crewUuid))
       .leftJoin(masterNationalities, eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid))
       .leftJoin(
         vesselPlanningV2,
@@ -517,6 +519,7 @@ export const crewMembersService = {
         nationality: masterNationalities.nationality,
         vesselType: masterVesselTypes.vesselType,
         currentVesselName: masterVessels.vessel,
+        manningAgentName: crewPersonalDetails.manningAgent,
       })
       .from(crewPage)
       .innerJoin(crewMembersV2, eq(crewMembersV2.id, crewPage.id))
@@ -536,6 +539,7 @@ export const crewMembersService = {
         masterVessels,
         eq(latestAssignment.vesselUuid, masterVessels.vesselUuid)
       )
+      .leftJoin(crewPersonalDetails, eq(crewMembersV2.crewUuid, crewPersonalDetails.crewUuid))
       .orderBy(desc(crewMembersV2.createdAt), crewMembersV2.id);
 
     // Get crew UUIDs from results to fetch previous assignments
@@ -592,6 +596,7 @@ export const crewMembersService = {
         lastVessel: prevAssignment?.vesselName || prevAssignment?.vesselUuid || null,
         signOffDate: prevAssignment?.signOffDate || null,
         reason: prevAssignment?.reason || null,
+        manningAgentName: r.manningAgentName || '',
         status: this.calculateCrewStatus(r.crew.isActive !== false, !!r.currentVessel),
         timeOnBoardMonths: this.calculateTimeOnBoard(r.signOnDate),
       };
