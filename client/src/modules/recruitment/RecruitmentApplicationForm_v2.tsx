@@ -4289,8 +4289,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               {isEditing ? (
                 <Input
                   value={formData.ageInYears}
-                  onChange={(e) => updateFormData('ageInYears', e.target.value)}
-                  className="mt-1"
+                  readOnly
+                  className="mt-1 bg-gray-50 cursor-not-allowed"
                   data-testid="input-age"
                 />
               ) : (
