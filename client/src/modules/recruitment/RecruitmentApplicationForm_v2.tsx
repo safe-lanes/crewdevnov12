@@ -1009,14 +1009,23 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     };
 
     const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      let topmostId: SectionType | null = null;
+      let topmostTop = Infinity;
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const sectionId = entry.target.getAttribute('data-section-id') as SectionType;
           if (sectionId && ['A1', 'A2', 'A3', 'A4', 'A5'].includes(sectionId)) {
-            setActiveContinuousSection(sectionId);
+            const top = entry.boundingClientRect.top;
+            if (top < topmostTop) {
+              topmostId = sectionId;
+              topmostTop = top;
+            }
           }
         }
       });
+      if (topmostId) {
+        setActiveContinuousSection(topmostId);
+      }
     };
 
     const observer = new IntersectionObserver(observerCallback, observerOptions);
@@ -2396,7 +2405,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const refMap: Record<string, React.RefObject<HTMLDivElement>> = {
         'A1': a1Ref, 'A2': a2Ref, 'A3': a3Ref, 'A4': a4Ref, 'A5': a5Ref
       };
-      refMap[sectionId]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      requestAnimationFrame(() => {
+        refMap[sectionId]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } else {
       setActiveSection(sectionId);
     }
