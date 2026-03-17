@@ -152,9 +152,17 @@ export const suitabilityController = {
           await suitabilityService.softDeleteVesselType(vt.svtUuid);
         }
         
-        // Add new vessel types
+        // Add new vessel types with sort order
         for (const uuid of toAdd) {
-          await suitabilityService.addVesselType(result.suitUuid, uuid);
+          const sortOrder = resolvedIncoming.indexOf(uuid);
+          await suitabilityService.addVesselType(result.suitUuid, uuid, undefined, null, sortOrder);
+        }
+
+        // Update sort order for all kept items
+        for (let i = 0; i < resolvedIncoming.length; i++) {
+          if (!toAdd.includes(resolvedIncoming[i])) {
+            await suitabilityService.updateVesselTypeSortOrder(result.suitUuid, resolvedIncoming[i], i);
+          }
         }
       }
       
@@ -184,9 +192,17 @@ export const suitabilityController = {
           await suitabilityService.softDeleteFleetGroup(fg.sfgUuid);
         }
         
-        // Add new fleet groups
+        // Add new fleet groups with sort order
         for (const uuid of toAdd) {
-          await suitabilityService.addFleetGroup(result.suitUuid, uuid);
+          const sortOrder = resolvedIncoming.indexOf(uuid);
+          await suitabilityService.addFleetGroup(result.suitUuid, uuid, undefined, null, sortOrder);
+        }
+
+        // Update sort order for all kept items
+        for (let i = 0; i < resolvedIncoming.length; i++) {
+          if (!toAdd.includes(resolvedIncoming[i])) {
+            await suitabilityService.updateFleetGroupSortOrder(result.suitUuid, resolvedIncoming[i], i);
+          }
         }
       }
       
