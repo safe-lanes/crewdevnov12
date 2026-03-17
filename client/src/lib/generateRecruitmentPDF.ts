@@ -837,12 +837,13 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   ]);
   builder.drawFieldRow([
     { label: 'Email', value: formData.email },
-    { label: 'Residential Address Line 1( House No./Building/Street )', value: formData.residentialAddressLine1 },
-    { label: 'Residential Address Line 2( City, State, PIN )', value: formData.residentialAddressLine2 },
+    { label: 'Contact Landline', value: formData.contactLandline },
+    { label: '', value: '' },
   ]);
   builder.drawFieldRow([
-    { label: 'Contact Landline', value: formData.contactLandline },
-  ], CONTENT_WIDTH);
+    { label: 'Residential Address Line 1( House No./Building/Street )', value: formData.residentialAddressLine1 },
+    { label: 'Residential Address Line 2( City, State, PIN )', value: formData.residentialAddressLine2 },
+  ], CONTENT_WIDTH / 2);
 
   builder.drawSubsectionHeader('A1.3 Family and NOK');
   builder.drawFieldRow([
