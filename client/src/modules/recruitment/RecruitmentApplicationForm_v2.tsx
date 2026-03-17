@@ -3837,7 +3837,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       // Part C - Save approvals (C1)
       const serverApprovalMap = new Map((approvalsData || []).map(a => [a.approvalUuid, a.id]));
-      for (const approver of formData.c1Approvers) {
+      for (let index = 0; index < formData.c1Approvers.length; index++) {
+        const approver = formData.c1Approvers[index];
         const existingServerId = approver.serverId || (approver.appUuid ? serverApprovalMap.get(approver.appUuid) : undefined);
         if (existingServerId) {
           await updateApprovalMutation.mutateAsync({
@@ -3849,6 +3850,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               status: approver.status || null,
               approvalResult: approver.approval || null,
               comments: approver.comments || null,
+              sortOrder: index,
             } as any,
           });
         } else if (approver.date || approver.approver) {
@@ -3860,6 +3862,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               status: approver.status || null,
               approvalResult: approver.approval || null,
               comments: approver.comments || null,
+              sortOrder: index,
             } as any,
           });
           if (newApproval?.id) {

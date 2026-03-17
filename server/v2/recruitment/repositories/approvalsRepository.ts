@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   candApprovals,
@@ -29,7 +29,7 @@ export class ApprovalsRepository {
     const db = getDb();
     return db.select().from(candApprovals).where(
       and(eq(candApprovals.recCanUuid, recCanUuid), eq(candApprovals.isDeleted, false))
-    );
+    ).orderBy(asc(candApprovals.sortOrder), asc(candApprovals.createdAt));
   }
 
   async findByUuid(approvalUuid: string): Promise<CandApproval | undefined> {
