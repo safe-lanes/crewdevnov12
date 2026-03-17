@@ -2623,51 +2623,51 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         savePersonalDetailsMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            placeOfBirthCity: formData.placeOfBirthCity || undefined,
-            placeOfBirthCountryUuid: formData.placeOfBirthCountry || undefined,
-            heightCm: formData.heightCm || undefined,
-            weightKg: formData.weightKg || undefined,
-            nativeLanguageUuid: formData.nativeLanguage || undefined,
-            foreignLanguages: formData.foreignLanguages || undefined,
-            englishProficiency: formData.englishProficiency || undefined,
-            manningAgent: formData.manningAgent || undefined,
+            placeOfBirthCity: formData.placeOfBirthCity || null,
+            placeOfBirthCountryUuid: formData.placeOfBirthCountry || null,
+            heightCm: formData.heightCm || null,
+            weightKg: formData.weightKg || null,
+            nativeLanguageUuid: formData.nativeLanguage || null,
+            foreignLanguages: formData.foreignLanguages || null,
+            englishProficiency: formData.englishProficiency || null,
+            manningAgent: formData.manningAgent || null,
           },
         }),
         saveAddressMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            countryOfResidenceUuid: formData.countryOfResidence || undefined,
-            nearestAirport: formData.nearestAirport || undefined,
-            addressLine1: formData.residentialAddressLine1 || undefined,
-            addressLine2: formData.residentialAddressLine2 || undefined,
-            contactLandline: formData.contactLandline || undefined,
-            mobile: formData.mobile || undefined,
-            email: formData.email || undefined,
+            countryOfResidenceUuid: formData.countryOfResidence || null,
+            nearestAirport: formData.nearestAirport || null,
+            addressLine1: formData.residentialAddressLine1 || null,
+            addressLine2: formData.residentialAddressLine2 || null,
+            contactLandline: formData.contactLandline || null,
+            mobile: formData.mobile || null,
+            email: formData.email || null,
           },
         }),
         saveFamilyInfoMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            maritalStatus: formData.maritalStatus || undefined,
-            numDependentChildren: formData.numberOfDependentChildren || undefined,
-            fatherName: formData.fatherName || undefined,
-            motherName: formData.motherName || undefined,
-            spouseFirstName: formData.spouseFirstName || undefined,
-            spouseMiddleName: formData.spouseMiddleName || undefined,
-            spouseFamilyName: formData.spouseFamilyName || undefined,
-            spouseDob: formData.spouseDateOfBirth || undefined,
+            maritalStatus: formData.maritalStatus || null,
+            numDependentChildren: formData.numberOfDependentChildren || null,
+            fatherName: formData.fatherName || null,
+            motherName: formData.motherName || null,
+            spouseFirstName: formData.spouseFirstName || null,
+            spouseMiddleName: formData.spouseMiddleName || null,
+            spouseFamilyName: formData.spouseFamilyName || null,
+            spouseDob: formData.spouseDateOfBirth || null,
           },
         }),
         saveNextOfKinMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            firstName: formData.nokFirstName || undefined,
-            middleName: formData.nokMiddleName || undefined,
-            familyName: formData.nokFamilyName || undefined,
-            telephone: formData.nokTelephone || undefined,
-            email: formData.nokEmail || undefined,
-            address: formData.nokAddress || undefined,
-            relationship: formData.nokRelationship || undefined,
+            firstName: formData.nokFirstName || null,
+            middleName: formData.nokMiddleName || null,
+            familyName: formData.nokFamilyName || null,
+            telephone: formData.nokTelephone || null,
+            email: formData.nokEmail || null,
+            address: formData.nokAddress || null,
+            relationship: formData.nokRelationship || null,
           },
         }),
       ]);
@@ -2684,10 +2684,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         data: nonEmptyChildren.map((child, index) => ({
           childUuid: child.id.startsWith('CHILD-') || child.id.startsWith('new-') ? undefined : child.id,
           firstName: child.firstName,
-          middleName: child.middleName || undefined,
-          familyName: child.familyName || undefined,
-          dob: child.dateOfBirth || undefined,
-          gender: child.gender || undefined,
+          middleName: child.middleName || null,
+          familyName: child.familyName || null,
+          dob: child.dateOfBirth || null,
+          gender: child.gender || null,
           sortOrder: index,
         })) as any,
       });
@@ -2756,12 +2756,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Documents - save with attachments
       nonEmptyDocuments.forEach((doc, index) => {
         const docPayload = {
-          documentId: doc.documentId || undefined,
-          documentName: doc.document || undefined,
-          number: doc.number || undefined,
-          issued: doc.issued || undefined,
-          expiry: doc.expiry || undefined,
-          issuingAuthority: doc.issuingAuthority || undefined,
+          documentId: doc.documentId || null,
+          documentName: doc.document || null,
+          number: doc.number || null,
+          issued: doc.issued || null,
+          expiry: doc.expiry || null,
+          issuingAuthority: doc.issuingAuthority || null,
           sortOrder: index,
         };
         const serverNumericId = serverDocMap.get(doc.id);
@@ -2796,11 +2796,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Visas - save with attachments
       nonEmptyVisas.forEach((visa, index) => {
         const visaPayload = {
-          countryUuid: visa.issuingCountry || visa.countryId || undefined,
-          serialNo: visa.serialNo || undefined,
-          issued: visa.issued || undefined,
-          expiry: visa.expiry || undefined,
-          visaType: visa.visaType || undefined,
+          countryUuid: visa.issuingCountry || visa.countryId || null,
+          serialNo: visa.serialNo || null,
+          issued: visa.issued || null,
+          expiry: visa.expiry || null,
+          visaType: visa.visaType || null,
           sortOrder: index,
         };
         const serverNumericId = serverVisaMap.get(visa.id);
@@ -2834,10 +2834,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Education - save with attachments
       nonEmptyEducation.forEach((edu, index) => {
         const eduPayload = {
-          dateOfCompletion: edu.dateOfCompletion || undefined,
-          institution: edu.schoolCollegeUniversity || undefined,
-          subjectsField: edu.subjectsField || undefined,
-          qualifications: edu.qualifications || undefined,
+          dateOfCompletion: edu.dateOfCompletion || null,
+          institution: edu.schoolCollegeUniversity || null,
+          subjectsField: edu.subjectsField || null,
+          qualifications: edu.qualifications || null,
           sortOrder: index,
         };
         const serverNumericId = serverEduMap.get(edu.id);
@@ -2871,14 +2871,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Licenses - save with attachments
       nonEmptyLicenses.forEach((lic, index) => {
         const licPayload = {
-          licenseId: lic.licenseId || undefined,
-          certificateDocument: lic.certificateDocument || undefined,
-          abbr: lic.abbr || undefined,
-          requirement: lic.requirement || undefined,
-          certificateNo: lic.certificateNo || undefined,
-          issuingAuthority: lic.issuingAuthority || undefined,
-          issued: lic.issued || undefined,
-          expiry: lic.expiry || undefined,
+          licenseId: lic.licenseId || null,
+          certificateDocument: lic.certificateDocument || null,
+          abbr: lic.abbr || null,
+          requirement: lic.requirement || null,
+          certificateNo: lic.certificateNo || null,
+          issuingAuthority: lic.issuingAuthority || null,
+          issued: lic.issued || null,
+          expiry: lic.expiry || null,
           sortOrder: index,
         };
         const serverNumericId = serverLicMap.get(lic.id);
@@ -2912,14 +2912,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Training - save with attachments
       nonEmptyTraining.forEach((train, index) => {
         const trainPayload = {
-          courseId: train.courseId || undefined,
-          trainingCourse: train.trainingCourse || undefined,
-          abbr: train.abbr || undefined,
-          requirement: train.requirement || undefined,
-          certificateNo: train.certificateNo || undefined,
-          issuingAuthority: train.issuingAuthority || undefined,
-          issued: train.issued || undefined,
-          expiry: train.expiry || undefined,
+          courseId: train.courseId || null,
+          trainingCourse: train.trainingCourse || null,
+          abbr: train.abbr || null,
+          requirement: train.requirement || null,
+          certificateNo: train.certificateNo || null,
+          issuingAuthority: train.issuingAuthority || null,
+          issued: train.issued || null,
+          expiry: train.expiry || null,
           sortOrder: index,
         };
         const serverNumericId = serverTrainMap.get(train.id);
@@ -2953,15 +2953,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Sea Service - save with attachments
       nonEmptySeaService.forEach((sea, index) => {
         const seaPayload = {
-          vesselName: sea.vesselName || undefined,
-          vesselTypeUuid: sea.vesselType || undefined,
-          deadweight: sea.deadweight || undefined,
-          engineTypePower: sea.engineTypePower || undefined,
-          ownerOperator: sea.ownerOperator || undefined,
-          rank: sea.rank || undefined,
-          fromDate: sea.from || undefined,
-          toDate: sea.to || undefined,
-          periodMonths: sea.periodMonths || undefined,
+          vesselName: sea.vesselName || null,
+          vesselTypeUuid: sea.vesselType || null,
+          deadweight: sea.deadweight || null,
+          engineTypePower: sea.engineTypePower || null,
+          ownerOperator: sea.ownerOperator || null,
+          rank: sea.rank || null,
+          fromDate: sea.from || null,
+          toDate: sea.to || null,
+          periodMonths: sea.periodMonths || null,
           sortOrder: index,
         };
         const serverNumericId = serverSeaMap.get(sea.id);
@@ -3039,8 +3039,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       
       formData.additionalInfo.forEach((info, index) => {
         const infoPayload = {
-          information: info.information || undefined,
-          response: info.response || undefined,
+          information: info.information || null,
+          response: info.response || null,
           sortOrder: index,
         };
         
@@ -3300,70 +3300,70 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         saveScreeningB1Mutation.mutateAsync({
           recCanUuid,
           data: {
-            ageMeetsCriteria: formData.b1AgeMeetsCriteria || undefined,
-            rankMeetsCriteria: formData.b1RankMeetsCriteria || undefined,
-            certificatesValid: formData.b1CertificatesValid || undefined,
-            shortlisted: formData.b1Shortlisted || undefined,
-            submittedByUuid: overrides?.b1SubmittedBy || formData.b1SubmittedBy || undefined,
-            submittedDate: overrides?.b1SubmittedDate || formData.b1SubmittedDate || undefined,
+            ageMeetsCriteria: formData.b1AgeMeetsCriteria || null,
+            rankMeetsCriteria: formData.b1RankMeetsCriteria || null,
+            certificatesValid: formData.b1CertificatesValid || null,
+            shortlisted: formData.b1Shortlisted || null,
+            submittedByUuid: overrides?.b1SubmittedBy || formData.b1SubmittedBy || null,
+            submittedDate: overrides?.b1SubmittedDate || formData.b1SubmittedDate || null,
           } as any,
         }),
         saveScreeningB2Mutation.mutateAsync({
           recCanUuid,
           data: {
-            referencesCompleted: formData.b2ReferencesCompleted || undefined,
-            employerFeedback: formData.b2EmployerFeedback || undefined,
-            submittedByUuid: overrides?.b2SubmittedBy || formData.b2SubmittedBy || undefined,
-            submittedDate: overrides?.b2SubmittedDate || formData.b2SubmittedDate || undefined,
+            referencesCompleted: formData.b2ReferencesCompleted || null,
+            employerFeedback: formData.b2EmployerFeedback || null,
+            submittedByUuid: overrides?.b2SubmittedBy || formData.b2SubmittedBy || null,
+            submittedDate: overrides?.b2SubmittedDate || formData.b2SubmittedDate || null,
           } as any,
         }),
         saveScreeningB3Mutation.mutateAsync({
           recCanUuid,
           data: {
-            checksCompleted: formData.b3ChecksCompleted || undefined,
-            results: formData.b3Results || undefined,
-            submittedByUuid: overrides?.b3SubmittedBy || formData.b3SubmittedBy || undefined,
-            submittedDate: overrides?.b3SubmittedDate || formData.b3SubmittedDate || undefined,
+            checksCompleted: formData.b3ChecksCompleted || null,
+            results: formData.b3Results || null,
+            submittedByUuid: overrides?.b3SubmittedBy || formData.b3SubmittedBy || null,
+            submittedDate: overrides?.b3SubmittedDate || formData.b3SubmittedDate || null,
           } as any,
         }),
         saveScreeningB4Mutation.mutateAsync({
           recCanUuid,
           data: {
-            certificatesAuthenticated: formData.b4CertificatesAuthenticated || undefined,
-            results: formData.b4Results || undefined,
-            submittedByUuid: overrides?.b4SubmittedBy || formData.b4SubmittedBy || undefined,
-            submittedDate: overrides?.b4SubmittedDate || formData.b4SubmittedDate || undefined,
+            certificatesAuthenticated: formData.b4CertificatesAuthenticated || null,
+            results: formData.b4Results || null,
+            submittedByUuid: overrides?.b4SubmittedBy || formData.b4SubmittedBy || null,
+            submittedDate: overrides?.b4SubmittedDate || formData.b4SubmittedDate || null,
           } as any,
         }),
         saveScreeningB5Mutation.mutateAsync({
           recCanUuid,
           data: {
-            testsCompleted: formData.b5TestsCompleted || undefined,
-            submittedByUuid: overrides?.b5SubmittedBy || formData.b5SubmittedBy || undefined,
-            submittedDate: overrides?.b5SubmittedDate || formData.b5SubmittedDate || undefined,
+            testsCompleted: formData.b5TestsCompleted || null,
+            submittedByUuid: overrides?.b5SubmittedBy || formData.b5SubmittedBy || null,
+            submittedDate: overrides?.b5SubmittedDate || formData.b5SubmittedDate || null,
           } as any,
         }),
         saveScreeningB6Mutation.mutateAsync({
           recCanUuid,
           data: {
-            interviewCompleted: formData.b6InterviewCompleted || undefined,
-            submittedByUuid: overrides?.b6SubmittedBy || formData.b6SubmittedBy || undefined,
-            submittedDate: overrides?.b6SubmittedDate || formData.b6SubmittedDate || undefined,
+            interviewCompleted: formData.b6InterviewCompleted || null,
+            submittedByUuid: overrides?.b6SubmittedBy || formData.b6SubmittedBy || null,
+            submittedDate: overrides?.b6SubmittedDate || formData.b6SubmittedDate || null,
           } as any,
         }),
         saveScreeningB7Mutation.mutateAsync({
           recCanUuid,
           data: {
-            submittedByUuid: overrides?.b7SubmittedBy || formData.b7SubmittedBy || undefined,
-            submittedDate: overrides?.b7SubmittedDate || formData.b7SubmittedDate || undefined,
+            submittedByUuid: overrides?.b7SubmittedBy || formData.b7SubmittedBy || null,
+            submittedDate: overrides?.b7SubmittedDate || formData.b7SubmittedDate || null,
           } as any,
         }),
         saveScreeningB8Mutation.mutateAsync({
           recCanUuid,
           data: {
-            shortlisted: formData.b8Shortlisted || undefined,
-            submittedByUuid: overrides?.b8SubmittedBy || formData.b8SubmittedBy || undefined,
-            submittedDate: overrides?.b8SubmittedDate || formData.b8SubmittedDate || undefined,
+            shortlisted: formData.b8Shortlisted || null,
+            submittedByUuid: overrides?.b8SubmittedBy || formData.b8SubmittedBy || null,
+            submittedDate: overrides?.b8SubmittedDate || formData.b8SubmittedDate || null,
             selectedApproverUuids: formData.selectedApproversForSubmission || [],
           } as any,
         }),
@@ -3385,9 +3385,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             refUuid: item.id,
             b2Uuid: currentB2Uuid,
             data: {
-              refDate: item.date || undefined,
-              nameDesignation: item.nameDesignation || undefined,
-              contactInfo: item.contactInfo || undefined,
+              refDate: item.date || null,
+              nameDesignation: item.nameDesignation || null,
+              contactInfo: item.contactInfo || null,
               sortOrder: index,
             } as any,
           });
@@ -3395,9 +3395,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           await createB2ItemMutation.mutateAsync({
             b2Uuid: currentB2Uuid,
             data: {
-              refDate: item.date || undefined,
-              nameDesignation: item.nameDesignation || undefined,
-              contactInfo: item.contactInfo || undefined,
+              refDate: item.date || null,
+              nameDesignation: item.nameDesignation || null,
+              contactInfo: item.contactInfo || null,
               sortOrder: index,
             } as any,
           });
@@ -3412,8 +3412,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             authUuid: auth.id,
             b3Uuid: currentB3Uuid,
             data: {
-              checkDate: auth.date || undefined,
-              authority: auth.authority || undefined,
+              checkDate: auth.date || null,
+              authority: auth.authority || null,
               sortOrder: index,
             } as any,
           });
@@ -3421,8 +3421,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           await createB3AuthorityMutation.mutateAsync({
             b3Uuid: currentB3Uuid,
             data: {
-              checkDate: auth.date || undefined,
-              authority: auth.authority || undefined,
+              checkDate: auth.date || null,
+              authority: auth.authority || null,
               sortOrder: index,
             } as any,
           });
@@ -3437,9 +3437,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             certUuid: cert.id,
             b4Uuid: currentB4Uuid,
             data: {
-              authDate: cert.date || undefined,
-              certificate: cert.certificate || undefined,
-              authority: cert.authority || undefined,
+              authDate: cert.date || null,
+              certificate: cert.certificate || null,
+              authority: cert.authority || null,
               sortOrder: index,
             } as any,
           });
@@ -3447,9 +3447,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           await createB4CertItemMutation.mutateAsync({
             b4Uuid: currentB4Uuid,
             data: {
-              authDate: cert.date || undefined,
-              certificate: cert.certificate || undefined,
-              authority: cert.authority || undefined,
+              authDate: cert.date || null,
+              certificate: cert.certificate || null,
+              authority: cert.authority || null,
               sortOrder: index,
             } as any,
           });
@@ -3464,10 +3464,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             testUuid: test.id,
             b5Uuid: currentB5Uuid,
             data: {
-              testDate: test.date || undefined,
-              subject: test.subject || undefined,
-              score: test.score || undefined,
-              result: test.result || undefined,
+              testDate: test.date || null,
+              subject: test.subject || null,
+              score: test.score || null,
+              result: test.result || null,
               sortOrder: index,
             } as any,
           });
@@ -3475,10 +3475,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           await createB5TestItemMutation.mutateAsync({
             b5Uuid: currentB5Uuid,
             data: {
-              testDate: test.date || undefined,
-              subject: test.subject || undefined,
-              score: test.score || undefined,
-              result: test.result || undefined,
+              testDate: test.date || null,
+              subject: test.subject || null,
+              score: test.score || null,
+              result: test.result || null,
               sortOrder: index,
             } as any,
           });
@@ -3493,11 +3493,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             intUuid: interview.id,
             b6Uuid: currentB6Uuid,
             data: {
-              interviewDate: interview.date || undefined,
-              interviewerUuid: interview.interviewer || undefined,
-              status: interview.status || undefined,
-              result: interview.result || undefined,
-              comments: interview.comments || undefined,
+              interviewDate: interview.date || null,
+              interviewerUuid: interview.interviewer || null,
+              status: interview.status || null,
+              result: interview.result || null,
+              comments: interview.comments || null,
               sortOrder: index,
             } as any,
           });
@@ -3505,11 +3505,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           await createB6InterviewItemMutation.mutateAsync({
             b6Uuid: currentB6Uuid,
             data: {
-              interviewDate: interview.date || undefined,
-              interviewerUuid: interview.interviewer || undefined,
-              status: interview.status || undefined,
-              result: interview.result || undefined,
-              comments: interview.comments || undefined,
+              interviewDate: interview.date || null,
+              interviewerUuid: interview.interviewer || null,
+              status: interview.status || null,
+              result: interview.result || null,
+              comments: interview.comments || null,
               sortOrder: index,
             } as any,
           });
@@ -3530,11 +3530,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             trainItemUuid: training.id,
             b7Uuid: currentB7Uuid,
             data: {
-              training: training.training || undefined,
-              category: training.category || undefined,
-              identifiedByUuid: training.identifiedBy || undefined,
-              dueDate: training.dueDate || undefined,
-              comments: training.comments || undefined,
+              training: training.training || null,
+              category: training.category || null,
+              identifiedByUuid: training.identifiedBy || null,
+              dueDate: training.dueDate || null,
+              comments: training.comments || null,
               sortOrder: index,
             },
           });
@@ -3542,11 +3542,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           await createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {
-              training: training.training || undefined,
-              category: training.category || undefined,
-              identifiedByUuid: training.identifiedBy || undefined,
-              dueDate: training.dueDate || undefined,
-              comments: training.comments || undefined,
+              training: training.training || null,
+              category: training.category || null,
+              identifiedByUuid: training.identifiedBy || null,
+              dueDate: training.dueDate || null,
+              comments: training.comments || null,
               sortOrder: index,
             },
           });
@@ -3844,22 +3844,22 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             recCanUuid,
             id: existingServerId,
             data: {
-              approvalDate: approver.date || undefined,
-              approverUuid: approver.approver || undefined,
-              status: approver.status || undefined,
-              approvalResult: approver.approval || undefined,
-              comments: approver.comments || undefined,
+              approvalDate: approver.date || null,
+              approverUuid: approver.approver || null,
+              status: approver.status || null,
+              approvalResult: approver.approval || null,
+              comments: approver.comments || null,
             } as any,
           });
         } else if (approver.date || approver.approver) {
           const newApproval = await saveApprovalMutation.mutateAsync({
             recCanUuid,
             data: {
-              approvalDate: approver.date || undefined,
-              approverUuid: approver.approver || undefined,
-              status: approver.status || undefined,
-              approvalResult: approver.approval || undefined,
-              comments: approver.comments || undefined,
+              approvalDate: approver.date || null,
+              approverUuid: approver.approver || null,
+              status: approver.status || null,
+              approvalResult: approver.approval || null,
+              comments: approver.comments || null,
             } as any,
           });
           if (newApproval?.id) {
@@ -3900,7 +3900,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         await saveDecisionMutation.mutateAsync({
           recCanUuid,
           data: {
-            recruitmentStatus: formData.c3RecruitmentStatus || undefined,
+            recruitmentStatus: formData.c3RecruitmentStatus || null,
             assignedGroups: formData.c3AssignedGroups.map(g => ({ groupUuid: g })),
           } as any,
         });
