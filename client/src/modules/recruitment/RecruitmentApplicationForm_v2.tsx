@@ -177,6 +177,7 @@ import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCours
 import { TravelDocumentSelectionDialog } from '@/modules/crew-pool/TravelDocumentSelectionDialog';
 import { VisaSelectionDialog } from '@/modules/crew-pool/VisaSelectionDialog';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
+import { LICENSE_DCE_TEMPLATES } from '@/utils/data/licenseDceTemplates';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
@@ -1199,7 +1200,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: lic.issuingAuthority || '',
         issued: lic.issued || '',
         expiry: lic.expiry || '',
-        fromDatabase: !!(lic.abbr || lic.requirement),
+        fromDatabase: !!(lic.licenseId && LICENSE_DCE_TEMPLATES.some(t => t.id === lic.licenseId)) || !!(lic.abbr || lic.requirement),
         attachments: mapApiAttachments(lic.attachments),
       }));
       setFormData(prev => ({ ...prev, licenses: mapped }));
@@ -1219,7 +1220,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: course.issuingAuthority || '',
         issued: course.issued || '',
         expiry: course.expiry || '',
-        fromDatabase: !!(course.abbr || course.requirement),
+        fromDatabase: !!(course.courseId && adminCompanyTrainings.some(ct => ct.companyId === course.courseId)) || !!(course.abbr || course.requirement),
         sortOrder: undefined as number | undefined,
         attachments: mapApiAttachments(course.attachments),
       }));
@@ -5011,7 +5012,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableRow key={doc.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   {doc.documentId ? (
-                    <span className="text-[13px] text-gray-900">{doc.document}</span>
+                    <Input value={doc.document} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>
                       <Input value={doc.document} onChange={(e) => { updateDocument(doc.id, 'document', e.target.value); if (docDateErrors[doc.id]?.document && e.target.value.trim()) setDocDateErrors(prev => { const n = { ...prev }; if (n[doc.id]) { const { document: _, ...rest } = n[doc.id]; n[doc.id] = rest; } return n; }); }}
@@ -5087,7 +5088,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   {visa.countryId ? (
-                    <span className="text-[13px] text-gray-900">{visa.issuingCountry}</span>
+                    <Input value={visa.issuingCountry} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>
                       <Input value={visa.issuingCountry} onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaDateErrors[visa.id]?.issuingCountry && e.target.value.trim()) setVisaDateErrors(prev => { const n = { ...prev }; if (n[visa.id]) { const { issuingCountry: _, ...rest } = n[visa.id]; n[visa.id] = rest; } return n; }); }}
@@ -5229,7 +5230,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <TableCell className="p-3 text-[13px]">{lic.licenseId || '-'}</TableCell>
                 <TableCell className="p-3">
                   {lic.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{lic.certificateDocument}</span>
+                    <Input value={lic.certificateDocument} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>
                       <Input value={lic.certificateDocument} onChange={(e) => { updateLicense(lic.id, 'certificateDocument', e.target.value); if (licDateErrors[lic.id]?.certificateDocument && e.target.value.trim()) setLicDateErrors(prev => { const n = { ...prev }; if (n[lic.id]) { const { certificateDocument: _, ...rest } = n[lic.id]; n[lic.id] = rest; } return n; }); }}
@@ -5241,14 +5242,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   {lic.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{lic.abbr}</span>
+                    <Input value={lic.abbr} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <Input value={lic.abbr} onChange={(e) => updateLicense(lic.id, 'abbr', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                   )}
                 </TableCell>
                 <TableCell className="p-3">
                   {lic.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{lic.requirement}</span>
+                    <Input value={lic.requirement} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <Input value={lic.requirement} onChange={(e) => updateLicense(lic.id, 'requirement', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                   )}
@@ -5323,7 +5324,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <TableCell className="p-3 text-[13px]">{course.courseId || '-'}</TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{course.trainingCourse}</span>
+                    <Input value={course.trainingCourse} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>
                       <Input value={course.trainingCourse} onChange={(e) => { updateTrainingCourse(course.id, 'trainingCourse', e.target.value); if (trainingDateErrors[course.id]?.trainingCourse && e.target.value.trim()) setTrainingDateErrors(prev => { const n = { ...prev }; if (n[course.id]) { const { trainingCourse: _, ...rest } = n[course.id]; n[course.id] = rest; } return n; }); }}
@@ -5335,14 +5336,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{course.abbr}</span>
+                    <Input value={course.abbr} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <Input value={course.abbr} onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                   )}
                 </TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{course.requirement}</span>
+                    <Input value={course.requirement} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <Input value={course.requirement} onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                   )}
