@@ -2291,7 +2291,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
         training: course.name,
         identifiedBy: '',
-        category: course.requirement || '',
+        category: ['Mandatory', 'Recommended', 'Optional'].includes(course.requirement) ? course.requirement : '',
         dueDate: '',
         comments: ''
       }));
