@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { StandardFormPopup } from '@/components/ui/form-popup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -2004,6 +2004,30 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     setSeaServiceDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
+  const runSeaServiceOverlapCheck = useCallback((serviceList?: typeof formData.seaService) => {
+    const rows = (serviceList || formData.seaService).filter(s => !!(s.from || '').trim());
+    const newErrors: Record<string, string> = {};
+    for (let i = 0; i < rows.length; i++) {
+      for (let j = i + 1; j < rows.length; j++) {
+        const a = rows[i];
+        const b = rows[j];
+        const aFrom = a.from;
+        const aTo = (a.to || '').trim() ? a.to : null;
+        const bFrom = b.from;
+        const bTo = (b.to || '').trim() ? b.to : null;
+        if (!aFrom || !bFrom) continue;
+        const noOverlap =
+          (aTo !== null && aTo < bFrom) ||
+          (bTo !== null && bTo < aFrom);
+        if (!noOverlap) {
+          newErrors[a.id] = 'Sea service dates overlap with another record.';
+          newErrors[b.id] = 'Sea service dates overlap with another record.';
+        }
+      }
+    }
+    return newErrors;
+  }, [formData.seaService]);
+
   const updateSeaService = (id: string, field: string, value: string) => {
     if (field === 'from' || field === 'to') {
       const service = formData.seaService.find(s => s.id === id);
@@ -2540,7 +2564,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       if (Object.keys(rowErrs).length > 0) { newSeaRequiredErrors[sea.id] = rowErrs; hasErrors = true; }
     });
     setSeaRequiredErrors(newSeaRequiredErrors);
-    setSeaServiceDateErrors(newSeaErrors);
+    const overlapErrors = runSeaServiceOverlapCheck();
+    const mergedSeaErrors = { ...newSeaErrors, ...overlapErrors };
+    setSeaServiceDateErrors(mergedSeaErrors);
+    if (Object.keys(overlapErrors).length > 0) hasErrors = true;
 
     if (hasErrors) {
       setTimeout(() => {
@@ -5430,12 +5457,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <FormattedDateInput value={service.from} onChange={(e) => { updateSeaService(service.id, 'from', e.target.value); if (seaRequiredErrors[service.id]?.from && e.target.value) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
-                    onBlur={() => { if (!(service.from || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], from: 'From date is required.' } })); }}
-                    className={`text-[13px] border ${seaRequiredErrors[service.id]?.from ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                    onBlur={() => { if (!(service.from || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], from: 'From date is required.' } })); setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
+                    className={`text-[13px] border ${(seaRequiredErrors[service.id]?.from || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {seaRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].from}</p>}
+                  {!seaRequiredErrors[service.id]?.from && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1">{seaServiceDateErrors[service.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput value={service.to} onChange={(e) => { updateSeaService(service.id, 'to', e.target.value); if (e.target.value) { const errs = { ...seaRequiredErrors[service.id] }; delete errs.to; if (service.from && e.target.value < service.from) errs.to = 'To date cannot be earlier than from date.'; setSeaRequiredErrors(prev => ({ ...prev, [service.id]: errs })); } }} onBlur={() => { if (!(service.to || '').trim()) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date is required.' } })); } else if (service.from && service.to < service.from) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date cannot be earlier than from date.' } })); } }}
+                  <FormattedDateInput value={service.to} onChange={(e) => { updateSeaService(service.id, 'to', e.target.value); if (e.target.value) { const errs = { ...seaRequiredErrors[service.id] }; delete errs.to; if (service.from && e.target.value < service.from) errs.to = 'To date cannot be earlier than from date.'; setSeaRequiredErrors(prev => ({ ...prev, [service.id]: errs })); } }} onBlur={() => { if (!(service.to || '').trim()) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date is required.' } })); } else if (service.from && service.to < service.from) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date cannot be earlier than from date.' } })); } setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
                     className={`text-[13px] border ${(seaRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {seaRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-${service.id}`}>{seaRequiredErrors[service.id].to}</p>}
                   {!seaRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-legacy-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
