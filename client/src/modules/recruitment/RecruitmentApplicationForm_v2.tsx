@@ -8280,11 +8280,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
                   
                   <div className="space-y-6">
-                    {/* B1.4 Shortlisted (For final approval) */}
+                    {/* B8.1 Shortlisted for approval */}
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
-                          B1.4 Shortlisted (For final approval)?
+                          B8.1 Shortlisted for approval?
                         </Label>
                         <div className="flex items-center min-w-[300px]">
                           <div className="flex gap-6 w-[200px]">

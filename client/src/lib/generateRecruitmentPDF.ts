@@ -597,15 +597,41 @@ class PDFBuilder {
   }
 
   drawRadioQuestion(label: string, options: Array<{label: string, value: string}>, selectedValue: string, hasNA: boolean = false): void {
-    this.checkPageBreak(20);
-    this.drawText(label, MARGIN, 9, 'normal', TEXT_COLOR);
-    
-    let x = MARGIN + CONTENT_WIDTH - (hasNA ? 190 : 130);
+    const radioAreaWidth = hasNA ? 190 : 130;
+    const maxLabelWidth = CONTENT_WIDTH - radioAreaWidth - 10;
+    const words = sanitizeText(label).split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      const width = this.font.widthOfTextAtSize(testLine, 9);
+      if (width > maxLabelWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    const totalHeight = lines.length * (LINE_HEIGHT + 2);
+    this.checkPageBreak(Math.max(totalHeight, 20));
+
+    const firstLineY = this.yPosition;
+    this.drawText(lines[0], MARGIN, 9, 'normal', TEXT_COLOR);
+
+    let x = MARGIN + CONTENT_WIDTH - radioAreaWidth;
     for (const option of options) {
       const isSelected = selectedValue?.toLowerCase() === option.value.toLowerCase();
-      const nextX = this.drawRadioButton(x, this.yPosition + 3, isSelected);
-      this.drawTextAt(option.label, nextX + 2, this.yPosition, 8, 'normal', TEXT_COLOR);
+      const nextX = this.drawRadioButton(x, firstLineY + 3, isSelected);
+      this.drawTextAt(option.label, nextX + 2, firstLineY, 8, 'normal', TEXT_COLOR);
       x += hasNA ? 60 : 55;
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+      this.moveDown(LINE_HEIGHT + 2);
+      this.drawText(lines[i], MARGIN, 9, 'normal', TEXT_COLOR);
     }
     this.moveDown(LINE_HEIGHT + 4);
   }
@@ -687,7 +713,7 @@ export async function generateRecruitmentPDF(formData: FormData, candidateName: 
 }
 
 async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void> {
-  builder.drawSectionHeader('PART A - SEAFARER\'S APPLICATION');
+  builder.drawSectionHeader('PART A - SEAFARER\'S PARTICULARS');
 
   builder.drawPartHeader('A1 — Personal Details');
   builder.drawSubsectionHeader('A1.1 General Particulars');
@@ -807,7 +833,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   ]);
   
   builder.checkPageBreak(50);
-  builder.drawText('Children:', MARGIN, 9, 'bold');
+  builder.drawText('Children Information:', MARGIN, 9, 'bold');
   builder.moveDown(LINE_HEIGHT);
   if (formData.children && formData.children.length > 0) {
     const childColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.12];
@@ -978,7 +1004,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
 }
 
 function drawPartB(builder: PDFBuilder, formData: FormData): void {
-  builder.drawSectionHeader('PART B - OFFICE SCREENING');
+  builder.drawSectionHeader('PART B - COMPANY PROCESSING');
 
   builder.drawSubsectionHeader('B1. Initial Screening');
   builder.drawRadioQuestion('B1.1 Age meets Company Criteria for the Rank applied for?',
@@ -1003,7 +1029,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 
   builder.drawSubmissionInfo(formData.b1SubmittedBy, formData.b1SubmittedDate);
 
-  builder.drawSubsectionHeader('B2. Reference Checks');
+  builder.drawSubsectionHeader('B2. Reference Checks with Previous Employer');
   builder.drawRadioQuestion('B2.1 Reference checks completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b2ReferencesCompleted, false);
@@ -1024,14 +1050,14 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   }
   builder.moveDown(LINE_HEIGHT);
 
-  builder.drawRadioQuestion('B2.2 Current employer feedback positive?',
+  builder.drawRadioQuestion('B2.2 Reference checks results positive? If yes, record brief overview of verification in comment. If no state details.',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
     formData.b2EmployerFeedback, true);
   builder.drawCommentsForQuestion(formData.b2Comments, 'b2-results');
   builder.drawSubmissionInfo(formData.b2SubmittedBy, formData.b2SubmittedDate);
 
   builder.drawSubsectionHeader('B3. Background Security Checks');
-  builder.drawRadioQuestion('B3.1 Security checks completed?',
+  builder.drawRadioQuestion('B3.1 Background security checks completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b3ChecksCompleted, false);
   builder.drawCommentsForQuestion(formData.b3Comments, 'b3-completed');
@@ -1051,22 +1077,17 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   }
   builder.moveDown(LINE_HEIGHT);
 
-  builder.drawRadioQuestion('B3.2 Security checks results positive?',
+  builder.drawRadioQuestion('B3.2 Background Security checks results positive? If yes, record brief overview of verification. If no state details.',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
     formData.b3Results, true);
   builder.drawCommentsForQuestion(formData.b3Comments, 'b3-results');
   builder.drawSubmissionInfo(formData.b3SubmittedBy, formData.b3SubmittedDate);
 
   builder.drawSubsectionHeader('B4. Authentication of Certificates & Documents');
-  builder.drawRadioQuestion('B4.1 Certificates authenticated?',
+  builder.drawRadioQuestion('B4.1 Certificates & Documents Authenticated?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b4CertificatesAuthenticated, false);
   builder.drawCommentsForQuestion(formData.b4Comments, 'b4-auth');
-
-  builder.drawRadioQuestion('B4.2 Authentication results positive?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
-    formData.b4Results, true);
-  builder.drawCommentsForQuestion(formData.b4Comments, 'b4-results');
 
   builder.checkPageBreak(50);
   builder.drawText('Certificates Authenticated:', MARGIN, 9, 'bold');
@@ -1081,10 +1102,16 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('No certificates recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
+  builder.moveDown(LINE_HEIGHT);
+
+  builder.drawRadioQuestion('B4.2 Authentication checks results positive? If yes, record brief overview of verification in comment. If no state details.',
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b4Results, true);
+  builder.drawCommentsForQuestion(formData.b4Comments, 'b4-results');
   builder.drawSubmissionInfo(formData.b4SubmittedBy, formData.b4SubmittedDate);
 
-  builder.drawSubsectionHeader('B5. CES/Language Test Results');
-  builder.drawRadioQuestion('B5.1 CES tests completed?',
+  builder.drawSubsectionHeader('B5. CES / Language Test Results');
+  builder.drawRadioQuestion('B5.1 Applicable CES / Language Tests completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b5TestsCompleted, false);
   builder.drawCommentsForQuestion(formData.b5Comments, 'b5-ces');
@@ -1104,7 +1131,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   }
   builder.drawSubmissionInfo(formData.b5SubmittedBy, formData.b5SubmittedDate);
 
-  builder.drawSubsectionHeader('B6. Interviews');
+  builder.drawSubsectionHeader('B6. Interview(s)');
   builder.drawRadioQuestion('B6.1 Interview completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b6InterviewCompleted, false);
