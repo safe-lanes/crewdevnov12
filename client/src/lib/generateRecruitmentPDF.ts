@@ -760,40 +760,40 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     builder.drawTextAt('Nationality', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
     builder.drawTextAt(displayValue(formData.nationality), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
     
-    builder.drawTextAt('Date of Birth', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
-    builder.drawTextAt(displayValue(formatDate(formData.dateOfBirth)), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+    builder.drawTextAt('Present Rank', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.presentRank), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
   }
   
   currentY -= 30;
   if (currentY > safeMinY) {
-    builder.drawTextAt('Place of Birth (City)', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
-    builder.drawTextAt(displayValue(formData.placeOfBirthCity), fieldStartX, currentY - 12, 9, 'normal');
+    builder.drawTextAt('Date of Birth', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formatDate(formData.dateOfBirth)), fieldStartX, currentY - 12, 9, 'normal');
     
-    builder.drawTextAt('Place of Birth (Country)', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
-    builder.drawTextAt(displayValue(formData.placeOfBirthCountry), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
+    builder.drawTextAt('Age (Years)', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.ageInYears), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
     
-    builder.drawTextAt('Age (Years)', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
-    builder.drawTextAt(displayValue(formData.ageInYears), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+    builder.drawTextAt('Place of Birth (City)', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.placeOfBirthCity), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
   }
   
   builder.setY(Math.min(currentY - 25, photoY - photoHeight - 10));
   
   builder.drawFieldRow([
-    { label: 'Rank Applied For', value: formData.rankAppliedFor },
-    { label: 'Present Rank', value: formData.presentRank },
-    { label: 'Vessel Type', value: formData.vesselType?.join(', ') || '' },
+    { label: 'Place of Birth (Country)', value: formData.placeOfBirthCountry },
+    { label: 'Height (Cm)', value: formData.heightCm },
+    { label: 'Weight (kg)', value: formData.weightKg },
   ]);
   
   builder.drawFieldRow([
-    { label: 'Height (cm)', value: formData.heightCm },
-    { label: 'Weight (kg)', value: formData.weightKg },
+    { label: 'Rank Applied For', value: formData.rankAppliedFor },
+    { label: 'Vessel Type', value: formData.vesselType?.join(', ') || '' },
     { label: 'File No', value: formData.fileNo },
   ]);
   
   builder.drawFieldRow([
     { label: 'Native Language', value: formData.nativeLanguage },
-    { label: 'Foreign Languages', value: formData.foreignLanguages },
     { label: 'English Proficiency', value: formData.englishProficiency },
+    { label: 'Foreign Languages', value: formData.foreignLanguages },
   ]);
   
   builder.drawFieldRow([
