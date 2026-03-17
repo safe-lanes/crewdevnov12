@@ -717,12 +717,6 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
 
   builder.drawPartHeader('A1 — Seafarers\' Particulars');
   builder.drawSubsectionHeader('A1.1 General Particulars');
-
-  builder.drawFieldRow([
-    { label: 'Rank Applied For', value: formData.rankAppliedFor },
-    { label: 'Vessel Type', value: formData.vesselType?.join(', ') || '' },
-    { label: 'File No', value: formData.fileNo },
-  ]);
   
   builder.checkPageBreak(130);
   
@@ -783,22 +777,44 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   }
   
   builder.setY(Math.min(currentY - 25, photoY - photoHeight - 10));
-  
-  builder.drawFieldRow([
-    { label: 'Place of birth( Country )', value: formData.placeOfBirthCountry },
-    { label: 'Height( Cm )', value: formData.heightCm },
-    { label: 'Weight( kg )', value: formData.weightKg },
-  ]);
-  
-  builder.drawFieldRow([
-    { label: 'Native Language', value: formData.nativeLanguage },
-    { label: 'English Proficiency', value: formData.englishProficiency },
-    { label: 'Foreign Languages', value: formData.foreignLanguages },
-  ]);
-  
-  builder.drawFieldRow([
-    { label: 'Manning Agent', value: formData.manningAgent },
-  ], CONTENT_WIDTH);
+
+  const rowSpacing = 28;
+  currentY = builder.getY();
+
+  builder.drawTextAt('Rank Applied For', MARGIN, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.rankAppliedFor), MARGIN, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Place of birth( Country )', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.placeOfBirthCountry), fieldStartX, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Height( Cm )', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.heightCm), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Weight( kg )', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.weightKg), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+
+  currentY -= rowSpacing;
+  builder.setY(currentY);
+  builder.checkPageBreak(rowSpacing);
+  currentY = builder.getY();
+
+  builder.drawTextAt('Vessel Type', MARGIN, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.vesselType?.join(', ') || ''), MARGIN, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Native Language', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.nativeLanguage), fieldStartX, currentY - 12, 9, 'normal');
+  builder.drawTextAt('English Proficiency', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.englishProficiency), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Foreign Languages', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.foreignLanguages), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+
+  currentY -= rowSpacing;
+  builder.setY(currentY);
+  builder.checkPageBreak(rowSpacing);
+  currentY = builder.getY();
+
+  builder.drawTextAt('File No', MARGIN, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.fileNo), MARGIN, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Manning Agent', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.manningAgent), fieldStartX, currentY - 12, 9, 'normal');
+
+  builder.setY(currentY - rowSpacing);
 
   builder.drawSubsectionHeader('A1.2 Address & Contact Info');
   builder.drawFieldRow([
