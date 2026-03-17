@@ -715,7 +715,7 @@ export async function generateRecruitmentPDF(formData: FormData, candidateName: 
 async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void> {
   builder.drawSectionHeader('PART A - SEAFARER\'S PARTICULARS');
 
-  builder.drawPartHeader('A1 — Personal Details');
+  builder.drawPartHeader('A1 — Seafarers\' Particulars');
   builder.drawSubsectionHeader('A1.1 General Particulars');
   
   builder.checkPageBreak(130);
@@ -800,7 +800,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     { label: 'Manning Agent', value: formData.manningAgent },
   ], CONTENT_WIDTH);
 
-  builder.drawSubsectionHeader('A1.2 Address & Contact Information');
+  builder.drawSubsectionHeader('A1.2 Address & Contact Info');
   builder.drawFieldRow([
     { label: 'Country of Residence', value: formData.countryOfResidence },
     { label: 'Nearest Airport', value: formData.nearestAirport },
@@ -815,7 +815,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     { label: 'Landline', value: formData.contactLandline },
   ], CONTENT_WIDTH);
 
-  builder.drawSubsectionHeader('A1.3 Family & Next of Kin');
+  builder.drawSubsectionHeader('A1.3 Family and NOK');
   builder.drawFieldRow([
     { label: 'Marital Status', value: formData.maritalStatus },
     { label: 'Dependent Children', value: formData.numberOfDependentChildren },
@@ -869,7 +869,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     { label: 'NOK Address', value: formData.nokAddress },
   ], CONTENT_WIDTH);
 
-  builder.drawPartHeader('A2 — Documents');
+  builder.drawPartHeader('A2 — Travel & ID Documents');
   builder.drawSubsectionHeader('A2.1 Travel & Identification Documents');
   if (formData.documents && formData.documents.length > 0) {
     const docColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.30];
@@ -944,7 +944,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     builder.moveDown(LINE_HEIGHT);
   }
 
-  builder.drawSubsectionHeader('A3.3 Training Courses');
+  builder.drawSubsectionHeader('A3.3 Training Course');
   if (formData.trainingCourses && formData.trainingCourses.length > 0) {
     const trainColWidths = [CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14];
     builder.drawTableHeader(['Training Course', 'Abbr', 'Req', 'Cert No', 'Issuing Auth', 'Issued', 'Expiry'], trainColWidths);
@@ -965,7 +965,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   }
 
   builder.drawPartHeader('A4 — Sea Service');
-  builder.drawSubsectionHeader('A4.1 Sea Service');
+  builder.drawSubsectionHeader('A4.1 Details of Sea Service');
   if (formData.seaService && formData.seaService.length > 0) {
     const seaColWidths = [CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.10];
     builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'DWT', 'Engine/Power', 'Owner/Operator', 'Rank', 'From', 'To', 'Months'], seaColWidths);
@@ -988,6 +988,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   }
 
   builder.drawPartHeader('A5 — Additional Information');
+  builder.drawSubsectionHeader('A5.1 Details on Additional Information required');
   if (formData.additionalInfo && formData.additionalInfo.length > 0) {
     const addInfoColWidths = [CONTENT_WIDTH * 0.50, CONTENT_WIDTH * 0.50];
     builder.drawTableHeader(['Information', 'Response'], addInfoColWidths);
@@ -1201,7 +1202,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 function drawPartC(builder: PDFBuilder, formData: FormData): void {
   builder.drawSectionHeader('PART C - APPROVAL');
 
-  builder.drawSubsectionHeader('C1. Approval');
+  builder.drawSubsectionHeader('C.1 Approval');
   if (formData.c1Approvers && formData.c1Approvers.length > 0) {
     for (const approver of formData.c1Approvers) {
       builder.checkPageBreak(60);
@@ -1243,7 +1244,7 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
   builder.drawText(formData.c2FleetGroups && formData.c2FleetGroups.length > 0 ? formData.c2FleetGroups.join(', ') : '-', MARGIN + 10, 9, 'normal');
   builder.moveDown(LINE_HEIGHT);
 
-  builder.drawSubsectionHeader('C3. Recruited');
+  builder.drawSubsectionHeader('C3 Recruited & Assigned to');
   builder.checkPageBreak(40);
   builder.drawText('C3.1 Recruitment Decision:', MARGIN, 9, 'normal');
   let x = MARGIN + 150;
