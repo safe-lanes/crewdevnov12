@@ -426,6 +426,15 @@ class PDFBuilder {
     this.drawTextAt(displayValue(value), x, this.yPosition - 12, 9, 'normal');
   }
 
+  drawWrappedTextAt(text: string, x: number, y: number, maxWidth: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): number {
+    const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
+    const lines = this.wrapText(sanitizeText(text || ''), maxWidth, fontSize);
+    for (let i = 0; i < lines.length; i++) {
+      this.currentPage.drawText(lines[i], { x, y: y - (i * 11), size: fontSize, font, color });
+    }
+    return lines.length;
+  }
+
   private wrapText(text: string, maxWidth: number, fontSize: number): string[] {
     if (this.font.widthOfTextAtSize(text, fontSize) <= maxWidth) return [text];
     const words = text.split(/([,] )/);
@@ -778,11 +787,12 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   
   builder.setY(Math.min(currentY - 25, photoY - photoHeight - 10));
 
-  const rowSpacing = 28;
+  const baseRowSpacing = 28;
+  const col1MaxWidth = photoWidth;
   currentY = builder.getY();
 
   builder.drawTextAt('Rank Applied For', MARGIN, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.rankAppliedFor), MARGIN, currentY - 12, 9, 'normal');
+  const rankLines = builder.drawWrappedTextAt(displayValue(formData.rankAppliedFor), MARGIN, currentY - 12, col1MaxWidth);
   builder.drawTextAt('Place of birth( Country )', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
   builder.drawTextAt(displayValue(formData.placeOfBirthCountry), fieldStartX, currentY - 12, 9, 'normal');
   builder.drawTextAt('Height( Cm )', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
@@ -790,13 +800,14 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   builder.drawTextAt('Weight( kg )', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
   builder.drawTextAt(displayValue(formData.weightKg), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
 
-  currentY -= rowSpacing;
+  let row1Height = Math.max(baseRowSpacing, 12 + rankLines * 11 + 5);
+  currentY -= row1Height;
   builder.setY(currentY);
-  builder.checkPageBreak(rowSpacing);
+  builder.checkPageBreak(baseRowSpacing);
   currentY = builder.getY();
 
   builder.drawTextAt('Vessel Type', MARGIN, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.vesselType?.join(', ') || ''), MARGIN, currentY - 12, 9, 'normal');
+  const vesselLines = builder.drawWrappedTextAt(displayValue(formData.vesselType?.join(', ') || ''), MARGIN, currentY - 12, col1MaxWidth);
   builder.drawTextAt('Native Language', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
   builder.drawTextAt(displayValue(formData.nativeLanguage), fieldStartX, currentY - 12, 9, 'normal');
   builder.drawTextAt('English Proficiency', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
@@ -804,17 +815,19 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   builder.drawTextAt('Foreign Languages', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
   builder.drawTextAt(displayValue(formData.foreignLanguages), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
 
-  currentY -= rowSpacing;
+  let row2Height = Math.max(baseRowSpacing, 12 + vesselLines * 11 + 5);
+  currentY -= row2Height;
   builder.setY(currentY);
-  builder.checkPageBreak(rowSpacing);
+  builder.checkPageBreak(baseRowSpacing);
   currentY = builder.getY();
 
   builder.drawTextAt('File No', MARGIN, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.fileNo), MARGIN, currentY - 12, 9, 'normal');
+  const fileLines = builder.drawWrappedTextAt(displayValue(formData.fileNo), MARGIN, currentY - 12, col1MaxWidth);
   builder.drawTextAt('Manning Agent', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
   builder.drawTextAt(displayValue(formData.manningAgent), fieldStartX, currentY - 12, 9, 'normal');
 
-  builder.setY(currentY - rowSpacing);
+  let row3Height = Math.max(baseRowSpacing, 12 + fileLines * 11 + 5);
+  builder.setY(currentY - row3Height);
 
   builder.drawSubsectionHeader('A1.2 Address & Contact Info');
   builder.drawFieldRow([
