@@ -626,6 +626,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, Record<string, string>>>({});
   const [b6InterviewerErrors, setB6InterviewerErrors] = useState<Record<string, string>>({});
   const [b7TrainingNameErrors, setB7TrainingNameErrors] = useState<Record<string, string>>({});
+  const isSavingPartARef = useRef(false);
   const isSavingScreeningRef = useRef(false);
   const [seaRequiredErrors, setSeaRequiredErrors] = useState<Record<string, Record<string, string>>>({});
 
@@ -2414,6 +2415,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const handleSaveAndContinue = async () => {
+    if (isSavingPartARef.current) return;
+
     let hasErrors = false;
     const firstErrorTestIds: string[] = [];
 
@@ -2621,6 +2624,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       return;
     }
     try {
+      isSavingPartARef.current = true;
       toast({
         title: "Saving...",
         description: "Saving form data to database",
@@ -3155,6 +3159,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         description: error instanceof Error ? error.message : "Failed to save form data",
         variant: "destructive",
       });
+    } finally {
+      isSavingPartARef.current = false;
     }
   };
 
