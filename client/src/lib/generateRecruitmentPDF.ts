@@ -1060,8 +1060,8 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 
   builder.drawSubsectionHeader('B2. Reference Checks with Previous Employer');
   builder.drawRadioQuestion('B2.1 Reference checks completed?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b2ReferencesCompleted, false);
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b2ReferencesCompleted, true);
   builder.drawCommentsForQuestion(formData.b2Comments, 'b2-completed');
 
   builder.checkPageBreak(50);
@@ -1087,8 +1087,8 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 
   builder.drawSubsectionHeader('B3. Background Security Checks');
   builder.drawRadioQuestion('B3.1 Background security checks completed?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b3ChecksCompleted, false);
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b3ChecksCompleted, true);
   builder.drawCommentsForQuestion(formData.b3Comments, 'b3-completed');
 
   builder.checkPageBreak(50);
@@ -1114,8 +1114,8 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 
   builder.drawSubsectionHeader('B4. Authentication of Certificates & Documents');
   builder.drawRadioQuestion('B4.1 Certificates & Documents Authenticated?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b4CertificatesAuthenticated, false);
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b4CertificatesAuthenticated, true);
   builder.drawCommentsForQuestion(formData.b4Comments, 'b4-authenticated');
 
   builder.checkPageBreak(50);
@@ -1141,8 +1141,8 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 
   builder.drawSubsectionHeader('B5. CES / Language Test Results');
   builder.drawRadioQuestion('B5.1 Applicable CES / Language Tests completed?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b5TestsCompleted, false);
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b5TestsCompleted, true);
   builder.drawCommentsForQuestion(formData.b5Comments, 'b5-completed');
 
   builder.checkPageBreak(50);
@@ -1162,8 +1162,8 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 
   builder.drawSubsectionHeader('B6. Interview(s)');
   builder.drawRadioQuestion('B6.1 Interview completed?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b6InterviewCompleted, false);
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b6InterviewCompleted, true);
   builder.drawCommentsForQuestion(formData.b6Comments, 'b6-completed');
 
   builder.checkPageBreak(50);
