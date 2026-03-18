@@ -3263,6 +3263,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         
         queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
         queryClient.invalidateQueries({ queryKey: ['v2', 'candidate', currentUuid] });
+        setActiveSection('B');
       } else {
         toast({
           title: "Error",
@@ -4031,6 +4032,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           title: "Success",
           description: "Screening data saved successfully",
         });
+      }
+
+      if (isMainSubmit) {
+        setActiveSection('C');
       }
     } catch (error) {
       console.error('Save screening error:', error);
