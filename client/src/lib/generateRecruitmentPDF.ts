@@ -834,33 +834,32 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     { label: 'Country of Residence', value: formData.countryOfResidence },
     { label: 'Nearest Airport', value: formData.nearestAirport },
     { label: 'Mobile', value: formData.mobile },
-  ]);
-  builder.drawFieldRow([
     { label: 'Email', value: formData.email },
-    { label: 'Contact Landline', value: formData.contactLandline },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH / 4);
   builder.drawFieldRow([
     { label: 'Residential Address Line 1( House No./Building/Street )', value: formData.residentialAddressLine1 },
     { label: 'Residential Address Line 2( City, State, PIN )', value: formData.residentialAddressLine2 },
   ], CONTENT_WIDTH / 2);
+  builder.drawFieldRow([
+    { label: 'Contact Landline', value: formData.contactLandline },
+    { label: '', value: '' },
+    { label: '', value: '' },
+    { label: '', value: '' },
+  ], CONTENT_WIDTH / 4);
 
   builder.drawSubsectionHeader('A1.3 Family and NOK');
   builder.drawFieldRow([
     { label: 'Marital Status', value: formData.maritalStatus },
     { label: 'No. of Dependant Children', value: formData.numberOfDependentChildren },
     { label: 'Father\'s Name', value: formData.fatherName },
-  ]);
-  builder.drawFieldRow([
     { label: 'Mother\'s Name', value: formData.motherName },
+  ], CONTENT_WIDTH / 4);
+  builder.drawFieldRow([
     { label: 'Spouse First Name', value: formData.spouseFirstName },
     { label: 'Spouse Middle Name', value: formData.spouseMiddleName },
-  ]);
-  builder.drawFieldRow([
     { label: 'Spouse Family Name', value: formData.spouseFamilyName },
     { label: 'Spouse Date of Birth', value: formatDate(formData.spouseDateOfBirth) },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH / 4);
   
   builder.checkPageBreak(50);
   builder.drawText('Children Information:', MARGIN, 9, 'bold');
@@ -889,15 +888,14 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     { label: 'NOK: First Name', value: formData.nokFirstName },
     { label: 'NOK: Middle Name', value: formData.nokMiddleName },
     { label: 'NOK: Family Name', value: formData.nokFamilyName },
-  ]);
-  builder.drawFieldRow([
     { label: 'NOK: Email', value: formData.nokEmail },
+  ], CONTENT_WIDTH / 4);
+  builder.drawFieldRow([
     { label: 'NOK: Address', value: formData.nokAddress },
     { label: 'NOK: Relationship', value: formData.nokRelationship },
-  ]);
-  builder.drawFieldRow([
     { label: 'NOK: Tel', value: formData.nokTelephone },
-  ], CONTENT_WIDTH);
+    { label: '', value: '' },
+  ], CONTENT_WIDTH / 4);
 
   builder.drawPartHeader('A2 — Travel & ID Documents');
   builder.drawSubsectionHeader('A2.1 Travel & Identification Documents');
@@ -1233,30 +1231,21 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
   builder.drawSectionHeader('PART C - APPROVAL');
 
   builder.drawSubsectionHeader('C.1 Approval');
+  builder.drawText('C1.1 Approved?', MARGIN, 9, 'bold');
+  builder.moveDown(LINE_HEIGHT + 2);
   if (formData.c1Approvers && formData.c1Approvers.length > 0) {
+    const c1ColWidths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.27, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.33];
+    builder.drawTableHeader(['Date', 'Approver', 'Status', 'Approval'], c1ColWidths);
     for (const approver of formData.c1Approvers) {
-      builder.checkPageBreak(60);
-      builder.drawText(`Approver: ${displayValue(approver.approver)}`, MARGIN, 9, 'bold');
-      builder.moveDown(LINE_HEIGHT);
-      
-      builder.drawText(`Date: ${displayValue(formatDate(approver.date))}    Status: ${displayValue(approver.status)}`, MARGIN + 10, 8, 'normal', LABEL_COLOR);
-      builder.moveDown(LINE_HEIGHT);
-      
-      builder.drawText('Approval:', MARGIN + 10, 9, 'normal');
-      let x = MARGIN + 70;
-      const approvalOptions = ['Yes', 'Yes, Conditional', 'No'];
-      for (const opt of approvalOptions) {
-        const isSelected = approver.approval === opt;
-        x = builder.drawRadioButton(x, builder.getY() + 3, isSelected);
-        builder.drawTextAt(opt, x, builder.getY(), 8, 'normal');
-        x += opt.length * 5 + 25;
-      }
-      builder.moveDown(LINE_HEIGHT + 5);
-      
+      builder.drawTableRow([
+        formatDate(approver.date),
+        approver.approver || '',
+        approver.status || '',
+        approver.approval || '',
+      ], c1ColWidths);
       if (approver.comments) {
         builder.drawComment(approver.approver || 'Approver', approver.comments);
       }
-      builder.moveDown(8);
     }
   } else {
     builder.drawText('No approvers assigned', MARGIN + 10, 8, 'italic', LABEL_COLOR);
