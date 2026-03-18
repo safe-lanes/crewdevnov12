@@ -626,8 +626,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, Record<string, string>>>({});
   const [b6InterviewerErrors, setB6InterviewerErrors] = useState<Record<string, string>>({});
   const [b7TrainingNameErrors, setB7TrainingNameErrors] = useState<Record<string, string>>({});
-  const isSavingPartARef = useRef(false);
-  const isSavingScreeningRef = useRef(false);
+  const [isSavingPartA, setIsSavingPartA] = useState(false);
+  const [isSavingScreening, setIsSavingScreening] = useState(false);
   const [seaRequiredErrors, setSeaRequiredErrors] = useState<Record<string, Record<string, string>>>({});
 
   const validateEmail = (value: string): string => {
@@ -867,7 +867,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     createB1AttachmentMutation.isPending || createB2AttachmentMutation.isPending ||
     createB3AttachmentMutation.isPending || createB4AttachmentMutation.isPending ||
     createB5AttachmentMutation.isPending || createB6AttachmentMutation.isPending ||
-    createB8AttachmentMutation.isPending;
+    createB8AttachmentMutation.isPending ||
+    isSavingPartA || isSavingScreening;
 
   const { data: companyRanks, isLoading: ranksLoading, rankOptions } = useCompanyRanks();
   const { data: externalNationalitiesData } = useNationalitiesV2();
@@ -1665,7 +1666,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB8Attachments]);
 
   useEffect(() => {
-    if (isSavingScreeningRef.current) return;
+    if (isSavingScreening) return;
     if (screeningB2Items && screeningB2Items.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1680,7 +1681,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB2Items]);
 
   useEffect(() => {
-    if (isSavingScreeningRef.current) return;
+    if (isSavingScreening) return;
     if (screeningB3Authorities && screeningB3Authorities.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1695,7 +1696,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB3Authorities]);
 
   useEffect(() => {
-    if (isSavingScreeningRef.current) return;
+    if (isSavingScreening) return;
     if (screeningB4CertItems && screeningB4CertItems.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1711,7 +1712,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB4CertItems]);
 
   useEffect(() => {
-    if (isSavingScreeningRef.current) return;
+    if (isSavingScreening) return;
     if (screeningB5TestItems && screeningB5TestItems.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1728,7 +1729,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB5TestItems]);
 
   useEffect(() => {
-    if (isSavingScreeningRef.current) return;
+    if (isSavingScreening) return;
     if (screeningB6InterviewItems && screeningB6InterviewItems.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1746,7 +1747,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB6InterviewItems]);
 
   useEffect(() => {
-    if (isSavingScreeningRef.current) return;
+    if (isSavingScreening) return;
     if (screeningB7TrainingItems && screeningB7TrainingItems.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -2415,7 +2416,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const handleSaveAndContinue = async () => {
-    if (isSavingPartARef.current) return;
+    if (isSavingPartA) return;
 
     let hasErrors = false;
     const firstErrorTestIds: string[] = [];
@@ -2624,7 +2625,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       return;
     }
     try {
-      isSavingPartARef.current = true;
+      setIsSavingPartA(true);
       toast({
         title: "Saving...",
         description: "Saving form data to database",
@@ -3160,7 +3161,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         variant: "destructive",
       });
     } finally {
-      isSavingPartARef.current = false;
+      setTimeout(() => setIsSavingPartA(false), 3000);
     }
   };
 
@@ -3298,7 +3299,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const handleSaveScreening = async (skipToasts: boolean = false, isMainSubmit: boolean = false, overrides?: Record<string, string>) => {
-    if (isSavingScreeningRef.current) return;
+    if (isSavingScreening) return;
 
     if (!recCanUuid) {
       toast({
@@ -3342,7 +3343,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
 
     try {
-      isSavingScreeningRef.current = true;
+      setIsSavingScreening(true);
 
       if (!skipToasts) {
         toast({
@@ -4039,8 +4040,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         variant: "destructive",
       });
     } finally {
-      isSavingScreeningRef.current = false;
-
       queryClient.invalidateQueries({ 
         predicate: (query) => 
           Array.isArray(query.queryKey) && 
@@ -4055,6 +4054,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
            query.queryKey.includes(b8Uuid))
       });
       queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
+      setTimeout(() => setIsSavingScreening(false), 3000);
     }
   };
 
@@ -5897,6 +5897,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         type="button"
                         size="sm"
                         className="bg-green-600 hover:bg-green-700 text-white"
+                        disabled={savingInProgress}
                         onClick={() => {
                           const currentDate = formatDate(new Date());
                           setFormData(prev => ({ ...prev, b1SubmittedBy: currentUserDisplay, b1SubmittedDate: currentDate }));
@@ -6372,6 +6373,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
                             const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate }));
@@ -6828,6 +6830,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
                             const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate }));
@@ -7305,6 +7308,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
                             const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate }));
@@ -7662,6 +7666,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
                             const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate }));
@@ -8095,6 +8100,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
                             const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate }));
@@ -8307,6 +8313,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
                             const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate }));
@@ -8512,6 +8519,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
                             const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate }));
