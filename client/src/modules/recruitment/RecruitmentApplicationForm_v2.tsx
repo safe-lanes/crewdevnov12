@@ -3292,6 +3292,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const handleSaveScreening = async (skipToasts: boolean = false, isMainSubmit: boolean = false, overrides?: Record<string, string>) => {
+    if (isSavingScreeningRef.current) return;
+
     if (!recCanUuid) {
       toast({
         title: "Error",
