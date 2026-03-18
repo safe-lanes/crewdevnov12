@@ -1231,7 +1231,7 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
   builder.drawSectionHeader('PART C - APPROVAL');
 
   builder.drawSubsectionHeader('C.1 Approval');
-  builder.drawText('C1.1 Approved?', MARGIN, 9, 'bold');
+  builder.drawText('C1.1 Approved?', MARGIN, 9, 'normal');
   builder.moveDown(LINE_HEIGHT + 2);
   if (formData.c1Approvers && formData.c1Approvers.length > 0) {
     const c1ColWidths = [CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.33];

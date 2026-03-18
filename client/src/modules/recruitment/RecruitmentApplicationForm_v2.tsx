@@ -3264,6 +3264,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
         queryClient.invalidateQueries({ queryKey: ['v2', 'candidate', currentUuid] });
         setActiveSection('B');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         toast({
           title: "Error",
@@ -4036,6 +4037,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       if (isMainSubmit) {
         setActiveSection('C');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
       console.error('Save screening error:', error);
@@ -8625,7 +8627,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <div className="space-y-6">
                   <div>
                     <div className="flex justify-between items-center mb-4">
-                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4 font-normal">
                         C1.1 Approved?
                       </Label>
                       <Button
