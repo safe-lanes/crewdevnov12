@@ -1249,6 +1249,7 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('No approvers assigned', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
+  builder.moveDown(LINE_HEIGHT);
 
   builder.drawSubsectionHeader('C2. Suitable for');
   builder.drawText('C2.1 Vessel type(s):', MARGIN, 9, 'normal');
