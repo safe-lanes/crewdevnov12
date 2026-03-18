@@ -1116,7 +1116,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawRadioQuestion('B4.1 Certificates & Documents Authenticated?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b4CertificatesAuthenticated, false);
-  builder.drawCommentsForQuestion(formData.b4Comments, 'b4-auth');
+  builder.drawCommentsForQuestion(formData.b4Comments, 'b4-authenticated');
 
   builder.checkPageBreak(50);
   builder.drawText('Certificates Authenticated:', MARGIN, 9, 'bold');
@@ -1143,7 +1143,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawRadioQuestion('B5.1 Applicable CES / Language Tests completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b5TestsCompleted, false);
-  builder.drawCommentsForQuestion(formData.b5Comments, 'b5-ces');
+  builder.drawCommentsForQuestion(formData.b5Comments, 'b5-completed');
 
   builder.checkPageBreak(50);
   builder.drawText('Test Results:', MARGIN, 9, 'bold');
@@ -1164,7 +1164,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawRadioQuestion('B6.1 Interview completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b6InterviewCompleted, false);
-  builder.drawCommentsForQuestion(formData.b6Comments, 'b6-int');
+  builder.drawCommentsForQuestion(formData.b6Comments, 'b6-completed');
 
   builder.checkPageBreak(50);
   builder.drawText('Interview Records:', MARGIN, 9, 'bold');
@@ -1210,7 +1210,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawRadioQuestion('B8.1 Shortlisted for approval?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b8Shortlisted, false);
-  builder.drawCommentsForQuestion(formData.b8Comments, 'b8-shortlist');
+  builder.drawCommentsForQuestion(formData.b8Comments, 'b8-shortlisted');
   builder.drawSubmissionInfo(formData.b8SubmittedBy, formData.b8SubmittedDate);
 
   if (formData.approvalSubmittedBy) {
