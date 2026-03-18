@@ -1244,9 +1244,9 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
         approver.approval || '',
       ], c1ColWidths);
       if (approver.comments) {
-        builder.moveDown(4);
+        builder.moveDown(10);
         builder.drawComment(approver.approver || 'Approver', approver.comments);
-        builder.moveDown(4);
+        builder.moveDown(6);
       }
     }
   } else {
