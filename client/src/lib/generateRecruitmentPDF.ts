@@ -1234,20 +1234,16 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
   builder.drawText('C1.1 Approved?', MARGIN, 9, 'bold');
   builder.moveDown(LINE_HEIGHT + 2);
   if (formData.c1Approvers && formData.c1Approvers.length > 0) {
-    const c1ColWidths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.27, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.33];
-    builder.drawTableHeader(['Date', 'Approver', 'Status', 'Approval'], c1ColWidths);
+    const c1ColWidths = [CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.33];
+    builder.drawTableHeader(['Date', 'Approver', 'Status', 'Approval', 'Comments'], c1ColWidths);
     for (const approver of formData.c1Approvers) {
       builder.drawTableRow([
         formatDate(approver.date),
         approver.approver || '',
         approver.status || '',
         approver.approval || '',
+        approver.comments || '',
       ], c1ColWidths);
-      if (approver.comments) {
-        builder.moveDown(10);
-        builder.drawComment(approver.approver || 'Approver', approver.comments);
-        builder.moveDown(6);
-      }
     }
   } else {
     builder.drawText('No approvers assigned', MARGIN + 10, 8, 'italic', LABEL_COLOR);
