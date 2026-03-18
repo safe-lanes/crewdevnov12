@@ -603,6 +603,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const a4Ref = useRef<HTMLDivElement>(null);
   const a5Ref = useRef<HTMLDivElement>(null);
   const sectionA13Ref = useRef<HTMLDivElement>(null);
+  const contentAreaRef = useRef<HTMLDivElement>(null);
 
   const [attachmentDialog, setAttachmentDialog] = useState<{
     open: boolean;
@@ -3264,7 +3265,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
         queryClient.invalidateQueries({ queryKey: ['v2', 'candidate', currentUuid] });
         setActiveSection('B');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        contentAreaRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         toast({
           title: "Error",
@@ -4037,7 +4038,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       if (isMainSubmit) {
         setActiveSection('C');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        contentAreaRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
       console.error('Save screening error:', error);
@@ -9121,7 +9122,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             </div>
           </aside>
           
-          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
+          <div ref={contentAreaRef} className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
             {renderContent()}
           </div>
         </div>
