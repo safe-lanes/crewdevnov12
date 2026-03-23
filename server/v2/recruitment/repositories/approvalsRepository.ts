@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   candApprovals,
@@ -29,7 +29,7 @@ export class ApprovalsRepository {
     const db = getDb();
     return db.select().from(candApprovals).where(
       and(eq(candApprovals.recCanUuid, recCanUuid), eq(candApprovals.isDeleted, false))
-    );
+    ).orderBy(asc(candApprovals.sortOrder), asc(candApprovals.createdAt));
   }
 
   async findByUuid(approvalUuid: string): Promise<CandApproval | undefined> {
@@ -105,12 +105,24 @@ export class SuitabilityRepository {
           eq(candSuitabilityVesselTypes.suitUuid, suitUuid),
           eq(candSuitabilityVesselTypes.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(candSuitabilityVesselTypes.sortOrder), asc(candSuitabilityVesselTypes.createdAt));
     
     return results.map(r => ({
       ...r.svt,
       vesselTypeName: r.vesselTypeName,
     }));
+  }
+
+  async updateVesselTypeSortOrder(suitUuid: string, vesselTypeUuid: string, sortOrder: number): Promise<void> {
+    const db = getDb();
+    await db.update(candSuitabilityVesselTypes)
+      .set({ sortOrder, updatedAt: new Date() })
+      .where(and(
+        eq(candSuitabilityVesselTypes.suitUuid, suitUuid),
+        eq(candSuitabilityVesselTypes.vesselTypeUuid, vesselTypeUuid),
+        eq(candSuitabilityVesselTypes.isDeleted, false)
+      ));
   }
 
   async createVesselType(data: InsertSuitabilityVesselType): Promise<CandSuitabilityVesselType> {
@@ -148,12 +160,24 @@ export class SuitabilityRepository {
           eq(candSuitabilityFleetGroups.suitUuid, suitUuid),
           eq(candSuitabilityFleetGroups.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(candSuitabilityFleetGroups.sortOrder), asc(candSuitabilityFleetGroups.createdAt));
     
     return results.map(r => ({
       ...r.sfg,
       fleetGroupName: r.fleetGroupName,
     }));
+  }
+
+  async updateFleetGroupSortOrder(suitUuid: string, fleetGroupUuid: string, sortOrder: number): Promise<void> {
+    const db = getDb();
+    await db.update(candSuitabilityFleetGroups)
+      .set({ sortOrder, updatedAt: new Date() })
+      .where(and(
+        eq(candSuitabilityFleetGroups.suitUuid, suitUuid),
+        eq(candSuitabilityFleetGroups.fleetGroupUuid, fleetGroupUuid),
+        eq(candSuitabilityFleetGroups.isDeleted, false)
+      ));
   }
 
   async createFleetGroup(data: InsertSuitabilityFleetGroup): Promise<CandSuitabilityFleetGroup> {

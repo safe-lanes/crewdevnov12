@@ -81,15 +81,20 @@ export class SuitabilityService {
     return suitabilityRepository.findVesselTypes(suitUuid);
   }
 
-  async addVesselType(suitUuid: string, vesselTypeUuid: string, userUuid?: string, auditUserUuidFromBody?: string | null) {
+  async addVesselType(suitUuid: string, vesselTypeUuid: string, userUuid?: string, auditUserUuidFromBody?: string | null, sortOrder?: number) {
     const auditUser = userUuid || auditUserUuidFromBody || null;
     return suitabilityRepository.createVesselType({
       svtUuid: uuidv4(),
       suitUuid,
       vesselTypeUuid,
+      sortOrder: sortOrder ?? 0,
       createdByUuid: auditUser,
       updatedByUuid: auditUser,
     });
+  }
+
+  async updateVesselTypeSortOrder(suitUuid: string, vesselTypeUuid: string, sortOrder: number) {
+    return suitabilityRepository.updateVesselTypeSortOrder(suitUuid, vesselTypeUuid, sortOrder);
   }
 
   async clearVesselTypes(suitUuid: string) {
@@ -104,15 +109,20 @@ export class SuitabilityService {
     return suitabilityRepository.findFleetGroups(suitUuid);
   }
 
-  async addFleetGroup(suitUuid: string, fleetGroupUuid: string, userUuid?: string, auditUserUuidFromBody?: string | null) {
+  async addFleetGroup(suitUuid: string, fleetGroupUuid: string, userUuid?: string, auditUserUuidFromBody?: string | null, sortOrder?: number) {
     const auditUser = userUuid || auditUserUuidFromBody || null;
     return suitabilityRepository.createFleetGroup({
       sfgUuid: uuidv4(),
       suitUuid,
       fleetGroupUuid,
+      sortOrder: sortOrder ?? 0,
       createdByUuid: auditUser,
       updatedByUuid: auditUser,
     });
+  }
+
+  async updateFleetGroupSortOrder(suitUuid: string, fleetGroupUuid: string, sortOrder: number) {
+    return suitabilityRepository.updateFleetGroupSortOrder(suitUuid, fleetGroupUuid, sortOrder);
   }
 
   async softDeleteFleetGroup(sfgUuid: string) {

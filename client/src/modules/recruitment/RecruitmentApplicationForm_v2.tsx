@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { StandardFormPopup } from '@/components/ui/form-popup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedDateInput } from '@/components/ui/formatted-date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
@@ -176,6 +177,7 @@ import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCours
 import { TravelDocumentSelectionDialog } from '@/modules/crew-pool/TravelDocumentSelectionDialog';
 import { VisaSelectionDialog } from '@/modules/crew-pool/VisaSelectionDialog';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
+import { LICENSE_DCE_TEMPLATES } from '@/utils/data/licenseDceTemplates';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
@@ -601,6 +603,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const a4Ref = useRef<HTMLDivElement>(null);
   const a5Ref = useRef<HTMLDivElement>(null);
   const sectionA13Ref = useRef<HTMLDivElement>(null);
+  const contentAreaRef = useRef<HTMLDivElement>(null);
 
   const [attachmentDialog, setAttachmentDialog] = useState<{
     open: boolean;
@@ -624,6 +627,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, Record<string, string>>>({});
   const [b6InterviewerErrors, setB6InterviewerErrors] = useState<Record<string, string>>({});
   const [b7TrainingNameErrors, setB7TrainingNameErrors] = useState<Record<string, string>>({});
+  const [isSavingPartA, setIsSavingPartA] = useState(false);
+  const [isSavingScreening, setIsSavingScreening] = useState(false);
   const [seaRequiredErrors, setSeaRequiredErrors] = useState<Record<string, Record<string, string>>>({});
 
   const validateEmail = (value: string): string => {
@@ -634,8 +639,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return '';
   };
 
-  const sanitizeName = (value: string): string => value.replace(/[^a-zA-Z'-]/g, '');
-  const isValidName = (value: string): boolean => !value || /^[a-zA-Z'-]+$/.test(value);
+  const sanitizeName = (value: string): string => value.replace(/[^a-zA-Z' -]/g, '');
+  const isValidName = (value: string): boolean => !value || /^[a-zA-Z' -]+$/.test(value);
 
   const validateDob = (dateStr: string): string => {
     if (!dateStr) return '';
@@ -863,7 +868,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     createB1AttachmentMutation.isPending || createB2AttachmentMutation.isPending ||
     createB3AttachmentMutation.isPending || createB4AttachmentMutation.isPending ||
     createB5AttachmentMutation.isPending || createB6AttachmentMutation.isPending ||
-    createB8AttachmentMutation.isPending;
+    createB8AttachmentMutation.isPending ||
+    isSavingPartA || isSavingScreening;
 
   const { data: companyRanks, isLoading: ranksLoading, rankOptions } = useCompanyRanks();
   const { data: externalNationalitiesData } = useNationalitiesV2();
@@ -1006,14 +1012,23 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     };
 
     const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      let topmostId: SectionType | null = null;
+      let topmostTop = Infinity;
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const sectionId = entry.target.getAttribute('data-section-id') as SectionType;
           if (sectionId && ['A1', 'A2', 'A3', 'A4', 'A5'].includes(sectionId)) {
-            setActiveContinuousSection(sectionId);
+            const top = entry.boundingClientRect.top;
+            if (top < topmostTop) {
+              topmostId = sectionId;
+              topmostTop = top;
+            }
           }
         }
       });
+      if (topmostId) {
+        setActiveContinuousSection(topmostId);
+      }
     };
 
     const observer = new IntersectionObserver(observerCallback, observerOptions);
@@ -1197,7 +1212,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: lic.issuingAuthority || '',
         issued: lic.issued || '',
         expiry: lic.expiry || '',
-        fromDatabase: !!(lic.abbr || lic.requirement),
+        fromDatabase: !!(lic.licenseId && LICENSE_DCE_TEMPLATES.some(t => t.id === lic.licenseId)) || !!(lic.abbr || lic.requirement),
         attachments: mapApiAttachments(lic.attachments),
       }));
       setFormData(prev => ({ ...prev, licenses: mapped }));
@@ -1217,7 +1232,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issuingAuthority: course.issuingAuthority || '',
         issued: course.issued || '',
         expiry: course.expiry || '',
-        fromDatabase: !!(course.abbr || course.requirement),
+        fromDatabase: !!(course.courseId && adminCompanyTrainings.some(ct => ct.companyId === course.courseId)) || !!(course.abbr || course.requirement),
         sortOrder: undefined as number | undefined,
         attachments: mapApiAttachments(course.attachments),
       }));
@@ -1652,6 +1667,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB8Attachments]);
 
   useEffect(() => {
+    if (isSavingScreening) return;
     if (screeningB2Items && screeningB2Items.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1666,6 +1682,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB2Items]);
 
   useEffect(() => {
+    if (isSavingScreening) return;
     if (screeningB3Authorities && screeningB3Authorities.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1680,6 +1697,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB3Authorities]);
 
   useEffect(() => {
+    if (isSavingScreening) return;
     if (screeningB4CertItems && screeningB4CertItems.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1695,6 +1713,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB4CertItems]);
 
   useEffect(() => {
+    if (isSavingScreening) return;
     if (screeningB5TestItems && screeningB5TestItems.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1711,6 +1730,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB5TestItems]);
 
   useEffect(() => {
+    if (isSavingScreening) return;
     if (screeningB6InterviewItems && screeningB6InterviewItems.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -1728,8 +1748,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   }, [screeningB6InterviewItems]);
 
   useEffect(() => {
+    if (isSavingScreening) return;
     if (screeningB7TrainingItems && screeningB7TrainingItems.length > 0) {
-      // Map API fields (DB column names) to UI form fields  
       setFormData(prev => ({
         ...prev,
         b7TrainingNeeds: screeningB7TrainingItems.map((training: any) => ({
@@ -1997,6 +2017,30 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     setSeaServiceDateErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
+  const runSeaServiceOverlapCheck = useCallback((serviceList?: typeof formData.seaService) => {
+    const rows = (serviceList || formData.seaService).filter(s => !!(s.from || '').trim());
+    const newErrors: Record<string, string> = {};
+    for (let i = 0; i < rows.length; i++) {
+      for (let j = i + 1; j < rows.length; j++) {
+        const a = rows[i];
+        const b = rows[j];
+        const aFrom = a.from;
+        const aTo = (a.to || '').trim() ? a.to : null;
+        const bFrom = b.from;
+        const bTo = (b.to || '').trim() ? b.to : null;
+        if (!aFrom || !bFrom) continue;
+        const noOverlap =
+          (aTo !== null && aTo < bFrom) ||
+          (bTo !== null && bTo < aFrom);
+        if (!noOverlap) {
+          newErrors[a.id] = 'Sea service dates overlap with another record.';
+          newErrors[b.id] = 'Sea service dates overlap with another record.';
+        }
+      }
+    }
+    return newErrors;
+  }, [formData.seaService]);
+
   const updateSeaService = (id: string, field: string, value: string) => {
     if (field === 'from' || field === 'to') {
       const service = formData.seaService.find(s => s.id === id);
@@ -2250,7 +2294,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
         training: course.name,
         identifiedBy: '',
-        category: course.requirement || '',
+        category: ['Mandatory', 'Recommended', 'Optional'].includes(course.requirement) ? course.requirement : '',
         dueDate: '',
         comments: ''
       }));
@@ -2364,13 +2408,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const refMap: Record<string, React.RefObject<HTMLDivElement>> = {
         'A1': a1Ref, 'A2': a2Ref, 'A3': a3Ref, 'A4': a4Ref, 'A5': a5Ref
       };
-      refMap[sectionId]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      requestAnimationFrame(() => {
+        refMap[sectionId]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } else {
       setActiveSection(sectionId);
     }
   };
 
   const handleSaveAndContinue = async () => {
+    if (isSavingPartA) return;
+
     let hasErrors = false;
     const firstErrorTestIds: string[] = [];
 
@@ -2383,11 +2431,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setFirstNameError('');
     }
 
-    const dobErr = validateDob(formData.dateOfBirth);
-    if (dobErr) {
-      setDobError(dobErr);
-      firstErrorTestIds.push('input-dob');
-      hasErrors = true;
+    if (formData.dateOfBirth) {
+      const dobErr = validateDob(formData.dateOfBirth);
+      if (dobErr) {
+        setDobError(dobErr);
+        firstErrorTestIds.push('input-dob');
+        hasErrors = true;
+      } else {
+        setDobError('');
+      }
     } else {
       setDobError('');
     }
@@ -2521,13 +2573,18 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       if (isSeaBlankLocal(sea)) return;
       const rowErrs: Record<string, string> = {};
       if (!(sea.vesselName || '').trim()) rowErrs.vesselName = 'Vessel name is required.';
+      if (!(sea.vesselType || '').trim()) rowErrs.vesselType = 'Vessel type is required.';
+      if (!(sea.rank || '').trim()) rowErrs.rank = 'Rank is required.';
       if (!(sea.from || '').trim()) rowErrs.from = 'From date is required.';
       if (!(sea.to || '').trim()) { rowErrs.to = 'To date is required.'; }
       else if (sea.from && sea.to < sea.from) { rowErrs.to = 'To date cannot be earlier than from date.'; newSeaErrors[sea.id] = '"To" date cannot be earlier than "From" date.'; }
       if (Object.keys(rowErrs).length > 0) { newSeaRequiredErrors[sea.id] = rowErrs; hasErrors = true; }
     });
     setSeaRequiredErrors(newSeaRequiredErrors);
-    setSeaServiceDateErrors(newSeaErrors);
+    const overlapErrors = runSeaServiceOverlapCheck();
+    const mergedSeaErrors = { ...newSeaErrors, ...overlapErrors };
+    setSeaServiceDateErrors(mergedSeaErrors);
+    if (Object.keys(overlapErrors).length > 0) hasErrors = true;
 
     if (hasErrors) {
       setTimeout(() => {
@@ -2569,6 +2626,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       return;
     }
     try {
+      setIsSavingPartA(true);
       toast({
         title: "Saving...",
         description: "Saving form data to database",
@@ -2616,51 +2674,51 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         savePersonalDetailsMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            placeOfBirthCity: formData.placeOfBirthCity || undefined,
-            placeOfBirthCountryUuid: formData.placeOfBirthCountry || undefined,
-            heightCm: formData.heightCm || undefined,
-            weightKg: formData.weightKg || undefined,
-            nativeLanguageUuid: formData.nativeLanguage || undefined,
-            foreignLanguages: formData.foreignLanguages || undefined,
-            englishProficiency: formData.englishProficiency || undefined,
-            manningAgent: formData.manningAgent || undefined,
+            placeOfBirthCity: formData.placeOfBirthCity || null,
+            placeOfBirthCountryUuid: formData.placeOfBirthCountry || null,
+            heightCm: formData.heightCm || null,
+            weightKg: formData.weightKg || null,
+            nativeLanguageUuid: formData.nativeLanguage || null,
+            foreignLanguages: formData.foreignLanguages || null,
+            englishProficiency: formData.englishProficiency || null,
+            manningAgent: formData.manningAgent || null,
           },
         }),
         saveAddressMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            countryOfResidenceUuid: formData.countryOfResidence || undefined,
-            nearestAirport: formData.nearestAirport || undefined,
-            addressLine1: formData.residentialAddressLine1 || undefined,
-            addressLine2: formData.residentialAddressLine2 || undefined,
-            contactLandline: formData.contactLandline || undefined,
-            mobile: formData.mobile || undefined,
-            email: formData.email || undefined,
+            countryOfResidenceUuid: formData.countryOfResidence || null,
+            nearestAirport: formData.nearestAirport || null,
+            addressLine1: formData.residentialAddressLine1 || null,
+            addressLine2: formData.residentialAddressLine2 || null,
+            contactLandline: formData.contactLandline || null,
+            mobile: formData.mobile || null,
+            email: formData.email || null,
           },
         }),
         saveFamilyInfoMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            maritalStatus: formData.maritalStatus || undefined,
-            numDependentChildren: formData.numberOfDependentChildren || undefined,
-            fatherName: formData.fatherName || undefined,
-            motherName: formData.motherName || undefined,
-            spouseFirstName: formData.spouseFirstName || undefined,
-            spouseMiddleName: formData.spouseMiddleName || undefined,
-            spouseFamilyName: formData.spouseFamilyName || undefined,
-            spouseDob: formData.spouseDateOfBirth || undefined,
+            maritalStatus: formData.maritalStatus || null,
+            numDependentChildren: formData.numberOfDependentChildren || null,
+            fatherName: formData.fatherName || null,
+            motherName: formData.motherName || null,
+            spouseFirstName: formData.spouseFirstName || null,
+            spouseMiddleName: formData.spouseMiddleName || null,
+            spouseFamilyName: formData.spouseFamilyName || null,
+            spouseDob: formData.spouseDateOfBirth || null,
           },
         }),
         saveNextOfKinMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
-            firstName: formData.nokFirstName || undefined,
-            middleName: formData.nokMiddleName || undefined,
-            familyName: formData.nokFamilyName || undefined,
-            telephone: formData.nokTelephone || undefined,
-            email: formData.nokEmail || undefined,
-            address: formData.nokAddress || undefined,
-            relationship: formData.nokRelationship || undefined,
+            firstName: formData.nokFirstName || null,
+            middleName: formData.nokMiddleName || null,
+            familyName: formData.nokFamilyName || null,
+            telephone: formData.nokTelephone || null,
+            email: formData.nokEmail || null,
+            address: formData.nokAddress || null,
+            relationship: formData.nokRelationship || null,
           },
         }),
       ]);
@@ -2677,10 +2735,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         data: nonEmptyChildren.map((child, index) => ({
           childUuid: child.id.startsWith('CHILD-') || child.id.startsWith('new-') ? undefined : child.id,
           firstName: child.firstName,
-          middleName: child.middleName || undefined,
-          familyName: child.familyName || undefined,
-          dob: child.dateOfBirth || undefined,
-          gender: child.gender || undefined,
+          middleName: child.middleName || null,
+          familyName: child.familyName || null,
+          dob: child.dateOfBirth || null,
+          gender: child.gender || null,
           sortOrder: index,
         })) as any,
       });
@@ -2749,12 +2807,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Documents - save with attachments
       nonEmptyDocuments.forEach((doc, index) => {
         const docPayload = {
-          documentId: doc.documentId || undefined,
-          documentName: doc.document || undefined,
-          number: doc.number || undefined,
-          issued: doc.issued || undefined,
-          expiry: doc.expiry || undefined,
-          issuingAuthority: doc.issuingAuthority || undefined,
+          documentId: doc.documentId || null,
+          documentName: doc.document || null,
+          number: doc.number || null,
+          issued: doc.issued || null,
+          expiry: doc.expiry || null,
+          issuingAuthority: doc.issuingAuthority || null,
           sortOrder: index,
         };
         const serverNumericId = serverDocMap.get(doc.id);
@@ -2789,11 +2847,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Visas - save with attachments
       nonEmptyVisas.forEach((visa, index) => {
         const visaPayload = {
-          countryUuid: visa.issuingCountry || visa.countryId || undefined,
-          serialNo: visa.serialNo || undefined,
-          issued: visa.issued || undefined,
-          expiry: visa.expiry || undefined,
-          visaType: visa.visaType || undefined,
+          countryUuid: visa.issuingCountry || visa.countryId || null,
+          serialNo: visa.serialNo || null,
+          issued: visa.issued || null,
+          expiry: visa.expiry || null,
+          visaType: visa.visaType || null,
           sortOrder: index,
         };
         const serverNumericId = serverVisaMap.get(visa.id);
@@ -2827,10 +2885,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Education - save with attachments
       nonEmptyEducation.forEach((edu, index) => {
         const eduPayload = {
-          dateOfCompletion: edu.dateOfCompletion || undefined,
-          institution: edu.schoolCollegeUniversity || undefined,
-          subjectsField: edu.subjectsField || undefined,
-          qualifications: edu.qualifications || undefined,
+          dateOfCompletion: edu.dateOfCompletion || null,
+          institution: edu.schoolCollegeUniversity || null,
+          subjectsField: edu.subjectsField || null,
+          qualifications: edu.qualifications || null,
           sortOrder: index,
         };
         const serverNumericId = serverEduMap.get(edu.id);
@@ -2864,14 +2922,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Licenses - save with attachments
       nonEmptyLicenses.forEach((lic, index) => {
         const licPayload = {
-          licenseId: lic.licenseId || undefined,
-          certificateDocument: lic.certificateDocument || undefined,
-          abbr: lic.abbr || undefined,
-          requirement: lic.requirement || undefined,
-          certificateNo: lic.certificateNo || undefined,
-          issuingAuthority: lic.issuingAuthority || undefined,
-          issued: lic.issued || undefined,
-          expiry: lic.expiry || undefined,
+          licenseId: lic.licenseId || null,
+          certificateDocument: lic.certificateDocument || null,
+          abbr: lic.abbr || null,
+          requirement: lic.requirement || null,
+          certificateNo: lic.certificateNo || null,
+          issuingAuthority: lic.issuingAuthority || null,
+          issued: lic.issued || null,
+          expiry: lic.expiry || null,
           sortOrder: index,
         };
         const serverNumericId = serverLicMap.get(lic.id);
@@ -2905,14 +2963,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Training - save with attachments
       nonEmptyTraining.forEach((train, index) => {
         const trainPayload = {
-          courseId: train.courseId || undefined,
-          trainingCourse: train.trainingCourse || undefined,
-          abbr: train.abbr || undefined,
-          requirement: train.requirement || undefined,
-          certificateNo: train.certificateNo || undefined,
-          issuingAuthority: train.issuingAuthority || undefined,
-          issued: train.issued || undefined,
-          expiry: train.expiry || undefined,
+          courseId: train.courseId || null,
+          trainingCourse: train.trainingCourse || null,
+          abbr: train.abbr || null,
+          requirement: train.requirement || null,
+          certificateNo: train.certificateNo || null,
+          issuingAuthority: train.issuingAuthority || null,
+          issued: train.issued || null,
+          expiry: train.expiry || null,
           sortOrder: index,
         };
         const serverNumericId = serverTrainMap.get(train.id);
@@ -2946,15 +3004,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Sea Service - save with attachments
       nonEmptySeaService.forEach((sea, index) => {
         const seaPayload = {
-          vesselName: sea.vesselName || undefined,
-          vesselTypeUuid: sea.vesselType || undefined,
-          deadweight: sea.deadweight || undefined,
-          engineTypePower: sea.engineTypePower || undefined,
-          ownerOperator: sea.ownerOperator || undefined,
-          rank: sea.rank || undefined,
-          fromDate: sea.from || undefined,
-          toDate: sea.to || undefined,
-          periodMonths: sea.periodMonths || undefined,
+          vesselName: sea.vesselName || null,
+          vesselTypeUuid: sea.vesselType || null,
+          deadweight: sea.deadweight || null,
+          engineTypePower: sea.engineTypePower || null,
+          ownerOperator: sea.ownerOperator || null,
+          rank: sea.rank || null,
+          fromDate: sea.from || null,
+          toDate: sea.to || null,
+          periodMonths: sea.periodMonths || null,
           sortOrder: index,
         };
         const serverNumericId = serverSeaMap.get(sea.id);
@@ -3032,8 +3090,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       
       formData.additionalInfo.forEach((info, index) => {
         const infoPayload = {
-          information: info.information || undefined,
-          response: info.response || undefined,
+          information: info.information || null,
+          response: info.response || null,
           sortOrder: index,
         };
         
@@ -3103,6 +3161,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         description: error instanceof Error ? error.message : "Failed to save form data",
         variant: "destructive",
       });
+    } finally {
+      setTimeout(() => setIsSavingPartA(false), 3000);
     }
   };
 
@@ -3204,6 +3264,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         
         queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
         queryClient.invalidateQueries({ queryKey: ['v2', 'candidate', currentUuid] });
+        setActiveSection('B');
+        contentAreaRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         toast({
           title: "Error",
@@ -3240,6 +3302,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   };
 
   const handleSaveScreening = async (skipToasts: boolean = false, isMainSubmit: boolean = false, overrides?: Record<string, string>) => {
+    if (isSavingScreening) return;
+
     if (!recCanUuid) {
       toast({
         title: "Error",
@@ -3282,6 +3346,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
 
     try {
+      setIsSavingScreening(true);
+
       if (!skipToasts) {
         toast({
           title: "Saving...",
@@ -3293,70 +3359,70 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         saveScreeningB1Mutation.mutateAsync({
           recCanUuid,
           data: {
-            ageMeetsCriteria: formData.b1AgeMeetsCriteria || undefined,
-            rankMeetsCriteria: formData.b1RankMeetsCriteria || undefined,
-            certificatesValid: formData.b1CertificatesValid || undefined,
-            shortlisted: formData.b1Shortlisted || undefined,
-            submittedByUuid: overrides?.b1SubmittedBy || formData.b1SubmittedBy || undefined,
-            submittedDate: overrides?.b1SubmittedDate || formData.b1SubmittedDate || undefined,
+            ageMeetsCriteria: formData.b1AgeMeetsCriteria || null,
+            rankMeetsCriteria: formData.b1RankMeetsCriteria || null,
+            certificatesValid: formData.b1CertificatesValid || null,
+            shortlisted: formData.b1Shortlisted || null,
+            submittedByUuid: overrides?.b1SubmittedBy || formData.b1SubmittedBy || null,
+            submittedDate: overrides?.b1SubmittedDate || formData.b1SubmittedDate || null,
           } as any,
         }),
         saveScreeningB2Mutation.mutateAsync({
           recCanUuid,
           data: {
-            referencesCompleted: formData.b2ReferencesCompleted || undefined,
-            employerFeedback: formData.b2EmployerFeedback || undefined,
-            submittedByUuid: overrides?.b2SubmittedBy || formData.b2SubmittedBy || undefined,
-            submittedDate: overrides?.b2SubmittedDate || formData.b2SubmittedDate || undefined,
+            referencesCompleted: formData.b2ReferencesCompleted || null,
+            employerFeedback: formData.b2EmployerFeedback || null,
+            submittedByUuid: overrides?.b2SubmittedBy || formData.b2SubmittedBy || null,
+            submittedDate: overrides?.b2SubmittedDate || formData.b2SubmittedDate || null,
           } as any,
         }),
         saveScreeningB3Mutation.mutateAsync({
           recCanUuid,
           data: {
-            checksCompleted: formData.b3ChecksCompleted || undefined,
-            results: formData.b3Results || undefined,
-            submittedByUuid: overrides?.b3SubmittedBy || formData.b3SubmittedBy || undefined,
-            submittedDate: overrides?.b3SubmittedDate || formData.b3SubmittedDate || undefined,
+            checksCompleted: formData.b3ChecksCompleted || null,
+            results: formData.b3Results || null,
+            submittedByUuid: overrides?.b3SubmittedBy || formData.b3SubmittedBy || null,
+            submittedDate: overrides?.b3SubmittedDate || formData.b3SubmittedDate || null,
           } as any,
         }),
         saveScreeningB4Mutation.mutateAsync({
           recCanUuid,
           data: {
-            certificatesAuthenticated: formData.b4CertificatesAuthenticated || undefined,
-            results: formData.b4Results || undefined,
-            submittedByUuid: overrides?.b4SubmittedBy || formData.b4SubmittedBy || undefined,
-            submittedDate: overrides?.b4SubmittedDate || formData.b4SubmittedDate || undefined,
+            certificatesAuthenticated: formData.b4CertificatesAuthenticated || null,
+            results: formData.b4Results || null,
+            submittedByUuid: overrides?.b4SubmittedBy || formData.b4SubmittedBy || null,
+            submittedDate: overrides?.b4SubmittedDate || formData.b4SubmittedDate || null,
           } as any,
         }),
         saveScreeningB5Mutation.mutateAsync({
           recCanUuid,
           data: {
-            testsCompleted: formData.b5TestsCompleted || undefined,
-            submittedByUuid: overrides?.b5SubmittedBy || formData.b5SubmittedBy || undefined,
-            submittedDate: overrides?.b5SubmittedDate || formData.b5SubmittedDate || undefined,
+            testsCompleted: formData.b5TestsCompleted || null,
+            submittedByUuid: overrides?.b5SubmittedBy || formData.b5SubmittedBy || null,
+            submittedDate: overrides?.b5SubmittedDate || formData.b5SubmittedDate || null,
           } as any,
         }),
         saveScreeningB6Mutation.mutateAsync({
           recCanUuid,
           data: {
-            interviewCompleted: formData.b6InterviewCompleted || undefined,
-            submittedByUuid: overrides?.b6SubmittedBy || formData.b6SubmittedBy || undefined,
-            submittedDate: overrides?.b6SubmittedDate || formData.b6SubmittedDate || undefined,
+            interviewCompleted: formData.b6InterviewCompleted || null,
+            submittedByUuid: overrides?.b6SubmittedBy || formData.b6SubmittedBy || null,
+            submittedDate: overrides?.b6SubmittedDate || formData.b6SubmittedDate || null,
           } as any,
         }),
         saveScreeningB7Mutation.mutateAsync({
           recCanUuid,
           data: {
-            submittedByUuid: overrides?.b7SubmittedBy || formData.b7SubmittedBy || undefined,
-            submittedDate: overrides?.b7SubmittedDate || formData.b7SubmittedDate || undefined,
+            submittedByUuid: overrides?.b7SubmittedBy || formData.b7SubmittedBy || null,
+            submittedDate: overrides?.b7SubmittedDate || formData.b7SubmittedDate || null,
           } as any,
         }),
         saveScreeningB8Mutation.mutateAsync({
           recCanUuid,
           data: {
-            shortlisted: formData.b8Shortlisted || undefined,
-            submittedByUuid: overrides?.b8SubmittedBy || formData.b8SubmittedBy || undefined,
-            submittedDate: overrides?.b8SubmittedDate || formData.b8SubmittedDate || undefined,
+            shortlisted: formData.b8Shortlisted || null,
+            submittedByUuid: overrides?.b8SubmittedBy || formData.b8SubmittedBy || null,
+            submittedDate: overrides?.b8SubmittedDate || formData.b8SubmittedDate || null,
             selectedApproverUuids: formData.selectedApproversForSubmission || [],
           } as any,
         }),
@@ -3370,30 +3436,32 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const currentB7Uuid = b7Result?.b7Uuid || b7Uuid;
       const currentB8Uuid = b8Result?.b8Uuid || b8Uuid;
 
+      const bItemSavePromises: Promise<any>[] = [];
+
       const serverB2ItemMap = new Map((screeningB2Items || []).map((i: any) => [i.refUuid, i.id]));
       for (let index = 0; index < formData.b2References.length; index++) {
         const item = formData.b2References[index];
         if (serverB2ItemMap.has(item.id) && currentB2Uuid) {
-          await updateB2ItemMutation.mutateAsync({
+          bItemSavePromises.push(updateB2ItemMutation.mutateAsync({
             refUuid: item.id,
             b2Uuid: currentB2Uuid,
             data: {
-              refDate: item.date || undefined,
-              nameDesignation: item.nameDesignation || undefined,
-              contactInfo: item.contactInfo || undefined,
+              refDate: item.date || null,
+              nameDesignation: item.nameDesignation || null,
+              contactInfo: item.contactInfo || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         } else if (!serverB2ItemMap.has(item.id) && currentB2Uuid && (item.date || item.nameDesignation || item.contactInfo)) {
-          await createB2ItemMutation.mutateAsync({
+          bItemSavePromises.push(createB2ItemMutation.mutateAsync({
             b2Uuid: currentB2Uuid,
             data: {
-              refDate: item.date || undefined,
-              nameDesignation: item.nameDesignation || undefined,
-              contactInfo: item.contactInfo || undefined,
+              refDate: item.date || null,
+              nameDesignation: item.nameDesignation || null,
+              contactInfo: item.contactInfo || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         }
       }
 
@@ -3401,24 +3469,24 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (let index = 0; index < formData.b3Authorities.length; index++) {
         const auth = formData.b3Authorities[index];
         if (serverB3AuthMap.has(auth.id) && currentB3Uuid) {
-          await updateB3AuthorityMutation.mutateAsync({
+          bItemSavePromises.push(updateB3AuthorityMutation.mutateAsync({
             authUuid: auth.id,
             b3Uuid: currentB3Uuid,
             data: {
-              checkDate: auth.date || undefined,
-              authority: auth.authority || undefined,
+              checkDate: auth.date || null,
+              authority: auth.authority || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         } else if (!serverB3AuthMap.has(auth.id) && currentB3Uuid && (auth.date || auth.authority)) {
-          await createB3AuthorityMutation.mutateAsync({
+          bItemSavePromises.push(createB3AuthorityMutation.mutateAsync({
             b3Uuid: currentB3Uuid,
             data: {
-              checkDate: auth.date || undefined,
-              authority: auth.authority || undefined,
+              checkDate: auth.date || null,
+              authority: auth.authority || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         }
       }
 
@@ -3426,26 +3494,26 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (let index = 0; index < formData.b4Certs.length; index++) {
         const cert = formData.b4Certs[index];
         if (serverB4CertMap.has(cert.id) && currentB4Uuid) {
-          await updateB4CertItemMutation.mutateAsync({
+          bItemSavePromises.push(updateB4CertItemMutation.mutateAsync({
             certUuid: cert.id,
             b4Uuid: currentB4Uuid,
             data: {
-              authDate: cert.date || undefined,
-              certificate: cert.certificate || undefined,
-              authority: cert.authority || undefined,
+              authDate: cert.date || null,
+              certificate: cert.certificate || null,
+              authority: cert.authority || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         } else if (!serverB4CertMap.has(cert.id) && currentB4Uuid && (cert.date || cert.certificate || cert.authority)) {
-          await createB4CertItemMutation.mutateAsync({
+          bItemSavePromises.push(createB4CertItemMutation.mutateAsync({
             b4Uuid: currentB4Uuid,
             data: {
-              authDate: cert.date || undefined,
-              certificate: cert.certificate || undefined,
-              authority: cert.authority || undefined,
+              authDate: cert.date || null,
+              certificate: cert.certificate || null,
+              authority: cert.authority || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         }
       }
 
@@ -3453,28 +3521,28 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (let index = 0; index < formData.b5Tests.length; index++) {
         const test = formData.b5Tests[index];
         if (serverB5TestMap.has(test.id) && currentB5Uuid) {
-          await updateB5TestItemMutation.mutateAsync({
+          bItemSavePromises.push(updateB5TestItemMutation.mutateAsync({
             testUuid: test.id,
             b5Uuid: currentB5Uuid,
             data: {
-              testDate: test.date || undefined,
-              subject: test.subject || undefined,
-              score: test.score || undefined,
-              result: test.result || undefined,
+              testDate: test.date || null,
+              subject: test.subject || null,
+              score: test.score || null,
+              result: test.result || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         } else if (!serverB5TestMap.has(test.id) && currentB5Uuid && (test.date || test.subject || test.score || test.result)) {
-          await createB5TestItemMutation.mutateAsync({
+          bItemSavePromises.push(createB5TestItemMutation.mutateAsync({
             b5Uuid: currentB5Uuid,
             data: {
-              testDate: test.date || undefined,
-              subject: test.subject || undefined,
-              score: test.score || undefined,
-              result: test.result || undefined,
+              testDate: test.date || null,
+              subject: test.subject || null,
+              score: test.score || null,
+              result: test.result || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         }
       }
 
@@ -3482,30 +3550,30 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (let index = 0; index < formData.b6Interviews.length; index++) {
         const interview = formData.b6Interviews[index];
         if (serverB6InterviewMap.has(interview.id) && currentB6Uuid) {
-          await updateB6InterviewItemMutation.mutateAsync({
+          bItemSavePromises.push(updateB6InterviewItemMutation.mutateAsync({
             intUuid: interview.id,
             b6Uuid: currentB6Uuid,
             data: {
-              interviewDate: interview.date || undefined,
-              interviewerUuid: interview.interviewer || undefined,
-              status: interview.status || undefined,
-              result: interview.result || undefined,
-              comments: interview.comments || undefined,
+              interviewDate: interview.date || null,
+              interviewerUuid: interview.interviewer || null,
+              status: interview.status || null,
+              result: interview.result || null,
+              comments: interview.comments || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         } else if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid && (interview.date || interview.interviewer || interview.status || interview.result)) {
-          await createB6InterviewItemMutation.mutateAsync({
+          bItemSavePromises.push(createB6InterviewItemMutation.mutateAsync({
             b6Uuid: currentB6Uuid,
             data: {
-              interviewDate: interview.date || undefined,
-              interviewerUuid: interview.interviewer || undefined,
-              status: interview.status || undefined,
-              result: interview.result || undefined,
-              comments: interview.comments || undefined,
+              interviewDate: interview.date || null,
+              interviewerUuid: interview.interviewer || null,
+              status: interview.status || null,
+              result: interview.result || null,
+              comments: interview.comments || null,
               sortOrder: index,
             } as any,
-          });
+          }));
         }
       }
 
@@ -3519,32 +3587,34 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       for (let index = 0; index < nonEmptyB7Training.length; index++) {
         const training = nonEmptyB7Training[index];
         if (serverB7TrainingMap.has(training.id) && currentB7Uuid) {
-          await updateB7TrainingItemMutation.mutateAsync({
+          bItemSavePromises.push(updateB7TrainingItemMutation.mutateAsync({
             trainItemUuid: training.id,
             b7Uuid: currentB7Uuid,
             data: {
-              training: training.training || undefined,
-              category: training.category || undefined,
-              identifiedByUuid: training.identifiedBy || undefined,
-              dueDate: training.dueDate || undefined,
-              comments: training.comments || undefined,
+              training: training.training || null,
+              category: training.category || null,
+              identifiedByUuid: training.identifiedBy || null,
+              dueDate: training.dueDate || null,
+              comments: training.comments || null,
               sortOrder: index,
             },
-          });
+          }));
         } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate || training.comments)) {
-          await createB7TrainingItemMutation.mutateAsync({
+          bItemSavePromises.push(createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {
-              training: training.training || undefined,
-              category: training.category || undefined,
-              identifiedByUuid: training.identifiedBy || undefined,
-              dueDate: training.dueDate || undefined,
-              comments: training.comments || undefined,
+              training: training.training || null,
+              category: training.category || null,
+              identifiedByUuid: training.identifiedBy || null,
+              dueDate: training.dueDate || null,
+              comments: training.comments || null,
               sortOrder: index,
             },
-          });
+          }));
         }
       }
+
+      await Promise.all(bItemSavePromises);
 
       const localB2RefIds = new Set(formData.b2References.map(r => r.id));
       const localB3AuthIds = new Set(formData.b3Authorities.map(a => a.id));
@@ -3830,29 +3900,32 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
       // Part C - Save approvals (C1)
       const serverApprovalMap = new Map((approvalsData || []).map(a => [a.approvalUuid, a.id]));
-      for (const approver of formData.c1Approvers) {
+      for (let index = 0; index < formData.c1Approvers.length; index++) {
+        const approver = formData.c1Approvers[index];
         const existingServerId = approver.serverId || (approver.appUuid ? serverApprovalMap.get(approver.appUuid) : undefined);
         if (existingServerId) {
           await updateApprovalMutation.mutateAsync({
             recCanUuid,
             id: existingServerId,
             data: {
-              approvalDate: approver.date || undefined,
-              approverUuid: approver.approver || undefined,
-              status: approver.status || undefined,
-              approvalResult: approver.approval || undefined,
-              comments: approver.comments || undefined,
+              approvalDate: approver.date || null,
+              approverUuid: approver.approver || null,
+              status: approver.status || null,
+              approvalResult: approver.approval || null,
+              comments: approver.comments || null,
+              sortOrder: index,
             } as any,
           });
         } else if (approver.date || approver.approver) {
           const newApproval = await saveApprovalMutation.mutateAsync({
             recCanUuid,
             data: {
-              approvalDate: approver.date || undefined,
-              approverUuid: approver.approver || undefined,
-              status: approver.status || undefined,
-              approvalResult: approver.approval || undefined,
-              comments: approver.comments || undefined,
+              approvalDate: approver.date || null,
+              approverUuid: approver.approver || null,
+              status: approver.status || null,
+              approvalResult: approver.approval || null,
+              comments: approver.comments || null,
+              sortOrder: index,
             } as any,
           });
           if (newApproval?.id) {
@@ -3893,7 +3966,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         await saveDecisionMutation.mutateAsync({
           recCanUuid,
           data: {
-            recruitmentStatus: formData.c3RecruitmentStatus || undefined,
+            recruitmentStatus: formData.c3RecruitmentStatus || null,
             assignedGroups: formData.c3AssignedGroups.map(g => ({ groupUuid: g })),
           } as any,
         });
@@ -3956,29 +4029,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
-      // Batch invalidate all V2 queries for this candidate at once for faster refresh
-      queryClient.invalidateQueries({ 
-        predicate: (query) => 
-          Array.isArray(query.queryKey) && 
-          query.queryKey[0] === 'v2' && 
-          (query.queryKey.includes(recCanUuid) || 
-           query.queryKey.includes(currentB2Uuid) ||
-           query.queryKey.includes(currentB3Uuid) ||
-           query.queryKey.includes(currentB4Uuid) ||
-           query.queryKey.includes(currentB5Uuid) ||
-           query.queryKey.includes(currentB6Uuid) ||
-           query.queryKey.includes(currentB7Uuid) ||
-           query.queryKey.includes(currentB8Uuid))
-      });
-      
-      // Also invalidate candidates list to refresh sidebar filtering
-      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
-
       if (!skipToasts) {
         toast({
           title: "Success",
           description: "Screening data saved successfully",
         });
+      }
+
+      if (isMainSubmit) {
+        setActiveSection('C');
+        contentAreaRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
       console.error('Save screening error:', error);
@@ -3987,6 +4047,22 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         description: error instanceof Error ? error.message : "Failed to save screening data",
         variant: "destructive",
       });
+    } finally {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey[0] === 'v2' && 
+          (query.queryKey.includes(recCanUuid) || 
+           query.queryKey.includes(b2Uuid) ||
+           query.queryKey.includes(b3Uuid) ||
+           query.queryKey.includes(b4Uuid) ||
+           query.queryKey.includes(b5Uuid) ||
+           query.queryKey.includes(b6Uuid) ||
+           query.queryKey.includes(b7Uuid) ||
+           query.queryKey.includes(b8Uuid))
+      });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'candidates'] });
+      setTimeout(() => setIsSavingScreening(false), 3000);
     }
   };
 
@@ -4260,11 +4336,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Date of birth <span className="text-red-500">*</span></Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
               {isEditing ? (
                 <>
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={formData.dateOfBirth}
                     onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) { const err = validateDob(e.target.value); setDobError(err); } }}
                     onBlur={() => setDobError(validateDob(formData.dateOfBirth))}
@@ -4280,7 +4355,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             </div>
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Age( Years )</Label>
-              <div className="mt-1 text-sm text-gray-900" data-testid="text-age">{formData.ageInYears}</div>
+              {isEditing ? (
+                <Input
+                  value={formData.ageInYears}
+                  readOnly
+                  className="mt-1 bg-gray-50 cursor-not-allowed"
+                  data-testid="input-age"
+                />
+              ) : (
+                <div className="mt-1 text-sm text-gray-900" data-testid="text-age">{formData.ageInYears}</div>
+              )}
             </div>
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Place of birth( City )</Label>
@@ -4749,8 +4833,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
                 <>
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={formData.spouseDateOfBirth}
                     onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseErrors.spouseDateOfBirth) setSpouseErrors(prev => { const { spouseDateOfBirth: _, ...rest } = prev; return rest; }); }}
                     onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseDateOfBirth || '').trim()) setSpouseErrors(prev => ({ ...prev, spouseDateOfBirth: 'Spouse date of birth is required.' })); }}
@@ -4822,9 +4905,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       </TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input type="date" value={child.dateOfBirth} onChange={(e) => updateChild(child.id, 'dateOfBirth', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                          <FormattedDateInput value={child.dateOfBirth} onChange={(e) => updateChild(child.id, 'dateOfBirth', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                         ) : (
-                          <span className="text-[13px]">{child.dateOfBirth}</span>
+                          <span className="text-[13px]">{formatDate(child.dateOfBirth)}</span>
                         )}
                       </TableCell>
                       <TableCell className="p-3">
@@ -4956,7 +5039,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableRow key={doc.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   {doc.documentId ? (
-                    <span className="text-[13px] text-gray-900">{doc.document}</span>
+                    <Input value={doc.document} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>
                       <Input value={doc.document} onChange={(e) => { updateDocument(doc.id, 'document', e.target.value); if (docDateErrors[doc.id]?.document && e.target.value.trim()) setDocDateErrors(prev => { const n = { ...prev }; if (n[doc.id]) { const { document: _, ...rest } = n[doc.id]; n[doc.id] = rest; } return n; }); }}
@@ -4970,11 +5053,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={doc.number} onChange={(e) => updateDocument(doc.id, 'number', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={doc.issued} onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, doc.expiry); setDocDateErrors(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], ...(errs.issued ? { issued: errs.issued } : {}), ...(!errs.issued ? (() => { const n = { ...prev[doc.id] }; delete n.issued; return n; })() : {}) } })); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${docDateErrors[doc.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <FormattedDateInput value={doc.issued} onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, doc.expiry); setDocDateErrors(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], ...(errs.issued ? { issued: errs.issued } : {}), ...(!errs.issued ? (() => { const n = { ...prev[doc.id] }; delete n.issued; return n; })() : {}) } })); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${docDateErrors[doc.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {docDateErrors[doc.id]?.issued && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={doc.expiry} onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); const errs = validateRowDates(doc.issued, e.target.value); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} min={doc.issued || undefined} className={`text-[13px] border ${docDateErrors[doc.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <FormattedDateInput value={doc.expiry} onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); const errs = validateRowDates(doc.issued, e.target.value); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} min={doc.issued || undefined} className={`text-[13px] border ${docDateErrors[doc.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {docDateErrors[doc.id]?.expiry && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5032,7 +5115,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   {visa.countryId ? (
-                    <span className="text-[13px] text-gray-900">{visa.issuingCountry}</span>
+                    <Input value={visa.issuingCountry} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>
                       <Input value={visa.issuingCountry} onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaDateErrors[visa.id]?.issuingCountry && e.target.value.trim()) setVisaDateErrors(prev => { const n = { ...prev }; if (n[visa.id]) { const { issuingCountry: _, ...rest } = n[visa.id]; n[visa.id] = rest; } return n; }); }}
@@ -5046,11 +5129,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={visa.serialNo} onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={visa.issued} onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${visaDateErrors[visa.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <FormattedDateInput value={visa.issued} onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${visaDateErrors[visa.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {visaDateErrors[visa.id]?.issued && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={visa.expiry} onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); const errs = validateRowDates(visa.issued, e.target.value); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} min={visa.issued || undefined} className={`text-[13px] border ${visaDateErrors[visa.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <FormattedDateInput value={visa.expiry} onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); const errs = validateRowDates(visa.issued, e.target.value); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} min={visa.issued || undefined} className={`text-[13px] border ${visaDateErrors[visa.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {visaDateErrors[visa.id]?.expiry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5116,7 +5199,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={edu.schoolCollegeUniversity} onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={edu.dateOfCompletion} onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <FormattedDateInput value={edu.dateOfCompletion} onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -5174,7 +5257,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <TableCell className="p-3 text-[13px]">{lic.licenseId || '-'}</TableCell>
                 <TableCell className="p-3">
                   {lic.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{lic.certificateDocument}</span>
+                    <Input value={lic.certificateDocument} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>
                       <Input value={lic.certificateDocument} onChange={(e) => { updateLicense(lic.id, 'certificateDocument', e.target.value); if (licDateErrors[lic.id]?.certificateDocument && e.target.value.trim()) setLicDateErrors(prev => { const n = { ...prev }; if (n[lic.id]) { const { certificateDocument: _, ...rest } = n[lic.id]; n[lic.id] = rest; } return n; }); }}
@@ -5186,14 +5269,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   {lic.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{lic.abbr}</span>
+                    <Input value={lic.abbr} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <Input value={lic.abbr} onChange={(e) => updateLicense(lic.id, 'abbr', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                   )}
                 </TableCell>
                 <TableCell className="p-3">
                   {lic.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{lic.requirement}</span>
+                    <Input value={lic.requirement} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <Input value={lic.requirement} onChange={(e) => updateLicense(lic.id, 'requirement', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                   )}
@@ -5205,11 +5288,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={lic.issuingAuthority} onChange={(e) => updateLicense(lic.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={lic.issued} onChange={(e) => { updateLicense(lic.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${licDateErrors[lic.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <FormattedDateInput value={lic.issued} onChange={(e) => { updateLicense(lic.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${licDateErrors[lic.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {licDateErrors[lic.id]?.issued && <p className="text-xs text-red-500 mt-1">{licDateErrors[lic.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={lic.expiry} onChange={(e) => { updateLicense(lic.id, 'expiry', e.target.value); const errs = validateRowDates(lic.issued, e.target.value); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} min={lic.issued || undefined} className={`text-[13px] border ${licDateErrors[lic.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <FormattedDateInput value={lic.expiry} onChange={(e) => { updateLicense(lic.id, 'expiry', e.target.value); const errs = validateRowDates(lic.issued, e.target.value); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} min={lic.issued || undefined} className={`text-[13px] border ${licDateErrors[lic.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {licDateErrors[lic.id]?.expiry && <p className="text-xs text-red-500 mt-1">{licDateErrors[lic.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5268,7 +5351,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <TableCell className="p-3 text-[13px]">{course.courseId || '-'}</TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{course.trainingCourse}</span>
+                    <Input value={course.trainingCourse} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>
                       <Input value={course.trainingCourse} onChange={(e) => { updateTrainingCourse(course.id, 'trainingCourse', e.target.value); if (trainingDateErrors[course.id]?.trainingCourse && e.target.value.trim()) setTrainingDateErrors(prev => { const n = { ...prev }; if (n[course.id]) { const { trainingCourse: _, ...rest } = n[course.id]; n[course.id] = rest; } return n; }); }}
@@ -5280,14 +5363,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{course.abbr}</span>
+                    <Input value={course.abbr} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <Input value={course.abbr} onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                   )}
                 </TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
-                    <span className="text-[13px] text-gray-900">{course.requirement}</span>
+                    <Input value={course.requirement} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <Input value={course.requirement} onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                   )}
@@ -5299,11 +5382,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={course.issuingAuthority} onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={course.issued} onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${trainingDateErrors[course.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <FormattedDateInput value={course.issued} onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${trainingDateErrors[course.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {trainingDateErrors[course.id]?.issued && <p className="text-xs text-red-500 mt-1">{trainingDateErrors[course.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={course.expiry} onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); const errs = validateRowDates(course.issued, e.target.value); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} min={course.issued || undefined} className={`text-[13px] border ${trainingDateErrors[course.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <FormattedDateInput value={course.expiry} onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); const errs = validateRowDates(course.issued, e.target.value); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} min={course.issued || undefined} className={`text-[13px] border ${trainingDateErrors[course.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {trainingDateErrors[course.id]?.expiry && <p className="text-xs text-red-500 mt-1">{trainingDateErrors[course.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5341,11 +5424,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           <TableHeader>
             <TableRow className="bg-gray-100">
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-40">Vessel Name <span className="text-red-500">*</span></TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">Vessel Type</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">Vessel Type <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Deadweight</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Engine Type/Power</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Owner/Operator</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Rank</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Rank <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">From <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">To <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-16">Period(M)</TableHead>
@@ -5362,8 +5445,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {seaRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselName}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Select value={service.vesselType} onValueChange={(value) => updateSeaService(service.id, 'vesselType', value)}>
-                    <SelectTrigger className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto">
+                  <Select value={service.vesselType} onValueChange={(value) => { updateSeaService(service.id, 'vesselType', value); if (seaRequiredErrors[service.id]?.vesselType) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselType: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}>
+                    <SelectTrigger className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -5372,6 +5455,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       ))}
                     </SelectContent>
                   </Select>
+                  {seaRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselType}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   <Input value={service.deadweight} onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -5383,8 +5467,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={service.ownerOperator} onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Select value={service.rank} onValueChange={(value) => updateSeaService(service.id, 'rank', value)}>
-                    <SelectTrigger className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto">
+                  <Select value={service.rank} onValueChange={(value) => { updateSeaService(service.id, 'rank', value); if (seaRequiredErrors[service.id]?.rank) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}>
+                    <SelectTrigger className={`text-[13px] border ${seaRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}>
                       <SelectValue placeholder="Select rank" />
                     </SelectTrigger>
                     <SelectContent>
@@ -5397,15 +5481,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       )}
                     </SelectContent>
                   </Select>
+                  {seaRequiredErrors[service.id]?.rank && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].rank}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={service.from} onChange={(e) => { updateSeaService(service.id, 'from', e.target.value); if (seaRequiredErrors[service.id]?.from && e.target.value) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
-                    onBlur={() => { if (!(service.from || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], from: 'From date is required.' } })); }}
-                    className={`text-[13px] border ${seaRequiredErrors[service.id]?.from ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <FormattedDateInput value={service.from} onChange={(e) => { updateSeaService(service.id, 'from', e.target.value); if (seaRequiredErrors[service.id]?.from && e.target.value) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
+                    onBlur={() => { if (!(service.from || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], from: 'From date is required.' } })); setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
+                    className={`text-[13px] border ${(seaRequiredErrors[service.id]?.from || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {seaRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].from}</p>}
+                  {!seaRequiredErrors[service.id]?.from && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1">{seaServiceDateErrors[service.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input type="date" value={service.to} onChange={(e) => { updateSeaService(service.id, 'to', e.target.value); if (e.target.value) { const errs = { ...seaRequiredErrors[service.id] }; delete errs.to; if (service.from && e.target.value < service.from) errs.to = 'To date cannot be earlier than from date.'; setSeaRequiredErrors(prev => ({ ...prev, [service.id]: errs })); } }} onBlur={() => { if (!(service.to || '').trim()) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date is required.' } })); } else if (service.from && service.to < service.from) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date cannot be earlier than from date.' } })); } }}
+                  <FormattedDateInput value={service.to} onChange={(e) => { updateSeaService(service.id, 'to', e.target.value); if (e.target.value) { const errs = { ...seaRequiredErrors[service.id] }; delete errs.to; if (service.from && e.target.value < service.from) errs.to = 'To date cannot be earlier than from date.'; setSeaRequiredErrors(prev => ({ ...prev, [service.id]: errs })); } }} onBlur={() => { if (!(service.to || '').trim()) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date is required.' } })); } else if (service.from && service.to < service.from) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date cannot be earlier than from date.' } })); } setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
                     className={`text-[13px] border ${(seaRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {seaRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-${service.id}`}>{seaRequiredErrors[service.id].to}</p>}
                   {!seaRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-legacy-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
@@ -5809,7 +5895,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         {formData.b1SubmittedBy ? (
                           <>
                             <span className="font-medium">Submitted by:</span> {formData.b1SubmittedBy}
-                            {formData.b1SubmittedDate && ` on ${formData.b1SubmittedDate}`}
+                            {formData.b1SubmittedDate && ` on ${formatDate(formData.b1SubmittedDate) || formData.b1SubmittedDate}`}
                           </>
                         ) : (
                           <span className="text-gray-400">Not yet submitted</span>
@@ -5819,8 +5905,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         type="button"
                         size="sm"
                         className="bg-green-600 hover:bg-green-700 text-white"
+                        disabled={savingInProgress}
                         onClick={() => {
-                          const currentDate = new Date().toLocaleDateString();
+                          const currentDate = formatDate(new Date());
                           setFormData(prev => ({ ...prev, b1SubmittedBy: currentUserDisplay, b1SubmittedDate: currentDate }));
                           handleSaveScreening(false, false, { b1SubmittedBy: currentUserDisplay, b1SubmittedDate: currentDate });
                         }}
@@ -5893,8 +5980,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         {formData.b2References.map((reference, index) => (
                           <div key={reference.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                              <Input
-                                type="date"
+                              <FormattedDateInput
                                 placeholder="Date"
                                 className="text-sm"
                                 value={reference.date}
@@ -6285,7 +6371,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b2SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b2SubmittedBy}
-                              {formData.b2SubmittedDate && ` on ${formData.b2SubmittedDate}`}
+                              {formData.b2SubmittedDate && ` on ${formatDate(formData.b2SubmittedDate) || formData.b2SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -6295,8 +6381,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b2SubmittedBy: currentUserDisplay, b2SubmittedDate: currentDate });
                           }}
@@ -6370,8 +6457,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b3Authorities.map((authority, index) => (
                             <div key={authority.id} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <Input
-                                  type="date"
+                                <FormattedDateInput
                                   placeholder="Date"
                                   className="text-sm"
                                   value={authority.date}
@@ -6742,7 +6828,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b3SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b3SubmittedBy}
-                              {formData.b3SubmittedDate && ` on ${formData.b3SubmittedDate}`}
+                              {formData.b3SubmittedDate && ` on ${formatDate(formData.b3SubmittedDate) || formData.b3SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -6752,8 +6838,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b3SubmittedBy: currentUserDisplay, b3SubmittedDate: currentDate });
                           }}
@@ -6828,8 +6915,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b4Certs.map((certificate, index) => (
                             <div key={certificate.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
-                                <Input
-                                  type="date"
+                                <FormattedDateInput
                                   placeholder="Date"
                                   className="text-sm"
                                   value={certificate.date}
@@ -7220,7 +7306,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b4SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b4SubmittedBy}
-                              {formData.b4SubmittedDate && ` on ${formData.b4SubmittedDate}`}
+                              {formData.b4SubmittedDate && ` on ${formatDate(formData.b4SubmittedDate) || formData.b4SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -7230,8 +7316,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b4SubmittedBy: currentUserDisplay, b4SubmittedDate: currentDate });
                           }}
@@ -7306,8 +7393,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b5Tests.map((test, index) => (
                             <div key={test.id} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div>
-                                <Input
-                                  type="date"
+                                <FormattedDateInput
                                   placeholder="Date"
                                   className="text-sm"
                                   value={test.date}
@@ -7578,7 +7664,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b5SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b5SubmittedBy}
-                              {formData.b5SubmittedDate && ` on ${formData.b5SubmittedDate}`}
+                              {formData.b5SubmittedDate && ` on ${formatDate(formData.b5SubmittedDate) || formData.b5SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -7588,8 +7674,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b5SubmittedBy: currentUserDisplay, b5SubmittedDate: currentDate });
                           }}
@@ -7668,8 +7755,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             <div key={interview.id}>
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div>
-                                <Input
-                                  type="date"
+                                <FormattedDateInput
                                   placeholder="Date"
                                   className="text-sm"
                                   value={interview.date}
@@ -8012,7 +8098,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b6SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b6SubmittedBy}
-                              {formData.b6SubmittedDate && ` on ${formData.b6SubmittedDate}`}
+                              {formData.b6SubmittedDate && ` on ${formatDate(formData.b6SubmittedDate) || formData.b6SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -8022,8 +8108,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b6SubmittedBy: currentUserDisplay, b6SubmittedDate: currentDate });
                           }}
@@ -8164,8 +8251,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                               </Select>
                             </TableCell>
                             <TableCell className="p-3">
-                              <Input
-                                type="date"
+                              <FormattedDateInput
                                 value={training.dueDate || ''}
                                 onChange={(e) => {
                                   setFormData(prev => ({
@@ -8225,7 +8311,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b7SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b7SubmittedBy}
-                              {formData.b7SubmittedDate && ` on ${formData.b7SubmittedDate}`}
+                              {formData.b7SubmittedDate && ` on ${formatDate(formData.b7SubmittedDate) || formData.b7SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -8235,8 +8321,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b7SubmittedBy: currentUserDisplay, b7SubmittedDate: currentDate });
                           }}
@@ -8256,11 +8343,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
                   
                   <div className="space-y-6">
-                    {/* B1.4 Shortlisted (For final approval) */}
+                    {/* B8.1 Shortlisted for approval */}
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
-                          B1.4 Shortlisted (For final approval)?
+                          B8.1 Shortlisted for approval?
                         </Label>
                         <div className="flex items-center min-w-[300px]">
                           <div className="flex gap-6 w-[200px]">
@@ -8430,7 +8517,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           {formData.b8SubmittedBy ? (
                             <>
                               <span className="font-medium">Submitted by:</span> {formData.b8SubmittedBy}
-                              {formData.b8SubmittedDate && ` on ${formData.b8SubmittedDate}`}
+                              {formData.b8SubmittedDate && ` on ${formatDate(formData.b8SubmittedDate) || formData.b8SubmittedDate}`}
                             </>
                           ) : (
                             <span className="text-gray-400">Not yet submitted</span>
@@ -8440,8 +8527,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           type="button"
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={savingInProgress}
                           onClick={() => {
-                            const currentDate = new Date().toLocaleDateString();
+                            const currentDate = formatDate(new Date());
                             setFormData(prev => ({ ...prev, b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate }));
                             handleSaveScreening(false, false, { b8SubmittedBy: currentUserDisplay, b8SubmittedDate: currentDate });
                           }}
@@ -8540,7 +8628,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <div className="space-y-6">
                   <div>
                     <div className="flex justify-between items-center mb-4">
-                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
+                      <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4 font-normal">
                         C1.1 Approved?
                       </Label>
                       <Button
@@ -8561,8 +8649,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         <div key={approver.id} className="space-y-3">
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
-                              <Input
-                                type="date"
+                              <FormattedDateInput
                                 placeholder="Date"
                                 className="text-sm"
                                 value={approver.date}
@@ -8865,7 +8952,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       </div>
                       <div className="text-xs text-gray-500">
                         {formData.c3SubmittedDate && (
-                          <>Date: {formData.c3SubmittedDate}</>
+                          <>Date: {formatDate(formData.c3SubmittedDate) || formData.c3SubmittedDate}</>
                         )}
                       </div>
                     </div>
@@ -9035,7 +9122,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             </div>
           </aside>
           
-          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
+          <div ref={contentAreaRef} className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
             {renderContent()}
           </div>
         </div>

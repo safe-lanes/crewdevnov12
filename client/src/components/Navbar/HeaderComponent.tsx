@@ -305,7 +305,7 @@ export default function HeaderComponent({
 
                         <div className="flex flex-col items-center justify-center w-[60px] sm:w-[80px] lg:w-[100px] h-full bg-[#f1f1f1] border-r border-gray-300 ml-2 sm:ml-4 lg:ml-8">
                             <ModuleNavigator
-                                currentModule="crewing"
+                                currentModule="Crewing"
                                 onModuleChange={handleModuleChange}
                             />
                         </div>

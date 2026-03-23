@@ -426,6 +426,15 @@ class PDFBuilder {
     this.drawTextAt(displayValue(value), x, this.yPosition - 12, 9, 'normal');
   }
 
+  drawWrappedTextAt(text: string, x: number, y: number, maxWidth: number, fontSize: number = 9, fontType: 'normal' | 'bold' | 'italic' = 'normal', color = TEXT_COLOR): number {
+    const font = fontType === 'bold' ? this.fontBold : fontType === 'italic' ? this.fontItalic : this.font;
+    const lines = this.wrapText(sanitizeText(text || ''), maxWidth, fontSize);
+    for (let i = 0; i < lines.length; i++) {
+      this.currentPage.drawText(lines[i], { x, y: y - (i * 11), size: fontSize, font, color });
+    }
+    return lines.length;
+  }
+
   private wrapText(text: string, maxWidth: number, fontSize: number): string[] {
     if (this.font.widthOfTextAtSize(text, fontSize) <= maxWidth) return [text];
     const words = text.split(/([,] )/);
@@ -531,39 +540,107 @@ class PDFBuilder {
     this.moveDown(headerHeight);
   }
 
+  private wrapTableCell(text: string, maxWidth: number, fontSize: number): string[] {
+    if (this.font.widthOfTextAtSize(text, fontSize) <= maxWidth) return [text];
+    const words = text.split(/\s+/);
+    const lines: string[] = [];
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine ? currentLine + ' ' + word : word;
+      if (this.font.widthOfTextAtSize(testLine, fontSize) > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    const result: string[] = [];
+    for (const line of lines) {
+      if (this.font.widthOfTextAtSize(line, fontSize) <= maxWidth) {
+        result.push(line);
+      } else {
+        let remaining = line;
+        while (remaining && this.font.widthOfTextAtSize(remaining, fontSize) > maxWidth) {
+          let end = remaining.length;
+          while (end > 1 && this.font.widthOfTextAtSize(remaining.slice(0, end), fontSize) > maxWidth) {
+            end--;
+          }
+          result.push(remaining.slice(0, end));
+          remaining = remaining.slice(end);
+        }
+        if (remaining) result.push(remaining);
+      }
+    }
+    return result;
+  }
+
   drawTableRow(values: string[], colWidths: number[], rowHeight: number = 16): void {
-    this.checkPageBreak(rowHeight + 5);
-    let x = MARGIN;
-    
-    this.drawRect(MARGIN, this.yPosition - rowHeight, CONTENT_WIDTH, rowHeight);
-    this.drawCellDividers(colWidths, this.yPosition - rowHeight, rowHeight);
-    
+    const fontSize = 7;
+    const lineSpacing = 9;
+    const cellPadding = 4;
+    const cellLines: string[][] = [];
+    let maxLines = 1;
     for (let i = 0; i < values.length; i++) {
       const maxWidth = colWidths[i] - 8;
-      let displayVal = displayValue(values[i]);
-      const textWidth = this.font.widthOfTextAtSize(displayVal, 7);
-      if (textWidth > maxWidth && displayVal.length > 3) {
-        while (displayVal.length > 3 && this.font.widthOfTextAtSize(displayVal + '...', 7) > maxWidth) {
-          displayVal = displayVal.slice(0, -1);
-        }
-        displayVal += '...';
+      const val = displayValue(values[i]);
+      const lines = this.wrapTableCell(val, maxWidth, fontSize);
+      cellLines.push(lines);
+      if (lines.length > maxLines) maxLines = lines.length;
+    }
+    const dynamicHeight = Math.max(rowHeight, cellPadding + maxLines * lineSpacing + 3);
+    this.checkPageBreak(dynamicHeight + 5);
+    let x = MARGIN;
+
+    this.drawRect(MARGIN, this.yPosition - dynamicHeight, CONTENT_WIDTH, dynamicHeight);
+    this.drawCellDividers(colWidths, this.yPosition - dynamicHeight, dynamicHeight);
+
+    for (let i = 0; i < values.length; i++) {
+      const lines = cellLines[i];
+      for (let li = 0; li < lines.length; li++) {
+        this.drawTextAt(lines[li], x + 4, this.yPosition - 11 - (li * lineSpacing), fontSize, 'normal', TEXT_COLOR);
       }
-      this.drawTextAt(displayVal, x + 4, this.yPosition - 11, 7, 'normal', TEXT_COLOR);
       x += colWidths[i];
     }
-    this.moveDown(rowHeight);
+    this.moveDown(dynamicHeight);
   }
 
   drawRadioQuestion(label: string, options: Array<{label: string, value: string}>, selectedValue: string, hasNA: boolean = false): void {
-    this.checkPageBreak(20);
-    this.drawText(label, MARGIN, 9, 'normal', TEXT_COLOR);
-    
-    let x = MARGIN + CONTENT_WIDTH - (hasNA ? 190 : 130);
+    const radioAreaWidth = hasNA ? 190 : 130;
+    const maxLabelWidth = CONTENT_WIDTH - radioAreaWidth - 10;
+    const words = sanitizeText(label).split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      const width = this.font.widthOfTextAtSize(testLine, 9);
+      if (width > maxLabelWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    const totalHeight = lines.length * (LINE_HEIGHT + 2);
+    this.checkPageBreak(Math.max(totalHeight, 20));
+
+    const firstLineY = this.yPosition;
+    this.drawText(lines[0], MARGIN, 9, 'normal', TEXT_COLOR);
+
+    let x = MARGIN + CONTENT_WIDTH - radioAreaWidth;
     for (const option of options) {
       const isSelected = selectedValue?.toLowerCase() === option.value.toLowerCase();
-      const nextX = this.drawRadioButton(x, this.yPosition + 3, isSelected);
-      this.drawTextAt(option.label, nextX + 2, this.yPosition, 8, 'normal', TEXT_COLOR);
+      const nextX = this.drawRadioButton(x, firstLineY + 3, isSelected);
+      this.drawTextAt(option.label, nextX + 2, firstLineY, 8, 'normal', TEXT_COLOR);
       x += hasNA ? 60 : 55;
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+      this.moveDown(LINE_HEIGHT + 2);
+      this.drawText(lines[i], MARGIN, 9, 'normal', TEXT_COLOR);
     }
     this.moveDown(LINE_HEIGHT + 4);
   }
@@ -645,9 +722,9 @@ export async function generateRecruitmentPDF(formData: FormData, candidateName: 
 }
 
 async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void> {
-  builder.drawSectionHeader('PART A - SEAFARER\'S APPLICATION');
+  builder.drawSectionHeader('PART A - SEAFARER\'S PARTICULARS');
 
-  builder.drawPartHeader('A1 — Personal Details');
+  builder.drawPartHeader('A1 — Seafarers\' Particulars');
   builder.drawSubsectionHeader('A1.1 General Particulars');
   
   builder.checkPageBreak(130);
@@ -692,90 +769,100 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     builder.drawTextAt('Nationality', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
     builder.drawTextAt(displayValue(formData.nationality), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
     
-    builder.drawTextAt('Date of Birth', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
-    builder.drawTextAt(displayValue(formatDate(formData.dateOfBirth)), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+    builder.drawTextAt('Present Rank', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.presentRank), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
   }
   
   currentY -= 30;
   if (currentY > safeMinY) {
-    builder.drawTextAt('Place of Birth (City)', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
-    builder.drawTextAt(displayValue(formData.placeOfBirthCity), fieldStartX, currentY - 12, 9, 'normal');
+    builder.drawTextAt('Date of birth', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formatDate(formData.dateOfBirth)), fieldStartX, currentY - 12, 9, 'normal');
     
-    builder.drawTextAt('Place of Birth (Country)', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
-    builder.drawTextAt(displayValue(formData.placeOfBirthCountry), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
+    builder.drawTextAt('Age( Years )', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.ageInYears), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
     
-    builder.drawTextAt('Age (Years)', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
-    builder.drawTextAt(displayValue(formData.ageInYears), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+    builder.drawTextAt('Place of birth( City )', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+    builder.drawTextAt(displayValue(formData.placeOfBirthCity), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
   }
   
   builder.setY(Math.min(currentY - 25, photoY - photoHeight - 10));
-  
-  builder.drawFieldRow([
-    { label: 'Rank Applied For', value: formData.rankAppliedFor },
-    { label: 'Present Rank', value: formData.presentRank },
-    { label: 'Vessel Type', value: formData.vesselType?.join(', ') || '' },
-  ]);
-  
-  builder.drawFieldRow([
-    { label: 'Height (cm)', value: formData.heightCm },
-    { label: 'Weight (kg)', value: formData.weightKg },
-    { label: 'File No', value: formData.fileNo },
-  ]);
-  
-  builder.drawFieldRow([
-    { label: 'Native Language', value: formData.nativeLanguage },
-    { label: 'Foreign Languages', value: formData.foreignLanguages },
-    { label: 'English Proficiency', value: formData.englishProficiency },
-  ]);
-  
-  builder.drawFieldRow([
-    { label: 'Manning Agent', value: formData.manningAgent },
-    { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
 
-  builder.drawSubsectionHeader('A1.2 Address & Contact Information');
+  const baseRowSpacing = 28;
+  const col1MaxWidth = photoWidth;
+  currentY = builder.getY();
+
+  builder.drawTextAt('Rank Applied For', MARGIN, currentY, 8, 'normal', LABEL_COLOR);
+  const rankLines = builder.drawWrappedTextAt(displayValue(formData.rankAppliedFor), MARGIN, currentY - 12, col1MaxWidth);
+  builder.drawTextAt('Place of birth( Country )', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.placeOfBirthCountry), fieldStartX, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Height( Cm )', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.heightCm), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Weight( kg )', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.weightKg), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+
+  let row1Height = Math.max(baseRowSpacing, 12 + rankLines * 11 + 5);
+  currentY -= row1Height;
+  builder.setY(currentY);
+  builder.checkPageBreak(baseRowSpacing);
+  currentY = builder.getY();
+
+  builder.drawTextAt('Vessel Type', MARGIN, currentY, 8, 'normal', LABEL_COLOR);
+  const vesselLines = builder.drawWrappedTextAt(displayValue(formData.vesselType?.join(', ') || ''), MARGIN, currentY - 12, col1MaxWidth);
+  builder.drawTextAt('Native Language', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.nativeLanguage), fieldStartX, currentY - 12, 9, 'normal');
+  builder.drawTextAt('English Proficiency', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.englishProficiency), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Foreign Languages', fieldStartX + fieldColWidth * 2, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.foreignLanguages), fieldStartX + fieldColWidth * 2, currentY - 12, 9, 'normal');
+
+  let row2Height = Math.max(baseRowSpacing, 12 + vesselLines * 11 + 5);
+  currentY -= row2Height;
+  builder.setY(currentY);
+  builder.checkPageBreak(baseRowSpacing);
+  currentY = builder.getY();
+
+  builder.drawTextAt('File No', MARGIN, currentY, 8, 'normal', LABEL_COLOR);
+  const fileLines = builder.drawWrappedTextAt(displayValue(formData.fileNo), MARGIN, currentY - 12, col1MaxWidth);
+  builder.drawTextAt('Manning Agent', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.manningAgent), fieldStartX, currentY - 12, 9, 'normal');
+
+  let row3Height = Math.max(baseRowSpacing, 12 + fileLines * 11 + 5);
+  builder.setY(currentY - row3Height);
+
+  builder.drawSubsectionHeader('A1.2 Address & Contact Info');
   builder.drawFieldRow([
     { label: 'Country of Residence', value: formData.countryOfResidence },
     { label: 'Nearest Airport', value: formData.nearestAirport },
-    { label: '', value: '' },
-  ]);
-  builder.drawFieldRow([
-    { label: 'Address Line 1', value: formData.residentialAddressLine1 },
-    { label: 'Address Line 2', value: formData.residentialAddressLine2 },
-    { label: '', value: '' },
-  ]);
-  builder.drawFieldRow([
-    { label: 'Landline', value: formData.contactLandline },
     { label: 'Mobile', value: formData.mobile },
     { label: 'Email', value: formData.email },
-  ]);
+  ], CONTENT_WIDTH / 4);
+  builder.drawFieldRow([
+    { label: 'Residential Address Line 1( House No./Building/Street )', value: formData.residentialAddressLine1 },
+    { label: 'Residential Address Line 2( City, State, PIN )', value: formData.residentialAddressLine2 },
+  ], CONTENT_WIDTH / 2);
+  builder.drawFieldRow([
+    { label: 'Contact Landline', value: formData.contactLandline },
+    { label: '', value: '' },
+    { label: '', value: '' },
+    { label: '', value: '' },
+  ], CONTENT_WIDTH / 4);
 
-  builder.drawSubsectionHeader('A1.3 Family & Next of Kin');
+  builder.drawSubsectionHeader('A1.3 Family and NOK');
   builder.drawFieldRow([
     { label: 'Marital Status', value: formData.maritalStatus },
-    { label: 'Dependent Children', value: formData.numberOfDependentChildren },
-    { label: '', value: '' },
-  ]);
-  builder.drawFieldRow([
+    { label: 'No. of Dependant Children', value: formData.numberOfDependentChildren },
     { label: 'Father\'s Name', value: formData.fatherName },
     { label: 'Mother\'s Name', value: formData.motherName },
-    { label: '', value: '' },
-  ]);
-  
+  ], CONTENT_WIDTH / 4);
   builder.drawFieldRow([
     { label: 'Spouse First Name', value: formData.spouseFirstName },
     { label: 'Spouse Middle Name', value: formData.spouseMiddleName },
     { label: 'Spouse Family Name', value: formData.spouseFamilyName },
-  ]);
-  builder.drawFieldRow([
     { label: 'Spouse Date of Birth', value: formatDate(formData.spouseDateOfBirth) },
-    { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH / 4);
   
   builder.checkPageBreak(50);
-  builder.drawText('Children:', MARGIN, 9, 'bold');
+  builder.drawText('Children Information:', MARGIN, 9, 'bold');
   builder.moveDown(LINE_HEIGHT);
   if (formData.children && formData.children.length > 0) {
     const childColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.12];
@@ -798,22 +885,19 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   builder.drawText('Next of Kin:', MARGIN, 9, 'bold');
   builder.moveDown(LINE_HEIGHT);
   builder.drawFieldRow([
-    { label: 'NOK First Name', value: formData.nokFirstName },
-    { label: 'NOK Middle Name', value: formData.nokMiddleName },
-    { label: 'NOK Family Name', value: formData.nokFamilyName },
-  ]);
+    { label: 'NOK: First Name', value: formData.nokFirstName },
+    { label: 'NOK: Middle Name', value: formData.nokMiddleName },
+    { label: 'NOK: Family Name', value: formData.nokFamilyName },
+    { label: 'NOK: Email', value: formData.nokEmail },
+  ], CONTENT_WIDTH / 4);
   builder.drawFieldRow([
-    { label: 'NOK Relationship', value: formData.nokRelationship },
-    { label: 'NOK Telephone', value: formData.nokTelephone },
-    { label: 'NOK Email', value: formData.nokEmail },
-  ]);
-  builder.drawFieldRow([
-    { label: 'NOK Address', value: formData.nokAddress },
+    { label: 'NOK: Address', value: formData.nokAddress },
+    { label: 'NOK: Relationship', value: formData.nokRelationship },
+    { label: 'NOK: Tel', value: formData.nokTelephone },
     { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH / 4);
 
-  builder.drawPartHeader('A2 — Documents');
+  builder.drawPartHeader('A2 — Travel & ID Documents');
   builder.drawSubsectionHeader('A2.1 Travel & Identification Documents');
   if (formData.documents && formData.documents.length > 0) {
     const docColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.30];
@@ -870,8 +954,8 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
 
   builder.drawSubsectionHeader('A3.2 License & DCE');
   if (formData.licenses && formData.licenses.length > 0) {
-    const licColWidths = [CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14];
-    builder.drawTableHeader(['Certificate/Document', 'Abbr', 'Req', 'Cert No', 'Issuing Auth', 'Issued', 'Expiry'], licColWidths);
+    const licColWidths = [CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14];
+    builder.drawTableHeader(['Certificate/Document', 'Abbr', 'Requirement', 'Certificate No', 'Issuing Authority', 'Issued', 'Expiry'], licColWidths);
     for (const lic of formData.licenses) {
       builder.drawTableRow([
         lic.certificateDocument || '',
@@ -888,10 +972,10 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     builder.moveDown(LINE_HEIGHT);
   }
 
-  builder.drawSubsectionHeader('A3.3 Training Courses');
+  builder.drawSubsectionHeader('A3.3 Training Course');
   if (formData.trainingCourses && formData.trainingCourses.length > 0) {
-    const trainColWidths = [CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14];
-    builder.drawTableHeader(['Training Course', 'Abbr', 'Req', 'Cert No', 'Issuing Auth', 'Issued', 'Expiry'], trainColWidths);
+    const trainColWidths = [CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14];
+    builder.drawTableHeader(['Training/Course', 'Abbr', 'Requirement', 'Certificate No', 'Issuing Authority', 'Issued', 'Expiry'], trainColWidths);
     for (const course of formData.trainingCourses) {
       builder.drawTableRow([
         course.trainingCourse || '',
@@ -909,10 +993,10 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   }
 
   builder.drawPartHeader('A4 — Sea Service');
-  builder.drawSubsectionHeader('A4.1 Sea Service');
+  builder.drawSubsectionHeader('A4.1 Details of Sea Service');
   if (formData.seaService && formData.seaService.length > 0) {
-    const seaColWidths = [CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.07];
-    builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'DWT', 'Engine/Power', 'Owner/Operator', 'Rank', 'From', 'To', 'Months', ''], seaColWidths);
+    const seaColWidths = [CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.10];
+    builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'Deadweight', 'Engine Type/Power', 'Owner/Operator', 'Rank', 'From', 'To', 'Period(M)'], seaColWidths);
     for (const service of formData.seaService) {
       builder.drawTableRow([
         service.vesselName || '',
@@ -924,7 +1008,6 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
         formatDate(service.from),
         formatDate(service.to),
         service.periodMonths || '',
-        '',
       ], seaColWidths);
     }
   } else {
@@ -933,13 +1016,15 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   }
 
   builder.drawPartHeader('A5 — Additional Information');
+  builder.drawSubsectionHeader('A5.1 Details on Additional Information required');
   if (formData.additionalInfo && formData.additionalInfo.length > 0) {
+    const addInfoColWidths = [CONTENT_WIDTH * 0.50, CONTENT_WIDTH * 0.50];
+    builder.drawTableHeader(['Information', 'Response'], addInfoColWidths);
     for (const info of formData.additionalInfo) {
-      builder.checkPageBreak(40);
-      builder.drawText(displayValue(info.information), MARGIN, 9, 'bold');
-      builder.moveDown(LINE_HEIGHT);
-      builder.drawText(displayValue(info.response), MARGIN + 10, 9, 'normal');
-      builder.moveDown(LINE_HEIGHT);
+      builder.drawTableRow([
+        info.information || '',
+        info.response || '',
+      ], addInfoColWidths);
     }
   } else {
     builder.drawText('No additional information', MARGIN + 10, 8, 'italic', LABEL_COLOR);
@@ -948,7 +1033,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
 }
 
 function drawPartB(builder: PDFBuilder, formData: FormData): void {
-  builder.drawSectionHeader('PART B - OFFICE SCREENING');
+  builder.drawSectionHeader('PART B - COMPANY PROCESSING');
 
   builder.drawSubsectionHeader('B1. Initial Screening');
   builder.drawRadioQuestion('B1.1 Age meets Company Criteria for the Rank applied for?',
@@ -973,16 +1058,11 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 
   builder.drawSubmissionInfo(formData.b1SubmittedBy, formData.b1SubmittedDate);
 
-  builder.drawSubsectionHeader('B2. Reference Checks');
+  builder.drawSubsectionHeader('B2. Reference Checks with Previous Employer');
   builder.drawRadioQuestion('B2.1 Reference checks completed?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b2ReferencesCompleted, false);
-  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-completed');
-
-  builder.drawRadioQuestion('B2.2 Current employer feedback positive?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
-    formData.b2EmployerFeedback, true);
-  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-results');
+    formData.b2ReferencesCompleted, true);
+  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-completed');
 
   builder.checkPageBreak(50);
   builder.drawText('References:', MARGIN, 9, 'bold');
@@ -997,18 +1077,19 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('No references recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
+  builder.moveDown(LINE_HEIGHT);
+
+  builder.drawRadioQuestion('B2.2 Reference checks results positive? If yes, record brief overview of verification in comment. If no state details.',
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b2EmployerFeedback, true);
+  builder.drawCommentsForQuestion(formData.b2Comments, 'b2-results');
   builder.drawSubmissionInfo(formData.b2SubmittedBy, formData.b2SubmittedDate);
 
   builder.drawSubsectionHeader('B3. Background Security Checks');
-  builder.drawRadioQuestion('B3.1 Security checks completed?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b3ChecksCompleted, false);
-  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-completed');
-
-  builder.drawRadioQuestion('B3.2 Security checks results positive?',
+  builder.drawRadioQuestion('B3.1 Background security checks completed?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
-    formData.b3Results, true);
-  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-results');
+    formData.b3ChecksCompleted, true);
+  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-completed');
 
   builder.checkPageBreak(50);
   builder.drawText('Authorities Consulted:', MARGIN, 9, 'bold');
@@ -1023,25 +1104,26 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('No authorities recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
+  builder.moveDown(LINE_HEIGHT);
+
+  builder.drawRadioQuestion('B3.2 Background Security checks results positive? If yes, record brief overview of verification. If no state details.',
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b3Results, true);
+  builder.drawCommentsForQuestion(formData.b3Comments, 'b3-results');
   builder.drawSubmissionInfo(formData.b3SubmittedBy, formData.b3SubmittedDate);
 
   builder.drawSubsectionHeader('B4. Authentication of Certificates & Documents');
-  builder.drawRadioQuestion('B4.1 Certificates authenticated?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b4CertificatesAuthenticated, false);
-  builder.drawCommentsForQuestion(formData.b4Comments, 'b4-auth');
-
-  builder.drawRadioQuestion('B4.2 Authentication results positive?',
+  builder.drawRadioQuestion('B4.1 Certificates & Documents Authenticated?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
-    formData.b4Results, true);
-  builder.drawCommentsForQuestion(formData.b4Comments, 'b4-results');
+    formData.b4CertificatesAuthenticated, true);
+  builder.drawCommentsForQuestion(formData.b4Comments, 'b4-authenticated');
 
   builder.checkPageBreak(50);
   builder.drawText('Certificates Authenticated:', MARGIN, 9, 'bold');
   builder.moveDown(LINE_HEIGHT);
   if (formData.b4Certs && formData.b4Certs.length > 0) {
     const certColWidths = [CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.40, CONTENT_WIDTH * 0.40];
-    builder.drawTableHeader(['Date', 'Certificate', 'Authority'], certColWidths);
+    builder.drawTableHeader(['Date', 'Certificate', 'Issuing Authority'], certColWidths);
     for (const cert of formData.b4Certs) {
       builder.drawTableRow([formatDate(cert.date), cert.certificate || '', cert.authority || ''], certColWidths);
     }
@@ -1049,13 +1131,19 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('No certificates recorded', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
+  builder.moveDown(LINE_HEIGHT);
+
+  builder.drawRadioQuestion('B4.2 Authentication checks results positive? If yes, record brief overview of verification in comment. If no state details.',
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b4Results, true);
+  builder.drawCommentsForQuestion(formData.b4Comments, 'b4-results');
   builder.drawSubmissionInfo(formData.b4SubmittedBy, formData.b4SubmittedDate);
 
-  builder.drawSubsectionHeader('B5. CES/Language Test Results');
-  builder.drawRadioQuestion('B5.1 CES tests completed?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b5TestsCompleted, false);
-  builder.drawCommentsForQuestion(formData.b5Comments, 'b5-ces');
+  builder.drawSubsectionHeader('B5. CES / Language Test Results');
+  builder.drawRadioQuestion('B5.1 Applicable CES / Language Tests completed?',
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b5TestsCompleted, true);
+  builder.drawCommentsForQuestion(formData.b5Comments, 'b5-completed');
 
   builder.checkPageBreak(50);
   builder.drawText('Test Results:', MARGIN, 9, 'bold');
@@ -1072,11 +1160,11 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   }
   builder.drawSubmissionInfo(formData.b5SubmittedBy, formData.b5SubmittedDate);
 
-  builder.drawSubsectionHeader('B6. Interviews');
+  builder.drawSubsectionHeader('B6. Interview(s)');
   builder.drawRadioQuestion('B6.1 Interview completed?',
-    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
-    formData.b6InterviewCompleted, false);
-  builder.drawCommentsForQuestion(formData.b6Comments, 'b6-int');
+    [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'NA', value: 'na' }],
+    formData.b6InterviewCompleted, true);
+  builder.drawCommentsForQuestion(formData.b6Comments, 'b6-completed');
 
   builder.checkPageBreak(50);
   builder.drawText('Interview Records:', MARGIN, 9, 'bold');
@@ -1122,7 +1210,7 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
   builder.drawRadioQuestion('B8.1 Shortlisted for approval?',
     [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }],
     formData.b8Shortlisted, false);
-  builder.drawCommentsForQuestion(formData.b8Comments, 'b8-shortlist');
+  builder.drawCommentsForQuestion(formData.b8Comments, 'b8-shortlisted');
   builder.drawSubmissionInfo(formData.b8SubmittedBy, formData.b8SubmittedDate);
 
   if (formData.approvalSubmittedBy) {
@@ -1142,36 +1230,26 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 function drawPartC(builder: PDFBuilder, formData: FormData): void {
   builder.drawSectionHeader('PART C - APPROVAL');
 
-  builder.drawSubsectionHeader('C1. Approval');
+  builder.drawSubsectionHeader('C.1 Approval');
+  builder.drawText('C1.1 Approved?', MARGIN, 9, 'normal');
+  builder.moveDown(LINE_HEIGHT + 2);
   if (formData.c1Approvers && formData.c1Approvers.length > 0) {
+    const c1ColWidths = [CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.33];
+    builder.drawTableHeader(['Date', 'Approver', 'Status', 'Approval', 'Comments'], c1ColWidths);
     for (const approver of formData.c1Approvers) {
-      builder.checkPageBreak(60);
-      builder.drawText(`Approver: ${displayValue(approver.approver)}`, MARGIN, 9, 'bold');
-      builder.moveDown(LINE_HEIGHT);
-      
-      builder.drawText(`Date: ${displayValue(formatDate(approver.date))}    Status: ${displayValue(approver.status)}`, MARGIN + 10, 8, 'normal', LABEL_COLOR);
-      builder.moveDown(LINE_HEIGHT);
-      
-      builder.drawText('Approval:', MARGIN + 10, 9, 'normal');
-      let x = MARGIN + 70;
-      const approvalOptions = ['Yes', 'Yes, Conditional', 'No'];
-      for (const opt of approvalOptions) {
-        const isSelected = approver.approval === opt;
-        x = builder.drawRadioButton(x, builder.getY() + 3, isSelected);
-        builder.drawTextAt(opt, x, builder.getY(), 8, 'normal');
-        x += opt.length * 5 + 25;
-      }
-      builder.moveDown(LINE_HEIGHT + 5);
-      
-      if (approver.comments) {
-        builder.drawComment(approver.approver || 'Approver', approver.comments);
-      }
-      builder.moveDown(8);
+      builder.drawTableRow([
+        formatDate(approver.date),
+        approver.approver || '',
+        approver.status || '',
+        approver.approval || '',
+        approver.comments || '',
+      ], c1ColWidths);
     }
   } else {
     builder.drawText('No approvers assigned', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
+  builder.moveDown(LINE_HEIGHT);
 
   builder.drawSubsectionHeader('C2. Suitable for');
   builder.drawText('C2.1 Vessel type(s):', MARGIN, 9, 'normal');
@@ -1179,14 +1257,14 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
   builder.drawText(formData.c2VesselTypes && formData.c2VesselTypes.length > 0 ? formData.c2VesselTypes.join(', ') : '-', MARGIN + 10, 9, 'normal');
   builder.moveDown(LINE_HEIGHT);
   
-  builder.drawText('C2.2 Fleet group(s):', MARGIN, 9, 'normal');
+  builder.drawText('C2.2 Vessel Class/ Fleet:', MARGIN, 9, 'normal');
   builder.moveDown(LINE_HEIGHT);
   builder.drawText(formData.c2FleetGroups && formData.c2FleetGroups.length > 0 ? formData.c2FleetGroups.join(', ') : '-', MARGIN + 10, 9, 'normal');
   builder.moveDown(LINE_HEIGHT);
 
-  builder.drawSubsectionHeader('C3. Recruited');
+  builder.drawSubsectionHeader('C3 Recruited & Assigned to');
   builder.checkPageBreak(40);
-  builder.drawText('C3.1 Recruitment Decision:', MARGIN, 9, 'normal');
+  builder.drawText('C3.1 Recruitment confirmed:', MARGIN, 9, 'normal');
   let x = MARGIN + 150;
   const recruitmentOptions = [{ label: 'Yes', value: 'Yes' }, { label: 'Waitlist', value: 'Waitlist' }, { label: 'Rejected', value: 'Rejected' }];
   for (const opt of recruitmentOptions) {
@@ -1197,7 +1275,7 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
   }
   builder.moveDown(LINE_HEIGHT + 5);
   
-  builder.drawText('C3.2 Vessel, Vessel Class/Fleet:', MARGIN, 9, 'normal');
+  builder.drawText('C3.2 Vessel, Vessel Class/ Fleet:', MARGIN, 9, 'normal');
   builder.moveDown(LINE_HEIGHT);
   if (formData.c3AssignedGroups && formData.c3AssignedGroups.length > 0) {
     builder.drawText(formData.c3AssignedGroups.join(', '), MARGIN + 10, 9, 'normal');
