@@ -581,7 +581,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, string>>({});
   const [licRequiredErrors, setLicRequiredErrors] = useState<Record<string, string>>({});
   const [trainRequiredErrors, setTrainRequiredErrors] = useState<Record<string, string>>({});
-  const [seaServiceRequiredErrors, setSeaServiceRequiredErrors] = useState<Record<string, string[]>>({});
+  const [seaServiceRequiredErrors, setSeaServiceRequiredErrors] = useState<Record<string, Record<string, string>>>({});
   const [deletedChildUuids, setDeletedChildUuids] = useState<string[]>([]);
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
@@ -909,14 +909,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   }, [formData.currentCompanySeaService, formData.externalSeaService]);
 
   const validateSeaServiceFieldOnBlur = useCallback((serviceId: string, service: any) => {
-    const missing: string[] = [];
-    if (!(service.vesselName || '').trim()) missing.push('Vessel Name');
-    if (!(service.vesselType || '').trim()) missing.push('Vessel Type');
-    if (!(service.rank || '').trim()) missing.push('Rank');
-    if (!(service.from || service.fromDate || '').trim()) missing.push('From Date');
-    if (!(service.to || service.toDate || '').trim()) missing.push('To Date');
+    const fieldErrors: Record<string, string> = {};
+    if (!(service.vesselName || '').trim()) fieldErrors.vesselName = 'Vessel name is required.';
+    if (!(service.vesselType || '').trim()) fieldErrors.vesselType = 'Vessel type is required.';
+    if (!(service.rank || '').trim()) fieldErrors.rank = 'Rank is required.';
+    if (!(service.from || service.fromDate || '').trim()) fieldErrors.from = 'From date is required.';
+    if (!(service.to || service.toDate || '').trim()) fieldErrors.to = 'To date is required.';
     setSeaServiceRequiredErrors(prev => {
-      if (missing.length > 0) return { ...prev, [serviceId]: missing };
+      if (Object.keys(fieldErrors).length > 0) return { ...prev, [serviceId]: fieldErrors };
       const next = { ...prev };
       delete next[serviceId];
       return next;
@@ -4653,10 +4653,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                   updateCurrentCompanySeaService(service.id, 'vesselType', vesselTypeName);
                                 }
                               }
+                              if (seaServiceRequiredErrors[service.id]?.vesselName && selectedVessel?.name) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; });
                               setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselCode: value, vesselName: selectedVessel?.name || '', vesselType: selectedVessel?.vtuid ? (vesselTypeIdToNameMap.get(selectedVessel.vtuid) || service.vesselType) : service.vesselType }), 0);
                             }}
                           >
-                            <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                               <SelectValue placeholder="Select vessel">
                                 {service.vesselName || "Select vessel"}
                               </SelectValue>
@@ -4676,6 +4677,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectContent>
                           </Select>
                         )}
+                        {seaServiceRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselName}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {isVesselSynced ? (
@@ -4683,9 +4685,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <Select
                             value={service.vesselType}
-                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'vesselType', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
+                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'vesselType', value); if (seaServiceRequiredErrors[service.id]?.vesselType) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselType: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
                           >
-                            <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                               <SelectValue placeholder="Select vessel type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -4697,6 +4699,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectContent>
                           </Select>
                         )}
+                        {seaServiceRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselType}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -4728,9 +4731,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <Select
                             value={service.rank}
-                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'rank', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
+                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'rank', value); if (seaServiceRequiredErrors[service.id]?.rank) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                           >
-                            <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                               <SelectValue placeholder="Select rank" />
                             </SelectTrigger>
                             <SelectContent>
@@ -4750,6 +4753,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectContent>
                           </Select>
                         )}
+                        {seaServiceRequiredErrors[service.id]?.rank && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].rank}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {isVesselSynced ? (
@@ -4757,11 +4761,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <FormattedDateInput
                             value={service.from}
-                            onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
+                            onChange={(e) => { updateCurrentCompanySeaService(service.id, 'from', e.target.value); if (seaServiceRequiredErrors[service.id]?.from && e.target.value) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                             onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, from: e.target.value }); }}
-                            className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                            className={`border ${seaServiceRequiredErrors[service.id]?.from ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                           />
                         )}
+                        {seaServiceRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].from}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
@@ -4796,15 +4801,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             return (
                               <FormattedDateInput
                                 value={service.to}
-                                onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
+                                onChange={(e) => { updateCurrentCompanySeaService(service.id, 'to', e.target.value); if (seaServiceRequiredErrors[service.id]?.to && e.target.value) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { to: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                                 onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, to: e.target.value }); }}
-                                className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                className={`border ${(seaServiceRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id || (service as any).seaUuid]) ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                                 data-testid={`input-date-to-${service.id}`}
                               />
                             );
                           }
                         })()}
-                        {seaServiceDateErrors[service.id || (service as any).seaUuid] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e1-to-error-${service.id}`}>{seaServiceDateErrors[service.id || (service as any).seaUuid]}</p>}
+                        {seaServiceRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].to}</p>}
+                        {!seaServiceRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id || (service as any).seaUuid] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e1-to-error-${service.id}`}>{seaServiceDateErrors[service.id || (service as any).seaUuid]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
@@ -4917,9 +4923,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
-                        {seaServiceRequiredErrors[service.id || `e1-${formData.currentCompanySeaService.indexOf(service)}`] && (
-                          <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e1-${formData.currentCompanySeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
-                        )}
                       </td>
                       )}
                     </tr>
@@ -4993,18 +4996,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={service.vesselName}
-                          onChange={(e) => updateExternalSeaService(service.id, 'vesselName', e.target.value)}
+                          onChange={(e) => { updateExternalSeaService(service.id, 'vesselName', e.target.value); if (seaServiceRequiredErrors[service.id]?.vesselName && e.target.value.trim()) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                           onBlur={() => validateSeaServiceFieldOnBlur(service.id, service)}
-                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className={`border ${seaServiceRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                           placeholder="Enter vessel name"
                         />
+                        {seaServiceRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselName}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
                           value={service.vesselType}
-                          onValueChange={(value) => { updateExternalSeaService(service.id, 'vesselType', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
+                          onValueChange={(value) => { updateExternalSeaService(service.id, 'vesselType', value); if (seaServiceRequiredErrors[service.id]?.vesselType) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselType: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
                         >
-                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                          <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                             <SelectValue placeholder="Select vessel type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -5015,6 +5019,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             ))}
                           </SelectContent>
                         </Select>
+                        {seaServiceRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselType}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -5043,9 +5048,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
                           value={service.rank}
-                          onValueChange={(value) => { updateExternalSeaService(service.id, 'rank', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
+                          onValueChange={(value) => { updateExternalSeaService(service.id, 'rank', value); if (seaServiceRequiredErrors[service.id]?.rank) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                         >
-                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                          <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                             <SelectValue placeholder="Select rank" />
                           </SelectTrigger>
                           <SelectContent>
@@ -5064,23 +5069,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             )}
                           </SelectContent>
                         </Select>
+                        {seaServiceRequiredErrors[service.id]?.rank && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].rank}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <FormattedDateInput
                           value={service.from}
-                          onChange={(e) => updateExternalSeaService(service.id, 'from', e.target.value)}
+                          onChange={(e) => { updateExternalSeaService(service.id, 'from', e.target.value); if (seaServiceRequiredErrors[service.id]?.from && e.target.value) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                           onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, from: e.target.value }); }}
-                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className={`border ${seaServiceRequiredErrors[service.id]?.from ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                         />
+                        {seaServiceRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].from}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <FormattedDateInput
                           value={service.to}
-                          onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
+                          onChange={(e) => { updateExternalSeaService(service.id, 'to', e.target.value); if (seaServiceRequiredErrors[service.id]?.to && e.target.value) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { to: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                           onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, to: e.target.value }); }}
-                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className={`border ${(seaServiceRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                         />
-                        {seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
+                        {seaServiceRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].to}</p>}
+                        {!seaServiceRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -5171,9 +5179,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
-                        {seaServiceRequiredErrors[service.id || `e2-${formData.externalSeaService.indexOf(service)}`] && (
-                          <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e2-${formData.externalSeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
-                        )}
                       </td>
                       )}
                     </tr>
@@ -5605,7 +5610,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     // E1/E2: Sea service date + mandatory field validation (all non-synced rows)
     const newSeaErrors: Record<string, string> = {};
-    const newSeaReqErrors: Record<string, string[]> = {};
+    const newSeaReqErrors: Record<string, Record<string, string>> = {};
     (formData.currentCompanySeaService || []).forEach((sea: any, i: number) => {
       const isVesselSynced = !!sea.isVesselSynced;
       if (!isVesselSynced) {
@@ -5615,13 +5620,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           newSeaErrors[sea.id || sea.seaUuid || `e1-${from}`] = '"To" date cannot be earlier than "From" date.';
           hasErrors = true;
         }
-        const missing: string[] = [];
-        if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
-        if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
-        if (!(sea.rank || '').trim()) missing.push('Rank');
-        if (!from) missing.push('From Date');
-        if (!to) missing.push('To Date');
-        if (missing.length > 0) { newSeaReqErrors[sea.id || `e1-${i}`] = missing; hasErrors = true; }
+        const fieldErrors: Record<string, string> = {};
+        if (!(sea.vesselName || '').trim()) fieldErrors.vesselName = 'Vessel name is required.';
+        if (!(sea.vesselType || '').trim()) fieldErrors.vesselType = 'Vessel type is required.';
+        if (!(sea.rank || '').trim()) fieldErrors.rank = 'Rank is required.';
+        if (!from) fieldErrors.from = 'From date is required.';
+        if (!to) fieldErrors.to = 'To date is required.';
+        if (Object.keys(fieldErrors).length > 0) { newSeaReqErrors[sea.id || `e1-${i}`] = fieldErrors; hasErrors = true; }
       }
     });
     (formData.externalSeaService || []).forEach((sea: any, i: number) => {
@@ -5631,13 +5636,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         newSeaErrors[sea.id || sea.seaUuid || `e2-${from}`] = '"To" date cannot be earlier than "From" date.';
         hasErrors = true;
       }
-      const missing: string[] = [];
-      if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
-      if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
-      if (!(sea.rank || '').trim()) missing.push('Rank');
-      if (!from) missing.push('From Date');
-      if (!to) missing.push('To Date');
-      if (missing.length > 0) { newSeaReqErrors[sea.id || `e2-${i}`] = missing; hasErrors = true; }
+      const fieldErrors: Record<string, string> = {};
+      if (!(sea.vesselName || '').trim()) fieldErrors.vesselName = 'Vessel name is required.';
+      if (!(sea.vesselType || '').trim()) fieldErrors.vesselType = 'Vessel type is required.';
+      if (!(sea.rank || '').trim()) fieldErrors.rank = 'Rank is required.';
+      if (!from) fieldErrors.from = 'From date is required.';
+      if (!to) fieldErrors.to = 'To date is required.';
+      if (Object.keys(fieldErrors).length > 0) { newSeaReqErrors[sea.id || `e2-${i}`] = fieldErrors; hasErrors = true; }
     });
     setSeaServiceRequiredErrors(newSeaReqErrors);
 
