@@ -507,11 +507,57 @@ class PDFBuilder {
     }
   }
 
+  private wrapTableCell(text: string, maxWidth: number, fontSize: number): string[] {
+    if (this.font.widthOfTextAtSize(text, fontSize) <= maxWidth) return [text];
+    const words = text.split(/\s+/);
+    const lines: string[] = [];
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine ? currentLine + ' ' + word : word;
+      if (this.font.widthOfTextAtSize(testLine, fontSize) > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    const result: string[] = [];
+    for (const line of lines) {
+      if (this.font.widthOfTextAtSize(line, fontSize) <= maxWidth) {
+        result.push(line);
+      } else {
+        let remaining = line;
+        while (remaining && this.font.widthOfTextAtSize(remaining, fontSize) > maxWidth) {
+          let end = remaining.length;
+          while (end > 1 && this.font.widthOfTextAtSize(remaining.slice(0, end), fontSize) > maxWidth) {
+            end--;
+          }
+          result.push(remaining.slice(0, end));
+          remaining = remaining.slice(end);
+        }
+        if (remaining) result.push(remaining);
+      }
+    }
+    return result;
+  }
+
   drawTableHeader(headers: string[], colWidths: number[]): void {
-    this.checkPageBreak(30);
+    const fontSize = 7;
+    const lineSpacing = 9;
+    const cellPadding = 4;
+    const cellLines: string[][] = [];
+    let maxLines = 1;
+    for (let i = 0; i < headers.length; i++) {
+      const maxWidth = colWidths[i] - 8;
+      const lines = this.wrapTableCell(headers[i], maxWidth, fontSize);
+      cellLines.push(lines);
+      if (lines.length > maxLines) maxLines = lines.length;
+    }
+    const headerHeight = Math.max(20, cellPadding + maxLines * lineSpacing + 3);
+    this.checkPageBreak(headerHeight + 5);
     let x = MARGIN;
-    const headerHeight = 20;
-    
+
     this.currentPage.drawRectangle({
       x: MARGIN,
       y: this.yPosition - headerHeight,
@@ -527,37 +573,47 @@ class PDFBuilder {
       borderColor: BORDER_COLOR,
       borderWidth: 0.5,
     });
-    
+
     this.drawCellDividers(colWidths, this.yPosition - headerHeight, headerHeight);
-    
+
     for (let i = 0; i < headers.length; i++) {
-      this.drawTextAt(headers[i], x + 4, this.yPosition - 13, 7, 'bold', TEXT_COLOR);
+      const lines = cellLines[i];
+      for (let li = 0; li < lines.length; li++) {
+        this.drawTextAt(lines[li], x + 4, this.yPosition - 11 - (li * lineSpacing), fontSize, 'bold', TEXT_COLOR);
+      }
       x += colWidths[i];
     }
     this.moveDown(headerHeight);
   }
 
   drawTableRow(values: string[], colWidths: number[], rowHeight: number = 16): void {
-    this.checkPageBreak(rowHeight + 5);
-    let x = MARGIN;
-    
-    this.drawRect(MARGIN, this.yPosition - rowHeight, CONTENT_WIDTH, rowHeight);
-    this.drawCellDividers(colWidths, this.yPosition - rowHeight, rowHeight);
-    
+    const fontSize = 7;
+    const lineSpacing = 9;
+    const cellPadding = 4;
+    const cellLines: string[][] = [];
+    let maxLines = 1;
     for (let i = 0; i < values.length; i++) {
       const maxWidth = colWidths[i] - 8;
-      let displayVal = displayValue(values[i]);
-      const textWidth = this.font.widthOfTextAtSize(displayVal, 7);
-      if (textWidth > maxWidth && displayVal.length > 3) {
-        while (displayVal.length > 3 && this.font.widthOfTextAtSize(displayVal + '...', 7) > maxWidth) {
-          displayVal = displayVal.slice(0, -1);
-        }
-        displayVal += '...';
+      const val = displayValue(values[i]);
+      const lines = this.wrapTableCell(val, maxWidth, fontSize);
+      cellLines.push(lines);
+      if (lines.length > maxLines) maxLines = lines.length;
+    }
+    const dynamicHeight = Math.max(rowHeight, cellPadding + maxLines * lineSpacing + 3);
+    this.checkPageBreak(dynamicHeight + 5);
+    let x = MARGIN;
+
+    this.drawRect(MARGIN, this.yPosition - dynamicHeight, CONTENT_WIDTH, dynamicHeight);
+    this.drawCellDividers(colWidths, this.yPosition - dynamicHeight, dynamicHeight);
+
+    for (let i = 0; i < values.length; i++) {
+      const lines = cellLines[i];
+      for (let li = 0; li < lines.length; li++) {
+        this.drawTextAt(lines[li], x + 4, this.yPosition - 11 - (li * lineSpacing), fontSize, 'normal', TEXT_COLOR);
       }
-      this.drawTextAt(displayVal, x + 4, this.yPosition - 11, 7, 'normal', TEXT_COLOR);
       x += colWidths[i];
     }
-    this.moveDown(rowHeight);
+    this.moveDown(dynamicHeight);
   }
 }
 
@@ -884,7 +940,7 @@ function drawPartE(builder: PDFBuilder, formData: CrewInfoFormData): void {
   builder.drawSectionHeader('PART E - SEA SERVICE');
 
   builder.drawSubsectionHeader('E1. Details of Sea Service (Company)');
-  const seaColWidths = [CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.09];
+  const seaColWidths = [CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.06, CONTENT_WIDTH * 0.15];
   builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'Deadweight', 'Engine Type/ Power', 'Owner / operator', 'Rank', 'From', 'To', 'Period(M)', 'Experience'], seaColWidths);
   if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
     for (const service of formData.currentCompanySeaService) {
