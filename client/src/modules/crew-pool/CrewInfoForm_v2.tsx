@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedDateInput } from '@/components/ui/formatted-date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -3148,8 +3149,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
             {isEditing ? (
-              <Input
-                type="date"
+              <FormattedDateInput
                 value={formData.dateOfBirth}
                 onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) setDobError(''); }}
                 onBlur={() => { const err = validateDob(formData.dateOfBirth); setDobError(err); }}
@@ -3650,8 +3650,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
-                <Input
-                  type="date"
+                <FormattedDateInput
                   value={formData.spouseDateOfBirth}
                   onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseDobError) setSpouseDobError(''); if (spouseValidationError) setSpouseValidationError(''); }}
                   onBlur={() => { if (formData.maritalStatus === 'Married') { if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); } else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); } else { setSpouseDobError(''); } } else { setSpouseDobError(''); } }}
@@ -3737,8 +3736,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </td>
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                           {isEditing ? (
-                            <Input
-                              type="date"
+                            <FormattedDateInput
                               value={child.dateOfBirth}
                               onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
                               className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
@@ -3954,8 +3952,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={doc.issued}
                     onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); if (docDateErrors[doc.id]?.issued) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), issued: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
@@ -3965,8 +3962,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {docDateErrors[doc.id]?.issued && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={doc.expiry}
                     onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); if (docDateErrors[doc.id]?.expiry) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(doc.expiry, doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), expiry: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
@@ -4085,8 +4081,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={visa.issued}
                     onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); if (visaDateErrors[visa.id]?.issued) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issued: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
@@ -4096,8 +4091,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {visaDateErrors[visa.id]?.issued && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={visa.expiry}
                     onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); if (visaDateErrors[visa.id]?.expiry) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(visa.expiry, visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), expiry: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
@@ -4208,8 +4202,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={edu.dateOfCompletion}
                     onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)}
                     className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
@@ -4373,8 +4366,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </Select>
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={license.issued}
                     onChange={(e) => { updateLicense(license.id, 'issued', e.target.value); if (licDateErrors[license.id]?.issued) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), issued: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
@@ -4384,8 +4376,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {licDateErrors[license.id]?.issued && <p className="text-xs text-red-500 mt-1">{licDateErrors[license.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={license.expiry}
                     onChange={(e) => { updateLicense(license.id, 'expiry', e.target.value); if (licDateErrors[license.id]?.expiry) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(license.expiry, license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), expiry: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
@@ -4531,8 +4522,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={course.issued}
                     onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); if (trainDateErrors[course.id]?.issued) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), issued: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
@@ -4542,8 +4532,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {trainDateErrors[course.id]?.issued && <p className="text-xs text-red-500 mt-1">{trainDateErrors[course.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={course.expiry}
                     onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); if (trainDateErrors[course.id]?.expiry) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(course.expiry, course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), expiry: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
@@ -4774,8 +4763,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         {isVesselSynced ? (
                           <span className="text-[13px] text-[#4f5863]">{service.from || '—'}</span>
                         ) : (
-                          <Input
-                            type="date"
+                          <FormattedDateInput
                             value={service.from}
                             onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
                             onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, from: e.target.value }); }}
@@ -4814,8 +4802,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           } else {
                             // Completed contract: show normal 'to' date
                             return (
-                              <Input
-                                type="date"
+                              <FormattedDateInput
                                 value={service.to}
                                 onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
                                 onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, to: e.target.value }); }}
@@ -5087,8 +5074,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </Select>
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={service.from}
                           onChange={(e) => updateExternalSeaService(service.id, 'from', e.target.value)}
                           onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, from: e.target.value }); }}
@@ -5096,8 +5082,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={service.to}
                           onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
                           onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, to: e.target.value }); }}
@@ -5286,8 +5271,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </Select>
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={medical.dateOfMedical}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'dateOfMedical', e.target.value)}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
@@ -5330,8 +5314,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </Select>
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={medical.expiry}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'expiry', e.target.value)}
                           className={`border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 ${getExpiryColorClass(medical.expiry)} text-[13px] font-normal h-6`}
@@ -5438,8 +5421,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={visit.date}
                           onChange={(e) => updateDoctorVisit(visit.id, 'date', e.target.value)}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
@@ -7733,8 +7715,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </DialogHeader>
           <div className="py-4">
             <label className="text-sm font-medium text-gray-700">Next Availability Date</label>
-            <Input
-              type="date"
+            <FormattedDateInput
               value={tempNextAvailability}
               onChange={(e) => setTempNextAvailability(e.target.value)}
               className="mt-1"
