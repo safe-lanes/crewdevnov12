@@ -486,7 +486,7 @@ export const crewTransferService = {
 
       for (const lic of candLic) {
         const newLicUuid = uuidv4();
-        const licenseId = lic.licenseId || (await generateLicenseId());
+        const licenseId = lic.licenseId || null;
         await tx.insert(crewLicenses).values({
           licUuid: newLicUuid,
           crewUuid,
@@ -527,7 +527,7 @@ export const crewTransferService = {
 
       for (const train of candTrain) {
         const newTrainUuid = uuidv4();
-        const courseId = train.courseId || (await generateCourseId());
+        const courseId = train.courseId || null;
         await tx.insert(crewTrainingCourses).values({
           trainUuid: newTrainUuid,
           crewUuid,
