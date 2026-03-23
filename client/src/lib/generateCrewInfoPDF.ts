@@ -673,7 +673,7 @@ async function drawPartA(
 function drawPartB(builder: PDFBuilder, formData: CrewInfoFormData): void {
   builder.drawSectionHeader('PART B - SEAFARER\'S PARTICULARS');
 
-  builder.drawSubsectionHeader('B1.1 General Particulars');
+  builder.drawSubsectionHeader('B1 General Particulars');
   builder.drawFieldRow([
     { label: 'First Name', value: formData.firstName },
     { label: 'Middle Name', value: formData.middleName },
@@ -681,66 +681,56 @@ function drawPartB(builder: PDFBuilder, formData: CrewInfoFormData): void {
   ]);
   builder.drawFieldRow([
     { label: 'Gender', value: formData.gender },
-    { label: 'Present Rank', value: formData.presentRank },
+    { label: 'Rank', value: formData.presentRank },
+    { label: 'Vessel Type', value: formData.vesselType?.join(', ') || '' },
+  ]);
+  builder.drawFieldRow([
     { label: 'Nationality', value: formData.nationality },
+    { label: 'Date of birth', value: formatDate(formData.dateOfBirth) },
+    { label: 'Age( Years )', value: formData.ageInYears },
   ]);
   builder.drawFieldRow([
-    { label: 'Vessel Type(s)', value: formData.vesselType?.join(', ') || '' },
-    { label: '', value: '' },
-    { label: '', value: '' },
+    { label: 'Place of birth( City )', value: formData.placeOfBirthCity },
+    { label: 'Place of birth( Country )', value: formData.placeOfBirthCountry },
+    { label: 'Height( Cm )', value: formData.heightCm },
   ]);
   builder.drawFieldRow([
-    { label: 'Date of Birth', value: formatDate(formData.dateOfBirth) },
-    { label: 'Age (Years)', value: formData.ageInYears },
-    { label: 'Place of Birth (City)', value: formData.placeOfBirthCity },
-  ]);
-  builder.drawFieldRow([
-    { label: 'Place of Birth (Country)', value: formData.placeOfBirthCountry },
-    { label: 'Height (cm)', value: formData.heightCm },
-    { label: 'Weight (kg)', value: formData.weightKg },
-  ]);
-  builder.drawFieldRow([
-    { label: 'BMI', value: formData.bmi },
+    { label: 'Weight( kg )', value: formData.weightKg },
+    { label: 'BMI (Auto Generated)', value: formData.bmi },
     { label: 'Native Language', value: formData.nativeLanguage },
-    { label: 'Foreign Languages', value: formData.foreignLanguages },
   ]);
   builder.drawFieldRow([
+    { label: 'Foreign Languages', value: formData.foreignLanguages },
     { label: 'English Proficiency', value: formData.englishProficiency },
     { label: 'Manning Agent', value: formData.manningAgent },
-    { label: 'Crew Pool', value: formData.crewPool },
-  ]);
-  builder.drawFieldRow([
-    { label: 'Employee ID', value: formData.employeeId },
-    { label: '', value: '' },
-    { label: '', value: '' },
   ]);
 
-  builder.drawSubsectionHeader('B1.2 Address & Contact Info');
+  builder.drawSubsectionHeader('B2 Address & Contact Info');
   builder.drawFieldRow([
     { label: 'Country of Residence', value: formData.countryOfResidence },
     { label: 'Nearest Airport', value: formData.nearestAirport },
-    { label: '', value: '' },
+    { label: 'Residential Address Line 1', value: formData.residentialAddressLine1 },
   ]);
   builder.drawFieldRow([
-    { label: 'Address Line 1', value: formData.residentialAddressLine1 },
-    { label: 'Address Line 2', value: formData.residentialAddressLine2 },
-    { label: '', value: '' },
-  ]);
-  builder.drawFieldRow([
-    { label: 'Landline', value: formData.contactLandline },
+    { label: 'Residential Address Line 2', value: formData.residentialAddressLine2 },
+    { label: 'Contact ( Landline )', value: formData.contactLandline },
     { label: 'Mobile', value: formData.mobile },
+  ]);
+  builder.drawFieldRow([
     { label: 'Email', value: formData.email },
+    { label: '', value: '' },
+    { label: '', value: '' },
   ]);
 
-  builder.drawSubsectionHeader('B1.3 Family & Next of Kin');
+  builder.drawSubsectionHeader('B3 Family and NOK');
   builder.drawFieldRow([
     { label: 'Marital Status', value: formData.maritalStatus },
-    { label: 'No. of Dependent Children', value: formData.numberOfDependentChildren },
-    { label: '', value: '' },
+    { label: 'No. of Dependant Children', value: formData.numberOfDependentChildren },
+    { label: 'Father\'s Name', value: formData.fatherName },
   ]);
   builder.drawFieldRow([
-    { label: 'Father\'s Name', value: formData.fatherName },
     { label: 'Mother\'s Name', value: formData.motherName },
+    { label: '', value: '' },
     { label: '', value: '' },
   ]);
   builder.drawFieldRow([
@@ -756,36 +746,37 @@ function drawPartB(builder: PDFBuilder, formData: CrewInfoFormData): void {
 
   if (formData.children && formData.children.length > 0) {
     builder.checkPageBreak(50);
-    builder.drawText('Children:', MARGIN, 9, 'bold');
+    builder.drawText('Children Information:', MARGIN, 9, 'bold');
     builder.moveDown(LINE_HEIGHT);
-    const childColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15];
-    builder.drawTableHeader(['First Name', 'Middle Name', 'Family Name', 'Date of Birth', 'Gender'], childColWidths);
-    for (const child of formData.children) {
+    const childColWidths = [CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15];
+    builder.drawTableHeader(['S.No', 'First Name', 'Middle Name', 'Family Name', 'Date of Birth', 'Gender'], childColWidths);
+    formData.children.forEach((child, index) => {
       builder.drawTableRow([
+        `${index + 1}.`,
         child.firstName || '',
         child.middleName || '',
         child.familyName || '',
         formatDate(child.dateOfBirth),
         child.gender || '',
       ], childColWidths);
-    }
+    });
   }
 
   builder.moveDown(LINE_HEIGHT);
   builder.drawText('Next of Kin:', MARGIN, 9, 'bold');
   builder.moveDown(LINE_HEIGHT);
   builder.drawFieldRow([
-    { label: 'First Name', value: formData.nokFirstName },
-    { label: 'Middle Name', value: formData.nokMiddleName },
-    { label: 'Family Name', value: formData.nokFamilyName },
+    { label: 'NOK: First Name', value: formData.nokFirstName },
+    { label: 'NOK: Middle Name', value: formData.nokMiddleName },
+    { label: 'NOK: Family Name', value: formData.nokFamilyName },
   ]);
   builder.drawFieldRow([
-    { label: 'Telephone', value: formData.nokTelephone },
-    { label: 'Email', value: formData.nokEmail },
-    { label: 'Relationship', value: formData.nokRelationship },
+    { label: 'NOK: Relationship', value: formData.nokRelationship },
+    { label: 'NOK: Telephone', value: formData.nokTelephone },
+    { label: 'NOK: Email', value: formData.nokEmail },
   ]);
   builder.drawFieldRow([
-    { label: 'Address', value: formData.nokAddress },
+    { label: 'NOK: Address', value: formData.nokAddress },
     { label: '', value: '' },
     { label: '', value: '' },
   ]);
@@ -794,7 +785,7 @@ function drawPartB(builder: PDFBuilder, formData: CrewInfoFormData): void {
 function drawPartC(builder: PDFBuilder, formData: CrewInfoFormData): void {
   builder.drawSectionHeader('PART C - TRAVEL & ID DOCUMENTS');
 
-  builder.drawSubsectionHeader('C1. Travel & Identification Documents');
+  builder.drawSubsectionHeader('C1 Travel and Identification Docs');
   const docColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.29];
   builder.drawTableHeader(['Document', 'Number', 'Issued', 'Expiry', 'Issuing Authority'], docColWidths);
   if (formData.documents && formData.documents.length > 0) {
@@ -811,17 +802,17 @@ function drawPartC(builder: PDFBuilder, formData: CrewInfoFormData): void {
     builder.drawTableRow(['-', '-', '-', '-', '-'], docColWidths);
   }
 
-  builder.drawSubsectionHeader('C2. Visas');
-  const visaColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.18];
-  builder.drawTableHeader(['Country', 'Serial No', 'Type', 'Issued', 'Expiry'], visaColWidths);
+  builder.drawSubsectionHeader('C2 Visas');
+  const visaColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.20];
+  builder.drawTableHeader(['Issuing Country', 'S.No.( If Applicable )', 'Issued', 'Expiry', 'Visa Type'], visaColWidths);
   if (formData.visas && formData.visas.length > 0) {
     for (const visa of formData.visas) {
       builder.drawTableRow([
         visa.issuingCountry || '',
         visa.serialNo || '',
-        visa.visaType || '',
         formatDate(visa.issued),
         formatDate(visa.expiry),
+        visa.visaType || '',
       ], visaColWidths);
     }
   } else {
@@ -832,109 +823,117 @@ function drawPartC(builder: PDFBuilder, formData: CrewInfoFormData): void {
 function drawPartD(builder: PDFBuilder, formData: CrewInfoFormData): void {
   builder.drawSectionHeader('PART D - TRAINING & CERTIFICATES');
 
-  builder.drawSubsectionHeader('D1. Education');
-  const eduColWidths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.30, CONTENT_WIDTH * 0.27, CONTENT_WIDTH * 0.25];
-  builder.drawTableHeader(['Completion Date', 'School/College/University', 'Subjects/Field', 'Qualifications'], eduColWidths);
+  builder.drawSubsectionHeader('D1 Education');
+  const eduColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.27, CONTENT_WIDTH * 0.30, CONTENT_WIDTH * 0.18];
+  builder.drawTableHeader(['Qualifications', 'Subjects/Field', 'School/College/University', 'Date of Completion'], eduColWidths);
   if (formData.education && formData.education.length > 0) {
     for (const edu of formData.education) {
       builder.drawTableRow([
-        formatDate(edu.dateOfCompletion),
-        edu.schoolCollegeUniversity || '',
-        edu.subjectsField || '',
         edu.qualifications || '',
+        edu.subjectsField || '',
+        edu.schoolCollegeUniversity || '',
+        formatDate(edu.dateOfCompletion),
       ], eduColWidths);
     }
   } else {
     builder.drawTableRow(['-', '-', '-', '-'], eduColWidths);
   }
 
-  builder.drawSubsectionHeader('D2. Licenses & DCE');
-  const licColWidths = [CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.23];
-  builder.drawTableHeader(['Certificate/Document', 'Abbr', 'Certificate No', 'Issued', 'Expiry', 'Issuing Authority'], licColWidths);
-  const activeLicenses = (formData.licenses || []).filter(l => !l.archivedAt);
-  if (activeLicenses.length > 0) {
-    for (const lic of activeLicenses) {
+  builder.drawSubsectionHeader('D2 License & DCE');
+  const licColWidths = [CONTENT_WIDTH * 0.06, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.16];
+  builder.drawTableHeader(['ID', 'Certificate/Document', 'Abbr', 'Requirement', 'Certificate No', 'Issuing Authority', 'Issued', 'Expiry'], licColWidths);
+  const allLicenses = formData.licenses || [];
+  if (allLicenses.length > 0) {
+    for (const lic of allLicenses) {
       builder.drawTableRow([
+        lic.licenseId || '',
         lic.certificateDocument || '',
         lic.abbr || '',
+        lic.requirement || '',
         lic.certificateNo || '',
+        lic.issuingAuthority || '',
         formatDate(lic.issued),
         formatDate(lic.expiry),
-        lic.issuingAuthority || '',
       ], licColWidths);
     }
   } else {
-    builder.drawTableRow(['-', '-', '-', '-', '-', '-'], licColWidths);
+    builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-', '-'], licColWidths);
   }
 
-  builder.drawSubsectionHeader('D3. Training Courses');
-  const trainColWidths = [CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.23];
-  builder.drawTableHeader(['Training Course', 'Abbr', 'Certificate No', 'Issued', 'Expiry', 'Issuing Authority'], trainColWidths);
+  builder.drawSubsectionHeader('D3 Training Course');
+  const trainColWidths = [CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.14];
+  builder.drawTableHeader(['Company ID', 'Training Course', 'Abbr', 'Requirement', 'Certificate No', 'Issuing Authority', 'Issued', 'Expiry'], trainColWidths);
   if (formData.trainingCourses && formData.trainingCourses.length > 0) {
     for (const course of formData.trainingCourses) {
       builder.drawTableRow([
+        course.courseId || course.companyId || '',
         course.trainingCourse || '',
         course.abbr || '',
+        course.requirement || '',
         course.certificateNo || '',
+        course.issuingAuthority || '',
         formatDate(course.issued),
         formatDate(course.expiry),
-        course.issuingAuthority || '',
       ], trainColWidths);
     }
   } else {
-    builder.drawTableRow(['-', '-', '-', '-', '-', '-'], trainColWidths);
+    builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-', '-'], trainColWidths);
   }
 }
 
 function drawPartE(builder: PDFBuilder, formData: CrewInfoFormData): void {
   builder.drawSectionHeader('PART E - SEA SERVICE');
 
-  builder.drawSubsectionHeader('E1. Current Company Sea Service');
-  const seaColWidths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.08];
-  builder.drawTableHeader(['Vessel', 'Type', 'Owner/Operator', 'Rank', 'From', 'To', 'Months', 'DWT'], seaColWidths);
+  builder.drawSubsectionHeader('E1. Details of Sea Service (Company)');
+  const seaColWidths = [CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.09];
+  builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'Deadweight', 'Engine Type/ Power', 'Owner / operator', 'Rank', 'From', 'To', 'Period(M)', 'Experience'], seaColWidths);
   if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
     for (const service of formData.currentCompanySeaService) {
       builder.drawTableRow([
         service.vesselName || '',
         service.vesselType || '',
+        service.deadweight || '',
+        service.engineTypePower || '',
         service.ownerOperator || '',
         service.rank || '',
         formatDate(service.from),
         formatDate(service.to),
         service.periodMonths || '',
-        service.deadweight || '',
+        (service.experienceCategories || []).join(', '),
       ], seaColWidths);
     }
   } else {
-    builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-', '-'], seaColWidths);
+    builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-', '-', '-', '-'], seaColWidths);
   }
 
-  builder.drawSubsectionHeader('E2. External Sea Service');
-  builder.drawTableHeader(['Vessel', 'Type', 'Owner/Operator', 'Rank', 'From', 'To', 'Months', 'DWT'], seaColWidths);
+  builder.drawSubsectionHeader('E2. Details of Sea Service (External)');
+  builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'Deadweight', 'Engine Type/ Power', 'Owner / operator', 'Rank', 'From', 'To', 'Period(M)', 'Experience'], seaColWidths);
   if (formData.externalSeaService && formData.externalSeaService.length > 0) {
     for (const service of formData.externalSeaService) {
       builder.drawTableRow([
         service.vesselName || '',
         service.vesselType || '',
+        service.deadweight || '',
+        service.engineTypePower || '',
         service.ownerOperator || '',
         service.rank || '',
         formatDate(service.from),
         formatDate(service.to),
         service.periodMonths || '',
-        service.deadweight || '',
+        (service.experienceCategories || []).join(', '),
       ], seaColWidths);
     }
   } else {
-    builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-', '-'], seaColWidths);
+    builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-', '-', '-', '-'], seaColWidths);
   }
 }
 
 function drawPartF(builder: PDFBuilder, formData: CrewInfoFormData): void {
   builder.drawSectionHeader('PART F - MEDICAL RECORDS');
 
-  builder.drawSubsectionHeader('F1. Pre-Joining Medicals');
-  const medColWidths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.16];
-  builder.drawTableHeader(['Vessel', 'Date', 'BP (mmHg)', 'Weight', 'Medication', 'Fitness', 'Expiry'], medColWidths);
+  builder.drawSubsectionHeader('F1. Pre Joining Medicals');
+  const medColWidths = [CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.18];
+  builder.drawTableHeader(['Vessel', 'Date of Medical', 'BP (mmHG)', 'Weight (Kgs)', 'Any Medication Prescribed', 'Fitness for Sea Service', 'Expiry'], medColWidths);
   if (formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
     for (const med of formData.preJoiningMedicals) {
       builder.drawTableRow([
@@ -953,7 +952,7 @@ function drawPartF(builder: PDFBuilder, formData: CrewInfoFormData): void {
 
   builder.drawSubsectionHeader('F2. Doctor Visits');
   const visitColWidths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.28];
-  builder.drawTableHeader(['Vessel', 'Port', 'Date', 'Complaint/Illness/Injury', 'Doctor Comments'], visitColWidths);
+  builder.drawTableHeader(['Vessel', 'Port', 'Date', 'Complaint / Illness / Injury', 'Doctor Comments'], visitColWidths);
   if (formData.doctorVisits && formData.doctorVisits.length > 0) {
     for (const visit of formData.doctorVisits) {
       builder.drawTableRow([
