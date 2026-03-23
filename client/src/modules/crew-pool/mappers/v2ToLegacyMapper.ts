@@ -84,23 +84,23 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember> & { dateOfBi
   
   return {
     empNo,
-    employeeId: legacy.employeeId || undefined,
-    firstName: legacy.firstName || undefined,
-    middleName: legacy.middleName || undefined,
-    familyName: legacy.familyName || undefined,
-    gender: legacy.gender || undefined,
+    employeeId: legacy.employeeId ?? undefined,
+    firstName: legacy.firstName ?? undefined,
+    middleName: legacy.middleName ?? undefined,
+    familyName: legacy.familyName ?? undefined,
+    gender: legacy.gender ?? undefined,
     dob: legacy.dob || legacy.dateOfBirth || undefined,
-    nationalityUuid: legacy.nationality || undefined,
+    nationalityUuid: legacy.nationality ?? undefined,
     // Note: vesselType from form is an array for vessel types applied (stored in crew_vessel_types_applied table)
     // Only set vesselTypeUuid if it's a single string, not an array
     vesselTypeUuid: (typeof legacy.vesselType === 'string' && legacy.vesselType) ? legacy.vesselType : undefined,
-    presentRank: legacy.presentRank || undefined,
-    rankAppliedFor: legacy.rankAppliedFor || undefined,
+    presentRank: legacy.presentRank ?? undefined,
+    rankAppliedFor: legacy.rankAppliedFor ?? undefined,
     status: legacy.status || 'active',
-    availability: legacy.availability || undefined,
-    nextAvailability: legacy.nextAvailability || undefined,
+    availability: legacy.availability ?? undefined,
+    nextAvailability: legacy.nextAvailability ?? undefined,
     isActive: legacy.isActive ?? true,
-    uploadedPhoto: legacy.uploadedPhoto || undefined,
+    uploadedPhoto: legacy.uploadedPhoto ?? undefined,
   };
 }
 
@@ -141,20 +141,20 @@ export function mapV2PersonalDetailsToLegacy(v2: any): LegacyPersonalDetails {
 
 export function mapLegacyPersonalDetailsToV2(legacy: Partial<LegacyPersonalDetails>): any {
   return {
-    heightCm: legacy.height || undefined,
-    weightKg: legacy.weight || undefined,
-    bmi: legacy.bmi || undefined,
-    dob: (legacy as any).dob || undefined,
-    ageInYears: legacy.ageInYears || undefined,
-    placeOfBirthCity: legacy.placeOfBirthCity || undefined,
-    placeOfBirthCountryUuid: legacy.placeOfBirthCountry || undefined,
-    nativeLanguageUuid: legacy.nativeLanguage || undefined,
-    foreignLanguages: legacy.foreignLanguages || undefined,
-    englishProficiency: legacy.englishProficiency || undefined,
-    manningAgent: legacy.manningAgent || undefined,
-    crewPool: legacy.crewPool || undefined,
-    availability: legacy.availability || undefined,
-    nextAvailability: legacy.nextAvailability || undefined,
+    heightCm: legacy.height ?? undefined,
+    weightKg: legacy.weight ?? undefined,
+    bmi: legacy.bmi ?? undefined,
+    dob: (legacy as any).dob ?? undefined,
+    ageInYears: legacy.ageInYears ?? undefined,
+    placeOfBirthCity: legacy.placeOfBirthCity ?? undefined,
+    placeOfBirthCountryUuid: legacy.placeOfBirthCountry ?? undefined,
+    nativeLanguageUuid: legacy.nativeLanguage ?? undefined,
+    foreignLanguages: legacy.foreignLanguages ?? undefined,
+    englishProficiency: legacy.englishProficiency ?? undefined,
+    manningAgent: legacy.manningAgent ?? undefined,
+    crewPool: legacy.crewPool ?? undefined,
+    availability: legacy.availability ?? undefined,
+    nextAvailability: legacy.nextAvailability ?? undefined,
   };
 }
 
@@ -183,13 +183,13 @@ export function mapV2AddressToLegacy(v2: any): LegacyAddress {
 
 export function mapLegacyAddressToV2(legacy: Partial<LegacyAddress>): any {
   return {
-    countryOfResidenceUuid: legacy.countryOfResidence || undefined,
-    nearestAirport: legacy.nearestAirport || undefined,
-    addressLine1: legacy.residentialAddressLine1 || undefined,
-    addressLine2: legacy.residentialAddressLine2 || undefined,
-    contactLandline: legacy.contactLandline || undefined,
-    mobile: legacy.mobile || undefined,
-    email: legacy.email || undefined,
+    countryOfResidenceUuid: legacy.countryOfResidence ?? undefined,
+    nearestAirport: legacy.nearestAirport ?? undefined,
+    addressLine1: legacy.residentialAddressLine1 ?? undefined,
+    addressLine2: legacy.residentialAddressLine2 ?? undefined,
+    contactLandline: legacy.contactLandline ?? undefined,
+    mobile: legacy.mobile ?? undefined,
+    email: legacy.email ?? undefined,
   };
 }
 
@@ -219,14 +219,14 @@ export function mapV2FamilyInfoToLegacy(v2: any): LegacyFamilyInfo {
 
 export function mapLegacyFamilyInfoToV2(legacy: Partial<LegacyFamilyInfo>): any {
   return {
-    maritalStatus: legacy.maritalStatus || undefined,
-    numDependentChildren: legacy.numberOfDependentChildren || undefined,
-    fatherName: legacy.fatherName || undefined,
-    motherName: legacy.motherName || undefined,
-    spouseFirstName: legacy.spouseFirstName || undefined,
-    spouseMiddleName: legacy.spouseMiddleName || undefined,
-    spouseFamilyName: legacy.spouseFamilyName || undefined,
-    spouseDob: legacy.spouseDateOfBirth || undefined,
+    maritalStatus: legacy.maritalStatus ?? undefined,
+    numDependentChildren: legacy.numberOfDependentChildren ?? undefined,
+    fatherName: legacy.fatherName ?? undefined,
+    motherName: legacy.motherName ?? undefined,
+    spouseFirstName: legacy.spouseFirstName ?? undefined,
+    spouseMiddleName: legacy.spouseMiddleName ?? undefined,
+    spouseFamilyName: legacy.spouseFamilyName ?? undefined,
+    spouseDob: legacy.spouseDateOfBirth ?? undefined,
   };
 }
 
@@ -253,11 +253,11 @@ export function mapV2ChildToLegacy(v2: any): LegacyChild {
 export function mapLegacyChildToV2(legacy: LegacyChild): any {
   return {
     childUuid: legacy.childUuid,
-    firstName: legacy.firstName || undefined,
-    middleName: legacy.middleName || undefined,
-    familyName: legacy.familyName || undefined,
-    dob: legacy.dateOfBirth || undefined,
-    gender: legacy.gender || undefined,
+    firstName: legacy.firstName ?? undefined,
+    middleName: legacy.middleName ?? undefined,
+    familyName: legacy.familyName ?? undefined,
+    dob: legacy.dateOfBirth ?? undefined,
+    gender: legacy.gender ?? undefined,
   };
 }
 
@@ -288,13 +288,13 @@ export function mapV2NextOfKinToLegacy(v2: any): LegacyNextOfKin {
 export function mapLegacyNextOfKinToV2(legacy: LegacyNextOfKin): any {
   return {
     nokUuid: legacy.nokUuid,
-    firstName: legacy.firstName || undefined,
-    middleName: legacy.middleName || undefined,
-    familyName: legacy.familyName || undefined,
-    telephone: legacy.telephone || undefined,
-    email: legacy.email || undefined,
-    address: legacy.address || undefined,
-    relationship: legacy.relationship || undefined,
+    firstName: legacy.firstName ?? undefined,
+    middleName: legacy.middleName ?? undefined,
+    familyName: legacy.familyName ?? undefined,
+    telephone: legacy.telephone ?? undefined,
+    email: legacy.email ?? undefined,
+    address: legacy.address ?? undefined,
+    relationship: legacy.relationship ?? undefined,
   };
 }
 
