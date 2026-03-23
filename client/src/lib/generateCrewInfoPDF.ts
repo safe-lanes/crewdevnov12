@@ -588,21 +588,20 @@ export async function generateCrewInfoPDF(
   
   const rank = formData.presentRank || '-';
   builder.drawText(rank, MARGIN, 10, 'normal', LABEL_COLOR);
+  builder.moveDown(LINE_HEIGHT);
   
-  // Calculate photo position and Part A start position
-  const photoY = A4_HEIGHT - MARGIN;
-  const photoBottomY = photoY - PHOTO_HEIGHT;
-  const minimalGap = 8;
-  const partAStartY = photoBottomY - minimalGap;
+  const textBottomY = builder.getY();
+  const gap = 8;
   
   if (uploadedPhoto) {
+    const photoY = A4_HEIGHT - MARGIN;
     const photoX = A4_WIDTH - MARGIN - PHOTO_WIDTH;
     await builder.drawImage(uploadedPhoto, photoX, photoY, PHOTO_WIDTH, PHOTO_HEIGHT);
+    const photoBottomY = photoY - PHOTO_HEIGHT;
+    builder.setY(Math.min(textBottomY, photoBottomY - gap));
+  } else {
+    builder.setY(textBottomY - gap);
   }
-  
-  // Set Y position for Part A - same position whether photo exists or not
-  // This preserves layout structure when photo is absent
-  builder.setY(partAStartY);
 
   await drawPartA(builder, formData, dashboardData);
   drawPartB(builder, formData);
