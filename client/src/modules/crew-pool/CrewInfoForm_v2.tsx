@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormattedDateInput } from '@/components/ui/formatted-date-input';
+import { formatDate } from '@/utils/format';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -3145,7 +3146,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 data-testid="input-date-of-birth"
               />
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.dateOfBirth}</div>
+              <div className="mt-1 text-sm text-gray-900">{formatDate(formData.dateOfBirth)}</div>
             )}
             {dobError && <p className="text-xs text-red-500 mt-1" data-testid="text-dob-error">{dobError}</p>}
           </div>
@@ -3647,7 +3648,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   data-testid="input-spouse-dob"
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth}</div>
+                <div className="mt-1 text-sm text-gray-900">{formatDate(formData.spouseDateOfBirth)}</div>
               )}
               {spouseDobError && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-dob-error">{spouseDobError}</p>}
             </div>
@@ -3730,7 +3731,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                               className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                             />
                           ) : (
-                            child.dateOfBirth
+                            formatDate(child.dateOfBirth)
                           )}
                         </td>
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
@@ -4752,7 +4753,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {isVesselSynced ? (
-                          <span className="text-[13px] text-[#4f5863]">{service.from || '—'}</span>
+                          <span className="text-[13px] text-[#4f5863]">{service.from ? formatDate(service.from) : '—'}</span>
                         ) : (
                           <FormattedDateInput
                             value={service.from}
@@ -4781,7 +4782,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                       style={{ color: '#3b82f6' }}
                                       data-testid={`date-to-active-${service.id}`}
                                     >
-                                      {todayDate}
+                                      {formatDate(todayDate)}
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
