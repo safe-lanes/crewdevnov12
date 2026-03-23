@@ -470,6 +470,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     enabled: !!crewUuid && isOpen,
   });
 
+  const invalidateCrewData = (id: string | null) => {
+    if (!id) return;
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', id, 'full-profile'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', id, 'dashboard'] });
+  };
+
   // V2: Crew assignments — used to detect auto-generated (vessel-synced) E1 rows
   const { data: crewAssignmentsData } = useQuery<any[]>({
     queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'assignments'],
@@ -1489,7 +1495,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               documents: prev.documents.filter(d => d.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete document:', error);
@@ -1544,7 +1550,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               visas: prev.visas.filter(v => v.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete visa:', error);
@@ -1597,7 +1603,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               education: prev.education.filter(e => e.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete education:', error);
@@ -1773,7 +1779,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               licenses: prev.licenses.filter(l => l.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete license:', error);
@@ -1829,7 +1835,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               trainingCourses: prev.trainingCourses.filter(c => c.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete training course:', error);
@@ -1914,7 +1920,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               currentCompanySeaService: prev.currentCompanySeaService.filter(s => s.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete sea service:', error);
@@ -1984,7 +1990,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               externalSeaService: prev.externalSeaService.filter(s => s.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete sea service:', error);
@@ -2041,7 +2047,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               preJoiningMedicals: prev.preJoiningMedicals.filter(m => m.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete medical record:', error);
@@ -2095,7 +2101,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               doctorVisits: prev.doctorVisits.filter(v => v.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete doctor visit:', error);
@@ -6461,6 +6467,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+          invalidateCrewData(crewIdentifier);
           await queryClient.refetchQueries({ queryKey: [V2_QUERY_KEY, 'crew', crewIdentifier, 'full-profile'] });
           console.log('V2: Post-save cache refreshed');
         } catch (error) {
@@ -6829,8 +6836,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         console.log('[V2] Crew record created with UUID:', newCrewUuid);
         setCreatedCrewId(newCrewUuid);
         
-        // Invalidate query cache to reflect new crew
         queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
+        invalidateCrewData(newCrewUuid);
         
         // Chain save of child tables with the new crewUuid (same as Save button path)
         // This ensures B1/address/family data is persisted immediately
@@ -7129,6 +7136,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // V2: Invalidate V2 query keys
       queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', variables.id] });
+      invalidateCrewData(variables.id);
       toast({
         title: "Status Updated",
         description: "Crew member status has been updated.",
