@@ -922,25 +922,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     });
   }, []);
 
-  // Helper function to calculate period in months between two dates (used for hydration)
-  // Uses average days per month (30.44) for accurate calculation
   const calculateSeaServicePeriod = (fromDate: string, toDate: string): string => {
     if (!fromDate || !toDate) return '';
-    
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
-    if (to < from) return '';
-    
-    // Calculate total days between dates and convert to months
-    const timeDiff = to.getTime() - from.getTime();
-    const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-    const totalMonths = totalDays / 30.44; // Average days per month
-    
-    // Round to 1 decimal place, ensure minimum of 0
-    const result = Math.max(0, Math.round(totalMonths * 10) / 10);
-    return result.toString();
+    try {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
+      const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+      const days = to.getDate() - from.getDate();
+      const totalMonths = months + (days / 30);
+      return totalMonths >= 0 ? totalMonths.toFixed(1) : '';
+    } catch {
+      return '';
+    }
   };
 
   // Update form data when detailed crew data loads from API
@@ -1850,25 +1844,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
-  // Helper function to calculate period in months between two dates
-  // Uses average days per month (30.44) for accurate calculation
   const calculatePeriodMonths = (fromDate: string, toDate: string): string => {
     if (!fromDate || !toDate) return '';
-    
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
-    if (to < from) return '';
-    
-    // Calculate total days between dates and convert to months
-    const timeDiff = to.getTime() - from.getTime();
-    const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-    const totalMonths = totalDays / 30.44; // Average days per month
-    
-    // Round to 1 decimal place, ensure minimum of 0
-    const result = Math.max(0, Math.round(totalMonths * 10) / 10);
-    return result.toString();
+    try {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
+      const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+      const days = to.getDate() - from.getDate();
+      const totalMonths = months + (days / 30);
+      return totalMonths >= 0 ? totalMonths.toFixed(1) : '';
+    } catch {
+      return '';
+    }
   };
 
   // Sea service management - Current Company
