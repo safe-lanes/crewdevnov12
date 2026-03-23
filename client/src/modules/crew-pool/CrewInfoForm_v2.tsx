@@ -4347,6 +4347,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
+                      {license.issuingAuthority && !countryMasterData.includes(license.issuingAuthority) && (
+                        <SelectItem key={license.issuingAuthority} value={license.issuingAuthority}>{license.issuingAuthority}</SelectItem>
+                      )}
                       {countryMasterData.map(country => (
                         <SelectItem key={country} value={country}>{country}</SelectItem>
                       ))}
