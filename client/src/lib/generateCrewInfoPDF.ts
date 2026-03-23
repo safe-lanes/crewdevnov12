@@ -591,7 +591,7 @@ export async function generateCrewInfoPDF(
   builder.moveDown(LINE_HEIGHT);
   
   const textBottomY = builder.getY();
-  const gap = 8;
+  const gap = 2;
   
   if (uploadedPhoto) {
     const photoY = A4_HEIGHT - MARGIN;
