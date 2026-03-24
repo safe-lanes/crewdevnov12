@@ -282,9 +282,13 @@ export const crewTransferService = {
           crewUuid,
           heightCm: candPersonal.heightCm,
           weightKg: candPersonal.weightKg,
-          bmi: (candPersonal.heightCm && candPersonal.weightKg)
-            ? (parseFloat(candPersonal.weightKg) / Math.pow(parseFloat(candPersonal.heightCm) / 100, 2)).toFixed(1)
-            : null,
+          bmi: (() => {
+            if (!candPersonal.heightCm || !candPersonal.weightKg) return null;
+            const h = parseFloat(candPersonal.heightCm);
+            const w = parseFloat(candPersonal.weightKg);
+            if (!Number.isFinite(h) || !Number.isFinite(w) || h <= 0 || w <= 0) return null;
+            return (w / Math.pow(h / 100, 2)).toFixed(1);
+          })(),
           ageInYears: candPersonal.ageInYears,
           placeOfBirthCity: candPersonal.placeOfBirthCity,
           placeOfBirthCountryUuid: candPersonal.placeOfBirthCountryUuid,
