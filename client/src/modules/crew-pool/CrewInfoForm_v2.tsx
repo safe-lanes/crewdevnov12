@@ -3151,6 +3151,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 value={formData.dateOfBirth}
                 onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) setDobError(''); }}
                 onBlur={() => { const err = validateDob(formData.dateOfBirth); setDobError(err); }}
+                max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()}
                 className={`mt-1 ${dobError ? 'border-red-500' : ''}`}
                 data-testid="input-date-of-birth"
               />
