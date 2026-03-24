@@ -6694,6 +6694,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Auto-save functionality — saves the specific section's data to the backend
   const handleSectionAutoSave = async (sectionId: string) => {
+    if (isBatchSavingRef.current) return;
     const crewUuid = getEffectiveCrewUuid();
     if (!crewUuid) return;
 
@@ -7494,6 +7495,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               variant="outline" 
               size="sm"
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={handleSaveDraft}
               disabled={isSaving}
               data-testid="button-save-draft"
@@ -7505,6 +7507,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               variant="outline" 
               size="sm"
               className="sm:hidden"
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={handleSaveDraft}
               disabled={isSaving}
               data-testid="button-save-draft-mobile"
