@@ -6720,52 +6720,52 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       };
       saveAddressMutationV2.mutate({ crewUuid, data: addressData });
     } else if (sectionId === 'B3') {
-      const familyInfoData = {
-        maritalStatus: formData.maritalStatus,
-        numberOfDependentChildren: formData.numberOfDependentChildren,
-        fatherName: formData.fatherName,
-        motherName: formData.motherName,
-        spouseFirstName: formData.spouseFirstName,
-        spouseMiddleName: formData.spouseMiddleName,
-        spouseFamilyName: formData.spouseFamilyName,
-        spouseDateOfBirth: formData.spouseDateOfBirth,
-      };
-      saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData });
-      const nokData = {
-        firstName: formData.nokFirstName,
-        middleName: formData.nokMiddleName,
-        familyName: formData.nokFamilyName,
-        relationship: formData.nokRelationship,
-        telephone: formData.nokTelephone,
-        email: formData.nokEmail,
-        address: formData.nokAddress,
-      };
-      if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
-        saveNextOfKinMutationV2.mutate({ crewUuid, data: nokData });
-      }
-      if (deletedChildUuids.length > 0) {
-        for (const childUuid of deletedChildUuids) {
-          try { await crewPoolApiV2.deleteChild(crewUuid, childUuid); } catch (e) { /* ignore */ }
+      try {
+        const familyInfoData = {
+          maritalStatus: formData.maritalStatus,
+          numberOfDependentChildren: formData.numberOfDependentChildren,
+          fatherName: formData.fatherName,
+          motherName: formData.motherName,
+          spouseFirstName: formData.spouseFirstName,
+          spouseMiddleName: formData.spouseMiddleName,
+          spouseFamilyName: formData.spouseFamilyName,
+          spouseDateOfBirth: formData.spouseDateOfBirth,
+        };
+        await crewPoolApiV2.saveFamilyInfo(crewUuid, familyInfoData);
+        const nokData = {
+          firstName: formData.nokFirstName,
+          middleName: formData.nokMiddleName,
+          familyName: formData.nokFamilyName,
+          relationship: formData.nokRelationship,
+          telephone: formData.nokTelephone,
+          email: formData.nokEmail,
+          address: formData.nokAddress,
+        };
+        if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
+          await crewPoolApiV2.saveNextOfKin(crewUuid, nokData);
         }
-        setDeletedChildUuids([]);
-      }
-      if (formData.children && formData.children.length > 0) {
-        for (let index = 0; index < formData.children.length; index++) {
-          const child = formData.children[index] as any;
-          const childData = {
-            firstName: child.firstName, middleName: child.middleName,
-            familyName: child.familyName, dateOfBirth: child.dateOfBirth,
-            gender: child.gender, sortOrder: index,
-          };
-          try {
+        if (deletedChildUuids.length > 0) {
+          for (const childUuid of deletedChildUuids) {
+            try { await crewPoolApiV2.deleteChild(crewUuid, childUuid); } catch (e) { /* ignore */ }
+          }
+          setDeletedChildUuids([]);
+        }
+        if (formData.children && formData.children.length > 0) {
+          for (let index = 0; index < formData.children.length; index++) {
+            const child = formData.children[index] as any;
+            const childData = {
+              firstName: child.firstName, middleName: child.middleName,
+              familyName: child.familyName, dateOfBirth: child.dateOfBirth,
+              gender: child.gender, sortOrder: index,
+            };
             if (child.childUuid) {
               await crewPoolApiV2.updateChild(crewUuid, child.childUuid, childData);
             } else {
               await crewPoolApiV2.createChild(crewUuid, childData);
             }
-          } catch (e) { /* ignore */ }
+          }
         }
-      }
+      } catch (e) { /* ignore */ }
       invalidateCrewData(crewUuid);
     }
 
