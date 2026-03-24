@@ -348,13 +348,13 @@ export function mapV2DocumentToLegacy(v2: any): any {
 export function mapLegacyDocumentToV2(legacy: any): any {
   return {
     docUuid: legacy.docUuid,
-    documentId: legacy.documentId || undefined,
-    documentName: legacy.documentName || legacy.document || undefined,
-    number: legacy.documentNumber || legacy.number || undefined,
-    issued: legacy.issuedDate || legacy.issued || undefined,
-    expiry: legacy.expiryDate || legacy.expiry || undefined,
-    issuingAuthority: legacy.issuingAuthority || undefined,
-    issuingCountryUuid: legacy.issuingCountry || undefined,
+    documentId: legacy.documentId ?? undefined,
+    documentName: legacy.documentName ?? legacy.document ?? undefined,
+    number: legacy.documentNumber ?? legacy.number ?? undefined,
+    issued: legacy.issuedDate ?? legacy.issued ?? undefined,
+    expiry: legacy.expiryDate ?? legacy.expiry ?? undefined,
+    issuingAuthority: legacy.issuingAuthority ?? undefined,
+    issuingCountryUuid: legacy.issuingCountry ?? undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter((att: any) => att.isNew || att.isDeleted)
@@ -406,11 +406,11 @@ export function mapV2VisaToLegacy(v2: any): any {
 export function mapLegacyVisaToV2(legacy: any): any {
   return {
     visaUuid: legacy.visaUuid,
-    country: legacy.country || legacy.issuingCountry || undefined,
-    serialNo: legacy.serialNo || legacy.serialNumber || undefined,
-    issued: legacy.issuedDate || legacy.issued || undefined,
-    expiry: legacy.expiryDate || legacy.expiry || undefined,
-    visaType: legacy.visaType || undefined,
+    country: legacy.country ?? legacy.issuingCountry ?? undefined,
+    serialNo: legacy.serialNo ?? legacy.serialNumber ?? undefined,
+    issued: legacy.issuedDate ?? legacy.issued ?? undefined,
+    expiry: legacy.expiryDate ?? legacy.expiry ?? undefined,
+    visaType: legacy.visaType ?? undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter((att: any) => att.isNew || att.isDeleted)
@@ -458,10 +458,10 @@ export function mapV2EducationToLegacy(v2: any): LegacyEducation {
 export function mapLegacyEducationToV2(legacy: LegacyEducation): any {
   return {
     eduUuid: legacy.eduUuid,
-    dateOfCompletion: legacy.dateOfCompletion || undefined,
-    institution: legacy.schoolCollegeUniversity || undefined,
-    subjectsField: legacy.subjectsField || undefined,
-    qualifications: legacy.qualifications || undefined,
+    dateOfCompletion: legacy.dateOfCompletion ?? undefined,
+    institution: legacy.schoolCollegeUniversity ?? undefined,
+    subjectsField: legacy.subjectsField ?? undefined,
+    qualifications: legacy.qualifications ?? undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
@@ -521,16 +521,16 @@ export function mapV2LicenseToLegacy(v2: any): LegacyLicense {
 export function mapLegacyLicenseToV2(legacy: LegacyLicense): any {
   return {
     licUuid: legacy.licUuid,
-    licenseId: legacy.licenseId || undefined,
-    certificateDocument: legacy.certificateDocument || undefined,
-    abbr: legacy.abbr || undefined,
-    requirement: legacy.requirement || undefined,
-    certificateNo: legacy.certificateNo || undefined,
-    issuingAuthority: legacy.issuingAuthority || undefined,
-    issuingCountryUuid: legacy.issuingCountry || undefined,
-    issued: legacy.issued || undefined,
-    expiry: legacy.expiry || undefined,
-    archivedAt: legacy.archivedAt || undefined,
+    licenseId: legacy.licenseId ?? undefined,
+    certificateDocument: legacy.certificateDocument ?? undefined,
+    abbr: legacy.abbr ?? undefined,
+    requirement: legacy.requirement ?? undefined,
+    certificateNo: legacy.certificateNo ?? undefined,
+    issuingAuthority: legacy.issuingAuthority ?? undefined,
+    issuingCountryUuid: legacy.issuingCountry ?? undefined,
+    issued: legacy.issued ?? undefined,
+    expiry: legacy.expiry ?? undefined,
+    archivedAt: legacy.archivedAt ?? undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
@@ -588,15 +588,15 @@ export function mapV2TrainingCourseToLegacy(v2: any): LegacyTrainingCourse {
 export function mapLegacyTrainingCourseToV2(legacy: LegacyTrainingCourse): any {
   return {
     trainUuid: legacy.trainUuid,
-    courseId: legacy.courseId || undefined,
-    trainingCourse: legacy.trainingCourse || undefined,
-    abbr: legacy.abbr || undefined,
-    requirement: legacy.requirement || undefined,
-    certificateNo: legacy.certificateNo || undefined,
-    issuingAuthority: legacy.issuingAuthority || undefined,
-    issuingCountryUuid: legacy.issuingCountry || undefined,
-    issued: legacy.issued || undefined,
-    expiry: legacy.expiry || undefined,
+    courseId: legacy.courseId ?? undefined,
+    trainingCourse: legacy.trainingCourse ?? undefined,
+    abbr: legacy.abbr ?? undefined,
+    requirement: legacy.requirement ?? undefined,
+    certificateNo: legacy.certificateNo ?? undefined,
+    issuingAuthority: legacy.issuingAuthority ?? undefined,
+    issuingCountryUuid: legacy.issuingCountry ?? undefined,
+    issued: legacy.issued ?? undefined,
+    expiry: legacy.expiry ?? undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
@@ -668,15 +668,15 @@ export function mapLegacySeaServiceToV2(legacy: LegacySeaService): any {
   return {
     seaUuid: legacy.seaUuid,
     serviceType: legacy.isCompanyService ? 'company' : 'external',
-    vesselName: legacy.vesselName || undefined,
-    vesselUuid: legacy.vesselCode || undefined,
-    vesselTypeUuid: legacy.vesselType || undefined,
-    deadweight: legacy.deadweight || undefined,
-    engineTypePower: legacy.engineTypePower || undefined,
-    ownerOperator: legacy.ownerOperator || undefined,
-    rank: legacy.rank || undefined,
-    fromDate: legacy.fromDate || legacy.from || undefined,
-    toDate: legacy.toDate || legacy.to || undefined,
+    vesselName: legacy.vesselName ?? undefined,
+    vesselUuid: legacy.vesselCode ?? undefined,
+    vesselTypeUuid: legacy.vesselType ?? undefined,
+    deadweight: legacy.deadweight ?? undefined,
+    engineTypePower: legacy.engineTypePower ?? undefined,
+    ownerOperator: legacy.ownerOperator ?? undefined,
+    rank: legacy.rank ?? undefined,
+    fromDate: legacy.fromDate ?? legacy.from ?? undefined,
+    toDate: legacy.toDate ?? legacy.to ?? undefined,
     periodMonths: legacy.periodMonths ? String(legacy.periodMonths) : undefined,
     experienceCategories: legacy.experienceCategories?.length ? legacy.experienceCategories : undefined,
     sortOrder: legacy.sortOrder,
@@ -730,15 +730,15 @@ export function mapV2PreJoiningMedicalToLegacy(v2: any): LegacyPreJoiningMedical
 export function mapLegacyPreJoiningMedicalToV2(legacy: LegacyPreJoiningMedical): any {
   return {
     medUuid: legacy.medUuid,
-    vesselUuid: legacy.vesselCode || undefined,
-    vesselName: legacy.vessel || legacy.vesselName || undefined,
-    examinationDate: legacy.dateOfMedical || undefined,
-    bp: legacy.bp || undefined,
-    weight: legacy.weight || undefined,
-    anyMedicationPrescribed: legacy.anyMedicationPrescribed || undefined,
-    clinicHospital: legacy.clinicHospital || undefined,
-    fitForDuty: legacy.fitnessForDuty || undefined,
-    expiryDate: legacy.expiryDate || legacy.expiry || undefined,
+    vesselUuid: legacy.vesselCode ?? undefined,
+    vesselName: legacy.vessel ?? legacy.vesselName ?? undefined,
+    examinationDate: legacy.dateOfMedical ?? undefined,
+    bp: legacy.bp ?? undefined,
+    weight: legacy.weight ?? undefined,
+    anyMedicationPrescribed: legacy.anyMedicationPrescribed ?? undefined,
+    clinicHospital: legacy.clinicHospital ?? undefined,
+    fitForDuty: legacy.fitnessForDuty ?? undefined,
+    expiryDate: legacy.expiryDate ?? legacy.expiry ?? undefined,
     sortOrder: legacy.sortOrder,
   };
 }
@@ -790,16 +790,16 @@ export function mapV2DoctorVisitToLegacy(v2: any): LegacyDoctorVisit {
 export function mapLegacyDoctorVisitToV2(legacy: LegacyDoctorVisit): any {
   return {
     visitUuid: legacy.visitUuid,
-    vessel: legacy.vessel || undefined,
-    port: legacy.port || undefined,
-    visitDate: legacy.visitDate || legacy.date || undefined,
-    doctorName: legacy.doctorName || undefined,
-    clinicHospital: legacy.clinicHospital || undefined,
-    reason: legacy.complaint || undefined,
-    doctorComments: legacy.doctorComments || undefined,
-    diagnosis: legacy.diagnosis || undefined,
-    treatment: legacy.treatment || undefined,
-    followUpDate: legacy.followUpDate || undefined,
+    vessel: legacy.vessel ?? undefined,
+    port: legacy.port ?? undefined,
+    visitDate: legacy.visitDate ?? legacy.date ?? undefined,
+    doctorName: legacy.doctorName ?? undefined,
+    clinicHospital: legacy.clinicHospital ?? undefined,
+    reason: legacy.complaint ?? undefined,
+    doctorComments: legacy.doctorComments ?? undefined,
+    diagnosis: legacy.diagnosis ?? undefined,
+    treatment: legacy.treatment ?? undefined,
+    followUpDate: legacy.followUpDate ?? undefined,
     sortOrder: legacy.sortOrder,
   };
 }
