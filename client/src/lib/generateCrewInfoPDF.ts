@@ -644,8 +644,7 @@ export async function generateCrewInfoPDF(
     const crewIdText = `${crewIdLabel} ${crewId}`;
     const crewIdFontSize = 10;
     const crewIdWidth = fontBold.widthOfTextAtSize(crewIdText, crewIdFontSize);
-    const photoLeftX = A4_WIDTH - MARGIN - PHOTO_WIDTH;
-    const crewIdX = photoLeftX - crewIdWidth - 10;
+    const crewIdX = A4_WIDTH - MARGIN - crewIdWidth;
     builder.drawTextAt(crewIdText, crewIdX, builder.getY(), crewIdFontSize, 'bold', PRIMARY_COLOR);
   }
 
