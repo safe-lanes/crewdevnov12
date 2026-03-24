@@ -5807,7 +5807,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 if (child.childUuid) {
                   await crewPoolApiV2.updateChild(crewIdentifier, child.childUuid, childData);
                 } else {
-                  await crewPoolApiV2.createChild(crewIdentifier, childData);
+                  const created = await crewPoolApiV2.createChild(crewIdentifier, childData);
+                  if (created?.childUuid) {
+                    setFormData(prev => ({
+                      ...prev,
+                      children: prev.children.map((c, i) =>
+                        i === index ? { ...c, childUuid: created.childUuid } : c
+                      )
+                    }));
+                  }
                 }
               });
             });
@@ -6779,7 +6787,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             if (child.childUuid) {
               await crewPoolApiV2.updateChild(crewUuid, child.childUuid, childData);
             } else {
-              await crewPoolApiV2.createChild(crewUuid, childData);
+              const created = await crewPoolApiV2.createChild(crewUuid, childData);
+              if (created?.childUuid) {
+                setFormData(prev => ({
+                  ...prev,
+                  children: prev.children.map((c, i) =>
+                    i === index ? { ...c, childUuid: created.childUuid } : c
+                  )
+                }));
+              }
             }
           } catch (e) {
             console.error(`[V2] Failed to save child ${child.firstName}:`, e);
