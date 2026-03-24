@@ -458,9 +458,9 @@ export function mapV2EducationToLegacy(v2: any): LegacyEducation {
 export function mapLegacyEducationToV2(legacy: LegacyEducation): any {
   return {
     eduUuid: legacy.eduUuid,
-    dateOfCompletion: legacy.dateOfCompletion || undefined,
-    institution: legacy.schoolCollegeUniversity || undefined,
-    subjectsField: legacy.subjectsField || undefined,
+    dateOfCompletion: legacy.dateOfCompletion ?? undefined,
+    institution: legacy.schoolCollegeUniversity ?? undefined,
+    subjectsField: legacy.subjectsField ?? undefined,
     qualifications: legacy.qualifications || undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
@@ -523,13 +523,13 @@ export function mapLegacyLicenseToV2(legacy: LegacyLicense): any {
     licUuid: legacy.licUuid,
     licenseId: legacy.licenseId || undefined,
     certificateDocument: legacy.certificateDocument || undefined,
-    abbr: legacy.abbr || undefined,
-    requirement: legacy.requirement || undefined,
-    certificateNo: legacy.certificateNo || undefined,
-    issuingAuthority: legacy.issuingAuthority || undefined,
+    abbr: legacy.abbr ?? undefined,
+    requirement: legacy.requirement ?? undefined,
+    certificateNo: legacy.certificateNo ?? undefined,
+    issuingAuthority: legacy.issuingAuthority ?? undefined,
     issuingCountryUuid: legacy.issuingCountry || undefined,
-    issued: legacy.issued || undefined,
-    expiry: legacy.expiry || undefined,
+    issued: legacy.issued ?? undefined,
+    expiry: legacy.expiry ?? undefined,
     archivedAt: legacy.archivedAt || undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
