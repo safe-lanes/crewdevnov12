@@ -122,6 +122,16 @@ function withAuditUser<T>(data: T): T {
   return data;
 }
 
+const calculateBMI = (height: string, weight: string): string => {
+  const heightInM = parseFloat(height) / 100;
+  const weightInKg = parseFloat(weight);
+  if (heightInM > 0 && weightInKg > 0) {
+    const bmi = weightInKg / (heightInM * heightInM);
+    return bmi.toFixed(1);
+  }
+  return '';
+};
+
 const V2_QUERY_KEY = '/api/v2/crew-pool';
 
 interface CrewMember {
@@ -965,7 +975,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         placeOfBirthCountry: detailedCrewData.placeOfBirthCountry || '',
         heightCm: detailedCrewData.height || detailedCrewData.heightCm || '',
         weightKg: detailedCrewData.weight || detailedCrewData.weightKg || '',
-        bmi: detailedCrewData.bmi || '',
+        bmi: detailedCrewData.bmi || calculateBMI(
+          detailedCrewData.height || detailedCrewData.heightCm || '',
+          detailedCrewData.weight || detailedCrewData.weightKg || ''
+        ),
         nativeLanguage: detailedCrewData.nativeLanguage || '',
         foreignLanguages: detailedCrewData.foreignLanguages || '',
         englishProficiency: detailedCrewData.englishProficiency || '',
@@ -1297,16 +1310,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   }, [editingSections, formData]);
 
-  // Helper function to calculate BMI
-  const calculateBMI = (height: string, weight: string) => {
-    const heightInM = parseFloat(height) / 100; // Convert cm to meters
-    const weightInKg = parseFloat(weight);
-    if (heightInM > 0 && weightInKg > 0) {
-      const bmi = weightInKg / (heightInM * heightInM);
-      return bmi.toFixed(1);
-    }
-    return '';
-  };
 
   // Helper function to calculate age from date of birth
   const calculateAge = (dateOfBirth: string) => {

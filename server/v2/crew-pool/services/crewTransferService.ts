@@ -282,7 +282,9 @@ export const crewTransferService = {
           crewUuid,
           heightCm: candPersonal.heightCm,
           weightKg: candPersonal.weightKg,
-          bmi: null,
+          bmi: (candPersonal.heightCm && candPersonal.weightKg)
+            ? (parseFloat(candPersonal.weightKg) / Math.pow(parseFloat(candPersonal.heightCm) / 100, 2)).toFixed(1)
+            : null,
           ageInYears: candPersonal.ageInYears,
           placeOfBirthCity: candPersonal.placeOfBirthCity,
           placeOfBirthCountryUuid: candPersonal.placeOfBirthCountryUuid,
