@@ -6720,53 +6720,83 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       };
       saveAddressMutationV2.mutate({ crewUuid, data: addressData });
     } else if (sectionId === 'B3') {
+      let b3HasErrors = false;
+      const familyInfoData = {
+        maritalStatus: formData.maritalStatus,
+        numberOfDependentChildren: formData.numberOfDependentChildren,
+        fatherName: formData.fatherName,
+        motherName: formData.motherName,
+        spouseFirstName: formData.spouseFirstName,
+        spouseMiddleName: formData.spouseMiddleName,
+        spouseFamilyName: formData.spouseFamilyName,
+        spouseDateOfBirth: formData.spouseDateOfBirth,
+      };
       try {
-        const familyInfoData = {
-          maritalStatus: formData.maritalStatus,
-          numberOfDependentChildren: formData.numberOfDependentChildren,
-          fatherName: formData.fatherName,
-          motherName: formData.motherName,
-          spouseFirstName: formData.spouseFirstName,
-          spouseMiddleName: formData.spouseMiddleName,
-          spouseFamilyName: formData.spouseFamilyName,
-          spouseDateOfBirth: formData.spouseDateOfBirth,
-        };
         await crewPoolApiV2.saveFamilyInfo(crewUuid, familyInfoData);
-        const nokData = {
-          firstName: formData.nokFirstName,
-          middleName: formData.nokMiddleName,
-          familyName: formData.nokFamilyName,
-          relationship: formData.nokRelationship,
-          telephone: formData.nokTelephone,
-          email: formData.nokEmail,
-          address: formData.nokAddress,
-        };
-        if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
+      } catch (e) {
+        console.error('[V2] Failed to save family info:', e);
+        b3HasErrors = true;
+      }
+      const nokData = {
+        firstName: formData.nokFirstName,
+        middleName: formData.nokMiddleName,
+        familyName: formData.nokFamilyName,
+        relationship: formData.nokRelationship,
+        telephone: formData.nokTelephone,
+        email: formData.nokEmail,
+        address: formData.nokAddress,
+      };
+      if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
+        try {
           await crewPoolApiV2.saveNextOfKin(crewUuid, nokData);
+        } catch (e) {
+          console.error('[V2] Failed to save next of kin:', e);
+          b3HasErrors = true;
         }
-        if (deletedChildUuids.length > 0) {
-          for (const childUuid of deletedChildUuids) {
-            try { await crewPoolApiV2.deleteChild(crewUuid, childUuid); } catch (e) { /* ignore */ }
+      }
+      if (deletedChildUuids.length > 0) {
+        const successfulDeletes: string[] = [];
+        for (const childUuid of deletedChildUuids) {
+          try {
+            await crewPoolApiV2.deleteChild(crewUuid, childUuid);
+            successfulDeletes.push(childUuid);
+          } catch (e) {
+            console.error(`[V2] Failed to delete child ${childUuid}:`, e);
+            b3HasErrors = true;
           }
-          setDeletedChildUuids([]);
         }
-        if (formData.children && formData.children.length > 0) {
-          for (let index = 0; index < formData.children.length; index++) {
-            const child = formData.children[index] as any;
-            const childData = {
-              firstName: child.firstName, middleName: child.middleName,
-              familyName: child.familyName, dateOfBirth: child.dateOfBirth,
-              gender: child.gender, sortOrder: index,
-            };
+        setDeletedChildUuids(prev => prev.filter(id => !successfulDeletes.includes(id)));
+      }
+      if (formData.children && formData.children.length > 0) {
+        for (let index = 0; index < formData.children.length; index++) {
+          const child = formData.children[index] as any;
+          const childData = {
+            firstName: child.firstName, middleName: child.middleName,
+            familyName: child.familyName, dateOfBirth: child.dateOfBirth,
+            gender: child.gender, sortOrder: index,
+          };
+          try {
             if (child.childUuid) {
               await crewPoolApiV2.updateChild(crewUuid, child.childUuid, childData);
             } else {
               await crewPoolApiV2.createChild(crewUuid, childData);
             }
+          } catch (e) {
+            console.error(`[V2] Failed to save child ${child.firstName}:`, e);
+            b3HasErrors = true;
           }
         }
-      } catch (e) { /* ignore */ }
+      }
       invalidateCrewData(crewUuid);
+      if (b3HasErrors) {
+        toast({
+          title: "Partial save",
+          description: "Some items in Section B3 could not be saved. Please try again.",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
+      }
     }
 
     console.log(`[V2] Auto-saved section ${sectionId}`);
