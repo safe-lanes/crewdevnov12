@@ -348,12 +348,12 @@ export function mapV2DocumentToLegacy(v2: any): any {
 export function mapLegacyDocumentToV2(legacy: any): any {
   return {
     docUuid: legacy.docUuid,
-    documentId: legacy.documentId || undefined,
-    documentName: legacy.documentName || legacy.document || undefined,
-    number: legacy.documentNumber || legacy.number || undefined,
-    issued: legacy.issuedDate || legacy.issued || undefined,
-    expiry: legacy.expiryDate || legacy.expiry || undefined,
-    issuingAuthority: legacy.issuingAuthority || undefined,
+    documentId: legacy.documentId ?? undefined,
+    documentName: legacy.documentName ?? legacy.document ?? undefined,
+    number: legacy.documentNumber ?? legacy.number ?? undefined,
+    issued: legacy.issuedDate ?? legacy.issued ?? undefined,
+    expiry: legacy.expiryDate ?? legacy.expiry ?? undefined,
+    issuingAuthority: legacy.issuingAuthority ?? undefined,
     issuingCountryUuid: legacy.issuingCountry || undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
@@ -406,11 +406,11 @@ export function mapV2VisaToLegacy(v2: any): any {
 export function mapLegacyVisaToV2(legacy: any): any {
   return {
     visaUuid: legacy.visaUuid,
-    country: legacy.country || legacy.issuingCountry || undefined,
-    serialNo: legacy.serialNo || legacy.serialNumber || undefined,
-    issued: legacy.issuedDate || legacy.issued || undefined,
-    expiry: legacy.expiryDate || legacy.expiry || undefined,
-    visaType: legacy.visaType || undefined,
+    country: legacy.country ?? legacy.issuingCountry ?? undefined,
+    serialNo: legacy.serialNo ?? legacy.serialNumber ?? undefined,
+    issued: legacy.issuedDate ?? legacy.issued ?? undefined,
+    expiry: legacy.expiryDate ?? legacy.expiry ?? undefined,
+    visaType: legacy.visaType ?? undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter((att: any) => att.isNew || att.isDeleted)
