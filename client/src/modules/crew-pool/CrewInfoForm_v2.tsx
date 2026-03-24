@@ -3750,8 +3750,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                 <SelectValue placeholder="Select" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Son">Son</SelectItem>
-                                <SelectItem value="Daughter">Daughter</SelectItem>
+                                <SelectItem value="Male">Male</SelectItem>
+                                <SelectItem value="Female">Female</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
@@ -5794,13 +5794,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             setDeletedChildUuids([]);
           }
           if (formData.children && formData.children.length > 0) {
-            formData.children.forEach((child: any) => {
+            formData.children.forEach((child: any, index: number) => {
               const childData = {
                 firstName: child.firstName,
                 middleName: child.middleName,
                 familyName: child.familyName,
                 dateOfBirth: child.dateOfBirth,
                 gender: child.gender,
+                sortOrder: index,
               };
               miscOps.push(async () => {
                 if (child.childUuid) {
@@ -6684,7 +6685,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // Auto-save functionality — saves the specific section's data to the backend
-  const handleSectionAutoSave = (sectionId: string) => {
+  const handleSectionAutoSave = async (sectionId: string) => {
     const crewUuid = getEffectiveCrewUuid();
     if (!crewUuid) return;
 
@@ -6742,15 +6743,30 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
         saveNextOfKinMutationV2.mutate({ crewUuid, data: nokData });
       }
-      if (formData.children && formData.children.length > 0) {
-        formData.children.forEach((child: any) => {
-          saveChildMutationV2.mutate({
-            crewUuid,
-            data: { firstName: child.firstName, middleName: child.middleName, familyName: child.familyName, dateOfBirth: child.dateOfBirth, gender: child.gender },
-            childUuid: child.childUuid,
-          });
-        });
+      if (deletedChildUuids.length > 0) {
+        for (const childUuid of deletedChildUuids) {
+          try { await crewPoolApiV2.deleteChild(crewUuid, childUuid); } catch (e) { /* ignore */ }
+        }
+        setDeletedChildUuids([]);
       }
+      if (formData.children && formData.children.length > 0) {
+        for (let index = 0; index < formData.children.length; index++) {
+          const child = formData.children[index] as any;
+          const childData = {
+            firstName: child.firstName, middleName: child.middleName,
+            familyName: child.familyName, dateOfBirth: child.dateOfBirth,
+            gender: child.gender, sortOrder: index,
+          };
+          try {
+            if (child.childUuid) {
+              await crewPoolApiV2.updateChild(crewUuid, child.childUuid, childData);
+            } else {
+              await crewPoolApiV2.createChild(crewUuid, childData);
+            }
+          } catch (e) { /* ignore */ }
+        }
+      }
+      invalidateCrewData(crewUuid);
     }
 
     console.log(`[V2] Auto-saved section ${sectionId}`);
