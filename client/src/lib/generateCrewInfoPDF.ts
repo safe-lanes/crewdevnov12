@@ -637,6 +637,18 @@ export async function generateCrewInfoPDF(
   const builder = new PDFBuilder(pdfDoc, font, fontBold, fontItalic);
 
   builder.drawText('CREW INFORMATION FORM', MARGIN, 14, 'bold', PRIMARY_COLOR);
+
+  const crewId = formData.employeeId || '';
+  if (crewId) {
+    const crewIdLabel = 'Crew ID:';
+    const crewIdText = `${crewIdLabel} ${crewId}`;
+    const crewIdFontSize = 10;
+    const crewIdWidth = fontBold.widthOfTextAtSize(crewIdText, crewIdFontSize);
+    const photoLeftX = A4_WIDTH - MARGIN - PHOTO_WIDTH;
+    const crewIdX = photoLeftX - crewIdWidth - 10;
+    builder.drawTextAt(crewIdText, crewIdX, builder.getY(), crewIdFontSize, 'bold', PRIMARY_COLOR);
+  }
+
   builder.moveDown(LINE_HEIGHT + 6);
   
   builder.drawText(crewName, MARGIN, 11, 'normal');
