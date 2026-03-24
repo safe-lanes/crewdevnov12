@@ -765,39 +765,28 @@ function drawPartB(builder: PDFBuilder, formData: CrewInfoFormData): void {
     { label: 'Country of Residence', value: formData.countryOfResidence },
     { label: 'Nearest Airport', value: formData.nearestAirport },
     { label: 'Residential Address Line 1', value: formData.residentialAddressLine1 },
-  ]);
-  builder.drawFieldRow([
     { label: 'Residential Address Line 2', value: formData.residentialAddressLine2 },
+  ], CONTENT_WIDTH / 4);
+  builder.drawFieldRow([
     { label: 'Contact ( Landline )', value: formData.contactLandline },
     { label: 'Mobile', value: formData.mobile },
-  ]);
-  builder.drawFieldRow([
     { label: 'Email', value: formData.email },
     { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH / 4);
 
   builder.drawSubsectionHeader('B3 Family and NOK');
   builder.drawFieldRow([
     { label: 'Marital Status', value: formData.maritalStatus },
     { label: 'No. of Dependant Children', value: formData.numberOfDependentChildren },
     { label: 'Father\'s Name', value: formData.fatherName },
-  ]);
-  builder.drawFieldRow([
     { label: 'Mother\'s Name', value: formData.motherName },
-    { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH / 4);
   builder.drawFieldRow([
     { label: 'Spouse First Name', value: formData.spouseFirstName },
     { label: 'Spouse Middle Name', value: formData.spouseMiddleName },
     { label: 'Spouse Family Name', value: formData.spouseFamilyName },
-  ]);
-  builder.drawFieldRow([
     { label: 'Spouse Date of Birth', value: formatDate(formData.spouseDateOfBirth) },
-    { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH / 4);
 
   if (formData.children && formData.children.length > 0) {
     builder.checkPageBreak(50);
@@ -824,17 +813,14 @@ function drawPartB(builder: PDFBuilder, formData: CrewInfoFormData): void {
     { label: 'NOK: First Name', value: formData.nokFirstName },
     { label: 'NOK: Middle Name', value: formData.nokMiddleName },
     { label: 'NOK: Family Name', value: formData.nokFamilyName },
-  ]);
-  builder.drawFieldRow([
     { label: 'NOK: Relationship', value: formData.nokRelationship },
+  ], CONTENT_WIDTH / 4);
+  builder.drawFieldRow([
     { label: 'NOK: Telephone', value: formData.nokTelephone },
     { label: 'NOK: Email', value: formData.nokEmail },
-  ]);
-  builder.drawFieldRow([
     { label: 'NOK: Address', value: formData.nokAddress },
     { label: '', value: '' },
-    { label: '', value: '' },
-  ]);
+  ], CONTENT_WIDTH / 4);
 }
 
 function drawPartC(builder: PDFBuilder, formData: CrewInfoFormData): void {
