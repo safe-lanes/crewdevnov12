@@ -674,31 +674,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   }, [externalVesselTypesData]);
   
   // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
-  // Sort in hierarchical order with Oil Chemical Tanker positioned after Chemical Tanker
+  // Sort alphabetically to match Recruitment form ordering
   // External API uses 'vesselType' field for name, 'vtuid' for ID
   const vesselTypeMasterData = useMemo(() => {
-    const preferredOrder = [
-      'Oil Tanker',
-      'Chemical Tanker',
-      'Oil Chemical Tanker',
-      'Gas Tanker',
-      'Bitumen/Asphalt Carriers',
-      'Product Oil Tanker',
-      'Crude Oil Tanker',
-      'LNG Tanker',
-      'LPG Tanker',
-      'Bulk Carrier',
-      'General Cargo',
-      'Container',
-      'RoRo',
-      'Barges',
-      'Offshore Support Vessels',
-      'Shuttle Tankers'
-    ];
-    
     if (vesselTypeMasterDataRaw.length > 0) {
-      // External API doesn't have 'level' field, so include all types
-      // Support both external API format (vesselType) and local DB format (name)
       const hasLevelField = vesselTypeMasterDataRaw.some((vt: any) => vt.level !== undefined);
       const filteredTypes = hasLevelField 
         ? vesselTypeMasterDataRaw.filter((vt: any) => vt.level && vt.level >= 2)
@@ -708,14 +687,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         return filteredTypes
           .map((vt: any) => vt.vesselType || vt.name)
           .filter(Boolean)
-          .sort((a: string, b: string) => {
-            const indexA = preferredOrder.indexOf(a);
-            const indexB = preferredOrder.indexOf(b);
-            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-            if (indexA !== -1) return -1;
-            if (indexB !== -1) return 1;
-            return a.localeCompare(b);
-          });
+          .sort((a: string, b: string) => a.localeCompare(b));
       }
     }
     return DEFAULT_DROPDOWN_VESSEL_TYPES;
