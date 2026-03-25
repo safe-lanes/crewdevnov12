@@ -90,14 +90,11 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return [];
     }, [externalNationalitiesData]);
     
-    // Extract vessel entries (id and name) for dropdown - sorted by name
-    // Using external API (SAIL ERP) instead of local Master Data 014
-    // External API uses 'vessel' field for name and 'vuid' for ID
     const vesselMasterData = useMemo(() => {
         if (externalVesselsData && Array.isArray(externalVesselsData) && externalVesselsData.length > 0) {
             return externalVesselsData
-                .filter((v: any) => (v.vessel || v.name) && (v.vuid || v.nuid || v.id))
-                .map((v: any) => ({ id: v.vuid || v.nuid || `VSL-${v.id}`, name: v.vessel || v.name }))
+                .filter((v: any) => (v.vessel || v.name) && (v.vesselUuid || v.uuid || v.id))
+                .map((v: any) => ({ id: v.vesselUuid || v.uuid || v.id, name: v.vessel || v.name }))
                 .sort((a: any, b: any) => a.name.localeCompare(b.name));
         }
         return [];

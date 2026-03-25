@@ -19,6 +19,7 @@ export interface LegacyCrewMember {
   isActive: boolean;
   uploadedPhoto: string;
   presentVessel: string;
+  presentVesselName: string;
   lastVessel: string;
   signOnDate: string;
   signOffDate: string;
@@ -65,6 +66,7 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     isActive: v2Crew.isActive ?? true,
     uploadedPhoto: v2Crew.uploadedPhoto || '',
     presentVessel: v2Crew.presentVessel || '',
+    presentVesselName: v2Crew.presentVesselName || '',
     lastVessel: v2Crew.lastVessel || '',
     signOnDate: v2Crew.signOnDate || '',
     signOffDate: v2Crew.signOffDate || '',
