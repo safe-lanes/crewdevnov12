@@ -991,6 +991,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         manningAgent: detailedCrewData.manningAgent || '',
         crewPool: detailedCrewData.crewPool || '',
         employeeId: detailedCrewData.employeeId || '',
+        nextAvailability: detailedCrewData.nextAvailability || '',
         
         // A1.2 Address & Contact Info
         countryOfResidence: detailedCrewData.countryOfResidence || '',
@@ -5731,6 +5732,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const nonBatchOps: (() => Promise<any>)[] = [];
           nonBatchOps.push(async () => {
             const v2Crew = withAuditUser(mapLegacyCrewToV2(dataWithPhoto));
+            delete v2Crew.nextAvailability;
+            delete v2Crew.isActive;
+            delete v2Crew.status;
             await crewPoolApiV2.updateCrew(crewIdentifier, v2Crew);
           });
           const personalDetailsData = {
