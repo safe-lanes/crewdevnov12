@@ -115,15 +115,7 @@ export function useCrewFullProfileV2(crewUuid: string | null) {
     queryFn: async () => {
       if (!crewUuid) return null;
       const response = await crewPoolApiV2.getCrewFullProfile(crewUuid);
-        education: response?.education,
-        licenses: response?.licenses,
-        trainingCourses: response?.trainingCourses,
-      });
       const mapped = mapV2FullProfileToLegacy(response);
-        education: mapped?.education,
-        licenses: mapped?.licenses,
-        trainingCourses: mapped?.trainingCourses,
-      });
       return mapped;
     },
     enabled: !!crewUuid,
