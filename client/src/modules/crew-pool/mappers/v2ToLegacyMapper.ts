@@ -66,7 +66,7 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     isActive: v2Crew.isActive ?? true,
     uploadedPhoto: v2Crew.uploadedPhoto || '',
     presentVessel: v2Crew.presentVessel || '',
-    presentVesselName: v2Crew.presentVesselName || '',
+    presentVesselName: v2Crew.presentVesselName || v2Crew.currentVesselName || '',
     lastVessel: v2Crew.lastVessel || '',
     signOnDate: v2Crew.signOnDate || '',
     signOffDate: v2Crew.signOffDate || '',
