@@ -1151,7 +1151,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // This ensures the form starts with empty values instead of stale data from previous selection
   useEffect(() => {
     if (isOpen && !crewMember) {
-      console.log('[V2] Resetting form data for new crew member');
       setFormData({
         // A1.1 General Particulars
         firstName: '',
@@ -2898,11 +2897,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TimelineCard
                 assignments={serviceTimelineData || []}
                 isLoading={isDashboardLoading}
-                onAppraisalClick={(appraisalId: number) => {
-                  console.log('Navigate to appraisal:', appraisalId);
+                onAppraisalClick={(_appraisalId: number) => {
                 }}
-                onHandoverClick={(handoverId: number) => {
-                  console.log('Navigate to handover:', handoverId);
+                onHandoverClick={(_handoverId: number) => {
                 }}
               />
             </div>
@@ -5469,7 +5466,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // Save Draft functionality
   const handleSaveDraft = () => {
     if (isBatchSavingRef.current) return;
-    console.log('Saving crew info (V2):', formData);
 
     let hasErrors = false;
 
@@ -5700,7 +5696,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         const batchErrors: string[] = [];
         const uuidUpdates: { section: string; localId: string; uuid: string }[] = [];
         try {
-          console.log('V2 Starting save — all operations use direct API calls to prevent mid-save cache invalidation');
 
           const nonBatchOps: (() => Promise<any>)[] = [];
           nonBatchOps.push(async () => {
@@ -5833,7 +5828,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
           const processBatch = async (batchName: string, operations: (() => Promise<any>)[]) => {
             if (operations.length === 0) return;
-            console.log(`V2 Processing batch: ${batchName} (${operations.length} operations)`);
             const subBatchSize = 3;
             for (let i = 0; i < operations.length; i += subBatchSize) {
               const subBatch = operations.slice(i, i + subBatchSize);
@@ -5846,7 +5840,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 }
               });
             }
-            console.log(`V2 Completed batch: ${batchName}`);
           };
 
           const batch1Operations: (() => Promise<any>)[] = [];
@@ -5855,7 +5848,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const batch4Operations: (() => Promise<any>)[] = [];
 
           if (cleanedFormData.documents && cleanedFormData.documents.length > 0) {
-            console.log('V2 Preparing Documents for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.documents.length });
             cleanedFormData.documents.forEach((doc: any, index: number) => {
               const docAttachments = doc.attachments || [];
               const capturedNewAttachments = [...docAttachments.filter((att: any) => !att.attUuid || att.isNew)];
@@ -5899,7 +5891,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.visas && cleanedFormData.visas.length > 0) {
-            console.log('V2 Preparing Visas for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.visas.length });
             cleanedFormData.visas.forEach((visa: any, index: number) => {
               const visaAttachments = visa.attachments || [];
               const capturedNewAttachments = [...visaAttachments.filter((att: any) => !att.attUuid || att.isNew)];
@@ -5941,7 +5932,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.education && cleanedFormData.education.length > 0) {
-            console.log('V2 Preparing Education for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.education.length });
             cleanedFormData.education.forEach((edu: any, index: number) => {
               const eduAttachments = edu.attachments || [];
               const capturedNewAttachments = [...eduAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6003,7 +5993,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.licenses && cleanedFormData.licenses.length > 0) {
-            console.log('V2 Preparing Licenses for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.licenses.length });
             cleanedFormData.licenses.forEach((lic: any, index: number) => {
               const licAttachments = lic.attachments || [];
               const capturedNewAttachments = [...licAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6071,7 +6060,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.trainingCourses && cleanedFormData.trainingCourses.length > 0) {
-            console.log('V2 Preparing Training Courses for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.trainingCourses.length });
             cleanedFormData.trainingCourses.forEach((train: any, index: number) => {
               const trainAttachments = train.attachments || [];
               const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6138,7 +6126,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.currentCompanySeaService && cleanedFormData.currentCompanySeaService.length > 0) {
-            console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.currentCompanySeaService.length });
             cleanedFormData.currentCompanySeaService.forEach((sea: any, index: number) => {
               const seaAttachments = sea.attachments || [];
               const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6220,7 +6207,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.externalSeaService && cleanedFormData.externalSeaService.length > 0) {
-            console.log('V2 Preparing External Sea Service for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.externalSeaService.length });
             cleanedFormData.externalSeaService.forEach((sea: any, index: number) => {
               const seaAttachments = sea.attachments || [];
               const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6296,7 +6282,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             return (med.vesselCode || med.vessel || med.dateOfMedical || med.bp || med.weight || med.anyMedicationPrescribed || med.clinicHospital || med.fitnessForDuty || med.expiry || hasAttachments);
           });
           if (nonEmptyMedicals.length > 0) {
-            console.log('V2 Preparing Pre-Joining Medicals for batch:', { crewUuid: crewIdentifier, count: nonEmptyMedicals.length });
             nonEmptyMedicals.forEach((med: any, index: number) => {
               const medAttachments = med.attachments || [];
               const capturedNewAttachments = [...medAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6369,7 +6354,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             return (visit.vessel || visit.port || visit.date || visit.complaint || visit.doctorComments || visit.doctorName || visit.clinicHospital || visit.diagnosis || visit.treatment || visit.followUpDate || hasAttachments);
           });
           if (nonEmptyVisits.length > 0) {
-            console.log('V2 Preparing Doctor Visits for batch:', { crewUuid: crewIdentifier, count: nonEmptyVisits.length });
             nonEmptyVisits.forEach((visit: any, index: number) => {
               const visitAttachments = visit.attachments || [];
               const capturedNewAttachments = [...visitAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6436,14 +6420,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          console.log('V2 Starting sequential batch execution...');
           await processBatch('Batch 1: Documents + Visas', batch1Operations);
           await processBatch('Batch 2: Education + Licenses', batch2Operations);
           await processBatch('Batch 3: Training + Sea Service', batch3Operations);
           await processBatch('Batch 4: Medicals + Doctor Visits', batch4Operations);
 
           if (uuidUpdates.length > 0) {
-            console.log('V2: Applying UUID updates to form data:', uuidUpdates);
             const uuidKeyMap: Record<string, string> = {
               documents: 'docUuid',
               visas: 'visaUuid',
@@ -6478,7 +6460,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               duration: 6000,
             });
           } else {
-            console.log('V2: All batches completed successfully');
             toast({
               title: "Saved",
               description: "Crew member updated successfully.",
@@ -6489,7 +6470,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
           invalidateCrewData(crewIdentifier);
           await queryClient.refetchQueries({ queryKey: [V2_QUERY_KEY, 'crew', crewIdentifier, 'full-profile'] });
-          console.log('V2: Post-save cache refreshed');
         } catch (error) {
           console.error('V2: Error during batch execution:', error);
           toast({
@@ -6824,7 +6804,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       }
     }
 
-    console.log(`[V2] Auto-saved section ${sectionId}`);
     toast({
       title: "Auto-saved",
       description: `Section ${sectionId} has been saved.`,
@@ -6881,7 +6860,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     // Race condition guard - prevent duplicate creation on rapid clicks
     if (isCreatingCrew) {
-      console.log('[V2] Crew creation already in progress, waiting...');
       return null; // Already creating, don't proceed
     }
 
@@ -6902,12 +6880,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Use the same V2 mapping pipeline as the createCrewMutationV2 hook
       const v2Data = mapLegacyCrewToV2(legacyCrewData);
       
-      console.log('[V2] Auto-creating crew record before edit:', { legacyCrewData, v2Data });
       const result = await crewPoolApiV2.createCrew(v2Data);
       const newCrewUuid = result?.crewUuid;
       
       if (newCrewUuid) {
-        console.log('[V2] Crew record created with UUID:', newCrewUuid);
         setCreatedCrewId(newCrewUuid);
         
         queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
@@ -6928,7 +6904,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           manningAgent: formData.manningAgent,
           crewPool: formData.crewPool,
         };
-        console.log('[V2] Chaining Personal Details save after auto-create:', { crewUuid: newCrewUuid, data: personalDetailsData });
         crewPoolApiV2.savePersonalDetails(newCrewUuid, mapLegacyPersonalDetailsToV2(personalDetailsData)).catch(
           (err) => console.error('[V2] Personal Details auto-save error:', err)
         );
@@ -6942,7 +6917,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           mobile: formData.mobile,
           email: formData.email,
         };
-        console.log('[V2] Chaining Address save after auto-create:', { crewUuid: newCrewUuid, data: addressData });
         crewPoolApiV2.saveAddress(newCrewUuid, mapLegacyAddressToV2(addressData)).catch(
           (err) => console.error('[V2] Address auto-save error:', err)
         );
@@ -6957,7 +6931,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           spouseFamilyName: formData.spouseFamilyName,
           spouseDateOfBirth: formData.spouseDateOfBirth,
         };
-        console.log('[V2] Chaining Family Info save after auto-create:', { crewUuid: newCrewUuid, data: familyInfoData });
         crewPoolApiV2.saveFamilyInfo(newCrewUuid, mapLegacyFamilyInfoToV2(familyInfoData)).catch(
           (err) => console.error('[V2] Family Info auto-save error:', err)
         );
@@ -7081,7 +7054,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         onSuccess: (responseData: any) => {
           const crewUuid = responseData?.crewUuid;
           const generatedEmpNo = responseData?.empNo || responseData?.employeeId;
-          console.log('V2 Create crew response - crewUuid:', crewUuid, 'empNo:', generatedEmpNo);
           
           if (generatedEmpNo) {
             setFormData(prev => ({ ...prev, employeeId: generatedEmpNo }));
@@ -7111,10 +7083,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               manningAgent: data.manningAgent || formData.manningAgent,
               crewPool: data.crewPool || formData.crewPool,
             };
-            console.log('[V2] Chaining Personal Details save after create:', { crewUuid, data: personalDetailsData });
             savePersonalDetailsMutationV2.mutate({ crewUuid, data: personalDetailsData }, {
               onError: (err) => console.error('[V2] Personal Details chain save error:', err),
-              onSuccess: () => console.log('[V2] Personal Details chain save success'),
+              onSuccess: () => {},
             });
             
             // Address (A1.2 fields)
@@ -7127,10 +7098,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               mobile: data.mobile || formData.mobile,
               email: data.email || formData.email,
             };
-            console.log('[V2] Chaining Address save after create:', { crewUuid, data: addressData });
             saveAddressMutationV2.mutate({ crewUuid, data: addressData }, {
               onError: (err) => console.error('[V2] Address chain save error:', err),
-              onSuccess: () => console.log('[V2] Address chain save success'),
+              onSuccess: () => {},
             });
             
             // Family Info (A1.3 fields)
@@ -7144,10 +7114,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               spouseFamilyName: data.spouseFamilyName || formData.spouseFamilyName,
               spouseDateOfBirth: data.spouseDateOfBirth || formData.spouseDateOfBirth,
             };
-            console.log('[V2] Chaining Family Info save after create:', { crewUuid, data: familyInfoData });
             saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData }, {
               onError: (err) => console.error('[V2] Family Info chain save error:', err),
-              onSuccess: () => console.log('[V2] Family Info chain save success'),
+              onSuccess: () => {},
             });
           }
           toast({
@@ -7249,7 +7218,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const handleSave = () => {
-    console.log('Saving crew info (V2):', formData);
     
     // Include the uploaded photo in the data to be saved
     const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
@@ -7276,10 +7244,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         manningAgent: formData.manningAgent,
         crewPool: formData.crewPool,
       };
-      console.log('V2 Personal Details Save:', { crewUuid: existingUuid, data: personalDetailsData });
       savePersonalDetailsMutationV2.mutate({ crewUuid: existingUuid, data: personalDetailsData }, {
         onError: (err) => console.error('Personal Details Save Error:', err),
-        onSuccess: (res) => console.log('Personal Details Saved:', res),
+        onSuccess: () => {},
       });
       
       // Address (A1.2 fields)
@@ -7308,7 +7275,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       saveFamilyInfoMutationV2.mutate({ crewUuid: existingUuid, data: familyInfoData });
     } else {
       // Create new crew member via V2 API
-      console.log('Creating new crew with V2 API:', dataWithPhoto);
       createCrewMutation.mutate(dataWithPhoto);
     }
   };

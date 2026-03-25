@@ -199,7 +199,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     // Actions cell renderer for edit button
     const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
         const handleEditClick = () => {
-            console.log('Edit clicked for:', params.data.id);
             setSelectedCrewMember(params.data);
             setIsCrewInfoFormOpen(true);
         };
@@ -1050,7 +1049,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         <Button
                             className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
                             onClick={() => {
-                                console.log('New crew clicked');
                                 setSelectedCrewMember(null);
                                 setIsCrewInfoFormOpen(true);
                             }}
