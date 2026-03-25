@@ -38,11 +38,15 @@ interface CrewExperience {
 }
 
 const PROFICIENCY_MAP: Record<string, number> = {
+  'None': 0,
+  'Basic': 1,
+  'Intermediate': 2,
+  'Fluent': 3,
+  'Native': 4,
   'Poor': 0,
   'Fair': 1,
   'Good': 2,
   'Excellent': 3,
-  'Native': 4,
 };
 
 function normalizeRankName(rank: string): string {

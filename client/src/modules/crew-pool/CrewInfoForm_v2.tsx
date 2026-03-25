@@ -3353,9 +3353,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <SelectValue placeholder="Select proficiency" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Good">Good</SelectItem>
-                  <SelectItem value="Fair">Fair</SelectItem>
-                  <SelectItem value="Poor">Poor</SelectItem>
+                  <SelectItem value="None">None</SelectItem>
+                  <SelectItem value="Basic">Basic</SelectItem>
+                  <SelectItem value="Intermediate">Intermediate</SelectItem>
+                  <SelectItem value="Fluent">Fluent</SelectItem>
+                  <SelectItem value="Native">Native</SelectItem>
                 </SelectContent>
               </Select>
             ) : (
