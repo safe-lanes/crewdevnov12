@@ -147,7 +147,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return data.filter((crew: any) => {
             const fullName = `${crew.firstName || ''} ${crew.middleName || ''} ${crew.familyName || ''}`.toLowerCase();
             const matchesName = filters.searchName === "" || fullName.includes(filters.searchName.toLowerCase());
-            const matchesVessel = filters.vessel === "" || crew.presentVessel === filters.vessel;
+            const matchesVessel = filters.vessel === "" || crew.presentVesselName === filters.vessel;
             const matchesRank = filters.rank === "" || crew.presentRank === filters.rank;
             const matchesNationality = filters.nationality === "" || crew.nationality === filters.nationality;
             // Status filter logic:
@@ -172,13 +172,15 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 const today = new Date();
                 const reliefDate = crew.reliefDue ? new Date(crew.reliefDue) : null;
                 
-                if (filters.reliefDue === "overdue" && reliefDate) {
+                if (!reliefDate) {
+                    matchesReliefDue = false;
+                } else if (filters.reliefDue === "overdue") {
                     matchesReliefDue = reliefDate < today;
-                } else if (filters.reliefDue === "this-month" && reliefDate) {
+                } else if (filters.reliefDue === "this-month") {
                     const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
                     const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
                     matchesReliefDue = reliefDate >= thisMonthStart && reliefDate <= thisMonthEnd;
-                } else if (filters.reliefDue === "next-month" && reliefDate) {
+                } else if (filters.reliefDue === "next-month") {
                     const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
                     const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
                     matchesReliefDue = reliefDate >= nextMonthStart && reliefDate <= nextMonthEnd;
@@ -594,7 +596,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                                 <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
                                             ) : (
                                                 vesselMasterData.map(vessel => (
-                                                    <SelectItem key={vessel.id} value={vessel.id} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
+                                                    <SelectItem key={vessel.id} value={vessel.name} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
                                                 ))
                                             )}
                                         </SelectContent>
@@ -730,7 +732,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                                 <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
                                             ) : (
                                                 vesselMasterData.map(vessel => (
-                                                    <SelectItem key={vessel.id} value={vessel.id} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
+                                                    <SelectItem key={vessel.id} value={vessel.name} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
                                                 ))
                                             )}
                                         </SelectContent>
@@ -857,7 +859,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                                 <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
                                             ) : (
                                                 vesselMasterData.map(vessel => (
-                                                    <SelectItem key={vessel.id} value={vessel.id} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
+                                                    <SelectItem key={vessel.id} value={vessel.name} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
                                                 ))
                                             )}
                                         </SelectContent>
