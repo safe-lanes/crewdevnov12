@@ -257,6 +257,7 @@ interface DocumentInfo {
 
 interface Visa {
   id: string;
+  visaUuid?: string;
   countryId: string;  // Template ID (e.g., USA, SCHENGEN) - empty for manual entries
   issuingCountry: string;
   serialNo: string;
@@ -4035,7 +4036,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  {visa.countryId ? (
+                  {(visa.countryId || visa.visaUuid) ? (
                     <span className="text-[#4f5863] text-[13px]">{visa.issuingCountry}</span>
                   ) : (
                     <Input
