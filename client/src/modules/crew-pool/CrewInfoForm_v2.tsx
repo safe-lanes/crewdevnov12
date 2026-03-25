@@ -5949,6 +5949,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...eduAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -5990,6 +5992,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addEducationAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6007,6 +6011,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...licAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6054,6 +6060,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addLicenseAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6071,6 +6079,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...trainAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6117,6 +6127,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addTrainingAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6134,6 +6146,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6195,6 +6209,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addSeaServiceAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6212,6 +6228,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6262,6 +6280,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addSeaServiceAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6284,6 +6304,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...medAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6331,6 +6353,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addMedicalAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6353,6 +6377,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...visitAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6400,6 +6426,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addDoctorVisitAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
