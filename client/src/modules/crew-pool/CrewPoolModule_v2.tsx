@@ -644,6 +644,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                             <SelectItem value="On Board">On Board</SelectItem>
                                             <SelectItem value="On Leave">On Leave</SelectItem>
                                             <SelectItem value="Available">Available</SelectItem>
+                                            <SelectItem value="Inactive">Inactive</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -773,6 +774,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                             <SelectItem value="On Board">On Board</SelectItem>
                                             <SelectItem value="On Leave">On Leave</SelectItem>
                                             <SelectItem value="Available">Available</SelectItem>
+                                            <SelectItem value="Inactive">Inactive</SelectItem>
                                         </SelectContent>
                                     </Select>
 
@@ -899,6 +901,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                             <SelectItem value="On Board">On Board</SelectItem>
                                             <SelectItem value="On Leave">On Leave</SelectItem>
                                             <SelectItem value="Available">Available</SelectItem>
+                                            <SelectItem value="Inactive">Inactive</SelectItem>
                                         </SelectContent>
                                     </Select>
 
