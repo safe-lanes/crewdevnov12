@@ -1025,7 +1025,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             : detailedCrewData.trainingCourses 
               ? JSON.parse(detailedCrewData.trainingCourses) 
               : []).map((t: any) => ({ ...t, fromDatabase: !!(t.courseId && t.courseId.trim()) }));
-          if (adminCompanyTrainings.length > 0) {
+          const hasSavedOrder = raw.some((t: any) => t.sortOrder != null && t.sortOrder > 0);
+          if (hasSavedOrder) {
+            raw.sort((a: any, b: any) => {
+              const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+              const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+              return aOrder - bOrder;
+            });
+          } else if (adminCompanyTrainings.length > 0) {
             const orderMap = new Map<string, number>();
             adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
             raw.forEach((t: any) => {
