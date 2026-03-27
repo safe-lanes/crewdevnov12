@@ -294,6 +294,7 @@ export const dashboardService = {
         seaUuid: crewSeaService.seaUuid,
         serviceType: crewSeaService.serviceType,
         vesselName: crewSeaService.vesselName,
+        vesselUuid: crewSeaService.vesselUuid,
         vesselTypeUuid: crewSeaService.vesselTypeUuid,
         vesselTypeName: sql<string>`COALESCE(${mvtByUuid.vesselType}, ${mvtByName.vesselType})`,
         isTanker: sql<boolean>`COALESCE(${mvtByUuid.tanker}, ${mvtByName.tanker})`,
@@ -659,7 +660,7 @@ export const dashboardService = {
         
         return {
           vessel: s.vesselName || "Unknown",
-          vesselId: s.vesselCode || s.vesselTypeUuid || undefined,
+          vesselId: s.vesselUuid || s.vesselCode || s.vesselTypeUuid || undefined,
           startDate: s.fromDate,
           endDate: s.toDate || null,
           contractEndDate: s.contractEndDate || s.toDate || null,
