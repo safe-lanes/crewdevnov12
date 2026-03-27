@@ -5812,13 +5812,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             email: formData.nokEmail,
             address: formData.nokAddress,
           };
-          if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
-            miscOps.push(async () => {
-              await crewPoolApiV2.saveNextOfKin(crewIdentifier, nokData);
-            });
-          }
+          miscOps.push(async () => {
+            await crewPoolApiV2.saveNextOfKin(crewIdentifier, nokData);
+          });
 
-          if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
+          if (formData.vesselType && Array.isArray(formData.vesselType)) {
             miscOps.push(async () => {
               await crewPoolApiV2.saveVesselTypesApplied(crewIdentifier, formData.vesselType);
             });
@@ -5906,7 +5904,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               const visaData = {
                 visaUuid: visa.visaUuid,
                 country: visa.issuingCountry || visa.country || '',
-                serialNo: visa.serialNo || visa.serialNumber || '',
+                serialNo: visa.serialNo ?? visa.serialNumber ?? '',
                 issued: visa.issued || '',
                 expiry: visa.expiry || '',
                 visaType: visa.visaType || '',
