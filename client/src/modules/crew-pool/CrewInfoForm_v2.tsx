@@ -5774,7 +5774,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 firstName: child.firstName,
                 middleName: child.middleName,
                 familyName: child.familyName,
-                dateOfBirth: child.dateOfBirth,
+                dob: child.dateOfBirth,
                 gender: child.gender,
                 sortOrder: index,
               };

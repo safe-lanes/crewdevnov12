@@ -920,7 +920,8 @@ export const crewMembersService = {
             eq(crewChildren.crewUuid, crewUuid),
             eq(crewChildren.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(crewChildren.sortOrder), asc(crewChildren.createdAt)),
       db
         .select()
         .from(crewNextOfKin)
