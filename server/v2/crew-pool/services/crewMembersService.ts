@@ -518,7 +518,7 @@ export const crewMembersService = {
           eq(vesselPlanningV2.crewStatus, 'primary')
         )
       )
-      .orderBy(vesselPlanningV2.crewUuid, desc(vesselPlanningV2.signOnDate))
+      .orderBy(vesselPlanningV2.crewUuid, desc(vesselPlanningV2.signOnDate), desc(vesselPlanningV2.id))
       .as('latest_vessel_planning');
 
     const vpVesselNames = aliasedTable(masterVessels, 'vp_vessel_names');
