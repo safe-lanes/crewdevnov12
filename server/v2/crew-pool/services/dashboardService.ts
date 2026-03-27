@@ -680,13 +680,8 @@ export const dashboardService = {
         const effectiveContractMonths = isReliever ? p.relieverContractPeriodMonths : p.contractPeriodMonths;
         const effectiveRangeEndMonths = isReliever ? p.relieverContractEndRangeEndMonths : p.contractEndRangeEndMonths;
 
-        let signOnDate: Date;
-        try {
-          signOnDate = new Date(effectiveSignOn);
-          if (isNaN(signOnDate.getTime())) return null;
-        } catch {
-          return null;
-        }
+        const signOnDate = new Date(effectiveSignOn);
+        if (isNaN(signOnDate.getTime())) return null;
 
         const effectiveSignOff = isReliever ? null : (p.signOffDate || null);
         const signOffDate = effectiveSignOff ? new Date(effectiveSignOff) : null;
@@ -726,32 +721,23 @@ export const dashboardService = {
 
     const merged: ServiceTimelineItem[] = [...seaServiceItems];
     for (const planItem of planningItems) {
-      const isDuplicate = seaServiceItems.some((seaItem) => {
-        const sameVessel = seaItem.vessel === planItem.vessel;
-        if (!sameVessel) return false;
+      const matchIdx = merged.findIndex((seaItem) => {
+        if (!planItem.vesselId || !seaItem.vesselId) return false;
+        if (seaItem.vesselId !== planItem.vesselId) return false;
         const seaStart = new Date(seaItem.startDate).getTime();
         const planStart = new Date(planItem.startDate).getTime();
-        const daysDiff = Math.abs(seaStart - planStart) / (1000 * 60 * 60 * 24);
-        return daysDiff < 30;
+        const seaEnd = seaItem.endDate ? new Date(seaItem.endDate).getTime() : Infinity;
+        const planEnd = planItem.endDate ? new Date(planItem.endDate).getTime() : Infinity;
+        return seaStart <= planEnd && planStart <= seaEnd;
       });
-      if (!isDuplicate) {
+      if (matchIdx < 0) {
         merged.push(planItem);
       } else {
-        const matchIdx = merged.findIndex((seaItem) => {
-          const sameVessel = seaItem.vessel === planItem.vessel;
-          if (!sameVessel) return false;
-          const seaStart = new Date(seaItem.startDate).getTime();
-          const planStart = new Date(planItem.startDate).getTime();
-          const daysDiff = Math.abs(seaStart - planStart) / (1000 * 60 * 60 * 24);
-          return daysDiff < 30;
-        });
-        if (matchIdx >= 0) {
-          if (planItem.contractEndDate && !merged[matchIdx].contractEndDate) {
-            merged[matchIdx].contractEndDate = planItem.contractEndDate;
-          }
-          if (planItem.rangeEndDate && !merged[matchIdx].rangeEndDate) {
-            merged[matchIdx].rangeEndDate = planItem.rangeEndDate;
-          }
+        if (planItem.contractEndDate) {
+          merged[matchIdx].contractEndDate = planItem.contractEndDate;
+        }
+        if (planItem.rangeEndDate) {
+          merged[matchIdx].rangeEndDate = planItem.rangeEndDate;
         }
       }
     }
