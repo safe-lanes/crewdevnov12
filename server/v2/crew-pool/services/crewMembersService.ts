@@ -35,6 +35,7 @@ import {
   masterCountries,
   masterLanguages,
 } from "../../../../shared/schema";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import type {
   InsertCrewMemberV2,
   CrewMemberV2,
@@ -500,6 +501,25 @@ export const crewMembersService = {
       .orderBy(crewAssignments.crewUuid, desc(crewAssignments.signOnDate), desc(crewAssignments.id))
       .as('latest_assignment');
 
+    const latestVesselPlanning = db
+      .selectDistinctOn([vesselPlanningV2.crewUuid], {
+        crewUuid: vesselPlanningV2.crewUuid,
+        contractPeriodMonths: vesselPlanningV2.contractPeriodMonths,
+        vpSignOnDate: vesselPlanningV2.signOnDate,
+        vpReliefDue: vesselPlanningV2.reliefDue,
+      })
+      .from(vesselPlanningV2)
+      .where(
+        and(
+          eq(vesselPlanningV2.isArchived, false),
+          eq(vesselPlanningV2.isDeleted, false),
+          isNotNull(vesselPlanningV2.crewUuid),
+          eq(vesselPlanningV2.crewStatus, 'primary')
+        )
+      )
+      .orderBy(vesselPlanningV2.crewUuid, desc(vesselPlanningV2.signOnDate))
+      .as('latest_vessel_planning');
+
     const crewPage = db
       .select({ id: crewMembersV2.id })
       .from(crewMembersV2)
@@ -516,6 +536,9 @@ export const crewMembersService = {
         signOnDate: latestAssignment.signOnDate,
         reliefDue: latestAssignment.reliefDue,
         contractPeriod: latestAssignment.contractPeriod,
+        vpContractPeriodMonths: latestVesselPlanning.contractPeriodMonths,
+        vpSignOnDate: latestVesselPlanning.vpSignOnDate,
+        vpReliefDue: latestVesselPlanning.vpReliefDue,
         nationality: masterNationalities.nationality,
         vesselType: masterVesselTypes.vesselType,
         currentVesselName: masterVessels.vessel,
@@ -526,6 +549,10 @@ export const crewMembersService = {
       .leftJoin(
         latestAssignment,
         eq(latestAssignment.crewUuid, crewMembersV2.crewUuid)
+      )
+      .leftJoin(
+        latestVesselPlanning,
+        eq(latestVesselPlanning.crewUuid, crewMembersV2.crewUuid)
       )
       .leftJoin(
         masterNationalities,
@@ -582,6 +609,9 @@ export const crewMembersService = {
 
     const data = results.map((r: any) => {
       const prevAssignment = previousAssignmentsMap.get(r.crew.crewUuid);
+      const effectiveContractPeriod = r.vpContractPeriodMonths != null
+        ? String(r.vpContractPeriodMonths)
+        : r.contractPeriod;
       return {
         ...r.crew,
         nationalityUuid: r.crew.nationalityUuid,
@@ -590,9 +620,9 @@ export const crewMembersService = {
         vesselType: r.vesselType,
         presentVessel: r.currentVessel,
         presentVesselName: r.currentVesselName,
-        signOnDate: r.signOnDate,
-        reliefDue: r.reliefDue,
-        contractPeriod: r.contractPeriod,
+        signOnDate: r.vpSignOnDate || r.signOnDate,
+        reliefDue: r.vpReliefDue || r.reliefDue,
+        contractPeriod: effectiveContractPeriod,
         lastVessel: prevAssignment?.vesselName || prevAssignment?.vesselUuid || null,
         signOffDate: prevAssignment?.signOffDate || null,
         reason: prevAssignment?.reason || null,
