@@ -409,6 +409,7 @@ export const dashboardService = {
         relieverContractPeriodMonths: vesselPlanningV2.relieverContractPeriodMonths,
         relieverContractEndRangeStartMonths: vesselPlanningV2.relieverContractEndRangeStartMonths,
         relieverContractEndRangeEndMonths: vesselPlanningV2.relieverContractEndRangeEndMonths,
+        joiningStatus: vesselPlanningV2.joiningStatus,
       })
       .from(vesselPlanningV2)
       .leftJoin(
@@ -702,6 +703,8 @@ export const dashboardService = {
         let type: "onBoard" | "planned" | "completed" = "completed";
         if (!signOffDate || signOffDate > today) {
           if (signOnDate > today) {
+            type = "planned";
+          } else if (p.joiningStatus && p.joiningStatus !== "Signed On") {
             type = "planned";
           } else {
             type = "onBoard";
