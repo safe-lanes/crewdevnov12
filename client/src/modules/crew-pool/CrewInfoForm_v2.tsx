@@ -485,6 +485,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (!id) return;
     queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', id, 'full-profile'] });
     queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', id, 'dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', id, 'assignments'] });
   };
 
   // V2: Crew assignments — used to detect auto-generated (vessel-synced) E1 rows
@@ -1125,7 +1126,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       if (updated.every((s: any, i: number) => s === prev.currentCompanySeaService[i])) return prev;
       return { ...prev, currentCompanySeaService: updated };
     });
-  }, [crewAssignmentsData]);
+  }, [crewAssignmentsData, detailedCrewData]);
 
   // Reset photo when crew member changes or form closes
   // V2: Check both crewUuid and id
@@ -4906,8 +4907,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-6 w-6 text-gray-400 hover:text-red-600"
+                            className={`h-6 w-6 ${isVesselSynced ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600'}`}
                             onClick={() => removeCurrentCompanySeaService(service.id)}
+                            disabled={isVesselSynced}
                             data-testid={`button-delete-current-service-${service.id}`}
                           >
                             <Trash2 className="h-3 w-3" />
