@@ -148,15 +148,11 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             const matchesRank = filters.rank === "" || crew.presentRank === filters.rank;
             const matchesNationality = filters.nationality === "" || crew.nationality === filters.nationality;
             // Status filter logic:
-            // - "Available" filter shows crew whose Next Availability date has passed (they are ready to join)
+            // - "Available" filter shows crew who have a nextAvailability date set
             // - Other status filters match the crew.status field directly
             let matchesStatus = true;
             if (filters.status === "Available") {
-                // For "Available" filter: check if nextAvailability date has passed
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Start of today
-                const nextAvailDate = crew.nextAvailability ? new Date(crew.nextAvailability) : null;
-                matchesStatus = nextAvailDate !== null && nextAvailDate <= today;
+                matchesStatus = !!crew.nextAvailability;
             } else if (filters.status !== "") {
                 matchesStatus = crew.status === filters.status;
             }
