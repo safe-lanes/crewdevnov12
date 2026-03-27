@@ -984,7 +984,7 @@ function drawPartF(builder: PDFBuilder, formData: CrewInfoFormData): void {
   builder.drawSectionHeader('PART F - MEDICAL RECORDS');
 
   builder.drawSubsectionHeader('F1. Pre Joining Medicals');
-  const medColWidths = [CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.18];
+  const medColWidths = [CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.18];
   builder.drawTableHeader(['Vessel', 'Date of Medical', 'BP (mmHG)', 'Weight (Kgs)', 'Any Medication Prescribed', 'Fitness for Sea Service', 'Expiry'], medColWidths);
   if (formData.preJoiningMedicals && formData.preJoiningMedicals.length > 0) {
     for (const med of formData.preJoiningMedicals) {
@@ -1002,6 +1002,7 @@ function drawPartF(builder: PDFBuilder, formData: CrewInfoFormData): void {
     builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-'], medColWidths);
   }
 
+  builder.moveDown(5);
   builder.drawSubsectionHeader('F2. Doctor Visits');
   const visitColWidths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.28];
   builder.drawTableHeader(['Vessel', 'Port', 'Date', 'Complaint / Illness / Injury', 'Doctor Comments'], visitColWidths);
