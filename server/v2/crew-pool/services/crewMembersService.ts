@@ -257,6 +257,10 @@ export const crewMembersService = {
     // Remove non-schema fields and replace with resolved UUIDs
     const { nationality, vesselType, ...cleanData } = data as any;
     
+    if (cleanData.employeeId !== undefined && (!cleanData.employeeId || cleanData.employeeId.trim() === '')) {
+      cleanData.employeeId = null;
+    }
+
     // Apply audit user fields
     const dataWithAudit = applyAuditUser(cleanData, true);
 

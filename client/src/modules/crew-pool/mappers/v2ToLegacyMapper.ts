@@ -86,7 +86,7 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember> & { dateOfBi
   
   return {
     empNo,
-    employeeId: legacy.employeeId ?? undefined,
+    employeeId: legacy.employeeId?.trim() || undefined,
     firstName: legacy.firstName ?? undefined,
     middleName: legacy.middleName ?? undefined,
     familyName: legacy.familyName ?? undefined,
