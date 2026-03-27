@@ -91,7 +91,7 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember> & { dateOfBi
     middleName: legacy.middleName ?? undefined,
     familyName: legacy.familyName ?? undefined,
     gender: legacy.gender ?? undefined,
-    dob: legacy.dob || legacy.dateOfBirth || undefined,
+    dob: legacy.dob ?? legacy.dateOfBirth ?? null,
     nationalityUuid: legacy.nationality ?? undefined,
     // Note: vesselType from form is an array for vessel types applied (stored in crew_vessel_types_applied table)
     // Only set vesselTypeUuid if it's a single string, not an array
