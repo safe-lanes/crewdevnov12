@@ -6736,7 +6736,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         spouseDateOfBirth: formData.spouseDateOfBirth,
       };
       try {
-        await crewPoolApiV2.saveFamilyInfo(crewUuid, familyInfoData);
+        await crewPoolApiV2.saveFamilyInfo(crewUuid, mapLegacyFamilyInfoToV2(familyInfoData));
       } catch (e) {
         console.error('[V2] Failed to save family info:', e);
         b3HasErrors = true;
@@ -6776,7 +6776,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const child = formData.children[index] as any;
           const childData = {
             firstName: child.firstName, middleName: child.middleName,
-            familyName: child.familyName, dateOfBirth: child.dateOfBirth,
+            familyName: child.familyName, dob: child.dateOfBirth,
             gender: child.gender, sortOrder: index,
           };
           try {
