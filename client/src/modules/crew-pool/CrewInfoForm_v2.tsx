@@ -6941,6 +6941,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         crewPoolApiV2.saveFamilyInfo(newCrewUuid, mapLegacyFamilyInfoToV2(familyInfoData)).catch(
           (err) => console.error('[V2] Family Info auto-save error:', err)
         );
+
+        if (Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
+          crewPoolApiV2.saveVesselTypesApplied(newCrewUuid, formData.vesselType).catch(
+            (err) => console.error('[V2] Vessel Types auto-save error:', err)
+          );
+        }
         
         // Notify parent component if needed
         if (onCrewMemberChange && result) {
@@ -7125,6 +7131,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               onError: (err) => console.error('[V2] Family Info chain save error:', err),
               onSuccess: () => {},
             });
+
+            const vesselTypes = data.vesselType || formData.vesselType;
+            if (Array.isArray(vesselTypes) && vesselTypes.length > 0) {
+              saveVesselTypesMutationV2.mutate({ crewUuid, vesselTypeUuids: vesselTypes }, {
+                onError: (err) => console.error('[V2] Vessel Types chain save error:', err),
+                onSuccess: () => {},
+              });
+            }
           }
           toast({
             title: "Saved",
