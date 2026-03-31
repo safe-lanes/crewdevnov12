@@ -263,26 +263,28 @@ function TimelineCanvas({
         return text.charAt(0);
       };
 
+      const effectiveBarWidth = Math.max(barWidth, 4);
+
       const maxLen = isExpanded ? 12 : 20;
       const vesselName = assignment.vessel.length > maxLen 
-        ? assignment.vessel.substring(0, maxLen - 2) + '...' 
+        ? assignment.vessel.substring(0, maxLen - 2) + '…' 
         : assignment.vessel;
       
       const outsideLabelColor = assignment.type === 'planned' ? '#56baf3' 
         : assignment.type === 'completed' ? '#6B7280' : '#374151';
 
-      if (barWidth > 50) {
+      if (effectiveBarWidth > 50) {
         ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
-        const insideAvail = barWidth - 12;
+        const insideAvail = effectiveBarWidth - 12;
         ctx.fillText(fitLabel(vesselName, insideAvail), barStartX + 6, barY + 14);
-      } else if (barWidth >= 4) {
+      } else {
         const rightSpace = leftPadding + chartWidth - barEndX - 4;
         if (rightSpace >= 20) {
           ctx.fillStyle = outsideLabelColor;
           ctx.fillText(fitLabel(vesselName, rightSpace), barEndX + 4, barY + 14);
-        } else if (barWidth >= 20) {
+        } else if (effectiveBarWidth >= 20) {
           ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
-          ctx.fillText(fitLabel(vesselName, barWidth - 8), barStartX + 4, barY + 14);
+          ctx.fillText(fitLabel(vesselName, effectiveBarWidth - 8), barStartX + 4, barY + 14);
         } else {
           const leftSpace = barStartX - leftPadding;
           if (leftSpace >= 20) {
@@ -292,7 +294,7 @@ function TimelineCanvas({
             ctx.textAlign = 'left';
           } else {
             ctx.fillStyle = outsideLabelColor;
-            ctx.fillText(fitLabel(vesselName, Math.max(rightSpace, leftSpace, barWidth - 4)), barEndX + 2, barY + 14);
+            ctx.fillText(fitLabel(vesselName, Math.max(rightSpace, leftSpace, effectiveBarWidth - 4)), barEndX + 2, barY + 14);
           }
         }
       }
