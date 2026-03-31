@@ -5438,7 +5438,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             </TableRow>
           </TableHeader>
           <TableBody>
-            {formData.seaService.map((service) => (
+            {[...formData.seaService]
+              .sort((a, b) => {
+                const aDate = a.to || a.from || '';
+                const bDate = b.to || b.from || '';
+                return bDate.localeCompare(aDate);
+              })
+              .map((service) => (
               <TableRow key={service.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   <Input value={service.vesselName} onChange={(e) => { updateSeaService(service.id, 'vesselName', e.target.value); if (seaRequiredErrors[service.id]?.vesselName && e.target.value.trim()) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
