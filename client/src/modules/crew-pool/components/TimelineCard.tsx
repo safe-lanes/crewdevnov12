@@ -251,17 +251,26 @@ function TimelineCanvas({
       const barEndX = drawAssignmentBar(ctx, assignment, barStartX, barY, barHeight, chartWidth, leftPadding);
       const barWidth = barEndX - barStartX;
       
-      // Use blue text for planned bars (outlined style), white for others
-      ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
       ctx.font = 'bold 10px Inter, system-ui, sans-serif';
       ctx.textAlign = 'left';
       
-      const vesselName = assignment.vessel.length > 20 
-        ? assignment.vessel.substring(0, 18) + '...' 
+      const maxLen = isExpanded ? 12 : 20;
+      const vesselName = assignment.vessel.length > maxLen 
+        ? assignment.vessel.substring(0, maxLen - 2) + '...' 
         : assignment.vessel;
       
       if (barWidth > 50) {
+        ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
         ctx.fillText(vesselName, barStartX + 6, barY + 14);
+      } else if (barWidth >= 4) {
+        const labelColor = assignment.type === 'planned' ? '#56baf3' 
+          : assignment.type === 'completed' ? '#6B7280' : '#374151';
+        ctx.fillStyle = labelColor;
+        const labelX = barEndX + 4;
+        const maxLabelWidth = leftPadding + chartWidth - labelX;
+        if (maxLabelWidth > 20) {
+          ctx.fillText(vesselName, labelX, barY + 14, maxLabelWidth);
+        }
       }
       
       const hasAppraisal = assignment.appraisalIds && assignment.appraisalIds.length > 0;
