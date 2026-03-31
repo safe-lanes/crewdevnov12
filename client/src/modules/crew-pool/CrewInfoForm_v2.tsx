@@ -1683,6 +1683,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         sortOrder: template.sortOrder,
       }));
       const allCourses = [...existingCourses, ...newCourses];
+      const orderMap = new Map<string, number>();
+      adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+      allCourses.forEach(c => {
+        if (c.courseId && orderMap.has(c.courseId)) {
+          c.sortOrder = orderMap.get(c.courseId);
+        }
+      });
       allCourses.sort((a, b) => {
         const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
         const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
@@ -4450,7 +4457,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {formData.trainingCourses.map((course) => (
+            {[...formData.trainingCourses]
+              .sort((a, b) => {
+                const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+                const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+                return aOrder - bOrder;
+              })
+              .map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   <div className="text-[#4f5863] text-[13px] font-mono">{course.courseId || '-'}</div>
