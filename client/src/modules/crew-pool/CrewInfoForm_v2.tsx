@@ -7251,6 +7251,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     setIsStatusEditOpen(false);
   };
 
+  const todayDateString = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+
   // Handle updating next availability date
   const handleUpdateNextAvailability = () => {
     // V2: Use crewUuid as the primary identifier
@@ -7812,7 +7814,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               value={tempNextAvailability}
               onChange={(e) => setTempNextAvailability(e.target.value)}
               className="mt-1"
-              min={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()}
+              min={todayDateString}
               data-testid="input-next-availability"
             />
           </div>
