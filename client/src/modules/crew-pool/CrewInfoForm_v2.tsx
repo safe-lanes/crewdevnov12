@@ -1031,7 +1031,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           raw.forEach((t: any) => {
             if (t.courseId && orderMap.has(t.courseId)) {
               t.sortOrder = orderMap.get(t.courseId);
-            } else if (!t.courseId) {
+            } else if (t.courseId) {
+              t.sortOrder = 500 + (t.sortOrder ?? 0);
+            } else {
               t.sortOrder = t.sortOrder ?? Number.MAX_SAFE_INTEGER;
             }
           });
@@ -6101,7 +6103,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 expiry: train.expiry || '',
                 sortOrder: (train.courseId && trainOrderMap.has(train.courseId))
                   ? trainOrderMap.get(train.courseId)!
-                  : 1000 + index,
+                  : train.courseId
+                    ? 500 + index
+                    : 1000 + index,
               };
 
               const capturedTrainLocalId = train.id;
