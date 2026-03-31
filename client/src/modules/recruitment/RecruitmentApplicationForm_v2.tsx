@@ -3967,6 +3967,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           recCanUuid,
           data: {
             recruitmentStatus: formData.c3RecruitmentStatus || null,
+            submittedByUuid: overrides?.c3SubmittedBy || formData.c3SubmittedBy || null,
+            submittedDate: overrides?.c3SubmittedDate || formData.c3SubmittedDate || null,
             assignedGroups: formData.c3AssignedGroups.map(g => ({ groupUuid: g })),
           } as any,
         });
@@ -8964,7 +8966,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <Button 
                   className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
                   onClick={() => {
-                    handleSaveScreening();
+                    const currentDate = formatDate(new Date());
+                    setFormData(prev => ({ ...prev, c3SubmittedBy: currentUserDisplay, c3SubmittedDate: currentDate }));
+                    handleSaveScreening(false, false, { c3SubmittedBy: currentUserDisplay, c3SubmittedDate: currentDate });
                   }}
                   disabled={savingInProgress}
                   data-testid="button-save-approval"
