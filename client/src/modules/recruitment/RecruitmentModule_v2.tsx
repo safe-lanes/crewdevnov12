@@ -41,7 +41,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { rankNames, isLoading: ranksLoading } = useCompanyRanks();
+  const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
   const { normalizeRank } = useRankNormalization();
   const viewport = useViewport();
   const viewportConfig = getViewportConfig(viewport);
@@ -484,8 +484,8 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                       {ranksLoading ? (
                         <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                       ) : (
-                        rankNames.map(rank => (
-                          <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                        rankOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))
                       )}
                     </SelectContent>
@@ -586,8 +586,8 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                       {ranksLoading ? (
                         <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
                       ) : (
-                        rankNames.map(rank => (
-                          <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                        rankOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))
                       )}
                     </SelectContent>
@@ -681,8 +681,8 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                       {ranksLoading ? (
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
-                        rankNames.map(rank => (
-                          <SelectItem key={rank} value={rank}>{rank}</SelectItem>
+                        rankOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))
                       )}
                     </SelectContent>
