@@ -254,22 +254,46 @@ function TimelineCanvas({
       ctx.font = 'bold 10px Inter, system-ui, sans-serif';
       ctx.textAlign = 'left';
       
+      const fitLabel = (text: string, availPx: number): string => {
+        if (ctx.measureText(text).width <= availPx) return text;
+        for (let len = text.length - 1; len >= 1; len--) {
+          const t = text.substring(0, len) + '…';
+          if (ctx.measureText(t).width <= availPx) return t;
+        }
+        return text.charAt(0);
+      };
+
       const maxLen = isExpanded ? 12 : 20;
       const vesselName = assignment.vessel.length > maxLen 
         ? assignment.vessel.substring(0, maxLen - 2) + '...' 
         : assignment.vessel;
       
+      const outsideLabelColor = assignment.type === 'planned' ? '#56baf3' 
+        : assignment.type === 'completed' ? '#6B7280' : '#374151';
+
       if (barWidth > 50) {
         ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
-        ctx.fillText(vesselName, barStartX + 6, barY + 14);
+        const insideAvail = barWidth - 12;
+        ctx.fillText(fitLabel(vesselName, insideAvail), barStartX + 6, barY + 14);
       } else if (barWidth >= 4) {
-        const labelColor = assignment.type === 'planned' ? '#56baf3' 
-          : assignment.type === 'completed' ? '#6B7280' : '#374151';
-        ctx.fillStyle = labelColor;
-        const labelX = barEndX + 4;
-        const maxLabelWidth = leftPadding + chartWidth - labelX;
-        if (maxLabelWidth > 20) {
-          ctx.fillText(vesselName, labelX, barY + 14, maxLabelWidth);
+        const rightSpace = leftPadding + chartWidth - barEndX - 4;
+        if (rightSpace >= 20) {
+          ctx.fillStyle = outsideLabelColor;
+          ctx.fillText(fitLabel(vesselName, rightSpace), barEndX + 4, barY + 14);
+        } else if (barWidth >= 20) {
+          ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
+          ctx.fillText(fitLabel(vesselName, barWidth - 8), barStartX + 4, barY + 14);
+        } else {
+          const leftSpace = barStartX - leftPadding;
+          if (leftSpace >= 20) {
+            ctx.fillStyle = outsideLabelColor;
+            ctx.textAlign = 'right';
+            ctx.fillText(fitLabel(vesselName, leftSpace), barStartX - 4, barY + 14);
+            ctx.textAlign = 'left';
+          } else {
+            ctx.fillStyle = outsideLabelColor;
+            ctx.fillText(fitLabel(vesselName, Math.max(rightSpace, leftSpace, barWidth - 4)), barEndX + 2, barY + 14);
+          }
         }
       }
       
