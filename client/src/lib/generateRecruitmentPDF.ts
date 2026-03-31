@@ -1010,7 +1010,7 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   builder.drawPartHeader('A4 — Sea Service');
   builder.drawSubsectionHeader('A4.1 Details of Sea Service');
   if (formData.seaService && formData.seaService.length > 0) {
-    const seaColWidths = [CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.10];
+    const seaColWidths = [CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.10];
     builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'Deadweight', 'Engine Type/Power', 'Owner/Operator', 'Rank', 'From', 'To', 'Period(M)'], seaColWidths);
     for (const service of formData.seaService) {
       builder.drawTableRow([
