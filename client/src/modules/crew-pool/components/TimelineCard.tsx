@@ -273,29 +273,33 @@ function TimelineCanvas({
       const outsideLabelColor = assignment.type === 'planned' ? '#56baf3' 
         : assignment.type === 'completed' ? '#6B7280' : '#374151';
 
+      const hasBadges = (assignment.appraisalIds && assignment.appraisalIds.length > 0) ||
+        (assignment.handoverIds && assignment.handoverIds.length > 0);
+      const badgeReserve = hasBadges ? 60 : 0;
+
       if (effectiveBarWidth > 50) {
         ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
         const insideAvail = effectiveBarWidth - 12;
         ctx.fillText(fitLabel(vesselName, insideAvail), barStartX + 6, barY + 14);
       } else {
-        const rightSpace = leftPadding + chartWidth - barEndX - 4;
+        const rightSpace = leftPadding + chartWidth - barEndX - 4 - badgeReserve;
+        const leftSpace = barStartX - leftPadding;
         if (rightSpace >= 20) {
           ctx.fillStyle = outsideLabelColor;
-          ctx.fillText(fitLabel(vesselName, rightSpace), barEndX + 4, barY + 14);
+          const labelX = barEndX + 4 + badgeReserve;
+          ctx.fillText(fitLabel(vesselName, rightSpace), labelX, barY + 14);
+        } else if (leftSpace >= 20) {
+          ctx.fillStyle = outsideLabelColor;
+          ctx.textAlign = 'right';
+          ctx.fillText(fitLabel(vesselName, leftSpace), barStartX - 4, barY + 14);
+          ctx.textAlign = 'left';
         } else if (effectiveBarWidth >= 20) {
           ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
           ctx.fillText(fitLabel(vesselName, effectiveBarWidth - 8), barStartX + 4, barY + 14);
         } else {
-          const leftSpace = barStartX - leftPadding;
-          if (leftSpace >= 20) {
-            ctx.fillStyle = outsideLabelColor;
-            ctx.textAlign = 'right';
-            ctx.fillText(fitLabel(vesselName, leftSpace), barStartX - 4, barY + 14);
-            ctx.textAlign = 'left';
-          } else {
-            ctx.fillStyle = outsideLabelColor;
-            ctx.fillText(fitLabel(vesselName, Math.max(rightSpace, leftSpace, effectiveBarWidth - 4)), barEndX + 2, barY + 14);
-          }
+          ctx.fillStyle = outsideLabelColor;
+          const bestSpace = Math.max(rightSpace + badgeReserve, leftSpace, effectiveBarWidth - 4);
+          ctx.fillText(fitLabel(vesselName, bestSpace), barEndX + 2, barY + 14);
         }
       }
       
