@@ -8944,19 +8944,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
 
                   <div className="mt-6 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs text-gray-500">
-                        {formData.c3SubmittedBy ? (
-                          <>Submitted by: {formData.c3SubmittedBy}</>
-                        ) : (
-                          <span className="text-gray-400">Not yet submitted</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {formData.c3SubmittedDate && (
-                          <>Date: {formatDate(formData.c3SubmittedDate) || formData.c3SubmittedDate}</>
-                        )}
-                      </div>
+                    <div className="text-xs text-gray-500">
+                      {formData.c3SubmittedBy ? (
+                        <>
+                          <span className="font-medium">Submitted by:</span> {formData.c3SubmittedBy}
+                          {formData.c3SubmittedDate && ` on ${formatDate(formData.c3SubmittedDate) || formData.c3SubmittedDate}`}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Not yet submitted</span>
+                      )}
                     </div>
                   </div>
                 </div>
