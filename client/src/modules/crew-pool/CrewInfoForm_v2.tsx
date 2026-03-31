@@ -6901,6 +6901,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         nationality: formData.nationality || '',
         presentRank: formData.presentRank || '',
         dateOfBirth: formData.dateOfBirth || '',
+        uploadedPhoto: uploadedPhoto || null,
       };
       
       // Use the same V2 mapping pipeline as the createCrewMutationV2 hook
