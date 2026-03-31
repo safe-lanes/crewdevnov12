@@ -1028,14 +1028,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               : []).map((t: any) => ({ ...t, fromDatabase: !!(t.courseId && t.courseId.trim()) }));
           const orderMap = new Map<string, number>();
           adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+          const UNMAPPED_DB_BASE = 500;
+          const MANUAL_BASE = 1000;
           let unmappedIdx = 0;
           raw.forEach((t: any) => {
-            if (t.courseId && orderMap.has(t.courseId)) {
-              t.sortOrder = orderMap.get(t.courseId);
-            } else if (t.courseId) {
-              t.sortOrder = 500 + unmappedIdx++;
+            const cid = (t.courseId || '').trim();
+            if (cid && orderMap.has(cid)) {
+              t.sortOrder = orderMap.get(cid);
+            } else if (cid) {
+              t.sortOrder = UNMAPPED_DB_BASE + unmappedIdx++;
             } else {
-              t.sortOrder = t.sortOrder ?? Number.MAX_SAFE_INTEGER;
+              t.sortOrder = MANUAL_BASE + (t.sortOrder ?? 0);
             }
           });
           raw.sort((a: any, b: any) => {
@@ -6102,11 +6105,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 issuingCountry: train.issuingCountry || '',
                 issued: train.issued || '',
                 expiry: train.expiry || '',
-                sortOrder: (train.courseId && trainOrderMap.has(train.courseId))
-                  ? trainOrderMap.get(train.courseId)!
-                  : train.courseId
-                    ? 500 + index
-                    : 1000 + index,
+                sortOrder: (() => {
+                  const cid = (train.courseId || '').trim();
+                  if (cid && trainOrderMap.has(cid)) return trainOrderMap.get(cid)!;
+                  if (cid) return 500 + index;
+                  return 1000 + index;
+                })(),
               };
 
               const capturedTrainLocalId = train.id;
