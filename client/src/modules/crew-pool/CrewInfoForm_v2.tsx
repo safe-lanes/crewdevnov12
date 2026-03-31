@@ -7812,6 +7812,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               value={tempNextAvailability}
               onChange={(e) => setTempNextAvailability(e.target.value)}
               className="mt-1"
+              min={new Date().toISOString().slice(0, 10)}
               data-testid="input-next-availability"
             />
           </div>
