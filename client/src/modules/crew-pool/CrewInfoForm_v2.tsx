@@ -1026,27 +1026,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             : detailedCrewData.trainingCourses 
               ? JSON.parse(detailedCrewData.trainingCourses) 
               : []).map((t: any) => ({ ...t, fromDatabase: !!(t.courseId && t.courseId.trim()) }));
-          const hasSavedOrder = raw.some((t: any) => t.sortOrder != null && t.sortOrder > 0);
-          if (hasSavedOrder) {
-            raw.sort((a: any, b: any) => {
-              const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
-              const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
-              return aOrder - bOrder;
-            });
-          } else if (adminCompanyTrainings.length > 0) {
-            const orderMap = new Map<string, number>();
-            adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
-            raw.forEach((t: any) => {
-              if (t.courseId && orderMap.has(t.courseId)) {
-                t.sortOrder = orderMap.get(t.courseId);
-              }
-            });
-            raw.sort((a: any, b: any) => {
-              const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
-              const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
-              return aOrder - bOrder;
-            });
-          }
+          const orderMap = new Map<string, number>();
+          adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+          raw.forEach((t: any) => {
+            if (t.courseId && orderMap.has(t.courseId)) {
+              t.sortOrder = orderMap.get(t.courseId);
+            } else if (!t.courseId) {
+              t.sortOrder = t.sortOrder ?? Number.MAX_SAFE_INTEGER;
+            }
+          });
+          raw.sort((a: any, b: any) => {
+            const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+            const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+            return aOrder - bOrder;
+          });
           return raw;
         })(),
         currentCompanySeaService: (() => {
@@ -6080,6 +6073,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.trainingCourses && cleanedFormData.trainingCourses.length > 0) {
+            const trainOrderMap = new Map<string, number>();
+            adminCompanyTrainings.forEach((ct, idx) => trainOrderMap.set(ct.companyId, idx));
             cleanedFormData.trainingCourses.forEach((train: any, index: number) => {
               const trainAttachments = train.attachments || [];
               const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6104,7 +6099,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 issuingCountry: train.issuingCountry || '',
                 issued: train.issued || '',
                 expiry: train.expiry || '',
-                sortOrder: index,
+                sortOrder: (train.courseId && trainOrderMap.has(train.courseId))
+                  ? trainOrderMap.get(train.courseId)!
+                  : 1000 + index,
               };
 
               const capturedTrainLocalId = train.id;
