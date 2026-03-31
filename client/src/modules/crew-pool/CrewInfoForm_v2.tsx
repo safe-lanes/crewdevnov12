@@ -1028,11 +1028,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               : []).map((t: any) => ({ ...t, fromDatabase: !!(t.courseId && t.courseId.trim()) }));
           const orderMap = new Map<string, number>();
           adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+          let unmappedIdx = 0;
           raw.forEach((t: any) => {
             if (t.courseId && orderMap.has(t.courseId)) {
               t.sortOrder = orderMap.get(t.courseId);
             } else if (t.courseId) {
-              t.sortOrder = 500 + (t.sortOrder ?? 0);
+              t.sortOrder = 500 + unmappedIdx++;
             } else {
               t.sortOrder = t.sortOrder ?? Number.MAX_SAFE_INTEGER;
             }
