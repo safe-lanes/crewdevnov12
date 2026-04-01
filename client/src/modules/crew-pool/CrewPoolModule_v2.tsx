@@ -537,7 +537,11 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     sortable: true,
                     resizable: true,
                     wrapText: true,
-                    autoHeight: true
+                    autoHeight: true,
+                    valueGetter: (params: any) => {
+                        const val = (params.data?.reason || '').trim();
+                        return val || null;
+                    }
                 }
             ]
         },
