@@ -38,6 +38,17 @@ const formatCompactDate = (value: any): string => {
     }
 };
 
+const dateFilterComparator = (filterLocalDateAtMidnight: Date, cellValue: any): number => {
+    if (!cellValue) return -1;
+    const cellDate = typeof cellValue === 'string' ? parseISO(cellValue) : new Date(cellValue);
+    if (!isValid(cellDate)) return -1;
+    const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+    const filterDate = new Date(filterLocalDateAtMidnight.getFullYear(), filterLocalDateAtMidnight.getMonth(), filterLocalDateAtMidnight.getDate());
+    if (cellDateOnly < filterDate) return -1;
+    if (cellDateOnly > filterDate) return 1;
+    return 0;
+};
+
 const formatContractPeriod = (value: any): string => {
     if (!value && value !== 0) return '';
     // Handle pure numeric values (contractPeriodMonths is stored as a number)
@@ -290,6 +301,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     minWidth: 90,
                     cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' },
                     filter: 'agDateColumnFilter',
+                    filterParams: { comparator: dateFilterComparator },
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
@@ -306,7 +318,13 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     filter: 'agNumberColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
-                    resizable: true
+                    resizable: true,
+                    valueGetter: (params: any) => {
+                        const val = params.data?.age;
+                        if (val == null || val === '') return null;
+                        const num = Number(val);
+                        return isNaN(num) ? null : num;
+                    }
                 },
                 {
                     headerName: 'Rank',
@@ -394,16 +412,16 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 100,
                     minWidth: 100,
                     cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' },
-                    filter: 'agTextColumnFilter',
+                    filter: 'agSetColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     wrapText: true,
                     autoHeight: true,
                     headerClass: 'ag-header-cell-text-wrap',
-                    valueFormatter: (params: any) => {
-                        if (!params.value) return '';
-                        return getVesselName(params.value) || params.value;
+                    valueGetter: (params: any) => {
+                        if (!params.data?.presentVessel) return '';
+                        return getVesselName(params.data.presentVessel) || params.data.presentVessel;
                     }
                 },
                 {
@@ -413,6 +431,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     minWidth: 90,
                     cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' },
                     filter: 'agDateColumnFilter',
+                    filterParams: { comparator: dateFilterComparator },
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
@@ -443,6 +462,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     minWidth: 90,
                     cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' },
                     filter: 'agDateColumnFilter',
+                    filterParams: { comparator: dateFilterComparator },
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
@@ -458,6 +478,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     minWidth: 90,
                     cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' },
                     filter: 'agDateColumnFilter',
+                    filterParams: { comparator: dateFilterComparator },
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
@@ -477,16 +498,16 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 100,
                     minWidth: 100,
                     cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' },
-                    filter: 'agTextColumnFilter',
+                    filter: 'agSetColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
                     wrapText: true,
                     autoHeight: true,
                     headerClass: 'ag-header-cell-text-wrap',
-                    valueFormatter: (params: any) => {
-                        if (!params.value) return '';
-                        return getVesselName(params.value) || params.value;
+                    valueGetter: (params: any) => {
+                        if (!params.data?.lastVessel) return '';
+                        return getVesselName(params.data.lastVessel) || params.data.lastVessel;
                     }
                 },
                 {
@@ -496,6 +517,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     minWidth: 90,
                     cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' },
                     filter: 'agDateColumnFilter',
+                    filterParams: { comparator: dateFilterComparator },
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
@@ -510,7 +532,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 130,
                     minWidth: 130,
                     cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' },
-                    filter: 'agTextColumnFilter',
+                    filter: 'agSetColumnFilter',
                     floatingFilter: viewportConfig.showFloatingFilters,
                     sortable: true,
                     resizable: true,
