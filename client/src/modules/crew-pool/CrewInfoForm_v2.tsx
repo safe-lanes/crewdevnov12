@@ -2144,7 +2144,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const handleAttachmentClick = (section: typeof attachmentDialog.section, itemId: string, itemName: string) => {
-    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     
     if (!crewIdentifier) {
       toast({
@@ -7447,7 +7447,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 data-testid="button-crew-dropdown"
               >
                 <span>
-                  {crewMember ? `${crewMember.firstName} ${crewMember.familyName}, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}` : 'Crew Member'}
+                  {crewMember
+                    ? `${crewMember.firstName} ${crewMember.familyName}, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}`
+                    : (formData.firstName || formData.familyName)
+                      ? `${formData.firstName || ''} ${formData.familyName || ''}`.trim()
+                      : 'Crew Member'}
                 </span>
                 <ChevronDown className="h-4 w-4 flex-shrink-0" />
               </button>
