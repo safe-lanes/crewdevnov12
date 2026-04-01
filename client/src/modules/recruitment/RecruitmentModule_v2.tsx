@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { parseISO, format, isValid } from 'date-fns';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
@@ -319,7 +320,17 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         cellStyle: { fontSize: '13px', color: '#4f5863' },
         filter: 'agDateColumnFilter',
         sortable: true,
-        resizable: true
+        resizable: true,
+        valueFormatter: (params: any) => {
+          if (!params.value) return '';
+          try {
+            const date = typeof params.value === 'string' ? parseISO(params.value) : new Date(params.value);
+            if (!isValid(date)) return params.value;
+            return format(date, 'dd-MMM-yyyy');
+          } catch {
+            return params.value;
+          }
+        }
       });
       
       baseColumns.splice(5, 0, {

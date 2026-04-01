@@ -32,7 +32,7 @@ const formatCompactDate = (value: any): string => {
     try {
         const date = typeof value === 'string' ? parseISO(value) : new Date(value);
         if (!isValid(date)) return value;
-        return format(date, 'dd-MMM-yy');
+        return format(date, 'dd-MMM-yyyy');
     } catch {
         return value;
     }
