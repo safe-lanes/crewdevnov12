@@ -1306,7 +1306,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             }
           }
           if (crewUuid) {
-            handleSectionAutoSave(sectionId);
+            handleSectionAutoSave(sectionId, crewUuid);
           }
           setEditingSections(prev => ({ ...prev, [sectionId]: false }));
         }
@@ -6738,9 +6738,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // Auto-save functionality — saves the specific section's data to the backend
-  const handleSectionAutoSave = async (sectionId: string) => {
+  const handleSectionAutoSave = async (sectionId: string, crewUuidOverride?: string) => {
     if (isBatchSavingRef.current) return;
-    const crewUuid = getEffectiveCrewUuid();
+    const crewUuid = crewUuidOverride || getEffectiveCrewUuid();
     if (!crewUuid) return;
 
     if (sectionId === 'B1') {
