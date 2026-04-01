@@ -39,9 +39,9 @@ const formatCompactDate = (value: any): string => {
 };
 
 const dateFilterComparator = (filterLocalDateAtMidnight: Date, cellValue: any): number => {
-    if (!cellValue) return -1;
+    if (!cellValue) return 0;
     const cellDate = typeof cellValue === 'string' ? parseISO(cellValue) : new Date(cellValue);
-    if (!isValid(cellDate)) return -1;
+    if (!isValid(cellDate)) return 0;
     const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
     const filterDate = new Date(filterLocalDateAtMidnight.getFullYear(), filterLocalDateAtMidnight.getMonth(), filterLocalDateAtMidnight.getDate());
     if (cellDateOnly < filterDate) return -1;
