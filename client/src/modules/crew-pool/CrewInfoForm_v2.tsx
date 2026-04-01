@@ -1282,10 +1282,22 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             } else {
               const hasB1Data = !!(
                 (formData.familyName || '').trim() ||
+                (formData.middleName || '').trim() ||
                 formData.presentRank ||
                 formData.dateOfBirth ||
                 formData.nationality ||
-                formData.gender
+                formData.gender ||
+                formData.heightCm ||
+                formData.weightKg ||
+                formData.bmi ||
+                (formData.placeOfBirthCity || '').trim() ||
+                (formData.placeOfBirthCountry || '').trim() ||
+                (formData.nativeLanguage || '').trim() ||
+                (formData.foreignLanguages || '').trim() ||
+                (formData.englishProficiency || '').trim() ||
+                (formData.manningAgent || '').trim() ||
+                (formData.crewPool || '').trim() ||
+                (Array.isArray(formData.vesselType) && formData.vesselType.length > 0)
               );
               if (hasB1Data) {
                 setFirstNameError('First name is required.');
