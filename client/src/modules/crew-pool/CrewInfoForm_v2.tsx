@@ -1109,7 +1109,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     // Build a set of "vesselUuid|signOnDate" keys from all on-board assignments
     const assignmentKeys = new Set<string>();
     crewAssignmentsData.forEach((a: any) => {
-      if (a.vesselUuid && a.signOnDate) {
+      if (a.vesselUuid && a.signOnDate && !a.signOffDate) {
         assignmentKeys.add(`${a.vesselUuid}|${a.signOnDate}`);
       }
     });
