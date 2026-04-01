@@ -1260,7 +1260,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       return false;
     };
 
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = async (e: MouseEvent) => {
       const target = e.target as Element;
       if (isInsidePortal(target)) return;
 
@@ -1270,17 +1270,35 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         'B3': sectionB3Ref,
       };
 
-      Object.entries(editingSections).forEach(([sectionId, isEditing]) => {
-        if (!isEditing) return;
+      for (const [sectionId, isEditing] of Object.entries(editingSections)) {
+        if (!isEditing) continue;
         const ref = sectionRefs[sectionId];
         if (ref?.current && !ref.current.contains(target)) {
-          const crewUuid = getEffectiveCrewUuid();
+          let crewUuid = getEffectiveCrewUuid();
+          if (!crewUuid && sectionId === 'B1') {
+            const trimmedFirstName = (formData.firstName || '').trim();
+            if (trimmedFirstName) {
+              crewUuid = await ensureCrewExists();
+            } else {
+              const hasB1Data = !!(
+                (formData.familyName || '').trim() ||
+                formData.presentRank ||
+                formData.dateOfBirth ||
+                formData.nationality ||
+                formData.gender
+              );
+              if (hasB1Data) {
+                setFirstNameError('First name is required.');
+                continue;
+              }
+            }
+          }
           if (crewUuid) {
             handleSectionAutoSave(sectionId);
           }
           setEditingSections(prev => ({ ...prev, [sectionId]: false }));
         }
-      });
+      }
     };
 
     const hasEditingSection = Object.values(editingSections).some(Boolean);
