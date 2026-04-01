@@ -7450,7 +7450,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {crewMember
                     ? `${crewMember.firstName} ${crewMember.familyName}, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}`
                     : (formData.firstName || formData.familyName)
-                      ? `${formData.firstName || ''} ${formData.familyName || ''}`.trim()
+                      ? `${formData.firstName || ''} ${formData.familyName || ''}`.trim() + (formData.presentRank ? `, ${normalizeRank(formData.presentRank) || formData.presentRank}` : '')
                       : 'Crew Member'}
                 </span>
                 <ChevronDown className="h-4 w-4 flex-shrink-0" />
