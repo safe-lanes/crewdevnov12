@@ -90,14 +90,11 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return [];
     }, [externalNationalitiesData]);
     
-    // Extract vessel entries (id and name) for dropdown - sorted by name
-    // Using external API (SAIL ERP) instead of local Master Data 014
-    // External API uses 'vessel' field for name and 'vuid' for ID
     const vesselMasterData = useMemo(() => {
         if (externalVesselsData && Array.isArray(externalVesselsData) && externalVesselsData.length > 0) {
             return externalVesselsData
-                .filter((v: any) => (v.vessel || v.name) && (v.vuid || v.nuid || v.id))
-                .map((v: any) => ({ id: v.vuid || v.nuid || `VSL-${v.id}`, name: v.vessel || v.name }))
+                .filter((v: any) => (v.vessel || v.name) && (v.vesselUuid || v.uuid || v.id))
+                .map((v: any) => ({ id: v.vesselUuid || v.uuid || v.id, name: v.vessel || v.name }))
                 .sort((a: any, b: any) => a.name.localeCompare(b.name));
         }
         return [];
@@ -147,19 +144,15 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return data.filter((crew: any) => {
             const fullName = `${crew.firstName || ''} ${crew.middleName || ''} ${crew.familyName || ''}`.toLowerCase();
             const matchesName = filters.searchName === "" || fullName.includes(filters.searchName.toLowerCase());
-            const matchesVessel = filters.vessel === "" || crew.presentVessel === filters.vessel;
+            const matchesVessel = filters.vessel === "" || crew.presentVesselName === filters.vessel;
             const matchesRank = filters.rank === "" || crew.presentRank === filters.rank;
             const matchesNationality = filters.nationality === "" || crew.nationality === filters.nationality;
             // Status filter logic:
-            // - "Available" filter shows crew whose Next Availability date has passed (they are ready to join)
+            // - "Available" filter shows crew who have a nextAvailability date set
             // - Other status filters match the crew.status field directly
             let matchesStatus = true;
             if (filters.status === "Available") {
-                // For "Available" filter: check if nextAvailability date has passed
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Start of today
-                const nextAvailDate = crew.nextAvailability ? new Date(crew.nextAvailability) : null;
-                matchesStatus = nextAvailDate !== null && nextAvailDate <= today;
+                matchesStatus = !!crew.nextAvailability;
             } else if (filters.status !== "") {
                 matchesStatus = crew.status === filters.status;
             }
@@ -172,13 +165,15 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 const today = new Date();
                 const reliefDate = crew.reliefDue ? new Date(crew.reliefDue) : null;
                 
-                if (filters.reliefDue === "overdue" && reliefDate) {
+                if (!reliefDate) {
+                    matchesReliefDue = false;
+                } else if (filters.reliefDue === "overdue") {
                     matchesReliefDue = reliefDate < today;
-                } else if (filters.reliefDue === "this-month" && reliefDate) {
+                } else if (filters.reliefDue === "this-month") {
                     const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
                     const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
                     matchesReliefDue = reliefDate >= thisMonthStart && reliefDate <= thisMonthEnd;
-                } else if (filters.reliefDue === "next-month" && reliefDate) {
+                } else if (filters.reliefDue === "next-month") {
                     const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
                     const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
                     matchesReliefDue = reliefDate >= nextMonthStart && reliefDate <= nextMonthEnd;
@@ -200,7 +195,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     // Actions cell renderer for edit button
     const ActionsCellRenderer = useCallback((params: ICellRendererParams) => {
         const handleEditClick = () => {
-            console.log('Edit clicked for:', params.data.id);
             setSelectedCrewMember(params.data);
             setIsCrewInfoFormOpen(true);
         };
@@ -594,7 +588,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                                 <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
                                             ) : (
                                                 vesselMasterData.map(vessel => (
-                                                    <SelectItem key={vessel.id} value={vessel.id} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
+                                                    <SelectItem key={vessel.id} value={vessel.name} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
                                                 ))
                                             )}
                                         </SelectContent>
@@ -644,6 +638,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                             <SelectItem value="On Board">On Board</SelectItem>
                                             <SelectItem value="On Leave">On Leave</SelectItem>
                                             <SelectItem value="Available">Available</SelectItem>
+                                            <SelectItem value="Inactive">Inactive</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -729,7 +724,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                                 <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
                                             ) : (
                                                 vesselMasterData.map(vessel => (
-                                                    <SelectItem key={vessel.id} value={vessel.id} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
+                                                    <SelectItem key={vessel.id} value={vessel.name} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
                                                 ))
                                             )}
                                         </SelectContent>
@@ -773,6 +768,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                             <SelectItem value="On Board">On Board</SelectItem>
                                             <SelectItem value="On Leave">On Leave</SelectItem>
                                             <SelectItem value="Available">Available</SelectItem>
+                                            <SelectItem value="Inactive">Inactive</SelectItem>
                                         </SelectContent>
                                     </Select>
 
@@ -855,7 +851,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                                 <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
                                             ) : (
                                                 vesselMasterData.map(vessel => (
-                                                    <SelectItem key={vessel.id} value={vessel.id} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
+                                                    <SelectItem key={vessel.id} value={vessel.name} data-testid={`vessel-option-${vessel.id}`}>{vessel.name}</SelectItem>
                                                 ))
                                             )}
                                         </SelectContent>
@@ -899,6 +895,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                             <SelectItem value="On Board">On Board</SelectItem>
                                             <SelectItem value="On Leave">On Leave</SelectItem>
                                             <SelectItem value="Available">Available</SelectItem>
+                                            <SelectItem value="Inactive">Inactive</SelectItem>
                                         </SelectContent>
                                     </Select>
 
@@ -1048,7 +1045,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         <Button
                             className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
                             onClick={() => {
-                                console.log('New crew clicked');
                                 setSelectedCrewMember(null);
                                 setIsCrewInfoFormOpen(true);
                             }}

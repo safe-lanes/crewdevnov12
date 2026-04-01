@@ -3967,6 +3967,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           recCanUuid,
           data: {
             recruitmentStatus: formData.c3RecruitmentStatus || null,
+            submittedByUuid: overrides?.c3SubmittedBy || formData.c3SubmittedBy || null,
+            submittedDate: overrides?.c3SubmittedDate || formData.c3SubmittedDate || null,
             assignedGroups: formData.c3AssignedGroups.map(g => ({ groupUuid: g })),
           } as any,
         });
@@ -5436,7 +5438,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             </TableRow>
           </TableHeader>
           <TableBody>
-            {formData.seaService.map((service) => (
+            {[...formData.seaService]
+              .sort((a, b) => {
+                const aDate = a.to || a.from || '';
+                const bDate = b.to || b.from || '';
+                return bDate.localeCompare(aDate);
+              })
+              .map((service) => (
               <TableRow key={service.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   <Input value={service.vesselName} onChange={(e) => { updateSeaService(service.id, 'vesselName', e.target.value); if (seaRequiredErrors[service.id]?.vesselName && e.target.value.trim()) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
@@ -8942,19 +8950,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </div>
 
                   <div className="mt-6 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs text-gray-500">
-                        {formData.c3SubmittedBy ? (
-                          <>Submitted by: {formData.c3SubmittedBy}</>
-                        ) : (
-                          <span className="text-gray-400">Not yet submitted</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {formData.c3SubmittedDate && (
-                          <>Date: {formatDate(formData.c3SubmittedDate) || formData.c3SubmittedDate}</>
-                        )}
-                      </div>
+                    <div className="text-xs text-gray-500">
+                      {formData.c3SubmittedBy ? (
+                        <>
+                          <span className="font-medium">Submitted by:</span> {formData.c3SubmittedBy}
+                          {formData.c3SubmittedDate && ` on ${formatDate(formData.c3SubmittedDate) || formData.c3SubmittedDate}`}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Not yet submitted</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -8964,7 +8968,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <Button 
                   className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
                   onClick={() => {
-                    handleSaveScreening();
+                    const currentDate = formatDate(new Date());
+                    setFormData(prev => ({ ...prev, c3SubmittedBy: currentUserDisplay, c3SubmittedDate: currentDate }));
+                    handleSaveScreening(false, false, { c3SubmittedBy: currentUserDisplay, c3SubmittedDate: currentDate });
                   }}
                   disabled={savingInProgress}
                   data-testid="button-save-approval"

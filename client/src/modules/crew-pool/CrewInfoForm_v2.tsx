@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedDateInput } from '@/components/ui/formatted-date-input';
+import { formatDate } from '@/utils/format';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -119,6 +121,16 @@ function withAuditUser<T>(data: T): T {
   }
   return data;
 }
+
+const calculateBMI = (height: string, weight: string): string => {
+  const heightInM = parseFloat(height) / 100;
+  const weightInKg = parseFloat(weight);
+  if (heightInM > 0 && weightInKg > 0) {
+    const bmi = weightInKg / (heightInM * heightInM);
+    return bmi.toFixed(1);
+  }
+  return '';
+};
 
 const V2_QUERY_KEY = '/api/v2/crew-pool';
 
@@ -245,6 +257,7 @@ interface DocumentInfo {
 
 interface Visa {
   id: string;
+  visaUuid?: string;
   countryId: string;  // Template ID (e.g., USA, SCHENGEN) - empty for manual entries
   issuingCountry: string;
   serialNo: string;
@@ -468,6 +481,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     enabled: !!crewUuid && isOpen,
   });
 
+  const invalidateCrewData = (id: string | null) => {
+    if (!id) return;
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', id, 'full-profile'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', id, 'dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', id, 'assignments'] });
+  };
+
   // V2: Crew assignments — used to detect auto-generated (vessel-synced) E1 rows
   const { data: crewAssignmentsData } = useQuery<any[]>({
     queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'assignments'],
@@ -579,7 +599,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, string>>({});
   const [licRequiredErrors, setLicRequiredErrors] = useState<Record<string, string>>({});
   const [trainRequiredErrors, setTrainRequiredErrors] = useState<Record<string, string>>({});
-  const [seaServiceRequiredErrors, setSeaServiceRequiredErrors] = useState<Record<string, string[]>>({});
+  const [seaServiceRequiredErrors, setSeaServiceRequiredErrors] = useState<Record<string, Record<string, string>>>({});
   const [deletedChildUuids, setDeletedChildUuids] = useState<string[]>([]);
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
@@ -656,31 +676,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   }, [externalVesselTypesData]);
   
   // Filter to Level 2 and Level 3 types for dropdown (not Level 1 categories)
-  // Sort in hierarchical order with Oil Chemical Tanker positioned after Chemical Tanker
+  // Sort alphabetically to match Recruitment form ordering
   // External API uses 'vesselType' field for name, 'vtuid' for ID
   const vesselTypeMasterData = useMemo(() => {
-    const preferredOrder = [
-      'Oil Tanker',
-      'Chemical Tanker',
-      'Oil Chemical Tanker',
-      'Gas Tanker',
-      'Bitumen/Asphalt Carriers',
-      'Product Oil Tanker',
-      'Crude Oil Tanker',
-      'LNG Tanker',
-      'LPG Tanker',
-      'Bulk Carrier',
-      'General Cargo',
-      'Container',
-      'RoRo',
-      'Barges',
-      'Offshore Support Vessels',
-      'Shuttle Tankers'
-    ];
-    
     if (vesselTypeMasterDataRaw.length > 0) {
-      // External API doesn't have 'level' field, so include all types
-      // Support both external API format (vesselType) and local DB format (name)
       const hasLevelField = vesselTypeMasterDataRaw.some((vt: any) => vt.level !== undefined);
       const filteredTypes = hasLevelField 
         ? vesselTypeMasterDataRaw.filter((vt: any) => vt.level && vt.level >= 2)
@@ -690,14 +689,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         return filteredTypes
           .map((vt: any) => vt.vesselType || vt.name)
           .filter(Boolean)
-          .sort((a: string, b: string) => {
-            const indexA = preferredOrder.indexOf(a);
-            const indexB = preferredOrder.indexOf(b);
-            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-            if (indexA !== -1) return -1;
-            if (indexB !== -1) return 1;
-            return a.localeCompare(b);
-          });
+          .sort((a: string, b: string) => a.localeCompare(b));
       }
     }
     return DEFAULT_DROPDOWN_VESSEL_TYPES;
@@ -907,39 +899,33 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   }, [formData.currentCompanySeaService, formData.externalSeaService]);
 
   const validateSeaServiceFieldOnBlur = useCallback((serviceId: string, service: any) => {
-    const missing: string[] = [];
-    if (!(service.vesselName || '').trim()) missing.push('Vessel Name');
-    if (!(service.vesselType || '').trim()) missing.push('Vessel Type');
-    if (!(service.rank || '').trim()) missing.push('Rank');
-    if (!(service.from || service.fromDate || '').trim()) missing.push('From Date');
-    if (!(service.to || service.toDate || '').trim()) missing.push('To Date');
+    const fieldErrors: Record<string, string> = {};
+    if (!(service.vesselName || '').trim()) fieldErrors.vesselName = 'Vessel name is required.';
+    if (!(service.vesselType || '').trim()) fieldErrors.vesselType = 'Vessel type is required.';
+    if (!(service.rank || '').trim()) fieldErrors.rank = 'Rank is required.';
+    if (!(service.from || service.fromDate || '').trim()) fieldErrors.from = 'From date is required.';
+    if (!(service.to || service.toDate || '').trim()) fieldErrors.to = 'To date is required.';
     setSeaServiceRequiredErrors(prev => {
-      if (missing.length > 0) return { ...prev, [serviceId]: missing };
+      if (Object.keys(fieldErrors).length > 0) return { ...prev, [serviceId]: fieldErrors };
       const next = { ...prev };
       delete next[serviceId];
       return next;
     });
   }, []);
 
-  // Helper function to calculate period in months between two dates (used for hydration)
-  // Uses average days per month (30.44) for accurate calculation
   const calculateSeaServicePeriod = (fromDate: string, toDate: string): string => {
     if (!fromDate || !toDate) return '';
-    
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
-    if (to < from) return '';
-    
-    // Calculate total days between dates and convert to months
-    const timeDiff = to.getTime() - from.getTime();
-    const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-    const totalMonths = totalDays / 30.44; // Average days per month
-    
-    // Round to 1 decimal place, ensure minimum of 0
-    const result = Math.max(0, Math.round(totalMonths * 10) / 10);
-    return result.toString();
+    try {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
+      const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+      const days = to.getDate() - from.getDate();
+      const totalMonths = months + (days / 30);
+      return totalMonths >= 0 ? totalMonths.toFixed(1) : '';
+    } catch {
+      return '';
+    }
   };
 
   // Update form data when detailed crew data loads from API
@@ -958,12 +944,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         nationality: detailedCrewData.nationality || '',
         presentRank: normalizeRank(detailedCrewData.presentRank || '') || detailedCrewData.presentRank || '',
         dateOfBirth: detailedCrewData.dob || detailedCrewData.dateOfBirth || '',
-        ageInYears: detailedCrewData.age || detailedCrewData.ageInYears || calculateAge(detailedCrewData.dob || detailedCrewData.dateOfBirth || ''),
+        ageInYears: detailedCrewData.age || calculateAge(detailedCrewData.dob || detailedCrewData.dateOfBirth || ''),
         placeOfBirthCity: detailedCrewData.placeOfBirthCity || '',
         placeOfBirthCountry: detailedCrewData.placeOfBirthCountry || '',
         heightCm: detailedCrewData.height || detailedCrewData.heightCm || '',
         weightKg: detailedCrewData.weight || detailedCrewData.weightKg || '',
-        bmi: detailedCrewData.bmi || '',
+        bmi: detailedCrewData.bmi || calculateBMI(
+          detailedCrewData.height || detailedCrewData.heightCm || '',
+          detailedCrewData.weight || detailedCrewData.weightKg || ''
+        ),
         nativeLanguage: detailedCrewData.nativeLanguage || '',
         foreignLanguages: detailedCrewData.foreignLanguages || '',
         englishProficiency: detailedCrewData.englishProficiency || '',
@@ -976,6 +965,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         manningAgent: detailedCrewData.manningAgent || '',
         crewPool: detailedCrewData.crewPool || '',
         employeeId: detailedCrewData.employeeId || '',
+        nextAvailability: detailedCrewData.nextAvailability || '',
         
         // A1.2 Address & Contact Info
         countryOfResidence: detailedCrewData.countryOfResidence || '',
@@ -1036,20 +1026,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             : detailedCrewData.trainingCourses 
               ? JSON.parse(detailedCrewData.trainingCourses) 
               : []).map((t: any) => ({ ...t, fromDatabase: !!(t.courseId && t.courseId.trim()) }));
-          if (adminCompanyTrainings.length > 0) {
-            const orderMap = new Map<string, number>();
-            adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
-            raw.forEach((t: any) => {
-              if (t.courseId && orderMap.has(t.courseId)) {
-                t.sortOrder = orderMap.get(t.courseId);
-              }
-            });
-            raw.sort((a: any, b: any) => {
-              const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
-              const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
-              return aOrder - bOrder;
-            });
-          }
+          const orderMap = new Map<string, number>();
+          adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+          const UNMAPPED_DB_BASE = 500;
+          const MANUAL_BASE = 1000;
+          let unmappedIdx = 0;
+          raw.forEach((t: any) => {
+            const cid = (t.courseId || '').trim();
+            if (cid && orderMap.has(cid)) {
+              t.sortOrder = orderMap.get(cid);
+            } else if (cid) {
+              t.sortOrder = UNMAPPED_DB_BASE + unmappedIdx++;
+            } else {
+              t.sortOrder = MANUAL_BASE + (t.sortOrder ?? 0);
+            }
+          });
+          raw.sort((a: any, b: any) => {
+            const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+            const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+            return aOrder - bOrder;
+          });
           return raw;
         })(),
         currentCompanySeaService: (() => {
@@ -1129,7 +1125,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       if (updated.every((s: any, i: number) => s === prev.currentCompanySeaService[i])) return prev;
       return { ...prev, currentCompanySeaService: updated };
     });
-  }, [crewAssignmentsData]);
+  }, [crewAssignmentsData, detailedCrewData]);
 
   // Reset photo when crew member changes or form closes
   // V2: Check both crewUuid and id
@@ -1162,7 +1158,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // This ensures the form starts with empty values instead of stale data from previous selection
   useEffect(() => {
     if (isOpen && !crewMember) {
-      console.log('[V2] Resetting form data for new crew member');
       setFormData({
         // A1.1 General Particulars
         firstName: '',
@@ -1295,16 +1290,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   }, [editingSections, formData]);
 
-  // Helper function to calculate BMI
-  const calculateBMI = (height: string, weight: string) => {
-    const heightInM = parseFloat(height) / 100; // Convert cm to meters
-    const weightInKg = parseFloat(weight);
-    if (heightInM > 0 && weightInKg > 0) {
-      const bmi = weightInKg / (heightInM * heightInM);
-      return bmi.toFixed(1);
-    }
-    return '';
-  };
 
   // Helper function to calculate age from date of birth
   const calculateAge = (dateOfBirth: string) => {
@@ -1493,7 +1478,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               documents: prev.documents.filter(d => d.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete document:', error);
@@ -1548,7 +1533,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               visas: prev.visas.filter(v => v.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete visa:', error);
@@ -1601,7 +1586,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               education: prev.education.filter(e => e.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete education:', error);
@@ -1697,6 +1682,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         sortOrder: template.sortOrder,
       }));
       const allCourses = [...existingCourses, ...newCourses];
+      const orderMap = new Map<string, number>();
+      adminCompanyTrainings.forEach((ct, idx) => orderMap.set(ct.companyId, idx));
+      allCourses.forEach(c => {
+        if (c.courseId && orderMap.has(c.courseId)) {
+          c.sortOrder = orderMap.get(c.courseId);
+        }
+      });
       allCourses.sort((a, b) => {
         const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
         const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
@@ -1777,7 +1769,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               licenses: prev.licenses.filter(l => l.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete license:', error);
@@ -1833,7 +1825,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               trainingCourses: prev.trainingCourses.filter(c => c.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete training course:', error);
@@ -1849,25 +1841,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
-  // Helper function to calculate period in months between two dates
-  // Uses average days per month (30.44) for accurate calculation
   const calculatePeriodMonths = (fromDate: string, toDate: string): string => {
     if (!fromDate || !toDate) return '';
-    
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
-    if (to < from) return '';
-    
-    // Calculate total days between dates and convert to months
-    const timeDiff = to.getTime() - from.getTime();
-    const totalDays = timeDiff / (1000 * 60 * 60 * 24);
-    const totalMonths = totalDays / 30.44; // Average days per month
-    
-    // Round to 1 decimal place, ensure minimum of 0
-    const result = Math.max(0, Math.round(totalMonths * 10) / 10);
-    return result.toString();
+    try {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) return '';
+      const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+      const days = to.getDate() - from.getDate();
+      const totalMonths = months + (days / 30);
+      return totalMonths >= 0 ? totalMonths.toFixed(1) : '';
+    } catch {
+      return '';
+    }
   };
 
   // Sea service management - Current Company
@@ -1924,7 +1910,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               currentCompanySeaService: prev.currentCompanySeaService.filter(s => s.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete sea service:', error);
@@ -1994,7 +1980,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               externalSeaService: prev.externalSeaService.filter(s => s.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete sea service:', error);
@@ -2051,7 +2037,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               preJoiningMedicals: prev.preJoiningMedicals.filter(m => m.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete medical record:', error);
@@ -2105,7 +2091,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               doctorVisits: prev.doctorVisits.filter(v => v.id !== id)
             }));
-            queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewIdentifier, 'full-profile'] });
+            invalidateCrewData(crewIdentifier);
           },
           onError: (error) => {
             console.error('Failed to delete doctor visit:', error);
@@ -2925,11 +2911,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TimelineCard
                 assignments={serviceTimelineData || []}
                 isLoading={isDashboardLoading}
-                onAppraisalClick={(appraisalId: number) => {
-                  console.log('Navigate to appraisal:', appraisalId);
+                onAppraisalClick={(_appraisalId: number) => {
                 }}
-                onHandoverClick={(handoverId: number) => {
-                  console.log('Navigate to handover:', handoverId);
+                onHandoverClick={(_handoverId: number) => {
                 }}
               />
             </div>
@@ -3148,16 +3132,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
             {isEditing ? (
-              <Input
-                type="date"
+              <FormattedDateInput
                 value={formData.dateOfBirth}
                 onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) setDobError(''); }}
                 onBlur={() => { const err = validateDob(formData.dateOfBirth); setDobError(err); }}
+                max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()}
                 className={`mt-1 ${dobError ? 'border-red-500' : ''}`}
                 data-testid="input-date-of-birth"
               />
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.dateOfBirth}</div>
+              <div className="mt-1 text-sm text-gray-900">{formatDate(formData.dateOfBirth)}</div>
             )}
             {dobError && <p className="text-xs text-red-500 mt-1" data-testid="text-dob-error">{dobError}</p>}
           </div>
@@ -3354,9 +3338,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <SelectValue placeholder="Select proficiency" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Good">Good</SelectItem>
-                  <SelectItem value="Fair">Fair</SelectItem>
-                  <SelectItem value="Poor">Poor</SelectItem>
+                  <SelectItem value="None">None</SelectItem>
+                  <SelectItem value="Basic">Basic</SelectItem>
+                  <SelectItem value="Intermediate">Intermediate</SelectItem>
+                  <SelectItem value="Fluent">Fluent</SelectItem>
+                  <SelectItem value="Native">Native</SelectItem>
                 </SelectContent>
               </Select>
             ) : (
@@ -3650,8 +3636,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
               {isEditing ? (
-                <Input
-                  type="date"
+                <FormattedDateInput
                   value={formData.spouseDateOfBirth}
                   onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseDobError) setSpouseDobError(''); if (spouseValidationError) setSpouseValidationError(''); }}
                   onBlur={() => { if (formData.maritalStatus === 'Married') { if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); } else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); } else { setSpouseDobError(''); } } else { setSpouseDobError(''); } }}
@@ -3660,7 +3645,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   data-testid="input-spouse-dob"
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth}</div>
+                <div className="mt-1 text-sm text-gray-900">{formatDate(formData.spouseDateOfBirth)}</div>
               )}
               {spouseDobError && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-dob-error">{spouseDobError}</p>}
             </div>
@@ -3737,14 +3722,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </td>
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                           {isEditing ? (
-                            <Input
-                              type="date"
+                            <FormattedDateInput
                               value={child.dateOfBirth}
                               onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
                               className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                             />
                           ) : (
-                            child.dateOfBirth
+                            formatDate(child.dateOfBirth)
                           )}
                         </td>
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
@@ -3754,8 +3738,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                 <SelectValue placeholder="Select" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Son">Son</SelectItem>
-                                <SelectItem value="Daughter">Daughter</SelectItem>
+                                <SelectItem value="Male">Male</SelectItem>
+                                <SelectItem value="Female">Female</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
@@ -3954,8 +3938,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={doc.issued}
                     onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); if (docDateErrors[doc.id]?.issued) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), issued: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
@@ -3965,8 +3948,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {docDateErrors[doc.id]?.issued && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={doc.expiry}
                     onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); if (docDateErrors[doc.id]?.expiry) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(doc.expiry, doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), expiry: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
@@ -4065,7 +4047,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  {visa.countryId ? (
+                  {(visa.countryId || visa.visaUuid) ? (
                     <span className="text-[#4f5863] text-[13px]">{visa.issuingCountry}</span>
                   ) : (
                     <Input
@@ -4085,8 +4067,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={visa.issued}
                     onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); if (visaDateErrors[visa.id]?.issued) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issued: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
@@ -4096,8 +4077,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {visaDateErrors[visa.id]?.issued && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={visa.expiry}
                     onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); if (visaDateErrors[visa.id]?.expiry) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(visa.expiry, visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), expiry: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
@@ -4208,8 +4188,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={edu.dateOfCompletion}
                     onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)}
                     className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
@@ -4290,7 +4269,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Country</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
               {canEditSection('D') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
@@ -4366,6 +4345,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
+                      {license.issuingAuthority && !countryMasterData.includes(license.issuingAuthority) && (
+                        <SelectItem key={license.issuingAuthority} value={license.issuingAuthority}>{license.issuingAuthority}</SelectItem>
+                      )}
                       {countryMasterData.map(country => (
                         <SelectItem key={country} value={country}>{country}</SelectItem>
                       ))}
@@ -4373,8 +4355,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </Select>
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={license.issued}
                     onChange={(e) => { updateLicense(license.id, 'issued', e.target.value); if (licDateErrors[license.id]?.issued) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), issued: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
@@ -4384,8 +4365,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {licDateErrors[license.id]?.issued && <p className="text-xs text-red-500 mt-1">{licDateErrors[license.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={license.expiry}
                     onChange={(e) => { updateLicense(license.id, 'expiry', e.target.value); if (licDateErrors[license.id]?.expiry) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(license.expiry, license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), expiry: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
@@ -4476,7 +4456,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {formData.trainingCourses.map((course) => (
+            {[...formData.trainingCourses]
+              .sort((a, b) => {
+                const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+                const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+                return aOrder - bOrder;
+              })
+              .map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   <div className="text-[#4f5863] text-[13px] font-mono">{course.courseId || '-'}</div>
@@ -4531,8 +4517,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={course.issued}
                     onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); if (trainDateErrors[course.id]?.issued) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), issued: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
@@ -4542,8 +4527,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {trainDateErrors[course.id]?.issued && <p className="text-xs text-red-500 mt-1">{trainDateErrors[course.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input
-                    type="date"
+                  <FormattedDateInput
                     value={course.expiry}
                     onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); if (trainDateErrors[course.id]?.expiry) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(course.expiry, course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), expiry: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
@@ -4672,10 +4656,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                   updateCurrentCompanySeaService(service.id, 'vesselType', vesselTypeName);
                                 }
                               }
+                              if (seaServiceRequiredErrors[service.id]?.vesselName && selectedVessel?.name) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; });
                               setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselCode: value, vesselName: selectedVessel?.name || '', vesselType: selectedVessel?.vtuid ? (vesselTypeIdToNameMap.get(selectedVessel.vtuid) || service.vesselType) : service.vesselType }), 0);
                             }}
                           >
-                            <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                               <SelectValue placeholder="Select vessel">
                                 {service.vesselName || "Select vessel"}
                               </SelectValue>
@@ -4695,6 +4680,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectContent>
                           </Select>
                         )}
+                        {seaServiceRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselName}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {isVesselSynced ? (
@@ -4702,9 +4688,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <Select
                             value={service.vesselType}
-                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'vesselType', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
+                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'vesselType', value); if (seaServiceRequiredErrors[service.id]?.vesselType) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselType: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
                           >
-                            <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                               <SelectValue placeholder="Select vessel type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -4716,6 +4702,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectContent>
                           </Select>
                         )}
+                        {seaServiceRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselType}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -4747,9 +4734,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <Select
                             value={service.rank}
-                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'rank', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
+                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'rank', value); if (seaServiceRequiredErrors[service.id]?.rank) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                           >
-                            <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                            <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                               <SelectValue placeholder="Select rank" />
                             </SelectTrigger>
                             <SelectContent>
@@ -4769,19 +4756,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectContent>
                           </Select>
                         )}
+                        {seaServiceRequiredErrors[service.id]?.rank && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].rank}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {isVesselSynced ? (
-                          <span className="text-[13px] text-[#4f5863]">{service.from || '—'}</span>
+                          <span className="text-[13px] text-[#4f5863]">{service.from ? formatDate(service.from) : '—'}</span>
                         ) : (
-                          <Input
-                            type="date"
+                          <FormattedDateInput
                             value={service.from}
-                            onChange={(e) => updateCurrentCompanySeaService(service.id, 'from', e.target.value)}
+                            onChange={(e) => { updateCurrentCompanySeaService(service.id, 'from', e.target.value); if (seaServiceRequiredErrors[service.id]?.from && e.target.value) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                             onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, from: e.target.value }); }}
-                            className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                            className={`border ${seaServiceRequiredErrors[service.id]?.from ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                           />
                         )}
+                        {seaServiceRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].from}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
@@ -4802,7 +4790,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                                       style={{ color: '#3b82f6' }}
                                       data-testid={`date-to-active-${service.id}`}
                                     >
-                                      {todayDate}
+                                      {formatDate(todayDate)}
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -4814,18 +4802,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           } else {
                             // Completed contract: show normal 'to' date
                             return (
-                              <Input
-                                type="date"
+                              <FormattedDateInput
                                 value={service.to}
-                                onChange={(e) => updateCurrentCompanySeaService(service.id, 'to', e.target.value)}
+                                onChange={(e) => { updateCurrentCompanySeaService(service.id, 'to', e.target.value); if (seaServiceRequiredErrors[service.id]?.to && e.target.value) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { to: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                                 onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, to: e.target.value }); }}
-                                className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                className={`border ${(seaServiceRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id || (service as any).seaUuid]) ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                                 data-testid={`input-date-to-${service.id}`}
                               />
                             );
                           }
                         })()}
-                        {seaServiceDateErrors[service.id || (service as any).seaUuid] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e1-to-error-${service.id}`}>{seaServiceDateErrors[service.id || (service as any).seaUuid]}</p>}
+                        {seaServiceRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].to}</p>}
+                        {!seaServiceRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id || (service as any).seaUuid] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e1-to-error-${service.id}`}>{seaServiceDateErrors[service.id || (service as any).seaUuid]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
@@ -4931,16 +4919,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-6 w-6 text-gray-400 hover:text-red-600"
+                            className={`h-6 w-6 ${isVesselSynced ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-red-600'}`}
                             onClick={() => removeCurrentCompanySeaService(service.id)}
+                            disabled={isVesselSynced}
                             data-testid={`button-delete-current-service-${service.id}`}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
-                        {seaServiceRequiredErrors[service.id || `e1-${formData.currentCompanySeaService.indexOf(service)}`] && (
-                          <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e1-${formData.currentCompanySeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
-                        )}
                       </td>
                       )}
                     </tr>
@@ -5014,18 +5000,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={service.vesselName}
-                          onChange={(e) => updateExternalSeaService(service.id, 'vesselName', e.target.value)}
+                          onChange={(e) => { updateExternalSeaService(service.id, 'vesselName', e.target.value); if (seaServiceRequiredErrors[service.id]?.vesselName && e.target.value.trim()) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                           onBlur={() => validateSeaServiceFieldOnBlur(service.id, service)}
-                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className={`border ${seaServiceRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                           placeholder="Enter vessel name"
                         />
+                        {seaServiceRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselName}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
                           value={service.vesselType}
-                          onValueChange={(value) => { updateExternalSeaService(service.id, 'vesselType', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
+                          onValueChange={(value) => { updateExternalSeaService(service.id, 'vesselType', value); if (seaServiceRequiredErrors[service.id]?.vesselType) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselType: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
                         >
-                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                          <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                             <SelectValue placeholder="Select vessel type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -5036,6 +5023,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             ))}
                           </SelectContent>
                         </Select>
+                        {seaServiceRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselType}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -5064,9 +5052,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
                           value={service.rank}
-                          onValueChange={(value) => { updateExternalSeaService(service.id, 'rank', value); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
+                          onValueChange={(value) => { updateExternalSeaService(service.id, 'rank', value); if (seaServiceRequiredErrors[service.id]?.rank) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                         >
-                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                          <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
                             <SelectValue placeholder="Select rank" />
                           </SelectTrigger>
                           <SelectContent>
@@ -5085,25 +5073,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             )}
                           </SelectContent>
                         </Select>
+                        {seaServiceRequiredErrors[service.id]?.rank && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].rank}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={service.from}
-                          onChange={(e) => updateExternalSeaService(service.id, 'from', e.target.value)}
+                          onChange={(e) => { updateExternalSeaService(service.id, 'from', e.target.value); if (seaServiceRequiredErrors[service.id]?.from && e.target.value) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                           onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, from: e.target.value }); }}
-                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className={`border ${seaServiceRequiredErrors[service.id]?.from ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                         />
+                        {seaServiceRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].from}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={service.to}
-                          onChange={(e) => updateExternalSeaService(service.id, 'to', e.target.value)}
+                          onChange={(e) => { updateExternalSeaService(service.id, 'to', e.target.value); if (seaServiceRequiredErrors[service.id]?.to && e.target.value) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { to: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                           onBlur={(e) => { runSeaServiceOverlapCheck(); validateSeaServiceFieldOnBlur(service.id, { ...service, to: e.target.value }); }}
-                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          className={`border ${(seaServiceRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}
                         />
-                        {seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
+                        {seaServiceRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].to}</p>}
+                        {!seaServiceRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-e2-to-error-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
@@ -5194,9 +5183,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
-                        {seaServiceRequiredErrors[service.id || `e2-${formData.externalSeaService.indexOf(service)}`] && (
-                          <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id || `e2-${formData.externalSeaService.indexOf(service)}`].map(f => `'${f}'`).join(', ')} required.</p>
-                        )}
                       </td>
                       )}
                     </tr>
@@ -5286,8 +5272,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </Select>
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={medical.dateOfMedical}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'dateOfMedical', e.target.value)}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
@@ -5330,8 +5315,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </Select>
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={medical.expiry}
                           onChange={(e) => updatePreJoiningMedical(medical.id, 'expiry', e.target.value)}
                           className={`border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 ${getExpiryColorClass(medical.expiry)} text-[13px] font-normal h-6`}
@@ -5438,8 +5422,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <Input
-                          type="date"
+                        <FormattedDateInput
                           value={visit.date}
                           onChange={(e) => updateDoctorVisit(visit.id, 'date', e.target.value)}
                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
@@ -5504,7 +5487,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // Save Draft functionality
   const handleSaveDraft = () => {
     if (isBatchSavingRef.current) return;
-    console.log('Saving crew info (V2):', formData);
 
     let hasErrors = false;
 
@@ -5631,7 +5613,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     // E1/E2: Sea service date + mandatory field validation (all non-synced rows)
     const newSeaErrors: Record<string, string> = {};
-    const newSeaReqErrors: Record<string, string[]> = {};
+    const newSeaReqErrors: Record<string, Record<string, string>> = {};
     (formData.currentCompanySeaService || []).forEach((sea: any, i: number) => {
       const isVesselSynced = !!sea.isVesselSynced;
       if (!isVesselSynced) {
@@ -5641,13 +5623,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           newSeaErrors[sea.id || sea.seaUuid || `e1-${from}`] = '"To" date cannot be earlier than "From" date.';
           hasErrors = true;
         }
-        const missing: string[] = [];
-        if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
-        if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
-        if (!(sea.rank || '').trim()) missing.push('Rank');
-        if (!from) missing.push('From Date');
-        if (!to) missing.push('To Date');
-        if (missing.length > 0) { newSeaReqErrors[sea.id || `e1-${i}`] = missing; hasErrors = true; }
+        const fieldErrors: Record<string, string> = {};
+        if (!(sea.vesselName || '').trim()) fieldErrors.vesselName = 'Vessel name is required.';
+        if (!(sea.vesselType || '').trim()) fieldErrors.vesselType = 'Vessel type is required.';
+        if (!(sea.rank || '').trim()) fieldErrors.rank = 'Rank is required.';
+        if (!from) fieldErrors.from = 'From date is required.';
+        if (!to) fieldErrors.to = 'To date is required.';
+        if (Object.keys(fieldErrors).length > 0) { newSeaReqErrors[sea.id || `e1-${i}`] = fieldErrors; hasErrors = true; }
       }
     });
     (formData.externalSeaService || []).forEach((sea: any, i: number) => {
@@ -5657,13 +5639,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         newSeaErrors[sea.id || sea.seaUuid || `e2-${from}`] = '"To" date cannot be earlier than "From" date.';
         hasErrors = true;
       }
-      const missing: string[] = [];
-      if (!(sea.vesselName || '').trim()) missing.push('Vessel Name');
-      if (!(sea.vesselType || '').trim()) missing.push('Vessel Type');
-      if (!(sea.rank || '').trim()) missing.push('Rank');
-      if (!from) missing.push('From Date');
-      if (!to) missing.push('To Date');
-      if (missing.length > 0) { newSeaReqErrors[sea.id || `e2-${i}`] = missing; hasErrors = true; }
+      const fieldErrors: Record<string, string> = {};
+      if (!(sea.vesselName || '').trim()) fieldErrors.vesselName = 'Vessel name is required.';
+      if (!(sea.vesselType || '').trim()) fieldErrors.vesselType = 'Vessel type is required.';
+      if (!(sea.rank || '').trim()) fieldErrors.rank = 'Rank is required.';
+      if (!from) fieldErrors.from = 'From date is required.';
+      if (!to) fieldErrors.to = 'To date is required.';
+      if (Object.keys(fieldErrors).length > 0) { newSeaReqErrors[sea.id || `e2-${i}`] = fieldErrors; hasErrors = true; }
     });
     setSeaServiceRequiredErrors(newSeaReqErrors);
 
@@ -5735,11 +5717,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         const batchErrors: string[] = [];
         const uuidUpdates: { section: string; localId: string; uuid: string }[] = [];
         try {
-          console.log('V2 Starting save — all operations use direct API calls to prevent mid-save cache invalidation');
 
           const nonBatchOps: (() => Promise<any>)[] = [];
           nonBatchOps.push(async () => {
             const v2Crew = withAuditUser(mapLegacyCrewToV2(dataWithPhoto));
+            delete v2Crew.nextAvailability;
+            delete v2Crew.isActive;
+            delete v2Crew.status;
             await crewPoolApiV2.updateCrew(crewIdentifier, v2Crew);
           });
           const personalDetailsData = {
@@ -5747,6 +5731,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             weight: formData.weightKg,
             bmi: formData.bmi,
             dob: formData.dateOfBirth,
+            ageInYears: formData.ageInYears,
             placeOfBirthCity: formData.placeOfBirthCity,
             placeOfBirthCountry: formData.placeOfBirthCountry,
             nativeLanguage: formData.nativeLanguage,
@@ -5806,19 +5791,28 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             setDeletedChildUuids([]);
           }
           if (formData.children && formData.children.length > 0) {
-            formData.children.forEach((child: any) => {
+            formData.children.forEach((child: any, index: number) => {
               const childData = {
                 firstName: child.firstName,
                 middleName: child.middleName,
                 familyName: child.familyName,
-                dateOfBirth: child.dateOfBirth,
+                dob: child.dateOfBirth,
                 gender: child.gender,
+                sortOrder: index,
               };
               miscOps.push(async () => {
                 if (child.childUuid) {
                   await crewPoolApiV2.updateChild(crewIdentifier, child.childUuid, childData);
                 } else {
-                  await crewPoolApiV2.createChild(crewIdentifier, childData);
+                  const created = await crewPoolApiV2.createChild(crewIdentifier, childData);
+                  if (created?.childUuid) {
+                    setFormData(prev => ({
+                      ...prev,
+                      children: prev.children.map((c, i) =>
+                        i === index ? { ...c, childUuid: created.childUuid } : c
+                      )
+                    }));
+                  }
                 }
               });
             });
@@ -5833,13 +5827,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             email: formData.nokEmail,
             address: formData.nokAddress,
           };
-          if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
-            miscOps.push(async () => {
-              await crewPoolApiV2.saveNextOfKin(crewIdentifier, nokData);
-            });
-          }
+          miscOps.push(async () => {
+            await crewPoolApiV2.saveNextOfKin(crewIdentifier, nokData);
+          });
 
-          if (formData.vesselType && Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
+          if (formData.vesselType && Array.isArray(formData.vesselType)) {
             miscOps.push(async () => {
               await crewPoolApiV2.saveVesselTypesApplied(crewIdentifier, formData.vesselType);
             });
@@ -5856,7 +5848,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
           const processBatch = async (batchName: string, operations: (() => Promise<any>)[]) => {
             if (operations.length === 0) return;
-            console.log(`V2 Processing batch: ${batchName} (${operations.length} operations)`);
             const subBatchSize = 3;
             for (let i = 0; i < operations.length; i += subBatchSize) {
               const subBatch = operations.slice(i, i + subBatchSize);
@@ -5869,7 +5860,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 }
               });
             }
-            console.log(`V2 Completed batch: ${batchName}`);
           };
 
           const batch1Operations: (() => Promise<any>)[] = [];
@@ -5878,7 +5868,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           const batch4Operations: (() => Promise<any>)[] = [];
 
           if (cleanedFormData.documents && cleanedFormData.documents.length > 0) {
-            console.log('V2 Preparing Documents for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.documents.length });
             cleanedFormData.documents.forEach((doc: any, index: number) => {
               const docAttachments = doc.attachments || [];
               const capturedNewAttachments = [...docAttachments.filter((att: any) => !att.attUuid || att.isNew)];
@@ -5922,7 +5911,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.visas && cleanedFormData.visas.length > 0) {
-            console.log('V2 Preparing Visas for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.visas.length });
             cleanedFormData.visas.forEach((visa: any, index: number) => {
               const visaAttachments = visa.attachments || [];
               const capturedNewAttachments = [...visaAttachments.filter((att: any) => !att.attUuid || att.isNew)];
@@ -5931,7 +5919,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               const visaData = {
                 visaUuid: visa.visaUuid,
                 country: visa.issuingCountry || visa.country || '',
-                serialNo: visa.serialNo || visa.serialNumber || '',
+                serialNo: visa.serialNo ?? visa.serialNumber ?? '',
                 issued: visa.issued || '',
                 expiry: visa.expiry || '',
                 visaType: visa.visaType || '',
@@ -5964,7 +5952,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.education && cleanedFormData.education.length > 0) {
-            console.log('V2 Preparing Education for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.education.length });
             cleanedFormData.education.forEach((edu: any, index: number) => {
               const eduAttachments = edu.attachments || [];
               const capturedNewAttachments = [...eduAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -5972,6 +5959,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...eduAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6013,6 +6002,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addEducationAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6022,7 +6013,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.licenses && cleanedFormData.licenses.length > 0) {
-            console.log('V2 Preparing Licenses for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.licenses.length });
             cleanedFormData.licenses.forEach((lic: any, index: number) => {
               const licAttachments = lic.attachments || [];
               const capturedNewAttachments = [...licAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6030,6 +6020,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...licAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6077,6 +6069,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addLicenseAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6086,7 +6080,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.trainingCourses && cleanedFormData.trainingCourses.length > 0) {
-            console.log('V2 Preparing Training Courses for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.trainingCourses.length });
+            const trainOrderMap = new Map<string, number>();
+            adminCompanyTrainings.forEach((ct, idx) => trainOrderMap.set(ct.companyId, idx));
             cleanedFormData.trainingCourses.forEach((train: any, index: number) => {
               const trainAttachments = train.attachments || [];
               const capturedNewAttachments = [...trainAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6094,6 +6089,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...trainAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6109,7 +6106,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 issuingCountry: train.issuingCountry || '',
                 issued: train.issued || '',
                 expiry: train.expiry || '',
-                sortOrder: index,
+                sortOrder: (() => {
+                  const cid = (train.courseId || '').trim();
+                  if (cid && trainOrderMap.has(cid)) return trainOrderMap.get(cid)!;
+                  if (cid) return 500 + index;
+                  return 1000 + index;
+                })(),
               };
 
               const capturedTrainLocalId = train.id;
@@ -6140,6 +6142,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addTrainingAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6149,7 +6153,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.currentCompanySeaService && cleanedFormData.currentCompanySeaService.length > 0) {
-            console.log('V2 Preparing Company Sea Service for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.currentCompanySeaService.length });
             cleanedFormData.currentCompanySeaService.forEach((sea: any, index: number) => {
               const seaAttachments = sea.attachments || [];
               const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6157,6 +6160,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6218,6 +6223,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addSeaServiceAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6227,7 +6234,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           if (cleanedFormData.externalSeaService && cleanedFormData.externalSeaService.length > 0) {
-            console.log('V2 Preparing External Sea Service for batch:', { crewUuid: crewIdentifier, count: cleanedFormData.externalSeaService.length });
             cleanedFormData.externalSeaService.forEach((sea: any, index: number) => {
               const seaAttachments = sea.attachments || [];
               const capturedNewAttachments = [...seaAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6235,6 +6241,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...seaAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6285,6 +6293,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addSeaServiceAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6299,7 +6309,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             return (med.vesselCode || med.vessel || med.dateOfMedical || med.bp || med.weight || med.anyMedicationPrescribed || med.clinicHospital || med.fitnessForDuty || med.expiry || hasAttachments);
           });
           if (nonEmptyMedicals.length > 0) {
-            console.log('V2 Preparing Pre-Joining Medicals for batch:', { crewUuid: crewIdentifier, count: nonEmptyMedicals.length });
             nonEmptyMedicals.forEach((med: any, index: number) => {
               const medAttachments = med.attachments || [];
               const capturedNewAttachments = [...medAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6307,6 +6316,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...medAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6354,6 +6365,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addMedicalAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6368,7 +6381,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             return (visit.vessel || visit.port || visit.date || visit.complaint || visit.doctorComments || visit.doctorName || visit.clinicHospital || visit.diagnosis || visit.treatment || visit.followUpDate || hasAttachments);
           });
           if (nonEmptyVisits.length > 0) {
-            console.log('V2 Preparing Doctor Visits for batch:', { crewUuid: crewIdentifier, count: nonEmptyVisits.length });
             nonEmptyVisits.forEach((visit: any, index: number) => {
               const visitAttachments = visit.attachments || [];
               const capturedNewAttachments = [...visitAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
@@ -6376,6 +6388,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 isNew: att.isNew || !att.attUuid,
                 fileName: att.name || att.fileName || '',
                 fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
               }));
               const capturedDeletedAttachments = [...visitAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
 
@@ -6423,6 +6437,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     await crewPoolApiV2.addDoctorVisitAttachment(crewIdentifier, entityUuid, {
                       fileName: att.fileName,
                       fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
                     });
                   }
                 }
@@ -6431,14 +6447,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
-          console.log('V2 Starting sequential batch execution...');
           await processBatch('Batch 1: Documents + Visas', batch1Operations);
           await processBatch('Batch 2: Education + Licenses', batch2Operations);
           await processBatch('Batch 3: Training + Sea Service', batch3Operations);
           await processBatch('Batch 4: Medicals + Doctor Visits', batch4Operations);
 
           if (uuidUpdates.length > 0) {
-            console.log('V2: Applying UUID updates to form data:', uuidUpdates);
             const uuidKeyMap: Record<string, string> = {
               documents: 'docUuid',
               visas: 'visaUuid',
@@ -6473,7 +6487,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               duration: 6000,
             });
           } else {
-            console.log('V2: All batches completed successfully');
             toast({
               title: "Saved",
               description: "Crew member updated successfully.",
@@ -6482,8 +6495,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
 
           queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+          invalidateCrewData(crewIdentifier);
           await queryClient.refetchQueries({ queryKey: [V2_QUERY_KEY, 'crew', crewIdentifier, 'full-profile'] });
-          console.log('V2: Post-save cache refreshed');
         } catch (error) {
           console.error('V2: Error during batch execution:', error);
           toast({
@@ -6695,7 +6708,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // Auto-save functionality — saves the specific section's data to the backend
-  const handleSectionAutoSave = (sectionId: string) => {
+  const handleSectionAutoSave = async (sectionId: string) => {
+    if (isBatchSavingRef.current) return;
     const crewUuid = getEffectiveCrewUuid();
     if (!crewUuid) return;
 
@@ -6705,6 +6719,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         weight: formData.weightKg,
         bmi: formData.bmi,
         dob: formData.dateOfBirth,
+        ageInYears: formData.ageInYears,
         placeOfBirthCity: formData.placeOfBirthCity,
         placeOfBirthCountry: formData.placeOfBirthCountry,
         nativeLanguage: formData.nativeLanguage,
@@ -6730,6 +6745,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       };
       saveAddressMutationV2.mutate({ crewUuid, data: addressData });
     } else if (sectionId === 'B3') {
+      let b3HasErrors = false;
       const familyInfoData = {
         maritalStatus: formData.maritalStatus,
         numberOfDependentChildren: formData.numberOfDependentChildren,
@@ -6740,7 +6756,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         spouseFamilyName: formData.spouseFamilyName,
         spouseDateOfBirth: formData.spouseDateOfBirth,
       };
-      saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData });
+      try {
+        await crewPoolApiV2.saveFamilyInfo(crewUuid, mapLegacyFamilyInfoToV2(familyInfoData));
+      } catch (e) {
+        console.error('[V2] Failed to save family info:', e);
+        b3HasErrors = true;
+      }
       const nokData = {
         firstName: formData.nokFirstName,
         middleName: formData.nokMiddleName,
@@ -6751,20 +6772,66 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         address: formData.nokAddress,
       };
       if (nokData.firstName || nokData.familyName || nokData.telephone || nokData.email) {
-        saveNextOfKinMutationV2.mutate({ crewUuid, data: nokData });
+        try {
+          await crewPoolApiV2.saveNextOfKin(crewUuid, nokData);
+        } catch (e) {
+          console.error('[V2] Failed to save next of kin:', e);
+          b3HasErrors = true;
+        }
+      }
+      if (deletedChildUuids.length > 0) {
+        const successfulDeletes: string[] = [];
+        for (const childUuid of deletedChildUuids) {
+          try {
+            await crewPoolApiV2.deleteChild(crewUuid, childUuid);
+            successfulDeletes.push(childUuid);
+          } catch (e) {
+            console.error(`[V2] Failed to delete child ${childUuid}:`, e);
+            b3HasErrors = true;
+          }
+        }
+        setDeletedChildUuids(prev => prev.filter(id => !successfulDeletes.includes(id)));
       }
       if (formData.children && formData.children.length > 0) {
-        formData.children.forEach((child: any) => {
-          saveChildMutationV2.mutate({
-            crewUuid,
-            data: { firstName: child.firstName, middleName: child.middleName, familyName: child.familyName, dateOfBirth: child.dateOfBirth, gender: child.gender },
-            childUuid: child.childUuid,
-          });
+        for (let index = 0; index < formData.children.length; index++) {
+          const child = formData.children[index] as any;
+          const childData = {
+            firstName: child.firstName, middleName: child.middleName,
+            familyName: child.familyName, dob: child.dateOfBirth,
+            gender: child.gender, sortOrder: index,
+          };
+          try {
+            if (child.childUuid) {
+              await crewPoolApiV2.updateChild(crewUuid, child.childUuid, childData);
+            } else {
+              const created = await crewPoolApiV2.createChild(crewUuid, childData);
+              if (created?.childUuid) {
+                setFormData(prev => ({
+                  ...prev,
+                  children: prev.children.map((c, i) =>
+                    i === index ? { ...c, childUuid: created.childUuid } : c
+                  )
+                }));
+              }
+            }
+          } catch (e) {
+            console.error(`[V2] Failed to save child ${child.firstName}:`, e);
+            b3HasErrors = true;
+          }
+        }
+      }
+      invalidateCrewData(crewUuid);
+      if (b3HasErrors) {
+        toast({
+          title: "Partial save",
+          description: "Some items in Section B3 could not be saved. Please try again.",
+          variant: "destructive",
+          duration: 3000,
         });
+        return;
       }
     }
 
-    console.log(`[V2] Auto-saved section ${sectionId}`);
     toast({
       title: "Auto-saved",
       description: `Section ${sectionId} has been saved.`,
@@ -6821,7 +6888,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     // Race condition guard - prevent duplicate creation on rapid clicks
     if (isCreatingCrew) {
-      console.log('[V2] Crew creation already in progress, waiting...');
       return null; // Already creating, don't proceed
     }
 
@@ -6837,21 +6903,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         nationality: formData.nationality || '',
         presentRank: formData.presentRank || '',
         dateOfBirth: formData.dateOfBirth || '',
+        uploadedPhoto: uploadedPhoto || null,
       };
       
       // Use the same V2 mapping pipeline as the createCrewMutationV2 hook
       const v2Data = mapLegacyCrewToV2(legacyCrewData);
       
-      console.log('[V2] Auto-creating crew record before edit:', { legacyCrewData, v2Data });
       const result = await crewPoolApiV2.createCrew(v2Data);
       const newCrewUuid = result?.crewUuid;
       
       if (newCrewUuid) {
-        console.log('[V2] Crew record created with UUID:', newCrewUuid);
         setCreatedCrewId(newCrewUuid);
         
-        // Invalidate query cache to reflect new crew
         queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
+        invalidateCrewData(newCrewUuid);
         
         // Chain save of child tables with the new crewUuid (same as Save button path)
         // This ensures B1/address/family data is persisted immediately
@@ -6860,6 +6925,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           weight: formData.weightKg,
           bmi: formData.bmi,
           dob: formData.dateOfBirth,
+          ageInYears: formData.ageInYears,
           placeOfBirthCity: formData.placeOfBirthCity,
           placeOfBirthCountry: formData.placeOfBirthCountry,
           nativeLanguage: formData.nativeLanguage,
@@ -6868,7 +6934,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           manningAgent: formData.manningAgent,
           crewPool: formData.crewPool,
         };
-        console.log('[V2] Chaining Personal Details save after auto-create:', { crewUuid: newCrewUuid, data: personalDetailsData });
         crewPoolApiV2.savePersonalDetails(newCrewUuid, mapLegacyPersonalDetailsToV2(personalDetailsData)).catch(
           (err) => console.error('[V2] Personal Details auto-save error:', err)
         );
@@ -6882,7 +6947,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           mobile: formData.mobile,
           email: formData.email,
         };
-        console.log('[V2] Chaining Address save after auto-create:', { crewUuid: newCrewUuid, data: addressData });
         crewPoolApiV2.saveAddress(newCrewUuid, mapLegacyAddressToV2(addressData)).catch(
           (err) => console.error('[V2] Address auto-save error:', err)
         );
@@ -6897,10 +6961,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           spouseFamilyName: formData.spouseFamilyName,
           spouseDateOfBirth: formData.spouseDateOfBirth,
         };
-        console.log('[V2] Chaining Family Info save after auto-create:', { crewUuid: newCrewUuid, data: familyInfoData });
         crewPoolApiV2.saveFamilyInfo(newCrewUuid, mapLegacyFamilyInfoToV2(familyInfoData)).catch(
           (err) => console.error('[V2] Family Info auto-save error:', err)
         );
+
+        if (Array.isArray(formData.vesselType) && formData.vesselType.length > 0) {
+          crewPoolApiV2.saveVesselTypesApplied(newCrewUuid, formData.vesselType).catch(
+            (err) => console.error('[V2] Vessel Types auto-save error:', err)
+          );
+        }
         
         // Notify parent component if needed
         if (onCrewMemberChange && result) {
@@ -7021,7 +7090,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         onSuccess: (responseData: any) => {
           const crewUuid = responseData?.crewUuid;
           const generatedEmpNo = responseData?.empNo || responseData?.employeeId;
-          console.log('V2 Create crew response - crewUuid:', crewUuid, 'empNo:', generatedEmpNo);
           
           if (generatedEmpNo) {
             setFormData(prev => ({ ...prev, employeeId: generatedEmpNo }));
@@ -7043,6 +7111,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               weight: data.weightKg || formData.weightKg,
               bmi: data.bmi || formData.bmi,
               dob: data.dateOfBirth || formData.dateOfBirth,
+              ageInYears: data.ageInYears || formData.ageInYears,
               placeOfBirthCity: data.placeOfBirthCity || formData.placeOfBirthCity,
               placeOfBirthCountry: data.placeOfBirthCountry || formData.placeOfBirthCountry,
               nativeLanguage: data.nativeLanguage || formData.nativeLanguage,
@@ -7051,10 +7120,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               manningAgent: data.manningAgent || formData.manningAgent,
               crewPool: data.crewPool || formData.crewPool,
             };
-            console.log('[V2] Chaining Personal Details save after create:', { crewUuid, data: personalDetailsData });
             savePersonalDetailsMutationV2.mutate({ crewUuid, data: personalDetailsData }, {
               onError: (err) => console.error('[V2] Personal Details chain save error:', err),
-              onSuccess: () => console.log('[V2] Personal Details chain save success'),
+              onSuccess: () => {},
             });
             
             // Address (A1.2 fields)
@@ -7067,10 +7135,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               mobile: data.mobile || formData.mobile,
               email: data.email || formData.email,
             };
-            console.log('[V2] Chaining Address save after create:', { crewUuid, data: addressData });
             saveAddressMutationV2.mutate({ crewUuid, data: addressData }, {
               onError: (err) => console.error('[V2] Address chain save error:', err),
-              onSuccess: () => console.log('[V2] Address chain save success'),
+              onSuccess: () => {},
             });
             
             // Family Info (A1.3 fields)
@@ -7084,11 +7151,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               spouseFamilyName: data.spouseFamilyName || formData.spouseFamilyName,
               spouseDateOfBirth: data.spouseDateOfBirth || formData.spouseDateOfBirth,
             };
-            console.log('[V2] Chaining Family Info save after create:', { crewUuid, data: familyInfoData });
             saveFamilyInfoMutationV2.mutate({ crewUuid, data: familyInfoData }, {
               onError: (err) => console.error('[V2] Family Info chain save error:', err),
-              onSuccess: () => console.log('[V2] Family Info chain save success'),
+              onSuccess: () => {},
             });
+
+            const vesselTypes = data.vesselType || formData.vesselType;
+            if (Array.isArray(vesselTypes) && vesselTypes.length > 0) {
+              saveVesselTypesMutationV2.mutate({ crewUuid, vesselTypeUuids: vesselTypes }, {
+                onError: (err) => console.error('[V2] Vessel Types chain save error:', err),
+                onSuccess: () => {},
+              });
+            }
           }
           toast({
             title: "Saved",
@@ -7150,6 +7224,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // V2: Invalidate V2 query keys
       queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', variables.id] });
+      invalidateCrewData(variables.id);
       toast({
         title: "Status Updated",
         description: "Crew member status has been updated.",
@@ -7176,6 +7251,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     setIsStatusEditOpen(false);
   };
 
+  const today = new Date();
+  const todayDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
   // Handle updating next availability date
   const handleUpdateNextAvailability = () => {
     // V2: Use crewUuid as the primary identifier
@@ -7188,7 +7266,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const handleSave = () => {
-    console.log('Saving crew info (V2):', formData);
     
     // Include the uploaded photo in the data to be saved
     const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
@@ -7207,6 +7284,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         weight: formData.weightKg,
         bmi: formData.bmi,
         dob: formData.dateOfBirth,
+        ageInYears: formData.ageInYears,
         placeOfBirthCity: formData.placeOfBirthCity,
         placeOfBirthCountry: formData.placeOfBirthCountry,
         nativeLanguage: formData.nativeLanguage,
@@ -7215,10 +7293,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         manningAgent: formData.manningAgent,
         crewPool: formData.crewPool,
       };
-      console.log('V2 Personal Details Save:', { crewUuid: existingUuid, data: personalDetailsData });
       savePersonalDetailsMutationV2.mutate({ crewUuid: existingUuid, data: personalDetailsData }, {
         onError: (err) => console.error('Personal Details Save Error:', err),
-        onSuccess: (res) => console.log('Personal Details Saved:', res),
+        onSuccess: () => {},
       });
       
       // Address (A1.2 fields)
@@ -7247,7 +7324,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       saveFamilyInfoMutationV2.mutate({ crewUuid: existingUuid, data: familyInfoData });
     } else {
       // Create new crew member via V2 API
-      console.log('Creating new crew with V2 API:', dataWithPhoto);
       createCrewMutation.mutate(dataWithPhoto);
     }
   };
@@ -7442,6 +7518,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               variant="outline" 
               size="sm"
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={handleSaveDraft}
               disabled={isSaving}
               data-testid="button-save-draft"
@@ -7453,6 +7530,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               variant="outline" 
               size="sm"
               className="sm:hidden"
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={handleSaveDraft}
               disabled={isSaving}
               data-testid="button-save-draft-mobile"
@@ -7733,11 +7811,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </DialogHeader>
           <div className="py-4">
             <label className="text-sm font-medium text-gray-700">Next Availability Date</label>
-            <Input
-              type="date"
+            <FormattedDateInput
               value={tempNextAvailability}
               onChange={(e) => setTempNextAvailability(e.target.value)}
               className="mt-1"
+              min={todayDateString}
               data-testid="input-next-availability"
             />
           </div>

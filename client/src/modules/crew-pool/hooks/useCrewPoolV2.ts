@@ -115,17 +115,7 @@ export function useCrewFullProfileV2(crewUuid: string | null) {
     queryFn: async () => {
       if (!crewUuid) return null;
       const response = await crewPoolApiV2.getCrewFullProfile(crewUuid);
-      console.log('[V2] Raw API response for profile:', {
-        education: response?.education,
-        licenses: response?.licenses,
-        trainingCourses: response?.trainingCourses,
-      });
       const mapped = mapV2FullProfileToLegacy(response);
-      console.log('[V2] Mapped profile data:', {
-        education: mapped?.education,
-        licenses: mapped?.licenses,
-        trainingCourses: mapped?.trainingCourses,
-      });
       return mapped;
     },
     enabled: !!crewUuid,
@@ -139,13 +129,10 @@ export function useCreateCrewV2() {
   return useMutation({
     mutationFn: async (legacyData: Partial<LegacyCrewMember>) => {
       const v2Data = withAuditUser(mapLegacyCrewToV2(legacyData));
-      console.log('[V2] Creating crew with data:', v2Data);
       const result = await crewPoolApiV2.createCrew(v2Data);
-      console.log('[V2] Create crew result:', result);
       return result;
     },
     onSuccess: (data) => {
-      console.log('[V2] Crew created successfully:', data);
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
     },
     onError: (error) => {

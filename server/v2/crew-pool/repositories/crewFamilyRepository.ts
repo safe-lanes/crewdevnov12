@@ -1,4 +1,4 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   crewFamilyInfo,
@@ -83,7 +83,8 @@ export class CrewFamilyRepository {
           eq(crewChildren.crewUuid, crewUuid),
           eq(crewChildren.isDeleted, false)
         )
-      );
+      )
+      .orderBy(asc(crewChildren.sortOrder), asc(crewChildren.createdAt));
   }
 
   async createChild(

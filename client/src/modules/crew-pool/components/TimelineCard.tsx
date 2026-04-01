@@ -251,17 +251,56 @@ function TimelineCanvas({
       const barEndX = drawAssignmentBar(ctx, assignment, barStartX, barY, barHeight, chartWidth, leftPadding);
       const barWidth = barEndX - barStartX;
       
-      // Use blue text for planned bars (outlined style), white for others
-      ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
       ctx.font = 'bold 10px Inter, system-ui, sans-serif';
       ctx.textAlign = 'left';
       
-      const vesselName = assignment.vessel.length > 20 
-        ? assignment.vessel.substring(0, 18) + '...' 
+      const fitLabel = (text: string, availPx: number): string => {
+        if (ctx.measureText(text).width <= availPx) return text;
+        for (let len = text.length - 1; len >= 1; len--) {
+          const t = text.substring(0, len) + '…';
+          if (ctx.measureText(t).width <= availPx) return t;
+        }
+        return text.charAt(0);
+      };
+
+      const effectiveBarWidth = Math.max(barWidth, 4);
+
+      const maxLen = isExpanded ? 12 : 20;
+      const vesselName = assignment.vessel.length > maxLen 
+        ? assignment.vessel.substring(0, maxLen - 2) + '…' 
         : assignment.vessel;
       
-      if (barWidth > 50) {
-        ctx.fillText(vesselName, barStartX + 6, barY + 14);
+      const outsideLabelColor = assignment.type === 'planned' ? '#56baf3' 
+        : assignment.type === 'completed' ? '#6B7280' : '#374151';
+
+      const hasBadges = (assignment.appraisalIds && assignment.appraisalIds.length > 0) ||
+        (assignment.handoverIds && assignment.handoverIds.length > 0);
+      const badgeReserve = hasBadges ? 60 : 0;
+
+      if (effectiveBarWidth > 50) {
+        ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
+        const insideAvail = effectiveBarWidth - 12;
+        ctx.fillText(fitLabel(vesselName, insideAvail), barStartX + 6, barY + 14);
+      } else {
+        const rightSpace = leftPadding + chartWidth - barEndX - 4 - badgeReserve;
+        const leftSpace = barStartX - leftPadding;
+        if (rightSpace >= 20) {
+          ctx.fillStyle = outsideLabelColor;
+          const labelX = barEndX + 4 + badgeReserve;
+          ctx.fillText(fitLabel(vesselName, rightSpace), labelX, barY + 14);
+        } else if (leftSpace >= 20) {
+          ctx.fillStyle = outsideLabelColor;
+          ctx.textAlign = 'right';
+          ctx.fillText(fitLabel(vesselName, leftSpace), barStartX - 4, barY + 14);
+          ctx.textAlign = 'left';
+        } else if (effectiveBarWidth >= 20) {
+          ctx.fillStyle = assignment.type === 'planned' ? '#56baf3' : '#FFFFFF';
+          ctx.fillText(fitLabel(vesselName, effectiveBarWidth - 8), barStartX + 4, barY + 14);
+        } else {
+          ctx.fillStyle = outsideLabelColor;
+          const bestSpace = Math.max(rightSpace + badgeReserve, leftSpace, effectiveBarWidth - 4);
+          ctx.fillText(fitLabel(vesselName, bestSpace), barEndX + 2, barY + 14);
+        }
       }
       
       const hasAppraisal = assignment.appraisalIds && assignment.appraisalIds.length > 0;

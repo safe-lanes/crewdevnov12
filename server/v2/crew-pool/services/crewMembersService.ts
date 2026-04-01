@@ -1,4 +1,4 @@
-import { eq, and, asc, desc, or, ilike, sql, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, or, ilike, sql, isNull, isNotNull, inArray, aliasedTable } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { CrewMembersRepository } from "../repositories";
@@ -35,6 +35,7 @@ import {
   masterCountries,
   masterLanguages,
 } from "../../../../shared/schema";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import type {
   InsertCrewMemberV2,
   CrewMemberV2,
@@ -256,6 +257,10 @@ export const crewMembersService = {
     // Remove non-schema fields and replace with resolved UUIDs
     const { nationality, vesselType, ...cleanData } = data as any;
     
+    if (cleanData.employeeId !== undefined && (!cleanData.employeeId || cleanData.employeeId.trim() === '')) {
+      cleanData.employeeId = null;
+    }
+
     // Apply audit user fields
     const dataWithAudit = applyAuditUser(cleanData, true);
 
@@ -500,6 +505,28 @@ export const crewMembersService = {
       .orderBy(crewAssignments.crewUuid, desc(crewAssignments.signOnDate), desc(crewAssignments.id))
       .as('latest_assignment');
 
+    const latestVesselPlanning = db
+      .selectDistinctOn([vesselPlanningV2.crewUuid], {
+        crewUuid: vesselPlanningV2.crewUuid,
+        vpVesselUuid: vesselPlanningV2.vesselUuid,
+        contractPeriodMonths: vesselPlanningV2.contractPeriodMonths,
+        vpSignOnDate: vesselPlanningV2.signOnDate,
+        vpReliefDue: vesselPlanningV2.reliefDue,
+      })
+      .from(vesselPlanningV2)
+      .where(
+        and(
+          eq(vesselPlanningV2.isArchived, false),
+          eq(vesselPlanningV2.isDeleted, false),
+          isNotNull(vesselPlanningV2.crewUuid),
+          eq(vesselPlanningV2.crewStatus, 'primary')
+        )
+      )
+      .orderBy(vesselPlanningV2.crewUuid, desc(vesselPlanningV2.signOnDate), desc(vesselPlanningV2.id))
+      .as('latest_vessel_planning');
+
+    const vpVesselNames = aliasedTable(masterVessels, 'vp_vessel_names');
+
     const crewPage = db
       .select({ id: crewMembersV2.id })
       .from(crewMembersV2)
@@ -516,6 +543,11 @@ export const crewMembersService = {
         signOnDate: latestAssignment.signOnDate,
         reliefDue: latestAssignment.reliefDue,
         contractPeriod: latestAssignment.contractPeriod,
+        vpVesselUuid: latestVesselPlanning.vpVesselUuid,
+        vpContractPeriodMonths: latestVesselPlanning.contractPeriodMonths,
+        vpSignOnDate: latestVesselPlanning.vpSignOnDate,
+        vpReliefDue: latestVesselPlanning.vpReliefDue,
+        vpVesselName: vpVesselNames.vessel,
         nationality: masterNationalities.nationality,
         vesselType: masterVesselTypes.vesselType,
         currentVesselName: masterVessels.vessel,
@@ -528,6 +560,10 @@ export const crewMembersService = {
         eq(latestAssignment.crewUuid, crewMembersV2.crewUuid)
       )
       .leftJoin(
+        latestVesselPlanning,
+        eq(latestVesselPlanning.crewUuid, crewMembersV2.crewUuid)
+      )
+      .leftJoin(
         masterNationalities,
         eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid)
       )
@@ -538,6 +574,10 @@ export const crewMembersService = {
       .leftJoin(
         masterVessels,
         eq(latestAssignment.vesselUuid, masterVessels.vesselUuid)
+      )
+      .leftJoin(
+        vpVesselNames,
+        eq(latestVesselPlanning.vpVesselUuid, vpVesselNames.vesselUuid)
       )
       .leftJoin(crewPersonalDetails, eq(crewMembersV2.crewUuid, crewPersonalDetails.crewUuid))
       .orderBy(desc(crewMembersV2.createdAt), crewMembersV2.id);
@@ -582,23 +622,30 @@ export const crewMembersService = {
 
     const data = results.map((r: any) => {
       const prevAssignment = previousAssignmentsMap.get(r.crew.crewUuid);
+      const effectiveContractPeriod = r.vpContractPeriodMonths != null
+        ? String(r.vpContractPeriodMonths)
+        : r.contractPeriod;
+      const effectiveVessel = r.vpVesselUuid || r.currentVessel;
+      const effectiveVesselName = r.vpVesselName || r.currentVesselName;
+      const effectiveSignOnDate = r.vpSignOnDate || r.signOnDate;
+      const effectiveReliefDue = r.vpReliefDue || r.reliefDue;
       return {
         ...r.crew,
         nationalityUuid: r.crew.nationalityUuid,
         nationality: r.nationality,
         vesselTypeUuid: r.crew.vesselTypeUuid,
         vesselType: r.vesselType,
-        presentVessel: r.currentVessel,
-        presentVesselName: r.currentVesselName,
-        signOnDate: r.signOnDate,
-        reliefDue: r.reliefDue,
-        contractPeriod: r.contractPeriod,
+        presentVessel: effectiveVessel,
+        presentVesselName: effectiveVesselName,
+        signOnDate: effectiveSignOnDate,
+        reliefDue: effectiveReliefDue,
+        contractPeriod: effectiveContractPeriod,
         lastVessel: prevAssignment?.vesselName || prevAssignment?.vesselUuid || null,
         signOffDate: prevAssignment?.signOffDate || null,
         reason: prevAssignment?.reason || null,
         manningAgentName: r.manningAgentName || '',
-        status: this.calculateCrewStatus(r.crew.isActive !== false, !!r.currentVessel),
-        timeOnBoardMonths: this.calculateTimeOnBoard(r.signOnDate),
+        status: this.calculateCrewStatus(r.crew.isActive !== false, !!effectiveVessel),
+        timeOnBoardMonths: this.calculateTimeOnBoard(effectiveSignOnDate),
       };
     });
 
@@ -920,7 +967,8 @@ export const crewMembersService = {
             eq(crewChildren.crewUuid, crewUuid),
             eq(crewChildren.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(crewChildren.sortOrder), asc(crewChildren.createdAt)),
       db
         .select()
         .from(crewNextOfKin)

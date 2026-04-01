@@ -1,4 +1,4 @@
-import { eq, and, isNull, sql, aliasedTable } from "drizzle-orm";
+import { eq, and, or, isNull, sql, aliasedTable } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   crewMembersV2,
@@ -8,8 +8,10 @@ import {
   crewLicenses,
   crewAssignments,
 } from "../../../../shared/v2/crew-pool/schema";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { masterVessels, masterNationalities, masterVesselTypes, masterCountries } from "../../../../shared/schema";
 import { crewSeaServiceService } from "./crewSeaServiceService";
+import { addMonths, format } from "date-fns";
 
 export interface CrewDashboardStatus {
   status: "On Board" | "On Leave" | "Inactive";
@@ -122,6 +124,7 @@ export const dashboardService = {
     const seaService = await this.getSeaService(crewUuid);
     const licenses = await this.getLicenses(crewUuid);
     const assignments = await this.getActiveAssignments(crewUuid);
+    const vesselPlanning = await this.getVesselPlanningForCrew(crewUuid);
 
     const companySeaService = seaService.filter((s: any) => s.serviceType === "company");
     const externalSeaService = seaService.filter((s: any) => s.serviceType === "external");
@@ -153,7 +156,7 @@ export const dashboardService = {
         : "On Leave"
       : "Inactive";
 
-    const serviceTimeline = this.buildServiceTimeline(companySeaService, externalSeaService);
+    const serviceTimeline = this.buildServiceTimeline(companySeaService, externalSeaService, vesselPlanning, crewUuid);
 
     return {
       status: {
@@ -291,6 +294,7 @@ export const dashboardService = {
         seaUuid: crewSeaService.seaUuid,
         serviceType: crewSeaService.serviceType,
         vesselName: crewSeaService.vesselName,
+        vesselUuid: crewSeaService.vesselUuid,
         vesselTypeUuid: crewSeaService.vesselTypeUuid,
         vesselTypeName: sql<string>`COALESCE(${mvtByUuid.vesselType}, ${mvtByName.vesselType})`,
         isTanker: sql<boolean>`COALESCE(${mvtByUuid.tanker}, ${mvtByName.tanker})`,
@@ -382,6 +386,52 @@ export const dashboardService = {
         )
       )
       .orderBy(crewAssignments.signOnDate);
+
+    return result;
+  },
+
+  async getVesselPlanningForCrew(crewUuid: string) {
+    const db = getDb();
+    const result = await db
+      .select({
+        planUuid: vesselPlanningV2.planUuid,
+        vesselUuid: vesselPlanningV2.vesselUuid,
+        vesselName: masterVessels.vessel,
+        crewUuid: vesselPlanningV2.crewUuid,
+        relieverCrewUuid: vesselPlanningV2.relieverCrewUuid,
+        signOnDate: vesselPlanningV2.signOnDate,
+        signOffDate: vesselPlanningV2.signOffDate,
+        reliefDue: vesselPlanningV2.reliefDue,
+        relieverSignOnDate: vesselPlanningV2.relieverSignOnDate,
+        contractPeriodMonths: vesselPlanningV2.contractPeriodMonths,
+        contractEndRangeStartMonths: vesselPlanningV2.contractEndRangeStartMonths,
+        contractEndRangeEndMonths: vesselPlanningV2.contractEndRangeEndMonths,
+        relieverContractPeriodMonths: vesselPlanningV2.relieverContractPeriodMonths,
+        relieverContractEndRangeStartMonths: vesselPlanningV2.relieverContractEndRangeStartMonths,
+        relieverContractEndRangeEndMonths: vesselPlanningV2.relieverContractEndRangeEndMonths,
+        joiningStatus: vesselPlanningV2.joiningStatus,
+      })
+      .from(vesselPlanningV2)
+      .leftJoin(
+        masterVessels,
+        eq(vesselPlanningV2.vesselUuid, masterVessels.vesselUuid)
+      )
+      .where(
+        and(
+          or(
+            and(
+              eq(vesselPlanningV2.crewUuid, crewUuid),
+              eq(vesselPlanningV2.isArchived, false)
+            ),
+            and(
+              eq(vesselPlanningV2.relieverCrewUuid, crewUuid),
+              eq(vesselPlanningV2.isRelieverArchived, false)
+            )
+          ),
+          eq(vesselPlanningV2.isDeleted, false)
+        )
+      )
+      .orderBy(vesselPlanningV2.signOnDate);
 
     return result;
   },
@@ -590,11 +640,11 @@ export const dashboardService = {
     return unique.length > 0 ? unique.join(", ") : "";
   },
 
-  buildServiceTimeline(companyService: any[], externalService: any[] = []): ServiceTimelineItem[] {
+  buildServiceTimeline(companyService: any[], externalService: any[] = [], vesselPlanning: any[] = [], crewUuid?: string): ServiceTimelineItem[] {
     const allService = [...companyService, ...externalService];
     const today = new Date();
     
-    return allService
+    const seaServiceItems: ServiceTimelineItem[] = allService
       .filter((s: any) => s.fromDate)
       .map((s: any) => {
         const startDate = new Date(s.fromDate);
@@ -611,19 +661,96 @@ export const dashboardService = {
         
         return {
           vessel: s.vesselName || "Unknown",
-          vesselId: s.vesselCode || s.vesselTypeUuid || undefined,
+          vesselId: s.vesselUuid || s.vesselCode || s.vesselTypeUuid || undefined,
           startDate: s.fromDate,
           endDate: s.toDate || null,
           contractEndDate: s.contractEndDate || s.toDate || null,
           rangeEndDate: s.rangeEndDate || null,
           type,
         };
-      })
-      .sort((a: ServiceTimelineItem, b: ServiceTimelineItem) => {
-        const dateA = new Date(a.startDate);
-        const dateB = new Date(b.startDate);
-        return dateB.getTime() - dateA.getTime();
       });
+
+    const planningItems = vesselPlanning
+      .filter((p: any) => {
+        const isReliever = crewUuid && p.relieverCrewUuid === crewUuid && p.crewUuid !== crewUuid;
+        const effectiveSignOn = isReliever ? p.relieverSignOnDate : p.signOnDate;
+        return !!effectiveSignOn;
+      })
+      .map((p: any) => {
+        const isReliever = crewUuid && p.relieverCrewUuid === crewUuid && p.crewUuid !== crewUuid;
+        const effectiveSignOn = isReliever ? p.relieverSignOnDate : p.signOnDate;
+        const effectiveContractMonths = isReliever ? p.relieverContractPeriodMonths : p.contractPeriodMonths;
+        const effectiveRangeEndMonths = isReliever ? p.relieverContractEndRangeEndMonths : p.contractEndRangeEndMonths;
+
+        const signOnDate = new Date(effectiveSignOn);
+        if (isNaN(signOnDate.getTime())) return null;
+
+        const effectiveSignOff = isReliever ? null : (p.signOffDate || null);
+        const signOffDate = effectiveSignOff ? new Date(effectiveSignOff) : null;
+
+        let contractEndDate: string | null = null;
+        if (effectiveContractMonths && effectiveSignOn) {
+          contractEndDate = format(addMonths(signOnDate, effectiveContractMonths), 'yyyy-MM-dd');
+        } else if (p.reliefDue && !isReliever) {
+          contractEndDate = p.reliefDue;
+        }
+
+        let rangeEndDate: string | null = null;
+        if (effectiveRangeEndMonths && effectiveSignOn) {
+          rangeEndDate = format(addMonths(signOnDate, effectiveRangeEndMonths), 'yyyy-MM-dd');
+        }
+
+        let type: "onBoard" | "planned" | "completed" = "completed";
+        if (!signOffDate || signOffDate > today) {
+          if (signOnDate > today) {
+            type = "planned";
+          } else if (p.joiningStatus && p.joiningStatus !== "Signed On") {
+            type = "planned";
+          } else {
+            type = "onBoard";
+          }
+        }
+
+        return {
+          vessel: p.vesselName || "Unknown",
+          vesselId: p.vesselUuid || undefined,
+          startDate: effectiveSignOn,
+          endDate: effectiveSignOff,
+          contractEndDate,
+          rangeEndDate,
+          type,
+        };
+      })
+      .filter((item): item is ServiceTimelineItem => item !== null);
+
+    const merged: ServiceTimelineItem[] = [...seaServiceItems];
+    for (const planItem of planningItems) {
+      const matchIdx = merged.findIndex((seaItem) => {
+        if (!planItem.vesselId || !seaItem.vesselId) return false;
+        if (seaItem.vesselId !== planItem.vesselId) return false;
+        const seaStart = new Date(seaItem.startDate).getTime();
+        const planStart = new Date(planItem.startDate).getTime();
+        const seaEnd = seaItem.endDate ? new Date(seaItem.endDate).getTime() : Infinity;
+        const planEnd = planItem.endDate ? new Date(planItem.endDate).getTime() : Infinity;
+        return seaStart <= planEnd && planStart <= seaEnd;
+      });
+      if (matchIdx < 0) {
+        merged.push(planItem);
+      } else {
+        if (planItem.contractEndDate) {
+          merged[matchIdx].contractEndDate = planItem.contractEndDate;
+        }
+        if (planItem.rangeEndDate) {
+          merged[matchIdx].rangeEndDate = planItem.rangeEndDate;
+        }
+      }
+    }
+
+    return merged.sort((a: ServiceTimelineItem, b: ServiceTimelineItem) => {
+      const dateA = new Date(a.startDate);
+      const dateB = new Date(b.startDate);
+      return dateB.getTime() - dateA.getTime();
+    });
   },
 
   getComplianceStatus(crew: any, licenses: any[]): ComplianceItem[] {

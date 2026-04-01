@@ -23,7 +23,7 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
       <div
         ref={ref}
         className={cn(
-          "relative flex items-center h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm cursor-pointer",
+          "relative flex items-center h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm cursor-pointer whitespace-nowrap min-w-[5.5rem]",
           className
         )}
         onClick={() => inputRef.current?.showPicker?.()}

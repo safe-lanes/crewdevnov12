@@ -19,6 +19,7 @@ export interface LegacyCrewMember {
   isActive: boolean;
   uploadedPhoto: string;
   presentVessel: string;
+  presentVesselName: string;
   lastVessel: string;
   signOnDate: string;
   signOffDate: string;
@@ -65,6 +66,7 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     isActive: v2Crew.isActive ?? true,
     uploadedPhoto: v2Crew.uploadedPhoto || '',
     presentVessel: v2Crew.presentVessel || '',
+    presentVesselName: v2Crew.presentVesselName || v2Crew.currentVesselName || '',
     lastVessel: v2Crew.lastVessel || '',
     signOnDate: v2Crew.signOnDate || '',
     signOffDate: v2Crew.signOffDate || '',
@@ -84,23 +86,23 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember> & { dateOfBi
   
   return {
     empNo,
-    employeeId: legacy.employeeId || undefined,
-    firstName: legacy.firstName || undefined,
-    middleName: legacy.middleName || undefined,
-    familyName: legacy.familyName || undefined,
-    gender: legacy.gender || undefined,
-    dob: legacy.dob || legacy.dateOfBirth || undefined,
-    nationalityUuid: legacy.nationality || undefined,
+    employeeId: legacy.employeeId?.trim() || undefined,
+    firstName: legacy.firstName ?? undefined,
+    middleName: legacy.middleName ?? undefined,
+    familyName: legacy.familyName ?? undefined,
+    gender: legacy.gender ?? undefined,
+    dob: legacy.dob ?? legacy.dateOfBirth ?? null,
+    nationalityUuid: legacy.nationality ?? undefined,
     // Note: vesselType from form is an array for vessel types applied (stored in crew_vessel_types_applied table)
     // Only set vesselTypeUuid if it's a single string, not an array
     vesselTypeUuid: (typeof legacy.vesselType === 'string' && legacy.vesselType) ? legacy.vesselType : undefined,
-    presentRank: legacy.presentRank || undefined,
-    rankAppliedFor: legacy.rankAppliedFor || undefined,
+    presentRank: legacy.presentRank ?? undefined,
+    rankAppliedFor: legacy.rankAppliedFor ?? undefined,
     status: legacy.status || 'active',
-    availability: legacy.availability || undefined,
-    nextAvailability: legacy.nextAvailability || undefined,
+    availability: legacy.availability ?? undefined,
+    nextAvailability: legacy.nextAvailability ?? undefined,
     isActive: legacy.isActive ?? true,
-    uploadedPhoto: legacy.uploadedPhoto || undefined,
+    uploadedPhoto: legacy.uploadedPhoto ?? undefined,
   };
 }
 
@@ -141,20 +143,20 @@ export function mapV2PersonalDetailsToLegacy(v2: any): LegacyPersonalDetails {
 
 export function mapLegacyPersonalDetailsToV2(legacy: Partial<LegacyPersonalDetails>): any {
   return {
-    heightCm: legacy.height || undefined,
-    weightKg: legacy.weight || undefined,
-    bmi: legacy.bmi || undefined,
-    dob: (legacy as any).dob || undefined,
-    ageInYears: legacy.ageInYears || undefined,
-    placeOfBirthCity: legacy.placeOfBirthCity || undefined,
-    placeOfBirthCountryUuid: legacy.placeOfBirthCountry || undefined,
-    nativeLanguageUuid: legacy.nativeLanguage || undefined,
-    foreignLanguages: legacy.foreignLanguages || undefined,
-    englishProficiency: legacy.englishProficiency || undefined,
-    manningAgent: legacy.manningAgent || undefined,
-    crewPool: legacy.crewPool || undefined,
-    availability: legacy.availability || undefined,
-    nextAvailability: legacy.nextAvailability || undefined,
+    heightCm: legacy.height ?? undefined,
+    weightKg: legacy.weight ?? undefined,
+    bmi: legacy.bmi ?? undefined,
+    dob: (legacy as any).dob ?? undefined,
+    ageInYears: legacy.ageInYears ?? undefined,
+    placeOfBirthCity: legacy.placeOfBirthCity ?? undefined,
+    placeOfBirthCountryUuid: legacy.placeOfBirthCountry ?? undefined,
+    nativeLanguageUuid: legacy.nativeLanguage ?? undefined,
+    foreignLanguages: legacy.foreignLanguages ?? undefined,
+    englishProficiency: legacy.englishProficiency ?? undefined,
+    manningAgent: legacy.manningAgent ?? undefined,
+    crewPool: legacy.crewPool ?? undefined,
+    availability: legacy.availability ?? undefined,
+    nextAvailability: legacy.nextAvailability ?? undefined,
   };
 }
 
@@ -183,13 +185,13 @@ export function mapV2AddressToLegacy(v2: any): LegacyAddress {
 
 export function mapLegacyAddressToV2(legacy: Partial<LegacyAddress>): any {
   return {
-    countryOfResidenceUuid: legacy.countryOfResidence || undefined,
-    nearestAirport: legacy.nearestAirport || undefined,
-    addressLine1: legacy.residentialAddressLine1 || undefined,
-    addressLine2: legacy.residentialAddressLine2 || undefined,
-    contactLandline: legacy.contactLandline || undefined,
-    mobile: legacy.mobile || undefined,
-    email: legacy.email || undefined,
+    countryOfResidenceUuid: legacy.countryOfResidence ?? undefined,
+    nearestAirport: legacy.nearestAirport ?? undefined,
+    addressLine1: legacy.residentialAddressLine1 ?? undefined,
+    addressLine2: legacy.residentialAddressLine2 ?? undefined,
+    contactLandline: legacy.contactLandline ?? undefined,
+    mobile: legacy.mobile ?? undefined,
+    email: legacy.email ?? undefined,
   };
 }
 
@@ -219,14 +221,14 @@ export function mapV2FamilyInfoToLegacy(v2: any): LegacyFamilyInfo {
 
 export function mapLegacyFamilyInfoToV2(legacy: Partial<LegacyFamilyInfo>): any {
   return {
-    maritalStatus: legacy.maritalStatus || undefined,
-    numDependentChildren: legacy.numberOfDependentChildren || undefined,
-    fatherName: legacy.fatherName || undefined,
-    motherName: legacy.motherName || undefined,
-    spouseFirstName: legacy.spouseFirstName || undefined,
-    spouseMiddleName: legacy.spouseMiddleName || undefined,
-    spouseFamilyName: legacy.spouseFamilyName || undefined,
-    spouseDob: legacy.spouseDateOfBirth || undefined,
+    maritalStatus: legacy.maritalStatus ?? undefined,
+    numDependentChildren: legacy.numberOfDependentChildren ?? undefined,
+    fatherName: legacy.fatherName ?? undefined,
+    motherName: legacy.motherName ?? undefined,
+    spouseFirstName: legacy.spouseFirstName ?? undefined,
+    spouseMiddleName: legacy.spouseMiddleName ?? undefined,
+    spouseFamilyName: legacy.spouseFamilyName ?? undefined,
+    spouseDob: legacy.spouseDateOfBirth ?? undefined,
   };
 }
 
@@ -253,11 +255,11 @@ export function mapV2ChildToLegacy(v2: any): LegacyChild {
 export function mapLegacyChildToV2(legacy: LegacyChild): any {
   return {
     childUuid: legacy.childUuid,
-    firstName: legacy.firstName || undefined,
-    middleName: legacy.middleName || undefined,
-    familyName: legacy.familyName || undefined,
-    dob: legacy.dateOfBirth || undefined,
-    gender: legacy.gender || undefined,
+    firstName: legacy.firstName ?? undefined,
+    middleName: legacy.middleName ?? undefined,
+    familyName: legacy.familyName ?? undefined,
+    dob: legacy.dateOfBirth ?? undefined,
+    gender: legacy.gender ?? undefined,
   };
 }
 
@@ -288,13 +290,13 @@ export function mapV2NextOfKinToLegacy(v2: any): LegacyNextOfKin {
 export function mapLegacyNextOfKinToV2(legacy: LegacyNextOfKin): any {
   return {
     nokUuid: legacy.nokUuid,
-    firstName: legacy.firstName || undefined,
-    middleName: legacy.middleName || undefined,
-    familyName: legacy.familyName || undefined,
-    telephone: legacy.telephone || undefined,
-    email: legacy.email || undefined,
-    address: legacy.address || undefined,
-    relationship: legacy.relationship || undefined,
+    firstName: legacy.firstName ?? undefined,
+    middleName: legacy.middleName ?? undefined,
+    familyName: legacy.familyName ?? undefined,
+    telephone: legacy.telephone ?? undefined,
+    email: legacy.email ?? undefined,
+    address: legacy.address ?? undefined,
+    relationship: legacy.relationship ?? undefined,
   };
 }
 
@@ -348,12 +350,12 @@ export function mapV2DocumentToLegacy(v2: any): any {
 export function mapLegacyDocumentToV2(legacy: any): any {
   return {
     docUuid: legacy.docUuid,
-    documentId: legacy.documentId || undefined,
-    documentName: legacy.documentName || legacy.document || undefined,
-    number: legacy.documentNumber || legacy.number || undefined,
-    issued: legacy.issuedDate || legacy.issued || undefined,
-    expiry: legacy.expiryDate || legacy.expiry || undefined,
-    issuingAuthority: legacy.issuingAuthority || undefined,
+    documentId: legacy.documentId ?? undefined,
+    documentName: legacy.documentName ?? legacy.document ?? undefined,
+    number: legacy.documentNumber ?? legacy.number ?? undefined,
+    issued: legacy.issuedDate ?? legacy.issued ?? undefined,
+    expiry: legacy.expiryDate ?? legacy.expiry ?? undefined,
+    issuingAuthority: legacy.issuingAuthority ?? undefined,
     issuingCountryUuid: legacy.issuingCountry || undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
@@ -406,11 +408,11 @@ export function mapV2VisaToLegacy(v2: any): any {
 export function mapLegacyVisaToV2(legacy: any): any {
   return {
     visaUuid: legacy.visaUuid,
-    country: legacy.country || legacy.issuingCountry || undefined,
-    serialNo: legacy.serialNo || legacy.serialNumber || undefined,
-    issued: legacy.issuedDate || legacy.issued || undefined,
-    expiry: legacy.expiryDate || legacy.expiry || undefined,
-    visaType: legacy.visaType || undefined,
+    country: legacy.country ?? legacy.issuingCountry ?? undefined,
+    serialNo: legacy.serialNo ?? legacy.serialNumber ?? undefined,
+    issued: legacy.issuedDate ?? legacy.issued ?? undefined,
+    expiry: legacy.expiryDate ?? legacy.expiry ?? undefined,
+    visaType: legacy.visaType ?? undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter((att: any) => att.isNew || att.isDeleted)
@@ -458,9 +460,9 @@ export function mapV2EducationToLegacy(v2: any): LegacyEducation {
 export function mapLegacyEducationToV2(legacy: LegacyEducation): any {
   return {
     eduUuid: legacy.eduUuid,
-    dateOfCompletion: legacy.dateOfCompletion || undefined,
-    institution: legacy.schoolCollegeUniversity || undefined,
-    subjectsField: legacy.subjectsField || undefined,
+    dateOfCompletion: legacy.dateOfCompletion ?? undefined,
+    institution: legacy.schoolCollegeUniversity ?? undefined,
+    subjectsField: legacy.subjectsField ?? undefined,
     qualifications: legacy.qualifications || undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
@@ -523,13 +525,13 @@ export function mapLegacyLicenseToV2(legacy: LegacyLicense): any {
     licUuid: legacy.licUuid,
     licenseId: legacy.licenseId || undefined,
     certificateDocument: legacy.certificateDocument || undefined,
-    abbr: legacy.abbr || undefined,
-    requirement: legacy.requirement || undefined,
-    certificateNo: legacy.certificateNo || undefined,
-    issuingAuthority: legacy.issuingAuthority || undefined,
+    abbr: legacy.abbr ?? undefined,
+    requirement: legacy.requirement ?? undefined,
+    certificateNo: legacy.certificateNo ?? undefined,
+    issuingAuthority: legacy.issuingAuthority ?? undefined,
     issuingCountryUuid: legacy.issuingCountry || undefined,
-    issued: legacy.issued || undefined,
-    expiry: legacy.expiry || undefined,
+    issued: legacy.issued ?? undefined,
+    expiry: legacy.expiry ?? undefined,
     archivedAt: legacy.archivedAt || undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
@@ -590,13 +592,13 @@ export function mapLegacyTrainingCourseToV2(legacy: LegacyTrainingCourse): any {
     trainUuid: legacy.trainUuid,
     courseId: legacy.courseId || undefined,
     trainingCourse: legacy.trainingCourse || undefined,
-    abbr: legacy.abbr || undefined,
-    requirement: legacy.requirement || undefined,
-    certificateNo: legacy.certificateNo || undefined,
-    issuingAuthority: legacy.issuingAuthority || undefined,
+    abbr: legacy.abbr ?? undefined,
+    requirement: legacy.requirement ?? undefined,
+    certificateNo: legacy.certificateNo ?? undefined,
+    issuingAuthority: legacy.issuingAuthority ?? undefined,
     issuingCountryUuid: legacy.issuingCountry || undefined,
-    issued: legacy.issued || undefined,
-    expiry: legacy.expiry || undefined,
+    issued: legacy.issued ?? undefined,
+    expiry: legacy.expiry ?? undefined,
     sortOrder: legacy.sortOrder,
     attachments: (legacy.attachments || [])
       .filter(att => att.isNew || att.isDeleted)
@@ -671,9 +673,9 @@ export function mapLegacySeaServiceToV2(legacy: LegacySeaService): any {
     vesselName: legacy.vesselName || undefined,
     vesselUuid: legacy.vesselCode || undefined,
     vesselTypeUuid: legacy.vesselType || undefined,
-    deadweight: legacy.deadweight || undefined,
-    engineTypePower: legacy.engineTypePower || undefined,
-    ownerOperator: legacy.ownerOperator || undefined,
+    deadweight: legacy.deadweight ?? undefined,
+    engineTypePower: legacy.engineTypePower ?? undefined,
+    ownerOperator: legacy.ownerOperator ?? undefined,
     rank: legacy.rank || undefined,
     fromDate: legacy.fromDate || legacy.from || undefined,
     toDate: legacy.toDate || legacy.to || undefined,
@@ -732,13 +734,13 @@ export function mapLegacyPreJoiningMedicalToV2(legacy: LegacyPreJoiningMedical):
     medUuid: legacy.medUuid,
     vesselUuid: legacy.vesselCode || undefined,
     vesselName: legacy.vessel || legacy.vesselName || undefined,
-    examinationDate: legacy.dateOfMedical || undefined,
-    bp: legacy.bp || undefined,
-    weight: legacy.weight || undefined,
-    anyMedicationPrescribed: legacy.anyMedicationPrescribed || undefined,
+    examinationDate: legacy.dateOfMedical ?? undefined,
+    bp: legacy.bp ?? undefined,
+    weight: legacy.weight ?? undefined,
+    anyMedicationPrescribed: legacy.anyMedicationPrescribed ?? undefined,
     clinicHospital: legacy.clinicHospital || undefined,
     fitForDuty: legacy.fitnessForDuty || undefined,
-    expiryDate: legacy.expiryDate || legacy.expiry || undefined,
+    expiryDate: legacy.expiryDate ?? legacy.expiry ?? undefined,
     sortOrder: legacy.sortOrder,
   };
 }
@@ -790,16 +792,16 @@ export function mapV2DoctorVisitToLegacy(v2: any): LegacyDoctorVisit {
 export function mapLegacyDoctorVisitToV2(legacy: LegacyDoctorVisit): any {
   return {
     visitUuid: legacy.visitUuid,
-    vessel: legacy.vessel || undefined,
-    port: legacy.port || undefined,
-    visitDate: legacy.visitDate || legacy.date || undefined,
-    doctorName: legacy.doctorName || undefined,
-    clinicHospital: legacy.clinicHospital || undefined,
-    reason: legacy.complaint || undefined,
-    doctorComments: legacy.doctorComments || undefined,
-    diagnosis: legacy.diagnosis || undefined,
-    treatment: legacy.treatment || undefined,
-    followUpDate: legacy.followUpDate || undefined,
+    vessel: legacy.vessel ?? undefined,
+    port: legacy.port ?? undefined,
+    visitDate: legacy.visitDate ?? legacy.date ?? undefined,
+    doctorName: legacy.doctorName ?? undefined,
+    clinicHospital: legacy.clinicHospital ?? undefined,
+    reason: legacy.complaint ?? undefined,
+    doctorComments: legacy.doctorComments ?? undefined,
+    diagnosis: legacy.diagnosis ?? undefined,
+    treatment: legacy.treatment ?? undefined,
+    followUpDate: legacy.followUpDate ?? undefined,
     sortOrder: legacy.sortOrder,
   };
 }

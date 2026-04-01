@@ -127,7 +127,7 @@ function groupEnglishProficiencyResults(results: ComplianceRuleResult[]): Groupe
     return Array.from(groupMap.values());
 }
 
-const PROFICIENCY_LEVELS = ['Poor', 'Fair', 'Good', 'Excellent', 'Native'];
+const PROFICIENCY_LEVELS = ['None', 'Basic', 'Intermediate', 'Fluent', 'Native'];
 
 function formatRequirementValue(req: ComplianceRuleResult): { required: string; actual: string } {
     if (req.category === 'English Proficiency') {

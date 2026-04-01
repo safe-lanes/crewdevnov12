@@ -282,7 +282,13 @@ export const crewTransferService = {
           crewUuid,
           heightCm: candPersonal.heightCm,
           weightKg: candPersonal.weightKg,
-          bmi: null,
+          bmi: (() => {
+            if (!candPersonal.heightCm || !candPersonal.weightKg) return null;
+            const h = parseFloat(candPersonal.heightCm);
+            const w = parseFloat(candPersonal.weightKg);
+            if (!Number.isFinite(h) || !Number.isFinite(w) || h <= 0 || w <= 0) return null;
+            return (w / Math.pow(h / 100, 2)).toFixed(1);
+          })(),
           ageInYears: candPersonal.ageInYears,
           placeOfBirthCity: candPersonal.placeOfBirthCity,
           placeOfBirthCountryUuid: candPersonal.placeOfBirthCountryUuid,
@@ -486,7 +492,7 @@ export const crewTransferService = {
 
       for (const lic of candLic) {
         const newLicUuid = uuidv4();
-        const licenseId = lic.licenseId || (await generateLicenseId());
+        const licenseId = lic.licenseId || null;
         await tx.insert(crewLicenses).values({
           licUuid: newLicUuid,
           crewUuid,
@@ -527,7 +533,7 @@ export const crewTransferService = {
 
       for (const train of candTrain) {
         const newTrainUuid = uuidv4();
-        const courseId = train.courseId || (await generateCourseId());
+        const courseId = train.courseId || null;
         await tx.insert(crewTrainingCourses).values({
           trainUuid: newTrainUuid,
           crewUuid,
