@@ -1057,6 +1057,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           // Recalculate periods for existing records with dates
           return services.map((s: SeaService) => ({
             ...s,
+            rank: normalizeRank(s.rank || '') || s.rank || '',
             periodMonths: s.from && s.to ? calculateSeaServicePeriod(s.from, s.to) : s.periodMonths || ''
           }));
         })(),
@@ -1069,6 +1070,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           // Recalculate periods for existing records with dates
           return services.map((s: SeaService) => ({
             ...s,
+            rank: normalizeRank(s.rank || '') || s.rank || '',
             periodMonths: s.from && s.to ? calculateSeaServicePeriod(s.from, s.to) : s.periodMonths || ''
           }));
         })(),
@@ -4763,7 +4765,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <span className="text-[13px] text-[#4f5863]">{service.rank || '—'}</span>
                         ) : (
                           <Select
-                            value={service.rank}
+                            value={normalizeRank(service.rank || '') || service.rank}
                             onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'rank', value); if (seaServiceRequiredErrors[service.id]?.rank) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                           >
                             <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
@@ -5081,7 +5083,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
-                          value={service.rank}
+                          value={normalizeRank(service.rank || '') || service.rank}
                           onValueChange={(value) => { updateExternalSeaService(service.id, 'rank', value); if (seaServiceRequiredErrors[service.id]?.rank) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                         >
                           <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
@@ -6202,7 +6204,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 vesselName: sea.vesselName || '',
                 vesselCode: sea.vesselCode || '',
                 vesselType: sea.vesselType || '',
-                rank: sea.rank || '',
+                rank: normalizeRank(sea.rank || '') || sea.rank || '',
                 from: sea.from || sea.fromDate || '',
                 to: sea.to || sea.toDate || '',
                 fromDate: sea.from || sea.fromDate || '',
@@ -6285,7 +6287,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 deadweight: sea.deadweight || '',
                 engineTypePower: sea.engineTypePower || '',
                 ownerOperator: sea.ownerOperator || '',
-                rank: sea.rank || '',
+                rank: normalizeRank(sea.rank || '') || sea.rank || '',
                 from: sea.from || sea.fromDate || '',
                 to: sea.to || sea.toDate || '',
                 fromDate: sea.from || sea.fromDate || '',
