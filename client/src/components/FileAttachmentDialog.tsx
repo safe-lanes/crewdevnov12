@@ -231,6 +231,7 @@ export function FileAttachmentDialog({
           newWindow.location.href = blobUrl;
         }
         newWindow.document.close();
+        newWindow.addEventListener('beforeunload', () => URL.revokeObjectURL(blobUrl));
       } else {
         URL.revokeObjectURL(blobUrl);
         toast({
