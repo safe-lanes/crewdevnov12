@@ -554,8 +554,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   // Track newly created crew member ID for subsequent saves
   const [createdCrewId, setCreatedCrewId] = useState<string | null>(null);
+  const createdCrewIdRef = useRef<string | null>(null);
   // Track when we're auto-creating a crew record before edit
   const [isCreatingCrew, setIsCreatingCrew] = useState(false);
+  const isCreatingCrewRef = useRef(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [isStatusEditOpen, setIsStatusEditOpen] = useState(false);
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
@@ -1143,14 +1145,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (isOpen) {
       // Dialog is opening - check if we need to reset for a fresh session
       if (!crewMember?.id) {
-        // Opening for a new crew member - ensure we start fresh (POST on first save)
+        createdCrewIdRef.current = null;
         setCreatedCrewId(null);
       }
     }
   }, [isOpen, crewMember?.id]);
   
   useEffect(() => {
-    // When switching to a different crew member while dialog is open, reset the locally created ID
+    createdCrewIdRef.current = null;
     setCreatedCrewId(null);
   }, [crewMember?.id]);
 
@@ -6906,7 +6908,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Get effective crew UUID (either from existing crew or newly created)
   const getEffectiveCrewUuid = (): string | null => {
-    return crewMember?.crewUuid || crewMember?.id || createdCrewId || null;
+    return crewMember?.crewUuid || crewMember?.id || createdCrewId || createdCrewIdRef.current || null;
   };
 
   // Ensure crew record exists before allowing section edits
@@ -6917,12 +6919,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       return existingUuid;
     }
 
-    // Race condition guard - prevent duplicate creation on rapid clicks
-    if (isCreatingCrew) {
-      return null; // Already creating, don't proceed
+    if (isCreatingCrewRef.current) {
+      return null;
     }
 
-    // No crew UUID exists - need to create parent record first
+    isCreatingCrewRef.current = true;
     setIsCreatingCrew(true);
     try {
       // Create crew record with current form data using V2 mapping pipeline
@@ -6944,6 +6945,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       const newCrewUuid = result?.crewUuid;
       
       if (newCrewUuid) {
+        createdCrewIdRef.current = newCrewUuid;
         setCreatedCrewId(newCrewUuid);
         
         queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
@@ -7027,6 +7029,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       });
       return null;
     } finally {
+      isCreatingCrewRef.current = false;
       setIsCreatingCrew(false);
     }
   };
@@ -7127,6 +7130,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
           
           if (crewUuid) {
+            createdCrewIdRef.current = crewUuid;
             setCreatedCrewId(crewUuid);
             // NOTE: We intentionally do NOT call onCrewMemberChange here.
             // Calling it would update the `crewMember` prop from null to the new record,
