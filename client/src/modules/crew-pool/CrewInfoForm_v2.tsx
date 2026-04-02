@@ -1057,7 +1057,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           // Recalculate periods for existing records with dates
           return services.map((s: SeaService) => ({
             ...s,
-            rank: normalizeRank(s.rank || '') || s.rank || '',
             periodMonths: s.from && s.to ? calculateSeaServicePeriod(s.from, s.to) : s.periodMonths || ''
           }));
         })(),
@@ -1070,7 +1069,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           // Recalculate periods for existing records with dates
           return services.map((s: SeaService) => ({
             ...s,
-            rank: normalizeRank(s.rank || '') || s.rank || '',
             periodMonths: s.from && s.to ? calculateSeaServicePeriod(s.from, s.to) : s.periodMonths || ''
           }));
         })(),
