@@ -271,7 +271,7 @@ function TimelineCanvas({
         : assignment.vessel;
       
       const outsideLabelColor = assignment.type === 'planned' ? '#56baf3' 
-        : assignment.type === 'completed' ? '#6B7280' : '#374151';
+        : assignment.type === 'completed' ? '#6B7280' : '#02A921';
 
       const hasBadges = (assignment.appraisalIds && assignment.appraisalIds.length > 0) ||
         (assignment.handoverIds && assignment.handoverIds.length > 0);
