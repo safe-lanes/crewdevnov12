@@ -4907,7 +4907,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       </TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <FormattedDateInput value={child.dateOfBirth} onChange={(e) => updateChild(child.id, 'dateOfBirth', e.target.value)} max={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                          <FormattedDateInput value={child.dateOfBirth} onChange={(e) => updateChild(child.id, 'dateOfBirth', e.target.value)} max={todayStr} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
                         ) : (
                           <span className="text-[13px]">{formatDate(child.dateOfBirth)}</span>
                         )}
