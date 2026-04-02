@@ -3755,6 +3755,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <FormattedDateInput
                               value={child.dateOfBirth}
                               onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
+                              max={todayStr}
                               className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                             />
                           ) : (
