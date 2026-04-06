@@ -1,0 +1,2 @@
+ALTER TABLE rh_vessel_records_v2
+  ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT false;
