@@ -111,7 +111,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return [];
     }, [externalVesselsData]);
     
-    const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
+    const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent } = usePermissions();
+    const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
     const allowedPages = useMemo(() => {
         const all = ["crew-database"];
         if (permissions.length === 0) return all;
@@ -119,7 +120,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return all.filter(p => canView(pageToMenu[p] || p));
     }, [permissions, canView]);
 
-    // Filter state
     const [filters, setFilters] = useState({
         searchName: "",
         vessel: "",
@@ -130,6 +130,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         pool: "",
         manningAgent: ""
     });
+
+    useEffect(() => {
+        if (isManningAgentUser) {
+            setFilters(prev => ({ ...prev, manningAgent: userManningAgent }));
+        }
+    }, [isManningAgentUser, userManningAgent]);
     
     // Fetch Crew Pool master data from V2 dedicated table
     const { data: crewPoolMasterData = [], isLoading: poolLoading } = useCrewPoolsV2();
@@ -700,7 +706,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                 </div>
 
                                 <div className="min-w-[120px]">
-                                    <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                                    <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))} disabled={isManningAgentUser}>
                                         <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent">
                                             <SelectValue placeholder="Manning Agent" />
                                         </SelectTrigger>
@@ -721,7 +727,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                 <Button 
                                     variant="outline" 
                                     className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
-                                    onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "", manningAgent: "" })}
+                                    onClick={() => setFilters(prev => ({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "", manningAgent: isManningAgentUser ? prev.manningAgent : "" }))}
                                     data-testid="button-clear"
                                 >
                                     Clear
@@ -826,7 +832,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                 </div>
 
                                 <div>
-                                    <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                                    <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))} disabled={isManningAgentUser}>
                                         <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent">
                                             <SelectValue placeholder="Manning Agent" />
                                         </SelectTrigger>
@@ -847,7 +853,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                     <Button 
                                         variant="outline" 
                                         className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] w-16"
-                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "", manningAgent: "" })}
+                                        onClick={() => setFilters(prev => ({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "", manningAgent: isManningAgentUser ? prev.manningAgent : "" }))}
                                         data-testid="button-clear"
                                     >
                                         Clear
@@ -953,7 +959,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                 </div>
 
                                 <div>
-                                    <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                                    <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))} disabled={isManningAgentUser}>
                                         <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent">
                                             <SelectValue placeholder="Manning Agent" />
                                         </SelectTrigger>
@@ -974,7 +980,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                     <Button 
                                         variant="outline" 
                                         className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] flex-1"
-                                        onClick={() => setFilters({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "", manningAgent: "" })}
+                                        onClick={() => setFilters(prev => ({ searchName: "", vessel: "", rank: "", nationality: "", status: "", reliefDue: "", pool: "", manningAgent: isManningAgentUser ? prev.manningAgent : "" }))}
                                         data-testid="button-clear"
                                     >
                                         Clear
