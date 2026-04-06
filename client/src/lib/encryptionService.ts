@@ -254,3 +254,19 @@ export function getDecryptedSessionStorageItem(key: string, isParse = false): an
   if (!encrypted) return null;
   return decryptData(encrypted, isParse);
 }
+
+export function getResolvedDomain(fallback = 'rsms'): string {
+  try {
+    const decrypted = getDecryptedLocalStorageItem('domain', true);
+    if (decrypted) {
+      if (typeof decrypted === 'string') return decrypted;
+      if (typeof decrypted === 'object') {
+        return decrypted.name || decrypted.domain || JSON.stringify(decrypted);
+      }
+      return String(decrypted);
+    }
+    return localStorage.getItem('domain') || fallback;
+  } catch {
+    return localStorage.getItem('domain') || fallback;
+  }
+}

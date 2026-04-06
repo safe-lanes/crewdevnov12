@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_BASE_URL } from "@/config/api";
+import { getResolvedDomain } from "@/lib/encryptionService";
 
 const V2_BASE = '/api/v2/masters';
 
@@ -52,7 +53,7 @@ export function useSyncAllMasterData() {
 
   return useMutation<SyncAllResponse, Error>({
     mutationFn: async () => {
-      const domain = localStorage.getItem('domain') || 'rsms';
+      const domain = getResolvedDomain();
       const DEFAULT_API_BASE_URL = `${API_BASE_URL}/crewmasterdata/getallmasterdata`;
       const apiBaseUrl = DEFAULT_API_BASE_URL;
       

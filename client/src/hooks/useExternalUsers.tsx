@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { API_BASE_URL } from "@/config/api";
+import { getResolvedDomain } from "@/lib/encryptionService";
 
 export interface ExternalUser {
   uuid: string;
@@ -19,7 +20,7 @@ export const useExternalUsers = (options?: UseExternalUsersOptions) => {
   return useQuery({
     queryKey: ['/api/external/users'],
     queryFn: async () => {
-      const domain = localStorage.getItem('domain') || 'rsms';
+      const domain = getResolvedDomain();
       const response = await fetch(
         `${API_BASE_URL}/crewmasterdata/getallmasterdata/users?domain=${domain}`,
         {

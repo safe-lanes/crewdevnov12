@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { API_BASE_URL } from "@/config/api";
+import { getResolvedDomain } from "@/lib/encryptionService";
 
 interface UseExternalVesselTypesOptions {
   enabled?: boolean;
@@ -9,7 +10,7 @@ export const useExternalVesselTypes = (options?: UseExternalVesselTypesOptions) 
   return useQuery({
     queryKey: ['/api/external/vessel-types'],
     queryFn: async () => {
-      const domain = localStorage.getItem('domain') || 'rsms';
+      const domain = getResolvedDomain();
 
       const response = await fetch(
         `${API_BASE_URL}/crewmasterdata/getallmasterdata/vesseltypes?domain=${domain}`,

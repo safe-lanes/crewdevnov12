@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { API_BASE_URL } from "@/config/api";
+import { getResolvedDomain } from "@/lib/encryptionService";
 
 interface UseExternalFleetGroupsOptions {
   enabled?: boolean;
@@ -27,7 +28,7 @@ export const useExternalFleetGroups = (options?: UseExternalFleetGroupsOptions) 
       }
 
       // Fallback: fetch from external API
-      const domain = localStorage.getItem('domain') || 'rsms';
+      const domain = getResolvedDomain();
       const response = await fetch(
         `${API_BASE_URL}/crewmasterdata/getallmasterdata/fleetgroups?domain=${domain}`,
         {
