@@ -185,7 +185,7 @@ function extractFromObject(obj: any): ExtractedUserProfile | null {
   if (obj.userType) result.userType = String(obj.userType);
   if (obj.manningAgent) result.manningAgent = String(obj.manningAgent);
   if (Array.isArray(obj.myVessels)) result.myVessels = obj.myVessels;
-  if (result.role || result.roleId || result.userId || result.userType || (result.myVessels && result.myVessels.length > 0)) return result;
+  if (result.role || result.roleId || result.userId || result.userType || result.manningAgent || (result.myVessels && result.myVessels.length > 0)) return result;
   return null;
 }
 
@@ -225,7 +225,7 @@ export function safeExtractFields(rawValue: any): ExtractedUserProfile | null {
   result.manningAgent = extractStringField(str, 'manningAgent');
   result.myVessels = extractVesselsFromString(str);
 
-  if (result.role || result.roleId || result.userId || result.userType || (result.myVessels && result.myVessels.length > 0)) return result;
+  if (result.role || result.roleId || result.userId || result.userType || result.manningAgent || (result.myVessels && result.myVessels.length > 0)) return result;
   return null;
 }
 

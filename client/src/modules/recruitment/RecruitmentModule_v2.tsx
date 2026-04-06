@@ -104,6 +104,9 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     return lookup;
   }, [externalNationalitiesData]);
 
+  const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent } = usePermissions();
+  const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
+
   const [filters, setFilters] = useState({
     searchName: "",
     rankAppliedFor: "",
@@ -122,9 +125,6 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   const { data: allCandidates = [], isLoading, error, refetch } = useV2Candidates();
 
   const deleteMutation = useV2DeleteCandidate();
-
-  const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent } = usePermissions();
-  const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
   const allowedPages = useMemo(() => {
     const all = ["in-progress", "recruited", "waitlist", "rejected"];
     if (permissions.length === 0) return all;
