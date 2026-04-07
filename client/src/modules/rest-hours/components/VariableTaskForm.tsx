@@ -91,10 +91,29 @@ export const VariableTaskForm = ({
     enabled: open,
   });
 
-  // Filter crew members by vessel
+  const watchedStartDate = form.watch('startDate');
+  const watchedFinishDate = form.watch('finishDate');
+
+  // Filter crew members by vessel and sign-on/sign-off date overlap with task date range
   const vesselCrewMembers = useMemo(() => {
-    return allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
-  }, [allCrewMembers, vesselId]);
+    const vesselCrew = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
+
+    if (!watchedStartDate && !watchedFinishDate) {
+      return vesselCrew;
+    }
+
+    return vesselCrew.filter((crew: any) => {
+      const signOn = crew.signOnDate;
+      if (watchedFinishDate && signOn && signOn > watchedFinishDate) {
+        return false;
+      }
+      const signOff = crew.signOffDate;
+      if (watchedStartDate && signOff && signOff < watchedStartDate) {
+        return false;
+      }
+      return true;
+    });
+  }, [allCrewMembers, vesselId, watchedStartDate, watchedFinishDate]);
 
   // Build rank designation lookup map
   // Use role if it exists (for multi-position ranks like "3rd Officer_1"), otherwise use rank name
