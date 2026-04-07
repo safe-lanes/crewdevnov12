@@ -378,9 +378,20 @@ export const RHRecordingForm = ({
   }, [rankOrderMap, getCanonicalRankName]);
 
   const filteredCrewMembers = useMemo(() => {
-    const filtered = selectedVesselId
+    let filtered = selectedVesselId
       ? allCrewMembers.filter((cm: any) => cm.presentVessel === selectedVesselId)
       : allCrewMembers;
+    if (selectedPeriod) {
+      const [y, m] = selectedPeriod.split('-').map(Number);
+      const firstDay = `${selectedPeriod}-01`;
+      const lastDayDate = new Date(y, m, 0);
+      const lastDay = `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+      filtered = filtered.filter((cm: any) => {
+        if (cm.signOnDate && cm.signOnDate > lastDay) return false;
+        if (cm.signOffDate && cm.signOffDate < firstDay) return false;
+        return true;
+      });
+    }
     return [...filtered].sort((a: any, b: any) => {
       const aOrder = getRankSortOrder(a.presentRank);
       const bOrder = getRankSortOrder(b.presentRank);
@@ -389,7 +400,7 @@ export const RHRecordingForm = ({
       const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
       return aSuffix - bSuffix;
     });
-  }, [allCrewMembers, selectedVesselId, getRankSortOrder]);
+  }, [allCrewMembers, selectedVesselId, getRankSortOrder, selectedPeriod]);
   
   // Get selected crew member details (match by empNo/crewMemberId which is A-format like A000042)
   const selectedCrewMember = useMemo(() => {
