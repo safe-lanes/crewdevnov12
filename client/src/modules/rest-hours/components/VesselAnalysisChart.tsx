@@ -183,14 +183,15 @@ export const VesselAnalysisChart = ({
   }, [allCrewRecords, vesselNameMap, allVessels, vesselIds]);
 
   const handleDownload = useCallback(() => {
-    const header = ['Vessel', ...MONTHS].join(',');
+    const header = ['Vessel Name', ...MONTHS].join(',');
     const rows = vesselData.map((vessel) => {
       const cells = MONTHS.map((_, index) => {
         const monthKey = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
         const data = vessel.monthlyData[monthKey];
         return mode === 'violations' ? (data?.violations || 0) : (data?.ncs || 0);
       });
-      return [`"${vessel.vesselName}"`, ...cells].join(',');
+      const escapedName = vessel.vesselName.replace(/"/g, '""');
+      return [`"${escapedName}"`, ...cells].join(',');
     });
     const csv = [header, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
