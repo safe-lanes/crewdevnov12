@@ -98,7 +98,6 @@ export const masterDataController = {
         )
         .where(
           and(
-            eq(crewAssignments.isCurrent, true),
             or(
               eq(crewMembersV2.isDeleted, false),
               isNull(crewMembersV2.isDeleted)
