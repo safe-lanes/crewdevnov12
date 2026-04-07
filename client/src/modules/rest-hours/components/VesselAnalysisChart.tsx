@@ -110,7 +110,8 @@ export const VesselAnalysisChart = ({
         // Get crew records for each vessel record
         const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
           const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
-            vesselId: vr.vesselId 
+            vesselId: vr.vesselId,
+            monthValue,
           });
           return crewRecords.map((cr: any) => ({
             ...cr,
