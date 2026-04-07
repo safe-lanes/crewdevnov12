@@ -106,36 +106,34 @@ export const masterDataController = {
           )
         );
 
-      if (monthsParam) {
-        const months = monthsParam.split(',').filter(m => /^\d{4}-\d{2}$/.test(m));
-        const result: Record<string, Record<string, number>> = {};
+      const months = monthsParam
+        ? monthsParam.split(',').filter(m => /^\d{4}-\d{2}$/.test(m))
+        : [];
 
-        for (const mv of months) {
-          const [year, month] = mv.split('-').map(Number);
-          const firstDay = `${mv}-01`;
-          const lastDayDate = new Date(year, month, 0);
-          const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
-
-          const monthCounts: Record<string, number> = {};
-          for (const row of crewRows) {
-            if (!row.vesselUuid) continue;
-            if (row.signOnDate && row.signOnDate > lastDay) continue;
-            if (row.signOffDate && row.signOffDate < firstDay) continue;
-            monthCounts[row.vesselUuid] = (monthCounts[row.vesselUuid] || 0) + 1;
-          }
-          result[mv] = monthCounts;
-        }
-
-        res.json(result);
-      } else {
-        const countMap: Record<string, number> = {};
-        for (const row of crewRows) {
-          if (row.vesselUuid) {
-            countMap[row.vesselUuid] = (countMap[row.vesselUuid] || 0) + 1;
-          }
-        }
-        res.json(countMap);
+      if (months.length === 0) {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        months.push(currentMonth);
       }
+
+      const result: Record<string, Record<string, number>> = {};
+      for (const mv of months) {
+        const [year, month] = mv.split('-').map(Number);
+        const firstDay = `${mv}-01`;
+        const lastDayDate = new Date(year, month, 0);
+        const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+
+        const monthCounts: Record<string, number> = {};
+        for (const row of crewRows) {
+          if (!row.vesselUuid) continue;
+          if (row.signOnDate && row.signOnDate > lastDay) continue;
+          if (row.signOffDate && row.signOffDate < firstDay) continue;
+          monthCounts[row.vesselUuid] = (monthCounts[row.vesselUuid] || 0) + 1;
+        }
+        result[mv] = monthCounts;
+      }
+
+      res.json(result);
     } catch (error) {
       console.error("Error fetching crew count by vessel:", error);
       res.status(500).json({ error: "Failed to fetch crew count" });

@@ -571,8 +571,11 @@ export const restHoursApiV2 = {
     },
 
     async getCrewCountByVessel(months?: string[]): Promise<Record<string, Record<string, number>>> {
-      const params = months && months.length > 0 ? `?months=${months.join(',')}` : '';
-      const response = await fetch(`${V2_BASE}/masters/crew-count-by-vessel${params}`);
+      const url = new URL(`${V2_BASE}/masters/crew-count-by-vessel`, window.location.origin);
+      if (months && months.length > 0) {
+        url.searchParams.set('months', months.join(','));
+      }
+      const response = await fetch(url.toString());
       if (!response.ok) throw new Error('Failed to fetch crew count by vessel');
       return response.json();
     },
