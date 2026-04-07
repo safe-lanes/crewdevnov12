@@ -106,7 +106,7 @@ async function enrichVesselRecordsWithLiveCounts(
       const crewWithActivityConflictsCount = crewWithConflicts.length;
       const crewWithActivityConflictsDetails = crewWithConflicts.length > 0
         ? JSON.stringify(crewWithConflicts.map(r => ({ name: r.name, rank: r.rank })))
-        : record.crewWithActivityConflictsDetails;
+        : null;
 
       return {
         ...record,
