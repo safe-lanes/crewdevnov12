@@ -235,11 +235,22 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
         signOnOffInfo: signOnOffInfo ?? existingCrewRecord.signOnOffInfo,
       });
     } else {
+      let crewName = dailyRecord.name || '';
+      if (!crewName || crewName === 'undefined undefined') {
+        const db = getDb();
+        const crewRows = await db
+          .select({ firstName: crewMembersV2.firstName, familyName: crewMembersV2.familyName })
+          .from(crewMembersV2)
+          .where(eq(crewMembersV2.empNo, crewMemberId));
+        if (crewRows.length > 0) {
+          crewName = [crewRows[0].firstName, crewRows[0].familyName].filter(Boolean).join(' ');
+        }
+      }
       await crewRecordsRepository.create({
         crewMemberId,
         vesselId,
         rank: dailyRecord.rank || '',
-        name: dailyRecord.name || '',
+        name: crewName,
         monthValue: monthYear,
         month: formatMonthDisplay(monthYear),
         signOnOffInfo: signOnOffInfo ?? null,

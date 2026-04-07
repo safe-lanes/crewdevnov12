@@ -408,7 +408,9 @@ export const RHRecordingForm = ({
   }, [filteredCrewMembers, selectedCrewMemberId]);
   
   // Derived values from selections
-  const crewMemberName = selectedCrewMember?.firstName + (selectedCrewMember?.middleName ? ' ' + selectedCrewMember.middleName : '') + ' ' + selectedCrewMember?.familyName || initialCrewMemberName;
+  const crewMemberName = selectedCrewMember
+    ? [selectedCrewMember.firstName, selectedCrewMember.middleName, selectedCrewMember.familyName].filter(Boolean).join(' ')
+    : initialCrewMemberName;
   const rank = selectedCrewMember?.presentRank || initialRank;
   const vesselName = getVesselName(selectedVesselId);
 
