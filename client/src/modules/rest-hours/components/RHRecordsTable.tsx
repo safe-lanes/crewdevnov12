@@ -695,11 +695,12 @@ export function RHRecordsTable({ selectedVessels, selectedMonths, complianceMode
     },
   });
 
-  const { data: crewCountByVessel = {} } = useQuery<Record<string, number>>({
-    queryKey: ['v2', 'rest-hours', 'crew-count-by-vessel'],
+  const { data: crewCountByMonthVessel = {} } = useQuery<Record<string, Record<string, number>>>({
+    queryKey: ['v2', 'rest-hours', 'crew-count-by-vessel', selectedMonths],
     queryFn: async () => {
-      return restHoursApiV2.masters.getCrewCountByVessel();
+      return restHoursApiV2.masters.getCrewCountByVessel(selectedMonths);
     },
+    enabled: selectedMonths.length > 0,
   });
 
   const formatMonthDisplay = (mv: string) => {
@@ -743,7 +744,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonths, complianceMode
         if (existingRecord) {
           allRows.push({ ...existingRecord, vesselName: vessel.name || vesselId });
         } else {
-          const crewCount = crewCountByVessel[vesselId] || 0;
+          const crewCount = (crewCountByMonthVessel[mv] && crewCountByMonthVessel[mv][vesselId]) || 0;
           allRows.push({
             id: -(mIdx * 1000 + vIdx + 1),
             vesselId,
@@ -787,7 +788,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonths, complianceMode
       }));
 
     return [...allRows, ...remainingRecords];
-  }, [records, allVessels, selectedMonths, getVesselName, crewCountByVessel]);
+  }, [records, allVessels, selectedMonths, getVesselName, crewCountByMonthVessel]);
 
   const filteredRecords = useMemo(() => {
     let filtered = recordsWithVesselName;

@@ -5,37 +5,56 @@ import type {
 } from "../../../../shared/v2/rest-hours/types";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { eq, and, or, isNull, inArray, sql } from "drizzle-orm";
+import { eq, and, or, isNull, inArray } from "drizzle-orm";
 import { crewRecordsService } from "./crewRecordsService";
 
 const vesselRecordsRepository = new VesselRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
 
-async function getOnboardCrewCounts(vesselIds: string[]): Promise<Map<string, number>> {
+function getMonthBounds(monthValue: string): { firstDay: string; lastDay: string } {
+  const [year, month] = monthValue.split('-').map(Number);
+  const firstDay = `${monthValue}-01`;
+  const lastDayDate = new Date(year, month, 0);
+  const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+  return { firstDay, lastDay };
+}
+
+async function getOnboardCrewCountsForMonths(
+  records: Array<{ vesselId: string; monthValue: string }>
+): Promise<Map<string, number>> {
   const map = new Map<string, number>();
-  if (vesselIds.length === 0) return map;
+  if (records.length === 0) return map;
 
   const db = getDb();
-  const uniqueIds = Array.from(new Set(vesselIds));
+  const vesselIds = Array.from(new Set(records.map(r => r.vesselId)));
 
   const rows = await db
     .select({
       vesselUuid: crewAssignments.vesselUuid,
-      count: sql<number>`cast(count(*) as int)`,
+      signOnDate: crewAssignments.signOnDate,
+      signOffDate: crewAssignments.signOffDate,
     })
     .from(crewAssignments)
     .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
     .where(
       and(
-        inArray(crewAssignments.vesselUuid, uniqueIds),
+        inArray(crewAssignments.vesselUuid, vesselIds),
         eq(crewAssignments.isCurrent, true),
         or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
       )
-    )
-    .groupBy(crewAssignments.vesselUuid);
+    );
 
-  for (const row of rows) {
-    map.set(row.vesselUuid, Number(row.count));
+  for (const record of records) {
+    const { firstDay, lastDay } = getMonthBounds(record.monthValue);
+    const key = `${record.vesselId}|${record.monthValue}`;
+    let count = 0;
+    for (const row of rows) {
+      if (row.vesselUuid !== record.vesselId) continue;
+      if (row.signOnDate && row.signOnDate > lastDay) continue;
+      if (row.signOffDate && row.signOffDate < firstDay) continue;
+      count++;
+    }
+    map.set(key, count);
   }
 
   return map;
@@ -65,8 +84,10 @@ async function enrichVesselRecordsWithLiveCounts(
   const vesselIds = Array.from(new Set(records.map(r => r.vesselId)));
   const monthValues = Array.from(new Set(records.map(r => r.monthValue)));
 
+  const recordKeys = records.map(r => ({ vesselId: r.vesselId, monthValue: r.monthValue }));
+
   const [crewCountsMap, allEnrichedCrew] = await Promise.all([
-    getOnboardCrewCounts(vesselIds),
+    getOnboardCrewCountsForMonths(recordKeys),
     crewRecordsService.getAllBulk({ vesselIds, monthValue: monthValues.length === 1 ? monthValues[0] : undefined }),
   ]);
 
@@ -82,7 +103,7 @@ async function enrichVesselRecordsWithLiveCounts(
   }
 
   return records.map(record => {
-    const onboardCrewCount = crewCountsMap.get(record.vesselId) || 0;
+    const onboardCrewCount = crewCountsMap.get(`${record.vesselId}|${record.monthValue}`) || 0;
     const totalCrew = Math.max(onboardCrewCount, record.totalCrew || 0);
 
     const key = `${record.vesselId}|${record.monthValue}`;

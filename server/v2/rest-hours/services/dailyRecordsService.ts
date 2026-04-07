@@ -18,10 +18,15 @@ const crewRecordsRepository = new CrewRecordsRepository();
 const variableTasksRepository = new VariableTasksRepository();
 const vesselRecordsRepository = new VesselRecordsRepository();
 
-async function getOnboardCrewCount(vesselId: string): Promise<number> {
+async function getOnboardCrewCount(vesselId: string, monthValue: string): Promise<number> {
   const db = getDb();
+  const { firstDay, lastDay } = getMonthBounds(monthValue);
   const crewData = await db
-    .select({ crewUuid: crewAssignments.crewUuid })
+    .select({
+      crewUuid: crewAssignments.crewUuid,
+      signOnDate: crewAssignments.signOnDate,
+      signOffDate: crewAssignments.signOffDate,
+    })
     .from(crewAssignments)
     .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
     .where(
@@ -31,7 +36,11 @@ async function getOnboardCrewCount(vesselId: string): Promise<number> {
         or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
       )
     );
-  return crewData.length;
+  return crewData.filter(row => {
+    if (row.signOnDate && row.signOnDate > lastDay) return false;
+    if (row.signOffDate && row.signOffDate < firstDay) return false;
+    return true;
+  }).length;
 }
 
 function applyAuditUser<T extends object>(
@@ -260,7 +269,7 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
       return;
     }
 
-    const onboardCrewCount = await getOnboardCrewCount(vesselId);
+    const onboardCrewCount = await getOnboardCrewCount(vesselId, monthValue);
     const totalCrew = Math.max(onboardCrewCount, crewRecords.length);
 
     const totalPercent = crewRecords.reduce((sum, record) => sum + (record.recordingStatusPercent || 0), 0);
