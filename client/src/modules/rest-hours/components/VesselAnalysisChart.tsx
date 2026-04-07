@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -182,15 +182,35 @@ export const VesselAnalysisChart = ({
     return result.sort((a, b) => a.vesselName.localeCompare(b.vesselName));
   }, [allCrewRecords, vesselNameMap, allVessels, vesselIds]);
 
-  // Memoize toolbar element
+  const handleDownload = useCallback(() => {
+    const header = ['Vessel', ...MONTHS].join(',');
+    const rows = vesselData.map((vessel) => {
+      const cells = MONTHS.map((_, index) => {
+        const monthKey = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
+        const data = vessel.monthlyData[monthKey];
+        return mode === 'violations' ? (data?.violations || 0) : (data?.ncs || 0);
+      });
+      return [`"${vessel.vesselName}"`, ...cells].join(',');
+    });
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `vessel_analysis_${mode}_${selectedYear}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [vesselData, selectedYear, mode]);
+
   const toolbar = useMemo(() => {
     return (
       <ChartToolbar
         chartTitle="Vessel Analysis"
+        onDownload={handleDownload}
         onFullscreen={() => setShowFullscreen(true)}
       />
     );
-  }, []);
+  }, [handleDownload]);
 
   // Call onRenderToolbar in effect to avoid render-phase updates
   useEffect(() => {
