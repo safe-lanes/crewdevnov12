@@ -1,4 +1,4 @@
-import { DailyRecordsRepository, CrewRecordsRepository, VesselRecordsRepository } from "../repositories";
+import { DailyRecordsRepository, CrewRecordsRepository, VesselRecordsRepository, VariableTasksRepository } from "../repositories";
 import type {
   RhDailyRecordV2,
   InsertRhDailyRecordV2,
@@ -8,12 +8,14 @@ import {
   countViolationDays,
   calculateNCs,
 } from "../utils/violationHelpers";
+import { detectActivityConflict } from "../utils/activityConflictHelpers";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { eq, and, or, isNull, lte, gte } from "drizzle-orm";
 
 const dailyRecordsRepository = new DailyRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
+const variableTasksRepository = new VariableTasksRepository();
 const vesselRecordsRepository = new VesselRecordsRepository();
 
 async function getOnboardCrewCount(vesselId: string): Promise<number> {
@@ -196,6 +198,16 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
       ? buildSignOnOffInfo(assignment.signOnDate, assignment.signOffDate, firstDay, lastDay)
       : null;
 
+    let activityConflicting = false;
+    try {
+      const variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear });
+      if (variableTasks.length > 0) {
+        activityConflicting = detectActivityConflict(crewMemberId, variableTasks, dailyRecordsJson, monthYear);
+      }
+    } catch (e) {
+      console.error('Failed to detect activity conflict during postSaveSync:', e);
+    }
+
     const existingCrewRecords = await crewRecordsRepository.findAll({
       vesselId,
       crewMemberId,
@@ -210,6 +222,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
         predictedViolations,
         totalNCs,
         predictedNCs,
+        activityConflicting,
         signOnOffInfo: signOnOffInfo ?? existingCrewRecord.signOnOffInfo,
       });
     } else {
@@ -222,7 +235,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
         month: formatMonthDisplay(monthYear),
         signOnOffInfo: signOnOffInfo ?? null,
         recordingStatusPercent: recordingPercent,
-        activityConflicting: false,
+        activityConflicting,
         totalViolations,
         totalNCs,
         predictedViolations,
@@ -261,6 +274,13 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
     const predictedNCs = crewRecords.reduce((sum, r) => sum + (r.predictedNCs || 0), 0);
     const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
 
+    const crewWithConflicts = crewRecords.filter(r => r.activityConflicting === true);
+    const activityConflicting = crewWithConflicts.length > 0;
+    const crewWithActivityConflictsCount = crewWithConflicts.length;
+    const crewWithActivityConflictsDetails = crewWithConflicts.length > 0
+      ? JSON.stringify(crewWithConflicts.map(r => ({ name: r.name, rank: r.rank })))
+      : null;
+
     const existingVesselRecords = await vesselRecordsRepository.findAll({
       vesselId,
       monthValue,
@@ -271,6 +291,9 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
       await vesselRecordsRepository.update(existingVesselRecord.rhVesselUuid, {
         totalCrew,
         recordingStatusPercent: averagePercent,
+        activityConflicting,
+        crewWithActivityConflicts: crewWithActivityConflictsCount,
+        crewWithActivityConflictsDetails: crewWithActivityConflictsDetails,
         totalViolations,
         crewWithViolations,
         totalNCs,
@@ -287,7 +310,9 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         month: formatMonthDisplay(monthValue),
         totalCrew,
         recordingStatusPercent: averagePercent,
-        activityConflicting: false,
+        activityConflicting,
+        crewWithActivityConflicts: crewWithActivityConflictsCount,
+        crewWithActivityConflictsDetails: crewWithActivityConflictsDetails,
         totalViolations,
         crewWithViolations,
         totalNCs,

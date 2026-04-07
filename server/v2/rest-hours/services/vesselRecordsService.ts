@@ -101,6 +101,13 @@ async function enrichVesselRecordsWithLiveCounts(
       const totalPercent = crewRecords.reduce((sum, r) => sum + (r.recordingStatusPercent || 0), 0);
       const averagePercent = Math.round(totalPercent / crewRecords.length);
 
+      const crewWithConflicts = crewRecords.filter(r => r.activityConflicting === true);
+      const activityConflicting = crewWithConflicts.length > 0;
+      const crewWithActivityConflictsCount = crewWithConflicts.length;
+      const crewWithActivityConflictsDetails = crewWithConflicts.length > 0
+        ? JSON.stringify(crewWithConflicts.map(r => ({ name: r.name, rank: r.rank })))
+        : record.crewWithActivityConflictsDetails;
+
       return {
         ...record,
         totalCrew,
@@ -113,6 +120,9 @@ async function enrichVesselRecordsWithLiveCounts(
         predictedNCs,
         crewWithPredictedNCs,
         recordingStatusPercent: averagePercent,
+        activityConflicting,
+        crewWithActivityConflicts: crewWithActivityConflictsCount,
+        crewWithActivityConflictsDetails,
       };
     }
 

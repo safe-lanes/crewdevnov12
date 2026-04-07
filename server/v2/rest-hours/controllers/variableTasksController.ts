@@ -47,6 +47,10 @@ export const variableTasksController = {
     try {
       const task = await variableTasksService.create(req.body);
       res.status(201).json(task);
+
+      if (task.vesselId && task.periodValue) {
+        variableTasksService.recalculateConflictsForVessel(task.vesselId, task.periodValue).catch(err => console.error('Failed to recalculate conflicts after create:', err));
+      }
     } catch (error: any) {
       if (error.message?.includes("required")) {
         return res.status(400).json({ error: error.message });
@@ -59,8 +63,19 @@ export const variableTasksController = {
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
+      const originalTask = await variableTasksService.getByUuid(uuid);
       const task = await variableTasksService.update(uuid, req.body);
       res.json(task);
+
+      const recalcPromises: Promise<void>[] = [];
+      if (task.vesselId && task.periodValue) {
+        recalcPromises.push(variableTasksService.recalculateConflictsForVessel(task.vesselId, task.periodValue));
+      }
+      if (originalTask.vesselId && originalTask.periodValue &&
+          (originalTask.vesselId !== task.vesselId || originalTask.periodValue !== task.periodValue)) {
+        recalcPromises.push(variableTasksService.recalculateConflictsForVessel(originalTask.vesselId, originalTask.periodValue));
+      }
+      Promise.all(recalcPromises).catch(err => console.error('Failed to recalculate conflicts after update:', err));
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
@@ -73,8 +88,13 @@ export const variableTasksController = {
   async delete(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
+      const task = await variableTasksService.getByUuid(uuid);
       await variableTasksService.delete(uuid);
       res.status(204).send();
+
+      if (task.vesselId && task.periodValue) {
+        variableTasksService.recalculateConflictsForVessel(task.vesselId, task.periodValue).catch(err => console.error('Failed to recalculate conflicts after delete:', err));
+      }
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
@@ -90,6 +110,10 @@ export const variableTasksController = {
       const { auditUserUuid } = req.body;
       const task = await variableTasksService.publishDraft(uuid, auditUserUuid);
       res.json(task);
+
+      if (task.vesselId && task.periodValue) {
+        variableTasksService.recalculateConflictsForVessel(task.vesselId, task.periodValue).catch(err => console.error('Failed to recalculate conflicts after publish:', err));
+      }
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });

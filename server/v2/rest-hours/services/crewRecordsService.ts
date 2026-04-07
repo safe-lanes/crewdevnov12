@@ -1,4 +1,4 @@
-import { CrewRecordsRepository, DailyRecordsRepository } from "../repositories";
+import { CrewRecordsRepository, DailyRecordsRepository, VariableTasksRepository } from "../repositories";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterVessels } from "../../../../shared/schema";
@@ -13,9 +13,11 @@ import {
   calculateNCs,
   calculateRecordingPercentage,
 } from "../utils/violationHelpers";
+import { detectActivityConflict } from "../utils/activityConflictHelpers";
 
 const crewRecordsRepository = new CrewRecordsRepository();
 const dailyRecordsRepository = new DailyRecordsRepository();
+const variableTasksRepository = new VariableTasksRepository();
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
 
@@ -183,6 +185,22 @@ async function enrichRecordsWithComputedFields(
     }
   }
 
+  const variableTasksMap = new Map<string, Awaited<ReturnType<typeof variableTasksRepository.findAll>>>();
+  for (const vesselId of vesselIds) {
+    const monthValues = Array.from(new Set(
+      records
+        .filter(r => r.vesselId === vesselId)
+        .map(r => r.monthValue)
+    ));
+    for (const monthValue of monthValues) {
+      const vtKey = `${vesselId}-${monthValue}`;
+      if (!variableTasksMap.has(vtKey)) {
+        const tasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthValue });
+        variableTasksMap.set(vtKey, tasks);
+      }
+    }
+  }
+
   return records.map(record => {
     const vesselName = vesselNameMap.get(record.vesselId) || '';
     const key = `${record.crewMemberId}-${record.vesselId}-${record.monthValue}`;
@@ -218,6 +236,20 @@ async function enrichRecordsWithComputedFields(
       liveRecordingPercent = calculateRecordingPercentage(dailyRecordsJson, record.monthValue, dayRange);
     }
 
+    let liveActivityConflicting = false;
+    if (dailyRecordsJson && record.monthValue) {
+      const vtKey = `${record.vesselId}-${record.monthValue}`;
+      const variableTasks = variableTasksMap.get(vtKey) || [];
+      if (variableTasks.length > 0) {
+        liveActivityConflicting = detectActivityConflict(
+          record.crewMemberId,
+          variableTasks,
+          dailyRecordsJson,
+          record.monthValue
+        );
+      }
+    }
+
     const finalTotalNCs = liveTotalNCs ?? (record.totalNCs || 0);
     const finalPredictedNCs = livePredictedNCs ?? (record.predictedNCs || 0);
     const cappedPredictedNCs = (finalTotalNCs >= 1) ? 0 : finalPredictedNCs;
@@ -230,6 +262,7 @@ async function enrichRecordsWithComputedFields(
       ...(liveTotalViolations !== undefined ? { totalViolations: liveTotalViolations } : {}),
       ...(livePredictedViolations !== undefined ? { predictedViolations: livePredictedViolations } : {}),
       ...(liveTotalNCs !== undefined ? { totalNCs: liveTotalNCs } : {}),
+      activityConflicting: liveActivityConflicting,
       signOnDate: _signOnDate ?? null,
       signOffDate: _signOffDate ?? null,
       predictedNCs: cappedPredictedNCs,

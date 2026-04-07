@@ -112,6 +112,8 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'variable-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'crew-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       toast({
         title: 'Success',
         description: 'Variable task created successfully',
@@ -132,6 +134,8 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'variable-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'crew-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       toast({
         title: 'Success',
         description: 'Variable task updated successfully',
@@ -152,6 +156,8 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'variable-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'crew-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       toast({
         title: 'Success',
         description: 'Variable task deleted successfully',
