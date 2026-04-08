@@ -244,8 +244,36 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
       }
     }
 
-    const effectiveAssignments = assignments.length > 0
-      ? assignments
+    let resolvedAssignments = assignments;
+    if (assignments.length > 1) {
+      const sorted = [...assignments].sort(
+        (a, b) => (a.signOnDate || '').localeCompare(b.signOnDate || '')
+      );
+      const kept: typeof assignments = [];
+      for (const curr of sorted) {
+        if (kept.length === 0) {
+          kept.push(curr);
+          continue;
+        }
+        const prev = kept[kept.length - 1];
+        const prevOff = prev.signOffDate;
+        if (prevOff && curr.signOnDate && curr.signOnDate > prevOff) {
+          kept.push(curr);
+        } else {
+          const prevDate = prev.signOnDate || '';
+          const currDate = curr.signOnDate || '';
+          if (currDate > prevDate) {
+            kept[kept.length - 1] = curr;
+          } else if (currDate === prevDate && curr.isCurrent && !prev.isCurrent) {
+            kept[kept.length - 1] = curr;
+          }
+        }
+      }
+      resolvedAssignments = kept;
+    }
+
+    const effectiveAssignments = resolvedAssignments.length > 0
+      ? resolvedAssignments
       : [{ signOnDate: null, signOffDate: null, isCurrent: null }];
 
     const matchedRecordUuids = new Set<string>();

@@ -570,6 +570,14 @@ export const crewRecordsService = {
           };
           allRecords.push(placeholderRecord);
         }
+
+        const resolvedCrewIds = new Set(resolvedAssignments.map(a => a.crewId));
+        allRecords = allRecords.filter(r => {
+          if (r.vesselId !== vesselId) return true;
+          if (!resolvedCrewIds.has(r.crewMemberId)) return true;
+          if (r.id === 0) return true;
+          return matchedRecordIds.has(r.id);
+        });
       }
     }
 
