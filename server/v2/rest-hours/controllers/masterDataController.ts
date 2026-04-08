@@ -90,6 +90,9 @@ export const masterDataController = {
           vesselUuid: crewAssignments.vesselUuid,
           signOnDate: crewAssignments.signOnDate,
           signOffDate: crewAssignments.signOffDate,
+          isCurrent: crewAssignments.isCurrent,
+          crewUuid: crewAssignments.crewUuid,
+          empNo: crewMembersV2.empNo,
         })
         .from(crewAssignments)
         .innerJoin(
@@ -122,12 +125,32 @@ export const masterDataController = {
         const lastDayDate = new Date(year, month, 0);
         const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
 
-        const monthCounts: Record<string, number> = {};
+        const deduped = new Map<string, typeof crewRows[0]>();
         for (const row of crewRows) {
           if (!row.vesselUuid) continue;
-          if (row.signOnDate && row.signOnDate > lastDay) continue;
-          if (row.signOffDate && row.signOffDate < firstDay) continue;
-          monthCounts[row.vesselUuid] = (monthCounts[row.vesselUuid] || 0) + 1;
+          if (!row.signOnDate || row.signOnDate > lastDay) continue;
+          const effectiveSignOff = (row.signOffDate && row.signOffDate !== '') ? row.signOffDate : null;
+          if (effectiveSignOff && effectiveSignOff < firstDay) continue;
+
+          const crewId = row.empNo || row.crewUuid;
+          const dedupKey = `${row.vesselUuid}|${crewId}`;
+          const existing = deduped.get(dedupKey);
+          if (!existing) {
+            deduped.set(dedupKey, row);
+          } else {
+            const existingDate = existing.signOnDate || '';
+            const newDate = row.signOnDate || '';
+            if (newDate > existingDate) {
+              deduped.set(dedupKey, row);
+            } else if (newDate === existingDate && row.isCurrent && !existing.isCurrent) {
+              deduped.set(dedupKey, row);
+            }
+          }
+        }
+
+        const monthCounts: Record<string, number> = {};
+        for (const row of deduped.values()) {
+          monthCounts[row.vesselUuid!] = (monthCounts[row.vesselUuid!] || 0) + 1;
         }
         result[mv] = monthCounts;
       }
