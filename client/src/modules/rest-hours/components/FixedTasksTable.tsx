@@ -305,6 +305,13 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         return true;
       });
     }
+    const seen = new Set<string>();
+    filtered = filtered.filter((crew: any) => {
+      const id = crew.crewMemberId || crew.empNo;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
     return filtered.sort((a: any, b: any) => {
       const aRankBase = a.presentRank?.split('_')[0] || a.presentRank;
       const bRankBase = b.presentRank?.split('_')[0] || b.presentRank;

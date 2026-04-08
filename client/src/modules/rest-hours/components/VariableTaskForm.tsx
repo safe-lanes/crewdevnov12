@@ -118,19 +118,25 @@ export const VariableTaskForm = ({
   const vesselCrewMembers = useMemo(() => {
     const vesselCrew = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
 
-    if (!watchedStartDate && !watchedFinishDate) {
-      return vesselCrew;
+    let filtered = vesselCrew;
+    if (watchedStartDate || watchedFinishDate) {
+      filtered = vesselCrew.filter((crew: any) => {
+        const signOn = crew.signOnDate;
+        if (watchedFinishDate && signOn && signOn > watchedFinishDate) {
+          return false;
+        }
+        const signOff = crew.signOffDate;
+        if (watchedStartDate && signOff && signOff < watchedStartDate) {
+          return false;
+        }
+        return true;
+      });
     }
-
-    return vesselCrew.filter((crew: any) => {
-      const signOn = crew.signOnDate;
-      if (watchedFinishDate && signOn && signOn > watchedFinishDate) {
-        return false;
-      }
-      const signOff = crew.signOffDate;
-      if (watchedStartDate && signOff && signOff < watchedStartDate) {
-        return false;
-      }
+    const seen = new Set<string>();
+    return filtered.filter((crew: any) => {
+      const id = crew.crewMemberId || crew.empNo;
+      if (seen.has(id)) return false;
+      seen.add(id);
       return true;
     });
   }, [allCrewMembers, vesselId, watchedStartDate, watchedFinishDate]);

@@ -392,6 +392,13 @@ export const RHRecordingForm = ({
         return true;
       });
     }
+    const seen = new Set<string>();
+    filtered = filtered.filter((cm: any) => {
+      const id = cm.crewMemberId || cm.empNo;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
     return [...filtered].sort((a: any, b: any) => {
       const aOrder = getRankSortOrder(a.presentRank);
       const bOrder = getRankSortOrder(b.presentRank);

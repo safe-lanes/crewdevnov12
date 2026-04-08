@@ -103,7 +103,14 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
 
   const vesselCrewMembers = useMemo(() => {
     if (!vesselId || !crewMembers) return [];
-    return crewMembers.filter(crew => crew.presentVessel === vesselId);
+    const filtered = crewMembers.filter(crew => crew.presentVessel === vesselId);
+    const seen = new Set<string>();
+    return filtered.filter((crew: any) => {
+      const id = crew.crewMemberId || crew.empNo;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
   }, [crewMembers, vesselId]);
 
   const createMutation = useMutation({

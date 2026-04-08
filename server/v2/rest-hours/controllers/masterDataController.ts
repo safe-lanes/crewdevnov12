@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { getDb } from "../../db";
 import { masterVessels } from "../../../../shared/schema";
 import { crewMembersV2, crewAssignments } from "../../../../shared/v2/crew-pool/schema";
-import { eq, isNull, or, and, sql } from "drizzle-orm";
+import { eq, isNull, or, and, sql, desc } from "drizzle-orm";
 
 export const masterDataController = {
   async getVessels(req: Request, res: Response) {
@@ -49,17 +49,15 @@ export const masterDataController = {
         .from(crewMembersV2)
         .leftJoin(
           crewAssignments,
-          and(
-            eq(crewMembersV2.crewUuid, crewAssignments.crewUuid),
-            eq(crewAssignments.isCurrent, true)
-          )
+          eq(crewMembersV2.crewUuid, crewAssignments.crewUuid)
         )
         .where(
           or(
             eq(crewMembersV2.isDeleted, false),
             isNull(crewMembersV2.isDeleted)
           )
-        );
+        )
+        .orderBy(crewMembersV2.empNo, desc(crewAssignments.isCurrent), desc(crewAssignments.signOnDate));
 
       const crewMembers = await query;
 
