@@ -157,11 +157,11 @@ function getApplicableDayRange(
   return changed ? { from, to } : undefined;
 }
 
-async function getCrewAssignmentForMonth(
+async function getCrewAssignmentsForMonth(
   crewMemberId: string,
   vesselId: string,
   monthValue: string
-): Promise<{ signOnDate: string | null; signOffDate: string | null } | null> {
+): Promise<{ signOnDate: string | null; signOffDate: string | null; isCurrent: boolean | null }[]> {
   try {
     const { firstDay, lastDay } = getMonthBounds(monthValue);
     const db = getDb();
@@ -172,6 +172,7 @@ async function getCrewAssignmentForMonth(
         empNo: crewMembersV2.empNo,
         signOnDate: crewAssignments.signOnDate,
         signOffDate: crewAssignments.signOffDate,
+        isCurrent: crewAssignments.isCurrent,
       })
       .from(crewAssignments)
       .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
@@ -190,15 +191,19 @@ async function getCrewAssignmentForMonth(
         )
       );
 
-    const match = rows.find(r => {
+    const matches = rows.filter(r => {
       const id = r.empNo || r.crewUuid;
       return id === crewMemberId;
     });
 
-    return match ? { signOnDate: match.signOnDate || null, signOffDate: match.signOffDate || null } : null;
+    return matches.map(m => ({
+      signOnDate: m.signOnDate || null,
+      signOffDate: (m.signOffDate && m.signOffDate !== '') ? m.signOffDate : null,
+      isCurrent: m.isCurrent ?? null,
+    }));
   } catch (error) {
-    console.error('Failed to get crew assignment for month:', error);
-    return null;
+    console.error('Failed to get crew assignments for month:', error);
+    return [];
   }
 }
 
@@ -211,29 +216,14 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
 
     const dailyRecordsJson = dailyRecord.dailyRecords || '[]';
 
-    const assignment = await getCrewAssignmentForMonth(crewMemberId, vesselId, monthYear);
+    const assignments = await getCrewAssignmentsForMonth(crewMemberId, vesselId, monthYear);
     const { firstDay, lastDay } = getMonthBounds(monthYear);
-    const dayRange = assignment
-      ? getApplicableDayRange(assignment.signOnDate, assignment.signOffDate, firstDay, lastDay, monthYear)
-      : undefined;
 
-    const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange);
-    const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false, dayRange);
-    const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true, dayRange);
-    const { totalNCs, predictedNCs } = calculateNCs(dailyRecordsJson, 'Rest', false, dayRange);
-
-    const signOnOffInfo = assignment
-      ? buildSignOnOffInfo(assignment.signOnDate, assignment.signOffDate, firstDay, lastDay)
-      : null;
-
-    let activityConflicting = false;
+    let variableTasks: Awaited<ReturnType<typeof variableTasksRepository.findAll>> = [];
     try {
-      const variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear });
-      if (variableTasks.length > 0) {
-        activityConflicting = detectActivityConflict(crewMemberId, variableTasks, dailyRecordsJson, monthYear);
-      }
+      variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear });
     } catch (e) {
-      console.error('Failed to detect activity conflict during postSaveSync:', e);
+      console.error('Failed to fetch variable tasks during postSaveSync:', e);
     }
 
     const existingCrewRecords = await crewRecordsRepository.findAll({
@@ -241,45 +231,84 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
       crewMemberId,
       monthValue: monthYear,
     });
-    const existingCrewRecord = existingCrewRecords[0];
 
-    if (existingCrewRecord) {
-      await crewRecordsRepository.update(existingCrewRecord.rhCrewRecordUuid, {
-        recordingStatusPercent: recordingPercent,
-        totalViolations,
-        predictedViolations,
-        totalNCs,
-        predictedNCs,
-        activityConflicting,
-        signOnOffInfo: signOnOffInfo ?? existingCrewRecord.signOnOffInfo,
-      });
-    } else {
-      let crewName = dailyRecord.name || '';
-      if (!crewName || crewName === 'undefined undefined') {
-        const db = getDb();
-        const crewRows = await db
-          .select({ firstName: crewMembersV2.firstName, familyName: crewMembersV2.familyName })
-          .from(crewMembersV2)
-          .where(eq(crewMembersV2.empNo, crewMemberId));
-        if (crewRows.length > 0) {
-          crewName = [crewRows[0].firstName, crewRows[0].familyName].filter(Boolean).join(' ');
+    let crewName = dailyRecord.name || '';
+    if (!crewName || crewName === 'undefined undefined') {
+      const db = getDb();
+      const crewRows = await db
+        .select({ firstName: crewMembersV2.firstName, familyName: crewMembersV2.familyName })
+        .from(crewMembersV2)
+        .where(eq(crewMembersV2.empNo, crewMemberId));
+      if (crewRows.length > 0) {
+        crewName = [crewRows[0].firstName, crewRows[0].familyName].filter(Boolean).join(' ');
+      }
+    }
+
+    const effectiveAssignments = assignments.length > 0
+      ? assignments
+      : [{ signOnDate: null, signOffDate: null, isCurrent: null }];
+
+    const matchedRecordUuids = new Set<string>();
+
+    for (const assignment of effectiveAssignments) {
+      const effectiveSignOff = assignment.isCurrent ? null : assignment.signOffDate;
+      const dayRange = (assignment.signOnDate || effectiveSignOff)
+        ? getApplicableDayRange(assignment.signOnDate, effectiveSignOff, firstDay, lastDay, monthYear)
+        : undefined;
+
+      const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange);
+      const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false, dayRange);
+      const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true, dayRange);
+      const { totalNCs, predictedNCs } = calculateNCs(dailyRecordsJson, 'Rest', false, dayRange);
+
+      const signOnOffInfo = (assignment.signOnDate || effectiveSignOff)
+        ? buildSignOnOffInfo(assignment.signOnDate, effectiveSignOff, firstDay, lastDay)
+        : null;
+
+      let activityConflicting = false;
+      if (variableTasks.length > 0) {
+        try {
+          activityConflicting = detectActivityConflict(crewMemberId, variableTasks, dailyRecordsJson, monthYear);
+        } catch (e) {
+          console.error('Failed to detect activity conflict during postSaveSync:', e);
         }
       }
-      await crewRecordsRepository.create({
-        crewMemberId,
-        vesselId,
-        rank: dailyRecord.rank || '',
-        name: crewName,
-        monthValue: monthYear,
-        month: formatMonthDisplay(monthYear),
-        signOnOffInfo: signOnOffInfo ?? null,
-        recordingStatusPercent: recordingPercent,
-        activityConflicting,
-        totalViolations,
-        totalNCs,
-        predictedViolations,
-        predictedNCs,
-      });
+
+      let matchedRecord = existingCrewRecords.find(
+        r => !matchedRecordUuids.has(r.rhCrewRecordUuid) && r.signOnOffInfo === signOnOffInfo
+      );
+      if (!matchedRecord && existingCrewRecords.length > 0) {
+        matchedRecord = existingCrewRecords.find(r => !matchedRecordUuids.has(r.rhCrewRecordUuid));
+      }
+
+      if (matchedRecord) {
+        matchedRecordUuids.add(matchedRecord.rhCrewRecordUuid);
+        await crewRecordsRepository.update(matchedRecord.rhCrewRecordUuid, {
+          recordingStatusPercent: recordingPercent,
+          totalViolations,
+          predictedViolations,
+          totalNCs,
+          predictedNCs,
+          activityConflicting,
+          signOnOffInfo,
+        });
+      } else {
+        await crewRecordsRepository.create({
+          crewMemberId,
+          vesselId,
+          rank: dailyRecord.rank || '',
+          name: crewName,
+          monthValue: monthYear,
+          month: formatMonthDisplay(monthYear),
+          signOnOffInfo: signOnOffInfo ?? null,
+          recordingStatusPercent: recordingPercent,
+          activityConflicting,
+          totalViolations,
+          totalNCs,
+          predictedViolations,
+          predictedNCs,
+        });
+      }
     }
 
     await updateVesselRecordSync(vesselId, monthYear);

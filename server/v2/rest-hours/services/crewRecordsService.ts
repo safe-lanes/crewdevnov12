@@ -443,59 +443,100 @@ export const crewRecordsService = {
             )
           );
 
-        // Deduplicate by crewId — if multiple assignments match (e.g. rejoined crew),
-        // keep the one with the latest signOnDate. On a tie, prefer isCurrent=true
-        // so stale records with an erroneous signOffDate never win over the live record.
-        const assignmentByCrewId = new Map<string, typeof crewData[0]>();
+        type CrewAssignment = typeof crewData[0];
+
+        const assignmentsByCrewId = new Map<string, CrewAssignment[]>();
         for (const crew of crewData) {
           const crewId = crew.empNo || crew.crewUuid;
-          const existing = assignmentByCrewId.get(crewId);
-          if (!existing) {
-            assignmentByCrewId.set(crewId, crew);
+          const list = assignmentsByCrewId.get(crewId) || [];
+          list.push(crew);
+          assignmentsByCrewId.set(crewId, list);
+        }
+
+        const resolvedAssignments: { key: string; crewId: string; assignment: CrewAssignment }[] = [];
+        for (const [crewId, assignments] of assignmentsByCrewId) {
+          if (assignments.length === 1) {
+            resolvedAssignments.push({ key: crewId, crewId, assignment: assignments[0] });
+            continue;
+          }
+
+          assignments.sort((a, b) => (a.signOnDate || '').localeCompare(b.signOnDate || ''));
+
+          const kept: CrewAssignment[] = [];
+          for (const curr of assignments) {
+            if (kept.length === 0) {
+              kept.push(curr);
+              continue;
+            }
+            const prev = kept[kept.length - 1];
+            const prevOff = (prev.signOffDate && prev.signOffDate !== '') ? prev.signOffDate : null;
+            if (prevOff && curr.signOnDate && curr.signOnDate > prevOff) {
+              kept.push(curr);
+            } else {
+              const prevDate = prev.signOnDate || '';
+              const currDate = curr.signOnDate || '';
+              if (currDate > prevDate) {
+                kept[kept.length - 1] = curr;
+              } else if (currDate === prevDate && curr.isCurrent && !prev.isCurrent) {
+                kept[kept.length - 1] = curr;
+              }
+            }
+          }
+
+          if (kept.length === 1) {
+            resolvedAssignments.push({ key: crewId, crewId, assignment: kept[0] });
           } else {
-            const existingDate = existing.signOnDate || '';
-            const newDate = crew.signOnDate || '';
-            if (newDate > existingDate) {
-              assignmentByCrewId.set(crewId, crew);
-            } else if (newDate === existingDate && crew.isCurrent && !existing.isCurrent) {
-              // Same signOnDate — the currently-active assignment wins
-              assignmentByCrewId.set(crewId, crew);
+            for (const a of kept) {
+              resolvedAssignments.push({
+                key: `${crewId}|${a.signOnDate || ''}`,
+                crewId,
+                assignment: a,
+              });
             }
           }
         }
 
-        // Update signOnOffInfo for existing records from the DB using the assignment data
-        for (const record of allRecords) {
-          if (record.vesselId !== vesselId) continue;
-          const assignment = assignmentByCrewId.get(record.crewMemberId);
-          if (assignment) {
-            // If the crew member is still on board (isCurrent=true), suppress any
-            // signOffDate — they haven't actually left yet regardless of stored value.
-            const effectiveSignOffDate = assignment.isCurrent ? null : assignment.signOffDate;
-            record.signOnOffInfo = buildSignOnOffInfo(
-              assignment.signOnDate,
-              effectiveSignOffDate,
-              firstDay,
-              lastDay
-            );
-            record._signOnDate = assignment.signOnDate;
-            record._signOffDate = effectiveSignOffDate;
+        const matchedRecordIds = new Set<number>();
+        const matchedKeys = new Set<string>();
+        for (const { key, crewId, assignment } of resolvedAssignments) {
+          const effectiveSignOffDate = assignment.isCurrent ? null : assignment.signOffDate;
+          const assignmentSignOnOff = buildSignOnOffInfo(
+            assignment.signOnDate,
+            effectiveSignOffDate,
+            firstDay,
+            lastDay
+          );
+
+          const candidateRecords = allRecords.filter(
+            r => r.vesselId === vesselId && r.crewMemberId === crewId && !matchedRecordIds.has(r.id)
+          );
+
+          let bestRecord: RecordWithAssignment | null = null;
+          if (candidateRecords.length === 1) {
+            bestRecord = candidateRecords[0];
+          } else if (candidateRecords.length > 1) {
+            bestRecord = candidateRecords.find(r => r.signOnOffInfo === assignmentSignOnOff) || null;
+            if (!bestRecord) {
+              bestRecord = candidateRecords[0];
+            }
+          }
+
+          if (bestRecord) {
+            matchedRecordIds.add(bestRecord.id);
+            matchedKeys.add(key);
+            bestRecord.signOnOffInfo = assignmentSignOnOff;
+            bestRecord._signOnDate = assignment.signOnDate;
+            bestRecord._signOffDate = effectiveSignOffDate;
           }
         }
 
-        // Build set of crew IDs that already have a DB record this month
-        const existingCrewIds = new Set(
-          allRecords.filter(r => r.vesselId === vesselId).map(r => r.crewMemberId)
-        );
+        for (const { key, crewId, assignment } of resolvedAssignments) {
+          if (matchedKeys.has(key)) continue;
 
-        // Add placeholder records for crew on board this month without existing records
-        for (const [crewId, crew] of assignmentByCrewId) {
-          if (existingCrewIds.has(crewId)) continue;
-
-          const effectiveSignOffDate = crew.isCurrent ? null : crew.signOffDate;
+          const effectiveSignOffDate = assignment.isCurrent ? null : assignment.signOffDate;
 
           const signOnOffInfo = buildSignOnOffInfo(
-            crew.signOnDate,
+            assignment.signOnDate,
             effectiveSignOffDate,
             firstDay,
             lastDay
@@ -503,11 +544,11 @@ export const crewRecordsService = {
 
           const placeholderRecord: RecordWithAssignment = {
             id: 0,
-            rhCrewRecordUuid: `placeholder-${crew.crewUuid}-${monthValue}`,
+            rhCrewRecordUuid: `placeholder-${assignment.crewUuid}-${assignment.signOnDate || ''}-${monthValue}`,
             vesselId: vesselId,
             crewMemberId: crewId,
-            rank: crew.presentRank || 'Unknown',
-            name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim() || 'Unknown',
+            rank: assignment.presentRank || 'Unknown',
+            name: `${assignment.firstName || ''} ${assignment.familyName || ''}`.trim() || 'Unknown',
             month: formatMonthDisplay(monthValue),
             monthValue: monthValue,
             signOnOffInfo,
@@ -524,11 +565,10 @@ export const crewRecordsService = {
             updatedByUuid: null,
             isDeleted: false,
             isSync: false,
-            _signOnDate: crew.signOnDate,
+            _signOnDate: assignment.signOnDate,
             _signOffDate: effectiveSignOffDate,
           };
           allRecords.push(placeholderRecord);
-          existingCrewIds.add(crewId);
         }
       }
     }
