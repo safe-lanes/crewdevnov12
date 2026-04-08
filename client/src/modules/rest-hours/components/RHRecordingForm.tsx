@@ -1658,6 +1658,9 @@ export const RHRecordingForm = ({
     }
   };
 
+  const effectiveSignOnDate = selectedCrewMember?.signOnDate ?? signOnDate;
+  const effectiveSignOffDate = selectedCrewMember?.signOffDate ?? signOffDate;
+
   // Compute the inclusive range of days [from, to] that are applicable for this crew member.
   // Days outside this range must be greyed out and uneditable.
   const applicableDayRange = useMemo(() => {
@@ -1670,15 +1673,15 @@ export const RHRecordingForm = ({
     let from = 1;
     let to = daysInMonth;
 
-    if (signOnDate && signOnDate >= firstDay && signOnDate <= lastDay) {
-      from = parseInt(signOnDate.split('-')[2], 10);
+    if (effectiveSignOnDate && effectiveSignOnDate >= firstDay && effectiveSignOnDate <= lastDay) {
+      from = parseInt(effectiveSignOnDate.split('-')[2], 10);
     }
-    if (signOffDate && signOffDate >= firstDay && signOffDate <= lastDay) {
-      to = parseInt(signOffDate.split('-')[2], 10);
+    if (effectiveSignOffDate && effectiveSignOffDate >= firstDay && effectiveSignOffDate <= lastDay) {
+      to = parseInt(effectiveSignOffDate.split('-')[2], 10);
     }
 
     return { from, to };
-  }, [selectedPeriod, signOnDate, signOffDate]);
+  }, [selectedPeriod, effectiveSignOnDate, effectiveSignOffDate]);
 
   // Generate display rows - now 1:1 mapping since retarded days have separate records
   const displayRows = useMemo(() => {
