@@ -26,21 +26,40 @@ async function getOnboardCrewCount(vesselId: string, monthValue: string): Promis
       crewUuid: crewAssignments.crewUuid,
       signOnDate: crewAssignments.signOnDate,
       signOffDate: crewAssignments.signOffDate,
+      isCurrent: crewAssignments.isCurrent,
+      empNo: crewMembersV2.empNo,
     })
     .from(crewAssignments)
     .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
     .where(
       and(
         eq(crewAssignments.vesselUuid, vesselId),
-        eq(crewAssignments.isCurrent, true),
         or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
       )
     );
-  return crewData.filter(row => {
-    if (row.signOnDate && row.signOnDate > lastDay) return false;
-    if (row.signOffDate && row.signOffDate < firstDay) return false;
-    return true;
-  }).length;
+
+  const deduped = new Map<string, typeof crewData[0]>();
+  for (const row of crewData) {
+    if (!row.signOnDate || row.signOnDate > lastDay) continue;
+    const effectiveSignOff = (row.signOffDate && row.signOffDate !== '') ? row.signOffDate : null;
+    if (effectiveSignOff && effectiveSignOff < firstDay) continue;
+
+    const crewId = row.empNo || row.crewUuid;
+    const existing = deduped.get(crewId);
+    if (!existing) {
+      deduped.set(crewId, row);
+    } else {
+      const existingDate = existing.signOnDate || '';
+      const newDate = row.signOnDate || '';
+      if (newDate > existingDate) {
+        deduped.set(crewId, row);
+      } else if (newDate === existingDate && row.isCurrent && !existing.isCurrent) {
+        deduped.set(crewId, row);
+      }
+    }
+  }
+
+  return deduped.size;
 }
 
 function applyAuditUser<T extends object>(

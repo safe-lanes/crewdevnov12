@@ -33,13 +33,15 @@ async function getOnboardCrewCountsForMonths(
       vesselUuid: crewAssignments.vesselUuid,
       signOnDate: crewAssignments.signOnDate,
       signOffDate: crewAssignments.signOffDate,
+      isCurrent: crewAssignments.isCurrent,
+      crewUuid: crewAssignments.crewUuid,
+      empNo: crewMembersV2.empNo,
     })
     .from(crewAssignments)
     .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
     .where(
       and(
         inArray(crewAssignments.vesselUuid, vesselIds),
-        eq(crewAssignments.isCurrent, true),
         or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
       )
     );
@@ -47,14 +49,31 @@ async function getOnboardCrewCountsForMonths(
   for (const record of records) {
     const { firstDay, lastDay } = getMonthBounds(record.monthValue);
     const key = `${record.vesselId}|${record.monthValue}`;
-    let count = 0;
+
+    const deduped = new Map<string, typeof rows[0]>();
     for (const row of rows) {
       if (row.vesselUuid !== record.vesselId) continue;
-      if (row.signOnDate && row.signOnDate > lastDay) continue;
-      if (row.signOffDate && row.signOffDate < firstDay) continue;
-      count++;
+      if (!row.signOnDate || row.signOnDate > lastDay) continue;
+      const effectiveSignOff = (row.signOffDate && row.signOffDate !== '') ? row.signOffDate : null;
+      if (effectiveSignOff && effectiveSignOff < firstDay) continue;
+
+      const crewId = row.empNo || row.crewUuid;
+      const dedupKey = `${row.vesselUuid}|${crewId}`;
+      const existing = deduped.get(dedupKey);
+      if (!existing) {
+        deduped.set(dedupKey, row);
+      } else {
+        const existingDate = existing.signOnDate || '';
+        const newDate = row.signOnDate || '';
+        if (newDate > existingDate) {
+          deduped.set(dedupKey, row);
+        } else if (newDate === existingDate && row.isCurrent && !existing.isCurrent) {
+          deduped.set(dedupKey, row);
+        }
+      }
     }
-    map.set(key, count);
+
+    map.set(key, deduped.size);
   }
 
   return map;
