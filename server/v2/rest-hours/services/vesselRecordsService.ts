@@ -130,22 +130,43 @@ async function enrichVesselRecordsWithLiveCounts(
 
     if (crewRecords && crewRecords.length > 0) {
       const totalViolations = crewRecords.reduce((sum, r) => sum + (r.totalViolations || 0), 0);
-      const crewWithViolations = crewRecords.filter(r => (r.totalViolations || 0) > 0).length;
       const totalNCs = crewRecords.reduce((sum, r) => sum + (r.totalNCs || 0), 0);
-      const crewWithNCs = crewRecords.filter(r => (r.totalNCs || 0) > 0).length;
       const predictedViolations = crewRecords.reduce((sum, r) => sum + (r.predictedViolations || 0), 0);
-      const crewWithPredictedViolations = crewRecords.filter(r => (r.predictedViolations || 0) > 0).length;
       const predictedNCs = crewRecords.reduce((sum, r) => sum + (r.predictedNCs || 0), 0);
-      const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
+
+      const crewViolMap = new Map<string, number>();
+      const crewNCMap = new Map<string, number>();
+      const crewPredViolMap = new Map<string, number>();
+      const crewPredNCMap = new Map<string, { totalNCs: number; predictedNCs: number }>();
+      const crewConflictMap = new Map<string, { name: string; rank: string }>();
+      for (const r of crewRecords) {
+        const cid = r.crewMemberId || '';
+        crewViolMap.set(cid, (crewViolMap.get(cid) || 0) + (r.totalViolations || 0));
+        crewNCMap.set(cid, (crewNCMap.get(cid) || 0) + (r.totalNCs || 0));
+        crewPredViolMap.set(cid, (crewPredViolMap.get(cid) || 0) + (r.predictedViolations || 0));
+        const prev = crewPredNCMap.get(cid) || { totalNCs: 0, predictedNCs: 0 };
+        crewPredNCMap.set(cid, {
+          totalNCs: prev.totalNCs + (r.totalNCs || 0),
+          predictedNCs: prev.predictedNCs + (r.predictedNCs || 0),
+        });
+        if (r.activityConflicting === true) {
+          crewConflictMap.set(cid, { name: r.name || '', rank: r.rank || '' });
+        }
+      }
+      const crewWithViolations = [...crewViolMap.values()].filter(v => v > 0).length;
+      const crewWithNCs = [...crewNCMap.values()].filter(v => v > 0).length;
+      const crewWithPredictedViolations = [...crewPredViolMap.values()].filter(v => v > 0).length;
+      const crewWithPredictedNCs = [...crewPredNCMap.values()].filter(
+        v => v.totalNCs === 0 && v.predictedNCs > 0
+      ).length;
 
       const totalPercent = crewRecords.reduce((sum, r) => sum + (r.recordingStatusPercent || 0), 0);
       const averagePercent = Math.round(totalPercent / crewRecords.length);
 
-      const crewWithConflicts = crewRecords.filter(r => r.activityConflicting === true);
-      const activityConflicting = crewWithConflicts.length > 0;
-      const crewWithActivityConflictsCount = crewWithConflicts.length;
-      const crewWithActivityConflictsDetails = crewWithConflicts.length > 0
-        ? JSON.stringify(crewWithConflicts.map(r => ({ name: r.name, rank: r.rank })))
+      const activityConflicting = crewConflictMap.size > 0;
+      const crewWithActivityConflictsCount = crewConflictMap.size;
+      const crewWithActivityConflictsDetails = crewConflictMap.size > 0
+        ? JSON.stringify([...crewConflictMap.values()])
         : null;
 
       return {
