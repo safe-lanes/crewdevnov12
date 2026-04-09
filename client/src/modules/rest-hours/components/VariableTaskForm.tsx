@@ -420,6 +420,8 @@ export const VariableTaskForm = ({
 
     const totalCrew = allSelectedCrewDetails.length;
 
+    const derivedPeriodValue = values.startDate.substring(0, 7) || periodValue;
+
     const insertData: InsertVariableTask = {
       startDateTime,
       finishDateTime,
@@ -429,7 +431,7 @@ export const VariableTaskForm = ({
       status: statusLabel,
       crewInvolved: totalCrew,
       remarks: values.comments || '',
-      periodValue,
+      periodValue: derivedPeriodValue,
       vesselId: vesselId ? String(vesselId) : null,
       isDraft,
       recordType: values.recordType,

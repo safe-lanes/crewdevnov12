@@ -274,11 +274,28 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     setFormOpen(true);
   };
 
+  const showCrossMonthToast = (taskPeriod: string | null | undefined) => {
+    if (taskPeriod && taskPeriod !== periodValue) {
+      const [y, m] = taskPeriod.split('-');
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const label = `${monthNames[parseInt(m, 10) - 1]} ${y}`;
+      toast({
+        title: 'Note',
+        description: `Task saved under ${label}. Switch the period filter to view it.`,
+      });
+    }
+  };
+
   const handleFormSubmit = (data: InsertVariableTask, isDraft: boolean) => {
     if (editingTask) {
-      updateMutation.mutate({ uuid: (editingTask as any).variableTaskUuid || String(editingTask.id), data });
+      updateMutation.mutate(
+        { uuid: (editingTask as any).variableTaskUuid || String(editingTask.id), data },
+        { onSuccess: () => showCrossMonthToast(data.periodValue) }
+      );
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: () => showCrossMonthToast(data.periodValue),
+      });
     }
   };
 
