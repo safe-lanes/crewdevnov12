@@ -67,7 +67,8 @@ export const crewAvailabilityService = {
           eq(crewMembersV2.presentRank, rank),
           eq(crewMembersV2.isDeleted, false),
           isNull(crewMembersV2.archivedAt),
-          ilike(crewMembersV2.status, "active")
+          ilike(crewMembersV2.status, "active"),
+          or(eq(crewMembersV2.isActive, true), isNull(crewMembersV2.isActive))
         )
       );
 
@@ -181,6 +182,8 @@ export const crewAvailabilityService = {
       eq(crewMembersV2.presentRank, rank),
       eq(crewMembersV2.isDeleted, false),
       isNull(crewMembersV2.archivedAt),
+      ilike(crewMembersV2.status, "active"),
+      or(eq(crewMembersV2.isActive, true), isNull(crewMembersV2.isActive)),
     ];
 
     const results = await db
