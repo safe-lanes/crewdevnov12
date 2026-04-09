@@ -44,15 +44,6 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
     return;
   }
 
-  const TUID_PATTERN = /^[a-zA-Z0-9_-]{1,128}$/;
-  if (!TUID_PATTERN.test(tenantId)) {
-    res.status(400).json({
-      error: "Invalid x-tenant-id format",
-      message: "Tenant identifier must be alphanumeric (with hyphens/underscores), max 128 characters",
-    });
-    return;
-  }
-
   req.tenantId = tenantId;
 
   tenantConnectionManager
