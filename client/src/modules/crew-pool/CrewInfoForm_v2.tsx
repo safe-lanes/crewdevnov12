@@ -488,6 +488,31 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', id, 'assignments'] });
   };
 
+  const invalidateCrewDashboard = (id: string | null) => {
+    if (!id) return;
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', id, 'dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', id, 'assignments'] });
+  };
+
+  const markDeletingForCrew = (crewId: string) => {
+    const ctx = deletingContextRef.current;
+    if (ctx && ctx.crewId === crewId) {
+      ctx.count++;
+    } else {
+      deletingContextRef.current = { crewId, count: 1 };
+    }
+  };
+
+  const clearDeletingForCrew = () => {
+    const ctx = deletingContextRef.current;
+    if (ctx) {
+      ctx.count--;
+      if (ctx.count <= 0) {
+        deletingContextRef.current = null;
+      }
+    }
+  };
+
   // V2: Crew assignments — used to detect auto-generated (vessel-synced) E1 rows
   const { data: crewAssignmentsData } = useQuery<any[]>({
     queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'assignments'],
@@ -655,6 +680,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
   const isBatchSavingRef = useRef(false);
+  const deletingContextRef = useRef<{ crewId: string; count: number } | null>(null);
   const [isBatchSaving, setIsBatchSaving] = useState(false);
 
   // Refs for click-outside detection on B1/B2/B3
@@ -935,94 +961,42 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   useEffect(() => {
     if (isBatchSavingRef.current) return;
     if (detailedCrewData && (crewMember?.crewUuid || crewMember?.id)) {
+      const currentCrewId = crewMember?.crewUuid || crewMember?.id || '';
+      const ctx = deletingContextRef.current;
+      const preserveLocalRows = !!(ctx && ctx.crewId === currentCrewId && ctx.count > 0);
       setDeletedChildUuids([]);
-      setFormData(prev => ({
-        ...prev,
-        // A1.1 General Particulars
-        firstName: detailedCrewData.firstName || '',
-        middleName: detailedCrewData.middleName || '',
-        familyName: detailedCrewData.familyName || '',
-        gender: detailedCrewData.gender || '',
-        nationality: detailedCrewData.nationality || '',
-        presentRank: normalizeRank(detailedCrewData.presentRank || '') || detailedCrewData.presentRank || '',
-        dateOfBirth: detailedCrewData.dob || detailedCrewData.dateOfBirth || '',
-        ageInYears: detailedCrewData.age || calculateAge(detailedCrewData.dob || detailedCrewData.dateOfBirth || ''),
-        placeOfBirthCity: detailedCrewData.placeOfBirthCity || '',
-        placeOfBirthCountry: detailedCrewData.placeOfBirthCountry || '',
-        heightCm: detailedCrewData.height || detailedCrewData.heightCm || '',
-        weightKg: detailedCrewData.weight || detailedCrewData.weightKg || '',
-        bmi: detailedCrewData.bmi || calculateBMI(
-          detailedCrewData.height || detailedCrewData.heightCm || '',
-          detailedCrewData.weight || detailedCrewData.weightKg || ''
-        ),
-        nativeLanguage: detailedCrewData.nativeLanguage || '',
-        foreignLanguages: detailedCrewData.foreignLanguages || '',
-        englishProficiency: detailedCrewData.englishProficiency || '',
-        rankAppliedFor: normalizeRank(detailedCrewData.rankAppliedFor || '') || detailedCrewData.rankAppliedFor || '',
-        vesselType: Array.isArray(detailedCrewData.vesselTypes) 
-          ? detailedCrewData.vesselTypes 
-          : detailedCrewData.vesselTypes 
-            ? [detailedCrewData.vesselTypes] 
-            : [],
-        manningAgent: detailedCrewData.manningAgent || '',
-        crewPool: detailedCrewData.crewPool || '',
-        employeeId: detailedCrewData.employeeId || '',
-        nextAvailability: detailedCrewData.nextAvailability || '',
-        
-        // A1.2 Address & Contact Info
-        countryOfResidence: detailedCrewData.countryOfResidence || '',
-        nearestAirport: detailedCrewData.nearestAirport || '',
-        residentialAddressLine1: detailedCrewData.residentialAddressLine1 || '',
-        residentialAddressLine2: detailedCrewData.residentialAddressLine2 || '',
-        contactLandline: detailedCrewData.contactLandline || '',
-        mobile: detailedCrewData.mobile || '',
-        email: detailedCrewData.email || '',
-        
-        // A1.3 Family and NOK
-        maritalStatus: detailedCrewData.maritalStatus || '',
-        numberOfDependentChildren: detailedCrewData.numberOfDependentChildren || '',
-        fatherName: detailedCrewData.fatherName || '',
-        motherName: detailedCrewData.motherName || '',
-        spouseFirstName: detailedCrewData.spouseFirstName || '',
-        spouseMiddleName: detailedCrewData.spouseMiddleName || '',
-        spouseFamilyName: detailedCrewData.spouseFamilyName || '',
-        spouseDateOfBirth: detailedCrewData.spouseDateOfBirth || '',
-        children: Array.isArray(detailedCrewData.children) 
-          ? detailedCrewData.children 
-          : detailedCrewData.children 
-            ? JSON.parse(detailedCrewData.children) 
-            : [],
-        nokFirstName: detailedCrewData.nokFirstName || '',
-        nokMiddleName: detailedCrewData.nokMiddleName || '',
-        nokFamilyName: detailedCrewData.nokFamilyName || '',
-        nokTelephone: detailedCrewData.nokTelephone || '',
-        nokEmail: detailedCrewData.nokEmail || '',
-        nokAddress: detailedCrewData.nokAddress || '',
-        nokRelationship: detailedCrewData.nokRelationship || '',
-        
-        // Complex data arrays - parse JSON strings from API
-        // IMPORTANT: Use empty defaults (not prev state) to prevent data leaking between crew members
-        documents: Array.isArray(detailedCrewData.documents) 
+      setFormData(prev => {
+        const localOnlyDocs = preserveLocalRows ? prev.documents.filter((d: any) => !d.docUuid) : [];
+        const localOnlyVisas = preserveLocalRows ? prev.visas.filter((v: any) => !v.visaUuid) : [];
+        const localOnlyEdu = preserveLocalRows ? prev.education.filter((e: any) => !e.eduUuid) : [];
+        const localOnlyLicenses = preserveLocalRows ? prev.licenses.filter((l: any) => !l.licUuid) : [];
+        const localOnlyTraining = preserveLocalRows ? prev.trainingCourses.filter((t: any) => !t.trainUuid) : [];
+        const localOnlyCurrentSS = preserveLocalRows ? prev.currentCompanySeaService.filter((s: any) => !s.seaUuid) : [];
+        const localOnlyExternalSS = preserveLocalRows ? prev.externalSeaService.filter((s: any) => !s.seaUuid) : [];
+        const localOnlyMedicals = preserveLocalRows ? prev.preJoiningMedicals.filter((m: any) => !m.medUuid) : [];
+        const localOnlyDoctorVisits = preserveLocalRows ? prev.doctorVisits.filter((v: any) => !v.visitUuid) : [];
+
+        const serverDocs = Array.isArray(detailedCrewData.documents) 
           ? detailedCrewData.documents 
           : detailedCrewData.documents 
             ? JSON.parse(detailedCrewData.documents) 
-            : [],
-        visas: Array.isArray(detailedCrewData.visas) 
+            : [];
+        const serverVisas = Array.isArray(detailedCrewData.visas) 
           ? detailedCrewData.visas 
           : detailedCrewData.visas 
             ? JSON.parse(detailedCrewData.visas) 
-            : [],
-        education: Array.isArray(detailedCrewData.education) 
+            : [];
+        const serverEdu = Array.isArray(detailedCrewData.education) 
           ? detailedCrewData.education 
           : detailedCrewData.education 
             ? JSON.parse(detailedCrewData.education) 
-            : [],
-        licenses: (Array.isArray(detailedCrewData.licenses) 
+            : [];
+        const serverLicenses = (Array.isArray(detailedCrewData.licenses) 
           ? detailedCrewData.licenses 
           : detailedCrewData.licenses 
             ? JSON.parse(detailedCrewData.licenses) 
-            : []).map((l: any) => ({ ...l, fromDatabase: !!(l.licenseId && l.licenseId.trim()) })),
-        trainingCourses: (() => {
+            : []).map((l: any) => ({ ...l, fromDatabase: !!(l.licenseId && l.licenseId.trim()) }));
+        const serverTraining = (() => {
           const raw = (Array.isArray(detailedCrewData.trainingCourses) 
             ? detailedCrewData.trainingCourses 
             : detailedCrewData.trainingCourses 
@@ -1049,32 +1023,30 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             return aOrder - bOrder;
           });
           return raw;
-        })(),
-        currentCompanySeaService: (() => {
+        })();
+        const serverCurrentSS = (() => {
           const services = Array.isArray(detailedCrewData.currentCompanySeaService) 
             ? detailedCrewData.currentCompanySeaService 
             : detailedCrewData.currentCompanySeaService 
               ? JSON.parse(detailedCrewData.currentCompanySeaService) 
-              : [];  // Reset to empty instead of preserving prev state
-          // Recalculate periods for existing records with dates
+              : [];
           return services.map((s: SeaService) => ({
             ...s,
             periodMonths: s.from && s.to ? calculateSeaServicePeriod(s.from, s.to) : s.periodMonths || ''
           }));
-        })(),
-        externalSeaService: (() => {
+        })();
+        const serverExternalSS = (() => {
           const services = Array.isArray(detailedCrewData.externalSeaService) 
             ? detailedCrewData.externalSeaService 
             : detailedCrewData.externalSeaService 
               ? JSON.parse(detailedCrewData.externalSeaService) 
-              : [];  // Reset to empty instead of preserving prev state
-          // Recalculate periods for existing records with dates
+              : [];
           return services.map((s: SeaService) => ({
             ...s,
             periodMonths: s.from && s.to ? calculateSeaServicePeriod(s.from, s.to) : s.periodMonths || ''
           }));
-        })(),
-        preJoiningMedicals: (() => {
+        })();
+        const serverMedicals = (() => {
           const medicals = Array.isArray(detailedCrewData.preJoiningMedicals) 
             ? detailedCrewData.preJoiningMedicals 
             : detailedCrewData.preJoiningMedicals 
@@ -1085,8 +1057,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             id: m.id || `MED-${index + 1}`,
             vesselCode: m.vesselCode || ''
           }));
-        })(),
-        doctorVisits: (() => {
+        })();
+        const serverDoctorVisits = (() => {
           const visits = Array.isArray(detailedCrewData.doctorVisits) 
             ? detailedCrewData.doctorVisits 
             : detailedCrewData.doctorVisits 
@@ -1096,8 +1068,84 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             ...v,
             id: v.id || `DRV-${index + 1}`,
           }));
-        })(),
-      }));
+        })();
+
+        return {
+          ...prev,
+          // A1.1 General Particulars
+          firstName: detailedCrewData.firstName || '',
+          middleName: detailedCrewData.middleName || '',
+          familyName: detailedCrewData.familyName || '',
+          gender: detailedCrewData.gender || '',
+          nationality: detailedCrewData.nationality || '',
+          presentRank: normalizeRank(detailedCrewData.presentRank || '') || detailedCrewData.presentRank || '',
+          dateOfBirth: detailedCrewData.dob || detailedCrewData.dateOfBirth || '',
+          ageInYears: detailedCrewData.age || calculateAge(detailedCrewData.dob || detailedCrewData.dateOfBirth || ''),
+          placeOfBirthCity: detailedCrewData.placeOfBirthCity || '',
+          placeOfBirthCountry: detailedCrewData.placeOfBirthCountry || '',
+          heightCm: detailedCrewData.height || detailedCrewData.heightCm || '',
+          weightKg: detailedCrewData.weight || detailedCrewData.weightKg || '',
+          bmi: detailedCrewData.bmi || calculateBMI(
+            detailedCrewData.height || detailedCrewData.heightCm || '',
+            detailedCrewData.weight || detailedCrewData.weightKg || ''
+          ),
+          nativeLanguage: detailedCrewData.nativeLanguage || '',
+          foreignLanguages: detailedCrewData.foreignLanguages || '',
+          englishProficiency: detailedCrewData.englishProficiency || '',
+          rankAppliedFor: normalizeRank(detailedCrewData.rankAppliedFor || '') || detailedCrewData.rankAppliedFor || '',
+          vesselType: Array.isArray(detailedCrewData.vesselTypes) 
+            ? detailedCrewData.vesselTypes 
+            : detailedCrewData.vesselTypes 
+              ? [detailedCrewData.vesselTypes] 
+              : [],
+          manningAgent: detailedCrewData.manningAgent || '',
+          crewPool: detailedCrewData.crewPool || '',
+          employeeId: detailedCrewData.employeeId || '',
+          nextAvailability: detailedCrewData.nextAvailability || '',
+          
+          // A1.2 Address & Contact Info
+          countryOfResidence: detailedCrewData.countryOfResidence || '',
+          nearestAirport: detailedCrewData.nearestAirport || '',
+          residentialAddressLine1: detailedCrewData.residentialAddressLine1 || '',
+          residentialAddressLine2: detailedCrewData.residentialAddressLine2 || '',
+          contactLandline: detailedCrewData.contactLandline || '',
+          mobile: detailedCrewData.mobile || '',
+          email: detailedCrewData.email || '',
+          
+          // A1.3 Family and NOK
+          maritalStatus: detailedCrewData.maritalStatus || '',
+          numberOfDependentChildren: detailedCrewData.numberOfDependentChildren || '',
+          fatherName: detailedCrewData.fatherName || '',
+          motherName: detailedCrewData.motherName || '',
+          spouseFirstName: detailedCrewData.spouseFirstName || '',
+          spouseMiddleName: detailedCrewData.spouseMiddleName || '',
+          spouseFamilyName: detailedCrewData.spouseFamilyName || '',
+          spouseDateOfBirth: detailedCrewData.spouseDateOfBirth || '',
+          children: Array.isArray(detailedCrewData.children) 
+            ? detailedCrewData.children 
+            : detailedCrewData.children 
+              ? JSON.parse(detailedCrewData.children) 
+              : [],
+          nokFirstName: detailedCrewData.nokFirstName || '',
+          nokMiddleName: detailedCrewData.nokMiddleName || '',
+          nokFamilyName: detailedCrewData.nokFamilyName || '',
+          nokTelephone: detailedCrewData.nokTelephone || '',
+          nokEmail: detailedCrewData.nokEmail || '',
+          nokAddress: detailedCrewData.nokAddress || '',
+          nokRelationship: detailedCrewData.nokRelationship || '',
+          
+          // Complex data arrays - merge server data with local-only rows during deletes
+          documents: [...serverDocs, ...localOnlyDocs],
+          visas: [...serverVisas, ...localOnlyVisas],
+          education: [...serverEdu, ...localOnlyEdu],
+          licenses: [...serverLicenses, ...localOnlyLicenses],
+          trainingCourses: [...serverTraining, ...localOnlyTraining],
+          currentCompanySeaService: [...serverCurrentSS, ...localOnlyCurrentSS],
+          externalSeaService: [...serverExternalSS, ...localOnlyExternalSS],
+          preJoiningMedicals: [...serverMedicals, ...localOnlyMedicals],
+          doctorVisits: [...serverDoctorVisits, ...localOnlyDoctorVisits],
+        };
+      });
       
       // Also load the uploaded photo from crew data (or reset if no photo)
       setUploadedPhoto(detailedCrewData.uploadedPhoto || null);
@@ -1502,6 +1550,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
     if (docUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
       deleteDocumentMutationV2.mutate(
         { crewUuid: crewIdentifier, docUuid },
         {
@@ -1510,9 +1559,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               documents: prev.documents.filter(d => d.id !== id)
             }));
-            invalidateCrewData(crewIdentifier);
+            invalidateCrewDashboard(crewIdentifier);
           },
           onError: (error) => {
+            clearDeletingForCrew();
             console.error('Failed to delete document:', error);
             toast({ title: 'Failed to delete document', variant: 'destructive' });
           }
@@ -1557,6 +1607,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
     if (visaUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
       deleteVisaMutationV2.mutate(
         { crewUuid: crewIdentifier, visaUuid },
         {
@@ -1565,9 +1616,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               visas: prev.visas.filter(v => v.id !== id)
             }));
-            invalidateCrewData(crewIdentifier);
+            invalidateCrewDashboard(crewIdentifier);
           },
           onError: (error) => {
+            clearDeletingForCrew();
             console.error('Failed to delete visa:', error);
             toast({ title: 'Failed to delete visa', variant: 'destructive' });
           }
@@ -1610,6 +1662,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
     if (eduUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
       deleteEducationMutationV2.mutate(
         { crewUuid: crewIdentifier, eduUuid },
         {
@@ -1618,9 +1671,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               education: prev.education.filter(e => e.id !== id)
             }));
-            invalidateCrewData(crewIdentifier);
+            invalidateCrewDashboard(crewIdentifier);
           },
           onError: (error) => {
+            clearDeletingForCrew();
             console.error('Failed to delete education:', error);
             toast({ title: 'Failed to delete education', variant: 'destructive' });
           }
@@ -1793,6 +1847,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
     if (licUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
       deleteLicenseMutationV2.mutate(
         { crewUuid: crewIdentifier, licUuid },
         {
@@ -1801,9 +1856,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               licenses: prev.licenses.filter(l => l.id !== id)
             }));
-            invalidateCrewData(crewIdentifier);
+            invalidateCrewDashboard(crewIdentifier);
           },
           onError: (error) => {
+            clearDeletingForCrew();
             console.error('Failed to delete license:', error);
             toast({ title: 'Failed to delete license', variant: 'destructive' });
           }
@@ -1849,6 +1905,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
     if (trainUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
       deleteTrainingCourseMutationV2.mutate(
         { crewUuid: crewIdentifier, trainUuid },
         {
@@ -1857,9 +1914,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               trainingCourses: prev.trainingCourses.filter(c => c.id !== id)
             }));
-            invalidateCrewData(crewIdentifier);
+            invalidateCrewDashboard(crewIdentifier);
           },
           onError: (error) => {
+            clearDeletingForCrew();
             console.error('Failed to delete training course:', error);
             toast({ title: 'Failed to delete training course', variant: 'destructive' });
           }
@@ -1934,6 +1992,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
     if (seaUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
       deleteSeaServiceMutationV2.mutate(
         { crewUuid: crewIdentifier, seaUuid },
         {
@@ -1942,9 +2001,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               currentCompanySeaService: prev.currentCompanySeaService.filter(s => s.id !== id)
             }));
-            invalidateCrewData(crewIdentifier);
+            invalidateCrewDashboard(crewIdentifier);
           },
           onError: (error) => {
+            clearDeletingForCrew();
             console.error('Failed to delete sea service:', error);
             toast({ title: 'Failed to delete sea service', variant: 'destructive' });
           }
@@ -2004,6 +2064,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
     if (seaUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
       deleteSeaServiceMutationV2.mutate(
         { crewUuid: crewIdentifier, seaUuid },
         {
@@ -2012,9 +2073,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               externalSeaService: prev.externalSeaService.filter(s => s.id !== id)
             }));
-            invalidateCrewData(crewIdentifier);
+            invalidateCrewDashboard(crewIdentifier);
           },
           onError: (error) => {
+            clearDeletingForCrew();
             console.error('Failed to delete sea service:', error);
             toast({ title: 'Failed to delete sea service', variant: 'destructive' });
           }
@@ -2061,6 +2123,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
     if (medUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
       deleteMedicalMutationV2.mutate(
         { crewUuid: crewIdentifier, medUuid },
         {
@@ -2069,9 +2132,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               preJoiningMedicals: prev.preJoiningMedicals.filter(m => m.id !== id)
             }));
-            invalidateCrewData(crewIdentifier);
+            invalidateCrewDashboard(crewIdentifier);
           },
           onError: (error) => {
+            clearDeletingForCrew();
             console.error('Failed to delete medical record:', error);
             toast({ title: 'Failed to delete medical record', variant: 'destructive' });
           }
@@ -2115,6 +2179,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
     
     if (visitUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
       deleteDoctorVisitMutationV2.mutate(
         { crewUuid: crewIdentifier, visitUuid },
         {
@@ -2123,9 +2188,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               ...prev,
               doctorVisits: prev.doctorVisits.filter(v => v.id !== id)
             }));
-            invalidateCrewData(crewIdentifier);
+            invalidateCrewDashboard(crewIdentifier);
           },
           onError: (error) => {
+            clearDeletingForCrew();
             console.error('Failed to delete doctor visit:', error);
             toast({ title: 'Failed to delete doctor visit', variant: 'destructive' });
           }
