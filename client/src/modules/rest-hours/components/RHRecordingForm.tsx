@@ -532,7 +532,7 @@ export const RHRecordingForm = ({
 
   // Fetch previous month's record for cross-month rolling window calculations
   // V1 pattern: /api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear
-  const { data: previousMonthRecord } = useQuery<RestHoursDailyRecord>({
+  const { data: previousMonthRecord, isFetched: isPreviousMonthFetched } = useQuery<RestHoursDailyRecord>({
     queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, previousMonthPeriod],
     queryFn: async () => {
       if (!previousMonthPeriod) return null;
@@ -774,12 +774,13 @@ export const RHRecordingForm = ({
     return result;
   };
 
-  // Load previous month's records for cross-month calculations
   useEffect(() => {
     if (!open) return;
     
     if (!previousMonthRecord) {
-      // Don't set to empty array yet - wait for query to complete
+      if (isPreviousMonthFetched) {
+        setPreviousMonthRecords([]);
+      }
       return;
     }
     
@@ -790,7 +791,7 @@ export const RHRecordingForm = ({
       console.error('Failed to parse previous month records:', error);
       setPreviousMonthRecords([]);
     }
-  }, [previousMonthRecord, open]);
+  }, [previousMonthRecord, isPreviousMonthFetched, open]);
 
   // Compute variable task cells map for overlay onto daily records
   // Note: This is computed as a derived value rather than an effect to avoid infinite loops
@@ -1016,18 +1017,27 @@ export const RHRecordingForm = ({
       violations: [],
     }));
     
-    const prevMonthTimelineRecords = previousMonthRecords
-      .filter(r => !r.isPlan)
-      .map(r => ({
-        entryId: r.entryId,
-        day: r.day,
-        dayOfWeek: r.dayOfWeek,
-        occurrence: r.occurrence,
-        hours: r.hours,
-        isPlan: r.isPlan,
-        comments: r.comments,
-        violations: [],
-      }));
+    const filteredPrevMonthRecords = previousMonthRecords.filter(r => !r.isPlan);
+
+    let daysInPrevMonth = 31;
+    if (previousMonthPeriod) {
+      const [py, pm] = previousMonthPeriod.split('-').map(Number);
+      daysInPrevMonth = new Date(py, pm, 0).getDate();
+    }
+    const hasRecentActualData = filteredPrevMonthRecords.some(r => r.day >= daysInPrevMonth - 6);
+
+    const prevMonthTimelineRecords = hasRecentActualData
+      ? filteredPrevMonthRecords.map(r => ({
+          entryId: r.entryId,
+          day: r.day,
+          dayOfWeek: r.dayOfWeek,
+          occurrence: r.occurrence,
+          hours: r.hours,
+          isPlan: r.isPlan,
+          comments: r.comments,
+          violations: [],
+        }))
+      : [];
     
     // Build timeline for current month
     const currentTimeline = buildTimeline(timelineRecords, parsedDateLineAdjustments);
@@ -1407,7 +1417,7 @@ export const RHRecordingForm = ({
       timeline: fullTimeline,
       violations: allViolations,
     };
-  }, [dailyRecords, previousMonthRecords, parsedDateLineAdjustments, parsedPreviousMonthDateLineAdjustments, complianceMode, opaMode]);
+  }, [dailyRecords, previousMonthRecords, previousMonthPeriod, parsedDateLineAdjustments, parsedPreviousMonthDateLineAdjustments, complianceMode, opaMode]);
   
   // Extract for easier access
   const timelineViolations = timelineData.violationMap;
