@@ -161,7 +161,8 @@ async function enrichVesselRecordsWithLiveCounts(
       ).length;
 
       const totalPercent = crewRecords.reduce((sum, r) => sum + (r.recordingStatusPercent || 0), 0);
-      const averagePercent = Math.round(totalPercent / crewRecords.length);
+      const divisor = Math.max(totalCrew, crewRecords.length) || 1;
+      const averagePercent = Math.round(totalPercent / divisor);
 
       const activityConflicting = crewConflictMap.size > 0;
       const crewWithActivityConflictsCount = crewConflictMap.size;
