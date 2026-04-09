@@ -659,7 +659,7 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
         </div>
       </div>
 
-      <div className="flex gap-0 max-h-[calc(100vh-380px)] bg-white rounded-lg border border-gray-200 overflow-auto">
+      <div className="flex gap-0 bg-white rounded-lg border border-gray-200 overflow-auto max-h-[calc(100vh-280px)]">
         <div className="flex-none w-[40%] border-r border-gray-200">
           <AgGridTable
             rowData={proposals}
@@ -671,6 +671,7 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
             enableSideBar={false}
             enableStatusBar={false}
             gridOptions={{
+              domLayout: 'autoHeight',
               rowHeight: 48,
               headerHeight: 48,
               suppressMovableColumns: true,
