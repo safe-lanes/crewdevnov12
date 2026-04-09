@@ -2342,17 +2342,17 @@ export const RHRecordingForm = ({
                       
                       // Show individual codes with hover functionality for highlighting
                       return (
-                        <span className="flex flex-wrap gap-0.5 justify-center">
-                          {visibleViolations.map((code, idx) => {
-                            const diagnostic = visibleDiagnostics.find(d => d.code === code);
-                            
-                            if (!diagnostic) {
-                              return <span key={code}>{code}{idx < visibleViolations.length - 1 ? ', ' : ''}</span>;
-                            }
-                            
-                            return (
-                              <TooltipProvider key={code}>
-                                <Tooltip>
+                        <TooltipProvider delayDuration={200}>
+                          <span className="flex flex-wrap gap-0.5 justify-center">
+                            {visibleViolations.map((code, idx) => {
+                              const diagnostic = visibleDiagnostics.find(d => d.code === code);
+                              
+                              if (!diagnostic) {
+                                return <span key={code}>{code}{idx < visibleViolations.length - 1 ? ', ' : ''}</span>;
+                              }
+                              
+                              return (
+                                <Tooltip key={code}>
                                   <TooltipTrigger asChild>
                                     <span
                                       className={`cursor-help underline decoration-dotted px-0.5 rounded ${record.isPlan ? 'hover:bg-gray-200' : 'hover:bg-red-100'}`}
@@ -2367,15 +2367,15 @@ export const RHRecordingForm = ({
                                     align="start" 
                                     sideOffset={8}
                                     avoidCollisions={false}
-                                    className="max-w-[220px] text-[11px] z-50"
+                                    className="max-w-[220px] text-[11px]"
                                   >
                                     <div className="leading-snug">{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
                                   </TooltipContent>
                                 </Tooltip>
-                              </TooltipProvider>
-                            );
-                          })}
-                        </span>
+                              );
+                            })}
+                          </span>
+                        </TooltipProvider>
                       );
                     })()}
                   </td>
