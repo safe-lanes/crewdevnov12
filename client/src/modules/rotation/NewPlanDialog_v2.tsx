@@ -2700,8 +2700,9 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                   <span>{variant}</span>
                   <button
                     onClick={() => {
-                      setSelectedRoleVariantsState(prev => prev.filter(v => v !== variant));
-                      setHasManualVariants(true); // Mark as manually modified
+                      const current = hasManualVariants ? selectedRoleVariantsState : autoSelectedRoleVariants;
+                      setSelectedRoleVariantsState(current.filter(v => v !== variant));
+                      setHasManualVariants(true);
                     }}
                     className="ml-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                     data-testid={`button-remove-role-${variant}`}
