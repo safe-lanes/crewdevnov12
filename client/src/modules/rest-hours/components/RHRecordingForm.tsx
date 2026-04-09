@@ -1016,16 +1016,18 @@ export const RHRecordingForm = ({
       violations: [],
     }));
     
-    const prevMonthTimelineRecords = previousMonthRecords.map(r => ({
-      entryId: r.entryId,
-      day: r.day,
-      dayOfWeek: r.dayOfWeek,
-      occurrence: r.occurrence,
-      hours: r.hours,
-      isPlan: r.isPlan,
-      comments: r.comments,
-      violations: [],
-    }));
+    const prevMonthTimelineRecords = previousMonthRecords
+      .filter(r => !r.isPlan)
+      .map(r => ({
+        entryId: r.entryId,
+        day: r.day,
+        dayOfWeek: r.dayOfWeek,
+        occurrence: r.occurrence,
+        hours: r.hours,
+        isPlan: r.isPlan,
+        comments: r.comments,
+        violations: [],
+      }));
     
     // Build timeline for current month
     const currentTimeline = buildTimeline(timelineRecords, parsedDateLineAdjustments);
