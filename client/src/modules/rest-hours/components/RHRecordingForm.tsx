@@ -1658,8 +1658,9 @@ export const RHRecordingForm = ({
     }
   };
 
-  const effectiveSignOnDate = selectedCrewMember?.signOnDate ?? signOnDate;
-  const effectiveSignOffDate = selectedCrewMember?.signOffDate ?? signOffDate;
+  const hasChangedCrew = selectedCrewMemberId !== initialCrewMemberId;
+  const effectiveSignOnDate = hasChangedCrew ? (selectedCrewMember?.signOnDate ?? signOnDate) : signOnDate;
+  const effectiveSignOffDate = hasChangedCrew ? (selectedCrewMember?.signOffDate ?? signOffDate) : signOffDate;
 
   // Compute the inclusive range of days [from, to] that are applicable for this crew member.
   // Days outside this range must be greyed out and uneditable.
