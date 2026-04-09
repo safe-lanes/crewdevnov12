@@ -72,6 +72,7 @@ function maskTuid(tuid: string): string {
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const NEGATIVE_CACHE_TTL_MS = 60 * 1000;
 const IDLE_EVICTION_MS = 30 * 60 * 1000;
 const EVICTION_CHECK_INTERVAL_MS = 60 * 1000;
 const TUID_CACHE_MAX_SIZE = 500;
@@ -235,7 +236,7 @@ class TenantConnectionManager {
       if (result.length === 0) {
         this.tuidValidationCache.set(tuid, {
           status: "not_found",
-          expiresAt: Date.now() + CACHE_TTL_MS,
+          expiresAt: Date.now() + NEGATIVE_CACHE_TTL_MS,
         });
         throw new TenantNotFoundError(tuid, "tuid");
       }
@@ -245,7 +246,7 @@ class TenantConnectionManager {
       if (!row.isActive || row.isDeleted) {
         this.tuidValidationCache.set(tuid, {
           status: "inactive",
-          expiresAt: Date.now() + CACHE_TTL_MS,
+          expiresAt: Date.now() + NEGATIVE_CACHE_TTL_MS,
         });
         throw new TenantInactiveError(tuid, "tuid");
       }

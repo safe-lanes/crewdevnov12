@@ -49,10 +49,16 @@ export function useTenantInit(): TenantInitResult {
       }
 
       const existingTenantId = localStorage.getItem("tenantId");
-      if (existingTenantId) {
+      const cachedDomain = localStorage.getItem("tenantDomain");
+      if (existingTenantId && cachedDomain === domain) {
         setTenantId(existingTenantId);
         setIsResolved(true);
         return;
+      }
+
+      if (existingTenantId && cachedDomain !== domain) {
+        localStorage.removeItem("tenantId");
+        localStorage.removeItem("tenantDomain");
       }
 
       setIsLoading(true);
@@ -68,6 +74,7 @@ export function useTenantInit(): TenantInitResult {
           if (res.ok) {
             const data = await res.json();
             localStorage.setItem("tenantId", data.tenantId);
+            localStorage.setItem("tenantDomain", domain);
             setTenantId(data.tenantId);
             setIsResolved(true);
             setIsLoading(false);
@@ -75,6 +82,8 @@ export function useTenantInit(): TenantInitResult {
           }
 
           if (res.status === 503) {
+            localStorage.removeItem("tenantId");
+            setTenantId(null);
             setIsResolved(true);
             setIsLoading(false);
             return;

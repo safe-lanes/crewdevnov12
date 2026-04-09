@@ -39,7 +39,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tenant = await tenantConnectionManager.resolveTenant(domain.trim());
       return res.json({
         tenantId: tenant.tuid,
-        dbName: tenant.tuid,
         companyName: tenant.companyName,
       });
     } catch (err: any) {
@@ -121,11 +120,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       database: isConnected ? "connected" : "disconnected",
       multiTenant: tenantConnectionManager.isMultiTenantEnabled,
       ...(tenantPoolMetrics && { tenantPoolMetrics }),
-      ...(process.env.NODE_ENV === 'development' && {
-        rds_instance: "ls-d153072fe29fcd7dc7c484a33fd3130e29abae1b.cxock8yskd1i.ap-southeast-1.rds.amazonaws.com:3306",
-        database_name: "crew_database",
-        connectionMetrics,
-      }),
+      ...(process.env.NODE_ENV === 'development' && (() => {
+        try {
+          const dbUrl = new URL(process.env.DATABASE_URL || '');
+          return {
+            db_host: dbUrl.hostname + (dbUrl.port ? `:${dbUrl.port}` : ''),
+            database_name: dbUrl.pathname.replace('/', ''),
+            connectionMetrics,
+          };
+        } catch {
+          return { connectionMetrics };
+        }
+      })()),
       connection_error: connectionError?.message || null,
       timestamp: new Date().toISOString()
     };
@@ -150,10 +156,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "unhealthy - no database connection", 
         ...healthStatus,
         troubleshooting: {
-          check_security_groups: "Ensure RDS security group allows connections from this environment",
-          check_database_exists: "Verify 'crew_database' database exists on RDS instance",
+          check_database_exists: "Verify the database specified in DATABASE_URL exists on the PostgreSQL server",
           check_credentials: "Verify DB_USER and DB_PASSWORD are correct",
-          check_network: "Ensure network connectivity to RDS endpoint"
+          check_network: "Ensure network connectivity to the database host"
         }
       });
     }
