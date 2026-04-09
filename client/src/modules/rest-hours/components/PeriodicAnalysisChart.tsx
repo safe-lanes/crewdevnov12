@@ -573,6 +573,10 @@ export const PeriodicAnalysisChart = ({
             },
           } as any,
         ],
+        legend: {
+          enabled: true,
+          position: 'bottom',
+        },
       } as AgChartOptions;
     }
 
