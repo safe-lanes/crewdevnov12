@@ -83,6 +83,7 @@ export function useTenantInit(): TenantInitResult {
 
           if (res.status === 503) {
             localStorage.removeItem("tenantId");
+            localStorage.removeItem("tenantDomain");
             setTenantId(null);
             setIsResolved(true);
             setIsLoading(false);
