@@ -544,18 +544,27 @@ export const PeriodicAnalysisChart = ({
       }));
       return {
         ...baseOptions,
+        padding: {
+          top: 10,
+          right: 10,
+          bottom: 10,
+          left: 10,
+        },
         data: pieDataWithTotal,
         series: [
           {
             type: 'pie' as any,
             angleKey: 'total',
             calloutLabelKey: labelKey,
+            outerRadiusRatio: 0.75,
             fills: ['#52baf3', '#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86'],
             strokes: ['#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86', '#004d73'],
             calloutLabel: {
               enabled: true,
               fontSize: 11,
               color: '#4b5563',
+              minAngle: 15,
+              offset: 10,
             },
             tooltip: {
               renderer: ({ datum }: any) => {
