@@ -538,77 +538,41 @@ export const PeriodicAnalysisChart = ({
     if (chartType === 'pie') {
       const pieData = data.filter((d: any) => (d.avgViolationDays ?? 0) > 0 || (d.avgNCs ?? 0) > 0);
       const labelKey = xKey;
+      const pieDataWithTotal = pieData.map((d: any) => ({
+        ...d,
+        total: (d.avgViolationDays ?? 0) + (d.avgNCs ?? 0),
+      }));
       return {
         ...baseOptions,
-        data: pieData,
+        data: pieDataWithTotal,
         series: [
           {
             type: 'pie' as any,
-            angleKey: 'avgViolationDays',
+            angleKey: 'total',
             calloutLabelKey: labelKey,
-            sectorLabelKey: 'avgViolationDays',
-            title: {
-              text: 'Violations per Vessel',
-              showInLegend: true,
-            },
-            outerRadiusRatio: 1,
-            innerRadiusRatio: 0.6,
-            fills: ['#52baf3', '#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86', '#6dc8f5', '#8dd4f7', '#add0e6'],
-            strokes: ['#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86', '#004d73', '#52baf3', '#6dc8f5', '#8dd4f7'],
+            fills: ['#52baf3', '#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86'],
+            strokes: ['#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86', '#004d73'],
             calloutLabel: {
               enabled: true,
               fontSize: 11,
               color: '#4b5563',
             },
-            sectorLabel: {
-              enabled: false,
-            },
             tooltip: {
               renderer: ({ datum }: any) => {
                 const label = datum[labelKey] ?? '';
-                const val = datum.avgViolationDays ?? 0;
+                const violations = datum.avgViolationDays ?? 0;
+                const ncs = datum.avgNCs ?? 0;
                 return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
                   ${label}
                 </div>
                 <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
-                  Avg Violations: ${val}
-                </div>`;
-              },
-            },
-          } as any,
-          {
-            type: 'pie' as any,
-            angleKey: 'avgNCs',
-            calloutLabelKey: labelKey,
-            title: {
-              text: 'NCs per Vessel',
-              showInLegend: true,
-            },
-            outerRadiusRatio: 0.5,
-            innerRadiusRatio: 0.2,
-            fills: ['#ef4444', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d', '#f87171', '#fca5a5', '#fecaca'],
-            strokes: ['#dc2626', '#b91c1c', '#991b1b', '#7f1d1d', '#450a0a', '#ef4444', '#f87171', '#fca5a5'],
-            calloutLabel: {
-              enabled: false,
-            },
-            tooltip: {
-              renderer: ({ datum }: any) => {
-                const label = datum[labelKey] ?? '';
-                const val = datum.avgNCs ?? 0;
-                return `<div class="ag-chart-tooltip-title" style="background-color: #ef4444; padding: 4px 8px; color: white; font-weight: bold;">
-                  ${label}
-                </div>
-                <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
-                  Avg NCs: ${val}
+                  Avg Violations: ${violations}<br/>
+                  Avg NCs: ${ncs}
                 </div>`;
               },
             },
           } as any,
         ],
-        legend: {
-          enabled: true,
-          position: 'bottom',
-        },
       } as AgChartOptions;
     }
 
