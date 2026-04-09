@@ -5,37 +5,75 @@ import type {
 } from "../../../../shared/v2/rest-hours/types";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { eq, and, or, isNull, inArray, sql } from "drizzle-orm";
+import { eq, and, or, isNull, inArray } from "drizzle-orm";
 import { crewRecordsService } from "./crewRecordsService";
 
 const vesselRecordsRepository = new VesselRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
 
-async function getOnboardCrewCounts(vesselIds: string[]): Promise<Map<string, number>> {
+function getMonthBounds(monthValue: string): { firstDay: string; lastDay: string } {
+  const [year, month] = monthValue.split('-').map(Number);
+  const firstDay = `${monthValue}-01`;
+  const lastDayDate = new Date(year, month, 0);
+  const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+  return { firstDay, lastDay };
+}
+
+async function getOnboardCrewCountsForMonths(
+  records: Array<{ vesselId: string; monthValue: string }>
+): Promise<Map<string, number>> {
   const map = new Map<string, number>();
-  if (vesselIds.length === 0) return map;
+  if (records.length === 0) return map;
 
   const db = getDb();
-  const uniqueIds = Array.from(new Set(vesselIds));
+  const vesselIds = Array.from(new Set(records.map(r => r.vesselId)));
 
   const rows = await db
     .select({
       vesselUuid: crewAssignments.vesselUuid,
-      count: sql<number>`cast(count(*) as int)`,
+      signOnDate: crewAssignments.signOnDate,
+      signOffDate: crewAssignments.signOffDate,
+      isCurrent: crewAssignments.isCurrent,
+      crewUuid: crewAssignments.crewUuid,
+      empNo: crewMembersV2.empNo,
     })
     .from(crewAssignments)
     .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
     .where(
       and(
-        inArray(crewAssignments.vesselUuid, uniqueIds),
-        eq(crewAssignments.isCurrent, true),
+        inArray(crewAssignments.vesselUuid, vesselIds),
         or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
       )
-    )
-    .groupBy(crewAssignments.vesselUuid);
+    );
 
-  for (const row of rows) {
-    map.set(row.vesselUuid, Number(row.count));
+  for (const record of records) {
+    const { firstDay, lastDay } = getMonthBounds(record.monthValue);
+    const key = `${record.vesselId}|${record.monthValue}`;
+
+    const deduped = new Map<string, typeof rows[0]>();
+    for (const row of rows) {
+      if (row.vesselUuid !== record.vesselId) continue;
+      if (!row.signOnDate || row.signOnDate > lastDay) continue;
+      const effectiveSignOff = (row.signOffDate && row.signOffDate !== '') ? row.signOffDate : null;
+      if (effectiveSignOff && effectiveSignOff < firstDay) continue;
+
+      const crewId = row.empNo || row.crewUuid;
+      const dedupKey = `${row.vesselUuid}|${crewId}`;
+      const existing = deduped.get(dedupKey);
+      if (!existing) {
+        deduped.set(dedupKey, row);
+      } else {
+        const existingDate = existing.signOnDate || '';
+        const newDate = row.signOnDate || '';
+        if (newDate > existingDate) {
+          deduped.set(dedupKey, row);
+        } else if (newDate === existingDate && row.isCurrent && !existing.isCurrent) {
+          deduped.set(dedupKey, row);
+        }
+      }
+    }
+
+    map.set(key, deduped.size);
   }
 
   return map;
@@ -65,8 +103,10 @@ async function enrichVesselRecordsWithLiveCounts(
   const vesselIds = Array.from(new Set(records.map(r => r.vesselId)));
   const monthValues = Array.from(new Set(records.map(r => r.monthValue)));
 
+  const recordKeys = records.map(r => ({ vesselId: r.vesselId, monthValue: r.monthValue }));
+
   const [crewCountsMap, allEnrichedCrew] = await Promise.all([
-    getOnboardCrewCounts(vesselIds),
+    getOnboardCrewCountsForMonths(recordKeys),
     crewRecordsService.getAllBulk({ vesselIds, monthValue: monthValues.length === 1 ? monthValues[0] : undefined }),
   ]);
 
@@ -82,7 +122,7 @@ async function enrichVesselRecordsWithLiveCounts(
   }
 
   return records.map(record => {
-    const onboardCrewCount = crewCountsMap.get(record.vesselId) || 0;
+    const onboardCrewCount = crewCountsMap.get(`${record.vesselId}|${record.monthValue}`) || 0;
     const totalCrew = Math.max(onboardCrewCount, record.totalCrew || 0);
 
     const key = `${record.vesselId}|${record.monthValue}`;
@@ -90,16 +130,45 @@ async function enrichVesselRecordsWithLiveCounts(
 
     if (crewRecords && crewRecords.length > 0) {
       const totalViolations = crewRecords.reduce((sum, r) => sum + (r.totalViolations || 0), 0);
-      const crewWithViolations = crewRecords.filter(r => (r.totalViolations || 0) > 0).length;
       const totalNCs = crewRecords.reduce((sum, r) => sum + (r.totalNCs || 0), 0);
-      const crewWithNCs = crewRecords.filter(r => (r.totalNCs || 0) > 0).length;
       const predictedViolations = crewRecords.reduce((sum, r) => sum + (r.predictedViolations || 0), 0);
-      const crewWithPredictedViolations = crewRecords.filter(r => (r.predictedViolations || 0) > 0).length;
       const predictedNCs = crewRecords.reduce((sum, r) => sum + (r.predictedNCs || 0), 0);
-      const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
+
+      const crewViolMap = new Map<string, number>();
+      const crewNCMap = new Map<string, number>();
+      const crewPredViolMap = new Map<string, number>();
+      const crewPredNCMap = new Map<string, { totalNCs: number; predictedNCs: number }>();
+      const crewConflictMap = new Map<string, { name: string; rank: string }>();
+      for (const r of crewRecords) {
+        const cid = r.crewMemberId || '';
+        crewViolMap.set(cid, (crewViolMap.get(cid) || 0) + (r.totalViolations || 0));
+        crewNCMap.set(cid, (crewNCMap.get(cid) || 0) + (r.totalNCs || 0));
+        crewPredViolMap.set(cid, (crewPredViolMap.get(cid) || 0) + (r.predictedViolations || 0));
+        const prev = crewPredNCMap.get(cid) || { totalNCs: 0, predictedNCs: 0 };
+        crewPredNCMap.set(cid, {
+          totalNCs: prev.totalNCs + (r.totalNCs || 0),
+          predictedNCs: prev.predictedNCs + (r.predictedNCs || 0),
+        });
+        if (r.activityConflicting === true) {
+          crewConflictMap.set(cid, { name: r.name || '', rank: r.rank || '' });
+        }
+      }
+      const crewWithViolations = [...crewViolMap.values()].filter(v => v > 0).length;
+      const crewWithNCs = [...crewNCMap.values()].filter(v => v > 0).length;
+      const crewWithPredictedViolations = [...crewPredViolMap.values()].filter(v => v > 0).length;
+      const crewWithPredictedNCs = [...crewPredNCMap.values()].filter(
+        v => v.totalNCs === 0 && v.predictedNCs > 0
+      ).length;
 
       const totalPercent = crewRecords.reduce((sum, r) => sum + (r.recordingStatusPercent || 0), 0);
-      const averagePercent = Math.round(totalPercent / crewRecords.length);
+      const divisor = Math.max(totalCrew, crewRecords.length) || 1;
+      const averagePercent = Math.round(totalPercent / divisor);
+
+      const activityConflicting = crewConflictMap.size > 0;
+      const crewWithActivityConflictsCount = crewConflictMap.size;
+      const crewWithActivityConflictsDetails = crewConflictMap.size > 0
+        ? JSON.stringify([...crewConflictMap.values()])
+        : null;
 
       return {
         ...record,
@@ -113,6 +182,9 @@ async function enrichVesselRecordsWithLiveCounts(
         predictedNCs,
         crewWithPredictedNCs,
         recordingStatusPercent: averagePercent,
+        activityConflicting,
+        crewWithActivityConflicts: crewWithActivityConflictsCount,
+        crewWithActivityConflictsDetails,
       };
     }
 

@@ -1,4 +1,4 @@
-import { DailyRecordsRepository, CrewRecordsRepository, VesselRecordsRepository } from "../repositories";
+import { DailyRecordsRepository, CrewRecordsRepository, VesselRecordsRepository, VariableTasksRepository } from "../repositories";
 import type {
   RhDailyRecordV2,
   InsertRhDailyRecordV2,
@@ -8,28 +8,58 @@ import {
   countViolationDays,
   calculateNCs,
 } from "../utils/violationHelpers";
+import { detectActivityConflict } from "../utils/activityConflictHelpers";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { eq, and, or, isNull, lte, gte } from "drizzle-orm";
 
 const dailyRecordsRepository = new DailyRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
+const variableTasksRepository = new VariableTasksRepository();
 const vesselRecordsRepository = new VesselRecordsRepository();
 
-async function getOnboardCrewCount(vesselId: string): Promise<number> {
+async function getOnboardCrewCount(vesselId: string, monthValue: string): Promise<number> {
   const db = getDb();
+  const { firstDay, lastDay } = getMonthBounds(monthValue);
   const crewData = await db
-    .select({ crewUuid: crewAssignments.crewUuid })
+    .select({
+      crewUuid: crewAssignments.crewUuid,
+      signOnDate: crewAssignments.signOnDate,
+      signOffDate: crewAssignments.signOffDate,
+      isCurrent: crewAssignments.isCurrent,
+      empNo: crewMembersV2.empNo,
+    })
     .from(crewAssignments)
     .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
     .where(
       and(
         eq(crewAssignments.vesselUuid, vesselId),
-        eq(crewAssignments.isCurrent, true),
         or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
       )
     );
-  return crewData.length;
+
+  const deduped = new Map<string, typeof crewData[0]>();
+  for (const row of crewData) {
+    if (!row.signOnDate || row.signOnDate > lastDay) continue;
+    const effectiveSignOff = (row.signOffDate && row.signOffDate !== '') ? row.signOffDate : null;
+    if (effectiveSignOff && effectiveSignOff < firstDay) continue;
+
+    const crewId = row.empNo || row.crewUuid;
+    const existing = deduped.get(crewId);
+    if (!existing) {
+      deduped.set(crewId, row);
+    } else {
+      const existingDate = existing.signOnDate || '';
+      const newDate = row.signOnDate || '';
+      if (newDate > existingDate) {
+        deduped.set(crewId, row);
+      } else if (newDate === existingDate && row.isCurrent && !existing.isCurrent) {
+        deduped.set(crewId, row);
+      }
+    }
+  }
+
+  return deduped.size;
 }
 
 function applyAuditUser<T extends object>(
@@ -127,11 +157,11 @@ function getApplicableDayRange(
   return changed ? { from, to } : undefined;
 }
 
-async function getCrewAssignmentForMonth(
+async function getCrewAssignmentsForMonth(
   crewMemberId: string,
   vesselId: string,
   monthValue: string
-): Promise<{ signOnDate: string | null; signOffDate: string | null } | null> {
+): Promise<{ signOnDate: string | null; signOffDate: string | null; isCurrent: boolean | null }[]> {
   try {
     const { firstDay, lastDay } = getMonthBounds(monthValue);
     const db = getDb();
@@ -142,6 +172,7 @@ async function getCrewAssignmentForMonth(
         empNo: crewMembersV2.empNo,
         signOnDate: crewAssignments.signOnDate,
         signOffDate: crewAssignments.signOffDate,
+        isCurrent: crewAssignments.isCurrent,
       })
       .from(crewAssignments)
       .innerJoin(crewMembersV2, eq(crewAssignments.crewUuid, crewMembersV2.crewUuid))
@@ -160,15 +191,19 @@ async function getCrewAssignmentForMonth(
         )
       );
 
-    const match = rows.find(r => {
+    const matches = rows.filter(r => {
       const id = r.empNo || r.crewUuid;
       return id === crewMemberId;
     });
 
-    return match ? { signOnDate: match.signOnDate || null, signOffDate: match.signOffDate || null } : null;
+    return matches.map(m => ({
+      signOnDate: m.signOnDate || null,
+      signOffDate: (m.signOffDate && m.signOffDate !== '') ? m.signOffDate : null,
+      isCurrent: m.isCurrent ?? null,
+    }));
   } catch (error) {
-    console.error('Failed to get crew assignment for month:', error);
-    return null;
+    console.error('Failed to get crew assignments for month:', error);
+    return [];
   }
 }
 
@@ -181,53 +216,127 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
 
     const dailyRecordsJson = dailyRecord.dailyRecords || '[]';
 
-    const assignment = await getCrewAssignmentForMonth(crewMemberId, vesselId, monthYear);
+    const assignments = await getCrewAssignmentsForMonth(crewMemberId, vesselId, monthYear);
     const { firstDay, lastDay } = getMonthBounds(monthYear);
-    const dayRange = assignment
-      ? getApplicableDayRange(assignment.signOnDate, assignment.signOffDate, firstDay, lastDay, monthYear)
-      : undefined;
 
-    const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange);
-    const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false, dayRange);
-    const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true, dayRange);
-    const { totalNCs, predictedNCs } = calculateNCs(dailyRecordsJson, 'Rest', false, dayRange);
-
-    const signOnOffInfo = assignment
-      ? buildSignOnOffInfo(assignment.signOnDate, assignment.signOffDate, firstDay, lastDay)
-      : null;
+    let variableTasks: Awaited<ReturnType<typeof variableTasksRepository.findAll>> = [];
+    try {
+      variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear });
+    } catch (e) {
+      console.error('Failed to fetch variable tasks during postSaveSync:', e);
+    }
 
     const existingCrewRecords = await crewRecordsRepository.findAll({
       vesselId,
       crewMemberId,
       monthValue: monthYear,
     });
-    const existingCrewRecord = existingCrewRecords[0];
 
-    if (existingCrewRecord) {
-      await crewRecordsRepository.update(existingCrewRecord.rhCrewRecordUuid, {
-        recordingStatusPercent: recordingPercent,
-        totalViolations,
-        predictedViolations,
-        totalNCs,
-        predictedNCs,
-        signOnOffInfo: signOnOffInfo ?? existingCrewRecord.signOnOffInfo,
-      });
-    } else {
-      await crewRecordsRepository.create({
-        crewMemberId,
-        vesselId,
-        rank: dailyRecord.rank || '',
-        name: dailyRecord.name || '',
-        monthValue: monthYear,
-        month: formatMonthDisplay(monthYear),
-        signOnOffInfo: signOnOffInfo ?? null,
-        recordingStatusPercent: recordingPercent,
-        activityConflicting: false,
-        totalViolations,
-        totalNCs,
-        predictedViolations,
-        predictedNCs,
-      });
+    let crewName = dailyRecord.name || '';
+    if (!crewName || crewName === 'undefined undefined') {
+      const db = getDb();
+      const crewRows = await db
+        .select({ firstName: crewMembersV2.firstName, familyName: crewMembersV2.familyName })
+        .from(crewMembersV2)
+        .where(eq(crewMembersV2.empNo, crewMemberId));
+      if (crewRows.length > 0) {
+        crewName = [crewRows[0].firstName, crewRows[0].familyName].filter(Boolean).join(' ');
+      }
+    }
+
+    let resolvedAssignments = assignments;
+    if (assignments.length > 1) {
+      const sorted = [...assignments].sort(
+        (a, b) => (a.signOnDate || '').localeCompare(b.signOnDate || '')
+      );
+      const kept: typeof assignments = [];
+      for (const curr of sorted) {
+        if (kept.length === 0) {
+          kept.push(curr);
+          continue;
+        }
+        const prev = kept[kept.length - 1];
+        const prevOff = prev.signOffDate;
+        if (prevOff && curr.signOnDate && curr.signOnDate > prevOff) {
+          kept.push(curr);
+        } else {
+          const prevDate = prev.signOnDate || '';
+          const currDate = curr.signOnDate || '';
+          if (currDate > prevDate) {
+            kept[kept.length - 1] = curr;
+          } else if (currDate === prevDate && curr.isCurrent && !prev.isCurrent) {
+            kept[kept.length - 1] = curr;
+          }
+        }
+      }
+      resolvedAssignments = kept;
+    }
+
+    const effectiveAssignments = resolvedAssignments.length > 0
+      ? resolvedAssignments
+      : [{ signOnDate: null, signOffDate: null, isCurrent: null }];
+
+    const matchedRecordUuids = new Set<string>();
+
+    for (const assignment of effectiveAssignments) {
+      const effectiveSignOff = assignment.isCurrent ? null : assignment.signOffDate;
+      const dayRange = (assignment.signOnDate || effectiveSignOff)
+        ? getApplicableDayRange(assignment.signOnDate, effectiveSignOff, firstDay, lastDay, monthYear)
+        : undefined;
+
+      const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange);
+      const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false, dayRange);
+      const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true, dayRange);
+      const { totalNCs, predictedNCs } = calculateNCs(dailyRecordsJson, 'Rest', false, dayRange);
+
+      const signOnOffInfo = (assignment.signOnDate || effectiveSignOff)
+        ? buildSignOnOffInfo(assignment.signOnDate, effectiveSignOff, firstDay, lastDay)
+        : null;
+
+      let activityConflicting = false;
+      if (variableTasks.length > 0) {
+        try {
+          activityConflicting = detectActivityConflict(crewMemberId, variableTasks, dailyRecordsJson, monthYear);
+        } catch (e) {
+          console.error('Failed to detect activity conflict during postSaveSync:', e);
+        }
+      }
+
+      let matchedRecord = existingCrewRecords.find(
+        r => !matchedRecordUuids.has(r.rhCrewRecordUuid) && r.signOnOffInfo === signOnOffInfo
+      );
+      if (!matchedRecord && existingCrewRecords.length > 0) {
+        matchedRecord = existingCrewRecords.find(r => !matchedRecordUuids.has(r.rhCrewRecordUuid));
+      }
+
+      if (matchedRecord) {
+        matchedRecordUuids.add(matchedRecord.rhCrewRecordUuid);
+        await crewRecordsRepository.update(matchedRecord.rhCrewRecordUuid, {
+          recordingStatusPercent: recordingPercent,
+          totalViolations,
+          predictedViolations,
+          totalNCs,
+          predictedNCs,
+          activityConflicting,
+          signOnOffInfo,
+        });
+      } else {
+        await crewRecordsRepository.create({
+          crewMemberId,
+          vesselId,
+          rank: dailyRecord.rank || '',
+          name: crewName,
+          monthValue: monthYear,
+          month: formatMonthDisplay(monthYear),
+          signOnOffInfo: signOnOffInfo ?? null,
+          recordingStatusPercent: recordingPercent,
+          activityConflicting,
+          totalViolations,
+          totalNCs,
+          predictedViolations,
+          predictedNCs,
+        });
+      }
     }
 
     await updateVesselRecordSync(vesselId, monthYear);
@@ -247,19 +356,50 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
       return;
     }
 
-    const onboardCrewCount = await getOnboardCrewCount(vesselId);
-    const totalCrew = Math.max(onboardCrewCount, crewRecords.length);
+    const uniqueCrewIds = new Set(crewRecords.map(r => r.crewMemberId));
+    const uniqueCrewCount = uniqueCrewIds.size;
+
+    const onboardCrewCount = await getOnboardCrewCount(vesselId, monthValue);
+    const totalCrew = Math.max(onboardCrewCount, uniqueCrewCount);
 
     const totalPercent = crewRecords.reduce((sum, record) => sum + (record.recordingStatusPercent || 0), 0);
     const averagePercent = Math.round(totalPercent / crewRecords.length);
     const totalViolations = crewRecords.reduce((sum, r) => sum + (r.totalViolations || 0), 0);
-    const crewWithViolations = crewRecords.filter(r => (r.totalViolations || 0) > 0).length;
     const totalNCs = crewRecords.reduce((sum, r) => sum + (r.totalNCs || 0), 0);
-    const crewWithNCs = crewRecords.filter(r => (r.totalNCs || 0) > 0).length;
     const predictedViolations = crewRecords.reduce((sum, r) => sum + (r.predictedViolations || 0), 0);
-    const crewWithPredictedViolations = crewRecords.filter(r => (r.predictedViolations || 0) > 0).length;
     const predictedNCs = crewRecords.reduce((sum, r) => sum + (r.predictedNCs || 0), 0);
-    const crewWithPredictedNCs = crewRecords.filter(r => (r.totalNCs || 0) === 0 && (r.predictedNCs || 0) > 0).length;
+
+    const crewViolationMap = new Map<string, number>();
+    const crewNCMap = new Map<string, number>();
+    const crewPredViolMap = new Map<string, number>();
+    const crewPredNCMap = new Map<string, { totalNCs: number; predictedNCs: number }>();
+    const crewConflictMap = new Map<string, { name: string; rank: string }>();
+    for (const r of crewRecords) {
+      const cid = r.crewMemberId;
+      crewViolationMap.set(cid, (crewViolationMap.get(cid) || 0) + (r.totalViolations || 0));
+      crewNCMap.set(cid, (crewNCMap.get(cid) || 0) + (r.totalNCs || 0));
+      crewPredViolMap.set(cid, (crewPredViolMap.get(cid) || 0) + (r.predictedViolations || 0));
+      const prev = crewPredNCMap.get(cid) || { totalNCs: 0, predictedNCs: 0 };
+      crewPredNCMap.set(cid, {
+        totalNCs: prev.totalNCs + (r.totalNCs || 0),
+        predictedNCs: prev.predictedNCs + (r.predictedNCs || 0),
+      });
+      if (r.activityConflicting === true) {
+        crewConflictMap.set(cid, { name: r.name || '', rank: r.rank || '' });
+      }
+    }
+    const crewWithViolations = [...crewViolationMap.values()].filter(v => v > 0).length;
+    const crewWithNCs = [...crewNCMap.values()].filter(v => v > 0).length;
+    const crewWithPredictedViolations = [...crewPredViolMap.values()].filter(v => v > 0).length;
+    const crewWithPredictedNCs = [...crewPredNCMap.values()].filter(
+      v => v.totalNCs === 0 && v.predictedNCs > 0
+    ).length;
+
+    const activityConflicting = crewConflictMap.size > 0;
+    const crewWithActivityConflictsCount = crewConflictMap.size;
+    const crewWithActivityConflictsDetails = crewConflictMap.size > 0
+      ? JSON.stringify([...crewConflictMap.values()])
+      : null;
 
     const existingVesselRecords = await vesselRecordsRepository.findAll({
       vesselId,
@@ -271,6 +411,9 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
       await vesselRecordsRepository.update(existingVesselRecord.rhVesselUuid, {
         totalCrew,
         recordingStatusPercent: averagePercent,
+        activityConflicting,
+        crewWithActivityConflicts: crewWithActivityConflictsCount,
+        crewWithActivityConflictsDetails: crewWithActivityConflictsDetails,
         totalViolations,
         crewWithViolations,
         totalNCs,
@@ -287,7 +430,9 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         month: formatMonthDisplay(monthValue),
         totalCrew,
         recordingStatusPercent: averagePercent,
-        activityConflicting: false,
+        activityConflicting,
+        crewWithActivityConflicts: crewWithActivityConflictsCount,
+        crewWithActivityConflictsDetails: crewWithActivityConflictsDetails,
         totalViolations,
         crewWithViolations,
         totalNCs,

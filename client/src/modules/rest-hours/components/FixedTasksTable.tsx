@@ -293,17 +293,33 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
   }, [availableRanks]);
 
   const vesselCrewMembers = useMemo(() => {
-    const filtered = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
-    // Sort by rank order
+    let filtered = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
+    if (monthYear) {
+      const [y, m] = monthYear.split('-').map(Number);
+      const firstDay = `${monthYear}-01`;
+      const lastDayDate = new Date(y, m, 0);
+      const lastDay = `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+      filtered = filtered.filter((crew: any) => {
+        if (crew.signOnDate && crew.signOnDate > lastDay) return false;
+        if (crew.signOffDate && crew.signOffDate < firstDay) return false;
+        return true;
+      });
+    }
+    const seen = new Set<string>();
+    filtered = filtered.filter((crew: any) => {
+      const id = crew.crewMemberId || crew.empNo;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
     return filtered.sort((a: any, b: any) => {
-      // Strip suffix from rank name (e.g., "3rd Officer_1" -> "3rd Officer")
       const aRankBase = a.presentRank?.split('_')[0] || a.presentRank;
       const bRankBase = b.presentRank?.split('_')[0] || b.presentRank;
       const aOrder = rankOrderMap.get(aRankBase) ?? 999;
       const bOrder = rankOrderMap.get(bRankBase) ?? 999;
       return aOrder - bOrder;
     });
-  }, [allCrewMembers, vesselId, rankOrderMap]);
+  }, [allCrewMembers, vesselId, rankOrderMap, monthYear]);
 
   // Fetch existing fixed tasks for this vessel and month
   const { data: existingTasks = [] } = useQuery<FixedTask[]>({

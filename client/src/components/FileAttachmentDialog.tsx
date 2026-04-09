@@ -152,70 +152,98 @@ export function FileAttachmentDialog({
     return div.innerHTML;
   };
 
+  const dataUrlToBlob = (dataUrl: string): Blob => {
+    const [header, base64Data] = dataUrl.split(',');
+    const mimeMatch = header.match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const binary = atob(base64Data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  };
+
   const handlePreview = (attachment: FileAttachment) => {
-    // Open file in new browser tab for universal compatibility
-    const newWindow = window.open();
-    if (newWindow) {
-      // Handle both frontend (name, type, data) and backend (fileName, fileType, fileData) property names
-      const att = attachment as any;
-      const fileName = attachment.name || att.fileName || 'file';
-      const fileType = attachment.type || att.fileType || '';
-      const fileData = attachment.data || att.fileData || '';
-      
-      // Sanitize filename to prevent XSS
-      const safeName = escapeHtml(fileName);
-      
-      if (fileType === 'application/pdf') {
-        // For PDFs, embed in an HTML page for better display
-        newWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>${safeName}</title>
-              <style>
-                body { margin: 0; padding: 0; }
-                iframe { width: 100%; height: 100vh; border: none; }
-              </style>
-            </head>
-            <body>
-              <iframe src="${fileData}"></iframe>
-            </body>
-          </html>
-        `);
-      } else if (fileType.startsWith('image/')) {
-        // For images, display centered
-        newWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>${safeName}</title>
-              <style>
-                body { 
-                  margin: 0; 
-                  padding: 20px; 
-                  display: flex; 
-                  justify-content: center; 
-                  align-items: center; 
-                  min-height: calc(100vh - 40px);
-                  background: #f5f5f5;
-                }
-                img { max-width: 100%; max-height: 100%; object-fit: contain; }
-              </style>
-            </head>
-            <body>
-              <img src="${fileData}" alt="${safeName}" />
-            </body>
-          </html>
-        `);
-      } else {
-        // Fallback for other types
-        newWindow.location.href = fileData;
-      }
-      newWindow.document.close();
-    } else {
+    const att = attachment as any;
+    const fileName = attachment.name || att.fileName || 'file';
+    const fileType = attachment.type || att.fileType || '';
+    const fileData = attachment.data || att.fileData || '';
+
+    if (!fileData) {
       toast({
         title: 'Unable to open file',
-        description: 'Please check if pop-ups are blocked and try again.',
+        description: 'No file data available for preview.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const blob = dataUrlToBlob(fileData);
+      const blobUrl = URL.createObjectURL(blob);
+
+      const newWindow = window.open();
+      if (newWindow) {
+        const safeName = escapeHtml(fileName);
+
+        if (fileType === 'application/pdf') {
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>${safeName}</title>
+                <style>
+                  body { margin: 0; padding: 0; }
+                  iframe { width: 100%; height: 100vh; border: none; }
+                </style>
+              </head>
+              <body>
+                <iframe src="${blobUrl}"></iframe>
+              </body>
+            </html>
+          `);
+        } else if (fileType.startsWith('image/')) {
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>${safeName}</title>
+                <style>
+                  body { 
+                    margin: 0; 
+                    padding: 20px; 
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    min-height: calc(100vh - 40px);
+                    background: #f5f5f5;
+                  }
+                  img { max-width: 100%; max-height: 100%; object-fit: contain; }
+                </style>
+              </head>
+              <body>
+                <img src="${blobUrl}" alt="${safeName}" />
+              </body>
+            </html>
+          `);
+        } else {
+          newWindow.location.href = blobUrl;
+        }
+        newWindow.document.close();
+        newWindow.addEventListener('beforeunload', () => URL.revokeObjectURL(blobUrl));
+      } else {
+        URL.revokeObjectURL(blobUrl);
+        toast({
+          title: 'Unable to open file',
+          description: 'Please check if pop-ups are blocked and try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Unable to open file',
+        description: 'The file data appears to be corrupted.',
         variant: 'destructive',
       });
     }

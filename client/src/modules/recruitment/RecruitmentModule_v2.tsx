@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { parseISO, format, isValid } from 'date-fns';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
@@ -103,6 +104,9 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     return lookup;
   }, [externalNationalitiesData]);
 
+  const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent } = usePermissions();
+  const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
+
   const [filters, setFilters] = useState({
     searchName: "",
     rankAppliedFor: "",
@@ -112,11 +116,15 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     manningAgent: ""
   });
 
+  useEffect(() => {
+    if (isManningAgentUser) {
+      setFilters(prev => ({ ...prev, manningAgent: userManningAgent }));
+    }
+  }, [isManningAgentUser, userManningAgent]);
+
   const { data: allCandidates = [], isLoading, error, refetch } = useV2Candidates();
 
   const deleteMutation = useV2DeleteCandidate();
-
-  const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
   const allowedPages = useMemo(() => {
     const all = ["in-progress", "recruited", "waitlist", "rejected"];
     if (permissions.length === 0) return all;
@@ -319,7 +327,17 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         cellStyle: { fontSize: '13px', color: '#4f5863' },
         filter: 'agDateColumnFilter',
         sortable: true,
-        resizable: true
+        resizable: true,
+        valueFormatter: (params: any) => {
+          if (!params.value) return '';
+          try {
+            const date = typeof params.value === 'string' ? parseISO(params.value) : new Date(params.value);
+            if (!isValid(date)) return params.value;
+            return format(date, 'dd-MMM-yyyy');
+          } catch {
+            return params.value;
+          }
+        }
       });
       
       baseColumns.splice(5, 0, {
@@ -538,7 +556,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                 </div>
 
                 <div className="min-w-[120px]">
-                  <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                  <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))} disabled={isManningAgentUser}>
                     <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent-filter-v2">
                       <SelectValue placeholder="Manning Agent" />
                     </SelectTrigger>
@@ -559,7 +577,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                 <Button 
                   variant="outline" 
                   className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
-                  onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "", manningAgent: "" })}
+                  onClick={() => setFilters(prev => ({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "", manningAgent: isManningAgentUser ? prev.manningAgent : "" }))}
                   data-testid="button-clear-filters-v2"
                 >
                   Clear
@@ -632,7 +650,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                     </SelectContent>
                   </Select>
 
-                  <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                  <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))} disabled={isManningAgentUser}>
                     <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent-filter-v2">
                       <SelectValue placeholder="Manning Agent" />
                     </SelectTrigger>
@@ -653,7 +671,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                   <Button 
                     variant="outline" 
                     className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3"
-                    onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "", manningAgent: "" })}
+                    onClick={() => setFilters(prev => ({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "", manningAgent: isManningAgentUser ? prev.manningAgent : "" }))}
                     data-testid="button-clear-filters-v2"
                   >
                     Clear
@@ -697,7 +715,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                     </SelectContent>
                   </Select>
 
-                  <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))}>
+                  <Select value={filters.manningAgent} onValueChange={(value) => setFilters(prev => ({ ...prev, manningAgent: value }))} disabled={isManningAgentUser}>
                     <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-manning-agent-filter-v2">
                       <SelectValue placeholder="Manning Agent" />
                     </SelectTrigger>
@@ -718,7 +736,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                   <Button 
                     variant="outline" 
                     className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3"
-                    onClick={() => setFilters({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "", manningAgent: "" })}
+                    onClick={() => setFilters(prev => ({ searchName: "", rankAppliedFor: "", vesselType: "", nationality: "", status: "", manningAgent: isManningAgentUser ? prev.manningAgent : "" }))}
                     data-testid="button-clear-filters-v2"
                   >
                     Clear

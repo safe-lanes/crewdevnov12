@@ -198,12 +198,12 @@ export const PeriodicAnalysisChart = ({
         // Get crew records for each vessel record
         const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
           const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
-            vesselId: vr.vesselId 
+            vesselId: vr.vesselId,
+            monthValue,
           });
           return crewRecords.map((cr: any) => ({
             ...cr,
             vesselId: vr.vesselId,
-            monthValue,
           }));
         });
         
@@ -534,6 +534,60 @@ export const PeriodicAnalysisChart = ({
         left: 40,
       },
     };
+
+    if (chartType === 'pie') {
+      const pieData = data.filter((d: any) => (d.avgViolationDays ?? 0) > 0 || (d.avgNCs ?? 0) > 0);
+      const labelKey = xKey;
+      const pieDataWithTotal = pieData.map((d: any) => ({
+        ...d,
+        total: (d.avgViolationDays ?? 0) + (d.avgNCs ?? 0),
+      }));
+      return {
+        ...baseOptions,
+        padding: {
+          top: 10,
+          right: 10,
+          bottom: 10,
+          left: 10,
+        },
+        data: pieDataWithTotal,
+        series: [
+          {
+            type: 'pie' as any,
+            angleKey: 'total',
+            calloutLabelKey: labelKey,
+            outerRadiusRatio: 0.75,
+            fills: ['#52baf3', '#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86'],
+            strokes: ['#3a9fd9', '#2a7db8', '#1a6d9f', '#0a5d86', '#004d73'],
+            calloutLabel: {
+              enabled: true,
+              fontSize: 11,
+              color: '#4b5563',
+              minAngle: 15,
+              offset: 10,
+            },
+            tooltip: {
+              renderer: ({ datum }: any) => {
+                const label = datum[labelKey] ?? '';
+                const violations = datum.avgViolationDays ?? 0;
+                const ncs = datum.avgNCs ?? 0;
+                return `<div class="ag-chart-tooltip-title" style="background-color: #52baf3; padding: 4px 8px; color: white; font-weight: bold;">
+                  ${label}
+                </div>
+                <div class="ag-chart-tooltip-content" style="padding: 4px 8px;">
+                  Avg Violations: ${violations}<br/>
+                  Avg NCs: ${ncs}
+                </div>`;
+              },
+            },
+          } as any,
+        ],
+        legend: {
+          enabled: true,
+          position: 'bottom',
+        },
+      } as AgChartOptions;
+    }
 
     if (chartType === 'bar') {
       // Column chart for Periodic Analysis

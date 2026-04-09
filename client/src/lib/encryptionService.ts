@@ -92,6 +92,7 @@ export interface ExtractedUserProfile {
   roleId?: string;
   userId?: string;
   userType?: string;
+  manningAgent?: string;
   myVessels?: Array<{ vessel: string; vesselId: string; imoNumber: string }>;
 }
 
@@ -182,8 +183,9 @@ function extractFromObject(obj: any): ExtractedUserProfile | null {
   if (obj.roleId) result.roleId = String(obj.roleId);
   if (obj.userId) result.userId = String(obj.userId);
   if (obj.userType) result.userType = String(obj.userType);
+  if (obj.manningAgent) result.manningAgent = String(obj.manningAgent);
   if (Array.isArray(obj.myVessels)) result.myVessels = obj.myVessels;
-  if (result.role || result.roleId || result.userId || result.userType || (result.myVessels && result.myVessels.length > 0)) return result;
+  if (result.role || result.roleId || result.userId || result.userType || result.manningAgent || (result.myVessels && result.myVessels.length > 0)) return result;
   return null;
 }
 
@@ -220,9 +222,10 @@ export function safeExtractFields(rawValue: any): ExtractedUserProfile | null {
   result.roleId = extractStringField(str, 'roleId');
   result.userId = extractStringField(str, 'userId');
   result.userType = extractStringField(str, 'userType');
+  result.manningAgent = extractStringField(str, 'manningAgent');
   result.myVessels = extractVesselsFromString(str);
 
-  if (result.role || result.roleId || result.userId || result.userType || (result.myVessels && result.myVessels.length > 0)) return result;
+  if (result.role || result.roleId || result.userId || result.userType || result.manningAgent || (result.myVessels && result.myVessels.length > 0)) return result;
   return null;
 }
 
@@ -250,4 +253,20 @@ export function getDecryptedSessionStorageItem(key: string, isParse = false): an
   const encrypted = sessionStorage.getItem(key);
   if (!encrypted) return null;
   return decryptData(encrypted, isParse);
+}
+
+export function getResolvedDomain(fallback = 'rsms'): string {
+  try {
+    const decrypted = getDecryptedLocalStorageItem('domain', true);
+    if (decrypted) {
+      if (typeof decrypted === 'string') return decrypted;
+      if (typeof decrypted === 'object') {
+        return decrypted.name || decrypted.domain || JSON.stringify(decrypted);
+      }
+      return String(decrypted);
+    }
+    return localStorage.getItem('domain') || fallback;
+  } catch {
+    return localStorage.getItem('domain') || fallback;
+  }
 }

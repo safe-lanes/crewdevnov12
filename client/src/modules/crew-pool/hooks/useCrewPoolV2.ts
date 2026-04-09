@@ -86,8 +86,8 @@ export function useCrewListV2(params?: {
 }) {
   return useQuery({
     queryKey: [V2_QUERY_KEY, 'crew', 'list', params ?? {}],
-    queryFn: async () => {
-      const response = await crewPoolApiV2.getCrewList({ ...params, limit: params?.limit ?? 1000 });
+    queryFn: async ({ signal }) => {
+      const response = await crewPoolApiV2.getCrewList({ ...params, limit: params?.limit ?? 1000 }, signal);
       // API returns { data: [...], pagination: {...} }
       const rawData = Array.isArray(response) ? response : (response.data || []);
       return rawData.map(mapV2CrewToLegacy);

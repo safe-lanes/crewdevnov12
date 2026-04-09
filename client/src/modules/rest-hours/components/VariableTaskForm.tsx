@@ -91,51 +91,6 @@ export const VariableTaskForm = ({
     enabled: open,
   });
 
-  // Filter crew members by vessel
-  const vesselCrewMembers = useMemo(() => {
-    return allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
-  }, [allCrewMembers, vesselId]);
-
-  // Build rank designation lookup map
-  // Use role if it exists (for multi-position ranks like "3rd Officer_1"), otherwise use rank name
-  const rankDesignationMap = useMemo(() => {
-    const map = new Map<string, any>();
-    companyRanks.forEach((rank: any) => {
-      const key = rank.role || rank.rank;
-      map.set(key, rank);
-    });
-    return map;
-  }, [companyRanks]);
-
-  // Categorize crew into departments based on rank designation flags
-  const categorizedCrew = useMemo(() => {
-    const deckCateringCrew: Array<{ id: string; rank: string; name: string; rankData: any }> = [];
-    const engineCrew: Array<{ id: string; rank: string; name: string; rankData: any }> = [];
-
-    vesselCrewMembers.forEach((crew: any) => {
-      const rankData = rankDesignationMap.get(crew.presentRank);
-      if (!rankData) return;
-
-      const crewItem = {
-        id: crew.empNo || crew.crewMemberId || String(crew.id),
-        rank: crew.presentRank,
-        name: `${crew.firstName || ''} ${crew.familyName || crew.lastName || ''}`.trim(),
-        rankData,
-      };
-
-      // Check if rank belongs to Deck & Catering Dept
-      if (rankData.deckOfficer || rankData.deckRating || rankData.cateringRating) {
-        deckCateringCrew.push(crewItem);
-      }
-      // Check if rank belongs to Engine Dept
-      else if (rankData.engOfficer || rankData.engineRating) {
-        engineCrew.push(crewItem);
-      }
-    });
-
-    return { deckCateringCrew, engineCrew };
-  }, [vesselCrewMembers, rankDesignationMap]);
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -157,6 +112,69 @@ export const VariableTaskForm = ({
   const recordType = form.watch('recordType');
   const statusType = form.watch('statusType');
   const selectedTasks = form.watch('selectedTasks') || [];
+  const watchedStartDate = form.watch('startDate');
+  const watchedFinishDate = form.watch('finishDate');
+
+  const vesselCrewMembers = useMemo(() => {
+    const vesselCrew = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
+
+    let filtered = vesselCrew;
+    if (watchedStartDate || watchedFinishDate) {
+      filtered = vesselCrew.filter((crew: any) => {
+        const signOn = crew.signOnDate;
+        if (watchedFinishDate && signOn && signOn > watchedFinishDate) {
+          return false;
+        }
+        const signOff = crew.signOffDate;
+        if (watchedStartDate && signOff && signOff < watchedStartDate) {
+          return false;
+        }
+        return true;
+      });
+    }
+    const seen = new Set<string>();
+    return filtered.filter((crew: any) => {
+      const id = crew.crewMemberId || crew.empNo;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [allCrewMembers, vesselId, watchedStartDate, watchedFinishDate]);
+
+  const rankDesignationMap = useMemo(() => {
+    const map = new Map<string, any>();
+    companyRanks.forEach((rank: any) => {
+      const key = rank.role || rank.rank;
+      map.set(key, rank);
+    });
+    return map;
+  }, [companyRanks]);
+
+  const categorizedCrew = useMemo(() => {
+    const deckCateringCrew: Array<{ id: string; rank: string; name: string; rankData: any }> = [];
+    const engineCrew: Array<{ id: string; rank: string; name: string; rankData: any }> = [];
+
+    vesselCrewMembers.forEach((crew: any) => {
+      const rankData = rankDesignationMap.get(crew.presentRank);
+      if (!rankData) return;
+
+      const crewItem = {
+        id: crew.empNo || crew.crewMemberId || String(crew.id),
+        rank: crew.presentRank,
+        name: `${crew.firstName || ''} ${crew.familyName || crew.lastName || ''}`.trim(),
+        rankData,
+      };
+
+      if (rankData.deckOfficer || rankData.deckRating || rankData.cateringRating) {
+        deckCateringCrew.push(crewItem);
+      }
+      else if (rankData.engOfficer || rankData.engineRating) {
+        engineCrew.push(crewItem);
+      }
+    });
+
+    return { deckCateringCrew, engineCrew };
+  }, [vesselCrewMembers, rankDesignationMap]);
 
   // Helper function to get crew IDs for a specific group
   const getCrewIdsForGroup = (groupId: string): string[] => {
@@ -402,6 +420,8 @@ export const VariableTaskForm = ({
 
     const totalCrew = allSelectedCrewDetails.length;
 
+    const derivedPeriodValue = values.startDate.substring(0, 7) || periodValue;
+
     const insertData: InsertVariableTask = {
       startDateTime,
       finishDateTime,
@@ -411,7 +431,7 @@ export const VariableTaskForm = ({
       status: statusLabel,
       crewInvolved: totalCrew,
       remarks: values.comments || '',
-      periodValue,
+      periodValue: derivedPeriodValue,
       vesselId: vesselId ? String(vesselId) : null,
       isDraft,
       recordType: values.recordType,

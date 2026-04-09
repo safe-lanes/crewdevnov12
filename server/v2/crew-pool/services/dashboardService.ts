@@ -445,6 +445,16 @@ export const dashboardService = {
     let tankerMonths = 0;
     let oowMonths = 0;
 
+    const OOW_RANKS = new Set([
+      "chief officer", "c/o", "first mate", "1st mate", "first officer", "1st officer",
+      "2nd officer", "second officer", "2/o",
+      "3rd officer", "third officer", "3/o",
+      "2nd engineer", "second engineer", "2/e",
+      "3rd engineer", "third engineer", "3/e",
+      "4th engineer", "fourth engineer", "4/e",
+      "junior officer", "jr. officer", "jr officer",
+    ]);
+
     const allService = [...companyService, ...externalService];
 
     // V1 matching: Company (Yrs) = Calendar time from earliest company sea service "from" date to today
@@ -499,12 +509,8 @@ export const dashboardService = {
         }
       }
 
-      const rank = (record.rank || "").toLowerCase();
-      if (
-        rank.includes("officer") ||
-        rank.includes("mate") ||
-        rank.includes("engineer")
-      ) {
+      const rank = (record.rank || "").toLowerCase().trim();
+      if (OOW_RANKS.has(rank)) {
         oowMonths += months;
       }
     }

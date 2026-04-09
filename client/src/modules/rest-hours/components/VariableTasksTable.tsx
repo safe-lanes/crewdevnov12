@@ -103,7 +103,14 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
 
   const vesselCrewMembers = useMemo(() => {
     if (!vesselId || !crewMembers) return [];
-    return crewMembers.filter(crew => crew.presentVessel === vesselId);
+    const filtered = crewMembers.filter(crew => crew.presentVessel === vesselId);
+    const seen = new Set<string>();
+    return filtered.filter((crew: any) => {
+      const id = crew.crewMemberId || crew.empNo;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
   }, [crewMembers, vesselId]);
 
   const createMutation = useMutation({
@@ -112,6 +119,8 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'variable-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'crew-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       toast({
         title: 'Success',
         description: 'Variable task created successfully',
@@ -132,6 +141,8 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'variable-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'crew-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       toast({
         title: 'Success',
         description: 'Variable task updated successfully',
@@ -152,6 +163,8 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'variable-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'crew-records'] });
+      queryClient.invalidateQueries({ queryKey: ['v2', 'rest-hours', 'vessel-records'] });
       toast({
         title: 'Success',
         description: 'Variable task deleted successfully',
@@ -261,11 +274,29 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
     setFormOpen(true);
   };
 
+  const showCrossMonthToast = (taskPeriod: string | null | undefined) => {
+    if (taskPeriod && taskPeriod !== periodValue && /^\d{4}-\d{2}$/.test(taskPeriod)) {
+      const [y, m] = taskPeriod.split('-');
+      const monthIndex = parseInt(m, 10) - 1;
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const label = monthIndex >= 0 && monthIndex < 12 ? `${monthNames[monthIndex]} ${y}` : taskPeriod;
+      toast({
+        title: 'Note',
+        description: `Task saved under ${label}. Switch the period filter to view it.`,
+      });
+    }
+  };
+
   const handleFormSubmit = (data: InsertVariableTask, isDraft: boolean) => {
     if (editingTask) {
-      updateMutation.mutate({ uuid: (editingTask as any).variableTaskUuid || String(editingTask.id), data });
+      updateMutation.mutate(
+        { uuid: (editingTask as any).variableTaskUuid || String(editingTask.id), data },
+        { onSuccess: () => showCrossMonthToast(data.periodValue) }
+      );
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: () => showCrossMonthToast(data.periodValue),
+      });
     }
   };
 

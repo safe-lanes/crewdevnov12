@@ -554,8 +554,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   // Track newly created crew member ID for subsequent saves
   const [createdCrewId, setCreatedCrewId] = useState<string | null>(null);
+  const createdCrewIdRef = useRef<string | null>(null);
   // Track when we're auto-creating a crew record before edit
   const [isCreatingCrew, setIsCreatingCrew] = useState(false);
+  const isCreatingCrewRef = useRef(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [isStatusEditOpen, setIsStatusEditOpen] = useState(false);
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
@@ -1109,7 +1111,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     // Build a set of "vesselUuid|signOnDate" keys from all on-board assignments
     const assignmentKeys = new Set<string>();
     crewAssignmentsData.forEach((a: any) => {
-      if (a.vesselUuid && a.signOnDate) {
+      if (a.vesselUuid && a.signOnDate && !a.signOffDate) {
         assignmentKeys.add(`${a.vesselUuid}|${a.signOnDate}`);
       }
     });
@@ -1143,14 +1145,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (isOpen) {
       // Dialog is opening - check if we need to reset for a fresh session
       if (!crewMember?.id) {
-        // Opening for a new crew member - ensure we start fresh (POST on first save)
+        createdCrewIdRef.current = null;
         setCreatedCrewId(null);
       }
     }
   }, [isOpen, crewMember?.id]);
   
   useEffect(() => {
-    // When switching to a different crew member while dialog is open, reset the locally created ID
+    createdCrewIdRef.current = null;
     setCreatedCrewId(null);
   }, [crewMember?.id]);
 
@@ -1260,7 +1262,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       return false;
     };
 
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = async (e: MouseEvent) => {
       const target = e.target as Element;
       if (isInsidePortal(target)) return;
 
@@ -1270,17 +1272,47 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         'B3': sectionB3Ref,
       };
 
-      Object.entries(editingSections).forEach(([sectionId, isEditing]) => {
-        if (!isEditing) return;
+      for (const [sectionId, isEditing] of Object.entries(editingSections)) {
+        if (!isEditing) continue;
         const ref = sectionRefs[sectionId];
         if (ref?.current && !ref.current.contains(target)) {
-          const crewUuid = getEffectiveCrewUuid();
+          let crewUuid = getEffectiveCrewUuid();
+          if (!crewUuid && sectionId === 'B1') {
+            const trimmedFirstName = (formData.firstName || '').trim();
+            if (trimmedFirstName) {
+              crewUuid = await ensureCrewExists();
+            } else {
+              const hasB1Data = !!(
+                (formData.familyName || '').trim() ||
+                (formData.middleName || '').trim() ||
+                formData.presentRank ||
+                formData.dateOfBirth ||
+                formData.nationality ||
+                formData.gender ||
+                formData.heightCm ||
+                formData.weightKg ||
+                formData.bmi ||
+                (formData.placeOfBirthCity || '').trim() ||
+                (formData.placeOfBirthCountry || '').trim() ||
+                (formData.nativeLanguage || '').trim() ||
+                (formData.foreignLanguages || '').trim() ||
+                (formData.englishProficiency || '').trim() ||
+                (formData.manningAgent || '').trim() ||
+                (formData.crewPool || '').trim() ||
+                (Array.isArray(formData.vesselType) && formData.vesselType.length > 0)
+              );
+              if (hasB1Data) {
+                setFirstNameError('First name is required.');
+                continue;
+              }
+            }
+          }
           if (crewUuid) {
-            handleSectionAutoSave(sectionId);
+            handleSectionAutoSave(sectionId, crewUuid);
           }
           setEditingSections(prev => ({ ...prev, [sectionId]: false }));
         }
-      });
+      }
     };
 
     const hasEditingSection = Object.values(editingSections).some(Boolean);
@@ -2144,7 +2176,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const handleAttachmentClick = (section: typeof attachmentDialog.section, itemId: string, itemName: string) => {
-    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     
     if (!crewIdentifier) {
       toast({
@@ -3725,6 +3757,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             <FormattedDateInput
                               value={child.dateOfBirth}
                               onChange={(e) => updateChild(index, 'dateOfBirth', e.target.value)}
+                              max={todayStr}
                               className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                             />
                           ) : (
@@ -4733,7 +4766,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <span className="text-[13px] text-[#4f5863]">{service.rank || '—'}</span>
                         ) : (
                           <Select
-                            value={service.rank}
+                            value={normalizeRank(service.rank || '') || service.rank}
                             onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'rank', value); if (seaServiceRequiredErrors[service.id]?.rank) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                           >
                             <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
@@ -5051,7 +5084,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
-                          value={service.rank}
+                          value={normalizeRank(service.rank || '') || service.rank}
                           onValueChange={(value) => { updateExternalSeaService(service.id, 'rank', value); if (seaServiceRequiredErrors[service.id]?.rank) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, rank: value }), 0); }}
                         >
                           <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
@@ -6172,7 +6205,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 vesselName: sea.vesselName || '',
                 vesselCode: sea.vesselCode || '',
                 vesselType: sea.vesselType || '',
-                rank: sea.rank || '',
+                rank: normalizeRank(sea.rank || '') || sea.rank || '',
                 from: sea.from || sea.fromDate || '',
                 to: sea.to || sea.toDate || '',
                 fromDate: sea.from || sea.fromDate || '',
@@ -6255,7 +6288,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 deadweight: sea.deadweight || '',
                 engineTypePower: sea.engineTypePower || '',
                 ownerOperator: sea.ownerOperator || '',
-                rank: sea.rank || '',
+                rank: normalizeRank(sea.rank || '') || sea.rank || '',
                 from: sea.from || sea.fromDate || '',
                 to: sea.to || sea.toDate || '',
                 fromDate: sea.from || sea.fromDate || '',
@@ -6708,9 +6741,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // Auto-save functionality — saves the specific section's data to the backend
-  const handleSectionAutoSave = async (sectionId: string) => {
+  const handleSectionAutoSave = async (sectionId: string, crewUuidOverride?: string) => {
     if (isBatchSavingRef.current) return;
-    const crewUuid = getEffectiveCrewUuid();
+    const crewUuid = crewUuidOverride || getEffectiveCrewUuid();
     if (!crewUuid) return;
 
     if (sectionId === 'B1') {
@@ -6875,7 +6908,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Get effective crew UUID (either from existing crew or newly created)
   const getEffectiveCrewUuid = (): string | null => {
-    return crewMember?.crewUuid || crewMember?.id || createdCrewId || null;
+    return crewMember?.crewUuid || crewMember?.id || createdCrewId || createdCrewIdRef.current || null;
   };
 
   // Ensure crew record exists before allowing section edits
@@ -6886,12 +6919,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       return existingUuid;
     }
 
-    // Race condition guard - prevent duplicate creation on rapid clicks
-    if (isCreatingCrew) {
-      return null; // Already creating, don't proceed
+    if (isCreatingCrewRef.current) {
+      return null;
     }
 
-    // No crew UUID exists - need to create parent record first
+    isCreatingCrewRef.current = true;
     setIsCreatingCrew(true);
     try {
       // Create crew record with current form data using V2 mapping pipeline
@@ -6913,9 +6945,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       const newCrewUuid = result?.crewUuid;
       
       if (newCrewUuid) {
+        createdCrewIdRef.current = newCrewUuid;
         setCreatedCrewId(newCrewUuid);
         
-        queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
+        await queryClient.cancelQueries({ queryKey: ['/api/v2/crew-pool', 'crew', 'list'] });
         invalidateCrewData(newCrewUuid);
         
         // Chain save of child tables with the new crewUuid (same as Save button path)
@@ -6971,7 +7004,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           );
         }
         
-        // Notify parent component if needed
+        await queryClient.refetchQueries({ queryKey: ['/api/v2/crew-pool', 'crew', 'list'] });
+
         if (onCrewMemberChange && result) {
           onCrewMemberChange(result);
         }
@@ -6996,6 +7030,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       });
       return null;
     } finally {
+      isCreatingCrewRef.current = false;
       setIsCreatingCrew(false);
     }
   };
@@ -7096,6 +7131,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           }
           
           if (crewUuid) {
+            createdCrewIdRef.current = crewUuid;
             setCreatedCrewId(crewUuid);
             // NOTE: We intentionally do NOT call onCrewMemberChange here.
             // Calling it would update the `crewMember` prop from null to the new record,
@@ -7447,7 +7483,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 data-testid="button-crew-dropdown"
               >
                 <span>
-                  {crewMember ? `${crewMember.firstName} ${crewMember.familyName}, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}` : 'Crew Member'}
+                  {crewMember
+                    ? `${crewMember.firstName} ${crewMember.familyName}, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}`
+                    : (formData.firstName || formData.familyName)
+                      ? `${formData.firstName || ''} ${formData.familyName || ''}`.trim() + (formData.presentRank ? `, ${normalizeRank(formData.presentRank) || formData.presentRank}` : '')
+                      : 'Crew Member'}
                 </span>
                 <ChevronDown className="h-4 w-4 flex-shrink-0" />
               </button>

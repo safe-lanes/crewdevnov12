@@ -10,7 +10,7 @@ export const crewPoolApiV2 = {
     status?: string;
     limit?: number;
     offset?: number;
-  }) {
+  }, signal?: AbortSignal) {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set('search', params.search);
     if (params?.rank) searchParams.set('rank', params.rank);
@@ -20,7 +20,7 @@ export const crewPoolApiV2 = {
     if (params?.offset) searchParams.set('offset', params.offset.toString());
     
     const url = `${V2_BASE}/crew/details${searchParams.toString() ? '?' + searchParams : ''}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { signal });
     if (!response.ok) throw new Error('Failed to fetch crew list');
     return response.json();
   },
