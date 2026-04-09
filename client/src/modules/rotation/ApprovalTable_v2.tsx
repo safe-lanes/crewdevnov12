@@ -110,14 +110,15 @@ const ApprovalTimelineViewV2: React.FC<{
     const updateCanvasSize = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        setCanvasSize({ width: rect.width, height: rect.height });
+        const minHeight = 48 + rowData.length * rowHeight;
+        setCanvasSize({ width: rect.width, height: Math.max(rect.height, minHeight) });
       }
     };
     
     updateCanvasSize();
     window.addEventListener('resize', updateCanvasSize);
     return () => window.removeEventListener('resize', updateCanvasSize);
-  }, []);
+  }, [rowData.length, rowHeight]);
   
   const months = useMemo(() => {
     const result = [];
@@ -255,8 +256,10 @@ const ApprovalTimelineViewV2: React.FC<{
     ctx.stroke();
   }, [rowData, scrollTop, rowHeight, months, today, startDate, endDate, totalDays, canvasSize, timelineWidth]);
 
+  const minContainerHeight = 48 + rowData.length * rowHeight;
+
   return (
-    <div ref={containerRef} className="w-full h-full flex">
+    <div ref={containerRef} className="w-full h-full flex" style={{ minHeight: minContainerHeight }}>
       <div className="flex-1" style={{ width: timelineWidth }}>
         <canvas
           ref={canvasRef}
