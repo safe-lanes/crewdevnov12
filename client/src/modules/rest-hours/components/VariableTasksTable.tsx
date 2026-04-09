@@ -275,10 +275,11 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
   };
 
   const showCrossMonthToast = (taskPeriod: string | null | undefined) => {
-    if (taskPeriod && taskPeriod !== periodValue) {
+    if (taskPeriod && taskPeriod !== periodValue && /^\d{4}-\d{2}$/.test(taskPeriod)) {
       const [y, m] = taskPeriod.split('-');
+      const monthIndex = parseInt(m, 10) - 1;
       const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-      const label = `${monthNames[parseInt(m, 10) - 1]} ${y}`;
+      const label = monthIndex >= 0 && monthIndex < 12 ? `${monthNames[monthIndex]} ${y}` : taskPeriod;
       toast({
         title: 'Note',
         description: `Task saved under ${label}. Switch the period filter to view it.`,
