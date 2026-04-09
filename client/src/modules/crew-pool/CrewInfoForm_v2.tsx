@@ -964,6 +964,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       const currentCrewId = crewMember?.crewUuid || crewMember?.id || '';
       const ctx = deletingContextRef.current;
       const preserveLocalRows = !!(ctx && ctx.crewId === currentCrewId && ctx.count > 0);
+      if (preserveLocalRows) {
+        clearDeletingForCrew();
+      }
       setDeletedChildUuids([]);
       setFormData(prev => {
         const localOnlyDocs = preserveLocalRows ? prev.documents.filter((d: any) => !d.docUuid) : [];
