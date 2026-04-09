@@ -694,7 +694,7 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
           />
         </div>
         
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1" style={{ height: `${48 + Math.max(proposals.length, 1) * 48 + 2}px` }}>
           <ApprovalTimelineViewV2 
             rowData={displayedRowData} 
             rowHeight={48}
