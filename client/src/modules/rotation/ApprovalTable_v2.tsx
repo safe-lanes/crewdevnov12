@@ -659,14 +659,14 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
         </div>
       </div>
 
-      <div className="flex gap-0 bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="flex gap-0 max-h-[calc(100vh-380px)] bg-white rounded-lg border border-gray-200 overflow-auto">
         <div className="flex-none w-[40%] border-r border-gray-200">
           <AgGridTable
             rowData={proposals}
             columnDefs={columnDefs}
             context={{}}
             onGridReady={handleGridReady}
-            height={`${48 + proposals.length * 48 + 2}px`}
+            height={`${48 + Math.max(proposals.length, 1) * 48 + 2}px`}
             enableExport={false}
             enableSideBar={false}
             enableStatusBar={false}
