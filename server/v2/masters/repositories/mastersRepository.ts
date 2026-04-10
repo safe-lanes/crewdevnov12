@@ -424,7 +424,7 @@ export class MastersRepository {
 
   private getColumnCacheKey(): string {
     try {
-      const { tenantConnectionManager } = require("../../utils/tenantConnectionManager");
+      const { tenantConnectionManager } = require("../../../utils/tenantConnectionManager");
       return tenantConnectionManager.getCurrentTenantId() || '__default__';
     } catch {
       return '__default__';
@@ -552,6 +552,40 @@ export class MastersRepository {
     return rows?.[0] || undefined;
   }
 
+  private buildParameterizedInsert(
+    tableName: string,
+    payload: Record<string, any>
+  ): ReturnType<typeof sql> {
+    const keys = Object.keys(payload);
+    const columnsPart = keys.map(col => `"${col}"`).join(', ');
+
+    const chunks: any[] = [sql.raw(`INSERT INTO ${tableName} (${columnsPart}, "created_at", "updated_at") VALUES (`)];
+    keys.forEach((key, i) => {
+      if (i > 0) chunks.push(sql.raw(', '));
+      const val = payload[key] === undefined ? null : payload[key];
+      chunks.push(sql`${val}`);
+    });
+    chunks.push(sql.raw(`, NOW(), NOW()) RETURNING *`));
+
+    return sql.join(chunks, sql.raw(''));
+  }
+
+  private buildParameterizedUpdate(
+    tableName: string,
+    payload: Record<string, any>,
+    id: number
+  ): ReturnType<typeof sql> {
+    const keys = Object.keys(payload);
+    const chunks: any[] = [sql.raw(`UPDATE ${tableName} SET `)];
+    keys.forEach((key, i) => {
+      if (i > 0) chunks.push(sql.raw(', '));
+      const val = payload[key] === undefined ? null : payload[key];
+      chunks.push(sql`${sql.raw(`"${key}"`)} = ${val}`);
+    });
+    chunks.push(sql` WHERE "id" = ${id}`);
+    return sql.join(chunks, sql.raw(''));
+  }
+
   async createMasterDataEntry(insertEntry: InsertMasterDataEntry): Promise<MasterDataEntry> {
     const db = getDb();
     const entryWithName = this.ensureNameFieldForVesselMaster(insertEntry);
@@ -559,21 +593,8 @@ export class MastersRepository {
 
     const { created_at, updated_at, ...payloadWithoutTimestamps } = filteredEntry as any;
 
-    const columns = Object.keys(payloadWithoutTimestamps).map(col => `"${col}"`).join(', ');
-    const values = Object.values(payloadWithoutTimestamps).map(value => value === undefined ? null : value);
-    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-
-    const insertSql = `INSERT INTO master_data_entries (${columns}, "created_at", "updated_at") VALUES (${placeholders}, NOW(), NOW()) RETURNING *`;
-
-    const result: any = await db.execute(sql.raw(
-      insertSql.replace(/\$(\d+)/g, (_, idx) => {
-        const val = values[parseInt(idx) - 1];
-        if (val === null) return 'NULL';
-        if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
-        if (typeof val === 'number') return String(val);
-        return `'${String(val).replace(/'/g, "''")}'`;
-      })
-    ));
+    const query = this.buildParameterizedInsert('master_data_entries', payloadWithoutTimestamps);
+    const result: any = await db.execute(query);
 
     const rows = (result as any).rows || result;
     if (rows && rows.length > 0) {
@@ -592,25 +613,8 @@ export class MastersRepository {
     const filteredEntry = await this.filterPayloadByExistingColumns(entryData, 'master_data_entries');
     filteredEntry.updated_at = new Date();
 
-    const setClauses: string[] = [];
-    for (const [col, value] of Object.entries(filteredEntry)) {
-      let sqlValue: string;
-      if (value === null || value === undefined) {
-        sqlValue = 'NULL';
-      } else if (value instanceof Date) {
-        sqlValue = `'${value.toISOString()}'`;
-      } else if (typeof value === 'boolean') {
-        sqlValue = value ? 'TRUE' : 'FALSE';
-      } else if (typeof value === 'number') {
-        sqlValue = String(value);
-      } else {
-        sqlValue = `'${String(value).replace(/'/g, "''")}'`;
-      }
-      setClauses.push(`"${col}" = ${sqlValue}`);
-    }
-
-    const updateSql = `UPDATE master_data_entries SET ${setClauses.join(', ')} WHERE "id" = ${id}`;
-    const result: any = await db.execute(sql.raw(updateSql));
+    const query = this.buildParameterizedUpdate('master_data_entries', filteredEntry, id);
+    const result: any = await db.execute(query);
 
     const rowCount = (result as any).rowCount ?? ((result as any).rows || result)?.length;
     if (rowCount === 0) {
