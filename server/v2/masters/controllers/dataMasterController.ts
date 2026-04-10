@@ -7,6 +7,9 @@ import {
   applyMasterSpecificMapping,
   validateMasterSpecificEntry
 } from "../../../vesselMasterSafety";
+import { MastersRepository } from "../repositories/mastersRepository";
+
+const mastersRepo = new MastersRepository();
 
 function applyBasicFieldTransformation(entry: any): any {
   if (!entry) return entry;
@@ -272,7 +275,7 @@ export const dataMasterController = {
         });
       }
 
-      const data = await storage.getMasterData(type);
+      const data = await mastersRepo.getMasterData(type);
       res.json({
         type,
         count: data.length,
@@ -312,7 +315,7 @@ export const dataMasterController = {
           const apiKey = API_KEY_MAP[type];
           const typeData = externalData[apiKey];
           if (typeData && Array.isArray(typeData)) {
-            const result = await storage.syncMasterData(type, typeData);
+            const result = await mastersRepo.syncMasterData(type, typeData);
             results[type] = { synced: result.count };
           } else {
             results[type] = { synced: 0, error: `No data for key: ${apiKey}` };

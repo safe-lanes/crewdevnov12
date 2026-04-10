@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql, getTableName } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   masterNationalities,
@@ -15,6 +15,131 @@ import {
   masterCrewPools,
   masterAppraisalTypes,
 } from "../../../../shared/schema";
+
+const MASTER_TABLE_MAP: Record<string, any> = {
+  nationalities: masterNationalities,
+  vessels: masterVessels,
+  vesselTypes: masterVesselTypes,
+  additionalGroups: masterAdditionalGroups,
+  ports: masterPorts,
+  fleetGroups: masterFleetGroups,
+  languages: masterLanguages,
+  countries: masterCountries,
+  users: masterUsers,
+};
+
+const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
+  nationalities: {
+    cid: 'natUuid',
+    countryCode: 'countryCode',
+    countryName: 'countryName',
+    nationality: 'nationality',
+    countryRefId: 'countryRefId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    createdBy: 'createdBy',
+    isDeleted: 'isDeleted',
+  },
+  vessels: {
+    vuid: 'vesselUuid',
+    vessel: 'vessel',
+    imoNumber: 'imoNumber',
+    vesselType: 'vesselType',
+  },
+  vesselTypes: {
+    vtuid: 'vtUuid',
+    vesselType: 'vesselType',
+    tanker: 'tanker',
+    oilTanker: 'oilTanker',
+    gasTanker: 'gasTanker',
+    container: 'container',
+    chemicalTanker: 'chemicalTanker',
+    other: 'other',
+    dry: 'dry',
+    isActive: 'isActive',
+    isDeleted: 'isDeleted',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    createdBy: 'createdBy',
+    updatedBy: 'updatedBy',
+  },
+  additionalGroups: {
+    id: 'agUuid',
+    name: 'name',
+    vessels: 'vessels',
+  },
+  ports: {
+    puid: 'portUuid',
+    name: 'name',
+    latitude: 'latitude',
+    longitude: 'longitude',
+    country: 'country',
+    portcode: 'portcode',
+    isActive: 'isActive',
+    isDeleted: 'isDeleted',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    createdBy: 'createdBy',
+  },
+  fleetGroups: {
+    id: 'fgUuid',
+    name: 'name',
+    vessels: 'vessels',
+  },
+  languages: {
+    luid: 'langUuid',
+    isoCode: 'isoCode',
+    languageName: 'languageName',
+    nativeName: 'nativeName',
+    isForeignLanguage: 'isForeignLanguage',
+    displayOrder: 'displayOrder',
+    isActive: 'isActive',
+    isDeleted: 'isDeleted',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+  },
+  countries: {
+    nuid: 'countryUuid',
+    countryName: 'countryName',
+    isActive: 'isActive',
+    isDeleted: 'isDeleted',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    createdBy: 'createdBy',
+    domain: 'domain',
+    orderBy: 'orderBy',
+  },
+  users: {
+    uuid: 'userUuid',
+    firstname: 'firstname',
+    lastname: 'lastname',
+    email: 'email',
+    fullname: 'fullname',
+    userType: 'userType',
+    designation: 'designation',
+    department: 'department',
+    role: 'role',
+    displayName: 'displayName',
+  },
+};
+
+const BOOLEAN_FIELDS = new Set([
+  'tanker', 'oilTanker', 'gasTanker', 'chemicalTanker', 'dry', 'container', 'other',
+  'isActive', 'isDeleted', 'isForeignLanguage',
+]);
+
+const TIMESTAMP_FIELDS = new Set(['createdAt', 'updatedAt', 'synchedAt']);
+
+function buildVesselClassification(item: any): string | null {
+  const classifications: string[] = [];
+  if (item.tanker === true || item.tanker === 1) classifications.push('Tanker');
+  if (item.oilTanker === true || item.oilTanker === 1) classifications.push('Oil');
+  if (item.gasTanker === true || item.gasTanker === 1) classifications.push('Gas');
+  if (item.chemicalTanker === true || item.chemicalTanker === 1) classifications.push('Chemical');
+  if (item.dry === true || item.dry === 1) classifications.push('Dry');
+  if (item.container === true || item.container === 1) classifications.push('Container');
+  return classifications.length > 0 ? classifications.join(', ') : null;
+}
 
 export class MastersRepository {
   async findAllNationalities() {
@@ -263,5 +388,92 @@ export class MastersRepository {
       .from(masterAppraisalTypes)
       .where(and(eq(masterAppraisalTypes.entryId, entryId), eq(masterAppraisalTypes.isDeleted, false)));
     return results[0];
+  }
+
+  async getMasterData(masterType: string): Promise<any[]> {
+    const table = MASTER_TABLE_MAP[masterType];
+    if (!table) {
+      console.warn(`[MastersRepository] Unknown master type: ${masterType}`);
+      return [];
+    }
+
+    try {
+      const db = getDb();
+      const rows = await db.select().from(table).orderBy(table.id);
+      console.log(`[MastersRepository] getMasterData(${masterType}): returned ${rows.length} records`);
+
+      if (masterType === 'vesselTypes') {
+        return rows.map((row: any) => ({
+          ...row,
+          classification: buildVesselClassification(row),
+        }));
+      }
+      return rows;
+    } catch (error: any) {
+      console.error(`[MastersRepository] getMasterData error`, error);
+      return [];
+    }
+  }
+
+  async syncMasterData(masterType: string, data: any[]): Promise<{ count: number }> {
+    if (!data || data.length === 0) {
+      console.log(`[MastersRepository] syncMasterData(${masterType}): No data`);
+      return { count: 0 };
+    }
+
+    const table = MASTER_TABLE_MAP[masterType];
+    const mapping = FIELD_MAPPINGS[masterType];
+
+    if (!table || !mapping) {
+      console.warn(`[MastersRepository] Unknown master type: ${masterType}`);
+      return { count: 0 };
+    }
+
+    try {
+      const db = getDb();
+      const tableName = getTableName(table);
+
+      console.log(`[MastersRepository] syncMasterData(${masterType}): tableName=${tableName}`);
+
+      await db.execute(
+        sql.raw(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`)
+      );
+
+      const insertData = data.map((item) => {
+        const row: any = {};
+        for (const [apiField, schemaField] of Object.entries(mapping)) {
+          if (item[apiField] !== undefined && item[apiField] !== null) {
+            let value = item[apiField];
+            if (BOOLEAN_FIELDS.has(apiField)) {
+              value = Boolean(value);
+            } else if (TIMESTAMP_FIELDS.has(apiField)) {
+              value = typeof value === 'string' ? new Date(value) : value;
+            }
+            row[schemaField] = value;
+          }
+        }
+        return row;
+      });
+
+      console.log(`[MastersRepository] syncMasterData(${masterType}): inserting ${insertData.length} rows`);
+
+      if (insertData.length > 0) {
+        const BATCH_SIZE = 1000;
+        let totalInserted = 0;
+
+        for (let i = 0; i < insertData.length; i += BATCH_SIZE) {
+          const batch = insertData.slice(i, i + BATCH_SIZE);
+          await db.insert(table).values(batch);
+          totalInserted += batch.length;
+          console.log(`[MastersRepository] Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}: ${totalInserted}/${insertData.length} rows`);
+        }
+        console.log(`[MastersRepository] Successfully inserted ${totalInserted} rows into ${masterType}`);
+      }
+
+      return { count: insertData.length };
+    } catch (error) {
+      console.error(`[MastersRepository] Error syncing ${masterType}:`, error);
+      throw error;
+    }
   }
 }
