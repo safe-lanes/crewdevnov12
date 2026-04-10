@@ -20,12 +20,10 @@ const useProposalsV2 = (filters: {
   dateTo?: string;
   showArchived?: boolean;
 }) => {
-  const { getVesselIds } = useVesselLookup();
   const queryParams = new URLSearchParams();
   
   if (filters.selectedVessels && filters.selectedVessels.length > 0) {
-    const vesselIds = getVesselIds(filters.selectedVessels);
-    queryParams.append('vessels', JSON.stringify(vesselIds));
+    queryParams.append('vessels', JSON.stringify(filters.selectedVessels));
   }
   
   if (filters.selectedRanks && filters.selectedRanks.length > 0) {
