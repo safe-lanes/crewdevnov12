@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Save, Edit2 } from 'lucide-react';
 import type { FixedTask } from '@shared/schema';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
+import { useRankOrdering } from '@/hooks/useRankOrdering';
 
 interface FixedTasksTableProps {
   vesselId: string;
@@ -278,19 +279,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     enabled: !!vesselId,
   });
 
-  // Fetch available ranks to get sortOrder
-  const { data: availableRanks = [] } = useQuery<any[]>({
-    queryKey: ['/api/v2/admin/available-ranks'],
-  });
-
-  // Create a map of rank name to sortOrder for sorting
-  const rankOrderMap = useMemo(() => {
-    const map = new Map<string, number>();
-    availableRanks.forEach((rank: any) => {
-      map.set(rank.name, rank.sortOrder || 0);
-    });
-    return map;
-  }, [availableRanks]);
+  const { getSortOrder } = useRankOrdering(vesselId);
 
   const vesselCrewMembers = useMemo(() => {
     let filtered = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
@@ -313,13 +302,14 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       return true;
     });
     return filtered.sort((a: any, b: any) => {
-      const aRankBase = a.presentRank?.split('_')[0] || a.presentRank;
-      const bRankBase = b.presentRank?.split('_')[0] || b.presentRank;
-      const aOrder = rankOrderMap.get(aRankBase) ?? 999;
-      const bOrder = rankOrderMap.get(bRankBase) ?? 999;
-      return aOrder - bOrder;
+      const aOrder = getSortOrder(a.presentRank);
+      const bOrder = getSortOrder(b.presentRank);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      const aSuffix = a.presentRank?.includes('_') ? parseInt(a.presentRank.split('_')[1]) || 0 : 0;
+      const bSuffix = b.presentRank?.includes('_') ? parseInt(b.presentRank.split('_')[1]) || 0 : 0;
+      return aSuffix - bSuffix;
     });
-  }, [allCrewMembers, vesselId, rankOrderMap, monthYear]);
+  }, [allCrewMembers, vesselId, getSortOrder, monthYear]);
 
   // Fetch existing fixed tasks for this vessel and month
   const { data: existingTasks = [] } = useQuery<FixedTask[]>({
