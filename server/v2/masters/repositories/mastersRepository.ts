@@ -14,6 +14,11 @@ import {
   masterManningAgents,
   masterCrewPools,
   masterAppraisalTypes,
+  dataMasters,
+  type DataMaster,
+  type InsertDataMaster,
+  type InsertMasterDataEntry,
+  type MasterDataEntry,
 } from "../../../../shared/schema";
 
 const MASTER_TABLE_MAP: Record<string, any> = {
@@ -413,6 +418,215 @@ export class MastersRepository {
       console.error(`[MastersRepository] getMasterData error`, error);
       return [];
     }
+  }
+
+  private columnCacheByDb = new Map<string, Map<string, Set<string>>>();
+
+  private getColumnCacheKey(): string {
+    try {
+      const { tenantConnectionManager } = require("../../utils/tenantConnectionManager");
+      return tenantConnectionManager.getCurrentTenantId() || '__default__';
+    } catch {
+      return '__default__';
+    }
+  }
+
+  private async getExistingColumns(tableName: string): Promise<Set<string>> {
+    const tenantKey = this.getColumnCacheKey();
+    if (!this.columnCacheByDb.has(tenantKey)) {
+      this.columnCacheByDb.set(tenantKey, new Map());
+    }
+    const tenantCache = this.columnCacheByDb.get(tenantKey)!;
+
+    if (tenantCache.has(tableName)) {
+      return tenantCache.get(tableName)!;
+    }
+    try {
+      const db = getDb();
+      const result = await db.execute(
+        sql`SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ${tableName}`
+      );
+      const rows = (result as any).rows || result;
+      const columns = new Set<string>(rows.map((row: any) => row.column_name as string));
+      tenantCache.set(tableName, columns);
+      return columns;
+    } catch (error) {
+      console.error(`Failed to get columns for ${tableName}:`, error);
+      return new Set<string>();
+    }
+  }
+
+  private async filterPayloadByExistingColumns<T extends Record<string, any>>(
+    payload: T,
+    tableName: string
+  ): Promise<Record<string, any>> {
+    const existingColumns = await this.getExistingColumns(tableName);
+    const filtered: Record<string, any> = {};
+
+    const fieldMapping: Record<string, string> = {
+      masterId: 'master_id',
+      entryId: 'entry_id',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
+    };
+
+    for (const [key, value] of Object.entries(payload)) {
+      const dbColumnName = fieldMapping[key] || key;
+      if (existingColumns.has(dbColumnName)) {
+        filtered[dbColumnName] = value;
+      }
+    }
+
+    return filtered;
+  }
+
+  private ensureNameFieldForVesselMaster(insertEntry: InsertMasterDataEntry): InsertMasterDataEntry {
+    if (insertEntry.masterId === '014' && !insertEntry.name) {
+      const derivedName = (insertEntry as any).vessel ||
+                         (insertEntry as any).imoNumber ||
+                         insertEntry.entryId ||
+                         'Unnamed Vessel';
+      return { ...insertEntry, name: derivedName };
+    }
+    return insertEntry;
+  }
+
+  async getDataMasters(): Promise<DataMaster[]> {
+    const db = getDb();
+    return await db.select().from(dataMasters);
+  }
+
+  async getDataMaster(id: string): Promise<DataMaster | undefined> {
+    const db = getDb();
+    const results = await db.select().from(dataMasters).where(eq(dataMasters.id, id));
+    return results[0] || undefined;
+  }
+
+  async createDataMaster(insertMaster: InsertDataMaster): Promise<DataMaster> {
+    const db = getDb();
+    const [created] = await db
+      .insert(dataMasters)
+      .values(insertMaster)
+      .returning();
+    return created;
+  }
+
+  async updateDataMaster(id: string, masterData: Partial<InsertDataMaster>): Promise<DataMaster | undefined> {
+    const db = getDb();
+    const [updated] = await db
+      .update(dataMasters)
+      .set({ ...masterData, updatedAt: new Date() })
+      .where(eq(dataMasters.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteDataMaster(id: string): Promise<boolean> {
+    const db = getDb();
+    const result = await db.delete(dataMasters).where(eq(dataMasters.id, id));
+    return (result as any).rowCount !== null && (result as any).rowCount > 0;
+  }
+
+  async getMasterDataEntries(masterId: string): Promise<MasterDataEntry[]> {
+    const db = getDb();
+    const existingColumns = await this.getExistingColumns('master_data_entries');
+    const selectColumns = Array.from(existingColumns).map(col => `"${col}"`).join(', ');
+    const hasOrderBy = existingColumns.has('orderBy');
+    const orderClause = hasOrderBy ? '"orderBy" NULLS LAST, "entry_id"' : '"entry_id"';
+
+    const result: any = await db.execute(
+      sql`SELECT ${sql.raw(selectColumns)} FROM master_data_entries WHERE "master_id" = ${masterId} ORDER BY ${sql.raw(orderClause)}`
+    );
+    return (result as any).rows || result || [];
+  }
+
+  async getMasterDataEntry(id: number): Promise<MasterDataEntry | undefined> {
+    const db = getDb();
+    const existingColumns = await this.getExistingColumns('master_data_entries');
+    const selectColumns = Array.from(existingColumns).map(col => `"${col}"`).join(', ');
+
+    const result: any = await db.execute(
+      sql`SELECT ${sql.raw(selectColumns)} FROM master_data_entries WHERE "id" = ${id}`
+    );
+    const rows = (result as any).rows || result;
+    return rows?.[0] || undefined;
+  }
+
+  async createMasterDataEntry(insertEntry: InsertMasterDataEntry): Promise<MasterDataEntry> {
+    const db = getDb();
+    const entryWithName = this.ensureNameFieldForVesselMaster(insertEntry);
+    const filteredEntry = await this.filterPayloadByExistingColumns(entryWithName, 'master_data_entries');
+
+    const { created_at, updated_at, ...payloadWithoutTimestamps } = filteredEntry as any;
+
+    const columns = Object.keys(payloadWithoutTimestamps).map(col => `"${col}"`).join(', ');
+    const values = Object.values(payloadWithoutTimestamps).map(value => value === undefined ? null : value);
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+    const insertSql = `INSERT INTO master_data_entries (${columns}, "created_at", "updated_at") VALUES (${placeholders}, NOW(), NOW()) RETURNING *`;
+
+    const result: any = await db.execute(sql.raw(
+      insertSql.replace(/\$(\d+)/g, (_, idx) => {
+        const val = values[parseInt(idx) - 1];
+        if (val === null) return 'NULL';
+        if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+        if (typeof val === 'number') return String(val);
+        return `'${String(val).replace(/'/g, "''")}'`;
+      })
+    ));
+
+    const rows = (result as any).rows || result;
+    if (rows && rows.length > 0) {
+      return rows[0];
+    }
+
+    const fallbackResult: any = await db.execute(
+      sql`SELECT * FROM master_data_entries WHERE "master_id" = ${entryWithName.masterId} ORDER BY "id" DESC LIMIT 1`
+    );
+    const fallbackRows = (fallbackResult as any).rows || fallbackResult;
+    return fallbackRows[0];
+  }
+
+  async updateMasterDataEntry(id: number, entryData: Partial<InsertMasterDataEntry>): Promise<MasterDataEntry | undefined> {
+    const db = getDb();
+    const filteredEntry = await this.filterPayloadByExistingColumns(entryData, 'master_data_entries');
+    filteredEntry.updated_at = new Date();
+
+    const setClauses: string[] = [];
+    for (const [col, value] of Object.entries(filteredEntry)) {
+      let sqlValue: string;
+      if (value === null || value === undefined) {
+        sqlValue = 'NULL';
+      } else if (value instanceof Date) {
+        sqlValue = `'${value.toISOString()}'`;
+      } else if (typeof value === 'boolean') {
+        sqlValue = value ? 'TRUE' : 'FALSE';
+      } else if (typeof value === 'number') {
+        sqlValue = String(value);
+      } else {
+        sqlValue = `'${String(value).replace(/'/g, "''")}'`;
+      }
+      setClauses.push(`"${col}" = ${sqlValue}`);
+    }
+
+    const updateSql = `UPDATE master_data_entries SET ${setClauses.join(', ')} WHERE "id" = ${id}`;
+    const result: any = await db.execute(sql.raw(updateSql));
+
+    const rowCount = (result as any).rowCount ?? ((result as any).rows || result)?.length;
+    if (rowCount === 0) {
+      return undefined;
+    }
+
+    return this.getMasterDataEntry(id);
+  }
+
+  async deleteMasterDataEntry(id: number): Promise<boolean> {
+    const existing = await this.getMasterDataEntry(id);
+    if (!existing) return false;
+
+    const db = getDb();
+    await db.execute(sql`DELETE FROM master_data_entries WHERE "id" = ${id}`);
+    return true;
   }
 
   async syncMasterData(masterType: string, data: any[]): Promise<{ count: number }> {

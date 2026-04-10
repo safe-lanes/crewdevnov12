@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { storage } from "../../../storage";
 import { insertDataMasterSchema, insertMasterDataEntrySchema } from "@shared/schema";
 import {
   needsSpecialHandling,
@@ -59,7 +58,7 @@ const API_KEY_MAP: Record<string, string> = {
 export const dataMasterController = {
   async listMasters(req: Request, res: Response) {
     try {
-      const masters = await storage.getDataMasters();
+      const masters = await mastersRepo.getDataMasters();
       res.json(masters);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch masters" });
@@ -69,7 +68,7 @@ export const dataMasterController = {
   async getMaster(req: Request, res: Response) {
     try {
       const id = req.params.id;
-      const master = await storage.getDataMaster(id);
+      const master = await mastersRepo.getDataMaster(id);
       if (!master) {
         return res.status(404).json({ error: "Master not found" });
       }
@@ -85,7 +84,7 @@ export const dataMasterController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid master data", details: result.error.issues });
       }
-      const master = await storage.createDataMaster(result.data);
+      const master = await mastersRepo.createDataMaster(result.data);
       res.status(201).json(master);
     } catch (error) {
       res.status(500).json({ error: "Failed to create master" });
@@ -99,7 +98,7 @@ export const dataMasterController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid master data", details: result.error.issues });
       }
-      const master = await storage.updateDataMaster(id, result.data);
+      const master = await mastersRepo.updateDataMaster(id, result.data);
       if (!master) {
         return res.status(404).json({ error: "Master not found" });
       }
@@ -112,7 +111,7 @@ export const dataMasterController = {
   async deleteMaster(req: Request, res: Response) {
     try {
       const id = req.params.id;
-      const deleted = await storage.deleteDataMaster(id);
+      const deleted = await mastersRepo.deleteDataMaster(id);
       if (!deleted) {
         return res.status(404).json({ error: "Master not found" });
       }
@@ -125,7 +124,7 @@ export const dataMasterController = {
   async getMasterEntries(req: Request, res: Response) {
     try {
       const masterId = req.params.id;
-      const entries = await storage.getMasterDataEntries(masterId);
+      const entries = await mastersRepo.getMasterDataEntries(masterId);
 
       let responseEntries = entries;
       if (needsSpecialHandling(masterId) && entries) {
@@ -143,7 +142,7 @@ export const dataMasterController = {
   async getMasterEntry(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
-      const entry = await storage.getMasterDataEntry(id);
+      const entry = await mastersRepo.getMasterDataEntry(id);
       if (!entry) {
         return res.status(404).json({ error: "Master data entry not found" });
       }
@@ -184,7 +183,7 @@ export const dataMasterController = {
         return res.status(400).json({ error: "Invalid master data entry", details: result.error.issues });
       }
 
-      const entry = await storage.createMasterDataEntry(result.data);
+      const entry = await mastersRepo.createMasterDataEntry(result.data);
 
       let responseEntry = entry;
       if (needsSpecialHandling(masterId) && entry) {
@@ -202,7 +201,7 @@ export const dataMasterController = {
     try {
       const id = parseInt(req.params.id);
 
-      const existingEntry = await storage.getMasterDataEntry(id);
+      const existingEntry = await mastersRepo.getMasterDataEntry(id);
       if (!existingEntry) {
         return res.status(404).json({ error: "Master data entry not found" });
       }
@@ -233,7 +232,7 @@ export const dataMasterController = {
         return res.status(400).json({ error: "Invalid master data entry", details: result.error.issues });
       }
 
-      const entry = await storage.updateMasterDataEntry(id, result.data);
+      const entry = await mastersRepo.updateMasterDataEntry(id, result.data);
       if (!entry) {
         return res.status(404).json({ error: "Master data entry not found" });
       }
@@ -253,7 +252,7 @@ export const dataMasterController = {
   async deleteMasterEntry(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
-      const deleted = await storage.deleteMasterDataEntry(id);
+      const deleted = await mastersRepo.deleteMasterDataEntry(id);
 
       if (!deleted) {
         return res.status(404).json({ error: "Master data entry not found" });
