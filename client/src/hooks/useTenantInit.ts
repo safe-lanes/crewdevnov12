@@ -27,13 +27,20 @@ interface TenantInitResult {
   isResolved: boolean;
 }
 
+function hasPossibleDomain(): boolean {
+  if (localStorage.getItem("domain")) return true;
+  if (localStorage.getItem("tenantId") && localStorage.getItem("tenantDomain")) return true;
+  return false;
+}
+
 export function useTenantInit(): TenantInitResult {
+  const possibleDomain = hasPossibleDomain();
   const [tenantId, setTenantId] = useState<string | null>(
     localStorage.getItem("tenantId"),
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(possibleDomain);
   const [error, setError] = useState<string | null>(null);
-  const [isResolved, setIsResolved] = useState(false);
+  const [isResolved, setIsResolved] = useState(!possibleDomain);
   const initAttempted = useRef(false);
 
   useEffect(() => {
