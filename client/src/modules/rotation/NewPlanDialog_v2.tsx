@@ -2707,7 +2707,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                 <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-60 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <PopoverContent className="w-60 p-2" align="start">
               <div className="max-h-60 overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                 {vessels.map((vessel: any) => (
                   <div
@@ -2749,7 +2749,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                 <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-60 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <PopoverContent className="w-60 p-2" align="start">
               <div className="max-h-60 overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                 {baseRanks.map((rank: any) => (
                   <div
