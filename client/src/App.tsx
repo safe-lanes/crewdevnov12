@@ -78,9 +78,9 @@ function TenantLoader() {
 function App() {
   const { isLoading, error, isResolved } = useTenantInit();
 
-  if (isLoading) return <TenantLoader />;
+  if (isLoading || !isResolved) return <TenantLoader />;
 
-  const tenantError = error && !isResolved;
+  const tenantError = !!error;
 
   return (
     <QueryClientProvider client={queryClient}>

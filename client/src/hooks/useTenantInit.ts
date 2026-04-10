@@ -31,7 +31,7 @@ export function useTenantInit(): TenantInitResult {
   const [tenantId, setTenantId] = useState<string | null>(
     localStorage.getItem("tenantId"),
   );
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isResolved, setIsResolved] = useState(false);
   const initAttempted = useRef(false);
@@ -44,6 +44,7 @@ export function useTenantInit(): TenantInitResult {
       const domain = await resolveDomain();
 
       if (!domain) {
+        setIsLoading(false);
         setIsResolved(true);
         return;
       }
@@ -52,6 +53,7 @@ export function useTenantInit(): TenantInitResult {
       const cachedDomain = localStorage.getItem("tenantDomain");
       if (existingTenantId && cachedDomain === domain) {
         setTenantId(existingTenantId);
+        setIsLoading(false);
         setIsResolved(true);
         return;
       }
@@ -60,8 +62,6 @@ export function useTenantInit(): TenantInitResult {
         localStorage.removeItem("tenantId");
         localStorage.removeItem("tenantDomain");
       }
-
-      setIsLoading(true);
 
       const initTenant = async (retryCount = 0) => {
         try {
@@ -94,12 +94,14 @@ export function useTenantInit(): TenantInitResult {
 
           if (res.status === 404) {
             setError(errorData?.message || `No company registered for domain: ${domain}`);
+            setIsResolved(true);
             setIsLoading(false);
             return;
           }
 
           if (res.status === 403) {
             setError(errorData?.message || `Company account for domain '${domain}' is currently inactive. Please contact your administrator.`);
+            setIsResolved(true);
             setIsLoading(false);
             return;
           }
@@ -111,6 +113,7 @@ export function useTenantInit(): TenantInitResult {
             return;
           }
           setError(err.message || "Failed to connect to tenant database");
+          setIsResolved(true);
           setIsLoading(false);
         }
       };
