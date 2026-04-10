@@ -137,6 +137,14 @@ export const rotationDraftsService = {
   async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId"> & { vessels?: string; crew?: string; assignments?: string; auditUserUuid?: string }) {
     // Extract vessels, crew, and assignments from data before creating draft
     const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...draftData } = data;
+
+    if (assignmentsJson) {
+      try {
+        validateNoDuplicateRankAssignments(JSON.parse(assignmentsJson));
+      } catch (e) {
+        if (e instanceof Error && e.message.includes('Duplicate rank assignments')) throw e;
+      }
+    }
     
     // Apply audit user fields
     const auditedDraftData = applyAuditUser(draftData, true);
@@ -176,7 +184,6 @@ export const rotationDraftsService = {
     if (assignmentsJson) {
       try {
         const assignments = JSON.parse(assignmentsJson);
-        validateNoDuplicateRankAssignments(assignments);
         for (const assignment of assignments) {
           await rotationEntriesRepository.create({
             draftUuid: draft.draftUuid,
@@ -189,9 +196,6 @@ export const rotationDraftsService = {
           });
         }
       } catch (e) {
-        if (e instanceof Error && e.message.includes('Duplicate rank assignments')) {
-          throw e;
-        }
         console.error("Failed to parse assignments JSON:", e);
       }
     }
@@ -207,6 +211,14 @@ export const rotationDraftsService = {
     
     // Extract vessels, crew, and assignments from data
     const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...rawDraftData } = data;
+
+    if (assignmentsJson !== undefined) {
+      try {
+        validateNoDuplicateRankAssignments(JSON.parse(assignmentsJson));
+      } catch (e) {
+        if (e instanceof Error && e.message.includes('Duplicate rank assignments')) throw e;
+      }
+    }
     
     // Apply audit user fields
     const draftData = applyAuditUser(rawDraftData, false);
@@ -301,7 +313,6 @@ export const rotationDraftsService = {
     if (assignmentsJson !== undefined) {
       try {
         const assignments = JSON.parse(assignmentsJson);
-        validateNoDuplicateRankAssignments(assignments);
         // Get ALL entries including soft-deleted to enable reactivation
         const allEntries = await rotationEntriesRepository.findAllByDraftUuid(draftUuid, true);
         const activeEntries = allEntries.filter(e => !e.isDeleted);
@@ -383,9 +394,6 @@ export const rotationDraftsService = {
           }
         }
       } catch (e) {
-        if (e instanceof Error && e.message.includes('Duplicate rank assignments')) {
-          throw e;
-        }
         console.error("Failed to parse assignments JSON:", e);
       }
     }
