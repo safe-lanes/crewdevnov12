@@ -85,6 +85,9 @@ export const rotationDraftsController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
+      if (error.message?.includes("Duplicate rank assignments")) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error creating draft:", error);
       res.status(500).json({ error: "Failed to create draft" });
     }
@@ -108,6 +111,9 @@ export const rotationDraftsController = {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
+      if (error.message?.includes("Duplicate rank assignments")) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error updating draft:", error);
       res.status(500).json({ error: "Failed to update draft" });
     }
@@ -122,6 +128,9 @@ export const rotationDraftsController = {
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
+      }
+      if (error.message?.includes("Duplicate rank assignments")) {
+        return res.status(400).json({ error: error.message });
       }
       console.error("Error proposing draft:", error);
       res.status(500).json({ error: "Failed to propose draft" });

@@ -685,7 +685,9 @@ export const dashboardService = {
       .map((p: any) => {
         const isReliever = crewUuid && p.relieverCrewUuid === crewUuid && p.crewUuid !== crewUuid;
         const effectiveSignOn = isReliever ? p.relieverSignOnDate : p.signOnDate;
-        const effectiveContractMonths = isReliever ? p.relieverContractPeriodMonths : p.contractPeriodMonths;
+        const effectiveContractMonths = isReliever
+          ? (p.relieverContractEndRangeStartMonths || p.relieverContractPeriodMonths)
+          : (p.contractEndRangeStartMonths || p.contractPeriodMonths);
         const effectiveRangeEndMonths = isReliever ? p.relieverContractEndRangeEndMonths : p.contractEndRangeEndMonths;
 
         const signOnDate = new Date(effectiveSignOn);

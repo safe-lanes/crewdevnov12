@@ -897,12 +897,14 @@ function PositionSelectDialog({
   onOpenChange,
   positions,
   crewName,
+  occupiedPositions,
   onPositionSelect,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   positions: string[];
   crewName: string;
+  occupiedPositions: Map<string, string>;
   onPositionSelect: (position: string) => void;
 }) {
   const [selectedPosition, setSelectedPosition] = useState<string>('');
@@ -929,25 +931,45 @@ function PositionSelectDialog({
         <div className="py-2">
           <RadioGroup
             value={selectedPosition}
-            onValueChange={setSelectedPosition}
+            onValueChange={(val) => {
+              if (!occupiedPositions.has(val)) {
+                setSelectedPosition(val);
+              }
+            }}
             className="gap-3"
           >
-            {positions.map((position) => (
-              <div
-                key={position}
-                className={cn(
-                  "flex items-center space-x-3 rounded-md border p-3 cursor-pointer transition-colors",
-                  selectedPosition === position ? "border-primary bg-primary/5" : "border-border"
-                )}
-                onClick={() => setSelectedPosition(position)}
-                data-testid={`radio-position-${position}`}
-              >
-                <RadioGroupItem value={position} id={`pos-${position}`} />
-                <label htmlFor={`pos-${position}`} className="text-sm font-medium cursor-pointer flex-1">
-                  {formatPositionLabel(position)}
-                </label>
-              </div>
-            ))}
+            {positions.map((position) => {
+              const isOccupied = occupiedPositions.has(position);
+              const assignedCrew = occupiedPositions.get(position);
+              return (
+                <div
+                  key={position}
+                  className={cn(
+                    "flex items-center space-x-3 rounded-md border p-3 transition-colors",
+                    isOccupied
+                      ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900 border-border"
+                      : "cursor-pointer",
+                    !isOccupied && selectedPosition === position ? "border-primary bg-primary/5" : "border-border"
+                  )}
+                  onClick={() => {
+                    if (!isOccupied) setSelectedPosition(position);
+                  }}
+                  data-testid={`radio-position-${position}`}
+                >
+                  <RadioGroupItem value={position} id={`pos-${position}`} disabled={isOccupied} />
+                  <div className="flex-1">
+                    <label htmlFor={`pos-${position}`} className={cn("text-sm font-medium flex-1", isOccupied ? "cursor-not-allowed text-muted-foreground" : "cursor-pointer")}>
+                      {formatPositionLabel(position)}
+                    </label>
+                    {isOccupied && (
+                      <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-occupied-${position}`}>
+                        Assigned to {assignedCrew}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </RadioGroup>
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t">
@@ -1729,6 +1751,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   const [complianceVesselId, setComplianceVesselId] = useState<string | undefined>(undefined);
   const [complianceSimulatedCrew, setComplianceSimulatedCrew] = useState<Array<{ rank: string; crewMemberId: string; crewName: string; joiningDate?: string }>>([]);
   const [pendingPositionOptions, setPendingPositionOptions] = useState<string[]>([]);
+  const [pendingOccupiedPositions, setPendingOccupiedPositions] = useState<Map<string, string>>(new Map());
   const prevSelectedVesselsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(false);
   
@@ -2258,24 +2281,54 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     
     const baseRank = crew.rank;
     const vesselPositions = perVesselPositions.get(selectedVessel);
+
+    const occupiedPositions = new Map<string, string>(
+      assignments
+        .filter(a => a.vesselUuid === selectedVessel)
+        .map(a => [a.rank, a.crewName] as [string, string])
+    );
     
     if (vesselPositions) {
       const matchingPositions = Array.from(vesselPositions).filter(
         (pos: string) => pos.startsWith(baseRank) && pos.includes('_')
       );
       
-      if (matchingPositions.length > 1) {
+      if (matchingPositions.length > 0) {
+        const availablePositions = matchingPositions.filter(pos => !occupiedPositions.has(pos));
+
+        if (availablePositions.length === 0) {
+          const assignedNames = matchingPositions.map(pos => occupiedPositions.get(pos)).filter(Boolean);
+          toast({
+            title: "No positions available",
+            description: matchingPositions.length === 1
+              ? `This position is already assigned to ${assignedNames[0]}`
+              : "All positions for this rank are already assigned on this vessel",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (availablePositions.length === 1 && matchingPositions.length === 1) {
+          setSelectedCrew({ ...crew, rank: availablePositions[0] });
+          setDateDialogOpen(true);
+          return;
+        }
+
         setSelectedCrew(crew);
         setPendingPositionOptions(matchingPositions.sort());
+        setPendingOccupiedPositions(occupiedPositions);
         setPositionSelectOpen(true);
         return;
       }
-      
-      if (matchingPositions.length === 1) {
-        setSelectedCrew({ ...crew, rank: matchingPositions[0] });
-        setDateDialogOpen(true);
-        return;
-      }
+    }
+
+    if (occupiedPositions.has(baseRank)) {
+      toast({
+        title: "Position already assigned",
+        description: `This position is already assigned to ${occupiedPositions.get(baseRank)}`,
+        variant: "destructive",
+      });
+      return;
     }
     
     setSelectedCrew(crew);
@@ -2287,6 +2340,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     setSelectedCrew({ ...selectedCrew, rank: position });
     setPositionSelectOpen(false);
     setPendingPositionOptions([]);
+    setPendingOccupiedPositions(new Map());
     setDateDialogOpen(true);
   };
 
@@ -2445,6 +2499,22 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       return;
     }
 
+    const dupSeen = new Set<string>();
+    const dupRanks: string[] = [];
+    for (const a of assignments) {
+      const key = `${a.vesselUuid}|${a.rank}`;
+      if (dupSeen.has(key)) dupRanks.push(a.rank);
+      dupSeen.add(key);
+    }
+    if (dupRanks.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: `Duplicate rank assignments found: ${[...new Set(dupRanks)].join(', ')}. Each position can only be assigned to one crew member.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Calculate plan date range from assignments
     const joiningDates = assignments.map(a => new Date(a.joiningDate));
     const planFromDate = new Date(Math.min(...joiningDates.map(d => d.getTime())));
@@ -2502,6 +2572,22 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
       toast({
         title: "Validation Error",
         description: "Please create at least one crew assignment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const dupSeen = new Set<string>();
+    const dupRanks: string[] = [];
+    for (const a of assignments) {
+      const key = `${a.vesselUuid}|${a.rank}`;
+      if (dupSeen.has(key)) dupRanks.push(a.rank);
+      dupSeen.add(key);
+    }
+    if (dupRanks.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: `Duplicate rank assignments found: ${[...new Set(dupRanks)].join(', ')}. Each position can only be assigned to one crew member.`,
         variant: "destructive",
       });
       return;
@@ -2622,7 +2708,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-60 p-2" align="start">
-              <div className="max-h-60 overflow-y-auto">
+              <div className="max-h-60 overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                 {vessels.map((vessel: any) => (
                   <div
                     key={vessel.id}
@@ -2664,7 +2750,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-60 p-2" align="start">
-              <div className="max-h-60 overflow-y-auto">
+              <div className="max-h-60 overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                 {baseRanks.map((rank: any) => (
                   <div
                     key={rank.id}
@@ -2700,8 +2786,9 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                   <span>{variant}</span>
                   <button
                     onClick={() => {
-                      setSelectedRoleVariantsState(prev => prev.filter(v => v !== variant));
-                      setHasManualVariants(true); // Mark as manually modified
+                      const current = hasManualVariants ? selectedRoleVariantsState : autoSelectedRoleVariants;
+                      setSelectedRoleVariantsState(current.filter(v => v !== variant));
+                      setHasManualVariants(true);
                     }}
                     className="ml-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                     data-testid={`button-remove-role-${variant}`}
@@ -2841,10 +2928,12 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
           setPositionSelectOpen(open);
           if (!open) {
             setPendingPositionOptions([]);
+            setPendingOccupiedPositions(new Map());
           }
         }}
         positions={pendingPositionOptions}
         crewName={selectedCrew?.name || ''}
+        occupiedPositions={pendingOccupiedPositions}
         onPositionSelect={handlePositionSelected}
       />
 

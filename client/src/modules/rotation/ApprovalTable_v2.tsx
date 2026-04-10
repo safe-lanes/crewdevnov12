@@ -110,14 +110,15 @@ const ApprovalTimelineViewV2: React.FC<{
     const updateCanvasSize = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        setCanvasSize({ width: rect.width, height: rect.height });
+        const minHeight = 48 + rowData.length * rowHeight;
+        setCanvasSize({ width: rect.width, height: Math.max(rect.height, minHeight) });
       }
     };
     
     updateCanvasSize();
     window.addEventListener('resize', updateCanvasSize);
     return () => window.removeEventListener('resize', updateCanvasSize);
-  }, []);
+  }, [rowData.length, rowHeight]);
   
   const months = useMemo(() => {
     const result = [];
@@ -255,8 +256,10 @@ const ApprovalTimelineViewV2: React.FC<{
     ctx.stroke();
   }, [rowData, scrollTop, rowHeight, months, today, startDate, endDate, totalDays, canvasSize, timelineWidth]);
 
+  const minContainerHeight = 48 + rowData.length * rowHeight;
+
   return (
-    <div ref={containerRef} className="w-full h-full flex">
+    <div ref={containerRef} className="w-full h-full flex" style={{ minHeight: minContainerHeight }}>
       <div className="flex-1" style={{ width: timelineWidth }}>
         <canvas
           ref={canvasRef}
@@ -659,18 +662,19 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
         </div>
       </div>
 
-      <div className="flex gap-0 h-[calc(100vh-380px)] bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="flex gap-0 bg-white rounded-lg border border-gray-200 overflow-auto max-h-[calc(100vh-280px)]">
         <div className="flex-none w-[40%] border-r border-gray-200">
           <AgGridTable
             rowData={proposals}
             columnDefs={columnDefs}
             context={{}}
             onGridReady={handleGridReady}
-            height="100%"
+            height={`${48 + Math.max(proposals.length, 1) * 48 + 2}px`}
             enableExport={false}
             enableSideBar={false}
             enableStatusBar={false}
             gridOptions={{
+              domLayout: 'autoHeight',
               rowHeight: 48,
               headerHeight: 48,
               suppressMovableColumns: true,
@@ -690,7 +694,7 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
           />
         </div>
         
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1" style={{ height: `${48 + Math.max(displayedRowData.length, 1) * 48 + 2}px` }}>
           <ApprovalTimelineViewV2 
             rowData={displayedRowData} 
             rowHeight={48}

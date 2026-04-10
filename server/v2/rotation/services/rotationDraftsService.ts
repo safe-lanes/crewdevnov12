@@ -20,6 +20,21 @@ import { eq, and, isNotNull, sql } from "drizzle-orm";
 
 const crewMembersRepository = new CrewMembersRepository();
 
+function validateNoDuplicateRankAssignments(assignments: Array<{ vesselUuid?: string; vessel?: string; rank?: string }>) {
+  const seen = new Set<string>();
+  const duplicates: string[] = [];
+  for (const a of assignments) {
+    const vesselUuid = a.vesselUuid || a.vessel;
+    if (!vesselUuid || !a.rank) continue;
+    const key = `${vesselUuid}|${a.rank}`;
+    if (seen.has(key)) duplicates.push(a.rank);
+    seen.add(key);
+  }
+  if (duplicates.length > 0) {
+    throw new Error(`Duplicate rank assignments found: ${[...new Set(duplicates)].join(', ')}. Each position can only be assigned to one crew member.`);
+  }
+}
+
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
   const auditUserUuid = (data as any).auditUserUuid || null;
   const result = { ...data } as any;
@@ -122,6 +137,14 @@ export const rotationDraftsService = {
   async create(data: Omit<InsertRotationDraftsV2, "draftUuid" | "draftId"> & { vessels?: string; crew?: string; assignments?: string; auditUserUuid?: string }) {
     // Extract vessels, crew, and assignments from data before creating draft
     const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...draftData } = data;
+
+    if (assignmentsJson) {
+      try {
+        validateNoDuplicateRankAssignments(JSON.parse(assignmentsJson));
+      } catch (e) {
+        if (e instanceof Error && e.message.includes('Duplicate rank assignments')) throw e;
+      }
+    }
     
     // Apply audit user fields
     const auditedDraftData = applyAuditUser(draftData, true);
@@ -188,6 +211,14 @@ export const rotationDraftsService = {
     
     // Extract vessels, crew, and assignments from data
     const { vessels: vesselsJson, crew: crewString, assignments: assignmentsJson, ...rawDraftData } = data;
+
+    if (assignmentsJson !== undefined) {
+      try {
+        validateNoDuplicateRankAssignments(JSON.parse(assignmentsJson));
+      } catch (e) {
+        if (e instanceof Error && e.message.includes('Duplicate rank assignments')) throw e;
+      }
+    }
     
     // Apply audit user fields
     const draftData = applyAuditUser(rawDraftData, false);
@@ -399,6 +430,10 @@ export const rotationDraftsService = {
     if (!existing) {
       throw new Error(`Draft not found: ${draftUuid}`);
     }
+
+    const entries = await rotationEntriesRepository.findByDraftUuid(draftUuid);
+    validateNoDuplicateRankAssignments(entries);
+
     return rotationDraftsRepository.update(draftUuid, {
       planStatus: "Proposed",
       proposedByUuid,

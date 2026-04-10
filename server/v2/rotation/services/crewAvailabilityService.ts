@@ -1,4 +1,4 @@
-import { eq, and, isNull, ilike, or, sql, inArray } from "drizzle-orm";
+import { eq, and, isNull, ilike, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewMembersV2, crewAssignments, crewSeaService, crewPersonalDetails, crewLicenses } from "../../../../shared/v2/crew-pool/schema";
 
@@ -67,7 +67,8 @@ export const crewAvailabilityService = {
           eq(crewMembersV2.presentRank, rank),
           eq(crewMembersV2.isDeleted, false),
           isNull(crewMembersV2.archivedAt),
-          ilike(crewMembersV2.status, "active")
+          ilike(crewMembersV2.status, "active"),
+          eq(crewMembersV2.isActive, true)
         )
       );
 
@@ -181,6 +182,8 @@ export const crewAvailabilityService = {
       eq(crewMembersV2.presentRank, rank),
       eq(crewMembersV2.isDeleted, false),
       isNull(crewMembersV2.archivedAt),
+      ilike(crewMembersV2.status, "active"),
+      eq(crewMembersV2.isActive, true),
     ];
 
     const results = await db

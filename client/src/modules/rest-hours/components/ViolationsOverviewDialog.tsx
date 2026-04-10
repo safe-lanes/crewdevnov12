@@ -381,6 +381,7 @@ export function ViolationsOverviewDialog({
                       </td>
                       <td className="px-4 py-2 text-sm">{formatDay(record.day, monthValue)}</td>
                       <td className="px-4 py-2 text-sm">
+                        <TooltipProvider delayDuration={200}>
                         {record.filteredViolations.map((code, idx) => {
                           const diagnostic = record.filteredDiagnostics.find(d => d.code === code);
                           
@@ -395,30 +396,29 @@ export function ViolationsOverviewDialog({
                           
                           // Show code with tooltip
                           return (
-                            <TooltipProvider key={code}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span
-                                    className="cursor-help underline decoration-dotted hover:bg-pink-100 px-0.5 rounded"
+                                <Tooltip key={code}>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className="cursor-help underline decoration-dotted hover:bg-pink-100 px-0.5 rounded"
+                                    >
+                                      {code}{idx < record.filteredViolations.length - 1 ? ', ' : ''}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent 
+                                    side="right" 
+                                    align="start" 
+                                    sideOffset={8}
+                                    className="max-w-[220px] text-[11px] bg-white text-gray-900"
                                   >
-                                    {code}{idx < record.filteredViolations.length - 1 ? ', ' : ''}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent 
-                                  side="right" 
-                                  align="start" 
-                                  sideOffset={8}
-                                  className="max-w-[220px] text-[11px] z-50 bg-white text-gray-900"
-                                >
-                                  <div className="space-y-0.5">
-                                    <div className="leading-snug">{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
-                                    <div className="text-gray-600 leading-snug">{diagnostic.reason}</div>
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                                    <div className="space-y-0.5">
+                                      <div className="leading-snug">{VIOLATION_CODE_DESCRIPTIONS[diagnostic.code]}</div>
+                                      <div className="text-gray-600 leading-snug">{diagnostic.reason}</div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
                           );
                         })}
+                        </TooltipProvider>
                       </td>
                       <td className="px-4 py-2 text-sm">{record.comments}</td>
                     </tr>
