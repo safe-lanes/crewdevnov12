@@ -161,6 +161,11 @@ const CrewRow = memo(({ crew, crewIndex, isEditMode, onCellEdit }: CrewRowProps)
                       selection?.removeAllRanges();
                       selection?.addRange(range);
                     }
+                    return;
+                  }
+
+                  if (e.key.length === 1 && !['w', 'd', 'W', 'D'].includes(e.key)) {
+                    e.preventDefault();
                   }
                 }}
                 className="outline-none cursor-text min-h-[20px]"
@@ -245,6 +250,11 @@ const CrewRow = memo(({ crew, crewIndex, isEditMode, onCellEdit }: CrewRowProps)
                       selection?.removeAllRanges();
                       selection?.addRange(range);
                     }
+                    return;
+                  }
+
+                  if (e.key.length === 1 && !['w', 'd', 'W', 'D'].includes(e.key)) {
+                    e.preventDefault();
                   }
                 }}
                 className="outline-none cursor-text min-h-[20px]"
