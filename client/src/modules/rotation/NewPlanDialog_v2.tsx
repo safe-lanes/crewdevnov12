@@ -2297,9 +2297,12 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
         const availablePositions = matchingPositions.filter(pos => !occupiedPositions.has(pos));
 
         if (availablePositions.length === 0) {
+          const assignedNames = matchingPositions.map(pos => occupiedPositions.get(pos)).filter(Boolean);
           toast({
             title: "No positions available",
-            description: "All positions for this rank are already assigned on this vessel",
+            description: matchingPositions.length === 1
+              ? `This position is already assigned to ${assignedNames[0]}`
+              : "All positions for this rank are already assigned on this vessel",
             variant: "destructive",
           });
           return;
