@@ -32,11 +32,8 @@ export async function apiRequest(
   return res;
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
+export const getQueryFn: <T>() => QueryFunction<T> =
+  () =>
   async ({ queryKey }) => {
     const tenantId = localStorage.getItem("tenantId");
     const headers: Record<string, string> = {};
@@ -50,10 +47,6 @@ export const getQueryFn: <T>(options: {
       headers,
     });
 
-    if (res.status === 401 && unauthorizedBehavior === "returnNull") {
-      return null;
-    }
-
     await throwIfResNotOk(res);
     return await res.json();
   };
@@ -61,7 +54,7 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
+      queryFn: getQueryFn(),
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 2,
