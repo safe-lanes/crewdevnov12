@@ -121,6 +121,9 @@ export function authMiddleware(
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    if (typeof decoded.domain === "string") {
+      decoded.domain = decoded.domain.trim();
+    }
     req.user = decoded;
     req.tokenData = decoded;
     proceedWithTenantBinding(req, res, next);
