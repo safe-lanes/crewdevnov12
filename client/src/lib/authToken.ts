@@ -23,12 +23,21 @@ export function isAuthConfigured(): boolean {
   return sessionStorage.getItem("credentials") !== null;
 }
 
-export function redirectToLogin(): void {
-  if (redirecting || !PARENT_LOGIN_URL) return;
+export function logout(): void {
+  if (redirecting) return;
   redirecting = true;
-  window.location.href = `${PARENT_LOGIN_URL}?redirect=`;
+  sessionStorage.clear();
+  localStorage.clear();
+  if (PARENT_LOGIN_URL) {
+    const currentUrl = encodeURIComponent(window.location.href);
+    window.location.href = `${PARENT_LOGIN_URL}?redirect=${currentUrl}`;
+  }
+}
+
+export function redirectToLogin(): void {
+  logout();
 }
 
 export function handleUnauthorized(): void {
-  redirectToLogin();
+  logout();
 }

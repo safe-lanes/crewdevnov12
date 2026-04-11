@@ -437,11 +437,16 @@ export interface JwtPayload {
 401 redirect handling is centralized in a single layer:
 
 1. **Global fetch interceptor** (`tenantFetch.ts`): Catches 401 on all `/api` responses and calls `handleUnauthorized()`.
-2. **Auth utility** (`authToken.ts`): `handleUnauthorized()` calls `redirectToLogin()`, which redirects to:
+2. **Auth utility** (`authToken.ts`): `handleUnauthorized()` calls `logout()`, which:
+   - Clears `sessionStorage` (removes credentials, user name, designation, etc.)
+   - Clears `localStorage` (removes tenantId, domain, crewUserId, etc.)
+   - Redirects to:
 
 ```
 VITE_PARENT_LOGIN_URL + "?redirect=" + encodeURIComponent(window.location.href)
 ```
+
+This ensures a clean slate on re-login — no stale tenant IDs, cached domains, or leftover credentials from the previous session.
 
 A `redirecting` flag prevents redirect storms when multiple concurrent API calls all return 401.
 
