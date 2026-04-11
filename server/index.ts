@@ -5,6 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { runMigrations } from "./migrationRunner";
 import { tenantConnectionManager } from "./utils/tenantConnectionManager";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
+import { authMiddleware } from "./middleware/authMiddleware";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -70,6 +71,9 @@ app.use((req, res, next) => {
 
   // Apply tenant middleware before routes
   app.use(tenantMiddleware);
+
+  // Apply JWT auth middleware after tenant resolution
+  app.use(authMiddleware);
   
   const server = await registerRoutes(app);
 
