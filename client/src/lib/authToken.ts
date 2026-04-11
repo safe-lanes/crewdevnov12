@@ -26,8 +26,7 @@ export function isAuthConfigured(): boolean {
 export function redirectToLogin(): void {
   if (redirecting || !PARENT_LOGIN_URL) return;
   redirecting = true;
-  const currentUrl = encodeURIComponent(window.location.href);
-  window.location.href = `${PARENT_LOGIN_URL}?redirect=${currentUrl}`;
+  window.location.href = `${PARENT_LOGIN_URL}?redirect=`;
 }
 
 export function handleUnauthorized(): void {
