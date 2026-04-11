@@ -75,7 +75,6 @@ flowchart TD
     HasLoginURL2 -- Yes --> ClearStorage[Clear sessionStorage\nClear localStorage]
     ClearStorage --> RedirectLogin[Redirect to\nparent login URL]
     HasLoginURL2 -- No --> NoOpLogout["logout returns early\nno clear, no redirect"]
-    CheckResponse -- Other --> ReturnErr([Return error response])
 ```
 
 ---
