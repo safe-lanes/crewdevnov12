@@ -20,6 +20,13 @@ declare global {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const IS_DEV = process.env.NODE_ENV === "development";
+
+if (!JWT_SECRET && !IS_DEV) {
+  console.error(
+    "⚠️  JWT_SECRET is not set. Authentication will reject all protected requests in non-development environments.",
+  );
+}
 
 const EXEMPT_PATHS = ["/api/v2/tenant/init", "/api/health"];
 
@@ -48,13 +55,20 @@ export function authMiddleware(
   res: Response,
   next: NextFunction,
 ): void {
-  if (!JWT_SECRET) {
+  if (isExempt(req.path)) {
     next();
     return;
   }
 
-  if (isExempt(req.path)) {
-    next();
+  if (!JWT_SECRET) {
+    if (IS_DEV) {
+      next();
+      return;
+    }
+    res.status(500).json({
+      error: "server_configuration_error",
+      message: "Authentication is not configured",
+    });
     return;
   }
 
