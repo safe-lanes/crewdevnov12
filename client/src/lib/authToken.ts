@@ -24,14 +24,12 @@ export function isAuthConfigured(): boolean {
 }
 
 export function logout(): void {
-  if (redirecting) return;
+  if (redirecting || !PARENT_LOGIN_URL) return;
   redirecting = true;
+  const currentUrl = encodeURIComponent(window.location.href);
   sessionStorage.clear();
   localStorage.clear();
-  if (PARENT_LOGIN_URL) {
-    const currentUrl = encodeURIComponent(window.location.href);
-    window.location.href = `${PARENT_LOGIN_URL}?redirect=${currentUrl}`;
-  }
+  window.location.href = `${PARENT_LOGIN_URL}?redirect=${currentUrl}`;
 }
 
 export function redirectToLogin(): void {
@@ -39,5 +37,5 @@ export function redirectToLogin(): void {
 }
 
 export function handleUnauthorized(): void {
-  logout();
+  redirectToLogin();
 }
