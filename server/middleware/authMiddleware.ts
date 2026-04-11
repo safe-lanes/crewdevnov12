@@ -105,7 +105,11 @@ export function authMiddleware(
           next();
         })
         .catch(() => {
-          next();
+          res.status(403).json({
+            error: "tenant_mismatch",
+            message:
+              "Unable to verify tenant authorization",
+          });
         });
       return;
     }
