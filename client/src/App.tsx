@@ -9,6 +9,8 @@ import HeaderComponent from "./components/Navbar/HeaderComponent";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useTenantInit } from "@/hooks/useTenantInit";
+import { isAuthConfigured, redirectToLogin } from "@/lib/authToken";
+import { secretKeyAvailable } from "@/lib/encryptionService";
 
 const AdminRouter = lazy(() => import("./modules/admin/index"));
 const AppraisalsRouter = lazy(() => import("./modules/crewing/AppraisalsRouter"));
@@ -75,7 +77,7 @@ function TenantLoader() {
   );
 }
 
-function App() {
+function AuthenticatedApp() {
   const { isLoading, error, isResolved } = useTenantInit();
 
   if (isLoading || !isResolved) return <TenantLoader />;
@@ -144,6 +146,16 @@ function App() {
       </PermissionsProvider>
     </QueryClientProvider>
   );
+}
+
+function App() {
+  const authRequired = secretKeyAvailable();
+  if (authRequired && !isAuthConfigured()) {
+    redirectToLogin();
+    return <TenantLoader />;
+  }
+
+  return <AuthenticatedApp />;
 }
 
 export default App;

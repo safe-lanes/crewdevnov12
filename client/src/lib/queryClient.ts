@@ -1,7 +1,11 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getAuthToken, handleUnauthorized } from "./authToken";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
+    if (res.status === 401) {
+      handleUnauthorized();
+    }
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
@@ -16,6 +20,9 @@ export async function apiRequest(
   const headers: Record<string, string> = {};
   if (data) headers["Content-Type"] = "application/json";
   if (tenantId) headers["x-tenant-id"] = tenantId;
+
+  const token = getAuthToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(url, {
     method,
@@ -38,13 +45,19 @@ export const getQueryFn: <T>(options: {
     const headers: Record<string, string> = {};
     if (tenantId) headers["x-tenant-id"] = tenantId;
 
+    const token = getAuthToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
       headers,
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (res.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      }
+      handleUnauthorized();
     }
 
     await throwIfResNotOk(res);
@@ -57,8 +70,8 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 2, // Data stays fresh for 2 minutes - reduces redundant API calls
-      gcTime: 1000 * 60 * 10, // Keep cached data for 10 minutes for faster navigation
+      staleTime: 1000 * 60 * 2,
+      gcTime: 1000 * 60 * 10,
       retry: false,
     },
     mutations: {

@@ -1,0 +1,29 @@
+import { getDecryptedSessionStorageItem } from "./encryptionService";
+
+const PARENT_LOGIN_URL =
+  import.meta.env.VITE_PARENT_LOGIN_URL || "https://dev.sl-sail.com/login";
+
+let redirecting = false;
+
+export function getAuthToken(): string | null {
+  const decrypted = getDecryptedSessionStorageItem("credentials", true);
+  if (typeof decrypted === "string" && decrypted.length > 0) {
+    return decrypted;
+  }
+  return null;
+}
+
+export function isAuthConfigured(): boolean {
+  return sessionStorage.getItem("credentials") !== null;
+}
+
+export function redirectToLogin(): void {
+  if (redirecting) return;
+  redirecting = true;
+  const currentUrl = encodeURIComponent(window.location.href);
+  window.location.href = `${PARENT_LOGIN_URL}?redirect=${currentUrl}`;
+}
+
+export function handleUnauthorized(): void {
+  redirectToLogin();
+}

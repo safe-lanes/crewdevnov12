@@ -20,11 +20,18 @@ declare global {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const IS_DEV = process.env.NODE_ENV === "development";
 
 if (!JWT_SECRET) {
-  console.error(
-    "⚠️  JWT_SECRET is not set. All protected API requests will be rejected with 401.",
-  );
+  if (IS_DEV) {
+    console.warn(
+      "⚠️  JWT_SECRET is not set. Authentication is disabled in development mode.",
+    );
+  } else {
+    console.error(
+      "⚠️  JWT_SECRET is not set. All protected API requests will be rejected with 401.",
+    );
+  }
 }
 
 const EXEMPT_PATHS = ["/api/v2/tenant/init", "/api/health"];
@@ -95,6 +102,10 @@ export function authMiddleware(
   }
 
   if (!JWT_SECRET) {
+    if (IS_DEV) {
+      next();
+      return;
+    }
     res.status(401).json({
       error: "unauthorized",
       message: "Authentication service is not available",
