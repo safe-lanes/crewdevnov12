@@ -17,7 +17,7 @@ flowchart TD
     BypassCheck -- Yes --> SkipAuth[Skip auth gate\nRender app directly]
     BypassCheck -- No --> GetToken[getAuthToken:\nDecrypt AES credentials\nfrom sessionStorage]
 
-    GetToken --> HasToken{Valid JWT\nstring?}
+    GetToken --> HasToken{Decrypted token\nstring present?}
     HasToken -- Yes --> RenderAuth[Render AuthenticatedApp]
     HasToken -- No --> HasLoginURL{VITE_PARENT_LOGIN_URL\nset?}
     HasLoginURL -- Yes --> Logout["logout():\nClear sessionStorage\nClear localStorage\nRedirect to login URL"]
@@ -69,7 +69,7 @@ flowchart TD
     NoAuthHeader --> SendRequest
 
     SendRequest --> CheckResponse{Response\nstatus?}
-    CheckResponse -- "200/304" --> ReturnOK([Return response])
+    CheckResponse -- "non-401" --> ReturnOK([Return response as-is])
     CheckResponse -- "401" --> Handle401[handleUnauthorized\n→ logout]
     Handle401 --> HasLoginURL2{VITE_PARENT_LOGIN_URL\nset?}
     HasLoginURL2 -- Yes --> ClearStorage[Clear sessionStorage\nClear localStorage]
@@ -104,10 +104,9 @@ flowchart TD
     HasXTenant -- No --> JWTFallback[Extract JWT from\nAuthorization header]
     JWTFallback --> JWTResult{JWT verify\nresult?}
     JWTResult -- "Valid + domain" --> ResolveTenant["resolveTenant(domain)\nSet req.tenantId\nSet req.tokenData\nSet req.jwtDomain"]
-    JWTResult -- "No token" --> Err400(["400: Missing x-tenant-id"])
+    JWTResult -- "No token /\nno secret /\nno domain" --> Err400(["400: Missing x-tenant-id"])
     JWTResult -- "Expired" --> Err401a(["401: token_expired"])
     JWTResult -- "Invalid" --> Err401b(["401: invalid_token"])
-    JWTResult -- "No domain" --> Err400
 
     ResolveTenant --> SetContext2["Run in tenant context"]
     SetContext1 --> AuthMW
