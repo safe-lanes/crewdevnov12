@@ -6,7 +6,7 @@ import {
   TenantInactiveError,
   TenantDatabaseError,
 } from "../utils/tenantConnectionManager";
-import { extractToken } from "./authMiddleware";
+import { extractToken, JwtPayload } from "./authMiddleware";
 import { isExempt } from "./exemptPaths";
 
 declare global {
@@ -19,7 +19,7 @@ declare global {
 }
 
 type JwtFallbackResult =
-  | { status: "domain"; domain: string; decoded: object }
+  | { status: "domain"; domain: string; decoded: JwtPayload }
   | { status: "no_token" }
   | { status: "expired" }
   | { status: "invalid" }
@@ -34,7 +34,7 @@ function extractDomainFromJwt(req: Request): JwtFallbackResult {
   if (!token) return { status: "no_token" };
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as Record<string, unknown>;
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
     const domain =
       typeof decoded.domain === "string" ? decoded.domain.trim() : undefined;
     if (!domain) return { status: "no_domain" };
@@ -91,8 +91,8 @@ export function tenantMiddleware(
     }
 
     if (jwtResult.status === "domain") {
-      req.tokenData = jwtResult.decoded as any;
-      req.user = jwtResult.decoded as any;
+      req.tokenData = jwtResult.decoded;
+      req.user = jwtResult.decoded;
       req.jwtDomain = jwtResult.domain;
 
       tenantConnectionManager

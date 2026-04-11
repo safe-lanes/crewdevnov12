@@ -34,6 +34,7 @@ window.fetch = function (
   return originalFetch(input, init).then((response) => {
     if (response.status === 401 && url.startsWith("/api")) {
       handleUnauthorized();
+      return Promise.reject(new Error("401: Unauthorized - redirecting to login"));
     }
     return response;
   });
