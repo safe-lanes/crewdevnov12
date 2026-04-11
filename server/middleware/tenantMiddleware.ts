@@ -7,25 +7,19 @@ import {
   TenantDatabaseError,
 } from "../utils/tenantConnectionManager";
 import { extractToken } from "./authMiddleware";
+import { isExempt } from "./exemptPaths";
 
 declare global {
   namespace Express {
     interface Request {
       tenantId?: string;
+      jwtDomain?: string;
     }
   }
 }
 
-const EXEMPT_PATHS = ["/api/v2/tenant/init", "/api/health"];
-
-function isExempt(path: string): boolean {
-  if (EXEMPT_PATHS.some((p) => path === p)) return true;
-  if (!path.startsWith("/api/v2/")) return true;
-  return false;
-}
-
 type JwtFallbackResult =
-  | { status: "domain"; domain: string }
+  | { status: "domain"; domain: string; decoded: object }
   | { status: "no_token" }
   | { status: "expired" }
   | { status: "invalid" }
@@ -40,11 +34,11 @@ function extractDomainFromJwt(req: Request): JwtFallbackResult {
   if (!token) return { status: "no_token" };
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { domain?: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as Record<string, unknown>;
     const domain =
       typeof decoded.domain === "string" ? decoded.domain.trim() : undefined;
     if (!domain) return { status: "no_domain" };
-    return { status: "domain", domain };
+    return { status: "domain", domain, decoded };
   } catch (err: unknown) {
     if (
       typeof err === "object" &&
@@ -97,6 +91,10 @@ export function tenantMiddleware(
     }
 
     if (jwtResult.status === "domain") {
+      req.tokenData = jwtResult.decoded as any;
+      req.user = jwtResult.decoded as any;
+      req.jwtDomain = jwtResult.domain;
+
       tenantConnectionManager
         .resolveTenant(jwtResult.domain)
         .then((tenant) => {

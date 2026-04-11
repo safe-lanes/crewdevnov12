@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { tenantConnectionManager } from "../utils/tenantConnectionManager";
+import { isExempt } from "./exemptPaths";
 
 export interface JwtPayload {
   id: number;
@@ -34,8 +35,6 @@ if (!JWT_SECRET) {
   }
 }
 
-const EXEMPT_PATHS = ["/api/v2/tenant/init", "/api/health"];
-
 const FILE_SERVING_SEGMENTS = [
   "/download",
   "/attachment",
@@ -45,12 +44,6 @@ const FILE_SERVING_SEGMENTS = [
   "/file",
   "/files",
 ];
-
-function isExempt(path: string): boolean {
-  if (EXEMPT_PATHS.some((p) => path === p)) return true;
-  if (!path.startsWith("/api/v2/")) return true;
-  return false;
-}
 
 function isFileServingRoute(path: string): boolean {
   if (!path.startsWith("/api/v2/")) return false;
@@ -110,6 +103,12 @@ export function authMiddleware(
     return;
   }
 
+  if (req.tokenData) {
+    req.user = req.tokenData;
+    proceedWithTenantBinding(req, res, next);
+    return;
+  }
+
   const token = extractToken(req);
 
   if (!token) {
@@ -124,34 +123,7 @@ export function authMiddleware(
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
     req.user = decoded;
     req.tokenData = decoded;
-
-    if (
-      tenantConnectionManager.isMultiTenantEnabled &&
-      req.tenantId &&
-      decoded.domain
-    ) {
-      verifyTenantBinding(decoded.domain, req.tenantId)
-        .then((valid) => {
-          if (!valid) {
-            res.status(403).json({
-              error: "tenant_mismatch",
-              message:
-                "Authorization token does not match the requested tenant",
-            });
-            return;
-          }
-          next();
-        })
-        .catch(() => {
-          res.status(403).json({
-            error: "tenant_mismatch",
-            message: "Unable to verify tenant authorization",
-          });
-        });
-      return;
-    }
-
-    next();
+    proceedWithTenantBinding(req, res, next);
   } catch (err: unknown) {
     if (isJwtError(err) && err.name === "TokenExpiredError") {
       res.status(401).json({
@@ -167,6 +139,66 @@ export function authMiddleware(
     });
     return;
   }
+}
+
+function proceedWithTenantBinding(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!tenantConnectionManager.isMultiTenantEnabled) {
+    next();
+    return;
+  }
+
+  if (!req.tenantId) {
+    if (IS_DEV) {
+      next();
+      return;
+    }
+    res.status(500).json({
+      error: "server_configuration_error",
+      message: "Tenant context was not established before authentication",
+    });
+    return;
+  }
+
+  const decoded = req.tokenData!;
+  if (!decoded.domain) {
+    if (IS_DEV) {
+      next();
+      return;
+    }
+    res.status(403).json({
+      error: "tenant_mismatch",
+      message: "Authorization token is missing required domain claim",
+    });
+    return;
+  }
+
+  if (req.jwtDomain && req.jwtDomain === decoded.domain) {
+    next();
+    return;
+  }
+
+  verifyTenantBinding(decoded.domain, req.tenantId)
+    .then((valid) => {
+      if (!valid) {
+        res.status(403).json({
+          error: "tenant_mismatch",
+          message:
+            "Authorization token does not match the requested tenant",
+        });
+        return;
+      }
+      next();
+    })
+    .catch(() => {
+      res.status(403).json({
+        error: "tenant_mismatch",
+        message: "Unable to verify tenant authorization",
+      });
+    });
 }
 
 async function verifyTenantBinding(

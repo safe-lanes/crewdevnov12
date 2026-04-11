@@ -1,11 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { getAuthToken, handleUnauthorized } from "./authToken";
+import { getAuthToken } from "./authToken";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    if (res.status === 401) {
-      handleUnauthorized();
-    }
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
@@ -53,11 +50,8 @@ export const getQueryFn: <T>(options: {
       headers,
     });
 
-    if (res.status === 401) {
-      handleUnauthorized();
-      if (unauthorizedBehavior === "returnNull") {
-        return null;
-      }
+    if (res.status === 401 && unauthorizedBehavior === "returnNull") {
+      return null;
     }
 
     await throwIfResNotOk(res);

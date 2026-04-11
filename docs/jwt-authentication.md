@@ -229,7 +229,7 @@ const token = getAuthToken();
 if (token) headers["Authorization"] = `Bearer ${token}`;
 ```
 
-Both functions also handle 401 responses by calling `handleUnauthorized()`.
+The query client does **not** handle 401 redirects — that responsibility is centralized in the fetch interceptor (Layer 1). The query client only throws on non-OK responses.
 
 #### Layer 3: HTTP utility (`http.ts`)
 
@@ -279,22 +279,25 @@ Incoming request
   │                            │  Switches DB context via runInTenantContext()
   │                            │  JWT domain fallback if x-tenant-id missing
   │                            │
-  │    Exempt:                 │  /api/v2/tenant/init, /api/health,
+  │    Exempt:                 │  Shared isExempt() from exemptPaths.ts
+  │                            │  /api/v2/tenant/init, /api/health,
   │                            │  all non-/api/v2/ routes
   └────────────┬───────────────┘
                │
                ▼
   ┌────────────────────────────┐
-  │ 5. Auth Middleware         │  Extracts Bearer token from Authorization header
-  │    authMiddleware.ts       │  (or ?sail= query param for file-serving routes)
-  │                            │  Verifies JWT with jwt.verify(token, JWT_SECRET)
+  │ 5. Auth Middleware         │  Reuses req.tokenData if already verified by
+  │    authMiddleware.ts       │  tenant middleware (JWT domain fallback path)
+  │                            │  Otherwise: extracts Bearer token (or ?sail=)
+  │                            │  and verifies with jwt.verify(token, JWT_SECRET)
   │                            │  Attaches decoded payload to req.user & req.tokenData
   │                            │  Cross-tenant binding check (JWT domain vs tenantId)
+  │                            │  Skips binding if req.jwtDomain already matches
   │                            │  Returns 401 if missing/invalid/expired
   │                            │  Returns 403 if tenant mismatch
+  │                            │  Returns 500 if tenantId missing in production
   │                            │
-  │    Exempt:                 │  /api/v2/tenant/init, /api/health,
-  │                            │  all non-/api/v2/ routes
+  │    Exempt:                 │  Shared isExempt() from exemptPaths.ts
   │                            │
   │    Dev mode:               │  If JWT_SECRET not set + NODE_ENV=development,
   │                            │  auth is bypassed (next())
@@ -318,17 +321,29 @@ Incoming request
 3. After JWT verification, a cross-tenant binding check confirms the JWT `domain` matches the resolved tenant — prevents token from tenant A accessing tenant B's data.
 4. If JWT is invalid, the request is rejected with `401` before reaching any route handler.
 
+### Shared exempt paths
+
+Both middleware use a single shared `isExempt()` function from `server/middleware/exemptPaths.ts`. This ensures route exemptions are always in sync — adding a new exempt route only requires updating one file.
+
+### Single JWT verification per request
+
+When the JWT domain fallback path is used (no `x-tenant-id` header), the tenant middleware verifies the JWT to extract the domain and attaches the decoded payload to `req.tokenData`. The auth middleware detects this and reuses the existing payload instead of calling `jwt.verify()` a second time. This ensures exactly one JWT verification per request regardless of the code path.
+
 ### Tenant middleware JWT domain fallback
 
-When `x-tenant-id` header is missing, the tenant middleware attempts to extract the `domain` field from the JWT and resolve the tenant from it. This enables scenarios like file downloads where headers can't easily be set. The fallback distinguishes between:
+When `x-tenant-id` header is missing, the tenant middleware attempts to extract the `domain` field from the JWT and resolve the tenant from it. This enables scenarios like file downloads where headers can't easily be set. On the fallback path, the middleware also sets `req.jwtDomain` to record which domain was used for tenant resolution. The fallback distinguishes between:
 - Missing token → `400 Missing x-tenant-id header`
 - Expired token → `401 token_expired`
 - Invalid token → `401 invalid_token`
-- Valid token with domain → resolves tenant from domain
+- Valid token with domain → resolves tenant from domain, sets `req.jwtDomain`
 
 ### Cross-tenant binding check
 
-After JWT verification, `authMiddleware` checks that the JWT's `domain` field resolves to the same tenant as `req.tenantId`. If a mismatch is detected, the request is rejected with `403 tenant_mismatch`. This prevents a user with a valid token for company A from accessing company B's data by manipulating the `x-tenant-id` header.
+After JWT verification, `authMiddleware` performs a tenant binding check:
+- If `req.jwtDomain` is set and matches the JWT `domain`, the binding is already proven by tenant middleware — no additional lookup needed.
+- Otherwise, resolves the JWT `domain` to a tenant ID via the master database and compares against `req.tenantId`.
+- Rejects with `403 tenant_mismatch` if they don't match.
+- In production, if `req.tenantId` is missing when multi-tenant is enabled, rejects with `500 server_configuration_error` (indicates a middleware ordering bug) rather than silently skipping the check.
 
 ### `?sail=` query parameter for file downloads
 
@@ -415,21 +430,22 @@ export interface JwtPayload {
 | `400` | `Missing x-tenant-id` | No tenant ID header and no JWT domain fallback available | tenantMiddleware |
 | `403` | `invalid_tenant` | Tenant ID not found in master database | tenantMiddleware |
 | `403` | `tenant_inactive` | Tenant account is inactive or deleted | tenantMiddleware |
-| `500` | `server_configuration_error` | `JWT_SECRET` not set in production (non-dev) | authMiddleware |
+| `500` | `server_configuration_error` | `JWT_SECRET` not set in production (non-dev), or tenant context missing in production multi-tenant | authMiddleware |
 
 ### Frontend 401 handling
 
-When any API request returns `401`, the frontend handles it through three layers:
+401 redirect handling is centralized in a single layer:
 
 1. **Global fetch interceptor** (`tenantFetch.ts`): Catches 401 on all `/api` responses and calls `handleUnauthorized()`.
-2. **Query client** (`queryClient.ts`): Both `apiRequest()` (via `throwIfResNotOk`) and `getQueryFn()` call `handleUnauthorized()` on 401.
-3. **Auth utility** (`authToken.ts`): `handleUnauthorized()` calls `redirectToLogin()`, which redirects to:
+2. **Auth utility** (`authToken.ts`): `handleUnauthorized()` calls `redirectToLogin()`, which redirects to:
 
 ```
 VITE_PARENT_LOGIN_URL + "?redirect=" + encodeURIComponent(window.location.href)
 ```
 
 A `redirecting` flag prevents redirect storms when multiple concurrent API calls all return 401.
+
+The query client (`queryClient.ts`) does **not** handle 401 redirects — it only builds headers and throws on non-OK responses. This single-pass design ensures the redirect fires exactly once per 401, regardless of how many API layers process the response.
 
 ### No standalone login page
 
@@ -593,9 +609,10 @@ curl -H "Authorization: Bearer <jwt-token>" -H "x-tenant-id: <tuid>" http://loca
 ### Cross-tenant protection
 
 The auth middleware performs a **tenant binding check** after JWT verification:
-- Resolves the JWT `domain` field to a tenant ID via the master database.
-- Compares against `req.tenantId` (from the `x-tenant-id` header).
+- If the tenant was resolved via JWT domain fallback (`req.jwtDomain` set), the binding is already proven — no additional DB lookup needed.
+- Otherwise, resolves the JWT `domain` field to a tenant ID via the master database and compares against `req.tenantId`.
 - Rejects with `403 tenant_mismatch` if they don't match.
+- In production with multi-tenant enabled, if `req.tenantId` is missing at the auth stage, rejects with `500` (safety net for middleware ordering bugs).
 - This prevents a valid token for company A from accessing company B's data.
 
 ### `?sail=` query parameter security
@@ -654,10 +671,11 @@ The `domain` field is used for cross-tenant binding verification and as a fallba
 
 | File | Purpose |
 |------|---------|
+| `server/middleware/exemptPaths.ts` | Shared exempt path definitions used by both middleware |
 | `server/middleware/authMiddleware.ts` | Backend JWT verification, tenant binding, `?sail=` support |
 | `server/middleware/tenantMiddleware.ts` | Tenant resolution with JWT domain fallback |
 | `client/src/lib/authToken.ts` | Token decryption, auth state, redirect logic |
-| `client/src/lib/tenantFetch.ts` | Global fetch interceptor (headers + 401 handling) |
-| `client/src/lib/queryClient.ts` | Query client auth header + 401 handling |
+| `client/src/lib/tenantFetch.ts` | Global fetch interceptor (headers + 401 redirect) |
+| `client/src/lib/queryClient.ts` | Query client auth header injection |
 | `client/src/lib/encryptionService.ts` | AES decryption utility |
 | `client/src/App.tsx` | Startup auth gate |
