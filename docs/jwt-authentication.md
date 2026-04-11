@@ -124,8 +124,16 @@ The parent app (SAIL Audits) populates these keys in `sessionStorage` when the u
 The `credentials` value is encrypted by the parent app using:
 
 ```
-CryptoJS.AES.encrypt(rawJwtString, VITE_CLIENT_ENCRYPTION_KEY).toString()
+CryptoJS.AES.encrypt(JSON.stringify(rawJwtString), VITE_CLIENT_ENCRYPTION_KEY).toString()
 ```
+
+**The parent app `JSON.stringify`s the JWT before encrypting it.** This means the decrypted value is a JSON-encoded string — the raw JWT wrapped in escaped double quotes:
+
+```
+"\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZG9tYWluIjoic2xkZW1vIi...uitQ\""
+```
+
+After decryption, `JSON.parse()` must be called to unwrap the quotes and get the clean JWT string.
 
 Decryption in the Crewing app can use the existing `encryptionService.ts` (already implemented):
 
@@ -137,10 +145,13 @@ const secretKey = import.meta.env.VITE_CLIENT_ENCRYPTION_KEY || '';
 // Decrypt the credentials
 const encrypted = sessionStorage.getItem('credentials');
 const decryptedBytes = CryptoJS.AES.decrypt(encrypted, secretKey);
-const rawJwt = decryptedBytes.toString(CryptoJS.enc.Utf8);
+const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+// decryptedString = "\"eyJhbGci...uitQ\"" (JSON-encoded string with wrapping quotes)
+const rawJwt = JSON.parse(decryptedString);
+// rawJwt = "eyJhbGci...uitQ" (clean JWT, ready for Bearer header)
 ```
 
-**Important note:** The existing helper `getDecryptedSessionStorageItem('credentials')` from `encryptionService.ts` internally calls `decryptData()`, which attempts `JSON.parse()` on the result. Since the JWT is a raw string (not JSON), a dedicated auth utility should handle decryption to avoid parse errors. This will be addressed in Task #184.
+**This works with the existing `decryptData()` function.** Since `decryptData()` already calls `JSON.parse()` on the decrypted output, and the JWT is stored as a JSON-encoded string, `getDecryptedSessionStorageItem('credentials')` will correctly unwrap the quotes and return the clean JWT. However, when `isParse` is `false` (the default), `decryptData()` re-stringifies the result with `JSON.stringify()`, which would re-add the quotes. The auth utility in Task #184 should call `getDecryptedSessionStorageItem('credentials', true)` (with `isParse = true`) to get the clean JWT directly.
 
 ---
 
