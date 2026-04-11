@@ -1,11 +1,12 @@
 import { getDecryptedSessionStorageItem } from "./encryptionService";
 
 const PARENT_LOGIN_URL = import.meta.env.VITE_PARENT_LOGIN_URL || "";
+const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === "true";
 
 let redirecting = false;
 
 export function getAuthToken(): string | null {
-  if (!PARENT_LOGIN_URL) return null;
+  if (AUTH_BYPASS) return null;
   const decrypted = getDecryptedSessionStorageItem("credentials", true);
   if (typeof decrypted === "string" && decrypted.length > 0) {
     return decrypted;
@@ -14,7 +15,8 @@ export function getAuthToken(): string | null {
 }
 
 export function isAuthRequired(): boolean {
-  return !!PARENT_LOGIN_URL;
+  if (AUTH_BYPASS) return false;
+  return true;
 }
 
 export function isAuthConfigured(): boolean {

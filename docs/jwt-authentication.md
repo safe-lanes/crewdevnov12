@@ -161,33 +161,33 @@ On app load, `App.tsx` checks whether authentication is required and whether val
 
 ```
 ┌──────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│  App.tsx loads    │────▶│ isAuthRequired()?    │────▶│ VITE_PARENT_LOGIN_  │
-│                  │     │ (checks if           │     │ URL is set?         │
-│                  │     │ VITE_PARENT_LOGIN_URL │     │                     │
-│                  │     │ is configured)        │     │                     │
+│  App.tsx loads    │────▶│ isAuthRequired()?    │────▶│ VITE_AUTH_BYPASS    │
+│                  │     │ (checks if           │     │ === "true"?         │
+│                  │     │ VITE_AUTH_BYPASS is   │     │                     │
+│                  │     │ set)                  │     │                     │
 └──────────────────┘     └─────────────────────┘     └────────┬────────────┘
                                                                │
                                                          Yes   │   No
                                                          ┌─────┘   └──────┐
                                                          ▼                ▼
-                                                  ┌─────────────┐  ┌──────────┐
-                                                  │ getAuthToken│  │ Skip auth│
-                                                  │ returns     │  │ → render │
-                                                  │ valid JWT?  │  │ app      │
-                                                  └──────┬──────┘  └──────────┘
-                                                         │
-                                                   Yes   │   No
-                                                   ┌─────┘   └──────┐
-                                                   ▼                ▼
-                                            ┌──────────┐    ┌──────────────┐
-                                            │ Continue  │    │ logout() →   │
-                                            │ to tenant │    │ clear storage│
-                                            │ init flow │    │ + redirect   │
-                                            └──────────┘    │ to login URL │
-                                                            └──────────────┘
+                                                  ┌──────────┐    ┌─────────────┐
+                                                  │ Skip auth│    │ getAuthToken│
+                                                  │ → render │    │ returns     │
+                                                  │ app      │    │ valid JWT?  │
+                                                  └──────────┘    └──────┬──────┘
+                                                                         │
+                                                                   Yes   │   No
+                                                                   ┌─────┘   └──────┐
+                                                                   ▼                ▼
+                                                            ┌──────────┐    ┌──────────────┐
+                                                            │ Continue  │    │ logout() →   │
+                                                            │ to tenant │    │ clear storage│
+                                                            │ init flow │    │ + redirect   │
+                                                            └──────────┘    │ to login URL │
+                                                                            └──────────────┘
 ```
 
-**Key decision:** `isAuthRequired()` returns `true` when `VITE_PARENT_LOGIN_URL` is set. If not set (local dev without parent app), auth is skipped entirely.
+**Key decision:** `isAuthRequired()` returns `false` only when `VITE_AUTH_BYPASS=true` is set. Otherwise, auth is always required — if no token exists, the app clears storage and redirects to the parent login URL.
 
 `App.tsx` delegates to `AuthenticatedApp` (which contains hooks like `useTenantInit()`) to avoid conditional hook calls.
 
@@ -504,6 +504,9 @@ AUTH_BYPASS="true"
 # Frontend: Parent app login URL for 401 redirect
 VITE_PARENT_LOGIN_URL="https://dev.sl-sail.com/login"
 
+# Frontend: Explicit auth bypass for development (skips login redirect and token checks)
+VITE_AUTH_BYPASS="true"
+
 # Frontend: AES key for decrypting credentials from sessionStorage (must match parent app)
 VITE_CLIENT_ENCRYPTION_KEY="Your-encryption-key"
 ```
@@ -524,7 +527,8 @@ VITE_CLIENT_ENCRYPTION_KEY="Your-encryption-key"
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_PARENT_LOGIN_URL` | Yes (production) | Parent app login URL for 401 redirect. **This is the frontend auth switch** — if set, auth is required and 401s redirect here. If not set, auth is skipped. Production builds fail if this is missing. |
+| `VITE_PARENT_LOGIN_URL` | Yes (production) | Parent app login URL for 401 redirect. Required for production builds unless `VITE_AUTH_BYPASS=true`. |
+| `VITE_AUTH_BYPASS` | No | Set to `"true"` to skip frontend auth gating (no login redirect, no token checks). Production Vite builds fail if neither `VITE_PARENT_LOGIN_URL` nor `VITE_AUTH_BYPASS=true` is set. |
 | `VITE_CLIENT_ENCRYPTION_KEY` | Yes | AES key for decrypting `credentials` from sessionStorage. Must match the parent app. |
 | `VITE_API_BASE_URL` | Yes | Parent app API base URL |
 
@@ -543,30 +547,30 @@ When `JWT_SECRET` is not set, the server requires an explicit bypass flag:
 - If `AUTH_BYPASS` is not `"true"` and `JWT_SECRET` is not set: the server **throws a startup error** and refuses to start, with a message explaining the options.
 - `AUTH_BYPASS` is **ignored in production** (`NODE_ENV !== "development"`) — production always requires `JWT_SECRET`.
 
-#### Frontend: `VITE_PARENT_LOGIN_URL` not set
+#### Frontend: `VITE_AUTH_BYPASS=true`
 
-When `VITE_PARENT_LOGIN_URL` is empty or not configured:
+When `VITE_AUTH_BYPASS=true`:
 - `isAuthRequired()` returns `false` — no startup auth check, no login redirect.
 - `getAuthToken()` returns `null` — no Authorization header is attached to requests.
 - The app loads and works normally without credentials in sessionStorage.
 
-When `VITE_PARENT_LOGIN_URL` is set, auth is required. If no valid token exists, the app calls `logout()` which clears storage and redirects to the login URL.
+When `VITE_AUTH_BYPASS` is not `"true"`, auth is required. If no valid token exists, the app calls `logout()` which clears both `sessionStorage` and `localStorage`, then redirects to the parent login URL.
 
 #### Vite build-time validation
 
-Production Vite builds (`npm run build`) fail if `VITE_PARENT_LOGIN_URL` is not set. This prevents accidentally deploying a build that cannot redirect users to login.
+Production Vite builds (`npm run build`) fail if `VITE_PARENT_LOGIN_URL` is not set and `VITE_AUTH_BYPASS` is not `"true"`. This prevents accidentally deploying a build that cannot redirect users to login.
 
 #### Summary of local dev behavior
 
-| `JWT_SECRET` set? | `AUTH_BYPASS` | `VITE_PARENT_LOGIN_URL` set? | Behavior |
-|-------------------|--------------|-------------------------------|----------|
-| No | `true` | No | **Full bypass** — no auth on frontend or backend |
-| No | `true` | Yes | Backend bypasses auth, frontend redirects to login |
+| `JWT_SECRET` set? | `AUTH_BYPASS` | `VITE_AUTH_BYPASS` | Behavior |
+|-------------------|--------------|---------------------|----------|
+| No | `true` | `true` | **Full bypass** — no auth on frontend or backend |
+| No | `true` | Not set | Backend bypasses auth, frontend requires auth (redirect) |
 | No | Not set | N/A | **Server refuses to start** — startup error |
-| Yes | N/A | No | Backend validates tokens, frontend skips auth gating |
-| Yes | N/A | Yes | **Full auth** — same as production |
+| Yes | N/A | `true` | Backend validates tokens, frontend skips auth gating |
+| Yes | N/A | Not set | **Full auth** — same as production |
 | No (prod) | N/A | N/A | **Server refuses to start** — `JWT_SECRET` required |
-| Yes (prod) | N/A | Yes | **Production mode** — full authentication enforced |
+| Yes (prod) | N/A | Not set | **Production mode** — full authentication enforced |
 
 ### Testing JWT locally
 
@@ -638,7 +642,7 @@ The auth middleware performs a **tenant binding check** after JWT verification:
 
 - **Production:** If `JWT_SECRET` is not set, the server refuses to start. The system never silently allows unauthenticated access in production.
 - **Development:** Auth bypass requires explicit `AUTH_BYPASS=true` env var. Without it, missing `JWT_SECRET` causes a startup error. This is logged as a warning when active.
-- **Frontend:** Auth is required when `VITE_PARENT_LOGIN_URL` is set. Production builds fail if it's missing.
+- **Frontend:** Auth is required by default. Only `VITE_AUTH_BYPASS=true` disables the auth gate. Production builds fail if `VITE_PARENT_LOGIN_URL` is missing (unless `VITE_AUTH_BYPASS=true`).
 
 ### Shared secret management
 
