@@ -91,6 +91,7 @@ export function tenantMiddleware(
     }
 
     if (jwtResult.status === "domain") {
+      jwtResult.decoded.domain = jwtResult.domain;
       req.tokenData = jwtResult.decoded;
       req.user = jwtResult.decoded;
       req.jwtDomain = jwtResult.domain;
