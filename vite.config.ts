@@ -12,12 +12,10 @@ function authEnvGuard(): Plugin {
     name: "auth-env-guard",
     buildStart() {
       if (process.env.NODE_ENV !== "production") return;
-      if (process.env.VITE_AUTH_BYPASS === "true") return;
       if (!process.env.VITE_PARENT_LOGIN_URL) {
         throw new Error(
           "VITE_PARENT_LOGIN_URL is not set for production build. " +
-            "Set VITE_PARENT_LOGIN_URL to the parent app login URL, " +
-            "or set VITE_AUTH_BYPASS=true to skip this check.",
+            "Set VITE_PARENT_LOGIN_URL to the parent app login URL.",
         );
       }
     },

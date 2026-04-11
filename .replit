@@ -51,4 +51,3 @@ expertMode = true
 
 [userenv.development]
 AUTH_BYPASS = "true"
-VITE_AUTH_BYPASS = "true"
