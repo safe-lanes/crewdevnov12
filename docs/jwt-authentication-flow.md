@@ -19,10 +19,9 @@ flowchart TD
 
     GetToken --> HasToken{Valid JWT\nstring?}
     HasToken -- Yes --> RenderAuth[Render AuthenticatedApp]
-    HasToken -- No --> Logout[logout:\nClear sessionStorage\nClear localStorage]
-    Logout --> HasLoginURL{VITE_PARENT_LOGIN_URL\nset?}
-    HasLoginURL -- Yes --> Redirect[Redirect to\nparent login URL]
-    HasLoginURL -- No --> StayBlank[Stay on page\nno redirect target]
+    HasToken -- No --> HasLoginURL{VITE_PARENT_LOGIN_URL\nset?}
+    HasLoginURL -- Yes --> Logout["logout():\nClear sessionStorage\nClear localStorage\nRedirect to login URL"]
+    HasLoginURL -- No --> NoOp[No redirect, no clear\nlogout returns early]
 
     RenderAuth --> TenantInit[useTenantInit hook]
     SkipAuth --> TenantInit
@@ -112,24 +111,24 @@ flowchart TD
     SetContext1 --> AuthMW
     SetContext2 --> AuthMW
 
-    AuthMW --> DevBypass{AUTH_BYPASS === true\n&& NODE_ENV === dev?}
-    DevBypass -- Yes --> RouteHandler
+    AuthMW --> HasSecret{JWT_SECRET\nconfigured?}
 
-    DevBypass -- No --> HasSecret{JWT_SECRET\nconfigured?}
-    HasSecret -- No --> Err500(["500: Auth not configured"])
+    HasSecret -- No --> DevBypass{AUTH_BYPASS === true\n&& NODE_ENV === dev?}
+    DevBypass -- Yes --> RouteHandler
+    DevBypass -- No --> Err500(["500: server_configuration_error"])
 
     HasSecret -- Yes --> AlreadyVerified{req.tokenData\nalready set by\ntenant middleware?}
     AlreadyVerified -- Yes --> ReuseToken["Reuse req.tokenData\nSet req.user"]
     AlreadyVerified -- No --> ExtractBearer[Extract Bearer token\nfrom Authorization header]
 
     ExtractBearer --> HasBearer{Token\npresent?}
-    HasBearer -- No --> Err401c(["401: Missing authorization token"])
+    HasBearer -- No --> Err401c(["401: unauthorized\nMissing authorization token"])
     HasBearer -- Yes --> VerifyJWT["jwt.verify(token, JWT_SECRET)"]
 
     VerifyJWT --> VerifyResult{Verify\nresult?}
     VerifyResult -- Valid --> SetUser["Set req.user\nSet req.tokenData"]
-    VerifyResult -- Expired --> Err401d(["401: token_expired"])
-    VerifyResult -- Invalid --> Err401e(["401: invalid_token"])
+    VerifyResult -- Expired --> Err401d(["401: token_expired\nToken has expired"])
+    VerifyResult -- Invalid --> Err401e(["401: invalid_token\nInvalid authorization token"])
 
     SetUser --> TenantBinding
     ReuseToken --> TenantBinding
@@ -138,7 +137,7 @@ flowchart TD
     TenantBinding -- No --> RouteHandler
     TenantBinding -- Yes --> DomainCheck{JWT domain\nmatches tenant?}
     DomainCheck -- Yes --> RouteHandler
-    DomainCheck -- No --> Err403c(["403: tenant_mismatch"])
+    DomainCheck -- No --> Err403c(["403: tenant_mismatch\nToken does not match tenant"])
 ```
 
 ---
@@ -149,9 +148,10 @@ flowchart TD
 flowchart LR
     subgraph Development
         direction TB
-        D1[AUTH_BYPASS=true] --> D2[Backend skips\nJWT validation]
+        D1["AUTH_BYPASS=true\n+ no JWT_SECRET"] --> D2[Backend skips\nJWT validation]
+        D1b["JWT_SECRET set\n(AUTH_BYPASS ignored)"] --> D2b[Backend validates\nJWT normally]
         D3[VITE_AUTH_BYPASS=true] --> D4[Frontend skips\nauth gate]
-        D2 --> D5([Full bypass:\nNo auth anywhere])
+        D2 --> D5([Bypass active:\nBackend + frontend\nskip auth])
         D4 --> D5
     end
 
