@@ -32,7 +32,7 @@ window.fetch = function (
   }
 
   return originalFetch(input, init).then((response) => {
-    if (response.status === 401 && url.startsWith("/api/")) {
+    if (response.status === 401 && url.startsWith("/api")) {
       handleUnauthorized();
     }
     return response;

@@ -9,8 +9,7 @@ import HeaderComponent from "./components/Navbar/HeaderComponent";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useTenantInit } from "@/hooks/useTenantInit";
-import { isAuthConfigured, redirectToLogin } from "@/lib/authToken";
-import { secretKeyAvailable } from "@/lib/encryptionService";
+import { isAuthRequired, isAuthConfigured, redirectToLogin } from "@/lib/authToken";
 
 const AdminRouter = lazy(() => import("./modules/admin/index"));
 const AppraisalsRouter = lazy(() => import("./modules/crewing/AppraisalsRouter"));
@@ -149,8 +148,7 @@ function AuthenticatedApp() {
 }
 
 function App() {
-  const authRequired = secretKeyAvailable();
-  if (authRequired && !isAuthConfigured()) {
+  if (isAuthRequired() && !isAuthConfigured()) {
     redirectToLogin();
     return <TenantLoader />;
   }
