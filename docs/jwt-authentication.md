@@ -1,6 +1,6 @@
 # JWT Authentication — SAIL Crewing V2
 
-> **Implementation Status:** This document describes the **target JWT authentication design** for the Crewing V2 app. Sections clearly mark what is currently implemented vs. what is planned (Task #183: backend middleware, Task #184: frontend token handling). Where the current state differs from the target, it is noted explicitly.
+> **Implementation Status:** JWT authentication is **fully implemented**. Task #183 (backend middleware) and Task #184 (frontend token handling) are both merged and active.
 
 ## Table of Contents
 
@@ -53,31 +53,31 @@ The Crewing app does **not** have its own login system. Authentication is delega
 │             │    │ using        │    │ stores in    │    │ Storage on  │
 │             │    │ JWT_SECRET   │    │ sessionStorage│    │ every req   │
 └─────────────┘    └──────────────┘    └──────────────┘    └─────────────┘
-                                                                  │
-                                                                  ▼
-                                                           ┌─────────────┐
-                                                           │ Decrypt     │
-                                                           │ AES → raw   │
-                                                           │ JWT string  │
-                                                           │             │
-                                                           │ Send as:    │
-                                                           │ Authorization│
-                                                           │ : Bearer    │
-                                                           │ <token>     │
-                                                           └──────┬──────┘
-                                                                  │
-                                                                  ▼
-                                                           ┌─────────────┐
-                                                           │ Backend     │
-                                                           │ verifies    │
-                                                           │ JWT with    │
-                                                           │ JWT_SECRET  │
-                                                           │             │
-                                                           │ Attaches    │
-                                                           │ decoded     │
-                                                           │ payload to  │
-                                                           │ req.user    │
-                                                           └─────────────┘
+                                                                 │
+                                                                 ▼
+                                                          ┌─────────────┐
+                                                          │ Decrypt     │
+                                                          │ AES → raw   │
+                                                          │ JWT string  │
+                                                          │             │
+                                                          │ Send as:    │
+                                                          │ Authorization│
+                                                          │ : Bearer    │
+                                                          │ <token>     │
+                                                          └──────┬──────┘
+                                                                 │
+                                                                 ▼
+                                                          ┌─────────────┐
+                                                          │ Backend     │
+                                                          │ verifies    │
+                                                          │ JWT with    │
+                                                          │ JWT_SECRET  │
+                                                          │             │
+                                                          │ Attaches    │
+                                                          │ decoded     │
+                                                          │ payload to  │
+                                                          │ req.user    │
+                                                          └─────────────┘
 ```
 
 ### Token flow step-by-step
@@ -88,15 +88,16 @@ The Crewing app does **not** have its own login system. Authentication is delega
 4. Parent app stores the encrypted JWT in `sessionStorage` under the key `"credentials"`.
 5. Parent app also sets additional plain-text values in `sessionStorage` (see Section 3).
 6. User navigates to the Crewing module (loaded in an iframe or same origin).
-7. **[PLANNED — Task #184]** On **every** API request, the Crewing frontend:
+7. On **every** API request, the Crewing frontend:
    - Reads `sessionStorage.getItem("credentials")` fresh (never cached).
-   - Decrypts it using `CryptoJS.AES.decrypt(encrypted, secretKey)` where `secretKey = VITE_CLIENT_ENCRYPTION_KEY`.
+   - Decrypts it using `getDecryptedSessionStorageItem("credentials", true)` from `encryptionService.ts`.
    - Sends the raw JWT as `Authorization: Bearer <token>` header.
-8. **[PLANNED — Task #183]** The Crewing backend middleware:
-   - Extracts the token from the `Authorization` header.
+8. The Crewing backend middleware:
+   - Extracts the token from the `Authorization` header (or `?sail=` query param for file downloads).
    - Verifies the signature using `jwt.verify(token, JWT_SECRET)`.
-   - Attaches the decoded payload to `req.user`.
-   - Proceeds to the route handler, or returns `401` if invalid/expired.
+   - Attaches the decoded payload to `req.user` and `req.tokenData`.
+   - Proceeds to the route handler, or returns `401` if missing/invalid/expired.
+   - Performs cross-tenant binding check (JWT `domain` vs `req.tenantId`).
 
 ### Why read fresh every time?
 
@@ -106,13 +107,13 @@ The user may re-authenticate in the parent app (e.g., session refresh, re-login 
 
 ## 3. SessionStorage Structure
 
-The parent app (SAIL Audits) populates these keys in `sessionStorage` when the user logs in. This is the **current** behavior of the parent app — these values already exist in the browser when the Crewing module loads.
+The parent app (SAIL Audits) populates these keys in `sessionStorage` when the user logs in.
 
 | Key | Format | Description | Used by Crewing? |
 |-----|--------|-------------|------------------|
-| `credentials` | Encrypted (CryptoJS AES) | Raw JWT token string | **Planned** — will be decrypted and sent as Bearer token |
-| `crewUserName` | Plain text | Display name of the logged-in user | **Yes (current)** — used in form "Prepared By" fields |
-| `crewDesignation` | Plain text | Rank/position of the user | **Yes (current)** — used in form headers |
+| `credentials` | Encrypted (CryptoJS AES) | Raw JWT token string | **Yes** — decrypted and sent as Bearer token |
+| `crewUserName` | Plain text | Display name of the logged-in user | **Yes** — used in form "Prepared By" fields |
+| `crewDesignation` | Plain text | Rank/position of the user | **Yes** — used in form headers |
 | `crewUserRole` | Plain text | User's role name | Not currently used |
 | `crewUserType` | Plain text | User type classification | Not currently used |
 | `crewingAccess` | Plain text (`"granted"`) | Whether user has Crewing module access | Not currently used |
@@ -135,149 +136,122 @@ CryptoJS.AES.encrypt(JSON.stringify(rawJwtString), VITE_CLIENT_ENCRYPTION_KEY).t
 
 After decryption, `JSON.parse()` must be called to unwrap the quotes and get the clean JWT string.
 
-Decryption in the Crewing app can use the existing `encryptionService.ts` (already implemented):
+The Crewing app handles this via `getDecryptedSessionStorageItem("credentials", true)` with `isParse = true`, which performs both AES decryption and JSON parsing automatically:
 
 ```typescript
-// client/src/lib/encryptionService.ts (EXISTS)
-import CryptoJS from 'crypto-js';
-const secretKey = import.meta.env.VITE_CLIENT_ENCRYPTION_KEY || '';
+// client/src/lib/authToken.ts
+import { getDecryptedSessionStorageItem } from "./encryptionService";
 
-// Decrypt the credentials
-const encrypted = sessionStorage.getItem('credentials');
-const decryptedBytes = CryptoJS.AES.decrypt(encrypted, secretKey);
-const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
-// decryptedString = "\"eyJhbGci...uitQ\"" (JSON-encoded string with wrapping quotes)
-const rawJwt = JSON.parse(decryptedString);
-// rawJwt = "eyJhbGci...uitQ" (clean JWT, ready for Bearer header)
+export function getAuthToken(): string | null {
+  const decrypted = getDecryptedSessionStorageItem("credentials", true);
+  if (typeof decrypted === "string" && decrypted.length > 0) {
+    return decrypted;
+  }
+  return null;
+}
 ```
-
-**This works with the existing `decryptData()` function.** Since `decryptData()` already calls `JSON.parse()` on the decrypted output, and the JWT is stored as a JSON-encoded string, `getDecryptedSessionStorageItem('credentials')` will correctly unwrap the quotes and return the clean JWT. However, when `isParse` is `false` (the default), `decryptData()` re-stringifies the result with `JSON.stringify()`, which would re-add the quotes. The auth utility in Task #184 should call `getDecryptedSessionStorageItem('credentials', true)` (with `isParse = true`) to get the clean JWT directly.
 
 ---
 
 ## 4. Frontend Authentication Flow
 
-### 4.1 Current State
+### 4.1 Startup Auth Check
 
-The frontend currently has **no authentication check**. The app startup flow is:
-
-1. `App.tsx` loads.
-2. `useTenantInit()` hook runs — resolves domain from localStorage, calls `/api/v2/tenant/init` to get tenant ID.
-3. If tenant resolution succeeds, the app renders normally.
-4. If tenant resolution fails, a `TenantErrorPopup` is shown.
-5. **No token check, no Bearer header, no 401 redirect.**
-
-### 4.2 Target State (Task #184)
+On app load, `App.tsx` checks whether authentication is required and whether valid credentials exist:
 
 ```
-┌──────────────────┐     ┌─────────────────┐     ┌────────────────────┐
-│  App.tsx loads    │────▶│ Check for token │────▶│ Token exists?      │
-│                  │     │ in sessionStorage│     │                    │
-└──────────────────┘     └─────────────────┘     └────────┬───────────┘
-                                                          │
-                                                    Yes   │   No
-                                                    ┌─────┘   └──────┐
-                                                    ▼                ▼
-                                             ┌──────────┐    ┌──────────────┐
-                                             │ Continue  │    │ Redirect to  │
-                                             │ to tenant │    │ parent login │
-                                             │ init flow │    │ URL          │
-                                             └──────────┘    └──────────────┘
+┌──────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
+│  App.tsx loads    │────▶│ isAuthRequired()?    │────▶│ VITE_PARENT_LOGIN_  │
+│                  │     │ (checks if           │     │ URL is set?         │
+│                  │     │ VITE_PARENT_LOGIN_URL │     │                     │
+│                  │     │ is configured)        │     │                     │
+└──────────────────┘     └─────────────────────┘     └────────┬────────────┘
+                                                               │
+                                                         Yes   │   No
+                                                         ┌─────┘   └──────┐
+                                                         ▼                ▼
+                                                  ┌─────────────┐  ┌──────────┐
+                                                  │ getAuthToken│  │ Skip auth│
+                                                  │ returns     │  │ → render │
+                                                  │ valid JWT?  │  │ app      │
+                                                  └──────┬──────┘  └──────────┘
+                                                         │
+                                                   Yes   │   No
+                                                   ┌─────┘   └──────┐
+                                                   ▼                ▼
+                                            ┌──────────┐    ┌──────────────┐
+                                            │ Continue  │    │ Redirect to  │
+                                            │ to tenant │    │ parent login │
+                                            │ init flow │    │ URL with     │
+                                            └──────────┘    │ ?redirect=   │
+                                                            └──────────────┘
 ```
 
-On startup, before `useTenantInit()` runs, the app will check for a valid token in `sessionStorage`. If no token is found, the user will be redirected to the parent app's login page:
+**Key decision:** `isAuthRequired()` returns `true` only when `VITE_PARENT_LOGIN_URL` is set. If it's not set (local dev), auth is completely skipped.
 
-```
-VITE_PARENT_LOGIN_URL + "?redirect=" + encodeURIComponent(window.location.href)
-```
+`App.tsx` delegates to `AuthenticatedApp` (which contains hooks like `useTenantInit()`) to avoid conditional hook calls.
 
-### 4.3 API Request Pipeline
+### 4.2 API Request Pipeline
 
-There are three paths through which API requests are currently made. All three will need the `Authorization` header added:
+Authorization headers are injected at three layers for complete coverage:
 
-#### Path 1: Global fetch interceptor (`tenantFetch.ts`)
+#### Layer 1: Global fetch interceptor (`tenantFetch.ts`)
 
-This intercepts **all** `fetch()` calls to `/api/*` and injects headers. This is the primary mechanism.
+Intercepts **all** `fetch()` calls to `/api/*` and injects both `x-tenant-id` and `Authorization: Bearer` headers:
 
-**Current code** (`client/src/lib/tenantFetch.ts`):
 ```typescript
-// EXISTS — currently only injects x-tenant-id
-const originalFetch = window.fetch.bind(window);
-
+// client/src/lib/tenantFetch.ts
 window.fetch = function (input, init = {}) {
-  const tenantId = localStorage.getItem("tenantId");
-  if (tenantId) {
-    let url = typeof input === "string" ? input : input.toString();
-    if (url.startsWith("/api")) {
-      const headers = new Headers(init.headers);
-      headers.set("x-tenant-id", tenantId);
-      init = { ...init, headers };
-    }
+  if (url.startsWith("/api")) {
+    const headers = new Headers(init.headers);
+    const tenantId = localStorage.getItem("tenantId");
+    if (tenantId) headers.set("x-tenant-id", tenantId);
+    const token = getAuthToken();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    init = { ...init, headers };
   }
-  return originalFetch(input, init);
+  return originalFetch(input, init).then((response) => {
+    if (response.status === 401 && url.startsWith("/api")) {
+      handleUnauthorized(); // Redirects to parent login
+    }
+    return response;
+  });
 };
 ```
 
-**Planned change (Task #184):** Add `Authorization: Bearer <token>` alongside the existing `x-tenant-id` header.
+#### Layer 2: TanStack Query client (`queryClient.ts`)
 
-#### Path 2: TanStack Query client (`queryClient.ts`)
+Both `apiRequest()` and `getQueryFn()` explicitly add the Authorization header:
 
-Used by most V2 modules via `useQuery` / `useMutation`. Both `apiRequest()` and `getQueryFn()` build their own headers.
-
-**Current code** (`client/src/lib/queryClient.ts`):
 ```typescript
-// EXISTS — currently only sets x-tenant-id and credentials: "include"
-export async function apiRequest(method, url, data?) {
-  const tenantId = localStorage.getItem("tenantId");
-  const headers = {};
-  if (data) headers["Content-Type"] = "application/json";
-  if (tenantId) headers["x-tenant-id"] = tenantId;
-  // No Authorization header yet
-  const res = await fetch(url, { method, headers, body: ..., credentials: "include" });
-  ...
-}
+// client/src/lib/queryClient.ts
+const token = getAuthToken();
+if (token) headers["Authorization"] = `Bearer ${token}`;
 ```
 
-**Planned change (Task #184):** Add `Authorization: Bearer <token>` header in both `apiRequest()` and `getQueryFn()`.
+Both functions also handle 401 responses by calling `handleUnauthorized()`.
 
-**Note:** Even though `queryClient.ts` calls `fetch()` (which goes through the interceptor), it also sets headers explicitly. Both places should add the Authorization header for consistency.
+#### Layer 3: HTTP utility (`http.ts`)
 
-#### Path 3: HTTP utility (`http.ts`)
+Calls `fetch()` directly, so it's covered by the `tenantFetch.ts` interceptor. No separate changes needed.
 
-A secondary API client used by some components. Calls `fetch()` directly, so it goes through the `tenantFetch.ts` interceptor.
+### 4.3 Files that make API requests
 
-**Current code** (`client/src/utils/http.ts`):
-```typescript
-// EXISTS — calls fetch() which is intercepted by tenantFetch.ts
-export async function api(input, init?) {
-  const response = await fetch(input, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  });
-  ...
-}
-```
-
-**No separate changes needed in `http.ts`** — the interceptor handles it. However, if the interceptor is ever bypassed, `http.ts` should have its own header injection as a safety net.
-
-### 4.4 Files that make API requests
-
-| Layer | File | Mechanism | Status |
-|-------|------|-----------|--------|
-| Global interceptor | `client/src/lib/tenantFetch.ts` | Patches `window.fetch` | Exists — needs auth header |
-| Query client | `client/src/lib/queryClient.ts` | `apiRequest()`, `getQueryFn()` | Exists — needs auth header |
-| HTTP utility | `client/src/utils/http.ts` | `api()`, `get()`, `post()`, `patch()`, `del()` | Exists — covered by interceptor |
-| Module APIs | `client/src/modules/*/api/*.ts` | Use `apiRequest` or `http` utilities | No changes needed |
-| Hooks | `client/src/hooks/useExternal*.tsx` | Use `useQuery` with `queryClient` | No changes needed |
-| Tenant init | `client/src/hooks/useTenantInit.ts` | Direct `fetch()` to `/api/v2/tenant/init` | Exempt — no auth needed |
+| Layer | File | Mechanism | Auth Header |
+|-------|------|-----------|-------------|
+| Global interceptor | `client/src/lib/tenantFetch.ts` | Patches `window.fetch` | Injected for all `/api/*` |
+| Query client | `client/src/lib/queryClient.ts` | `apiRequest()`, `getQueryFn()` | Explicit header |
+| HTTP utility | `client/src/utils/http.ts` | `api()`, `get()`, `post()`, etc. | Covered by interceptor |
+| Auth utility | `client/src/lib/authToken.ts` | `getAuthToken()`, `redirectToLogin()` | Token source |
+| Module APIs | `client/src/modules/*/api/*.ts` | Use `apiRequest` or `http` utilities | Inherited |
+| Hooks | `client/src/hooks/useExternal*.tsx` | Use `useQuery` with `queryClient` | Inherited |
+| Tenant init | `client/src/hooks/useTenantInit.ts` | Direct `fetch()` to `/api/v2/tenant/init` | Exempt route |
 
 ---
 
 ## 5. Backend Middleware Chain
 
-### Current State
-
-Requests currently pass through middleware in this order (from `server/index.ts`):
+Requests pass through middleware in this order (from `server/index.ts`):
 
 ```
 Incoming request
@@ -300,52 +274,40 @@ Incoming request
                │
                ▼
   ┌────────────────────────────┐
-  │ 4. Tenant Middleware       │  Validates x-tenant-id header       [EXISTS]
+  │ 4. Tenant Middleware       │  Validates x-tenant-id header
   │    tenantMiddleware.ts     │  Sets req.tenantId
   │                            │  Switches DB context via runInTenantContext()
+  │                            │  JWT domain fallback if x-tenant-id missing
   │                            │
   │    Exempt:                 │  /api/v2/tenant/init, /api/health,
-  │                            │  all non-/api/v2/ routes (legacy)
+  │                            │  all non-/api/v2/ routes
   └────────────┬───────────────┘
                │
                ▼
   ┌────────────────────────────┐
-  │ 5. Route Handlers          │  V2 routes, legacy routes, health check
-  └────────────┬───────────────┘
-               │
-               ▼
-  ┌────────────────────────────┐
-  │ 6. Error Handler           │  Catches all errors, returns JSON
-  └────────────────────────────┘
-```
-
-**No authentication middleware exists today.** All V2 routes are accessible to anyone who provides a valid `x-tenant-id` header.
-
-### Target State (Task #183)
-
-A new auth middleware will be inserted **after** tenant middleware:
-
-```
-  ...
-  ┌────────────────────────────┐
-  │ 4. Tenant Middleware       │  [EXISTS]
-  └────────────┬───────────────┘
-               │
-               ▼
-  ┌────────────────────────────┐
-  │ 5. Auth Middleware         │  [PLANNED — Task #183]
-  │    authMiddleware.ts       │  Extracts Bearer token from Authorization header
+  │ 5. Auth Middleware         │  Extracts Bearer token from Authorization header
+  │    authMiddleware.ts       │  (or ?sail= query param for file-serving routes)
   │                            │  Verifies JWT with jwt.verify(token, JWT_SECRET)
-  │                            │  Attaches decoded payload to req.user
+  │                            │  Attaches decoded payload to req.user & req.tokenData
+  │                            │  Cross-tenant binding check (JWT domain vs tenantId)
   │                            │  Returns 401 if missing/invalid/expired
+  │                            │  Returns 403 if tenant mismatch
   │                            │
   │    Exempt:                 │  /api/v2/tenant/init, /api/health,
-  │                            │  all non-/api/v2/ routes (legacy)
+  │                            │  all non-/api/v2/ routes
+  │                            │
+  │    Dev mode:               │  If JWT_SECRET not set + NODE_ENV=development,
+  │                            │  auth is bypassed (next())
   └────────────┬───────────────┘
                │
                ▼
   ┌────────────────────────────┐
-  │ 6. Route Handlers          │
+  │ 6. Route Handlers          │  V2 routes, legacy routes, health check
+  └────────────┬───────────────┘
+               │
+               ▼
+  ┌────────────────────────────┐
+  │ 7. Error Handler           │  Catches all errors, returns JSON
   └────────────────────────────┘
 ```
 
@@ -353,53 +315,45 @@ A new auth middleware will be inserted **after** tenant middleware:
 
 1. Tenant context is established first (DB connection switched).
 2. Then the user's identity is verified via JWT.
-3. If JWT is invalid, the request is rejected with `401` before reaching any route handler.
+3. After JWT verification, a cross-tenant binding check confirms the JWT `domain` matches the resolved tenant — prevents token from tenant A accessing tenant B's data.
+4. If JWT is invalid, the request is rejected with `401` before reaching any route handler.
 
-### Planned auth middleware pseudocode
+### Tenant middleware JWT domain fallback
+
+When `x-tenant-id` header is missing, the tenant middleware attempts to extract the `domain` field from the JWT and resolve the tenant from it. This enables scenarios like file downloads where headers can't easily be set. The fallback distinguishes between:
+- Missing token → `400 Missing x-tenant-id header`
+- Expired token → `401 token_expired`
+- Invalid token → `401 invalid_token`
+- Valid token with domain → resolves tenant from domain
+
+### Cross-tenant binding check
+
+After JWT verification, `authMiddleware` checks that the JWT's `domain` field resolves to the same tenant as `req.tenantId`. If a mismatch is detected, the request is rejected with `403 tenant_mismatch`. This prevents a user with a valid token for company A from accessing company B's data by manipulating the `x-tenant-id` header.
+
+### `?sail=` query parameter for file downloads
+
+File-serving routes (paths containing `/download`, `/attachment`, `/document`, or `/file` under module prefixes) accept the JWT as a `?sail=<token>` query parameter. This supports scenarios like PDF downloads or document previews where setting an Authorization header isn't possible (e.g., `<a href>` links, `<img src>` tags).
+
+### JWT payload type
 
 ```typescript
-// server/middleware/authMiddleware.ts [PLANNED — Task #183]
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET;
-const EXEMPT_PATHS = ['/api/v2/tenant/init', '/api/health'];
-
-function isExempt(path: string): boolean {
-  if (EXEMPT_PATHS.some(p => path === p)) return true;
-  if (!path.startsWith('/api/v2/')) return true;
-  return false;
+// server/middleware/authMiddleware.ts
+export interface JwtPayload {
+  id: number;
+  domain: string;
+  userType: string;
+  iat?: number;
+  exp?: number;
 }
 
-export function authMiddleware(req, res, next) {
-  // Skip if JWT_SECRET not configured (local dev / single-tenant)
-  if (!JWT_SECRET) return next();
-
-  // Skip exempt routes
-  if (isExempt(req.path)) return next();
-
-  const authHeader = req.headers['authorization'];
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing authorization token' });
-  }
-
-  const token = authHeader.slice(7);
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-}
+// Available on req.user and req.tokenData after auth middleware
 ```
 
 ---
 
 ## 6. Request Pipeline
 
-### Target request lifecycle (end to end)
-
-> This represents the **target state** after Task #183 and Task #184 are complete.
+### Request lifecycle (end to end)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -428,51 +382,19 @@ export function authMiddleware(req, res, next) {
 │  2. Logger          → logs request                                   │
 │  3. tenantMiddleware→ validates x-tenant-id, sets req.tenantId,     │
 │                       switches to tenant DB context                  │
+│                       (or resolves tenant from JWT domain fallback)  │
 │  4. authMiddleware  → extracts Bearer token, verifies JWT,           │
-│                       sets req.user = { userId, role, domain, ... }  │
+│                       sets req.user = { id, domain, userType, ... } │
+│                       cross-tenant binding check                     │
 │  5. Route handler   → processes request using req.tenantId +        │
 │                       req.user context                               │
 │                           │                                          │
 │                           ▼                                          │
 │  Response: 200 OK  { data: [...] }                                  │
-│       or:  401     { error: "Invalid or expired token" }            │
-│       or:  400     { error: "Missing x-tenant-id header" }          │
-│       or:  403     { error: "invalid_tenant" }                      │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
-### Current request lifecycle
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         FRONTEND (current)                           │
-│                                                                      │
-│  Component calls:  apiRequest("GET", "/api/v2/crew-pool/profiles")  │
-│                           │                                          │
-│                           ▼                                          │
-│  queryClient.ts:  builds headers { x-tenant-id }                    │
-│                           │                                          │
-│                           ▼                                          │
-│  tenantFetch.ts:  intercepts fetch(), adds x-tenant-id              │
-│                   (NO Authorization header)                          │
-│                           │                                          │
-└───────────────────────────┼──────────────────────────────────────────┘
-                            │ HTTP Request
-                            │ Headers:
-                            │   x-tenant-id: <tuid>
-                            │   Content-Type: application/json
-                            ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                         BACKEND (current)                            │
-│                                                                      │
-│  1. Rate limiter    → pass                                           │
-│  2. Logger          → logs request                                   │
-│  3. tenantMiddleware→ validates x-tenant-id, sets req.tenantId      │
-│  4. (NO auth check)                                                  │
-│  5. Route handler   → processes request using req.tenantId only     │
-│                           │                                          │
-│                           ▼                                          │
-│  Response: 200 OK  { data: [...] }                                  │
+│       or:  401     { error: "unauthorized" }                         │
+│       or:  401     { error: "token_expired" }                        │
+│       or:  401     { error: "invalid_token" }                        │
+│       or:  403     { error: "tenant_mismatch" }                      │
 │       or:  400     { error: "Missing x-tenant-id header" }          │
 │       or:  403     { error: "invalid_tenant" }                      │
 └──────────────────────────────────────────────────────────────────────┘
@@ -482,36 +404,32 @@ export function authMiddleware(req, res, next) {
 
 ## 7. Error Handling & 401 Redirect
 
-### Backend responses (target state)
+### Backend error responses
 
-| Status | Condition | Response Body | Status |
-|--------|-----------|---------------|--------|
-| `401` | No `Authorization` header | `{ error: "Missing authorization token" }` | **Planned** |
-| `401` | Invalid/expired JWT | `{ error: "Invalid or expired token" }` | **Planned** |
-| `400` | No `x-tenant-id` header | `{ error: "Missing x-tenant-id header" }` | **Exists** |
-| `403` | Invalid tenant ID | `{ error: "invalid_tenant" }` | **Exists** |
-| `403` | Inactive tenant | `{ error: "tenant_inactive" }` | **Exists** |
+| Status | Error Code | Condition | Middleware |
+|--------|-----------|-----------|------------|
+| `401` | `unauthorized` | No `Authorization` header (or no `JWT_SECRET` in production) | authMiddleware |
+| `401` | `token_expired` | JWT has expired | authMiddleware / tenantMiddleware (fallback) |
+| `401` | `invalid_token` | JWT signature or format is invalid | authMiddleware / tenantMiddleware (fallback) |
+| `403` | `tenant_mismatch` | JWT domain doesn't match resolved tenant | authMiddleware |
+| `400` | `Missing x-tenant-id` | No tenant ID header and no JWT domain fallback available | tenantMiddleware |
+| `403` | `invalid_tenant` | Tenant ID not found in master database | tenantMiddleware |
+| `403` | `tenant_inactive` | Tenant account is inactive or deleted | tenantMiddleware |
+| `500` | `server_configuration_error` | `JWT_SECRET` not set in production (non-dev) | authMiddleware |
 
 ### Frontend 401 handling
 
-**Current state:** `queryClient.ts` has an `on401` parameter in `getQueryFn`:
-- `"throw"` (default): throws an error, which triggers component error states.
-- `"returnNull"`: returns `null` silently (used for optional data checks).
-- No redirect logic exists. `http.ts` throws an `ApiError` with `status: 401` but no special handling.
+When any API request returns `401`, the frontend handles it through three layers:
 
-**Planned (Task #184):** When any API request returns `401`, the frontend will perform a global redirect to the parent app's login page:
+1. **Global fetch interceptor** (`tenantFetch.ts`): Catches 401 on all `/api` responses and calls `handleUnauthorized()`.
+2. **Query client** (`queryClient.ts`): Both `apiRequest()` (via `throwIfResNotOk`) and `getQueryFn()` call `handleUnauthorized()` on 401.
+3. **Auth utility** (`authToken.ts`): `handleUnauthorized()` calls `redirectToLogin()`, which redirects to:
 
 ```
-On 401 response:
-  1. Clear any stale auth state
-  2. Build redirect URL:
-     parentLoginUrl + "?redirect=" + encodeURIComponent(window.location.href)
-  3. window.location.assign(redirectUrl)
+VITE_PARENT_LOGIN_URL + "?redirect=" + encodeURIComponent(window.location.href)
 ```
 
-**Default parent login URL:** `https://dev.sl-sail.com/login` (configured via `VITE_PARENT_LOGIN_URL`)
-
-The global interceptor (`tenantFetch.ts`) is the ideal place to add the 401 redirect, since it catches all responses from all API paths.
+A `redirecting` flag prevents redirect storms when multiple concurrent API calls all return 401.
 
 ### No standalone login page
 
@@ -531,22 +449,9 @@ These routes do **not** require a JWT token or tenant ID:
 | `* /api/pay-elements` | Legacy pay elements | Yes (non-v2) | Yes (non-v2) |
 | `* /api/contract-pay-elements` | Legacy contract elements | Yes (non-v2) | Yes (non-v2) |
 
-**Rule:** All routes starting with `/api/v2/` will require both tenant ID and JWT, **except** `/api/v2/tenant/init` which is explicitly exempted. All legacy routes (not starting with `/api/v2/`) are exempted from both checks.
+**Rule:** All routes starting with `/api/v2/` require both tenant ID and JWT, **except** `/api/v2/tenant/init` which is explicitly exempted. All legacy routes (not starting with `/api/v2/`) are exempted from both checks.
 
-The exemption logic mirrors what already exists in `tenantMiddleware.ts`:
-
-```typescript
-// server/middleware/tenantMiddleware.ts (EXISTS)
-const EXEMPT_PATHS = ["/api/v2/tenant/init", "/api/health"];
-
-function isExempt(path: string): boolean {
-  if (EXEMPT_PATHS.some((p) => path === p)) return true;
-  if (!path.startsWith("/api/v2/")) return true;  // legacy routes exempt
-  return false;
-}
-```
-
-### V2 routes that will require authentication
+### V2 routes that require authentication
 
 | Route prefix | Module |
 |-------------|--------|
@@ -566,118 +471,115 @@ function isExempt(path: string): boolean {
 
 ## 9. Environment Variables
 
-All environment variables are defined in `.env.dev` (copied as `.env` on production servers).
-
-### Currently defined in `.env.dev`
+### Auth-related environment variables
 
 ```bash
-# Database Configuration
-DATABASE_URL="postgres://postgres:sailadmin@localhost:5432/crew_management_new"
-MASTER_DATABASE_URL="postgres://postgres:sailadmin@localhost:5432/sails_master_crewing"
-
-# Server Configuration
-NODE_ENV="production"
-PORT="4000"
-
-# Session Configuration
-SESSION_SECRET="your-super-secret-session-key-here"
-
-# Frontend Configuration (used during build)
-VITE_API_BASE_URL="https://dev.sl-sail.com/b/api/v1"
-VITE_CLIENT_ENCRYPTION_KEY="sailAdmin"
-```
-
-### To be added for JWT authentication
-
-```bash
-# ===============================================
-# JWT Authentication (PLANNED — Task #183/#184)
-# ===============================================
-# Shared secret for JWT token verification (must match parent SAIL Audits app)
+# Backend: Shared secret for JWT token verification (must match parent SAIL Audits app)
 JWT_SECRET="your-jwt-signing-secret"
 
-# Parent app login URL for 401 redirect (PLANNED — Task #184)
+# Frontend: Parent app login URL for 401 redirect
 VITE_PARENT_LOGIN_URL="https://dev.sl-sail.com/login"
+
+# Frontend: AES key for decrypting credentials from sessionStorage (must match parent app)
+VITE_CLIENT_ENCRYPTION_KEY="sailAdmin"
 ```
 
 ### Variable reference
 
 #### Backend variables (`process.env.*`)
 
-| Variable | Required | Status | Description |
-|----------|----------|--------|-------------|
-| `JWT_SECRET` | Yes (production) | **Planned** | Shared secret for JWT verification. Must match the parent app. |
-| `DATABASE_URL` | Yes | Exists | Primary database connection |
-| `MASTER_DATABASE_URL` | Yes (multi-tenant) | Exists | Master database for tenant resolution |
-| `SESSION_SECRET` | Yes | Exists | Express session secret (legacy) |
-| `NODE_ENV` | Yes | Exists | Environment mode |
-| `PORT` | Yes | Exists | Server port |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `JWT_SECRET` | Yes (production) | Shared secret for JWT verification. Must match the parent app. If not set in development, auth is bypassed. If not set in production, all protected requests return 401. |
+| `DATABASE_URL` | Yes | Primary database connection |
+| `MASTER_DATABASE_URL` | Yes (multi-tenant) | Master database for tenant resolution |
+| `NODE_ENV` | Yes | Environment mode (`development` or `production`) |
 
 #### Frontend variables (`import.meta.env.*`)
 
-| Variable | Required | Status | Description |
-|----------|----------|--------|-------------|
-| `VITE_PARENT_LOGIN_URL` | Yes (production) | **Planned** | Parent app login URL for 401 redirect |
-| `VITE_CLIENT_ENCRYPTION_KEY` | Yes | **Exists** | AES key for decrypting `credentials` from sessionStorage. Must match the parent app. |
-| `VITE_API_BASE_URL` | Yes | Exists | Parent app API base URL |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_PARENT_LOGIN_URL` | Yes (production) | Parent app login URL for 401 redirect. **This is the auth switch** — if not set, the frontend skips all auth checks. |
+| `VITE_CLIENT_ENCRYPTION_KEY` | Yes | AES key for decrypting `credentials` from sessionStorage. Must match the parent app. |
+| `VITE_API_BASE_URL` | Yes | Parent app API base URL |
 
 ---
 
 ## 10. Local Development
 
-### Current behavior (single-tenant mode, no JWT)
+### How local dev works without JWT
 
-When developing locally on Replit or without the parent app:
+The authentication system is designed for **zero-configuration local development**. When running locally (Replit or otherwise) without the parent app, auth is completely bypassed through two independent switches:
 
-- **`MASTER_DATABASE_URL` is not set** → app runs in single-tenant mode, tenant middleware calls `next()` immediately.
-- **No auth middleware exists** → all routes are accessible without authentication.
-- The app works without any token. All routes are accessible.
+#### Backend: `JWT_SECRET` not set + `NODE_ENV=development`
 
-### Target behavior (after Task #183)
+When `JWT_SECRET` is not configured and `NODE_ENV=development`:
+- The auth middleware calls `next()` — requests pass through without token validation.
+- All `/api/v2/` routes are accessible without an Authorization header.
+- A warning is logged at startup: `"⚠️ JWT_SECRET is not set. Authentication is disabled in development mode."`
 
-- **`JWT_SECRET` is not set** → auth middleware will skip verification (`next()`) — same as current behavior.
-- **`JWT_SECRET` is set** → auth middleware verifies the token on every V2 request.
+**In production** (non-development), if `JWT_SECRET` is missing, all protected requests return `401` with `"Authentication service is not available"`. This is a fail-closed design.
 
-This is by design: local development should not require running the full SAIL Audits parent app.
+#### Frontend: `VITE_PARENT_LOGIN_URL` not set
+
+When `VITE_PARENT_LOGIN_URL` is empty or not configured:
+- `isAuthRequired()` returns `false` — no startup auth check, no login redirect.
+- `getAuthToken()` returns `null` — no Authorization header is attached to requests.
+- `redirectToLogin()` is a no-op (won't redirect if URL is empty).
+- The app loads and works normally.
+
+#### Summary of local dev behavior
+
+| `JWT_SECRET` set? | `NODE_ENV` | `VITE_PARENT_LOGIN_URL` set? | Behavior |
+|-------------------|-----------|-------------------------------|----------|
+| No | `development` | No | **Full bypass** — no auth on frontend or backend |
+| No | `development` | Yes | Frontend redirects to login (no token), backend allows requests |
+| Yes | `development` | No | Frontend works without auth, backend validates tokens |
+| Yes | `development` | Yes | **Full auth** — same as production |
+| No | `production` | N/A | Backend rejects all protected requests with 401 |
+| Yes | `production` | Yes | **Production mode** — full authentication enforced |
 
 ### Testing JWT locally
 
-If you want to test JWT locally after Task #183 is implemented:
+If you want to test JWT locally:
 
-1. Set `JWT_SECRET` to match the parent app's secret.
-2. Manually create a token for testing:
+1. Set `JWT_SECRET` in your environment to match the parent app's secret.
+2. Set `VITE_PARENT_LOGIN_URL` to a valid URL (or any placeholder to enable auth checks).
+3. Manually create a token for testing:
 
 ```javascript
 const jwt = require('jsonwebtoken');
 const token = jwt.sign(
-  { userId: 'test-user', role: 'admin', domain: 'rsms' },
+  { id: 3, domain: 'sldemo', userType: 'Admin' },
   process.env.JWT_SECRET,
   { expiresIn: '8h' }
 );
 console.log(token);
 ```
 
-3. Set the token in the browser's `sessionStorage`:
+4. Set the encrypted token in the browser's `sessionStorage`:
 
 ```javascript
-// In browser console (no encryption for local testing)
-sessionStorage.setItem('credentials', '<paste-token-here>');
+// In browser console — with encryption (matches production behavior)
+const CryptoJS = (await import('crypto-js')).default;
+const encrypted = CryptoJS.AES.encrypt(JSON.stringify('<paste-jwt-here>'), 'sailAdmin').toString();
+sessionStorage.setItem('credentials', encrypted);
 ```
 
-Or with encryption (to match production behavior):
+Or for quick testing without encryption (won't work with `getAuthToken()` but useful for direct API calls):
 
-```javascript
-const CryptoJS = window.CryptoJS; // If available
-const encrypted = CryptoJS.AES.encrypt('<jwt-token>', 'sailAdmin').toString();
-sessionStorage.setItem('credentials', encrypted);
+```bash
+# curl with Bearer token directly
+curl -H "Authorization: Bearer <jwt-token>" -H "x-tenant-id: <tuid>" http://localhost:5000/api/v2/crew-pool/crew
 ```
 
 ### Testing 401 behavior
 
-1. Start the app with `JWT_SECRET` set.
-2. Make an API call without a token → should get `401`.
-3. Make an API call with an expired token → should get `401`.
-4. Make an API call with a valid token → should get `200`.
+1. Start the app with `JWT_SECRET` set and `VITE_PARENT_LOGIN_URL` set.
+2. Don't set `credentials` in sessionStorage → app should redirect to login URL.
+3. Make an API call without a token → should get `401`.
+4. Make an API call with an expired token → should get `401` with `token_expired`.
+5. Make an API call with a valid token → should get `200`.
 
 ---
 
@@ -688,9 +590,24 @@ sessionStorage.setItem('credentials', encrypted);
 - The JWT is stored in `sessionStorage` (not `localStorage`), so it is scoped to the browser tab and cleared when the tab is closed.
 - The token is encrypted with AES before storage, adding a layer of obfuscation (though `sessionStorage` is already inaccessible to other origins).
 
-### Current security gap
+### Cross-tenant protection
 
-> **Important:** Until Task #183 and Task #184 are implemented, V2 API routes have no user identity verification. Any client with a valid `x-tenant-id` can access all endpoints. Tenant isolation (data separation) is enforced, but user authentication is not.
+The auth middleware performs a **tenant binding check** after JWT verification:
+- Resolves the JWT `domain` field to a tenant ID via the master database.
+- Compares against `req.tenantId` (from the `x-tenant-id` header).
+- Rejects with `403 tenant_mismatch` if they don't match.
+- This prevents a valid token for company A from accessing company B's data.
+
+### `?sail=` query parameter security
+
+- The `?sail=<token>` query parameter is only accepted on **file-serving routes** (paths containing `/download`, `/attachment`, `/document`, or `/file`).
+- This scoping prevents token leakage via URL logging, browser history, or referrer headers on regular API calls.
+- File-serving route prefixes: `/api/v2/crew-pool/crew/`, `/api/v2/recruitment/`, `/api/v2/drugs-alcohol/`, `/api/v2/vessel/`.
+
+### Fail-closed design
+
+- **Production:** If `JWT_SECRET` is not set, all protected requests are rejected with `401`. The system never silently allows unauthenticated access in production.
+- **Development:** Auth bypass only occurs when both `JWT_SECRET` is unset AND `NODE_ENV=development`. This is logged as a warning.
 
 ### Shared secret management
 
@@ -701,7 +618,7 @@ sessionStorage.setItem('credentials', encrypted);
 ### Token expiration
 
 - Token expiry is set by the parent app when signing the JWT (typically 8-24 hours).
-- The Crewing backend will rely on `jwt.verify()` to reject expired tokens automatically.
+- The Crewing backend relies on `jwt.verify()` to reject expired tokens automatically.
 - The Crewing app does **not** refresh tokens — when a token expires, the user is redirected to the parent login page to re-authenticate.
 
 ### No token refresh mechanism
@@ -717,18 +634,30 @@ There is no refresh token flow. The design assumes:
 - `sessionStorage` is shared when the origin matches, allowing the parent's token to be read by the Crewing app.
 - `credentials: "include"` is set on fetch requests to forward cookies if needed.
 
-### What the JWT payload should contain
+### JWT payload structure
 
-The parent app should include at minimum:
+The parent app includes these fields in the JWT:
 
 ```json
 {
-  "userId": "user-uuid",
-  "role": "admin",
-  "domain": "rsms",
+  "id": 3,
+  "domain": "sldemo",
+  "userType": "Admin",
   "iat": 1712800000,
   "exp": 1712828800
 }
 ```
 
-The `domain` field could optionally be used as a fallback for tenant resolution if the `x-tenant-id` header is missing. This is an **optional future enhancement** — the current design relies on the `x-tenant-id` header set by the frontend.
+The `domain` field is used for cross-tenant binding verification and as a fallback for tenant resolution when `x-tenant-id` header is missing.
+
+### Implementation files
+
+| File | Purpose |
+|------|---------|
+| `server/middleware/authMiddleware.ts` | Backend JWT verification, tenant binding, `?sail=` support |
+| `server/middleware/tenantMiddleware.ts` | Tenant resolution with JWT domain fallback |
+| `client/src/lib/authToken.ts` | Token decryption, auth state, redirect logic |
+| `client/src/lib/tenantFetch.ts` | Global fetch interceptor (headers + 401 handling) |
+| `client/src/lib/queryClient.ts` | Query client auth header + 401 handling |
+| `client/src/lib/encryptionService.ts` | AES decryption utility |
+| `client/src/App.tsx` | Startup auth gate |
