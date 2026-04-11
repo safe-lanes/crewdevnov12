@@ -113,10 +113,11 @@ The parent app (SAIL Audits) populates these keys in `sessionStorage` when the u
 | `credentials` | Encrypted (CryptoJS AES) | Raw JWT token string | **Planned** — will be decrypted and sent as Bearer token |
 | `crewUserName` | Plain text | Display name of the logged-in user | **Yes (current)** — used in form "Prepared By" fields |
 | `crewDesignation` | Plain text | Rank/position of the user | **Yes (current)** — used in form headers |
-| `crewUserId` | Plain text (stored in localStorage) | Unique user identifier | **Yes (current)** — used across all V2 modules for audit trails |
 | `crewUserRole` | Plain text | User's role name | Not currently used |
 | `crewUserType` | Plain text | User type classification | Not currently used |
 | `crewingAccess` | Plain text (`"granted"`) | Whether user has Crewing module access | Not currently used |
+
+**Note on `crewUserId`:** This value is set by the parent app in **`localStorage`** (not `sessionStorage`), and is read by the Crewing app from `localStorage.getItem("crewUserId")` across all V2 modules for audit trails and API calls.
 
 ### Encryption details
 
@@ -719,4 +720,4 @@ The parent app should include at minimum:
 }
 ```
 
-The `domain` field can be used as a fallback for tenant resolution if the `x-tenant-id` header is missing.
+The `domain` field could optionally be used as a fallback for tenant resolution if the `x-tenant-id` header is missing. This is an **optional future enhancement** — the current design relies on the `x-tenant-id` header set by the frontend.
