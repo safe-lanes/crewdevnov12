@@ -20,15 +20,21 @@ declare global {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const IS_DEV = process.env.NODE_ENV === "development";
 
-if (!JWT_SECRET && !IS_DEV) {
+if (!JWT_SECRET) {
   console.error(
-    "⚠️  JWT_SECRET is not set. Authentication will reject all protected requests in non-development environments.",
+    "⚠️  JWT_SECRET is not set. All protected API requests will be rejected with 401.",
   );
 }
 
 const EXEMPT_PATHS = ["/api/v2/tenant/init", "/api/health"];
+
+const FILE_SERVING_PREFIXES = [
+  "/api/v2/crew-pool/crew/",
+  "/api/v2/recruitment/",
+  "/api/v2/drugs-alcohol/",
+  "/api/v2/vessel/",
+];
 
 function isExempt(path: string): boolean {
   if (EXEMPT_PATHS.some((p) => path === p)) return true;
@@ -36,18 +42,46 @@ function isExempt(path: string): boolean {
   return false;
 }
 
+function isFileServingRoute(path: string): boolean {
+  return FILE_SERVING_PREFIXES.some(
+    (prefix) =>
+      path.startsWith(prefix) &&
+      (path.includes("/download") ||
+        path.includes("/attachment") ||
+        path.includes("/document") ||
+        path.includes("/file")),
+  );
+}
+
 export function extractToken(req: Request): string | null {
   const authHeader = req.headers["authorization"];
   if (authHeader && authHeader.startsWith("Bearer ")) {
     return authHeader.slice(7).trim();
   }
+  return null;
+}
 
-  const queryToken = req.query.sail;
-  if (typeof queryToken === "string" && queryToken.length > 0) {
-    return queryToken;
+function extractTokenWithQueryFallback(req: Request): string | null {
+  const headerToken = extractToken(req);
+  if (headerToken) return headerToken;
+
+  if (isFileServingRoute(req.path)) {
+    const queryToken = req.query.sail;
+    if (typeof queryToken === "string" && queryToken.length > 0) {
+      return queryToken;
+    }
   }
 
   return null;
+}
+
+function isJwtError(err: unknown): err is { name: string; message: string } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    typeof (err as { name: unknown }).name === "string"
+  );
 }
 
 export function authMiddleware(
@@ -61,18 +95,14 @@ export function authMiddleware(
   }
 
   if (!JWT_SECRET) {
-    if (IS_DEV) {
-      next();
-      return;
-    }
-    res.status(500).json({
-      error: "server_configuration_error",
-      message: "Authentication is not configured",
+    res.status(401).json({
+      error: "unauthorized",
+      message: "Authentication service is not available",
     });
     return;
   }
 
-  const token = extractToken(req);
+  const token = extractTokenWithQueryFallback(req);
 
   if (!token) {
     res.status(401).json({
@@ -107,16 +137,15 @@ export function authMiddleware(
         .catch(() => {
           res.status(403).json({
             error: "tenant_mismatch",
-            message:
-              "Unable to verify tenant authorization",
+            message: "Unable to verify tenant authorization",
           });
         });
       return;
     }
 
     next();
-  } catch (err: any) {
-    if (err.name === "TokenExpiredError") {
+  } catch (err: unknown) {
+    if (isJwtError(err) && err.name === "TokenExpiredError") {
       res.status(401).json({
         error: "token_expired",
         message: "Authorization token has expired",

@@ -45,8 +45,15 @@ function extractDomainFromJwt(req: Request): JwtFallbackResult {
       typeof decoded.domain === "string" ? decoded.domain.trim() : undefined;
     if (!domain) return { status: "no_domain" };
     return { status: "domain", domain };
-  } catch (err: any) {
-    if (err.name === "TokenExpiredError") return { status: "expired" };
+  } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "name" in err &&
+      (err as { name: string }).name === "TokenExpiredError"
+    ) {
+      return { status: "expired" };
+    }
     return { status: "invalid" };
   }
 }
@@ -147,7 +154,7 @@ function handleTenantError(res: Response, err: unknown): void {
   } else if (err instanceof TenantInactiveError) {
     res.status(403).json({
       error: "tenant_inactive",
-      message: (err as TenantInactiveError).message,
+      message: err.message,
     });
   } else if (err instanceof TenantDatabaseError) {
     res.status(503).json({
