@@ -22,15 +22,22 @@ declare global {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const IS_DEV = process.env.NODE_ENV === "development";
+const AUTH_BYPASS = process.env.AUTH_BYPASS === "true" && IS_DEV;
 
 if (!JWT_SECRET) {
-  if (IS_DEV) {
+  if (AUTH_BYPASS) {
     console.warn(
-      "⚠️  JWT_SECRET is not set. Authentication is disabled in development mode.",
+      "⚠️  AUTH_BYPASS=true: JWT authentication is disabled. Do NOT use in production.",
+    );
+  } else if (IS_DEV) {
+    throw new Error(
+      "JWT_SECRET is not set and AUTH_BYPASS is not enabled. " +
+        "Set JWT_SECRET for real auth, or set AUTH_BYPASS=true to skip auth in development.",
     );
   } else {
-    console.error(
-      "⚠️  JWT_SECRET is not set. All protected API requests will be rejected with 401.",
+    throw new Error(
+      "JWT_SECRET is not set. This is required in production. " +
+        "Set JWT_SECRET to the shared secret matching the parent SAIL Audits app.",
     );
   }
 }
@@ -92,13 +99,13 @@ export function authMiddleware(
   }
 
   if (!JWT_SECRET) {
-    if (IS_DEV) {
+    if (AUTH_BYPASS) {
       next();
       return;
     }
-    res.status(401).json({
-      error: "unauthorized",
-      message: "Authentication service is not available",
+    res.status(500).json({
+      error: "server_configuration_error",
+      message: "Authentication service is not configured",
     });
     return;
   }
