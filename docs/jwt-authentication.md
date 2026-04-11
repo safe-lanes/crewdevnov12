@@ -84,7 +84,7 @@ The Crewing app does **not** have its own login system. Authentication is delega
 
 1. User logs into the **SAIL Audits** parent app.
 2. Parent app authenticates the user and signs a JWT using the shared `JWT_SECRET`.
-3. Parent app encrypts the raw JWT string with **CryptoJS AES** (using the shared `VITE_CLIENT_ENCRYPTION_KEY` / `"sailAdmin"`).
+3. Parent app encrypts the raw JWT string with **CryptoJS AES** (using the shared `VITE_CLIENT_ENCRYPTION_KEY` / `"Your-encryption-key"`).
 4. Parent app stores the encrypted JWT in `sessionStorage` under the key `"credentials"`.
 5. Parent app also sets additional plain-text values in `sessionStorage` (see Section 3).
 6. User navigates to the Crewing module (loaded in an iframe or same origin).
@@ -503,7 +503,7 @@ VITE_PARENT_LOGIN_URL="https://dev.sl-sail.com/login"
 VITE_AUTH_BYPASS="true"
 
 # Frontend: AES key for decrypting credentials from sessionStorage (must match parent app)
-VITE_CLIENT_ENCRYPTION_KEY="sailAdmin"
+VITE_CLIENT_ENCRYPTION_KEY="Your-encryption-key"
 ```
 
 ### Variable reference
@@ -590,7 +590,7 @@ console.log(token);
 ```javascript
 // In browser console — with encryption (matches production behavior)
 const CryptoJS = (await import('crypto-js')).default;
-const encrypted = CryptoJS.AES.encrypt(JSON.stringify('<paste-jwt-here>'), 'sailAdmin').toString();
+const encrypted = CryptoJS.AES.encrypt(JSON.stringify('<paste-jwt-here>'), 'Your-encryption-key').toString();
 sessionStorage.setItem('credentials', encrypted);
 ```
 
