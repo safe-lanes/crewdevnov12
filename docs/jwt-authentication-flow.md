@@ -71,8 +71,10 @@ flowchart TD
     SendRequest --> CheckResponse{Response\nstatus?}
     CheckResponse -- "200/304" --> ReturnOK([Return response])
     CheckResponse -- "401" --> Handle401[handleUnauthorized\n→ logout]
-    Handle401 --> ClearStorage[Clear sessionStorage\nClear localStorage]
+    Handle401 --> HasLoginURL2{VITE_PARENT_LOGIN_URL\nset?}
+    HasLoginURL2 -- Yes --> ClearStorage[Clear sessionStorage\nClear localStorage]
     ClearStorage --> RedirectLogin[Redirect to\nparent login URL]
+    HasLoginURL2 -- No --> NoOpLogout["logout returns early\nno clear, no redirect"]
     CheckResponse -- Other --> ReturnErr([Return error response])
 ```
 
