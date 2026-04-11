@@ -53,7 +53,7 @@ function isFileServingRoute(path: string): boolean {
   );
 }
 
-export function extractToken(req: Request): string | null {
+function extractBearerToken(req: Request): string | null {
   const authHeader = req.headers["authorization"];
   if (authHeader && authHeader.startsWith("Bearer ")) {
     return authHeader.slice(7).trim();
@@ -61,8 +61,8 @@ export function extractToken(req: Request): string | null {
   return null;
 }
 
-function extractTokenWithQueryFallback(req: Request): string | null {
-  const headerToken = extractToken(req);
+export function extractToken(req: Request): string | null {
+  const headerToken = extractBearerToken(req);
   if (headerToken) return headerToken;
 
   if (isFileServingRoute(req.path)) {
@@ -102,7 +102,7 @@ export function authMiddleware(
     return;
   }
 
-  const token = extractTokenWithQueryFallback(req);
+  const token = extractToken(req);
 
   if (!token) {
     res.status(401).json({
