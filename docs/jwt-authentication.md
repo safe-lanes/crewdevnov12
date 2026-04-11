@@ -437,7 +437,7 @@ export interface JwtPayload {
 401 redirect handling is centralized in a single layer:
 
 1. **Global fetch interceptor** (`tenantFetch.ts`): Catches 401 on all `/api` responses and calls `handleUnauthorized()`.
-2. **Auth utility** (`authToken.ts`): `handleUnauthorized()` calls `logout()`, which:
+2. **Auth utility** (`authToken.ts`): `handleUnauthorized()` → `redirectToLogin()` → `logout()`, which:
    - Clears `sessionStorage` (removes credentials, user name, designation, etc.)
    - Clears `localStorage` (removes tenantId, domain, crewUserId, etc.)
    - Redirects to:
