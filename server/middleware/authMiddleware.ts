@@ -36,11 +36,14 @@ if (!JWT_SECRET) {
 
 const EXEMPT_PATHS = ["/api/v2/tenant/init", "/api/health"];
 
-const FILE_SERVING_PREFIXES = [
-  "/api/v2/crew-pool/crew/",
-  "/api/v2/recruitment/",
-  "/api/v2/drugs-alcohol/",
-  "/api/v2/vessel/",
+const FILE_SERVING_SEGMENTS = [
+  "/download",
+  "/attachment",
+  "/attachments",
+  "/document",
+  "/documents",
+  "/file",
+  "/files",
 ];
 
 function isExempt(path: string): boolean {
@@ -50,14 +53,8 @@ function isExempt(path: string): boolean {
 }
 
 function isFileServingRoute(path: string): boolean {
-  return FILE_SERVING_PREFIXES.some(
-    (prefix) =>
-      path.startsWith(prefix) &&
-      (path.includes("/download") ||
-        path.includes("/attachment") ||
-        path.includes("/document") ||
-        path.includes("/file")),
-  );
+  if (!path.startsWith("/api/v2/")) return false;
+  return FILE_SERVING_SEGMENTS.some((seg) => path.includes(seg));
 }
 
 function extractBearerToken(req: Request): string | null {

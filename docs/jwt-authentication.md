@@ -332,7 +332,7 @@ After JWT verification, `authMiddleware` checks that the JWT's `domain` field re
 
 ### `?sail=` query parameter for file downloads
 
-File-serving routes (paths containing `/download`, `/attachment`, `/document`, or `/file` under module prefixes) accept the JWT as a `?sail=<token>` query parameter. This supports scenarios like PDF downloads or document previews where setting an Authorization header isn't possible (e.g., `<a href>` links, `<img src>` tags).
+Any `/api/v2/` route whose path contains a file-serving segment (`/download`, `/attachment`, `/attachments`, `/document`, `/documents`, `/file`, `/files`) accepts the JWT as a `?sail=<token>` query parameter. This supports scenarios like PDF downloads or document previews where setting an Authorization header isn't possible (e.g., `<a href>` links, `<img src>` tags). Detection is dynamic — no module-specific prefix list is needed.
 
 ### JWT payload type
 
@@ -600,9 +600,9 @@ The auth middleware performs a **tenant binding check** after JWT verification:
 
 ### `?sail=` query parameter security
 
-- The `?sail=<token>` query parameter is only accepted on **file-serving routes** (paths containing `/download`, `/attachment`, `/document`, or `/file`).
+- The `?sail=<token>` query parameter is only accepted on **file-serving routes** — any `/api/v2/` path containing `/download`, `/attachment`, `/attachments`, `/document`, `/documents`, `/file`, or `/files`.
 - This scoping prevents token leakage via URL logging, browser history, or referrer headers on regular API calls.
-- File-serving route prefixes: `/api/v2/crew-pool/crew/`, `/api/v2/recruitment/`, `/api/v2/drugs-alcohol/`, `/api/v2/vessel/`.
+- Detection is dynamic based on path segments — no hardcoded module prefix list is needed. New modules with file endpoints are automatically supported.
 
 ### Fail-closed design
 
