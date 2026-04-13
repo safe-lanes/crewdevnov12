@@ -1,4 +1,12 @@
 import { useState, useEffect, useRef } from "react";
+import {
+  getTenantId as storedTenantId,
+  getTenantDomain,
+  setTenantId as storeTenantId,
+  setTenantDomain,
+  clearTenantData,
+  hasCachedTenant,
+} from "@/lib/tenantStorage";
 
 function extractStringValue(val: any): string {
   if (!val) return "";
@@ -29,14 +37,14 @@ interface TenantInitResult {
 
 function hasPossibleDomain(): boolean {
   if (localStorage.getItem("domain")) return true;
-  if (localStorage.getItem("tenantId") && localStorage.getItem("tenantDomain")) return true;
+  if (hasCachedTenant()) return true;
   return false;
 }
 
 export function useTenantInit(): TenantInitResult {
   const possibleDomain = hasPossibleDomain();
   const [tenantId, setTenantId] = useState<string | null>(
-    localStorage.getItem("tenantId"),
+    storedTenantId(),
   );
   const [isLoading, setIsLoading] = useState(possibleDomain);
   const [error, setError] = useState<string | null>(null);
@@ -56,8 +64,8 @@ export function useTenantInit(): TenantInitResult {
         return;
       }
 
-      const existingTenantId = localStorage.getItem("tenantId");
-      const cachedDomain = localStorage.getItem("tenantDomain");
+      const existingTenantId = storedTenantId();
+      const cachedDomain = getTenantDomain();
       if (existingTenantId && cachedDomain === domain) {
         setTenantId(existingTenantId);
         setIsLoading(false);
@@ -66,8 +74,7 @@ export function useTenantInit(): TenantInitResult {
       }
 
       if (existingTenantId && cachedDomain !== domain) {
-        localStorage.removeItem("tenantId");
-        localStorage.removeItem("tenantDomain");
+        clearTenantData();
       }
 
       const initTenant = async (retryCount = 0) => {
@@ -80,8 +87,8 @@ export function useTenantInit(): TenantInitResult {
 
           if (res.ok) {
             const data = await res.json();
-            localStorage.setItem("tenantId", data.tenantId);
-            localStorage.setItem("tenantDomain", domain);
+            storeTenantId(data.tenantId);
+            setTenantDomain(domain);
             setTenantId(data.tenantId);
             setIsResolved(true);
             setIsLoading(false);
@@ -89,8 +96,7 @@ export function useTenantInit(): TenantInitResult {
           }
 
           if (res.status === 503) {
-            localStorage.removeItem("tenantId");
-            localStorage.removeItem("tenantDomain");
+            clearTenantData();
             setTenantId(null);
             setIsResolved(true);
             setIsLoading(false);

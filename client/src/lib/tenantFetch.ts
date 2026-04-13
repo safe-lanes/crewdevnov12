@@ -1,4 +1,5 @@
 import { getAuthToken, handleUnauthorized } from "./authToken";
+import { getTenantId } from "./tenantStorage";
 
 const originalFetch = window.fetch.bind(window);
 
@@ -18,7 +19,7 @@ window.fetch = function (
   if (url.startsWith("/api")) {
     const headers = new Headers(init.headers);
 
-    const tenantId = localStorage.getItem("tenantId");
+    const tenantId = getTenantId();
     if (tenantId) {
       headers.set("x-tenant-id", tenantId);
     }

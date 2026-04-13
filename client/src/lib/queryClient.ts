@@ -1,5 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAuthToken } from "./authToken";
+import { getTenantId } from "./tenantStorage";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -13,7 +14,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const tenantId = localStorage.getItem("tenantId");
+  const tenantId = getTenantId();
   const headers: Record<string, string> = {};
   if (data) headers["Content-Type"] = "application/json";
   if (tenantId) headers["x-tenant-id"] = tenantId;
@@ -35,7 +36,7 @@ export async function apiRequest(
 export const getQueryFn: <T>() => QueryFunction<T> =
   () =>
   async ({ queryKey }) => {
-    const tenantId = localStorage.getItem("tenantId");
+    const tenantId = getTenantId();
     const headers: Record<string, string> = {};
     if (tenantId) headers["x-tenant-id"] = tenantId;
 

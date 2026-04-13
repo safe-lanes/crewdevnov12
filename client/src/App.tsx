@@ -10,6 +10,7 @@ import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useTenantInit } from "@/hooks/useTenantInit";
 import { isAuthRequired, redirectToLogin, getAuthToken } from "@/lib/authToken";
+import { clearTenantData } from "@/lib/tenantStorage";
 
 const AdminRouter = lazy(() => import("./modules/admin/index"));
 const AppraisalsRouter = lazy(() => import("./modules/crewing/AppraisalsRouter"));
@@ -41,7 +42,7 @@ function TenantErrorPopup({ error }: { error: string }) {
     let portNumber = window.location.port;
     portNumber = portNumber ? `:${portNumber}` : "";
     const fullUrl = `${protocol}//${hostname}${portNumber}`;
-    localStorage.removeItem("tenantId");
+    clearTenantData();
     localStorage.setItem("selected_module", "U2FsdGVkX19gp34OrOluh/gJ6eeByT19nc8eMBUBsVE=");
     window.location.assign(`${fullUrl}/audit/dashboard/summary`);
   };
