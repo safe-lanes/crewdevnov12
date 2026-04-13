@@ -258,13 +258,6 @@ const useVessels = () => {
     });
 };
 
-const useCrewMembers = () => {
-    return useQuery({
-        queryKey: ['/api/crew-members'],
-        select: (data: any[]) => data
-    });
-};
-
 const useVesselRanks = (vesselId: string | null) => {
     return useQuery({
         queryKey: ['/api/v2/admin/vessel-revisions/ranks', vesselId],
@@ -661,7 +654,6 @@ export function VesselModule_v2(): JSX.Element {
     const [, setLocation] = useLocation();
     const gridApiRef = useRef<GridApi | null>(null);
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
-    const { data: crewMembers = [], isLoading: crewLoading } = useCrewMembers();
     const { data: ports = [] } = usePorts();
 
     useEffect(() => {
@@ -703,16 +695,6 @@ export function VesselModule_v2(): JSX.Element {
         return map;
     }, [availableRanks]);
 
-    const crewMemberLookup = useMemo(() => {
-        const map = new Map<string, any>();
-        crewMembers.forEach((crew: any) => {
-            if (crew.id) {
-                map.set(crew.id, crew);
-            }
-        });
-        return map;
-    }, [crewMembers]);
-    
     const { data: vesselRanksRaw = [], isLoading: ranksLoading } = useVesselRanks(selectedVessel?.vesselId || null);
     
     const vesselRanks = useMemo(() => {
@@ -1270,7 +1252,7 @@ export function VesselModule_v2(): JSX.Element {
                             gridApiRef.current = params.api;
                         }}
                         context={{ handleEditVessel }}
-                        loading={vesselsLoading || crewLoading}
+                        loading={vesselsLoading}
                         autoHeight={true}
                         maxHeight="500px"
                         minHeight="200px"
