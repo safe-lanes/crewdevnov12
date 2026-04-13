@@ -72,7 +72,7 @@ sequenceDiagram
         end
 
         TCM-->>Server: {tuid, companyName}
-        Server-->>Hook: 200 {tenantId, dbName, companyName}
+        Server-->>Hook: 200 {tenantId, companyName}
 
         Hook->>TenantStore: setTenantId(tuid)
         TenantStore->>TenantStore: AES encrypt → localStorage["tenantId"]
