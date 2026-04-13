@@ -104,7 +104,11 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
 
 export async function runMigrations() {
   if (!process.env.DATABASE_URL) {
-    console.log("⏭️  Skipping migrations: DATABASE_URL not set (using file storage)");
+    if (process.env.MASTER_DATABASE_URL) {
+      console.log("⏭️  Skipping startup migrations — in multi-tenant mode, migrations run per tenant on first connection");
+    } else {
+      console.log("⏭️  Skipping migrations: no database configured (standalone dev mode)");
+    }
     return;
   }
 
