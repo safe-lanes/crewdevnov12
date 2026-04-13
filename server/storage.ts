@@ -5284,6 +5284,72 @@ if (databaseUrlForceDisabled) {
       async deleteMasterDataEntry(): Promise<any> { this.throwConnectionError(); }
     })() as any as IStorage;
   }
+} else if (process.env.MASTER_DATABASE_URL) {
+  isConnected = false;
+  connectionError = null;
+  console.log("🏢 Multi-tenant mode detected (MASTER_DATABASE_URL is set)");
+  console.log("ℹ️  DATABASE_URL is not set — legacy storage disabled (V2 routes use tenant databases via getDb())");
+  console.log("⚠️  V1 legacy routes will return errors. Set DATABASE_URL if you need them.");
+
+  storage = new (class {
+    private throwNotConfigured(): never {
+      throw new Error(
+        "DATABASE_URL is not configured. In multi-tenant mode, V2 routes use tenant databases via getDb(). " +
+        "Set DATABASE_URL if you need legacy V1 route support."
+      );
+    }
+    async getUser(): Promise<any> { this.throwNotConfigured(); }
+    async getUserByUsername(): Promise<any> { this.throwNotConfigured(); }
+    async createUser(): Promise<any> { this.throwNotConfigured(); }
+    async getForms(): Promise<any> { this.throwNotConfigured(); }
+    async getForm(): Promise<any> { this.throwNotConfigured(); }
+    async createForm(): Promise<any> { this.throwNotConfigured(); }
+    async updateForm(): Promise<any> { this.throwNotConfigured(); }
+    async deleteForm(): Promise<any> { this.throwNotConfigured(); }
+    async getRankGroups(): Promise<any> { this.throwNotConfigured(); }
+    async getAllRankGroups(): Promise<any> { this.throwNotConfigured(); }
+    async getRankGroup(): Promise<any> { this.throwNotConfigured(); }
+    async createRankGroup(): Promise<any> { this.throwNotConfigured(); }
+    async updateRankGroup(): Promise<any> { this.throwNotConfigured(); }
+    async archiveRankGroup(): Promise<any> { this.throwNotConfigured(); }
+    async unarchiveRankGroup(): Promise<any> { this.throwNotConfigured(); }
+    async deleteRankGroup(): Promise<any> { this.throwNotConfigured(); }
+    async getAvailableRanks(): Promise<any> { this.throwNotConfigured(); }
+    async getAvailableRank(): Promise<any> { this.throwNotConfigured(); }
+    async createAvailableRank(): Promise<any> { this.throwNotConfigured(); }
+    async updateAvailableRank(): Promise<any> { this.throwNotConfigured(); }
+    async deleteAvailableRank(): Promise<any> { this.throwNotConfigured(); }
+    async clearAllAvailableRanks(): Promise<any> { this.throwNotConfigured(); }
+    async getCrewMembers(): Promise<any> { this.throwNotConfigured(); }
+    async getCrewMember(): Promise<any> { this.throwNotConfigured(); }
+    async createCrewMember(): Promise<any> { this.throwNotConfigured(); }
+    async updateCrewMember(): Promise<any> { this.throwNotConfigured(); }
+    async deleteCrewMember(): Promise<any> { this.throwNotConfigured(); }
+    async getAppraisalResults(): Promise<any> { this.throwNotConfigured(); }
+    async getAppraisalResult(): Promise<any> { this.throwNotConfigured(); }
+    async getAppraisalResultsByCrewMember(): Promise<any> { this.throwNotConfigured(); }
+    async createAppraisalResult(): Promise<any> { this.throwNotConfigured(); }
+    async updateAppraisalResult(): Promise<any> { this.throwNotConfigured(); }
+    async deleteAppraisalResult(): Promise<any> { this.throwNotConfigured(); }
+    async submitAppraisalStage(): Promise<any> { this.throwNotConfigured(); }
+    async getRecruitmentCandidates(): Promise<any> { this.throwNotConfigured(); }
+    async getAllRecruitmentCandidatesForFileNo(): Promise<any> { this.throwNotConfigured(); }
+    async getRecruitmentCandidate(): Promise<any> { this.throwNotConfigured(); }
+    async getRecruitmentCandidatesByStatus(): Promise<any> { this.throwNotConfigured(); }
+    async createRecruitmentCandidate(): Promise<any> { this.throwNotConfigured(); }
+    async updateRecruitmentCandidate(): Promise<any> { this.throwNotConfigured(); }
+    async deleteRecruitmentCandidate(): Promise<any> { this.throwNotConfigured(); }
+    async getDataMasters(): Promise<any> { this.throwNotConfigured(); }
+    async getDataMaster(): Promise<any> { this.throwNotConfigured(); }
+    async createDataMaster(): Promise<any> { this.throwNotConfigured(); }
+    async updateDataMaster(): Promise<any> { this.throwNotConfigured(); }
+    async deleteDataMaster(): Promise<any> { this.throwNotConfigured(); }
+    async getMasterDataEntries(): Promise<any> { this.throwNotConfigured(); }
+    async getMasterDataEntry(): Promise<any> { this.throwNotConfigured(); }
+    async createMasterDataEntry(): Promise<any> { this.throwNotConfigured(); }
+    async updateMasterDataEntry(): Promise<any> { this.throwNotConfigured(); }
+    async deleteMasterDataEntry(): Promise<any> { this.throwNotConfigured(); }
+  })() as any as IStorage;
 } else {
   isConnected = false;
   connectionError = null;
@@ -5291,7 +5357,6 @@ if (databaseUrlForceDisabled) {
   console.log("🚀 Application will use persistent JSON storage for development");
   console.log("💾 All data will be saved to test-data.json and persist across restarts");
 
-  // Use PersistentFileStorage for persistent development storage
   storage = new PersistentFileStorage();
   console.log("✅ PersistentFileStorage initialized successfully - data will persist across restarts!");
 }
