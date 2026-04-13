@@ -2242,6 +2242,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                 crewUuid: primaryCrew.relieverCrewId,
                                                                 crewName: primaryCrew.relieverCrewName,
                                                                 crewStatus: 'secondary',
+                                                                relieverNationality: primaryCrew.relieverNationality,
                                                                 relieverSignOnDate: primaryCrew.relieverSignOnDate,
                                                                 signOnPort: primaryCrew.joiningPortUuid || primaryCrew.joiningPort,
                                                                 signOnPortName: primaryCrew.joiningPortName,
@@ -2249,6 +2250,8 @@ export function VesselModule_v2(): JSX.Element {
                                                                 relieverContractPeriodMonths: primaryCrew.relieverContractPeriodMonths,
                                                                 relieverContractEndRangeStartMonths: primaryCrew.relieverContractEndRangeStartMonths,
                                                                 relieverContractEndRangeEndMonths: primaryCrew.relieverContractEndRangeEndMonths,
+                                                                deploymentChecklistCompleted: primaryCrew.deploymentChecklistCompleted,
+                                                                applicableDocsChecked: primaryCrew.applicableDocsChecked,
                                                                 _isSynthesizedReliever: true,
                                                             };
                                                         }
