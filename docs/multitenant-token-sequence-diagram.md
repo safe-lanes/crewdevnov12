@@ -225,6 +225,120 @@ sequenceDiagram
 
 ---
 
+## Phase 3 — General Multi-Tenant Flow (New Module Implementation Guide)
+
+How to implement multi-tenancy in any new module. This diagram shows the generic pattern
+that all V2 modules follow — use it as a blueprint when building new features.
+
+```mermaid
+sequenceDiagram
+    autonumber
+
+    participant Page as New Module Page<br/>(client/src/pages/your-module/)
+    participant RQ as useQuery / useMutation<br/>(queryClient.ts)
+    participant Fetch as Fetch Interceptor<br/>(tenantFetch.ts)
+    participant TenantMW as tenantMiddleware<br/>(tenantMiddleware.ts)
+    participant AuthMW as authMiddleware<br/>(authMiddleware.ts)
+    participant Router as V2 Route Handler<br/>(server/v2/your-module/routes.ts)
+    participant Service as Module Service<br/>(server/v2/your-module/services/)
+    participant DB as getDb()<br/>(server/v2/db.ts)
+    participant ALS as AsyncLocalStorage<br/>(tenantConnectionManager.ts)
+    participant TenantDB as Tenant DB<br/>(tenant-specific PostgreSQL)
+    participant MasterDB as Master DB<br/>(shared reference data)
+
+    Note over Page,MasterDB: STEP 1 — Frontend makes an API call (automatic tenant context)
+
+    Page->>RQ: useQuery({ queryKey: ["/api/v2/your-module"] })
+    RQ->>Fetch: fetch("/api/v2/your-module")
+    Note over Fetch: tenantFetch.ts automatically adds:<br/>• x-tenant-id header (from encrypted localStorage)<br/>• Authorization: Bearer JWT (from encrypted sessionStorage)<br/>No manual header work needed in your module code
+
+    Note over TenantMW,ALS: STEP 2 — Middleware resolves tenant + auth (zero module code needed)
+
+    Fetch->>TenantMW: Request with x-tenant-id + Bearer JWT
+    TenantMW->>TenantMW: Validate x-tenant-id against Master DB
+    TenantMW->>ALS: runInTenantContext(tenantId, callback)<br/>Binds correct DB to this request's async context
+    TenantMW->>AuthMW: next()
+    AuthMW->>AuthMW: Verify JWT + cross-check domain vs tenantId
+    AuthMW->>Router: next() — request is authenticated + tenant-bound
+
+    Note over Router,MasterDB: STEP 3 — Your module code (what YOU write)
+
+    Router->>Service: Call service method<br/>e.g. yourService.getAll()
+
+    Service->>DB: const db = getDb()
+    Note over DB,ALS: getDb() retrieves the tenant-specific<br/>Drizzle instance from AsyncLocalStorage.<br/>MUST be called inside each method,<br/>never stored in a constructor or global.
+    DB->>ALS: Read current tenant DB from async context
+    ALS-->>DB: Tenant-specific Drizzle instance
+    DB-->>Service: db (scoped to this tenant)
+
+    Service->>TenantDB: db.select().from(yourTable)
+    TenantDB-->>Service: Tenant-specific rows only
+
+    opt Need shared reference data (nationalities, ports, ranks, etc.)
+        Service->>MasterDB: Query via masterDb connection<br/>(from tenantConnectionManager)
+        MasterDB-->>Service: Shared reference data
+    end
+
+    Service-->>Router: Result data
+    Router-->>Fetch: 200 JSON response
+    Fetch-->>RQ: Response
+    RQ-->>Page: Rendered data
+```
+
+### New Module Checklist
+
+```mermaid
+flowchart TD
+    A["1. Define Schema<br/><b>shared/v2/your-module/schema.ts</b><br/>Drizzle table definitions"] --> B["2. Create Service Layer<br/><b>server/v2/your-module/services/</b><br/>Use getDb() for every query"]
+    B --> C["3. Create Route Handler<br/><b>server/v2/your-module/routes.ts</b><br/>Express router with endpoints"]
+    C --> D["4. Mount Routes<br/><b>server/routes.ts or server/index.ts</b><br/>app.use('/api/v2/your-module', routes)"]
+    D --> E["5. Generate Migration<br/>Run drizzle-kit generate<br/>Migration auto-runs per tenant"]
+    E --> F["6. Build Frontend Page<br/><b>client/src/pages/your-module/</b><br/>useQuery with /api/v2/your-module"]
+    F --> G["7. Register Route<br/><b>client/src/App.tsx</b><br/>Add wouter Route"]
+
+    style A fill:#e8f5e9,stroke:#2e7d32
+    style B fill:#e3f2fd,stroke:#1565c0
+    style C fill:#e3f2fd,stroke:#1565c0
+    style D fill:#e3f2fd,stroke:#1565c0
+    style E fill:#fff3e0,stroke:#e65100
+    style F fill:#fce4ec,stroke:#c62828
+    style G fill:#fce4ec,stroke:#c62828
+```
+
+### Key Rules for Multi-Tenant Modules
+
+```mermaid
+flowchart LR
+    subgraph DO["✅ DO"]
+        direction TB
+        D1["Call getDb() inside<br/>every service method"]
+        D2["Define tables in<br/>shared/v2/your-module/schema.ts"]
+        D3["Mount routes under<br/>/api/v2/ path"]
+        D4["Use useQuery with<br/>/api/v2/your-module keys"]
+    end
+
+    subgraph DONT["❌ DON'T"]
+        direction TB
+        X1["Store getDb() result<br/>in a global or constructor"]
+        X2["Import legacy db<br/>or storage directly"]
+        X3["Use /api/ v1 routes<br/>for new features"]
+        X4["Manually set<br/>x-tenant-id headers"]
+    end
+
+    style DO fill:#e8f5e9,stroke:#2e7d32
+    style DONT fill:#ffebee,stroke:#c62828
+    style D1 fill:#c8e6c9,stroke:#2e7d32
+    style D2 fill:#c8e6c9,stroke:#2e7d32
+    style D3 fill:#c8e6c9,stroke:#2e7d32
+    style D4 fill:#c8e6c9,stroke:#2e7d32
+    style X1 fill:#ffcdd2,stroke:#c62828
+    style X2 fill:#ffcdd2,stroke:#c62828
+    style X3 fill:#ffcdd2,stroke:#c62828
+    style X4 fill:#ffcdd2,stroke:#c62828
+```
+
+---
+
 ## Key Source Files Reference
 
 | Layer | File | Role |
