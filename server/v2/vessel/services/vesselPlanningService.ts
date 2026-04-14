@@ -124,7 +124,7 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
         eq(crewDocuments.isDeleted, false)
       ));
     for (const doc of docs) {
-      analyzeExpiry(doc.expiry, 'Travel Docs', doc.document || '');
+      analyzeExpiry(doc.expiry, 'Travel Docs', doc.documentName || '');
     }
     
     const visas = await db
@@ -135,7 +135,7 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
         eq(crewVisas.isDeleted, false)
       ));
     for (const visa of visas) {
-      analyzeExpiry(visa.expiry, 'Visas', visa.issuingCountry || '');
+      analyzeExpiry(visa.expiry, 'Visas', visa.visaType || visa.country || '');
     }
     
     const licenses = await db
