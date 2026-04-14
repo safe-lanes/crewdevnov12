@@ -4,6 +4,7 @@ import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterPorts, masterVessels, masterVesselTypes, masterCountries } from "../../../../shared/schema";
+import { admCompanyTrainingsV2 } from "../../../../shared/v2/admin/schema";
 import { eq, and, sql, desc, or, isNull, aliasedTable } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
 
@@ -457,36 +458,81 @@ async function getCertificationsV2(crewUuid: string | null, department: 'deck' |
       return certName.includes('gmdss') || certName.includes('goc') || certName.includes('general operator');
     });
     
-    // Calculate tanker certifications from training courses
-    const tankerCertPatterns = ['o(a)', 'c(a)', 'g(a)', 'oil tanker', 'chemical tanker', 'gas tanker'];
-    const splTankerPatterns = ['o(b)', 'c(b)', 'g(b)', 'advanced oil', 'advanced chemical', 'advanced gas'];
-    
-    const tankerCerts: string[] = [];
-    const splTankerCerts: string[] = [];
-    
-    for (const course of trainingCourses) {
-      const courseName = (course.trainingCourse || course.abbr || '').toLowerCase();
-      for (const pattern of tankerCertPatterns) {
-        if (courseName.includes(pattern)) {
-          if (pattern.includes('o')) tankerCerts.push('O');
-          else if (pattern.includes('c')) tankerCerts.push('C');
-          else if (pattern.includes('g')) tankerCerts.push('G');
-        }
-      }
-      for (const pattern of splTankerPatterns) {
-        if (courseName.includes(pattern)) {
-          if (pattern.includes('o')) splTankerCerts.push('O(A)');
-          else if (pattern.includes('c')) splTankerCerts.push('C(A)');
-          else if (pattern.includes('g')) splTankerCerts.push('G(A)');
-        }
+    const TANKER_TRAINING_IDS = {
+      OIL_BASIC: 'SC001',
+      GAS_BASIC: 'SC002',
+      OIL_ADVANCED: 'SC003',
+      CHEMICAL_ADVANCED: 'SC004',
+      GAS_ADVANCED: 'SC005',
+      CHEMICAL_BASIC: 'SC008',
+    };
+
+    const courseIdToCompanyId = new Map<string, string>();
+    const companyTrainings = await db
+      .select({ id: admCompanyTrainingsV2.id, companyId: admCompanyTrainingsV2.companyId })
+      .from(admCompanyTrainingsV2);
+    for (const ct of companyTrainings) {
+      if (ct.id && ct.companyId) {
+        courseIdToCompanyId.set(String(ct.id), ct.companyId);
       }
     }
-    
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const validTrainings = {
+      oil: { basic: false, advanced: false },
+      gas: { basic: false, advanced: false },
+      chemical: { basic: false, advanced: false },
+    };
+
+    for (const course of trainingCourses) {
+      const resolvedCompanyId = course.courseId
+        ? (courseIdToCompanyId.get(course.courseId) || course.courseId)
+        : null;
+      if (!resolvedCompanyId) continue;
+
+      let isValid = true;
+      if (course.expiry) {
+        try {
+          const expiryDate = new Date(course.expiry);
+          isValid = expiryDate >= today;
+        } catch {
+          isValid = true;
+        }
+      }
+      if (!isValid) continue;
+
+      switch (resolvedCompanyId) {
+        case TANKER_TRAINING_IDS.OIL_BASIC: validTrainings.oil.basic = true; break;
+        case TANKER_TRAINING_IDS.OIL_ADVANCED: validTrainings.oil.advanced = true; break;
+        case TANKER_TRAINING_IDS.GAS_BASIC: validTrainings.gas.basic = true; break;
+        case TANKER_TRAINING_IDS.GAS_ADVANCED: validTrainings.gas.advanced = true; break;
+        case TANKER_TRAINING_IDS.CHEMICAL_BASIC: validTrainings.chemical.basic = true; break;
+        case TANKER_TRAINING_IDS.CHEMICAL_ADVANCED: validTrainings.chemical.advanced = true; break;
+      }
+    }
+
+    const tankerCertParts: string[] = [];
+    const splTrainingParts: string[] = [];
+    if (validTrainings.oil.advanced || validTrainings.oil.basic) {
+      tankerCertParts.push('O');
+      splTrainingParts.push(validTrainings.oil.advanced ? 'O(A)' : 'O(B)');
+    }
+    if (validTrainings.chemical.advanced || validTrainings.chemical.basic) {
+      tankerCertParts.push('C');
+      splTrainingParts.push(validTrainings.chemical.advanced ? 'C(A)' : 'C(B)');
+    }
+    if (validTrainings.gas.advanced || validTrainings.gas.basic) {
+      tankerCertParts.push('G');
+      splTrainingParts.push(validTrainings.gas.advanced ? 'G(A)' : 'G(B)');
+    }
+
     return {
       certComp,
       issuingCountry: highestCoc?.issuingCountryName || '',
-      tankerCert: Array.from(new Set(tankerCerts)).join(', '),
-      splTankerTraining: Array.from(new Set(splTankerCerts)).join(', '),
+      tankerCert: tankerCertParts.join(', '),
+      splTankerTraining: splTrainingParts.join(', '),
       radioQual: department === 'deck' && hasGmdss
     };
   } catch (error) {
