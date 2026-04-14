@@ -46,7 +46,11 @@ const onBoardStatusFormSchema = z.object({
     contractEndRangeEndMonths: z.coerce.number().optional(),
 }).refine((data) => {
     if (data.signOffDate && data.signOnDate) {
-        return data.signOffDate >= data.signOnDate;
+        const onDate = new Date(data.signOnDate);
+        const offDate = new Date(data.signOffDate);
+        if (!isNaN(onDate.getTime()) && !isNaN(offDate.getTime())) {
+            return offDate >= onDate;
+        }
     }
     return true;
 }, {
