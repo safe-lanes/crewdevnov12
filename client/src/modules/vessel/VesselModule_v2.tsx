@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ColDef, GridApi } from 'ag-grid-community';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -497,6 +498,7 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         updatedAt: planning.updatedAt,
         docExpiringCount: planning.docExpiringCount || '',
         medicalExpiring: planning.medicalExpiring || '',
+        docExpiryDetails: planning.docExpiryDetails || [],
         handoverAttachmentCount: planningAny.handoverAttachmentCount || 0,
     };
 };
@@ -1734,22 +1736,75 @@ export function VesselModule_v2(): JSX.Element {
                                                                 <>
                                                                     <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.reliefDue)}</TableCell>
                                                                     <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.plannedSignOff)}</TableCell>
-                                                                    <TableCell className="text-xs text-gray-700">
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-doc-expiry-${planning.crewUuid}`}>
                                                                         {(() => {
                                                                             const docCount = planning.docExpiringCount || '0/0';
                                                                             const parts = docCount.split('/');
                                                                             const expiringCount = parseInt(parts[0]) || 0;
                                                                             const expiredCount = parseInt(parts[1]) || 0;
                                                                             const totalIssues = expiringCount + expiredCount;
+                                                                            const details = planning.docExpiryDetails || [];
                                                                             
                                                                             if (totalIssues === 0) {
-                                                                                return <span className="text-gray-500">0/0</span>;
+                                                                                return <span className="text-gray-500" data-testid={`text-doc-expiry-zero-${planning.crewUuid}`}>0/0</span>;
                                                                             }
                                                                             
                                                                             return (
-                                                                                <span className={expiredCount > 0 ? 'text-red-600 font-medium' : 'text-orange-500 font-medium'}>
-                                                                                    {docCount}
-                                                                                </span>
+                                                                                <HoverCard openDelay={200} closeDelay={100}>
+                                                                                    <HoverCardTrigger asChild>
+                                                                                        <span
+                                                                                            className={`cursor-default underline decoration-dotted ${expiredCount > 0 ? 'text-red-600 font-medium' : 'text-orange-500 font-medium'}`}
+                                                                                            data-testid={`text-doc-expiry-count-${planning.crewUuid}`}
+                                                                                        >
+                                                                                            {docCount}
+                                                                                        </span>
+                                                                                    </HoverCardTrigger>
+                                                                                    <HoverCardContent
+                                                                                        side="bottom"
+                                                                                        align="start"
+                                                                                        className="w-80 p-0"
+                                                                                        data-testid={`popover-doc-expiry-${planning.crewUuid}`}
+                                                                                    >
+                                                                                        <div className="px-3 py-2 border-b bg-muted/50">
+                                                                                            <p className="text-xs font-semibold text-foreground">Expiring / Expired Documents</p>
+                                                                                        </div>
+                                                                                        <div className="max-h-48 overflow-y-auto">
+                                                                                            {details.length > 0 ? (
+                                                                                                <table className="w-full text-xs">
+                                                                                                    <thead>
+                                                                                                        <tr className="border-b bg-muted/30">
+                                                                                                            <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Document</th>
+                                                                                                            <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Expiry</th>
+                                                                                                            <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Status</th>
+                                                                                                        </tr>
+                                                                                                    </thead>
+                                                                                                    <tbody>
+                                                                                                        {details.map((item, idx) => (
+                                                                                                            <tr key={idx} className="border-b last:border-b-0" data-testid={`row-doc-expiry-detail-${idx}`}>
+                                                                                                                <td className="px-3 py-1.5">
+                                                                                                                    <div className="font-medium text-foreground truncate max-w-[140px]" title={item.name}>{item.name}</div>
+                                                                                                                    <div className="text-muted-foreground text-[10px]">{item.category}</div>
+                                                                                                                </td>
+                                                                                                                <td className="px-3 py-1.5 text-foreground whitespace-nowrap">{item.expiry}</td>
+                                                                                                                <td className="px-3 py-1.5">
+                                                                                                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                                                                                                        item.status === 'expired'
+                                                                                                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                                                                                            : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                                                                                                    }`}>
+                                                                                                                        {item.status === 'expired' ? 'Expired' : 'Expiring'}
+                                                                                                                    </span>
+                                                                                                                </td>
+                                                                                                            </tr>
+                                                                                                        ))}
+                                                                                                    </tbody>
+                                                                                                </table>
+                                                                                            ) : (
+                                                                                                <p className="px-3 py-2 text-xs text-muted-foreground">No details available</p>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </HoverCardContent>
+                                                                                </HoverCard>
                                                                             );
                                                                         })()}
                                                                     </TableCell>

@@ -42,6 +42,12 @@ export interface VesselPlanningV2 {
   updatedAt: string;
   docExpiringCount?: string;
   medicalExpiring?: string;
+  docExpiryDetails?: Array<{
+    category: 'Travel Docs' | 'Visas' | 'License & DCE' | 'Training';
+    name: string;
+    expiry: string;
+    status: 'expired' | 'expiring';
+  }>;
 }
 
 export interface VesselPlanningAttachmentV2 {

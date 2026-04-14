@@ -65,13 +65,20 @@ export async function getAllForConflictDetection() {
   return vesselPlanningRepository.findAllForConflictDetection();
 }
 
+interface DocExpiryDetail {
+  category: 'Travel Docs' | 'Visas' | 'License & DCE' | 'Training';
+  name: string;
+  expiry: string;
+  status: 'expired' | 'expiring';
+}
+
 /**
  * Calculate document and medical expiry counts for a crew member
  * Same logic as V1's analyzeDocumentExpiry function
  */
-async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ docExpiringCount: string; medicalExpiring: string }> {
+async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ docExpiringCount: string; medicalExpiring: string; docExpiryDetails: DocExpiryDetail[] }> {
   if (!crewUuid) {
-    return { docExpiringCount: '0/0', medicalExpiring: '-' };
+    return { docExpiringCount: '0/0', medicalExpiring: '-', docExpiryDetails: [] };
   }
   
   const db = getDb();
@@ -83,10 +90,18 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
   let expiredDocs = 0;
   let expiringDocs = 0;
   let medicalExpiring = '-';
+  const docExpiryDetails: DocExpiryDetail[] = [];
+
+  const formatExpiryDate = (date: Date): string => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = monthNames[date.getMonth()];
+    const y = date.getFullYear();
+    return `${d}-${m}-${y}`;
+  };
   
   try {
-    // Helper to analyze expiry for any document type
-    const analyzeExpiry = (expiry: string | null) => {
+    const analyzeExpiry = (expiry: string | null, category: DocExpiryDetail['category'], name: string) => {
       if (!expiry) return;
       const expiryDate = new Date(expiry);
       if (isNaN(expiryDate.getTime())) return;
@@ -94,12 +109,13 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
       
       if (expiryDate < today) {
         expiredDocs++;
+        docExpiryDetails.push({ category, name: name || 'Unknown', expiry: formatExpiryDate(expiryDate), status: 'expired' });
       } else if (expiryDate <= twoMonthsFromNow) {
         expiringDocs++;
+        docExpiryDetails.push({ category, name: name || 'Unknown', expiry: formatExpiryDate(expiryDate), status: 'expiring' });
       }
     };
     
-    // Fetch and analyze documents (Travel Docs)
     const docs = await db
       .select()
       .from(crewDocuments)
@@ -108,10 +124,9 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
         eq(crewDocuments.isDeleted, false)
       ));
     for (const doc of docs) {
-      analyzeExpiry(doc.expiry);
+      analyzeExpiry(doc.expiry, 'Travel Docs', doc.document || '');
     }
     
-    // Fetch and analyze visas
     const visas = await db
       .select()
       .from(crewVisas)
@@ -120,10 +135,9 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
         eq(crewVisas.isDeleted, false)
       ));
     for (const visa of visas) {
-      analyzeExpiry(visa.expiry);
+      analyzeExpiry(visa.expiry, 'Visas', visa.issuingCountry || '');
     }
     
-    // Fetch and analyze licenses
     const licenses = await db
       .select()
       .from(crewLicenses)
@@ -132,10 +146,9 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
         eq(crewLicenses.isDeleted, false)
       ));
     for (const lic of licenses) {
-      analyzeExpiry(lic.expiry);
+      analyzeExpiry(lic.expiry, 'License & DCE', lic.certificateDocument || '');
     }
     
-    // Fetch and analyze training courses
     const training = await db
       .select()
       .from(crewTrainingCourses)
@@ -144,10 +157,9 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
         eq(crewTrainingCourses.isDeleted, false)
       ));
     for (const t of training) {
-      analyzeExpiry(t.expiry);
+      analyzeExpiry(t.expiry, 'Training', t.trainingCourse || '');
     }
     
-    // Fetch medicals for this crew
     const medicals = await db
       .select()
       .from(crewPreJoiningMedicals)
@@ -156,9 +168,7 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
         eq(crewPreJoiningMedicals.isDeleted, false)
       ));
     
-    // Analyze medical expiry - check most recent medical
     if (medicals.length > 0) {
-      // Sort by examination date descending to get most recent
       const sortedMedicals = [...medicals].sort((a: typeof medicals[0], b: typeof medicals[0]) => {
         const dateA = a.examinationDate ? new Date(a.examinationDate).getTime() : 0;
         const dateB = b.examinationDate ? new Date(b.examinationDate).getTime() : 0;
@@ -169,15 +179,7 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
       if (latestMedical.expiryDate) {
         const medExpiry = new Date(latestMedical.expiryDate);
         medExpiry.setHours(0, 0, 0, 0);
-        
-        // Return the actual date in DD-MMM-YYYY format (e.g., 01-Jan-2026)
-        // Frontend will compute expiry status from this date
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const day = String(medExpiry.getDate()).padStart(2, '0');
-        const month = months[medExpiry.getMonth()];
-        const year = medExpiry.getFullYear();
-        
-        medicalExpiring = `${day}-${month}-${year}`;
+        medicalExpiring = formatExpiryDate(medExpiry);
       }
     }
   } catch (error) {
@@ -186,7 +188,8 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
   
   return {
     docExpiringCount: `${expiringDocs}/${expiredDocs}`,
-    medicalExpiring
+    medicalExpiring,
+    docExpiryDetails
   };
 }
 
@@ -575,11 +578,12 @@ export const vesselPlanningService = {
     // Enrich each planning record with document/medical expiry counts
     const enrichedRecords = await Promise.all(
       planningRecords.map(async (record: any) => {
-        const { docExpiringCount, medicalExpiring } = await calculateExpiryCountsForCrew(record.crewUuid);
+        const { docExpiringCount, medicalExpiring, docExpiryDetails } = await calculateExpiryCountsForCrew(record.crewUuid);
         return {
           ...record,
           docExpiringCount,
-          medicalExpiring
+          medicalExpiring,
+          docExpiryDetails
         };
       })
     );
