@@ -124,7 +124,8 @@ function calculateYearsFromSeaService(
         include = true;
       } else {
         const vesselType = (service.vesselTypeName || '').toLowerCase();
-        include = vesselType.includes('tanker') || vesselType.includes('chemical') ||
+        include = vesselType.includes('tanker') || vesselType.includes('oil') ||
+                  vesselType.includes('gas') || vesselType.includes('chemical') ||
                   vesselType.includes('lpg') || vesselType.includes('lng');
       }
     } else if (filterType === 'all') {
