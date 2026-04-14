@@ -278,7 +278,7 @@ async function calculateExperienceMetricsV2(crewUuid: string | null, currentRank
       "junior officer", "jr. officer", "jr officer",
     ]);
     
-    const companySeaService = seaServices.filter((s: any) => s.serviceType === 'E1');
+    const companySeaService = seaServices.filter((s: any) => s.serviceType === 'company');
     const allSeaService = seaServices;
     
     let companyYears = 0;
