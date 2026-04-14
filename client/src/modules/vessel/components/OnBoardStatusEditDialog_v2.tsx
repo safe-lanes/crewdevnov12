@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, addMonths, parseISO } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -44,6 +44,14 @@ const onBoardStatusFormSchema = z.object({
     contractPeriodMonths: z.coerce.number().optional(),
     contractEndRangeStartMonths: z.coerce.number().optional(),
     contractEndRangeEndMonths: z.coerce.number().optional(),
+}).refine((data) => {
+    if (data.signOffDate && data.signOnDate) {
+        return data.signOffDate >= data.signOnDate;
+    }
+    return true;
+}, {
+    message: "Sign Off Date cannot be earlier than Sign On Date",
+    path: ["signOffDate"],
 });
 
 type OnBoardStatusFormData = z.infer<typeof onBoardStatusFormSchema>;
@@ -696,11 +704,19 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                             setSignOffDateOpen(false);
                                                         }
                                                     }}
+                                                    disabled={(() => {
+                                                        const signOnVal = form.getValues('signOnDate');
+                                                        if (!signOnVal) return undefined;
+                                                        const signOnParsed = parseDate(signOnVal);
+                                                        if (!signOnParsed) return undefined;
+                                                        return { before: signOnParsed };
+                                                    })()}
                                                     initialFocus
                                                 />
                                             </PopoverContent>
                                         </Popover>
                                     </div>
+                                    <FormMessage className="text-xs ml-[156px]" data-testid="error-sign-off-date" />
                                 </FormItem>
                             )}
                         />
