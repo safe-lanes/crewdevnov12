@@ -245,7 +245,9 @@ async function calculateExperienceMetricsV2(crewUuid: string | null, currentRank
         eq(crewSeaService.isDeleted, false)
       ));
     
-    const getServicePeriodMonths = (service: any): number => {
+    type SeaServiceRow = typeof seaServices[number];
+
+    const getServicePeriodMonths = (service: SeaServiceRow): number => {
       const fromStr = service.fromDate;
       if (!fromStr) return 0;
       
@@ -258,7 +260,7 @@ async function calculateExperienceMetricsV2(crewUuid: string | null, currentRank
       if (toStr) {
         to = new Date(toStr);
         if (isNaN(to.getTime())) {
-          return parseFloat(service.periodMonths) || 0;
+          return parseFloat(service.periodMonths || '') || 0;
         }
       } else {
         to = today;
@@ -278,13 +280,13 @@ async function calculateExperienceMetricsV2(crewUuid: string | null, currentRank
       "junior officer", "jr. officer", "jr officer",
     ]);
     
-    const companySeaService = seaServices.filter((s: any) => s.serviceType === 'company');
+    const companySeaService = seaServices.filter((s) => s.serviceType === 'company');
     const allSeaService = seaServices;
     
     let companyYears = 0;
     if (companySeaService.length > 0) {
       const fromDates = companySeaService
-        .map((s: any) => s.fromDate)
+        .map((s) => s.fromDate)
         .filter((d: string | null): d is string => d !== null && d.trim() !== '')
         .map((d: string) => new Date(d))
         .filter((d: Date) => !isNaN(d.getTime()));
