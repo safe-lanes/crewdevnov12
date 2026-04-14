@@ -171,10 +171,7 @@ const parseVariableTaskToCells = (task: VariableTask, monthYear: string): Variab
     if (start.day === finish.day && start.month === finish.month && start.year === finish.year) {
       if (start.month === targetMonth && start.year === targetYear) {
         const startCell = timeToCell(start.hour, start.minute);
-        let endCell = timeToCell(finish.hour, finish.minute);
-        if (finish.minute === 0 && endCell > 0) {
-          endCell = endCell - 1;
-        }
+        let endCell = timeToCell(finish.hour, finish.minute) - 1;
         if (startCell <= endCell) {
           results.push({ day: start.day, startCell, endCell });
         }
@@ -203,10 +200,7 @@ const parseVariableTaskToCells = (task: VariableTask, monthYear: string): Variab
         }
         
         if (isLastDay) {
-          endCell = timeToCell(finish.hour, finish.minute);
-          if (finish.minute === 0 && endCell > 0) {
-            endCell = endCell - 1;
-          }
+          endCell = timeToCell(finish.hour, finish.minute) - 1;
         }
         
         if (startCell <= endCell && endCell >= 0) {
