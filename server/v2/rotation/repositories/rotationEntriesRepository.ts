@@ -32,9 +32,7 @@ export class RotationEntriesRepository {
 
     return results.map((row: { entry: any; crewFirstName: string | null; crewFamilyName: string | null; crewEmpNo: string | null }) => ({
       ...row.entry,
-      crewName: row.crewFirstName && row.crewFamilyName 
-        ? `${row.crewFirstName} ${row.crewFamilyName}`
-        : null,
+      crewName: [row.crewFirstName, row.crewFamilyName].filter(Boolean).join(' ') || null,
       crewEmpNo: row.crewEmpNo,
     }));
   }
@@ -128,9 +126,7 @@ export class RotationEntriesRepository {
 
     return results.map((row: { entry: any; crewFirstName: string | null; crewFamilyName: string | null; crewEmpNo: string | null }) => ({
       ...row.entry,
-      crewName: row.crewFirstName && row.crewFamilyName 
-        ? `${row.crewFirstName} ${row.crewFamilyName}`
-        : null,
+      crewName: [row.crewFirstName, row.crewFamilyName].filter(Boolean).join(' ') || null,
       crewEmpNo: row.crewEmpNo,
     }));
   }

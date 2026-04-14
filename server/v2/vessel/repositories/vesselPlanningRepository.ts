@@ -98,14 +98,10 @@ export class VesselPlanningRepository {
 
     return results.map((row: any) => ({
       ...row.planning,
-      crewMemberName: row.crewFirstName && row.crewFamilyName 
-        ? `${row.crewFirstName} ${row.crewFamilyName}`
-        : null,
+      crewMemberName: [row.crewFirstName, row.crewFamilyName].filter(Boolean).join(' ') || null,
       crewEmpNo: row.crewEmpNo,
       nationality: row.crewNationalityName || null,
-      relieverCrewName: row.relieverFirstName && row.relieverFamilyName
-        ? `${row.relieverFirstName} ${row.relieverFamilyName}`
-        : null,
+      relieverCrewName: [row.relieverFirstName, row.relieverFamilyName].filter(Boolean).join(' ') || null,
       relieverNationality: row.relieverNationalityName || null,
       signOffPortName: row.signOffPortName || null,
       joiningPortName: row.joiningPortName || null,
@@ -152,14 +148,10 @@ export class VesselPlanningRepository {
     const row = results[0];
     return {
       ...row.planning,
-      crewMemberName: row.crewFirstName && row.crewFamilyName 
-        ? `${row.crewFirstName} ${row.crewFamilyName}`
-        : null,
+      crewMemberName: [row.crewFirstName, row.crewFamilyName].filter(Boolean).join(' ') || null,
       crewEmpNo: row.crewEmpNo,
       nationality: row.crewNationalityName || null,
-      relieverCrewName: row.relieverFirstName && row.relieverFamilyName
-        ? `${row.relieverFirstName} ${row.relieverFamilyName}`
-        : null,
+      relieverCrewName: [row.relieverFirstName, row.relieverFamilyName].filter(Boolean).join(' ') || null,
       relieverNationality: row.relieverNationalityName || null,
       signOffPortName: row.signOffPortName || null,
       joiningPortName: row.joiningPortName || null,
