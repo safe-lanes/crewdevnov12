@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, isNull, sql } from "drizzle-orm";
+import { aliasedTable } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
+import { masterVessels, masterVesselTypes } from "../../../../shared/schema";
 import { storage } from "../../../storage";
 
 interface ComplianceRuleResult {
@@ -31,6 +33,7 @@ interface CrewExperience {
   yearsWithOperator: number;
   yearsInRank: number;
   yearsOnTankerType: number;
+  yearsOnAllTankers: number;
   englishProficiency: number;
   timeOnboardMonths: number;
   crewName: string;
@@ -89,16 +92,21 @@ function calculateMonthsFromDates(fromDate: string | null, toDate: string | null
 
 function calculateYearsFromSeaService(
   seaServices: any[],
-  filterType: 'company' | 'all' | 'rank' | 'vesselType',
+  filterType: 'company' | 'all' | 'rank' | 'vesselType' | 'companyAndRank' | 'tanker',
   currentRank?: string,
   vesselTypeCode?: string
 ): number {
   let totalMonths = 0;
   
   for (const service of seaServices) {
-    let include = true;
+    let include = false;
     
-    if (filterType === 'company') {
+    if (filterType === 'companyAndRank') {
+      const isCompany = service.serviceType === 'company' || service.serviceType === 'internal';
+      const serviceRank = normalizeRankName(service.rank || '');
+      const targetRank = normalizeRankName(currentRank || '');
+      include = isCompany && serviceRank.toLowerCase() === targetRank.toLowerCase();
+    } else if (filterType === 'company') {
       include = service.serviceType === 'company' || service.serviceType === 'internal';
     } else if (filterType === 'rank' && currentRank) {
       const serviceRank = normalizeRankName(service.rank || '');
@@ -106,6 +114,21 @@ function calculateYearsFromSeaService(
       include = serviceRank.toLowerCase() === targetRank.toLowerCase();
     } else if (filterType === 'vesselType' && vesselTypeCode) {
       include = service.vesselTypeUuid === vesselTypeCode;
+    } else if (filterType === 'tanker') {
+      const isTankerVessel =
+        service.isTanker === true ||
+        service.isOilTanker === true ||
+        service.isGasTanker === true ||
+        service.isChemicalTanker === true;
+      if (isTankerVessel) {
+        include = true;
+      } else {
+        const vesselType = (service.vesselTypeName || '').toLowerCase();
+        include = vesselType.includes('tanker') || vesselType.includes('chemical') ||
+                  vesselType.includes('lpg') || vesselType.includes('lng');
+      }
+    } else if (filterType === 'all') {
+      include = true;
     }
     
     if (include) {
@@ -122,10 +145,59 @@ function calculateYearsFromSeaService(
   return totalMonths / 12;
 }
 
+async function getSeaServiceWithVesselTypes(crewUuid: string) {
+  const db = getDb();
+  const mvtByUuid = masterVesselTypes;
+  const mvtByName = aliasedTable(masterVesselTypes, "mvt_by_name");
+
+  return db
+    .select({
+      seaUuid: crewSeaService.seaUuid,
+      serviceType: crewSeaService.serviceType,
+      vesselName: crewSeaService.vesselName,
+      vesselUuid: crewSeaService.vesselUuid,
+      vesselTypeUuid: crewSeaService.vesselTypeUuid,
+      vesselTypeName: sql<string>`COALESCE(${mvtByUuid.vesselType}, ${mvtByName.vesselType})`,
+      isTanker: sql<boolean>`COALESCE(${mvtByUuid.tanker}, ${mvtByName.tanker})`,
+      isOilTanker: sql<boolean>`COALESCE(${mvtByUuid.oilTanker}, ${mvtByName.oilTanker})`,
+      isGasTanker: sql<boolean>`COALESCE(${mvtByUuid.gasTanker}, ${mvtByName.gasTanker})`,
+      isChemicalTanker: sql<boolean>`COALESCE(${mvtByUuid.chemicalTanker}, ${mvtByName.chemicalTanker})`,
+      rank: crewSeaService.rank,
+      fromDate: crewSeaService.fromDate,
+      toDate: crewSeaService.toDate,
+      periodMonths: crewSeaService.periodMonths,
+    })
+    .from(crewSeaService)
+    .leftJoin(
+      mvtByUuid,
+      and(
+        eq(crewSeaService.vesselTypeUuid, mvtByUuid.vtUuid),
+        eq(mvtByUuid.isDeleted, false),
+        eq(mvtByUuid.isActive, true)
+      )
+    )
+    .leftJoin(
+      mvtByName,
+      and(
+        isNull(mvtByUuid.vtUuid),
+        eq(crewSeaService.vesselTypeUuid, mvtByName.vesselType),
+        eq(mvtByName.isDeleted, false),
+        eq(mvtByName.isActive, true)
+      )
+    )
+    .where(
+      and(
+        eq(crewSeaService.crewUuid, crewUuid),
+        eq(crewSeaService.isDeleted, false)
+      )
+    );
+}
+
 async function getCrewExperienceForMember(
   crewUuid: string,
   rank: string,
-  signOnDate: string | null
+  signOnDate: string | null,
+  vesselTypeUuid?: string
 ): Promise<CrewExperience | null> {
   const db = getDb();
   
@@ -138,10 +210,7 @@ async function getCrewExperienceForMember(
   if (!crew.length) return null;
   const crewMember = crew[0];
   
-  const seaServices = await db
-    .select()
-    .from(crewSeaService)
-    .where(eq(crewSeaService.crewUuid, crewUuid));
+  const seaServices = await getSeaServiceWithVesselTypes(crewUuid);
   
   const personalDetails = await db
     .select()
@@ -151,9 +220,12 @@ async function getCrewExperienceForMember(
   
   const currentRank = normalizeRankName(rank) || crewMember.presentRank || '';
   
-  const yearsWithOperator = calculateYearsFromSeaService(seaServices, 'company');
+  const yearsWithOperator = calculateYearsFromSeaService(seaServices, 'companyAndRank', currentRank);
   const yearsInRank = calculateYearsFromSeaService(seaServices, 'rank', currentRank);
-  const yearsOnTankerType = calculateYearsFromSeaService(seaServices, 'all');
+  const yearsOnTankerType = vesselTypeUuid
+    ? calculateYearsFromSeaService(seaServices, 'vesselType', undefined, vesselTypeUuid)
+    : 0;
+  const yearsOnAllTankers = calculateYearsFromSeaService(seaServices, 'tanker');
   
   let englishProficiency = -1;
   if (personalDetails.length && personalDetails[0].englishProficiency) {
@@ -173,6 +245,7 @@ async function getCrewExperienceForMember(
     yearsWithOperator,
     yearsInRank,
     yearsOnTankerType,
+    yearsOnAllTankers,
     englishProficiency,
     timeOnboardMonths,
     crewName: `${crewMember.firstName || ''} ${crewMember.familyName || ''}`.trim(),
@@ -180,9 +253,36 @@ async function getCrewExperienceForMember(
   };
 }
 
+async function getVesselTypeUuid(vesselUuid: string): Promise<string | undefined> {
+  const db = getDb();
+  const [vessel] = await db
+    .select({ vesselType: masterVessels.vesselType })
+    .from(masterVessels)
+    .where(eq(masterVessels.vesselUuid, vesselUuid))
+    .limit(1);
+  
+  if (!vessel?.vesselType) return undefined;
+  
+  const [vt] = await db
+    .select({ vtUuid: masterVesselTypes.vtUuid })
+    .from(masterVesselTypes)
+    .where(
+      and(
+        eq(masterVesselTypes.vesselType, vessel.vesselType),
+        eq(masterVesselTypes.isDeleted, false),
+        eq(masterVesselTypes.isActive, true)
+      )
+    )
+    .limit(1);
+  
+  return vt?.vtUuid || undefined;
+}
+
 async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperience[]> {
   const db = getDb();
   const experiences: CrewExperience[] = [];
+  
+  const vesselTypeUuid = await getVesselTypeUuid(vesselUuid);
   
   const planningRecords = await db
     .select()
@@ -199,7 +299,7 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
   
   for (const record of activeRecords) {
     if (!record.crewUuid) continue;
-    const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate);
+    const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate, vesselTypeUuid);
     if (exp) experiences.push(exp);
   }
   
@@ -211,6 +311,8 @@ async function getSimulatedCrewExperience(
   simulatedCrew: Array<{ rank: string; crewMemberId: string; crewName?: string; joiningDate?: string }>
 ): Promise<CrewExperience[]> {
   const db = getDb();
+  
+  const vesselTypeUuid = await getVesselTypeUuid(vesselUuid);
   
   const planningRecords = await db
     .select()
@@ -243,12 +345,13 @@ async function getSimulatedCrewExperience(
       const exp = await getCrewExperienceForMember(
         simEntry.crewMemberId,
         record.rank,
-        simEntry.joiningDate || null
+        simEntry.joiningDate || null,
+        vesselTypeUuid
       );
       if (exp) experiences.push(exp);
       processedRanks.add(normalizedRank);
     } else {
-      const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate);
+      const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate, vesselTypeUuid);
       if (exp) experiences.push(exp);
     }
   }
@@ -259,7 +362,8 @@ async function getSimulatedCrewExperience(
       const exp = await getCrewExperienceForMember(
         sim.crewMemberId,
         sim.rank,
-        sim.joiningDate || null
+        sim.joiningDate || null,
+        vesselTypeUuid
       );
       if (exp) experiences.push(exp);
     }
@@ -529,7 +633,7 @@ function checkComplianceForOilMajor(
       experienceRules.yearsOnAllTankers,
       crewExperiences,
       'Years on All Tankers',
-      (crew) => crew.yearsOnTankerType
+      (crew) => crew.yearsOnAllTankers
     ));
   }
   

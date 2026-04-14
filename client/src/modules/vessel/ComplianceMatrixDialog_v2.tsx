@@ -189,6 +189,8 @@ export function ComplianceMatrixDialog_v2({
             : [`/api/v2/compliance/matrix/${vesselId}`],
         enabled: open && !!vesselId && oilMajorRules.length > 0,
         staleTime: 0,
+        gcTime: 0,
+        refetchOnMount: 'always' as const,
         queryFn: async () => {
             if (isSimulatedMode) {
                 const response = await fetch(`/api/v2/vessel/compliance/matrix/${vesselId}/simulated`, {
