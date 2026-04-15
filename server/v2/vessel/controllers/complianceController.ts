@@ -1,11 +1,10 @@
 import { Request, Response } from "express";
-import { eq, and, or, isNull, sql } from "drizzle-orm";
+import { eq, and, or, isNull, sql, asc } from "drizzle-orm";
 import { aliasedTable } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
-import { masterVessels, masterVesselTypes } from "../../../../shared/schema";
-import { storage } from "../../../storage";
+import { masterVessels, masterVesselTypes, oilMajorRules as oilMajorRulesTable } from "../../../../shared/schema";
 
 interface ComplianceRuleResult {
   category: string;
@@ -679,7 +678,8 @@ export const complianceController = {
     try {
       const vesselUuid = req.params.vesselUuid;
       
-      const allRules = await storage.getOilMajorRules();
+      const db = getDb();
+      const allRules = await db.select().from(oilMajorRulesTable).orderBy(asc(oilMajorRulesTable.oilMajorName));
       if (!allRules || allRules.length === 0) {
         return res.json({
           vesselId: vesselUuid,
@@ -727,7 +727,8 @@ export const complianceController = {
       const vesselUuid = req.params.vesselUuid;
       const { simulatedCrew } = req.body;
       
-      const allRules = await storage.getOilMajorRules();
+      const db = getDb();
+      const allRules = await db.select().from(oilMajorRulesTable).orderBy(asc(oilMajorRulesTable.oilMajorName));
       if (!allRules || allRules.length === 0) {
         return res.json({
           vesselId: vesselUuid,

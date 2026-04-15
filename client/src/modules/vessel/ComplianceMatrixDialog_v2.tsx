@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -193,20 +194,10 @@ export function ComplianceMatrixDialog_v2({
         refetchOnMount: 'always' as const,
         queryFn: async () => {
             if (isSimulatedMode) {
-                const response = await fetch(`/api/v2/vessel/compliance/matrix/${vesselId}/simulated`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ simulatedCrew })
-                });
-                if (!response.ok) {
-                    throw new Error('Failed to fetch simulated compliance data');
-                }
+                const response = await apiRequest('POST', `/api/v2/vessel/compliance/matrix/${vesselId}/simulated`, { simulatedCrew });
                 return response.json();
             } else {
-                const response = await fetch(`/api/v2/vessel/compliance/matrix/${vesselId}`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch V2 compliance data');
-                }
+                const response = await apiRequest('GET', `/api/v2/vessel/compliance/matrix/${vesselId}`);
                 return response.json();
             }
         }
