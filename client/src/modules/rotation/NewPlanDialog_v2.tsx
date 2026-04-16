@@ -2855,7 +2855,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                 <ChevronDown className="h-4 w-4 opacity-50 ml-2" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-4" align="start">
+            <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] max-h-[min(85vh,700px)] overflow-y-auto p-4" align="start">
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Start Date</label>

@@ -48,6 +48,7 @@ function ApprovalScreenV2() {
     const isPhone = viewport === 'phone';
     const isTablet = viewport === 'tablet';
     const isSmallScreen = isPhone || isTablet;
+    type ApprovalDateRange = { start: Date | undefined; end: Date | undefined };
     
     const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
     const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
@@ -55,9 +56,9 @@ function ApprovalScreenV2() {
     const [showFilters, setShowFilters] = useState(true);
     
     const today = useMemo(() => new Date(), []);
-    const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
-        start: addMonths(today, -2),
-        end: addMonths(today, 5)
+    const [dateRange, setDateRange] = useState<ApprovalDateRange>({
+        start: undefined,
+        end: undefined
     });
     const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
 
@@ -69,8 +70,8 @@ function ApprovalScreenV2() {
         setSelectedRanks([]);
         setDraftIdFilter("");
         setDateRange({
-            start: addMonths(today, -2),
-            end: addMonths(today, 5)
+            start: undefined,
+            end: undefined
         });
     };
 
@@ -89,6 +90,10 @@ function ApprovalScreenV2() {
                 : [...prev, rankName]
         );
     };
+
+    const dateRangeLabel = dateRange.start && dateRange.end
+        ? `${format(dateRange.start, 'dd-MMM-yy')} - ${format(dateRange.end, 'dd-MMM-yy')}`
+        : "Select a Date Range";
 
     return (
         <div className="flex flex-col h-full">
@@ -196,20 +201,20 @@ function ApprovalScreenV2() {
                                         >
                                             <span className="truncate flex items-center gap-2">
                                                 <CalendarIcon className="h-4 w-4" />
-                                                {format(dateRange.start, 'dd-MMM-yy')} - {format(dateRange.end, 'dd-MMM-yy')}
+                                                {dateRangeLabel}
                                             </span>
                                             <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-4" align="start">
+                                    <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] max-h-[min(85vh,700px)] overflow-y-auto p-4" align="start">
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="text-sm font-medium mb-2 block">Start Date</label>
-                                                <Calendar mode="single" selected={dateRange.start} onSelect={(date) => date && setDateRange({ ...dateRange, start: date })} disabled={(date) => date > dateRange.end} data-testid="calendar-start-date-v2" />
+                                                <Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" />
                                             </div>
                                             <div>
                                                 <label className="text-sm font-medium mb-2 block">End Date</label>
-                                                <Calendar mode="single" selected={dateRange.end} onSelect={(date) => date && setDateRange({ ...dateRange, end: date })} disabled={(date) => date < dateRange.start} data-testid="calendar-end-date-v2" />
+                                                <Calendar mode="single" selected={dateRange.end} onSelect={(date) => setDateRange(prev => ({ ...prev, end: date || undefined }))} disabled={(date) => !!dateRange.start && date < dateRange.start} data-testid="calendar-end-date-v2" />
                                             </div>
                                             <div className="flex gap-2 pt-2 border-t">
                                                 <Button variant="outline" size="sm" onClick={() => { const resetToday = new Date(); setDateRange({ start: addMonths(resetToday, -2), end: addMonths(resetToday, 5) }); }} data-testid="button-reset-date-range-v2">Reset</Button>
@@ -271,14 +276,14 @@ function ApprovalScreenV2() {
                             <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="h-8 w-full text-[11px] border-[#e1e8ed] justify-between" data-testid="select-date-range-v2">
-                                        <span className="truncate flex items-center gap-2"><CalendarIcon className="h-4 w-4" />{format(dateRange.start, 'dd-MMM-yy')} - {format(dateRange.end, 'dd-MMM-yy')}</span>
+                                        <span className="truncate flex items-center gap-2"><CalendarIcon className="h-4 w-4" />{dateRangeLabel}</span>
                                         <ChevronDown className="h-4 w-4 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-4" align="start">
+                                <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] max-h-[min(85vh,700px)] overflow-y-auto p-4" align="start">
                                     <div className="space-y-4">
-                                        <div><label className="text-sm font-medium mb-2 block">Start Date</label><Calendar mode="single" selected={dateRange.start} onSelect={(date) => date && setDateRange({ ...dateRange, start: date })} disabled={(date) => date > dateRange.end} data-testid="calendar-start-date-v2" /></div>
-                                        <div><label className="text-sm font-medium mb-2 block">End Date</label><Calendar mode="single" selected={dateRange.end} onSelect={(date) => date && setDateRange({ ...dateRange, end: date })} disabled={(date) => date < dateRange.start} data-testid="calendar-end-date-v2" /></div>
+                                        <div><label className="text-sm font-medium mb-2 block">Start Date</label><Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" /></div>
+                                        <div><label className="text-sm font-medium mb-2 block">End Date</label><Calendar mode="single" selected={dateRange.end} onSelect={(date) => setDateRange(prev => ({ ...prev, end: date || undefined }))} disabled={(date) => !!dateRange.start && date < dateRange.start} data-testid="calendar-end-date-v2" /></div>
                                         <div className="flex gap-2 pt-2 border-t"><Button variant="outline" size="sm" onClick={() => { const resetToday = new Date(); setDateRange({ start: addMonths(resetToday, -2), end: addMonths(resetToday, 5) }); }} data-testid="button-reset-date-range-v2">Reset</Button><Button size="sm" onClick={() => setDateRangeDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700" data-testid="button-apply-date-range-v2">Apply</Button></div>
                                     </div>
                                 </PopoverContent>
@@ -294,8 +299,8 @@ function ApprovalScreenV2() {
                 selectedVessels={selectedVessels}
                 selectedRanks={selectedRanks}
                 draftIdFilter={draftIdFilter}
-                dateFrom={format(dateRange.start, 'yyyy-MM-dd')}
-                dateTo={format(dateRange.end, 'yyyy-MM-dd')}
+                dateFrom={dateRange.start && dateRange.end ? format(dateRange.start, 'yyyy-MM-dd') : ""}
+                dateTo={dateRange.start && dateRange.end ? format(dateRange.end, 'yyyy-MM-dd') : ""}
             />
         </div>
     );
