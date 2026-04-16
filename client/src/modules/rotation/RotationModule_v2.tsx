@@ -208,7 +208,7 @@ function ApprovalScreenV2() {
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] max-h-[min(85vh,700px)] overflow-y-auto p-4" align="start">
                                         <div className="flex flex-col gap-4">
-                                            <div className="flex flex-col sm:flex-row gap-4">
+                                            <div className="flex flex-col md:flex-row gap-4">
                                                 <div>
                                                     <label className="text-sm font-medium mb-2 block">Start Date</label>
                                                     <Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" />
@@ -284,7 +284,7 @@ function ApprovalScreenV2() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] max-h-[min(85vh,700px)] overflow-y-auto p-4" align="start">
                                     <div className="flex flex-col gap-4">
-                                        <div className="flex flex-col sm:flex-row gap-4">
+                                        <div className="flex flex-col md:flex-row gap-4">
                                             <div><label className="text-sm font-medium mb-2 block">Start Date</label><Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" /></div>
                                             <div><label className="text-sm font-medium mb-2 block">End Date</label><Calendar mode="single" selected={dateRange.end} onSelect={(date) => setDateRange(prev => ({ ...prev, end: date || undefined }))} disabled={(date) => !!dateRange.start && date < dateRange.start} data-testid="calendar-end-date-v2" /></div>
                                         </div>
