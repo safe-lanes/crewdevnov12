@@ -207,14 +207,16 @@ function ApprovalScreenV2() {
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] max-h-[min(85vh,700px)] overflow-y-auto p-4" align="start">
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-sm font-medium mb-2 block">Start Date</label>
-                                                <Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" />
-                                            </div>
-                                            <div>
-                                                <label className="text-sm font-medium mb-2 block">End Date</label>
-                                                <Calendar mode="single" selected={dateRange.end} onSelect={(date) => setDateRange(prev => ({ ...prev, end: date || undefined }))} disabled={(date) => !!dateRange.start && date < dateRange.start} data-testid="calendar-end-date-v2" />
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex flex-col sm:flex-row gap-4">
+                                                <div>
+                                                    <label className="text-sm font-medium mb-2 block">Start Date</label>
+                                                    <Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium mb-2 block">End Date</label>
+                                                    <Calendar mode="single" selected={dateRange.end} onSelect={(date) => setDateRange(prev => ({ ...prev, end: date || undefined }))} disabled={(date) => !!dateRange.start && date < dateRange.start} data-testid="calendar-end-date-v2" />
+                                                </div>
                                             </div>
                                             <div className="flex gap-2 pt-2 border-t">
                                                 <Button variant="outline" size="sm" onClick={() => { const resetToday = new Date(); setDateRange({ start: addMonths(resetToday, -2), end: addMonths(resetToday, 5) }); }} data-testid="button-reset-date-range-v2">Reset</Button>
@@ -281,9 +283,11 @@ function ApprovalScreenV2() {
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] max-h-[min(85vh,700px)] overflow-y-auto p-4" align="start">
-                                    <div className="space-y-4">
-                                        <div><label className="text-sm font-medium mb-2 block">Start Date</label><Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" /></div>
-                                        <div><label className="text-sm font-medium mb-2 block">End Date</label><Calendar mode="single" selected={dateRange.end} onSelect={(date) => setDateRange(prev => ({ ...prev, end: date || undefined }))} disabled={(date) => !!dateRange.start && date < dateRange.start} data-testid="calendar-end-date-v2" /></div>
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex flex-col sm:flex-row gap-4">
+                                            <div><label className="text-sm font-medium mb-2 block">Start Date</label><Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" /></div>
+                                            <div><label className="text-sm font-medium mb-2 block">End Date</label><Calendar mode="single" selected={dateRange.end} onSelect={(date) => setDateRange(prev => ({ ...prev, end: date || undefined }))} disabled={(date) => !!dateRange.start && date < dateRange.start} data-testid="calendar-end-date-v2" /></div>
+                                        </div>
                                         <div className="flex gap-2 pt-2 border-t"><Button variant="outline" size="sm" onClick={() => { const resetToday = new Date(); setDateRange({ start: addMonths(resetToday, -2), end: addMonths(resetToday, 5) }); }} data-testid="button-reset-date-range-v2">Reset</Button><Button size="sm" onClick={() => setDateRangeDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700" data-testid="button-apply-date-range-v2">Apply</Button></div>
                                     </div>
                                 </PopoverContent>
