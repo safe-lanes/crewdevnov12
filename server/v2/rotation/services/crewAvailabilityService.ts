@@ -24,15 +24,34 @@ const OOW_RANKS = new Set([
 ]);
 
 function calculateExperienceFromSeaService(seaServiceRecords: any[], presentRank: string): CrewExperience {
-  let totalMonths = 0;
   let rankMonths = 0;
   let tankerMonths = 0;
   let oowMonths = 0;
+
+  let companyYears = 0;
+  const companyRecords = seaServiceRecords.filter((r: any) => r.serviceType === "company");
+  if (companyRecords.length > 0) {
+    const fromDates = companyRecords
+      .map((s: any) => s.fromDate)
+      .filter((d: any) => d && typeof d === "string" && d.trim() !== "")
+      .map((d: any) => new Date(d))
+      .filter((d: any) => !isNaN(d.getTime()));
+
+    if (fromDates.length > 0) {
+      const earliestDate = new Date(
+        Math.min(...fromDates.map((d: any) => d.getTime()))
+      );
+      const today = new Date();
+      const diffMs = today.getTime() - earliestDate.getTime();
+      const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+      const roundedYears = Math.round(diffYears * 10) / 10;
+      companyYears = diffYears > 0 ? Math.max(0.1, roundedYears) : 0;
+    }
+  }
   
   for (const record of seaServiceRecords) {
     const months = parseFloat(record.periodMonths || "0") ||
       crewSeaServiceService.calculatePeriodMonths(record.fromDate, record.toDate);
-    totalMonths += months;
     
     if (record.rank === presentRank) {
       rankMonths += months;
@@ -65,7 +84,7 @@ function calculateExperienceFromSeaService(seaServiceRecords: any[], presentRank
   }
   
   return {
-    company: Math.round((totalMonths / 12) * 10) / 10,
+    company: companyYears,
     rank: Math.round((rankMonths / 12) * 10) / 10,
     tankers: Math.round((tankerMonths / 12) * 10) / 10,
     oow: Math.round((oowMonths / 12) * 10) / 10,
