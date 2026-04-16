@@ -593,15 +593,16 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.englishProficiency || ''}
             </TableCell>
             <TableCell className="text-xs" data-testid={`cell-officer-actions-${index + 1}`}>
-                <Button 
-                    variant="ghost" 
-                    size="icon"
-                    disabled={!rankPlanningData}
-                    onClick={() => rankPlanningData && handleViewCrewClick(rankPlanningData)}
-                    data-testid={`button-view-officer-${index + 1}`}
-                >
-                    <Eye className="h-4 w-4 text-gray-500" />
-                </Button>
+                {crewUuid ? (
+                    <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => rankPlanningData && handleViewCrewClick(rankPlanningData)}
+                        data-testid={`button-view-officer-${index + 1}`}
+                    >
+                        <Eye className="h-4 w-4 text-gray-500" />
+                    </Button>
+                ) : null}
             </TableCell>
         </TableRow>
     );
