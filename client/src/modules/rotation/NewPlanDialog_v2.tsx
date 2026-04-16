@@ -1967,6 +1967,27 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     ? selectedRoleVariantsState 
     : autoSelectedRoleVariants;
 
+  const isRankAvailableForVessel = (vesselUuid: string, rank: string): boolean => {
+    const vesselPositions = perVesselPositions.get(vesselUuid);
+    if (!vesselPositions) return false;
+
+    // Exact position match for suffixed roles like "Fitter_1"
+    if (rank.includes('_')) {
+      return vesselPositions.has(rank);
+    }
+
+    // Base rank is valid if the vessel has either a direct slot ("Fitter")
+    // or any numbered slot ("Fitter_1", "Fitter_2", etc.)
+    return Array.from(vesselPositions).some((position: string) =>
+      position === rank || (position.startsWith(`${rank}_`) && position.includes('_'))
+    );
+  };
+
+  const assignableRanksForSelectedVessel = useMemo(() => {
+    if (!selectedVessel) return selectedRanks;
+    return selectedRanks.filter(rank => isRankAvailableForVessel(selectedVessel, rank));
+  }, [selectedRanks, selectedVessel, perVesselPositions]);
+
   // Filter out base ranks when their role variants exist (for timeline display only)
   const timelineRoleVariants = useMemo(() => {
     // Find base ranks that have role variants
@@ -2280,6 +2301,16 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     setEditingAssignment(null);
     
     const baseRank = crew.rank;
+    if (!isRankAvailableForVessel(selectedVessel, baseRank)) {
+      const vesselName = getVesselNameByUuid(selectedVessel);
+      toast({
+        title: "Rank not available",
+        description: `${baseRank} is not available for ${vesselName}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const vesselPositions = perVesselPositions.get(selectedVessel);
 
     const occupiedPositions = new Map<string, string>(
@@ -2379,6 +2410,15 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     const vesselObj = vessels.find((v: any) => v.value === selectedVessel);
     const baseRank = selectedCrew.rank.includes('_') ? selectedCrew.rank.replace(/_\d+$/, '') : selectedCrew.rank;
     const rankObj = companyRanks.find((r: any) => r.rank === baseRank);
+
+    if (!isRankAvailableForVessel(selectedVessel, selectedCrew.rank)) {
+      toast({
+        title: "Invalid assignment",
+        description: `${selectedCrew.rank} is not available for ${vesselObj?.name || selectedVessel}`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Validate that we have proper IDs - fail if not available
     // For V2, use vessel.value which is the UUID
@@ -2875,12 +2915,16 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
               <div className="flex items-center justify-center h-full text-gray-500">
                 <p>Select ranks to view available crew</p>
               </div>
+            ) : selectedVessel && assignableRanksForSelectedVessel.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-500 text-center p-4">
+                <p>No selected ranks are available for {getVesselNameByUuid(selectedVessel)}</p>
+              </div>
             ) : (
-              <div className="flex gap-4 p-4" style={{ minWidth: `${selectedRanks.length * 280}px` }}>
-                {selectedRanks.map(rank => (
-                  <CrewColumn 
-                    key={rank} 
-                    rank={rank} 
+              <div className="flex gap-4 p-4" style={{ minWidth: `${assignableRanksForSelectedVessel.length * 280}px` }}>
+                {assignableRanksForSelectedVessel.map(rank => (
+                  <CrewColumn
+                    key={rank}
+                    rank={rank}
                     onCrewSelect={handleCrewSelect}
                     assignments={assignments}
                     currentlyDeployedCrewIds={currentlyDeployedCrewIds}
