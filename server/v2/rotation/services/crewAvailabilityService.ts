@@ -1,6 +1,9 @@
-import { eq, and, isNull, ilike, inArray } from "drizzle-orm";
+import { eq, and, isNull, ilike, inArray, sql } from "drizzle-orm";
+import { aliasedTable } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewMembersV2, crewAssignments, crewSeaService, crewPersonalDetails, crewLicenses } from "../../../../shared/v2/crew-pool/schema";
+import { masterVesselTypes } from "../../../../shared/schema";
+import { crewSeaServiceService } from "../../crew-pool/services/crewSeaServiceService";
 
 interface CrewExperience {
   company: number;
@@ -10,6 +13,16 @@ interface CrewExperience {
   endorsements: string;
 }
 
+const OOW_RANKS = new Set([
+  "chief officer", "c/o", "first mate", "1st mate", "first officer", "1st officer",
+  "2nd officer", "second officer", "2/o",
+  "3rd officer", "third officer", "3/o",
+  "2nd engineer", "second engineer", "2/e",
+  "3rd engineer", "third engineer", "3/e",
+  "4th engineer", "fourth engineer", "4/e",
+  "junior officer", "jr. officer", "jr officer",
+]);
+
 function calculateExperienceFromSeaService(seaServiceRecords: any[], presentRank: string): CrewExperience {
   let totalMonths = 0;
   let rankMonths = 0;
@@ -17,19 +30,36 @@ function calculateExperienceFromSeaService(seaServiceRecords: any[], presentRank
   let oowMonths = 0;
   
   for (const record of seaServiceRecords) {
-    const months = parseFloat(record.periodMonths) || 0;
+    const months = parseFloat(record.periodMonths || "0") ||
+      crewSeaServiceService.calculatePeriodMonths(record.fromDate, record.toDate);
     totalMonths += months;
     
     if (record.rank === presentRank) {
       rankMonths += months;
     }
     
-    const categories = record.experienceCategories || [];
-    if (categories.includes('Tanker') || categories.includes('Oil Tanker') || categories.includes('Chemical Tanker')) {
+    const isTankerVessel =
+      record.isTanker === true ||
+      record.isOilTanker === true ||
+      record.isGasTanker === true ||
+      record.isChemicalTanker === true;
+
+    if (isTankerVessel) {
       tankerMonths += months;
+    } else {
+      const vesselType = (record.vesselTypeName || "").toLowerCase();
+      if (
+        vesselType.includes("tanker") ||
+        vesselType.includes("chemical") ||
+        vesselType.includes("lpg") ||
+        vesselType.includes("lng")
+      ) {
+        tankerMonths += months;
+      }
     }
-    
-    if (record.rank?.includes('OOW') || record.rank?.includes('Officer of Watch')) {
+
+    const rank = (record.rank || "").toLowerCase().trim();
+    if (OOW_RANKS.has(rank)) {
       oowMonths += months;
     }
   }
@@ -74,8 +104,37 @@ export const crewAvailabilityService = {
 
     const crewUuids = results.map((row: any) => row.crew.crewUuid);
     
+    const mvtByUuid = masterVesselTypes;
+    const mvtByName = aliasedTable(masterVesselTypes, "mvt_by_name");
+
     const seaServiceByCrewPromise = crewUuids.length > 0 
-      ? db.select().from(crewSeaService).where(
+      ? db.select({
+          crewUuid: crewSeaService.crewUuid,
+          rank: crewSeaService.rank,
+          periodMonths: crewSeaService.periodMonths,
+          fromDate: crewSeaService.fromDate,
+          toDate: crewSeaService.toDate,
+          serviceType: crewSeaService.serviceType,
+          vesselTypeUuid: crewSeaService.vesselTypeUuid,
+          vesselTypeName: sql<string>`COALESCE(${mvtByUuid.vesselType}, ${mvtByName.vesselType})`,
+          isTanker: sql<boolean>`COALESCE(${mvtByUuid.tanker}, ${mvtByName.tanker})`,
+          isOilTanker: sql<boolean>`COALESCE(${mvtByUuid.oilTanker}, ${mvtByName.oilTanker})`,
+          isGasTanker: sql<boolean>`COALESCE(${mvtByUuid.gasTanker}, ${mvtByName.gasTanker})`,
+          isChemicalTanker: sql<boolean>`COALESCE(${mvtByUuid.chemicalTanker}, ${mvtByName.chemicalTanker})`,
+        })
+        .from(crewSeaService)
+        .leftJoin(
+          mvtByUuid,
+          eq(crewSeaService.vesselTypeUuid, mvtByUuid.vtUuid)
+        )
+        .leftJoin(
+          mvtByName,
+          and(
+            isNull(mvtByUuid.vtUuid),
+            eq(crewSeaService.vesselTypeUuid, mvtByName.vesselType)
+          )
+        )
+        .where(
           and(
             inArray(crewSeaService.crewUuid, crewUuids),
             eq(crewSeaService.isDeleted, false)
@@ -146,9 +205,7 @@ export const crewAvailabilityService = {
         employeeId: row.crew.employeeId,
         firstName: row.crew.firstName,
         familyName: row.crew.familyName,
-        fullName: row.crew.firstName && row.crew.familyName 
-          ? `${row.crew.firstName} ${row.crew.familyName}`
-          : row.crew.firstName || row.crew.familyName || "Unknown",
+        fullName: [row.crew.firstName, row.crew.familyName].filter(Boolean).join(' ') || "Unknown",
         presentRank: row.crew.presentRank,
         status: row.crew.status,
         availability: row.crew.availability,
@@ -209,9 +266,7 @@ export const crewAvailabilityService = {
       employeeId: row.crew.employeeId,
       firstName: row.crew.firstName,
       familyName: row.crew.familyName,
-      fullName: row.crew.firstName && row.crew.familyName 
-        ? `${row.crew.firstName} ${row.crew.familyName}`
-        : row.crew.firstName || row.crew.familyName || "Unknown",
+      fullName: [row.crew.firstName, row.crew.familyName].filter(Boolean).join(' ') || "Unknown",
       presentRank: row.crew.presentRank,
       status: row.crew.status,
       availability: row.crew.availability,
