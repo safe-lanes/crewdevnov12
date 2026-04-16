@@ -180,7 +180,7 @@ export function RotationPlanTable_v2() {
               <TableHead className="text-white font-normal text-xs h-10">Draft ID</TableHead>
               <TableHead className="text-white font-normal text-xs h-10">Last Edited</TableHead>
               <TableHead className="text-white font-normal text-xs h-10">Vessel</TableHead>
-              <TableHead className="text-white font-normal text-xs h-10">Crew</TableHead>
+              <TableHead className="text-white font-normal text-xs h-10">Ranks</TableHead>
               <TableHead className="text-white font-normal text-xs h-10">Plan from/To</TableHead>
               <TableHead className="text-white font-normal text-xs h-10">Created by</TableHead>
               <TableHead className="text-white font-normal text-xs h-10">Plan Status</TableHead>
