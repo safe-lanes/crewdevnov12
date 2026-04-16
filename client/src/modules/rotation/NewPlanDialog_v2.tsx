@@ -2249,12 +2249,19 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   };
 
   const toggleRank = (rank: string) => {
+    const isDeselecting = selectedRanks.includes(rank);
     setSelectedRanks(prev =>
-      prev.includes(rank)
+      isDeselecting
         ? prev.filter(r => r !== rank)
         : [...prev, rank]
     );
-    // Reset manual override when toggling base ranks
+    if (isDeselecting) {
+      setAssignments(prev => prev.filter(a => {
+        if (a.rank === rank) return false;
+        if (a.rank.startsWith(`${rank}_`)) return false;
+        return true;
+      }));
+    }
     setHasManualVariants(false);
   };
 
@@ -2827,8 +2834,15 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                   <button
                     onClick={() => {
                       const current = hasManualVariants ? selectedRoleVariantsState : autoSelectedRoleVariants;
-                      setSelectedRoleVariantsState(current.filter(v => v !== variant));
+                      const updated = current.filter(v => v !== variant);
+                      setSelectedRoleVariantsState(updated);
                       setHasManualVariants(true);
+                      setAssignments(prev => prev.filter(a => a.rank !== variant));
+                      const baseRank = variant.includes('_') ? variant.substring(0, variant.lastIndexOf('_')) : variant;
+                      const hasRemainingVariants = updated.some(v => v === baseRank || v.startsWith(`${baseRank}_`));
+                      if (!hasRemainingVariants) {
+                        setSelectedRanks(prev => prev.filter(r => r !== baseRank));
+                      }
                     }}
                     className="ml-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                     data-testid={`button-remove-role-${variant}`}
