@@ -537,9 +537,9 @@ const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
   const adminAllowedPages = useMemo(() => {
-    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control"];
+    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "users"];
     if (permissions.length === 0) return all;
-    const pageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control" };
+    const pageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "users": "Users" };
     return all.filter(p => canView(pageToMenu[p] || p));
   }, [permissions, canView]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
@@ -8347,6 +8347,11 @@ const AdminModuleInner = (): JSX.Element => {
         {selectedAdminPage === "masters" && renderDataMastersModule()}
         {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
         {selectedAdminPage === "access-control" && <AccessControlPage />}
+        {selectedAdminPage === "users" && (
+          <div className="bg-white rounded-lg p-6" data-testid="page-users">
+            <h2 className="text-xl font-semibold text-gray-800" data-testid="text-users-title">Users</h2>
+          </div>
+        )}
       </MainLayout>
 
       {/* Main content */}
