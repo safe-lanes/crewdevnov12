@@ -376,8 +376,23 @@ async function logoutHandler(req: Request, res: Response) {
   if (!refreshToken && !user) {
     return res.json({ ok: true });
   }
+
+  // Resolve tenant DB independently of tenantMiddleware: this route is
+  // exempt so that logout works even when the access token has expired.
+  // Domain comes from (in order) the verified access token, then the
+  // refresh-token claims, then a hint header.
+  let domain = user?.domain || "";
+  if (!domain && refreshToken) {
+    try {
+      const claims = verifyRefreshToken(refreshToken);
+      domain = claims.domain;
+    } catch {
+      // refresh token unverifiable — nothing to revoke
+    }
+  }
+
   try {
-    const db = getCurrentDb();
+    const db = domain ? (await getDbForDomain(domain)).db : getCurrentDb();
     if (refreshToken) {
       const tokenHash = hashRefreshToken(refreshToken);
       await db
@@ -438,7 +453,10 @@ router.post("/change-password", ensureAuthUser, async (req: Request, res: Respon
   const ok = await verifyPassword(parsed.data.currentPassword, user.password);
   if (!ok) {
     await audit(db, { userId: user.id, username: user.username, domain: user.domain, event: "change_password", success: false, ipAddress: clientIp(req), detail: "wrong_current" });
-    return res.status(401).json({ error: "invalid_credentials", message: "Current password is incorrect." });
+    // Use 400 (not 401) so the client fetch interceptor does NOT treat this as
+    // an expired-session response and silently refresh / redirect to /login.
+    // The user must see an inline "current password incorrect" error.
+    return res.status(400).json({ error: "wrong_current_password", message: "Current password is incorrect." });
   }
   const newHash = await hashPassword(parsed.data.newPassword);
   await db
