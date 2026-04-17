@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -507,300 +507,324 @@ function UserForm({
     );
   }
 
+  const allVesselIds = (vessels as VesselOption[])
+    .map(getVesselId)
+    .filter((id) => !!id);
+  const allVesselsSelected =
+    allVesselIds.length > 0 &&
+    allVesselIds.every((id) => assignedVesselIds.includes(id));
+  const someVesselsSelected =
+    !allVesselsSelected && assignedVesselIds.length > 0;
+
   return (
-    <div className="bg-white rounded-lg p-6 space-y-6" data-testid="page-user-form">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-back-users">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800">
-              {isEdit ? "Edit User" : "New User"}
-            </h2>
-            <p className="text-sm text-gray-500">
-              {isEdit
-                ? "Update account details, role, and vessel access."
-                : "Create a new account with the appropriate role and access."}
-            </p>
-          </div>
+    <div className="bg-white rounded-lg p-6" data-testid="page-user-form">
+      <div className="flex items-start gap-3 mb-6">
+        <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-back-users">
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">
+            {isEdit ? "Edit User" : "New User"}
+          </h2>
+          <p className="text-xs uppercase tracking-wider text-gray-400 mt-0.5">
+            {isEdit ? "EDIT USER" : "NEW USER"}
+          </p>
         </div>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Basic Details */}
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Basic Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username *</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          data-testid="input-username"
-                          placeholder="e.g. jdoe"
-                          onBlur={() => {
-                            field.onBlur();
-                            handleUsernameBlur();
-                          }}
-                        />
-                        {usernameStatus === "checking" && (
-                          <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
-                        )}
-                        {usernameStatus === "available" && (
-                          <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
-                        )}
-                        {usernameStatus === "taken" && (
-                          <X className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-8">
+            <div className="space-y-8 min-w-0">
+              {/* Basic Details */}
+              <section>
+                <SectionHeader>Basic Details:</SectionHeader>
 
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-email" type="email" placeholder="user@example.com" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <div className="mb-5">
+                  <FormField
+                    control={form.control}
+                    name="userType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="text-sm text-gray-700 mb-2 block">
+                          User Type:
+                        </Label>
+                        <FormControl>
+                          <RadioGroup
+                            className="flex gap-8"
+                            value={field.value}
+                            onValueChange={(v) => {
+                              field.onChange(v as UserType);
+                              form.setValue("roleId", "");
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem
+                                value="Office"
+                                id="user-type-office"
+                                data-testid="radio-user-type-office"
+                                className="text-[#16569e] border-[#16569e]"
+                              />
+                              <Label htmlFor="user-type-office" className="cursor-pointer text-sm">
+                                Office
+                              </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem
+                                value="Vessel"
+                                id="user-type-vessel"
+                                data-testid="radio-user-type-vessel"
+                              />
+                              <Label htmlFor="user-type-vessel" className="cursor-pointer text-sm">
+                                Vessel
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>First Name *</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-first-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Last Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-last-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>
-                      {isEdit ? "New Password" : "Password *"}
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          data-testid="input-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder={isEdit ? "Leave blank to keep current password" : "Choose a strong password"}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                          onClick={() => setShowPassword((s) => !s)}
-                          data-testid="button-toggle-password"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field, fieldState }) => (
+                      <FormItem>
+                        <FloatingField
+                          id="input-username"
+                          label="Username"
+                          required
+                          error={!!fieldState.error}
+                          rightAdornment={
+                            usernameStatus === "checking" ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                            ) : usernameStatus === "available" ? (
+                              <Check className="h-4 w-4 text-emerald-500" />
+                            ) : usernameStatus === "taken" ? (
+                              <X className="h-4 w-4 text-red-500" />
+                            ) : null
+                          }
                         >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <p className="text-xs text-gray-500 mt-1">{PASSWORD_RULES}</p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </section>
-
-          {/* Official Information */}
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Official Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="designation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Designation</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-designation" placeholder="e.g. Crewing Manager" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="department"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Department</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-department" placeholder="e.g. Crewing" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="userType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>User Type *</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        className="flex gap-6 pt-1"
-                        value={field.value}
-                        onValueChange={(v) => {
-                          field.onChange(v as UserType);
-                          // Clear role on type change to avoid mismatched filter
-                          form.setValue("roleId", "");
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem
-                            value="Office"
-                            id="user-type-office"
-                            data-testid="radio-user-type-office"
+                          <input
+                            {...field}
+                            data-testid="input-username"
+                            placeholder=" "
+                            onBlur={() => {
+                              field.onBlur();
+                              handleUsernameBlur();
+                            }}
+                            className={floatingInputCls(!!fieldState.error)}
                           />
-                          <Label htmlFor="user-type-office" className="cursor-pointer text-sm">
-                            Office
-                          </Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem
-                            value="Vessel"
-                            id="user-type-vessel"
-                            data-testid="radio-user-type-vessel"
-                          />
-                          <Label htmlFor="user-type-vessel" className="cursor-pointer text-sm">
-                            Vessel
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                        </FloatingField>
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="roleId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-role">
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {filteredRoles.length === 0 && (
-                          <div className="px-2 py-1.5 text-sm text-gray-500">
-                            No roles available
-                          </div>
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field, fieldState }) => (
+                      <FormItem>
+                        <FloatingField
+                          id="input-password"
+                          label={isEdit ? "New Password" : "Password"}
+                          required={!isEdit}
+                          error={!!fieldState.error}
+                          rightAdornment={
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword((s) => !s)}
+                              data-testid="button-toggle-password"
+                              className="text-gray-400 hover:text-gray-600"
+                              aria-label={showPassword ? "Hide password" : "Show password"}
+                              aria-pressed={showPassword}
+                            >
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          }
+                        >
+                          <input
+                            {...field}
+                            data-testid="input-password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder=" "
+                            className={floatingInputCls(!!fieldState.error)}
+                          />
+                        </FloatingField>
+                        {!fieldState.error && (
+                          <p className="text-[11px] text-gray-400 mt-1">{PASSWORD_RULES}</p>
                         )}
-                        {filteredRoles.map((r) => (
-                          <SelectItem key={r.ruid} value={r.ruid}>
-                            {r.assignedRole}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="preferredAuthMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Preferred Auth Method</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-auth-method">
-                          <SelectValue placeholder="Select auth method" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="NA">None (password only)</SelectItem>
-                        <SelectItem value="TOTP">TOTP (Authenticator app)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field, fieldState }) => (
+                      <FormItem>
+                        <FloatingField id="input-first-name" label="First Name" error={!!fieldState.error}>
+                          <input
+                            {...field}
+                            data-testid="input-first-name"
+                            placeholder=" "
+                            className={floatingInputCls(!!fieldState.error)}
+                          />
+                        </FloatingField>
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-md border px-4 py-3">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm font-medium">Account Active</Label>
-                      <p className="text-xs text-gray-500">
-                        Inactive users cannot log in.
-                      </p>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-is-active"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field, fieldState }) => (
+                      <FormItem>
+                        <FloatingField id="input-last-name" label="Last Name" error={!!fieldState.error}>
+                          <input
+                            {...field}
+                            data-testid="input-last-name"
+                            placeholder=" "
+                            className={floatingInputCls(!!fieldState.error)}
+                          />
+                        </FloatingField>
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field, fieldState }) => (
+                      <FormItem className="md:col-span-2">
+                        <FloatingField id="input-email" label="Email" error={!!fieldState.error}>
+                          <input
+                            {...field}
+                            type="email"
+                            data-testid="input-email"
+                            placeholder=" "
+                            className={floatingInputCls(!!fieldState.error)}
+                          />
+                        </FloatingField>
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="isActive"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <Select
+                          value={field.value ? "active" : "inactive"}
+                          onValueChange={(v) => field.onChange(v === "active")}
+                        >
+                          <FloatingSelect label="User Status">
+                            <SelectTrigger
+                              data-testid="select-user-status"
+                              className="h-12 pt-3 border-gray-300 focus:ring-0 focus:ring-offset-0 focus:border-[#16569e]"
+                            >
+                              <SelectValue placeholder=" " />
+                            </SelectTrigger>
+                          </FloatingSelect>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </section>
+
+              {/* Official Information */}
+              <section>
+                <SectionHeader>Official Information:</SectionHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <FormField
+                    control={form.control}
+                    name="roleId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FloatingSelect label="Role" required>
+                            <SelectTrigger
+                              data-testid="select-role"
+                              className="h-12 pt-3 border-gray-300 focus:ring-0 focus:ring-offset-0 focus:border-[#16569e]"
+                            >
+                              <SelectValue placeholder=" " />
+                            </SelectTrigger>
+                          </FloatingSelect>
+                          <SelectContent>
+                            {filteredRoles.length === 0 && (
+                              <div className="px-2 py-1.5 text-sm text-gray-500">
+                                No roles available
+                              </div>
+                            )}
+                            {filteredRoles.map((r) => (
+                              <SelectItem key={r.ruid} value={r.ruid}>
+                                {r.assignedRole}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="designation"
+                    render={({ field, fieldState }) => (
+                      <FormItem>
+                        <FloatingField id="input-designation" label="Designation" required error={!!fieldState.error}>
+                          <input
+                            {...field}
+                            data-testid="input-designation"
+                            placeholder=" "
+                            className={floatingInputCls(!!fieldState.error)}
+                          />
+                        </FloatingField>
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="department"
+                    render={({ field, fieldState }) => (
+                      <FormItem className="md:col-span-2">
+                        <FloatingField id="input-department" label="Departments" required error={!!fieldState.error}>
+                          <input
+                            {...field}
+                            data-testid="input-department"
+                            placeholder=" "
+                            className={floatingInputCls(!!fieldState.error)}
+                          />
+                        </FloatingField>
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </section>
             </div>
-          </section>
 
-          {/* Vessels panel */}
-          {(userType === "Office" || userType === "Vessel") && (
-            <section>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Assigned Vessels
-              </h3>
+            {/* Vessels right panel */}
+            <aside className="lg:border-l lg:pl-6" data-testid="vessels-panel">
+              <h3 className="text-sm font-semibold text-gray-800 mb-3">Vessels</h3>
               {loadingVessels ? (
                 <div className="flex justify-center py-6">
                   <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
@@ -808,85 +832,57 @@ function UserForm({
               ) : (vessels as VesselOption[]).length === 0 ? (
                 <p className="text-sm text-gray-500">No vessels available.</p>
               ) : (
-                <ScrollArea className="max-h-72 border rounded-md">
-                  <div
-                    className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 sticky top-0"
+                <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                  <label
+                    className="flex items-center gap-2 cursor-pointer"
                     data-testid="row-vessel-all"
                   >
-                    {(() => {
-                      const allIds = (vessels as VesselOption[])
-                        .map(getVesselId)
-                        .filter((id) => !!id);
-                      const allSelected =
-                        allIds.length > 0 &&
-                        allIds.every((id) => assignedVesselIds.includes(id));
-                      const someSelected =
-                        !allSelected && assignedVesselIds.length > 0;
-                      return (
-                        <>
-                          <Checkbox
-                            id="vessel-all"
-                            checked={
-                              allSelected
-                                ? true
-                                : someSelected
-                                ? "indeterminate"
-                                : false
-                            }
-                            onCheckedChange={(checked) => {
-                              form.setValue(
-                                "assignedVesselIds",
-                                checked === true ? allIds : [],
-                                { shouldDirty: true },
-                              );
-                            }}
-                            data-testid="checkbox-vessel-all"
-                          />
-                          <Label
-                            htmlFor="vessel-all"
-                            className="text-sm font-medium cursor-pointer"
-                          >
-                            All vessels
-                          </Label>
-                          <span className="ml-auto text-xs text-gray-500">
-                            {assignedVesselIds.length} / {allIds.length}
-                          </span>
-                        </>
-                      );
-                    })()}
-                  </div>
-                  <ul className="divide-y" data-testid="list-vessels">
-                    {(vessels as VesselOption[]).map((v) => {
-                      const id = getVesselId(v);
-                      if (!id) return null;
-                      const checked = assignedVesselIds.includes(id);
-                      return (
-                        <li
-                          key={id}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => toggleVessel(id)}
-                          data-testid={`row-vessel-${id}`}
-                        >
-                          <span className="text-sm text-gray-700">{getVesselName(v)}</span>
-                          <Switch
-                            checked={checked}
-                            onClick={(e) => e.stopPropagation()}
-                            onCheckedChange={() => toggleVessel(id)}
-                            data-testid={`switch-vessel-${id}`}
-                          />
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </ScrollArea>
+                    <Checkbox
+                      checked={
+                        allVesselsSelected
+                          ? true
+                          : someVesselsSelected
+                          ? "indeterminate"
+                          : false
+                      }
+                      onCheckedChange={(checked) => {
+                        form.setValue(
+                          "assignedVesselIds",
+                          checked === true ? allVesselIds : [],
+                          { shouldDirty: true },
+                        );
+                      }}
+                      data-testid="checkbox-vessel-all"
+                      className="data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3] data-[state=indeterminate]:bg-[#52baf3] data-[state=indeterminate]:border-[#52baf3]"
+                    />
+                    <span className="text-sm text-gray-700">All</span>
+                  </label>
+                  {(vessels as VesselOption[]).map((v) => {
+                    const id = getVesselId(v);
+                    if (!id) return null;
+                    const checked = assignedVesselIds.includes(id);
+                    return (
+                      <label
+                        key={id}
+                        className="flex items-center gap-2 cursor-pointer"
+                        data-testid={`row-vessel-${id}`}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleVessel(id)}
+                          data-testid={`checkbox-vessel-${id}`}
+                          className="data-[state=checked]:bg-[#52baf3] data-[state=checked]:border-[#52baf3]"
+                        />
+                        <span className="text-sm text-gray-700">{getVesselName(v)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               )}
-              <p className="text-xs text-gray-500 mt-2">
-                {assignedVesselIds.length} vessel(s) selected.
-              </p>
-            </section>
-          )}
+            </aside>
+          </div>
 
-          <div className="flex justify-end gap-3 pt-2 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-user">
               Cancel
             </Button>
@@ -905,5 +901,89 @@ function UserForm({
         </form>
       </Form>
     </div>
+  );
+}
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-5">
+      <h3 className="text-sm font-semibold text-[#52baf3] mb-1">{children}</h3>
+      <div className="h-px bg-gray-200" />
+    </div>
+  );
+}
+
+function floatingInputCls(error: boolean) {
+  return [
+    "peer w-full h-12 px-3 pt-3 pb-1 text-sm bg-transparent rounded-md",
+    "border focus:outline-none focus:ring-0 transition-colors",
+    error
+      ? "border-red-500 focus:border-red-500 text-red-600"
+      : "border-gray-300 focus:border-[#16569e] text-gray-800",
+  ].join(" ");
+}
+
+function FloatingField({
+  id,
+  label,
+  required,
+  error,
+  rightAdornment,
+  children,
+}: {
+  id: string;
+  label: string;
+  required?: boolean;
+  error?: boolean;
+  rightAdornment?: React.ReactNode;
+  children: React.ReactElement;
+}) {
+  const child = React.cloneElement(children, {
+    id,
+    "aria-invalid": error || undefined,
+  } as React.HTMLAttributes<HTMLElement>);
+  return (
+    <div className="relative">
+      {child}
+      <label
+        htmlFor={id}
+        className={[
+          "pointer-events-none absolute left-2 -top-2 px-1 text-[11px] bg-white transition-all",
+          "peer-placeholder-shown:top-3.5 peer-placeholder-shown:left-3 peer-placeholder-shown:text-sm",
+          "peer-focus:-top-2 peer-focus:left-2 peer-focus:text-[11px]",
+          error
+            ? "text-red-500 peer-focus:text-red-500"
+            : "text-gray-500 peer-focus:text-[#16569e]",
+        ].join(" ")}
+      >
+        {label}{required ? " *" : ""}
+      </label>
+      {rightAdornment && (
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+          {rightAdornment}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FloatingSelect({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <FormControl>
+      <div className="relative">
+        {children}
+        <span className="pointer-events-none absolute -top-2 left-2 px-1 text-[11px] bg-white text-gray-500">
+          {label}{required ? " *" : ""}
+        </span>
+      </div>
+    </FormControl>
   );
 }
