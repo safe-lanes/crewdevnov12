@@ -1,59 +1,62 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { Loader2, AlertCircle } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { setAuthSession, getAuthToken } from "@/lib/authToken";
+
+const loginSchema = z.object({
+  username: z.string().trim().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+  domain: z.string().trim().min(1, "Domain is required"),
+});
+type LoginValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [, navigate] = useLocation();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [domain, setDomain] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const form = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { username: "", password: "", domain: "" },
+  });
 
   useEffect(() => {
-    if (getAuthToken()) {
-      navigate("/");
-    }
+    if (getAuthToken()) navigate("/");
   }, [navigate]);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!username.trim() || !password || !domain.trim()) {
-      setError("All fields are required.");
-      return;
-    }
-    setSubmitting(true);
+  const onSubmit = async (values: LoginValues) => {
     try {
       const res = await fetch("/api/v2/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password, domain: domain.trim() }),
+        body: JSON.stringify(values),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.message || "Sign in failed.");
-        setSubmitting(false);
+        form.setError("root", { message: data?.message || "Sign in failed." });
         return;
       }
       setAuthSession({
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
         tenantId: data.tenantId ?? null,
-        domain: data.user.domain || domain.trim(),
+        domain: data.user.domain || values.domain,
         user: data.user,
       });
       const params = new URLSearchParams(window.location.search);
       const rawNext = params.get("next") || "/";
-      // Only allow same-origin relative paths; reject absolute / protocol-relative URLs
       const safeNext = /^\/(?!\/)/.test(rawNext) ? rawNext : "/";
       window.location.href = safeNext;
     } catch (err: any) {
-      setError(err?.message || "Network error.");
-      setSubmitting(false);
+      form.setError("root", { message: err?.message || "Network error." });
     }
   };
+
+  const submitting = form.formState.isSubmitting;
+  const rootError = form.formState.errors.root?.message;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4" data-testid="page-login">
@@ -64,72 +67,65 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">Enter your credentials to continue</p>
         </div>
 
-        {error && (
+        {rootError && (
           <div className="mb-4 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" data-testid="text-login-error">
             <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <span>{error}</span>
+            <span>{rootError}</span>
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="login-username">
-              Username or Crew ID
-            </label>
-            <input
-              id="login-username"
-              data-testid="input-username"
-              type="text"
-              autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16569e]"
-              disabled={submitting}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username or Crew ID</FormLabel>
+                  <FormControl>
+                    <Input {...field} autoComplete="username" disabled={submitting} data-testid="input-username" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="login-password">
-              Password
-            </label>
-            <input
-              id="login-password"
-              data-testid="input-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16569e]"
-              disabled={submitting}
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="password" autoComplete="current-password" disabled={submitting} data-testid="input-password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="login-domain">
-              Domain
-            </label>
-            <input
-              id="login-domain"
-              data-testid="input-domain"
-              type="text"
-              autoComplete="organization"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16569e]"
-              disabled={submitting}
+            <FormField
+              control={form.control}
+              name="domain"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Domain</FormLabel>
+                  <FormControl>
+                    <Input {...field} autoComplete="organization" disabled={submitting} data-testid="input-domain" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-
-          <button
-            type="submit"
-            data-testid="button-submit-login"
-            disabled={submitting}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-[#16569e] px-4 py-2 text-sm font-medium text-white hover:bg-[#11487e] disabled:opacity-60"
-          >
-            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitting ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-[#16569e] hover:bg-[#11487e] text-white"
+              data-testid="button-submit-login"
+            >
+              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {submitting ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+        </Form>
 
         <div className="mt-4 text-center text-sm">
           <Link href="/forgot-password" className="text-[#16569e] hover:underline" data-testid="link-forgot-password">

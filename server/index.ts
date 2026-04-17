@@ -47,7 +47,10 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      // Never log auth response bodies — they contain access/refresh tokens
+      // and dev reset tokens which must not appear in server logs.
+      const isAuthPath = path.startsWith("/api/v2/auth/");
+      if (capturedJsonResponse && !isAuthPath) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 

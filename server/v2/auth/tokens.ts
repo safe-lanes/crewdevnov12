@@ -2,14 +2,13 @@ import jwt, { SignOptions } from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 
-function ensureSecret(envName: string, fallbackFrom?: string): string {
+function ensureSecret(envName: string): string {
   const v = process.env[envName];
   if (v && v.length > 0) return v;
-  if (fallbackFrom && fallbackFrom.length > 0) return fallbackFrom;
   if (process.env.NODE_ENV === "production") {
     throw new Error(`${envName} environment variable is required in production`);
   }
-  // Dev fallback — random, not persisted across restarts
+  // Dev fallback — random, not persisted across restarts. Distinct per env name.
   const random = crypto.randomBytes(48).toString("hex");
   // eslint-disable-next-line no-console
   console.warn(`[auth] ${envName} not set; using ephemeral random secret for development.`);
@@ -17,7 +16,14 @@ function ensureSecret(envName: string, fallbackFrom?: string): string {
 }
 
 const JWT_SECRET = ensureSecret("JWT_SECRET");
-const JWT_REFRESH_SECRET = ensureSecret("JWT_REFRESH_SECRET", JWT_SECRET);
+const JWT_REFRESH_SECRET = ensureSecret("JWT_REFRESH_SECRET");
+if (JWT_REFRESH_SECRET === JWT_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_REFRESH_SECRET must be different from JWT_SECRET");
+  }
+  // eslint-disable-next-line no-console
+  console.warn("[auth] JWT_REFRESH_SECRET equals JWT_SECRET — refusing in production.");
+}
 const ACCESS_TTL = process.env.JWT_ACCESS_TTL || "15m";
 const REFRESH_TTL = process.env.JWT_REFRESH_TTL || "7d";
 export const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
