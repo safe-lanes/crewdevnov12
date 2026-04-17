@@ -36,8 +36,8 @@ export default function ForgotPasswordPage() {
       }
       setDone(true);
       if (data?.devResetToken) setDevToken(data.devResetToken);
-    } catch (err: any) {
-      form.setError("root", { message: err?.message || "Network error." });
+    } catch (err) {
+      form.setError("root", { message: (err instanceof Error ? err.message : null) || "Network error." });
     }
   };
 

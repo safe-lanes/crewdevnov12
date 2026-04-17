@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import type { JwtPayload } from "../../middleware/authMiddleware";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { z } from "zod";
 import { eq, and, sql, isNull } from "drizzle-orm";
@@ -30,10 +31,11 @@ function ensureAuthUser(req: Request, res: Response, next: () => void) {
   }
   const token = auth.slice(7).trim();
   try {
-    req.user = verifyAccessToken(token) as any;
+    const claims = verifyAccessToken(token);
+    req.user = claims satisfies JwtPayload;
     return next();
-  } catch (err: any) {
-    if (err?.name === "TokenExpiredError") {
+  } catch (err) {
+    if (err instanceof Error && err.name === "TokenExpiredError") {
       return res.status(401).json({ error: "token_expired", message: "Token has expired" });
     }
     return res.status(401).json({ error: "invalid_token", message: "Invalid authorization token" });
@@ -44,6 +46,21 @@ const router = Router();
 
 const MAX_FAILED = parseInt(process.env.AUTH_MAX_FAILED || "5", 10);
 const LOCKOUT_MIN = parseInt(process.env.AUTH_LOCKOUT_MIN || "15", 10);
+const LOCKOUT_MAX_MIN = parseInt(process.env.AUTH_LOCKOUT_MAX_MIN || "1440", 10);
+
+/**
+ * Progressive backoff: once a user crosses MAX_FAILED, every additional
+ * failed attempt doubles the lockout duration, capped at LOCKOUT_MAX_MIN.
+ *  failedAttempts = MAX_FAILED       -> LOCKOUT_MIN
+ *  failedAttempts = MAX_FAILED + 1   -> LOCKOUT_MIN * 2
+ *  failedAttempts = MAX_FAILED + 2   -> LOCKOUT_MIN * 4
+ *  ... capped at LOCKOUT_MAX_MIN
+ */
+function computeLockoutMinutes(failedAttempts: number): number {
+  const overflow = Math.max(0, failedAttempts - MAX_FAILED);
+  const minutes = LOCKOUT_MIN * Math.pow(2, overflow);
+  return Math.min(LOCKOUT_MAX_MIN, minutes);
+}
 
 const loginLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -139,8 +156,8 @@ router.post("/login", loginLimiter, async (req: Request, res: Response) => {
     const r = await getDbForDomain(domain);
     db = r.db;
     tuid = r.tuid;
-  } catch (err: any) {
-    // Use a single (any) tenant DB for audit if available; otherwise skip the log.
+  } catch {
+    // Domain not registered; respond generically without leaking which input failed.
     console.warn("[auth] login: domain not found:", domain);
     return res.status(GENERIC_FAIL.status).json(GENERIC_FAIL.body);
   }
@@ -172,7 +189,8 @@ router.post("/login", loginLimiter, async (req: Request, res: Response) => {
   if (!ok) {
     const newFails = (user.failedLoginAttempts || 0) + 1;
     const shouldLock = newFails >= MAX_FAILED;
-    const lockUntil = shouldLock ? new Date(Date.now() + LOCKOUT_MIN * 60 * 1000) : null;
+    const lockMinutes = shouldLock ? computeLockoutMinutes(newFails) : 0;
+    const lockUntil = shouldLock ? new Date(Date.now() + lockMinutes * 60 * 1000) : null;
     await db
       .update(users)
       .set({
@@ -181,7 +199,7 @@ router.post("/login", loginLimiter, async (req: Request, res: Response) => {
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));
-    await audit(db, { userId: user.id, username, domain, event: "login", success: false, ipAddress: ip, userAgent: ua, detail: shouldLock ? `bad_password+lock` : `bad_password` });
+    await audit(db, { userId: user.id, username, domain, event: "login", success: false, ipAddress: ip, userAgent: ua, detail: shouldLock ? `bad_password+lock(${lockMinutes}m)` : `bad_password` });
     return res.status(GENERIC_FAIL.status).json(GENERIC_FAIL.body);
   }
 
@@ -252,7 +270,7 @@ router.post("/refresh", refreshLimiter, async (req: Request, res: Response) => {
   let claims;
   try {
     claims = verifyRefreshToken(token);
-  } catch (err: any) {
+  } catch {
     return res.status(401).json({ error: "invalid_refresh", message: "Invalid or expired refresh token" });
   }
 
@@ -345,7 +363,8 @@ router.post("/logout", async (req: Request, res: Response) => {
   const auth = req.headers["authorization"];
   if (auth && auth.toLowerCase().startsWith("bearer ")) {
     try {
-      req.user = verifyAccessToken(auth.slice(7).trim()) as any;
+      const claims = verifyAccessToken(auth.slice(7).trim());
+      req.user = claims satisfies JwtPayload;
     } catch { /* ignore: logout always succeeds */ }
   }
   return logoutHandler(req, res);

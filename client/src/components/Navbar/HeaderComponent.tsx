@@ -193,6 +193,7 @@ export default function HeaderComponent({
 
     const [userName, setUserName] = useState('');
     const [domain, setDomain] = useState('');
+    const [designation, setDesignation] = useState('');
 
     useEffect(() => {
         const resolveUserName = (): string => {
@@ -226,8 +227,25 @@ export default function HeaderComponent({
             }
         };
 
+        const resolveDesignation = (): string => {
+            try {
+                const rawProfile = getDecryptedLocalStorageItem('userProfile', true);
+                const profile = deepParseJson(rawProfile);
+                if (profile && typeof profile === 'object') {
+                    const d = profile.designation || profile.designationName || profile.role || '';
+                    if (d) return extractStringValue(d);
+                }
+                const decrypted = getDecryptedSessionStorageItem('crewDesignation', true);
+                if (decrypted) return extractStringValue(decrypted);
+                return sessionStorage.getItem('crewDesignation') || '';
+            } catch {
+                return sessionStorage.getItem('crewDesignation') || '';
+            }
+        };
+
         setUserName(resolveUserName());
         setDomain(resolveDomain());
+        setDesignation(resolveDesignation());
     }, [isProfileOpen]);
 
     const initials = getInitials(userName);
@@ -380,6 +398,10 @@ export default function HeaderComponent({
                                 <div className="px-5 py-3">
                                     <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">User Name :  </span>
                                     <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-user-name">{userName || '-'}</span>
+                                </div>
+                                <div className="px-5 py-3">
+                                    <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">Designation :  </span>
+                                    <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-designation">{designation || '-'}</span>
                                 </div>
                                 <div className="px-5 py-3 border-b border-gray-200">
                                     <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">Domain Name :  </span>

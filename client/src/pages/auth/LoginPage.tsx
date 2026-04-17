@@ -50,8 +50,8 @@ export default function LoginPage() {
       const rawNext = params.get("next") || "/";
       const safeNext = /^\/(?!\/)/.test(rawNext) ? rawNext : "/";
       window.location.href = safeNext;
-    } catch (err: any) {
-      form.setError("root", { message: err?.message || "Network error." });
+    } catch (err) {
+      form.setError("root", { message: (err instanceof Error ? err.message : null) || "Network error." });
     }
   };
 

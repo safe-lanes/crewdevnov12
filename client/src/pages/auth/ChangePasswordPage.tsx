@@ -51,8 +51,8 @@ export default function ChangePasswordPage() {
       });
       setDone(true);
       setTimeout(() => logout(), 1500);
-    } catch (err: any) {
-      form.setError("root", { message: err?.message || "Failed to change password." });
+    } catch (err) {
+      form.setError("root", { message: (err instanceof Error ? err.message : null) || "Failed to change password." });
     }
   };
 
