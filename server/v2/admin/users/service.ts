@@ -22,6 +22,7 @@ export interface CreateUserInput {
 }
 
 export interface UpdateUserInput {
+  username?: string;
   password?: string;
   email?: string | null;
   firstName?: string | null;
@@ -124,6 +125,22 @@ export const adminUsersService = {
     }
 
     const update: Partial<typeof usersTable.$inferInsert> = {};
+    if (input.username !== undefined) {
+      const newUsername = input.username.trim();
+      if (newUsername && newUsername.toLowerCase() !== existing.username.toLowerCase()) {
+        const taken = await adminUsersRepository.usernameTakenInDomain(
+          newUsername,
+          existing.domain ?? "",
+          existing.id,
+        );
+        if (taken) {
+          const err = new Error("username_taken") as Error & { code: string };
+          err.code = "username_taken";
+          throw err;
+        }
+        update.username = newUsername;
+      }
+    }
     if (input.email !== undefined) update.email = input.email;
     if (input.firstName !== undefined) update.firstName = input.firstName;
     if (input.lastName !== undefined) update.lastName = input.lastName;

@@ -25,6 +25,7 @@ const createSchema = z.object({
 });
 
 const updateSchema = z.object({
+  username: z.string().trim().min(1).max(128).optional(),
   password: userPasswordSchema.optional(),
   email: z.string().email().optional().nullable().or(z.literal("").transform(() => null)),
   firstName: z.string().trim().min(1).max(128).optional(),
@@ -184,8 +185,12 @@ export const adminUsersController = {
       );
       res.json(shape(updated));
     } catch (err: unknown) {
-      if (err && typeof err === "object" && (err as { code?: string }).code === "not_found") {
+      const code = err && typeof err === "object" ? (err as { code?: string }).code : undefined;
+      if (code === "not_found") {
         return res.status(404).json({ error: "not_found", message: "User not found" });
+      }
+      if (code === "username_taken") {
+        return res.status(409).json({ error: "username_taken", message: "This username is already taken." });
       }
       console.error("[admin-users] update failed:", err);
       res.status(500).json({ error: "server_error", message: "Failed to update user" });
