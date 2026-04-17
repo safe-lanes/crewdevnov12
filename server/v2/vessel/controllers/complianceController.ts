@@ -38,6 +38,10 @@ interface CrewExperience {
   timeOnboardMonths: number;
   crewName: string;
   signOnDate: string | null;
+  // Raw sea-service rows for this crew member, used by the rule evaluator
+  // to recompute rank-strict aggregates (e.g. Years with Operator combined
+  // for Master + C/O) using the rule's rank rather than the assigned rank.
+  seaServices?: any[];
 }
 
 const PROFICIENCY_MAP: Record<string, number> = {
@@ -90,6 +94,39 @@ function calculateMonthsFromDates(fromDate: string | null, toDate: string | null
   return Math.max(0, months);
 }
 
+// Canonical rank aliases used to compare two rank strings (e.g. a rule
+// rank against a sea-service row's rank, or against a crew member's
+// assigned rank). Keep in sync with the rankMappings table inside
+// matchRankToCrewExperience.
+const RANK_ALIASES: Record<string, string[]> = {
+  'master': ['master'],
+  'chief officer': ['chief officer', 'c/o'],
+  'second officer': ['2nd officer', '2/o', 'second officer', '2nd off'],
+  'third officer': ['3rd officer', '3/o', 'third officer', '3rd off'],
+  'chief engineer': ['chief engineer', 'c/e'],
+  'second engineer': ['2nd engineer', '2/e', 'second engineer', '2nd eng'],
+  'third engineer': ['3rd engineer', '3/e', 'third engineer', '3rd eng'],
+  'fourth engineer': ['4th engineer', '4/e', 'fourth engineer', '4th eng'],
+};
+
+function canonicalRank(rank: string): string {
+  const normalized = normalizeRankName(rank).toLowerCase().replace(/\//g, ' ').replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  for (const [canon, aliases] of Object.entries(RANK_ALIASES)) {
+    if (normalized === canon) return canon;
+    if (aliases.some((a) => normalized === a.toLowerCase().replace(/\//g, ' ').replace(/\s+/g, ' ').trim())) {
+      return canon;
+    }
+  }
+  return normalized;
+}
+
+function ranksMatch(a: string | null | undefined, b: string | null | undefined): boolean {
+  const ca = canonicalRank(a || '');
+  const cb = canonicalRank(b || '');
+  return ca.length > 0 && ca === cb;
+}
+
 function calculateYearsFromSeaService(
   seaServices: any[],
   filterType: 'company' | 'all' | 'rank' | 'vesselType' | 'companyAndRank' | 'tanker',
@@ -104,15 +141,11 @@ function calculateYearsFromSeaService(
     
     if (filterType === 'companyAndRank') {
       const isCompany = service.serviceType === 'company' || service.serviceType === 'internal';
-      const serviceRank = normalizeRankName(service.rank || '');
-      const targetRank = normalizeRankName(currentRank || '');
-      include = isCompany && serviceRank.toLowerCase() === targetRank.toLowerCase();
+      include = isCompany && ranksMatch(service.rank, currentRank);
     } else if (filterType === 'company') {
       include = service.serviceType === 'company' || service.serviceType === 'internal';
     } else if (filterType === 'rank' && currentRank) {
-      const serviceRank = normalizeRankName(service.rank || '');
-      const targetRank = normalizeRankName(currentRank);
-      include = serviceRank.toLowerCase() === targetRank.toLowerCase();
+      include = ranksMatch(service.rank, currentRank);
     } else if (filterType === 'vesselType') {
       // "Years on This Type of Tanker" — match by tanker category, not strict UUID
       include = !!tankerCategory && seaServiceMatchesTankerCategory(service, tankerCategory);
@@ -242,6 +275,7 @@ async function getCrewExperienceForMember(
     timeOnboardMonths,
     crewName: `${crewMember.firstName || ''} ${crewMember.familyName || ''}`.trim(),
     signOnDate: signOnDate || null,
+    seaServices,
   };
 }
 
@@ -376,34 +410,13 @@ function parseRankPairString(rankPairStr: string): string[] {
 }
 
 function matchRankToCrewExperience(rankName: string, crewExperiences: CrewExperience[]): CrewExperience | undefined {
-  const normalized = rankName.toLowerCase().replace(/\//g, ' ').trim();
-  
-  const rankMappings: Record<string, string[]> = {
-    'master': ['master'],
-    'chief officer': ['chief officer', 'c/o'],
-    'second officer': ['2nd officer', '2/o', 'second officer', '2nd off'],
-    'third officer': ['3rd officer', '3/o', 'third officer', '3rd off'],
-    'chief engineer': ['chief engineer', 'c/e'],
-    'second engineer': ['2nd engineer', '2/e', 'second engineer', '2nd eng'],
-    'third engineer': ['3rd engineer', '3/e', 'third engineer', '3rd eng'],
-    'fourth engineer': ['4th engineer', '4/e', 'fourth engineer', '4th eng'],
-  };
-  
+  // Use the same canonical rank mapping as ranksMatch so that rule-to-crew
+  // matching and rule-to-sea-service matching share a single source of truth.
   for (const crew of crewExperiences) {
-    const crewRankNormalized = normalizeRankName(crew.rank).toLowerCase();
-    
-    if (crewRankNormalized === normalized) return crew;
-    
-    for (const [key, aliases] of Object.entries(rankMappings)) {
-      const ruleMatchesKey = aliases.some(a => normalized === a || normalized.startsWith(a + ' '));
-      const crewMatchesKey = crewRankNormalized === key || aliases.some(a => crewRankNormalized === a);
-      
-      if (ruleMatchesKey && crewMatchesKey) {
-        return crew;
-      }
+    if (ranksMatch(crew.rank, rankName)) {
+      return crew;
     }
   }
-  
   return undefined;
 }
 
@@ -411,7 +424,8 @@ function evaluateExperienceRules(
   ruleArray: any[],
   crewExperiences: CrewExperience[],
   category: string,
-  getExperienceValue: (crew: CrewExperience) => number
+  getExperienceValue: (crew: CrewExperience) => number,
+  getExperienceForRank?: (crew: CrewExperience, ruleRank: string) => number
 ): ComplianceRuleResult[] {
   const results: ComplianceRuleResult[] = [];
   
@@ -427,7 +441,9 @@ function evaluateExperienceRules(
     for (const rankName of ranks) {
       const crew = matchRankToCrewExperience(rankName, crewExperiences);
       if (crew) {
-        totalYears += getExperienceValue(crew);
+        totalYears += getExperienceForRank
+          ? getExperienceForRank(crew, rankName)
+          : getExperienceValue(crew);
         foundRanks.push(normalizeRankName(crew.rank));
       }
     }
@@ -602,7 +618,16 @@ function checkComplianceForOilMajor(
       experienceRules.yearsWithOperator,
       crewExperiences,
       'Years with Operator',
-      (crew) => crew.yearsWithOperator
+      (crew) => crew.yearsWithOperator,
+      // Rank-strict: each rank in a combined-aggregate rule contributes
+      // only its own same-rank, same-operator months from the matched
+      // crew member's sea-service history. This guarantees the aggregate
+      // is the simple sum of per-rank operator months and never includes
+      // months from any other rank (e.g. C/O months in the Master total).
+      (crew, ruleRank) =>
+        crew.seaServices
+          ? calculateYearsFromSeaService(crew.seaServices, 'companyAndRank', ruleRank)
+          : crew.yearsWithOperator
     ));
   }
   
