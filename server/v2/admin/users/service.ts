@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { hashPassword } from "../../auth/tokens";
 import { adminUsersRepository, type AdminUserRow } from "./repository";
+import type { users as usersTable } from "@shared/schema";
 
 export type ListFilters = { search?: string; type?: string; domain?: string | null };
 
@@ -71,7 +72,7 @@ export const adminUsersService = {
   async create(input: CreateUserInput, actor: { id?: number; username?: string }) {
     const taken = await adminUsersRepository.usernameTakenInDomain(input.username, input.domain);
     if (taken) {
-      const err: any = new Error("username_taken");
+      const err = new Error("username_taken") as Error & { code: string };
       err.code = "username_taken";
       throw err;
     }
@@ -117,12 +118,12 @@ export const adminUsersService = {
   async update(uuid: string, input: UpdateUserInput, actor: { id?: number; username?: string }, callerDomain?: string | null) {
     const existing = await adminUsersRepository.findByUuid(uuid, callerDomain ?? undefined);
     if (!existing) {
-      const err: any = new Error("not_found");
+      const err = new Error("not_found") as Error & { code: string };
       err.code = "not_found";
       throw err;
     }
 
-    const update: any = {};
+    const update: Partial<typeof usersTable.$inferInsert> = {};
     if (input.email !== undefined) update.email = input.email;
     if (input.firstName !== undefined) update.firstName = input.firstName;
     if (input.lastName !== undefined) update.lastName = input.lastName;

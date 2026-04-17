@@ -1,6 +1,12 @@
-import { and, eq, sql, desc, inArray } from "drizzle-orm";
+import { and, eq, sql, desc, inArray, type SQL } from "drizzle-orm";
 import { getDb } from "../../db";
-import { users, userVesselAssignments, loginAuditLog, refreshTokens, type SelectUser } from "@shared/schema";
+import {
+  users,
+  userVesselAssignments,
+  loginAuditLog,
+  refreshTokens,
+  type SelectUser,
+} from "@shared/schema";
 import { admRoleMasterAc } from "@shared/v2/admin/schema";
 
 export type AdminUserRow = Omit<SelectUser, "password"> & {
@@ -10,7 +16,7 @@ export type AdminUserRow = Omit<SelectUser, "password"> & {
 export class AdminUsersRepository {
   async list(opts: { search?: string; type?: string; domain?: string | null }): Promise<AdminUserRow[]> {
     const db = getDb();
-    const conditions = [] as any[];
+    const conditions: SQL[] = [];
     if (opts.domain) {
       conditions.push(sql`LOWER(COALESCE(${users.domain}, '')) = LOWER(${opts.domain})`);
     }
@@ -54,7 +60,7 @@ export class AdminUsersRepository {
       })
       .from(users)
       .leftJoin(admRoleMasterAc, eq(admRoleMasterAc.ruid, users.roleId))
-      .where(where as any)
+      .where(where)
       .orderBy(desc(users.createdAt));
 
     return rows as AdminUserRow[];
@@ -108,7 +114,7 @@ export class AdminUsersRepository {
 
   async usernameTakenInDomain(username: string, domain: string, excludeId?: number): Promise<boolean> {
     const db = getDb();
-    const conds: any[] = [
+    const conds: SQL[] = [
       sql`LOWER(${users.username}) = LOWER(${username})`,
       sql`LOWER(COALESCE(${users.domain}, '')) = LOWER(${domain})`,
     ];
@@ -121,13 +127,16 @@ export class AdminUsersRepository {
     return rows.length > 0;
   }
 
-  async insertUser(data: any): Promise<SelectUser> {
+  async insertUser(data: typeof users.$inferInsert): Promise<SelectUser> {
     const db = getDb();
     const rows = await db.insert(users).values(data).returning();
     return rows[0];
   }
 
-  async updateUserById(id: number, data: any): Promise<SelectUser | undefined> {
+  async updateUserById(
+    id: number,
+    data: Partial<typeof users.$inferInsert>,
+  ): Promise<SelectUser | undefined> {
     const db = getDb();
     const rows = await db
       .update(users)

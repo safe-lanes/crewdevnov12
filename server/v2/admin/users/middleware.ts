@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { verifyAccessToken } from "../../auth/tokens";
+import { verifyAccessToken, type AccessClaims } from "../../auth/tokens";
 import { adminUsersRepository } from "./repository";
 
 const ADMIN_ROLE_NAMES = new Set(
@@ -14,8 +14,8 @@ export function ensureAuthUser(req: Request, res: Response, next: NextFunction) 
   const auth = req.headers["authorization"];
   if (auth && auth.toLowerCase().startsWith("bearer ")) {
     try {
-      const claims = verifyAccessToken(auth.slice(7).trim());
-      req.user = claims as any;
+      const claims: AccessClaims = verifyAccessToken(auth.slice(7).trim());
+      req.user = claims;
       return next();
     } catch {
       // fall through

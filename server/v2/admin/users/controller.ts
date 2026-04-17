@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { adminUsersService } from "./service";
+import { adminUsersService, type CreateUserInput, type UpdateUserInput } from "./service";
 import { userPasswordSchema } from "@shared/schema";
+import type { AdminUserRow } from "./repository";
 
 // Accept the wire-format value ("Vessel") that the UI sends; the controller
 // translates it to the DB-format ("Ship") via wireToDbType before invoking
@@ -37,14 +38,20 @@ const updateSchema = z.object({
   assignedVesselIds: z.array(z.string()).optional(),
 });
 
+type ReqUser = {
+  id?: unknown;
+  username?: unknown;
+  domain?: unknown;
+};
+
 function callerDomain(req: Request): string | null {
-  const u: any = req.user || {};
+  const u = (req.user ?? {}) as ReqUser;
   if (typeof u.domain === "string" && u.domain.trim()) return u.domain.trim();
   return null;
 }
 
 function callerActor(req: Request): { id?: number; username?: string } {
-  const u: any = req.user || {};
+  const u = (req.user ?? {}) as ReqUser;
   return {
     id: typeof u.id === "number" ? u.id : undefined,
     username: typeof u.username === "string" ? u.username : undefined,
@@ -64,9 +71,16 @@ function dbToWireType(t?: string | null): "Office" | "Vessel" | undefined {
   return undefined;
 }
 
-function shape(u: any) {
+type AdminUserShaped = Omit<AdminUserRow, "userType"> & {
+  userType: "Office" | "Vessel" | string;
+  assignedVesselIds?: string[];
+};
+
+function shape(
+  u: (AdminUserRow & { assignedVesselIds?: string[] }) | null | undefined,
+): AdminUserShaped | null | undefined {
   if (!u) return u;
-  const { password, ...rest } = u;
+  const { ...rest } = u as AdminUserRow & { assignedVesselIds?: string[] };
   return { ...rest, userType: dbToWireType(u.userType) ?? u.userType };
 }
 
@@ -125,14 +139,19 @@ export const adminUsersController = {
       }
       const domain = callerDomain(req);
       if (!domain) return res.status(400).json({ error: "no_domain", message: "Caller has no domain" });
-      const dbType = wireToDbType(parsed.data.userType) || parsed.data.userType;
-      const created = await adminUsersService.create(
-        { ...parsed.data, userType: dbType, domain } as any,
-        callerActor(req),
-      );
+      const dbType = wireToDbType(parsed.data.userType);
+      if (dbType !== "Office" && dbType !== "Ship") {
+        return res.status(400).json({ error: "validation_failed", message: "Invalid userType" });
+      }
+      const createInput: CreateUserInput = {
+        ...parsed.data,
+        userType: dbType,
+        domain,
+      };
+      const created = await adminUsersService.create(createInput, callerActor(req));
       res.status(201).json(shape(created));
-    } catch (err: any) {
-      if (err?.code === "username_taken") {
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && (err as { code?: string }).code === "username_taken") {
         return res.status(409).json({ error: "username_taken", message: "This username is already taken." });
       }
       console.error("[admin-users] create failed:", err);
@@ -152,15 +171,20 @@ export const adminUsersController = {
       }
       const userType = parsed.data.userType ? wireToDbType(parsed.data.userType) : undefined;
       const domain = callerDomain(req);
+      const { userType: _wireType, ...rest } = parsed.data;
+      const updateInput: UpdateUserInput = {
+        ...rest,
+        ...(userType ? { userType } : {}),
+      };
       const updated = await adminUsersService.update(
         req.params.uuid,
-        { ...parsed.data, ...(userType ? { userType } : {}) } as any,
+        updateInput,
         callerActor(req),
         domain,
       );
       res.json(shape(updated));
-    } catch (err: any) {
-      if (err?.code === "not_found") {
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && (err as { code?: string }).code === "not_found") {
         return res.status(404).json({ error: "not_found", message: "User not found" });
       }
       console.error("[admin-users] update failed:", err);

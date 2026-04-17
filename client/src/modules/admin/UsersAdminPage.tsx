@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Search, Pencil, Eye, EyeOff, ArrowLeft, X, Loader2, Check } from "lucide-react";
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -43,7 +45,28 @@ import {
   checkUsernameAvailable,
 } from "./hooks/useAdminUsersV2";
 import { useAccessControlRolesV2 } from "./hooks/useAdminV2";
-import type { AdminUserDto } from "./api/adminUsersApiV2";
+import type {
+  AdminUserDto,
+  CreateUserPayload,
+  UpdateUserPayload,
+} from "./api/adminUsersApiV2";
+
+function useDebouncedValue<T>(value: T, delayMs = 350): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+function getApiErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "message" in err) {
+    const m = (err as { message?: unknown }).message;
+    if (typeof m === "string" && m.trim()) return m;
+  }
+  return "Something went wrong.";
+}
 
 type UserType = "Office" | "Vessel";
 type FilterType = "All" | UserType;
@@ -112,15 +135,6 @@ function getVesselName(v: VesselOption): string {
   return v.vesselName ?? v.name ?? "Unnamed vessel";
 }
 
-function formatLastLogin(iso: string | null) {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString();
-  } catch {
-    return "—";
-  }
-}
 
 export default function UsersAdminPage() {
   const [mode, setMode] = useState<Mode>("list");
@@ -161,10 +175,11 @@ function UsersList({
   onEdit: (uuid: string) => void;
 }) {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 350);
   const [filter, setFilter] = useState<FilterType>("All");
 
   const { data: users = [], isLoading } = useAdminUsersV2({
-    search: search.trim() || undefined,
+    search: debouncedSearch || undefined,
     type: filter === "All" ? undefined : filter,
   });
 
@@ -219,14 +234,14 @@ function UsersList({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40px]"></TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Full Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead>First Name</TableHead>
+                  <TableHead>Last Name</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Designation</TableHead>
+                  <TableHead>Preferred Auth Method</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Last Login</TableHead>
+                  <TableHead className="w-[80px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -245,47 +260,54 @@ function UsersList({
                   </TableRow>
                 )}
                 {!isLoading &&
-                  users.map((u) => (
-                    <TableRow key={u.uuid ?? u.id} data-testid={`row-user-${u.uuid ?? u.id}`}>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => u.uuid && onEdit(u.uuid)}
-                          disabled={!u.uuid}
-                          data-testid={`button-edit-user-${u.uuid ?? u.id}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                      <TableCell data-testid={`text-username-${u.uuid ?? u.id}`}>{u.username}</TableCell>
-                      <TableCell data-testid={`text-fullname-${u.uuid ?? u.id}`}>
-                        {u.fullName || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "—"}
-                      </TableCell>
-                      <TableCell>{u.email || "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" data-testid={`badge-type-${u.uuid ?? u.id}`}>
-                          {u.userType === "Office" ? "Office" : "Vessel"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{u.roleName || <span className="text-gray-400">—</span>}</TableCell>
-                      <TableCell>
-                        {u.isActive ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                            Active
+                  users.map((u: AdminUserDto) => {
+                    const rowKey = u.uuid ?? String(u.id);
+                    return (
+                      <TableRow key={rowKey} data-testid={`row-user-${rowKey}`}>
+                        <TableCell data-testid={`text-firstname-${rowKey}`}>
+                          {u.firstName || "—"}
+                        </TableCell>
+                        <TableCell data-testid={`text-lastname-${rowKey}`}>
+                          {u.lastName || "—"}
+                        </TableCell>
+                        <TableCell>
+                          {u.roleName || <span className="text-gray-400">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" data-testid={`badge-type-${rowKey}`}>
+                            {u.userType === "Office" ? "Office" : "Vessel"}
                           </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-gray-500">
-                            Inactive
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {formatLastLogin(u.lastLoginAt)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>{u.designation || "—"}</TableCell>
+                        <TableCell data-testid={`text-auth-method-${rowKey}`}>
+                          {u.preferredAuthMethod === "TOTP" ? "TOTP" : "None"}
+                        </TableCell>
+                        <TableCell>
+                          {u.isActive ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-gray-500">
+                              Inactive
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => u.uuid && onEdit(u.uuid)}
+                            disabled={!u.uuid}
+                            data-testid={`button-edit-user-${rowKey}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           </ScrollArea>
@@ -315,10 +337,12 @@ function UserForm({
   const createMutation = useCreateAdminUserV2();
   const updateMutation = useUpdateAdminUserV2();
 
+  type FormValues = EditUserForm; // superset of NewUserForm (password optional)
   const schema = isEdit ? editUserSchema : newUserSchema;
+  const resolver = zodResolver(schema) as Resolver<FormValues>;
 
-  const form = useForm<NewUserForm | EditUserForm>({
-    resolver: zodResolver(schema as any),
+  const form = useForm<FormValues>({
+    resolver,
     defaultValues: {
       username: "",
       password: "",
@@ -368,7 +392,7 @@ function UserForm({
       roleId: existing.roleId || "",
       isActive: !!existing.isActive,
       assignedVesselIds: existing.assignedVesselIds || [],
-    } as any);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing, isEdit]);
 
@@ -403,7 +427,7 @@ function UserForm({
     form.setValue("assignedVesselIds", Array.from(cur), { shouldDirty: true });
   }
 
-  async function onSubmit(values: NewUserForm | EditUserForm) {
+  async function onSubmit(values: FormValues) {
     if (usernameStatus === "taken") {
       form.setError("username", {
         type: "manual",
@@ -411,8 +435,9 @@ function UserForm({
       });
       return;
     }
-    const payload: any = {
-      username: values.username.trim(),
+    const username = values.username.trim();
+    const basePayload: UpdateUserPayload = {
+      username,
       firstName: values.firstName.trim(),
       lastName: values.lastName?.trim() || null,
       email: values.email?.trim() || null,
@@ -422,33 +447,36 @@ function UserForm({
       userType: values.userType,
       roleId: values.roleId || null,
       isActive: values.isActive,
-      assignedVesselIds: values.userType === "Vessel" ? values.assignedVesselIds : [],
+      assignedVesselIds:
+        values.userType === "Vessel" ? values.assignedVesselIds : [],
     };
-    if (!isEdit) {
-      payload.password = (values as NewUserForm).password;
-    } else if ((values as EditUserForm).password) {
-      payload.password = (values as EditUserForm).password;
-    }
+    const password = values.password?.trim() || "";
 
     try {
       if (isEdit && userUuid) {
-        await updateMutation.mutateAsync({ uuid: userUuid, payload });
-        toast({ title: "User updated", description: `${payload.username} has been saved.` });
+        const updatePayload: UpdateUserPayload = password
+          ? { ...basePayload, password }
+          : basePayload;
+        await updateMutation.mutateAsync({ uuid: userUuid, payload: updatePayload });
+        toast({ title: "User updated", description: `${username} has been saved.` });
       } else {
-        await createMutation.mutateAsync(payload);
-        toast({ title: "User created", description: `${payload.username} has been added.` });
+        const createPayload: CreateUserPayload = {
+          ...basePayload,
+          firstName: basePayload.firstName ?? "",
+          username,
+          password,
+          userType: values.userType,
+        };
+        await createMutation.mutateAsync(createPayload);
+        toast({ title: "User created", description: `${username} has been added.` });
       }
       onClose();
-    } catch (err: any) {
-      let message = "Something went wrong.";
-      try {
-        const body = await err?.response?.json?.();
-        if (body?.message) message = body.message;
-        else if (typeof err?.message === "string") message = err.message;
-      } catch {
-        if (typeof err?.message === "string") message = err.message;
-      }
-      toast({ title: "Save failed", description: message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({
+        title: "Save failed",
+        description: getApiErrorMessage(err),
+        variant: "destructive",
+      });
     }
   }
 
@@ -635,27 +663,41 @@ function UserForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>User Type *</FormLabel>
-                    <Select
-                      onValueChange={(v) => {
-                        field.onChange(v);
-                        // Clear role on type change to avoid mismatched filter
-                        form.setValue("roleId", "");
-                        if (v === "Office") {
-                          form.setValue("assignedVesselIds", []);
-                        }
-                      }}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-user-type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Office">Office</SelectItem>
-                        <SelectItem value="Vessel">Vessel</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <RadioGroup
+                        className="flex gap-6 pt-1"
+                        value={field.value}
+                        onValueChange={(v) => {
+                          field.onChange(v as UserType);
+                          // Clear role on type change to avoid mismatched filter
+                          form.setValue("roleId", "");
+                          if (v === "Office") {
+                            form.setValue("assignedVesselIds", []);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem
+                            value="Office"
+                            id="user-type-office"
+                            data-testid="radio-user-type-office"
+                          />
+                          <Label htmlFor="user-type-office" className="cursor-pointer text-sm">
+                            Office
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem
+                            value="Vessel"
+                            id="user-type-vessel"
+                            data-testid="radio-user-type-vessel"
+                          />
+                          <Label htmlFor="user-type-vessel" className="cursor-pointer text-sm">
+                            Vessel
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -751,6 +793,52 @@ function UserForm({
                 <p className="text-sm text-gray-500">No vessels available.</p>
               ) : (
                 <ScrollArea className="max-h-72 border rounded-md">
+                  <div
+                    className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 sticky top-0"
+                    data-testid="row-vessel-all"
+                  >
+                    {(() => {
+                      const allIds = (vessels as VesselOption[])
+                        .map(getVesselId)
+                        .filter((id) => !!id);
+                      const allSelected =
+                        allIds.length > 0 &&
+                        allIds.every((id) => assignedVesselIds.includes(id));
+                      const someSelected =
+                        !allSelected && assignedVesselIds.length > 0;
+                      return (
+                        <>
+                          <Checkbox
+                            id="vessel-all"
+                            checked={
+                              allSelected
+                                ? true
+                                : someSelected
+                                ? "indeterminate"
+                                : false
+                            }
+                            onCheckedChange={(checked) => {
+                              form.setValue(
+                                "assignedVesselIds",
+                                checked === true ? allIds : [],
+                                { shouldDirty: true },
+                              );
+                            }}
+                            data-testid="checkbox-vessel-all"
+                          />
+                          <Label
+                            htmlFor="vessel-all"
+                            className="text-sm font-medium cursor-pointer"
+                          >
+                            All vessels
+                          </Label>
+                          <span className="ml-auto text-xs text-gray-500">
+                            {assignedVesselIds.length} / {allIds.length}
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
                   <ul className="divide-y" data-testid="list-vessels">
                     {(vessels as VesselOption[]).map((v) => {
                       const id = getVesselId(v);
