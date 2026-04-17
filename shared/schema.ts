@@ -10,8 +10,12 @@ export const users = pgTable("users", {
   uuid: text("uuid"),
   email: text("email"),
   fullName: text("full_name"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   designation: text("designation"),
-  userType: text("user_type").notNull().default("user"),
+  department: text("department"),
+  preferredAuthMethod: text("preferred_auth_method").default("NA"),
+  userType: text("user_type").notNull().default("Office"),
   roleId: text("role_id"),
   domain: text("domain"),
   tenantId: text("tenant_id"),
@@ -25,6 +29,40 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export const userVesselAssignments = pgTable("user_vessel_assignments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  vesselId: text("vessel_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  uniqUserVessel: uniqueIndex("user_vessel_assignments_user_vessel_uq").on(t.userId, t.vesselId),
+  userIdx: index("user_vessel_assignments_user_idx").on(t.userId),
+}));
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  uuid: true,
+  password: true,
+  failedLoginAttempts: true,
+  lockoutUntil: true,
+  lastLoginAt: true,
+  lastLoginIp: true,
+  passwordChangedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  tenantId: true,
+});
+
+export const userPasswordSchema = z.string()
+  .min(12, "Password must be at least 12 characters long")
+  .regex(/[A-Z]/, "Password must include at least one uppercase letter")
+  .regex(/[a-z]/, "Password must include at least one lowercase letter")
+  .regex(/[0-9]/, "Password must include at least one digit");
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type SelectUser = typeof users.$inferSelect;
+export type UserVesselAssignment = typeof userVesselAssignments.$inferSelect;
 
 export const refreshTokens = pgTable("refresh_tokens", {
   id: serial("id").primaryKey(),
@@ -444,11 +482,6 @@ export const rotationArchive = pgTable("rotation_archive", {
 });
 
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
-
 export const insertFormSchema = createInsertSchema(forms).pick({
   name: true,
   category: true,
@@ -752,7 +785,6 @@ export const insertRotationArchiveSchema = createInsertSchema(rotationArchive).o
   createdAt: true,
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertForm = z.infer<typeof insertFormSchema>;
 export type Form = typeof forms.$inferSelect;

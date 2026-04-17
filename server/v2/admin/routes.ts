@@ -1,4 +1,5 @@
 import { Router } from "express";
+import adminUsersRoutes from "./users/routes";
 import {
   formsController,
   rankGroupsController,
@@ -19,6 +20,8 @@ import {
 } from "./controllers";
 
 const router = Router();
+
+router.use("/users", adminUsersRoutes);
 
 router.get("/forms", formsController.getAll);
 router.get("/forms/for-rank/:rankLabel", formsController.getFormForRank);

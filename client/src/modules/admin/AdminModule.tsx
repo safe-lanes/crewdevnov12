@@ -106,6 +106,7 @@ import {
 } from "@/utils/portMasterMapping";
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
 import AccessControlPage from "./AccessControlPage";
+import UsersAdminPage from "./UsersAdminPage";
 import { 
   getCategoryLabel,
   getGroupLabel,
@@ -8347,11 +8348,7 @@ const AdminModuleInner = (): JSX.Element => {
         {selectedAdminPage === "masters" && renderDataMastersModule()}
         {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
         {selectedAdminPage === "access-control" && <AccessControlPage />}
-        {selectedAdminPage === "users" && (
-          <div className="bg-white rounded-lg p-6" data-testid="page-users">
-            <h2 className="text-xl font-semibold text-gray-800" data-testid="text-users-title">Users</h2>
-          </div>
-        )}
+        {selectedAdminPage === "users" && <UsersAdminPage />}
       </MainLayout>
 
       {/* Main content */}
