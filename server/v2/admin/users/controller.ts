@@ -51,11 +51,43 @@ const IS_DEV = process.env.NODE_ENV === "development";
 const AUTH_BYPASS = process.env.AUTH_BYPASS === "true" && IS_DEV;
 const DEV_DEFAULT_DOMAIN = process.env.DEV_DOMAIN || "dev.local";
 
-function callerDomain(req: Request): string | null {
+/**
+ * Domain that comes strictly from the authenticated request (JWT). Returns
+ * null when the caller is unauthenticated or the JWT carries no domain.
+ * No dev fallback is applied here so callers can layer their own fallback
+ * (e.g. client-supplied domain) before resorting to the dev default.
+ */
+function jwtDomain(req: Request): string | null {
   const u = (req.user ?? {}) as ReqUser;
   if (typeof u.domain === "string" && u.domain.trim()) return u.domain.trim();
-  // In dev with AUTH_BYPASS there's no authenticated user, so fall back to a
-  // single dev tenant domain so admin endpoints stay usable locally.
+  return null;
+}
+
+/**
+ * Resolves the tenant domain for read-only endpoints (list, get) where
+ * we don't accept a client-supplied domain. Falls back to the dev default
+ * when AUTH_BYPASS is on so the admin pages stay usable locally.
+ */
+function callerDomain(req: Request): string | null {
+  const fromJwt = jwtDomain(req);
+  if (fromJwt) return fromJwt;
+  if (AUTH_BYPASS) return DEV_DEFAULT_DOMAIN;
+  return null;
+}
+
+/**
+ * Resolves the tenant domain for endpoints that accept a client-supplied
+ * fallback (create, update, username-available). Order: JWT → client value →
+ * dev default (only when AUTH_BYPASS is on).
+ */
+function resolveDomainWithFallback(
+  req: Request,
+  clientDomain: string | undefined,
+): string | null {
+  const fromJwt = jwtDomain(req);
+  if (fromJwt) return fromJwt;
+  const trimmed = clientDomain?.trim();
+  if (trimmed) return trimmed;
   if (AUTH_BYPASS) return DEV_DEFAULT_DOMAIN;
   return null;
 }
@@ -131,7 +163,7 @@ export const adminUsersController = {
           ? req.query.domain.trim()
           : undefined;
       // JWT domain wins; query-provided domain is only a fallback.
-      const domain = callerDomain(req) || queryDomain || null;
+      const domain = resolveDomainWithFallback(req, queryDomain);
       if (!domain) return res.status(400).json({ error: "no_domain", message: "Caller has no domain" });
       if (!username.trim()) return res.json({ available: false });
       const available = await adminUsersService.usernameAvailable(username, domain, excludeUuid);
@@ -154,7 +186,7 @@ export const adminUsersController = {
       }
       // Caller's authenticated domain wins; body-supplied domain is only used
       // as a fallback when the JWT has no domain (e.g. dev / AUTH_BYPASS).
-      const domain = callerDomain(req) || parsed.data.domain || null;
+      const domain = resolveDomainWithFallback(req, parsed.data.domain);
       if (!domain) return res.status(400).json({ error: "no_domain", message: "Caller has no domain" });
       const dbType = wireToDbType(parsed.data.userType);
       if (dbType !== "Office" && dbType !== "Ship") {
@@ -190,7 +222,7 @@ export const adminUsersController = {
       const userType = parsed.data.userType ? wireToDbType(parsed.data.userType) : undefined;
       // Caller's authenticated domain wins; body-supplied domain is only used
       // as a fallback when the JWT has no domain (e.g. dev / AUTH_BYPASS).
-      const domain = callerDomain(req) || parsed.data.domain || null;
+      const domain = resolveDomainWithFallback(req, parsed.data.domain);
       if (!domain) return res.status(400).json({ error: "no_domain", message: "Caller has no domain" });
       const { userType: _wireType, domain: _bodyDomain, ...rest } = parsed.data;
       const updateInput: UpdateUserInput = {
