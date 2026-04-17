@@ -786,7 +786,7 @@ function UserForm({
                     name="designation"
                     render={({ field, fieldState }) => (
                       <FormItem>
-                        <FloatingField id="input-designation" label="Designation" required error={!!fieldState.error}>
+                        <FloatingField id="input-designation" label="Designation" error={!!fieldState.error}>
                           <input
                             {...field}
                             data-testid="input-designation"
@@ -804,7 +804,7 @@ function UserForm({
                     name="department"
                     render={({ field, fieldState }) => (
                       <FormItem className="md:col-span-2">
-                        <FloatingField id="input-department" label="Departments" required error={!!fieldState.error}>
+                        <FloatingField id="input-department" label="Departments" error={!!fieldState.error}>
                           <input
                             {...field}
                             data-testid="input-department"
