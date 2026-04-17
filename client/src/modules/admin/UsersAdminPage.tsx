@@ -35,8 +35,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useExternalVessels } from "@/hooks/useExternalVessels";
 import {
   useAdminUserV2,
   useAdminUsersV2,
@@ -74,10 +74,22 @@ type Mode = "list" | "new" | "edit";
 
 interface VesselOption {
   id?: string | number;
-  vesselId?: string;
-  vesselUuid?: string;
-  vesselName?: string;
-  name?: string;
+  vesselUuid?: string | null;
+  vessel?: string | null;
+  vesselType?: string | null;
+  imoNumber?: string | null;
+}
+
+function useMasterVessels() {
+  return useQuery<VesselOption[]>({
+    queryKey: ["/api/v2/vessel/list"],
+    queryFn: async () => {
+      const res = await fetch("/api/v2/vessel/list");
+      if (!res.ok) throw new Error("Failed to load vessels");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 interface RoleOption {
@@ -129,10 +141,10 @@ type NewUserForm = z.infer<typeof newUserSchema>;
 type EditUserForm = z.infer<typeof editUserSchema>;
 
 function getVesselId(v: VesselOption): string {
-  return String(v.vesselId ?? v.vesselUuid ?? v.id ?? "");
+  return String(v.vesselUuid ?? v.id ?? "");
 }
 function getVesselName(v: VesselOption): string {
-  return v.vesselName ?? v.name ?? "Unnamed vessel";
+  return v.vessel ?? "Unnamed vessel";
 }
 
 
@@ -339,7 +351,7 @@ function UserForm({
   const { data: existing, isLoading: loadingUser } = useAdminUserV2(
     isEdit ? userUuid ?? null : null,
   );
-  const { data: vessels = [], isLoading: loadingVessels } = useExternalVessels();
+  const { data: vessels = [], isLoading: loadingVessels } = useMasterVessels();
   const { data: roles = [] } = useAccessControlRolesV2();
 
   const createMutation = useCreateAdminUserV2();
@@ -455,8 +467,7 @@ function UserForm({
       userType: values.userType,
       roleId: values.roleId || null,
       isActive: values.isActive,
-      assignedVesselIds:
-        values.userType === "Vessel" ? values.assignedVesselIds : [],
+      assignedVesselIds: values.assignedVesselIds,
     };
     const password = values.password?.trim() || "";
 
@@ -679,9 +690,6 @@ function UserForm({
                           field.onChange(v as UserType);
                           // Clear role on type change to avoid mismatched filter
                           form.setValue("roleId", "");
-                          if (v === "Office") {
-                            form.setValue("assignedVesselIds", []);
-                          }
                         }}
                       >
                         <div className="flex items-center gap-2">
@@ -788,7 +796,7 @@ function UserForm({
           </section>
 
           {/* Vessels panel */}
-          {userType === "Vessel" && (
+          {(userType === "Office" || userType === "Vessel") && (
             <section>
               <h3 className="text-sm font-semibold text-gray-700 mb-3">
                 Assigned Vessels
