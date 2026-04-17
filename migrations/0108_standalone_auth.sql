@@ -1,6 +1,13 @@
 -- Migration 0108: Standalone authentication (Task #217)
 -- Extends users table with auth columns, adds refresh_tokens, password_reset_tokens, login_audit_log
 
+-- Defensive: legacy tenants may have a pre-existing `users` table that
+-- lacks the base `username` / `password` columns the rest of the app
+-- assumes. Provision them as nullable so the unique index below can be
+-- built and so the migration is idempotent across all tenant shapes.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
+
 ALTER TABLE users ADD COLUMN IF NOT EXISTS uuid TEXT UNIQUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name TEXT;
