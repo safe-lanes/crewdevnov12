@@ -63,7 +63,11 @@ export const adminUsersApiV2 = {
     const sp = new URLSearchParams({ username });
     if (excludeUuid) sp.set("excludeUuid", excludeUuid);
     const res = await fetch(`${BASE}/username-available?${sp.toString()}`);
-    if (!res.ok) return false;
+    if (!res.ok) {
+      // Server-side error (e.g. no tenant domain in dev) — surface as unknown,
+      // not as "taken", so the form caller can fall back to "idle".
+      throw new Error(`username-available failed: ${res.status}`);
+    }
     const data = await res.json();
     return !!data.available;
   },
