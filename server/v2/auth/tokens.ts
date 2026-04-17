@@ -26,7 +26,18 @@ if (JWT_REFRESH_SECRET === JWT_SECRET) {
 }
 const ACCESS_TTL = process.env.JWT_ACCESS_TTL || "15m";
 const REFRESH_TTL = process.env.JWT_REFRESH_TTL || "7d";
-export const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
+// Bcrypt cost: enforce a minimum of 12 rounds per task requirements.
+// Operators may raise this via env, but never lower it below 12.
+const MIN_BCRYPT_ROUNDS = 12;
+const requestedRounds = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
+export const BCRYPT_ROUNDS = Math.max(
+  MIN_BCRYPT_ROUNDS,
+  Number.isFinite(requestedRounds) ? requestedRounds : MIN_BCRYPT_ROUNDS,
+);
+if (requestedRounds < MIN_BCRYPT_ROUNDS) {
+  // eslint-disable-next-line no-console
+  console.warn(`[auth] BCRYPT_ROUNDS=${requestedRounds} below minimum; clamped to ${MIN_BCRYPT_ROUNDS}.`);
+}
 const CLOCK_SKEW_SEC = 5;
 
 export interface AccessClaims {

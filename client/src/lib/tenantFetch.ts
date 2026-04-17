@@ -39,8 +39,22 @@ window.fetch = async function (
   const isApi = url.startsWith("/api");
   if (!isApi) return originalFetch(input, init);
 
-  // Skip interception for auth refresh itself to avoid recursion.
-  if (url.includes("/api/v2/auth/refresh") || url.includes("/api/v2/auth/login")) {
+  // Skip interception for all public auth endpoints AND for /logout.
+  // - login/refresh/forgot-password/reset-password are unauthenticated flows whose
+  //   own 401s must surface to the caller (e.g., "invalid reset token") instead of
+  //   triggering a session refresh / redirect.
+  // - /logout must be sent with the user's *current* refresh token; if the access
+  //   token is expired we'd otherwise refresh (rotating R1 -> R2) and then retry
+  //   /logout with the stale R1, leaving R2 active. The logout handler tolerates
+  //   401-on-access-token by best-effort revoking the refresh token in the body.
+  const AUTH_BYPASS_PATHS = [
+    "/api/v2/auth/login",
+    "/api/v2/auth/refresh",
+    "/api/v2/auth/logout",
+    "/api/v2/auth/forgot-password",
+    "/api/v2/auth/reset-password",
+  ];
+  if (AUTH_BYPASS_PATHS.some((p) => url.includes(p))) {
     return originalFetch(input, init);
   }
 

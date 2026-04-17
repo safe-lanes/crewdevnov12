@@ -21,7 +21,8 @@ async function main() {
 
   if (!password) throw new Error("PASSWORD env var is required");
 
-  const rounds = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
+  const requested = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
+  const rounds = Math.max(12, Number.isFinite(requested) ? requested : 12);
   const hash = await bcrypt.hash(password, rounds);
   const uuid = randomUUID();
 
