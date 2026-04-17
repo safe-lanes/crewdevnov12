@@ -80,8 +80,32 @@ export const adminUsersService = {
       const existing = await adminUsersRepository.findByUuid(excludeUuid, domain);
       excludeId = existing?.id;
     }
+    // Mirror the create/update guards: a Crew ID is only "available" if it
+    // isn't taken AND doesn't collide with another user's username in the
+    // same domain — otherwise the UI would show a green check and then fail
+    // on save with a 409.
     const taken = await adminUsersRepository.crewIdTakenInDomain(trimmed, domain, excludeId);
-    return !taken;
+    if (taken) return false;
+    const collides = await adminUsersRepository.crewIdCollidesWithUsername(trimmed, domain, excludeId);
+    return !collides;
+  },
+
+  async usernameAvailableStrict(username: string, domain: string, excludeUuid?: string): Promise<boolean> {
+    // Username availability is already wired through usernameAvailable above;
+    // this strict variant is exposed for callers that want the same
+    // cross-field guard the create/update path applies. (Kept as a separate
+    // method to avoid changing the existing usernameAvailable contract.)
+    const trimmed = username.trim();
+    if (!trimmed) return false;
+    let excludeId: number | undefined;
+    if (excludeUuid) {
+      const existing = await adminUsersRepository.findByUuid(excludeUuid, domain);
+      excludeId = existing?.id;
+    }
+    const taken = await adminUsersRepository.usernameTakenInDomain(trimmed, domain, excludeId);
+    if (taken) return false;
+    const collides = await adminUsersRepository.usernameCollidesWithCrewId(trimmed, domain, excludeId);
+    return !collides;
   },
 
   async create(input: CreateUserInput, actor: { id?: number; username?: string }) {

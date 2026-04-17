@@ -68,7 +68,11 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const u = (req.body?.username || "").toLowerCase().trim();
+    // Bucket per-identifier so clients sending `crewId` or `identifier`
+    // (instead of `username`) get the same per-identifier limiting.
+    const u = ((req.body?.identifier || req.body?.username || req.body?.crewId || "") as string)
+      .toLowerCase()
+      .trim();
     const d = (req.body?.domain || "").toLowerCase().trim();
     return `${ipKeyGenerator(req.ip || "")}|${u}|${d}`;
   },
