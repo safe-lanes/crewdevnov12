@@ -8,6 +8,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { setAuthSession, getAuthToken } from "@/lib/authToken";
+import loginBgImage from "@assets/bg_image_1776412125963.jpg";
 
 const loginSchema = z.object({
   username: z.string().trim().min(1, "Username is required"),
@@ -59,12 +60,17 @@ export default function LoginPage() {
   const rootError = form.formState.errors.root?.message;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4" data-testid="page-login">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 border border-gray-200">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${loginBgImage})` }}
+      data-testid="page-login"
+    >
+      <div className="absolute inset-0 bg-black/30 dark:bg-black/50" aria-hidden="true" />
+      <div className="relative w-full max-w-md bg-white/95 dark:bg-gray-900/90 backdrop-blur-md rounded-lg shadow-xl p-8 border border-white/40 dark:border-gray-700">
         <div className="flex flex-col items-center mb-6">
           <img src="/figmaAssets/group-2.png" alt="Logo" className="w-14 h-10 mb-2" />
-          <h1 className="text-xl font-semibold text-gray-900">Sign in to Crewing</h1>
-          <p className="text-sm text-gray-500 mt-1">Enter your credentials to continue</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50">Sign in to Crewing</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter your credentials to continue</p>
         </div>
 
         {rootError && (
