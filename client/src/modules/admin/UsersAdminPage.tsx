@@ -194,7 +194,11 @@ function UsersList({
             Manage office and vessel user accounts.
           </p>
         </div>
-        <Button onClick={onNew} data-testid="button-add-user">
+        <Button
+          onClick={onNew}
+          className="bg-[#16569e] hover:bg-[#0f4078] text-white"
+          data-testid="button-add-user"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add User
         </Button>
@@ -220,7 +224,11 @@ function UsersList({
               variant={filter === f ? "default" : "ghost"}
               onClick={() => setFilter(f)}
               data-testid={`button-filter-${f.toLowerCase()}`}
-              className={filter === f ? "" : "text-gray-600"}
+              className={
+                filter === f
+                  ? "bg-[#52baf3] hover:bg-[#3aa9e5] text-white"
+                  : "text-gray-600"
+              }
             >
               {f}
             </Button>
@@ -233,15 +241,15 @@ function UsersList({
           <ScrollArea className="max-h-[60vh]">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>First Name</TableHead>
-                  <TableHead>Last Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Designation</TableHead>
-                  <TableHead>Preferred Auth Method</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[80px] text-right">Actions</TableHead>
+                <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                  <TableHead className="text-white font-semibold">First Name</TableHead>
+                  <TableHead className="text-white font-semibold">Last Name</TableHead>
+                  <TableHead className="text-white font-semibold">Role</TableHead>
+                  <TableHead className="text-white font-semibold">Type</TableHead>
+                  <TableHead className="text-white font-semibold">Designation</TableHead>
+                  <TableHead className="text-white font-semibold">Preferred Auth Method</TableHead>
+                  <TableHead className="text-white font-semibold">Status</TableHead>
+                  <TableHead className="w-[80px] text-right text-white font-semibold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -297,7 +305,7 @@ function UsersList({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 text-[#16569e] hover:text-[#0f4078] hover:bg-[#52baf3]/10"
                             onClick={() => u.uuid && onEdit(u.uuid)}
                             disabled={!u.uuid}
                             data-testid={`button-edit-user-${rowKey}`}
@@ -877,6 +885,7 @@ function UserForm({
             <Button
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
+              className="bg-[#16569e] hover:bg-[#0f4078] text-white"
               data-testid="button-save-user"
             >
               {(createMutation.isPending || updateMutation.isPending) && (
