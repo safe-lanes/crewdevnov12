@@ -186,12 +186,16 @@ function BFCacheGuard() {
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) return; // only react to BFCache restores
-      if (isAuthRequired() && !getAuthToken()) {
-        // Use the mode-aware redirect so parent-mode sessions are sent to
-        // the external login URL and the current path is preserved as
-        // `?next=` for standalone sessions.
-        redirectToLogin();
-      }
+      if (!isAuthRequired() || getAuthToken()) return;
+      // If the cached page being restored is already /login there is
+      // nothing to evict — and routing through redirectToLogin() here
+      // would set its module-level `redirecting` flag without actually
+      // navigating, suppressing future logout/redirect calls.
+      if (window.location.pathname === "/login") return;
+      // Mode-aware redirect: parent-mode sessions hand off to the
+      // external login URL; standalone sessions get the `?next=`
+      // round-trip preserved.
+      redirectToLogin();
     };
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
