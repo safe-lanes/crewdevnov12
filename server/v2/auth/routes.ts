@@ -127,18 +127,31 @@ async function audit(
   }
 }
 
-const loginSchema = z.object({
-  username: z.string().trim().min(1).max(128),
-  password: z.string().min(1).max(256),
-  domain: z.string().trim().min(1).max(128),
-});
+const loginSchema = z
+  .object({
+    // The wire still calls the field `username` for back-compat with existing
+    // clients, but the value may be either a username OR a crew_id.
+    username: z.string().trim().max(128).optional(),
+    crewId: z.string().trim().max(128).optional(),
+    identifier: z.string().trim().max(128).optional(),
+    password: z.string().min(1).max(256),
+    domain: z.string().trim().min(1).max(128),
+  })
+  .refine(
+    (v) => Boolean((v.username && v.username.length) || (v.crewId && v.crewId.length) || (v.identifier && v.identifier.length)),
+    { message: "username or crewId is required", path: ["username"] },
+  );
 
 router.post("/login", loginLimiter, async (req: Request, res: Response) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "invalid_request", message: "username, password, and domain are required" });
+    return res.status(400).json({ error: "invalid_request", message: "username (or crewId), password, and domain are required" });
   }
-  const { username, password, domain } = parsed.data;
+  const { password, domain } = parsed.data;
+  // Caller may use any of these fields; we look the user up by username OR crew_id.
+  const identifier = (parsed.data.identifier || parsed.data.username || parsed.data.crewId || "").trim();
+  // Audit log keeps a `username` slot — we record whatever the caller actually sent.
+  const username = identifier;
   const ip = clientIp(req);
   const ua = (req.headers["user-agent"] as string) || "";
 
@@ -162,11 +175,37 @@ router.post("/login", loginLimiter, async (req: Request, res: Response) => {
     return res.status(GENERIC_FAIL.status).json(GENERIC_FAIL.body);
   }
 
-  const found = await db
+  // Resolve the identifier deterministically: username-first, crew_id second.
+  // We never combine the two predicates in a single OR + LIMIT 1 because, in
+  // the (rare but possible) event that one user's username collides with a
+  // different user's crew_id within the same domain, that returns an
+  // arbitrary row and would let the wrong account be authenticated.
+  // Username + domain is uniquely indexed (users_username_domain_idx), so the
+  // first lookup yields at most one row; the second falls back to crew_id
+  // (also uniquely indexed per domain by users_crewid_domain_idx).
+  let found = await db
     .select()
     .from(users)
-    .where(and(sql`LOWER(${users.username}) = LOWER(${username})`, sql`LOWER(${users.domain}) = LOWER(${domain})`))
+    .where(
+      and(
+        sql`LOWER(${users.username}) = LOWER(${identifier})`,
+        sql`LOWER(${users.domain}) = LOWER(${domain})`,
+      ),
+    )
     .limit(1);
+  if (found.length === 0) {
+    found = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          sql`${users.crewId} IS NOT NULL`,
+          sql`LOWER(${users.crewId}) = LOWER(${identifier})`,
+          sql`LOWER(${users.domain}) = LOWER(${domain})`,
+        ),
+      )
+      .limit(1);
+  }
 
   if (found.length === 0) {
     await audit(db, { username, domain, event: "login", success: false, ipAddress: ip, userAgent: ua, detail: "user_not_found" });
@@ -421,6 +460,7 @@ router.get("/profile", ensureAuthUser, async (req: Request, res: Response) => {
       id: user.id,
       uuid: user.uuid,
       username: user.username,
+      crewId: user.crewId ?? null,
       fullName: user.fullName,
       email: user.email,
       designation: user.designation,

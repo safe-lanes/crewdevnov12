@@ -9,9 +9,20 @@ import type { AdminUserRow } from "./repository";
 // the service.
 const userTypeSchema = z.enum(["Office", "Vessel"]);
 
+// Crew ID is optional. An empty string is normalized to null so the column
+// stays clean and the partial-unique index doesn't trip on blank values.
+const crewIdSchema = z
+  .string()
+  .trim()
+  .max(64)
+  .optional()
+  .nullable()
+  .or(z.literal("").transform(() => null));
+
 const createSchema = z.object({
   username: z.string().trim().min(1).max(128),
   password: userPasswordSchema,
+  crewId: crewIdSchema,
   email: z.string().email().optional().nullable().or(z.literal("").transform(() => null)),
   firstName: z.string().trim().min(1).max(128),
   lastName: z.string().trim().max(128).optional().nullable(),
@@ -28,6 +39,7 @@ const createSchema = z.object({
 const updateSchema = z.object({
   username: z.string().trim().min(1).max(128).optional(),
   password: userPasswordSchema.optional(),
+  crewId: crewIdSchema,
   email: z.string().email().optional().nullable().or(z.literal("").transform(() => null)),
   firstName: z.string().trim().min(1).max(128).optional(),
   lastName: z.string().trim().max(128).optional().nullable(),
@@ -174,6 +186,26 @@ export const adminUsersController = {
     }
   },
 
+  async crewIdAvailable(req: Request, res: Response) {
+    try {
+      const crewId = typeof req.query.crewId === "string" ? req.query.crewId : "";
+      const excludeUuid = typeof req.query.excludeUuid === "string" ? req.query.excludeUuid : undefined;
+      const queryDomain =
+        typeof req.query.domain === "string" && req.query.domain.trim()
+          ? req.query.domain.trim()
+          : undefined;
+      const domain = resolveDomainWithFallback(req, queryDomain);
+      if (!domain) return res.status(400).json({ error: "no_domain", message: "Caller has no domain" });
+      // An empty Crew ID is always "available" (it's an optional field).
+      if (!crewId.trim()) return res.json({ available: true });
+      const available = await adminUsersService.crewIdAvailable(crewId, domain, excludeUuid);
+      res.json({ available });
+    } catch (err) {
+      console.error("[admin-users] crewid-available failed:", err);
+      res.status(500).json({ error: "server_error", message: "Failed to check crew id" });
+    }
+  },
+
   async create(req: Request, res: Response) {
     try {
       const parsed = createSchema.safeParse(req.body);
@@ -201,8 +233,12 @@ export const adminUsersController = {
       const created = await adminUsersService.create(createInput, callerActor(req));
       res.status(201).json(shape(created));
     } catch (err: unknown) {
-      if (err && typeof err === "object" && (err as { code?: string }).code === "username_taken") {
+      const code = err && typeof err === "object" ? (err as { code?: string }).code : undefined;
+      if (code === "username_taken") {
         return res.status(409).json({ error: "username_taken", message: "This username is already taken." });
+      }
+      if (code === "crewid_taken") {
+        return res.status(409).json({ error: "crewid_taken", message: "This Crew ID is already taken." });
       }
       console.error("[admin-users] create failed:", err);
       res.status(500).json({ error: "server_error", message: "Failed to create user" });
@@ -243,6 +279,9 @@ export const adminUsersController = {
       }
       if (code === "username_taken") {
         return res.status(409).json({ error: "username_taken", message: "This username is already taken." });
+      }
+      if (code === "crewid_taken") {
+        return res.status(409).json({ error: "crewid_taken", message: "This Crew ID is already taken." });
       }
       console.error("[admin-users] update failed:", err);
       res.status(500).json({ error: "server_error", message: "Failed to update user" });

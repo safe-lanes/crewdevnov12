@@ -42,6 +42,7 @@ import {
   useCreateAdminUserV2,
   useUpdateAdminUserV2,
   checkUsernameAvailable,
+  checkCrewIdAvailable,
 } from "./hooks/useAdminUsersV2";
 import { useAccessControlRolesV2 } from "./hooks/useAdminV2";
 import type {
@@ -109,6 +110,12 @@ const passwordSchema = z
 
 const baseFields = {
   username: z.string().trim().min(1, "Username is required").max(128),
+  crewId: z
+    .string()
+    .trim()
+    .max(64, "Crew ID is too long")
+    .optional()
+    .or(z.literal("")),
   firstName: z.string().trim().min(1, "First name is required").max(128),
   lastName: z.string().trim().max(128).optional().or(z.literal("")),
   email: z
@@ -365,6 +372,7 @@ function UserForm({
     defaultValues: {
       username: "",
       password: "",
+      crewId: "",
       firstName: "",
       lastName: "",
       email: "",
@@ -394,6 +402,9 @@ function UserForm({
   const [usernameStatus, setUsernameStatus] = useState<
     "idle" | "checking" | "available" | "taken"
   >("idle");
+  const [crewIdStatus, setCrewIdStatus] = useState<
+    "idle" | "checking" | "available" | "taken"
+  >("idle");
 
   // Hydrate form when editing
   useEffect(() => {
@@ -401,6 +412,7 @@ function UserForm({
     form.reset({
       username: existing.username || "",
       password: "",
+      crewId: existing.crewId || "",
       firstName: existing.firstName || "",
       lastName: existing.lastName || "",
       email: existing.email || "",
@@ -443,6 +455,43 @@ function UserForm({
     }
   }
 
+  async function handleCrewIdBlur() {
+    const v = form.getValues("crewId")?.trim() || "";
+    if (!v) {
+      setCrewIdStatus("idle");
+      form.clearErrors("crewId");
+      return;
+    }
+    if (
+      isEdit &&
+      existing &&
+      existing.crewId &&
+      v.toLowerCase() === existing.crewId.toLowerCase()
+    ) {
+      setCrewIdStatus("idle");
+      return;
+    }
+    setCrewIdStatus("checking");
+    try {
+      const ok = await checkCrewIdAvailable(
+        v,
+        isEdit ? userUuid : undefined,
+        getResolvedDomain() || undefined,
+      );
+      setCrewIdStatus(ok ? "available" : "taken");
+      if (!ok) {
+        form.setError("crewId", {
+          type: "manual",
+          message: "This Crew ID is already taken",
+        });
+      } else {
+        form.clearErrors("crewId");
+      }
+    } catch {
+      setCrewIdStatus("idle");
+    }
+  }
+
   function toggleVessel(vid: string) {
     const cur = new Set(form.getValues("assignedVesselIds") || []);
     if (cur.has(vid)) cur.delete(vid);
@@ -458,10 +507,18 @@ function UserForm({
       });
       return;
     }
+    if (crewIdStatus === "taken") {
+      form.setError("crewId", {
+        type: "manual",
+        message: "This Crew ID is already taken",
+      });
+      return;
+    }
     const username = values.username.trim();
     const resolvedDomain = getResolvedDomain() || undefined;
     const basePayload: UpdateUserPayload = {
       username,
+      crewId: values.crewId?.trim() || null,
       firstName: values.firstName.trim(),
       lastName: values.lastName?.trim() || null,
       email: values.email?.trim() || null,
@@ -662,6 +719,46 @@ function UserForm({
                         </FloatingField>
                         {!fieldState.error && (
                           <p className="text-[11px] text-gray-400 mt-1">{PASSWORD_RULES}</p>
+                        )}
+                        <FormMessage className="text-[11px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="crewId"
+                    render={({ field, fieldState }) => (
+                      <FormItem>
+                        <FloatingField
+                          id="input-crew-id"
+                          label="Crew ID"
+                          error={!!fieldState.error}
+                          rightAdornment={
+                            crewIdStatus === "checking" ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                            ) : crewIdStatus === "available" ? (
+                              <Check className="h-4 w-4 text-emerald-500" />
+                            ) : crewIdStatus === "taken" ? (
+                              <X className="h-4 w-4 text-red-500" />
+                            ) : null
+                          }
+                        >
+                          <input
+                            {...field}
+                            data-testid="input-crew-id"
+                            placeholder=" "
+                            onBlur={() => {
+                              field.onBlur();
+                              handleCrewIdBlur();
+                            }}
+                            className={floatingInputCls(!!fieldState.error)}
+                          />
+                        </FloatingField>
+                        {!fieldState.error && (
+                          <p className="text-[11px] text-gray-400 mt-1">
+                            Optional. Lets the user sign in with this ID instead of their username.
+                          </p>
                         )}
                         <FormMessage className="text-[11px] mt-1" />
                       </FormItem>

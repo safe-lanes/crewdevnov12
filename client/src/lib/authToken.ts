@@ -61,6 +61,7 @@ export interface AuthSession {
     id: number;
     uuid?: string | null;
     username: string;
+    crewId?: string | null;
     fullName?: string | null;
     designation?: string | null;
     userType?: string | null;

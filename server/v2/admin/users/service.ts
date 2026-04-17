@@ -8,6 +8,7 @@ export type ListFilters = { search?: string; type?: string; domain?: string | nu
 export interface CreateUserInput {
   username: string;
   password: string;
+  crewId?: string | null;
   email?: string | null;
   firstName: string;
   lastName?: string | null;
@@ -24,6 +25,7 @@ export interface CreateUserInput {
 export interface UpdateUserInput {
   username?: string;
   password?: string;
+  crewId?: string | null;
   email?: string | null;
   firstName?: string | null;
   lastName?: string | null;
@@ -70,12 +72,48 @@ export const adminUsersService = {
     return !taken;
   },
 
+  async crewIdAvailable(crewId: string, domain: string, excludeUuid?: string): Promise<boolean> {
+    const trimmed = crewId.trim();
+    if (!trimmed) return true;
+    let excludeId: number | undefined;
+    if (excludeUuid) {
+      const existing = await adminUsersRepository.findByUuid(excludeUuid, domain);
+      excludeId = existing?.id;
+    }
+    const taken = await adminUsersRepository.crewIdTakenInDomain(trimmed, domain, excludeId);
+    return !taken;
+  },
+
   async create(input: CreateUserInput, actor: { id?: number; username?: string }) {
     const taken = await adminUsersRepository.usernameTakenInDomain(input.username, input.domain);
     if (taken) {
       const err = new Error("username_taken") as Error & { code: string };
       err.code = "username_taken";
       throw err;
+    }
+    // Cross-field guard: the new username must not match any existing crew_id
+    // in this domain — otherwise sign-in would be ambiguous.
+    const userCollides = await adminUsersRepository.usernameCollidesWithCrewId(input.username, input.domain);
+    if (userCollides) {
+      const err = new Error("username_taken") as Error & { code: string };
+      err.code = "username_taken";
+      throw err;
+    }
+
+    const trimmedCrewId = (input.crewId || "").trim();
+    if (trimmedCrewId) {
+      const crewTaken = await adminUsersRepository.crewIdTakenInDomain(trimmedCrewId, input.domain);
+      if (crewTaken) {
+        const err = new Error("crewid_taken") as Error & { code: string };
+        err.code = "crewid_taken";
+        throw err;
+      }
+      const crewCollides = await adminUsersRepository.crewIdCollidesWithUsername(trimmedCrewId, input.domain);
+      if (crewCollides) {
+        const err = new Error("crewid_taken") as Error & { code: string };
+        err.code = "crewid_taken";
+        throw err;
+      }
     }
 
     const passwordHash = await hashPassword(input.password);
@@ -86,6 +124,7 @@ export const adminUsersService = {
       uuid,
       username: input.username.trim(),
       password: passwordHash,
+      crewId: trimmedCrewId || null,
       email: input.email ?? null,
       firstName: input.firstName.trim(),
       lastName: (input.lastName || "").trim() || null,
@@ -138,7 +177,47 @@ export const adminUsersService = {
           err.code = "username_taken";
           throw err;
         }
+        const collides = await adminUsersRepository.usernameCollidesWithCrewId(
+          newUsername,
+          existing.domain ?? "",
+          existing.id,
+        );
+        if (collides) {
+          const err = new Error("username_taken") as Error & { code: string };
+          err.code = "username_taken";
+          throw err;
+        }
         update.username = newUsername;
+      }
+    }
+    if (input.crewId !== undefined) {
+      const newCrewId = input.crewId === null ? null : input.crewId.trim();
+      const existingCrewId = existing.crewId ?? null;
+      const normalizedNew = newCrewId ? newCrewId : null;
+      if ((normalizedNew ?? "").toLowerCase() !== (existingCrewId ?? "").toLowerCase()) {
+        if (normalizedNew) {
+          const taken = await adminUsersRepository.crewIdTakenInDomain(
+            normalizedNew,
+            existing.domain ?? "",
+            existing.id,
+          );
+          if (taken) {
+            const err = new Error("crewid_taken") as Error & { code: string };
+            err.code = "crewid_taken";
+            throw err;
+          }
+          const collides = await adminUsersRepository.crewIdCollidesWithUsername(
+            normalizedNew,
+            existing.domain ?? "",
+            existing.id,
+          );
+          if (collides) {
+            const err = new Error("crewid_taken") as Error & { code: string };
+            err.code = "crewid_taken";
+            throw err;
+          }
+        }
+        update.crewId = normalizedNew;
       }
     }
     if (input.email !== undefined) update.email = input.email;

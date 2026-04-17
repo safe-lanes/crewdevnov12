@@ -7,6 +7,7 @@ const router = Router();
 router.use(ensureAuthUser, requireAdminRole);
 
 router.get("/username-available", adminUsersController.usernameAvailable);
+router.get("/crewid-available", adminUsersController.crewIdAvailable);
 router.get("/", adminUsersController.list);
 router.get("/:uuid", adminUsersController.getOne);
 router.post("/", adminUsersController.create);

@@ -35,6 +35,7 @@ export class AdminUsersRepository {
       .select({
         id: users.id,
         username: users.username,
+        crewId: users.crewId,
         uuid: users.uuid,
         email: users.email,
         fullName: users.fullName,
@@ -72,6 +73,7 @@ export class AdminUsersRepository {
       .select({
         id: users.id,
         username: users.username,
+        crewId: users.crewId,
         uuid: users.uuid,
         email: users.email,
         fullName: users.fullName,
@@ -116,6 +118,56 @@ export class AdminUsersRepository {
     const db = getDb();
     const conds: SQL[] = [
       sql`LOWER(${users.username}) = LOWER(${username})`,
+      sql`LOWER(COALESCE(${users.domain}, '')) = LOWER(${domain})`,
+    ];
+    if (excludeId) conds.push(sql`${users.id} <> ${excludeId}`);
+    const rows = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(...conds))
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  async crewIdTakenInDomain(crewId: string, domain: string, excludeId?: number): Promise<boolean> {
+    const db = getDb();
+    const conds: SQL[] = [
+      sql`${users.crewId} IS NOT NULL`,
+      sql`LOWER(${users.crewId}) = LOWER(${crewId})`,
+      sql`LOWER(COALESCE(${users.domain}, '')) = LOWER(${domain})`,
+    ];
+    if (excludeId) conds.push(sql`${users.id} <> ${excludeId}`);
+    const rows = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(...conds))
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  // Cross-field guards: the login route can resolve either column, so we must
+  // also reject an identifier that already exists *in the other column* within
+  // the same domain — otherwise two users could share an effective sign-in id.
+  async usernameCollidesWithCrewId(username: string, domain: string, excludeId?: number): Promise<boolean> {
+    const db = getDb();
+    const conds: SQL[] = [
+      sql`${users.crewId} IS NOT NULL`,
+      sql`LOWER(${users.crewId}) = LOWER(${username})`,
+      sql`LOWER(COALESCE(${users.domain}, '')) = LOWER(${domain})`,
+    ];
+    if (excludeId) conds.push(sql`${users.id} <> ${excludeId}`);
+    const rows = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(...conds))
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  async crewIdCollidesWithUsername(crewId: string, domain: string, excludeId?: number): Promise<boolean> {
+    const db = getDb();
+    const conds: SQL[] = [
+      sql`LOWER(${users.username}) = LOWER(${crewId})`,
       sql`LOWER(COALESCE(${users.domain}, '')) = LOWER(${domain})`,
     ];
     if (excludeId) conds.push(sql`${users.id} <> ${excludeId}`);

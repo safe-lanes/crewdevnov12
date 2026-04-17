@@ -6,6 +6,7 @@ export interface AdminUserDto {
   id: number;
   uuid: string | null;
   username: string;
+  crewId: string | null;
   email: string | null;
   fullName: string | null;
   firstName: string | null;
@@ -28,6 +29,7 @@ export interface AdminUserDto {
 export interface CreateUserPayload {
   username: string;
   password: string;
+  crewId?: string | null;
   email?: string | null;
   firstName: string;
   lastName?: string | null;
@@ -74,6 +76,22 @@ export const adminUsersApiV2 = {
       // Server-side error (e.g. no tenant domain in dev) — surface as unknown,
       // not as "taken", so the form caller can fall back to "idle".
       throw new Error(`username-available failed: ${res.status}`);
+    }
+    const data = await res.json();
+    return !!data.available;
+  },
+
+  async crewIdAvailable(
+    crewId: string,
+    excludeUuid?: string,
+    domain?: string,
+  ): Promise<boolean> {
+    const sp = new URLSearchParams({ crewId });
+    if (excludeUuid) sp.set("excludeUuid", excludeUuid);
+    if (domain) sp.set("domain", domain);
+    const res = await fetch(`${BASE}/crewid-available?${sp.toString()}`);
+    if (!res.ok) {
+      throw new Error(`crewid-available failed: ${res.status}`);
     }
     const data = await res.json();
     return !!data.available;

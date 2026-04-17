@@ -51,3 +51,11 @@ export async function checkUsernameAvailable(
 ) {
   return adminUsersApiV2.usernameAvailable(username, excludeUuid, domain);
 }
+
+export async function checkCrewIdAvailable(
+  crewId: string,
+  excludeUuid?: string,
+  domain?: string,
+) {
+  return adminUsersApiV2.crewIdAvailable(crewId, excludeUuid, domain);
+}

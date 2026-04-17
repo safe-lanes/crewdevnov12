@@ -44,6 +44,7 @@ BEGIN
     id                       SERIAL PRIMARY KEY,
     username                 TEXT    NOT NULL,
     password                 TEXT    NOT NULL,
+    crew_id                  TEXT,
     uuid                     TEXT,
     email                    TEXT,
     full_name                TEXT,
@@ -72,6 +73,9 @@ BEGIN
     ON users (LOWER(username), COALESCE(domain, ''));
   CREATE INDEX IF NOT EXISTS users_email_idx ON users (LOWER(email));
   CREATE INDEX IF NOT EXISTS users_uuid_idx  ON users (uuid);
+  CREATE UNIQUE INDEX IF NOT EXISTS users_crewid_domain_idx
+    ON users (LOWER(crew_id), COALESCE(domain, ''))
+    WHERE crew_id IS NOT NULL;
 
   -- 4. Re-attach FK constraints from dependent tables. Each guarded
   --    by an existence check on the dependent table itself (it may
