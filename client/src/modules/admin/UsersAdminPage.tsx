@@ -6,7 +6,6 @@ import { Plus, Search, Pencil, Eye, EyeOff, ArrowLeft, X, Loader2, Check } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +31,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { useQuery } from "@tanstack/react-query";
@@ -668,7 +666,7 @@ function UserForm({
                     name="firstName"
                     render={({ field, fieldState }) => (
                       <FormItem>
-                        <FloatingField id="input-first-name" label="First Name" error={!!fieldState.error}>
+                        <FloatingField id="input-first-name" label="First Name" required error={!!fieldState.error}>
                           <input
                             {...field}
                             data-testid="input-first-name"
