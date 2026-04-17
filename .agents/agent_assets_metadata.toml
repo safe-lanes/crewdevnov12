@@ -6,3 +6,9 @@ id = "SiCsPjP1Pioa2gpq7Zp8M"
 uri = "file://multitenant-production-audit-report.md"
 type = "text"
 title = "SAIL Crewing — Multi-Tenant Production Audit Report"
+
+[[outputs]]
+id = "3xdWRWVhAvlNEaKIV0-2w"
+uri = "file://docs/auth-login-flow.md"
+type = "text"
+title = "Authentication & Login Flow"
