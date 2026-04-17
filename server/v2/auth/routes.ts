@@ -170,7 +170,7 @@ router.post("/login", loginLimiter, async (req: Request, res: Response) => {
   let db;
   let tuid: string | null = null;
   try {
-    const r = await getDbForDomain(domain.toLowerCase());
+    const r = await getDbForDomain(domain.trim());
     db = r.db;
     tuid = r.tuid;
   } catch {
@@ -320,7 +320,7 @@ router.post("/refresh", refreshLimiter, async (req: Request, res: Response) => {
   let db;
   let tuid: string | null = null;
   try {
-    const r = await getDbForDomain(claims.domain.toLowerCase());
+    const r = await getDbForDomain(claims.domain.trim());
     db = r.db;
     tuid = r.tuid;
   } catch {
@@ -435,7 +435,7 @@ async function logoutHandler(req: Request, res: Response) {
   }
 
   try {
-    const db = domain ? (await getDbForDomain(domain.toLowerCase())).db : getCurrentDb();
+    const db = domain ? (await getDbForDomain(domain.trim())).db : getCurrentDb();
     if (refreshToken) {
       const tokenHash = hashRefreshToken(refreshToken);
       await db
@@ -530,7 +530,7 @@ router.post("/forgot-password", forgotLimiter, async (req: Request, res: Respons
   const { email, domain } = parsed.data;
   let db;
   try {
-    const r = await getDbForDomain(domain.toLowerCase());
+    const r = await getDbForDomain(domain.trim());
     db = r.db;
   } catch {
     return res.json({ ok: true });
@@ -576,7 +576,7 @@ router.post("/reset-password", async (req: Request, res: Response) => {
   const { token, domain, newPassword } = parsed.data;
   let db;
   try {
-    const r = await getDbForDomain(domain.toLowerCase());
+    const r = await getDbForDomain(domain.trim());
     db = r.db;
   } catch {
     return res.status(401).json({ error: "invalid_token", message: "Invalid or expired reset token" });
