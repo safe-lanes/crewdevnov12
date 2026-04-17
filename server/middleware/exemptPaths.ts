@@ -1,4 +1,11 @@
-const EXEMPT_PATHS = ["/api/v2/tenant/init", "/api/health"];
+const EXEMPT_PATHS = [
+  "/api/v2/tenant/init",
+  "/api/health",
+  "/api/v2/auth/login",
+  "/api/v2/auth/refresh",
+  "/api/v2/auth/forgot-password",
+  "/api/v2/auth/reset-password",
+];
 
 export function isExempt(path: string): boolean {
   if (EXEMPT_PATHS.some((p) => path === p)) return true;

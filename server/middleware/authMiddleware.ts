@@ -7,6 +7,9 @@ export interface JwtPayload {
   id: number;
   domain: string;
   userType: string;
+  uuid?: string;
+  username?: string;
+  roleId?: string;
   iat?: number;
   exp?: number;
 }

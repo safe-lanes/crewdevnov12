@@ -11,6 +11,7 @@ import { adminV2Routes } from "./v2/admin";
 import mastersV2Routes from "./v2/masters/routes";
 import promotionsV2Routes from "./v2/promotions/routes";
 import appraisalsV2Routes from "./v2/appraisals/routes";
+import authV2Routes from "./v2/auth/routes";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
 import { storageAccount } from "./storage-accounts";
@@ -94,6 +95,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount v2 appraisals routes
   app.use("/api/v2/appraisals", appraisalsV2Routes);
+
+  // Mount v2 auth routes (standalone login)
+  app.use("/api/v2/auth", authV2Routes);
 
   // Mount Swagger API documentation
   setupSwagger(app);

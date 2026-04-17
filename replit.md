@@ -1,7 +1,7 @@
 # SAIL Crewing
 
 ## Overview
-A comprehensive maritime crew management platform (CrewingV2) with multi-tenant PostgreSQL architecture. Manages seafarer performance, crew deployment, vessel operations, and regulatory compliance. No standalone login — authenticates via parent app (SAIL Audits) using AES-encrypted JWT in sessionStorage.
+A comprehensive maritime crew management platform (CrewingV2) with multi-tenant PostgreSQL architecture. Manages seafarer performance, crew deployment, vessel operations, and regulatory compliance. Supports both standalone login (`/login`) and parent-app (SAIL Audits) JWT coexistence; switch via `VITE_AUTH_MODE` (`standalone` | `parent`).
 
 ## System Architecture
 Frontend: **React 18**, **Vite**, **Tailwind CSS**, **shadcn/ui**, **AG Grid Enterprise**, **TanStack Query v5**, **React Hook Form**, **Zod**, **Wouter**.
@@ -19,10 +19,16 @@ Pattern: **Repository + Service + Controller**. V2 routes under `server/v2/`, sh
 - Tenant data encrypted in localStorage via `tenantStorage.ts`
 
 ### Authentication
-- JWT from parent app (SAIL Audits), stored AES-encrypted in sessionStorage under `credentials`
-- `authToken.ts`: decrypts token, handles logout/redirect to `VITE_PARENT_LOGIN_URL`
-- Dev bypass: `AUTH_BYPASS=true` (backend), `VITE_AUTH_BYPASS=true` (frontend)
-- 401 responses trigger storage clear + redirect to parent login
+- Two modes via `VITE_AUTH_MODE`: `standalone` (default) shows `/login`; `parent` redirects to `VITE_PARENT_LOGIN_URL`
+- Standalone module: `server/v2/auth/` — bcrypt (12 rounds), JWT access (15m) + rotated refresh (7d, sha256-hashed in `refresh_tokens`), per-IP/user rate limiting, soft account lockout (`AUTH_MAX_FAILED`/`AUTH_LOCKOUT_MIN`), forgot/reset flow with single-use hashed tokens, server-side `login_audit_log`
+- Endpoints (under `/api/v2/auth/`): `login`, `refresh`, `logout`, `profile`, `change-password`, `forgot-password`, `reset-password`. Login/refresh/forgot/reset are exempt from tenant middleware and resolve domain → tenant from request body
+- Client: `authToken.ts` (`setAuthSession`/`clearAuthSession`/`refreshAccessToken`/`logout`) + `tenantFetch.ts` (single-flight silent refresh on 401)
+- JWT payload preserved (`id`/`domain`/`userType`) plus optional `uuid`/`username`/`roleId` for backwards compatibility
+- Storage keys preserved: `credentials` (sessionStorage AES — raw access token), `refreshCredentials`, `domain`/`crewUserId` (localStorage AES JSON), `userProfile`
+- Dev bypass: `AUTH_BYPASS=true` (backend skips parent middleware; standalone routes still enforce JWT via per-route verifier), `VITE_AUTH_BYPASS=true` (frontend)
+- Seed first admin: `USERNAME=admin PASSWORD=… DOMAIN=… EMAIL=… npx tsx scripts/seed-auth-admin.ts`
+- Required env: `JWT_SECRET` (production); optional `JWT_REFRESH_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `BCRYPT_ROUNDS`
+- 401 responses trigger silent refresh, then redirect to `/login` (standalone) or `VITE_PARENT_LOGIN_URL` (parent)
 
 ### Client Modules
 All under `client/src/modules/`:

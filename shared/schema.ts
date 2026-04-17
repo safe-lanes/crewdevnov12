@@ -7,6 +7,59 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull(),
   password: text("password").notNull(),
+  uuid: text("uuid"),
+  email: text("email"),
+  fullName: text("full_name"),
+  designation: text("designation"),
+  userType: text("user_type").notNull().default("user"),
+  roleId: text("role_id"),
+  domain: text("domain"),
+  tenantId: text("tenant_id"),
+  isActive: boolean("is_active").notNull().default(true),
+  isLocked: boolean("is_locked").notNull().default(false),
+  failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+  lockoutUntil: timestamp("lockout_until"),
+  lastLoginAt: timestamp("last_login_at"),
+  lastLoginIp: text("last_login_ip"),
+  passwordChangedAt: timestamp("password_changed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const refreshTokens = pgTable("refresh_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  parentId: integer("parent_id"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  revokedReason: text("revoked_reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const loginAuditLog = pgTable("login_audit_log", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  username: text("username"),
+  domain: text("domain"),
+  event: text("event").notNull(),
+  success: boolean("success").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  detail: text("detail"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const forms = pgTable("forms", {

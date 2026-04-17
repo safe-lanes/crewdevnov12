@@ -4,6 +4,7 @@ import { ModuleNavigator } from '../ModuleNavigator'
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { logout as authLogout } from '@/lib/authToken';
 import { 
     LayoutGrid, 
     UserPlus,
@@ -242,20 +243,13 @@ export default function HeaderComponent({
     }, []);
 
     const handleLogout = () => {
-        const protocol = window.location.protocol;
-        const hostname = window.location.hostname;
-        let portNumber = window.location.port;
-        portNumber = portNumber ? `:${portNumber}` : ''
-        const fullUrl = `${protocol}//${hostname}${portNumber}`;
         setIsProfileOpen(false);
-        const authKeys = ['crewUserName', 'crewUserId', 'userName', 'domain', 'token', 'accessToken', 'refreshToken', 'authToken', 'sessionId'];
-        // authKeys.forEach(key => {
-        //     localStorage.removeItem(key);
-        //     sessionStorage.removeItem(key);
-        // });
-        sessionStorage.clear();
-        localStorage.clear();
-        window.location.assign(`${fullUrl}/login`)
+        authLogout();
+    };
+
+    const handleChangePassword = () => {
+        setIsProfileOpen(false);
+        navigate('/change-password');
     };
 
     const handleModuleChange = useCallback((moduleId: string) => {
@@ -391,6 +385,13 @@ export default function HeaderComponent({
                                     <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">Domain Name :  </span>
                                     <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-domain-name">{domain || '-'}</span>
                                 </div>
+                                <button
+                                    className="flex items-center gap-2 w-full px-5 py-3 text-sm text-gray-800 font-['Roboto',Helvetica] hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+                                    onClick={handleChangePassword}
+                                    data-testid="button-change-password"
+                                >
+                                    Change password
+                                </button>
                                 <button
                                     className="flex items-center gap-2 w-full px-5 py-3 text-sm text-gray-800 font-['Roboto',Helvetica] hover:bg-gray-100 cursor-pointer"
                                     onClick={handleLogout}

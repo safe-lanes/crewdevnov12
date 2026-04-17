@@ -2,14 +2,14 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
-import { Switch, Route } from "wouter";
-import { lazy, Suspense } from "react";
+import { Switch, Route, useLocation } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
 import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useTenantInit } from "@/hooks/useTenantInit";
-import { isAuthRequired, redirectToLogin, getAuthToken } from "@/lib/authToken";
+import { isAuthRequired, redirectToLogin, getAuthToken, getAuthMode } from "@/lib/authToken";
 import { clearTenantData } from "@/lib/tenantStorage";
 
 const AdminRouter = lazy(() => import("./modules/admin/index"));
@@ -26,6 +26,11 @@ const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ de
 const ReportsComingSoon = lazy(() => import("./pages/ReportsComingSoon").then(m => ({ default: m.ReportsComingSoon })));
 const AccountsModule = lazy(() => import("./modules/accounts/AccountsModule").then(m => ({ default: m.AccountsModule })));
 const NotFound = lazy(() => import("./modules/not-found"));
+
+const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
+const ChangePasswordPage = lazy(() => import("./pages/auth/ChangePasswordPage"));
 
 function PageLoader() {
   return (
@@ -85,76 +90,99 @@ function AuthenticatedApp() {
   const tenantError = !!error;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <PermissionsProvider>
-        <TooltipProvider>
-          <div className={`bg-transparent flex flex-row justify-center w-full h-screen${tenantError ? " pointer-events-none opacity-50" : ""}`} data-testid="app-root">
-            <div className="bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-screen w-full pt-[67px] overflow-y-auto" data-testid="main-content" role="main">
-              <HeaderComponent />
-              <Suspense fallback={<PageLoader />}>
-                <Switch>
-                  <Route path="/">
-                    <ProtectedRoute menuName="Crewing"><AppraisalsRouter /></ProtectedRoute>
-                  </Route>
-                  <Route path="/dashboard" component={DashboardPage} />
-                  <Route path="/recruitment">
-                    <ProtectedRoute menuName="Recruitment"><RecruitmentWrapper /></ProtectedRoute>
-                  </Route>
-                  <Route path="/crew-pool">
-                    <ProtectedRoute menuName="Crew Pool"><CrewPoolModuleRouter /></ProtectedRoute>
-                  </Route>
-                  <Route path="/vessel">
-                    <ProtectedRoute menuName="Vessel"><VesselRouter /></ProtectedRoute>
-                  </Route>
-                  <Route path="/rotation">
-                    <ProtectedRoute menuName="Rotation"><RotationRouter /></ProtectedRoute>
-                  </Route>
-                  <Route path="/promotions">
-                    <ProtectedRoute menuName="Promotions"><PromotionsRouter /></ProtectedRoute>
-                  </Route>
-                  <Route path="/drugs-alcohol">
-                    <ProtectedRoute menuName="Drugs Alcohol"><DrugsAlcoholModule /></ProtectedRoute>
-                  </Route>
-                  <Route path="/rest-hours/vessel/:vesselId/:month">
-                    {(params) => <ProtectedRoute menuName="Rest Hours"><RestHoursVesselOverviewComponent {...params} /></ProtectedRoute>}
-                  </Route>
-                  <Route path="/rest-hours/:rest*">
-                    <ProtectedRoute menuName="Rest Hours"><RestHoursModuleComponent /></ProtectedRoute>
-                  </Route>
-                  <Route path="/rest-hours">
-                    <ProtectedRoute menuName="Rest Hours"><RestHoursModuleComponent /></ProtectedRoute>
-                  </Route>
-                  <Route path="/reports">
-                    <ProtectedRoute menuName="Reports"><ReportsComingSoon /></ProtectedRoute>
-                  </Route>
-                  <Route path="/admin/*">
-                    <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>
-                  </Route>
-                  <Route path="/admin">
-                    <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>
-                  </Route>
-                  <Route path="/accounts/:path*" component={AccountsModule} />
-                  <Route path="/accounts" component={AccountsModule} />
-                  <Route component={NotFound} />
-                </Switch>
-              </Suspense>
-            </div>
-          </div>
-          <Toaster />
-          {tenantError && <TenantErrorPopup error={error} />}
-        </TooltipProvider>
-      </PermissionsProvider>
-    </QueryClientProvider>
+    <PermissionsProvider>
+      <div className={`bg-transparent flex flex-row justify-center w-full h-screen${tenantError ? " pointer-events-none opacity-50" : ""}`} data-testid="app-root">
+        <div className="bg-[url(/figmaAssets/vector.svg)] bg-[100%_100%] h-screen w-full pt-[67px] overflow-y-auto" data-testid="main-content" role="main">
+          <HeaderComponent />
+          <Suspense fallback={<PageLoader />}>
+            <Switch>
+              <Route path="/">
+                <ProtectedRoute menuName="Crewing"><AppraisalsRouter /></ProtectedRoute>
+              </Route>
+              <Route path="/dashboard" component={DashboardPage} />
+              <Route path="/recruitment">
+                <ProtectedRoute menuName="Recruitment"><RecruitmentWrapper /></ProtectedRoute>
+              </Route>
+              <Route path="/crew-pool">
+                <ProtectedRoute menuName="Crew Pool"><CrewPoolModuleRouter /></ProtectedRoute>
+              </Route>
+              <Route path="/vessel">
+                <ProtectedRoute menuName="Vessel"><VesselRouter /></ProtectedRoute>
+              </Route>
+              <Route path="/rotation">
+                <ProtectedRoute menuName="Rotation"><RotationRouter /></ProtectedRoute>
+              </Route>
+              <Route path="/promotions">
+                <ProtectedRoute menuName="Promotions"><PromotionsRouter /></ProtectedRoute>
+              </Route>
+              <Route path="/drugs-alcohol">
+                <ProtectedRoute menuName="Drugs Alcohol"><DrugsAlcoholModule /></ProtectedRoute>
+              </Route>
+              <Route path="/rest-hours/vessel/:vesselId/:month">
+                {(params) => <ProtectedRoute menuName="Rest Hours"><RestHoursVesselOverviewComponent {...params} /></ProtectedRoute>}
+              </Route>
+              <Route path="/rest-hours/:rest*">
+                <ProtectedRoute menuName="Rest Hours"><RestHoursModuleComponent /></ProtectedRoute>
+              </Route>
+              <Route path="/rest-hours">
+                <ProtectedRoute menuName="Rest Hours"><RestHoursModuleComponent /></ProtectedRoute>
+              </Route>
+              <Route path="/reports">
+                <ProtectedRoute menuName="Reports"><ReportsComingSoon /></ProtectedRoute>
+              </Route>
+              <Route path="/admin/*">
+                <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>
+              </Route>
+              <Route path="/admin">
+                <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>
+              </Route>
+              <Route path="/change-password" component={ChangePasswordPage} />
+              <Route path="/accounts/:path*" component={AccountsModule} />
+              <Route path="/accounts" component={AccountsModule} />
+              <Route component={NotFound} />
+            </Switch>
+          </Suspense>
+        </div>
+      </div>
+      {tenantError && <TenantErrorPopup error={error} />}
+    </PermissionsProvider>
   );
 }
 
-function App() {
-  if (isAuthRequired() && !getAuthToken()) {
-    redirectToLogin();
-    return <TenantLoader />;
-  }
+function ProtectedShell() {
+  const [, navigate] = useLocation();
+  const hasToken = !!getAuthToken();
 
+  useEffect(() => {
+    if (!isAuthRequired() || hasToken) return;
+    if (getAuthMode() === "parent") {
+      redirectToLogin();
+    } else {
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      navigate(`/login?next=${next}`, { replace: true });
+    }
+  }, [hasToken, navigate]);
+
+  if (isAuthRequired() && !hasToken) return <TenantLoader />;
   return <AuthenticatedApp />;
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Suspense fallback={<PageLoader />}>
+          <Switch>
+            <Route path="/login" component={LoginPage} />
+            <Route path="/forgot-password" component={ForgotPasswordPage} />
+            <Route path="/reset-password" component={ResetPasswordPage} />
+            <Route component={ProtectedShell} />
+          </Switch>
+        </Suspense>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
 }
 
 export default App;
