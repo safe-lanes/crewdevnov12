@@ -307,6 +307,42 @@ export function seaServiceMatchesTankerCategory(
 }
 
 /**
+ * Returns true if a sea-service row counts as ANY tanker (oil, gas/LPG/LNG,
+ * chemical, or generic tanker). Uses master flags first, then a broad
+ * keyword fallback on the vessel-type name. Shared by Officer Matrix
+ * "All Types" and Compliance "Years on All Tankers" so they cannot drift.
+ */
+export function seaServiceIsAnyTanker(service: {
+  isTanker?: boolean | null;
+  isOilTanker?: boolean | null;
+  isGasTanker?: boolean | null;
+  isChemicalTanker?: boolean | null;
+  vesselTypeName?: string | null;
+}): boolean {
+  if (
+    service.isTanker === true ||
+    service.isOilTanker === true ||
+    service.isGasTanker === true ||
+    service.isChemicalTanker === true
+  ) {
+    return true;
+  }
+
+  const name = (service.vesselTypeName || '').toLowerCase();
+  if (!name) return false;
+  return (
+    name.includes('tanker') ||
+    name.includes('oil') ||
+    name.includes('crude') ||
+    name.includes('product') ||
+    name.includes('gas') ||
+    name.includes('lpg') ||
+    name.includes('lng') ||
+    name.includes('chemical')
+  );
+}
+
+/**
  * Calculate experience metrics from V2 crew_sea_service table
  * Same logic as V1's calculateExperienceFromSeaService function
  */
@@ -433,20 +469,7 @@ async function calculateExperienceMetricsV2(
         rankMonths += months;
       }
 
-      const isTankerVessel =
-        service.isTanker === true ||
-        service.isOilTanker === true ||
-        service.isGasTanker === true ||
-        service.isChemicalTanker === true;
-
-      const vesselTypeName = (service.vesselTypeName || "").toLowerCase();
-      const matchesAnyTankerByName =
-        vesselTypeName.includes("tanker") ||
-        vesselTypeName.includes("chemical") ||
-        vesselTypeName.includes("lpg") ||
-        vesselTypeName.includes("lng");
-
-      if (isTankerVessel || matchesAnyTankerByName) {
+      if (seaServiceIsAnyTanker(service)) {
         allTankerMonths += months;
       }
 

@@ -5,7 +5,7 @@ import { getDb } from "../../db";
 import { crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { masterVessels, masterVesselTypes, oilMajorRules as oilMajorRulesTable } from "../../../../shared/schema";
-import { getVesselTankerCategory, seaServiceMatchesTankerCategory, type TankerCategory } from "../services/vesselPlanningService";
+import { getVesselTankerCategory, seaServiceMatchesTankerCategory, seaServiceIsAnyTanker, type TankerCategory } from "../services/vesselPlanningService";
 
 interface ComplianceRuleResult {
   category: string;
@@ -117,19 +117,7 @@ function calculateYearsFromSeaService(
       // "Years on This Type of Tanker" — match by tanker category, not strict UUID
       include = !!tankerCategory && seaServiceMatchesTankerCategory(service, tankerCategory);
     } else if (filterType === 'tanker') {
-      const isTankerVessel =
-        service.isTanker === true ||
-        service.isOilTanker === true ||
-        service.isGasTanker === true ||
-        service.isChemicalTanker === true;
-      if (isTankerVessel) {
-        include = true;
-      } else {
-        const vesselType = (service.vesselTypeName || '').toLowerCase();
-        include = vesselType.includes('tanker') || vesselType.includes('oil') ||
-                  vesselType.includes('gas') || vesselType.includes('chemical') ||
-                  vesselType.includes('lpg') || vesselType.includes('lng');
-      }
+      include = seaServiceIsAnyTanker(service);
     } else if (filterType === 'all') {
       include = true;
     }
