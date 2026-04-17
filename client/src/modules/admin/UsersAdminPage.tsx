@@ -649,7 +649,11 @@ function UserForm({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Sign-in trio: Username + Password + Crew ID share the
+                    first row so admins see the full credential picture at a
+                    glance and can confirm Crew ID availability right next to
+                    the password they're setting. */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <FormField
                     control={form.control}
                     name="username"
@@ -764,7 +768,9 @@ function UserForm({
                       </FormItem>
                     )}
                   />
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <FormField
                     control={form.control}
                     name="firstName"
