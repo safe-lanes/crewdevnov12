@@ -44,7 +44,7 @@ BEGIN
     id                       SERIAL PRIMARY KEY,
     username                 TEXT    NOT NULL,
     password                 TEXT    NOT NULL,
-    uuid                     TEXT    UNIQUE,
+    uuid                     TEXT,
     email                    TEXT,
     full_name                TEXT,
     first_name               TEXT,
