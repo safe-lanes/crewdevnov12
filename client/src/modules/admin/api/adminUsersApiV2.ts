@@ -38,6 +38,8 @@ export interface CreateUserPayload {
   roleId?: string | null;
   isActive?: boolean;
   assignedVesselIds?: string[];
+  /** Optional tenant domain; server uses this only when the JWT has none. */
+  domain?: string;
 }
 
 export type UpdateUserPayload = Partial<CreateUserPayload> & { password?: string };
@@ -59,9 +61,14 @@ export const adminUsersApiV2 = {
     return res.json();
   },
 
-  async usernameAvailable(username: string, excludeUuid?: string): Promise<boolean> {
+  async usernameAvailable(
+    username: string,
+    excludeUuid?: string,
+    domain?: string,
+  ): Promise<boolean> {
     const sp = new URLSearchParams({ username });
     if (excludeUuid) sp.set("excludeUuid", excludeUuid);
+    if (domain) sp.set("domain", domain);
     const res = await fetch(`${BASE}/username-available?${sp.toString()}`);
     if (!res.ok) {
       // Server-side error (e.g. no tenant domain in dev) — surface as unknown,

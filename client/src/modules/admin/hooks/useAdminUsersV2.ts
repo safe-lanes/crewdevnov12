@@ -44,6 +44,10 @@ export function useUpdateAdminUserV2() {
   });
 }
 
-export async function checkUsernameAvailable(username: string, excludeUuid?: string) {
-  return adminUsersApiV2.usernameAvailable(username, excludeUuid);
+export async function checkUsernameAvailable(
+  username: string,
+  excludeUuid?: string,
+  domain?: string,
+) {
+  return adminUsersApiV2.usernameAvailable(username, excludeUuid, domain);
 }

@@ -22,6 +22,7 @@ const createSchema = z.object({
   roleId: z.string().trim().max(128).optional().nullable(),
   isActive: z.boolean().optional(),
   assignedVesselIds: z.array(z.string()).optional(),
+  domain: z.string().trim().min(1).max(256).optional(),
 });
 
 const updateSchema = z.object({
@@ -37,6 +38,7 @@ const updateSchema = z.object({
   roleId: z.string().trim().max(128).optional().nullable(),
   isActive: z.boolean().optional(),
   assignedVesselIds: z.array(z.string()).optional(),
+  domain: z.string().trim().min(1).max(256).optional(),
 });
 
 type ReqUser = {
@@ -124,7 +126,12 @@ export const adminUsersController = {
     try {
       const username = typeof req.query.username === "string" ? req.query.username : "";
       const excludeUuid = typeof req.query.excludeUuid === "string" ? req.query.excludeUuid : undefined;
-      const domain = callerDomain(req);
+      const queryDomain =
+        typeof req.query.domain === "string" && req.query.domain.trim()
+          ? req.query.domain.trim()
+          : undefined;
+      // JWT domain wins; query-provided domain is only a fallback.
+      const domain = callerDomain(req) || queryDomain || null;
       if (!domain) return res.status(400).json({ error: "no_domain", message: "Caller has no domain" });
       if (!username.trim()) return res.json({ available: false });
       const available = await adminUsersService.usernameAvailable(username, domain, excludeUuid);
@@ -145,14 +152,17 @@ export const adminUsersController = {
           details: parsed.error.issues,
         });
       }
-      const domain = callerDomain(req);
+      // Caller's authenticated domain wins; body-supplied domain is only used
+      // as a fallback when the JWT has no domain (e.g. dev / AUTH_BYPASS).
+      const domain = callerDomain(req) || parsed.data.domain || null;
       if (!domain) return res.status(400).json({ error: "no_domain", message: "Caller has no domain" });
       const dbType = wireToDbType(parsed.data.userType);
       if (dbType !== "Office" && dbType !== "Ship") {
         return res.status(400).json({ error: "validation_failed", message: "Invalid userType" });
       }
+      const { domain: _bodyDomain, ...createRest } = parsed.data;
       const createInput: CreateUserInput = {
-        ...parsed.data,
+        ...createRest,
         userType: dbType,
         domain,
       };
@@ -178,8 +188,11 @@ export const adminUsersController = {
         });
       }
       const userType = parsed.data.userType ? wireToDbType(parsed.data.userType) : undefined;
-      const domain = callerDomain(req);
-      const { userType: _wireType, ...rest } = parsed.data;
+      // Caller's authenticated domain wins; body-supplied domain is only used
+      // as a fallback when the JWT has no domain (e.g. dev / AUTH_BYPASS).
+      const domain = callerDomain(req) || parsed.data.domain || null;
+      if (!domain) return res.status(400).json({ error: "no_domain", message: "Caller has no domain" });
+      const { userType: _wireType, domain: _bodyDomain, ...rest } = parsed.data;
       const updateInput: UpdateUserInput = {
         ...rest,
         ...(userType ? { userType } : {}),

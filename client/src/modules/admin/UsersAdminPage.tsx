@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/form";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { getResolvedDomain } from "@/lib/encryptionService";
 import {
   useAdminUserV2,
   useAdminUsersV2,
@@ -423,7 +424,11 @@ function UserForm({
     }
     setUsernameStatus("checking");
     try {
-      const ok = await checkUsernameAvailable(v, isEdit ? userUuid : undefined);
+      const ok = await checkUsernameAvailable(
+        v,
+        isEdit ? userUuid : undefined,
+        getResolvedDomain() || undefined,
+      );
       setUsernameStatus(ok ? "available" : "taken");
       if (!ok) {
         form.setError("username", {
@@ -454,6 +459,7 @@ function UserForm({
       return;
     }
     const username = values.username.trim();
+    const resolvedDomain = getResolvedDomain() || undefined;
     const basePayload: UpdateUserPayload = {
       username,
       firstName: values.firstName.trim(),
@@ -466,6 +472,7 @@ function UserForm({
       roleId: values.roleId || null,
       isActive: values.isActive,
       assignedVesselIds: values.assignedVesselIds,
+      domain: resolvedDomain,
     };
     const password = values.password?.trim() || "";
 
