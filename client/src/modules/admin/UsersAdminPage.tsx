@@ -260,6 +260,7 @@ function UsersList({
             <Table>
               <TableHeader>
                 <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                  <TableHead className="text-white font-semibold">Crew ID</TableHead>
                   <TableHead className="text-white font-semibold">First Name</TableHead>
                   <TableHead className="text-white font-semibold">Last Name</TableHead>
                   <TableHead className="text-white font-semibold">Role</TableHead>
@@ -273,14 +274,14 @@ function UsersList({
               <TableBody>
                 {isLoading && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                       <Loader2 className="h-4 w-4 mx-auto animate-spin" />
                     </TableCell>
                   </TableRow>
                 )}
                 {!isLoading && users.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                       No users found.
                     </TableCell>
                   </TableRow>
@@ -290,6 +291,12 @@ function UsersList({
                     const rowKey = u.uuid ?? String(u.id);
                     return (
                       <TableRow key={rowKey} data-testid={`row-user-${rowKey}`}>
+                        <TableCell
+                          data-testid={`text-crewid-${rowKey}`}
+                          className="font-medium text-gray-700"
+                        >
+                          {u.crewId || <span className="text-gray-400">—</span>}
+                        </TableCell>
                         <TableCell data-testid={`text-firstname-${rowKey}`}>
                           {u.firstName || "—"}
                         </TableCell>
