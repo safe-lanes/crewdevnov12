@@ -153,7 +153,7 @@ router.post("/login", loginLimiter, async (req: Request, res: Response) => {
   let db;
   let tuid: string | null = null;
   try {
-    const r = await getDbForDomain(domain);
+    const r = await getDbForDomain(domain.toLowerCase());
     db = r.db;
     tuid = r.tuid;
   } catch {
@@ -165,7 +165,7 @@ router.post("/login", loginLimiter, async (req: Request, res: Response) => {
   const found = await db
     .select()
     .from(users)
-    .where(and(sql`LOWER(${users.username}) = LOWER(${username})`, eq(users.domain, domain)))
+    .where(and(sql`LOWER(${users.username}) = LOWER(${username})`, sql`LOWER(${users.domain}) = LOWER(${domain})`))
     .limit(1);
 
   if (found.length === 0) {
@@ -277,7 +277,7 @@ router.post("/refresh", refreshLimiter, async (req: Request, res: Response) => {
   let db;
   let tuid: string | null = null;
   try {
-    const r = await getDbForDomain(claims.domain);
+    const r = await getDbForDomain(claims.domain.toLowerCase());
     db = r.db;
     tuid = r.tuid;
   } catch {
@@ -392,7 +392,7 @@ async function logoutHandler(req: Request, res: Response) {
   }
 
   try {
-    const db = domain ? (await getDbForDomain(domain)).db : getCurrentDb();
+    const db = domain ? (await getDbForDomain(domain.toLowerCase())).db : getCurrentDb();
     if (refreshToken) {
       const tokenHash = hashRefreshToken(refreshToken);
       await db
@@ -486,7 +486,7 @@ router.post("/forgot-password", forgotLimiter, async (req: Request, res: Respons
   const { email, domain } = parsed.data;
   let db;
   try {
-    const r = await getDbForDomain(domain);
+    const r = await getDbForDomain(domain.toLowerCase());
     db = r.db;
   } catch {
     return res.json({ ok: true });
@@ -494,7 +494,7 @@ router.post("/forgot-password", forgotLimiter, async (req: Request, res: Respons
   const rows = await db
     .select()
     .from(users)
-    .where(and(sql`LOWER(${users.email}) = LOWER(${email})`, eq(users.domain, domain), eq(users.isActive, true)))
+    .where(and(sql`LOWER(${users.email}) = LOWER(${email})`, sql`LOWER(${users.domain}) = LOWER(${domain})`, eq(users.isActive, true)))
     .limit(1);
 
   if (rows.length === 0) {
@@ -532,7 +532,7 @@ router.post("/reset-password", async (req: Request, res: Response) => {
   const { token, domain, newPassword } = parsed.data;
   let db;
   try {
-    const r = await getDbForDomain(domain);
+    const r = await getDbForDomain(domain.toLowerCase());
     db = r.db;
   } catch {
     return res.status(401).json({ error: "invalid_token", message: "Invalid or expired reset token" });
