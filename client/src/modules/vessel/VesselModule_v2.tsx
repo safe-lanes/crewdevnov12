@@ -513,9 +513,10 @@ interface OfficerMatrixRowV2Props {
     rankPlanningData: any;
     rankDepartment: 'deck' | 'engine' | null;
     handleViewCrewClick: (planning: any) => void;
+    vesselUuid?: string | null;
 }
 
-function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, handleViewCrewClick }: OfficerMatrixRowV2Props) {
+function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, handleViewCrewClick, vesselUuid }: OfficerMatrixRowV2Props) {
     const crewUuid = rankPlanningData?.crewUuid;
     const fullRankName = rank.displayRole || rank.role || rank.rank;
     
@@ -529,14 +530,15 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
     // Fetch Officer Matrix data from V2 endpoint
     // Only fetch if we have a crew member and a valid department
     const { data: officerData } = useQuery({
-        queryKey: ['/api/v2/vessel/officer-matrix', crewUuid, fullRankName, effectiveDepartment],
+        queryKey: ['/api/v2/vessel/officer-matrix', crewUuid, fullRankName, effectiveDepartment, vesselUuid],
         queryFn: async () => {
             if (!crewUuid || !effectiveDepartment) return null;
             return vesselApiV2.getOfficerMatrixData(
                 crewUuid,
                 fullRankName,
                 rankPlanningData?.signOnDate || null,
-                effectiveDepartment
+                effectiveDepartment,
+                vesselUuid || null
             );
         },
         enabled: !!crewUuid && !!effectiveDepartment,
@@ -2187,6 +2189,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                 rankPlanningData={rankPlanningData}
                                                                 rankDepartment={rankDepartment}
                                                                 handleViewCrewClick={handleViewCrewClick}
+                                                                vesselUuid={selectedVessel?.vesselId || null}
                                                             />
                                                         );
                                                     })

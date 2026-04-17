@@ -194,10 +194,128 @@ async function calculateExpiryCountsForCrew(crewUuid: string | null): Promise<{ 
 }
 
 /**
+ * Tanker category for the assigned vessel. Used to determine which sea-service
+ * rows count toward the Officer Matrix "Tanker Type" column.
+ */
+export type TankerCategory = {
+  isOil: boolean;
+  isGas: boolean;
+  isChemical: boolean;
+  isAnyTanker: boolean;
+} | null;
+
+/**
+ * Resolve the tanker category flags for a given vessel by joining
+ * master_vessels -> master_vessel_types. Returns null when the vessel has no
+ * tanker affiliation (or vessel/type not found).
+ */
+export async function getVesselTankerCategory(vesselUuid: string | null | undefined): Promise<TankerCategory> {
+  if (!vesselUuid) return null;
+  const db = getDb();
+
+  const [vessel] = await db
+    .select({ vesselType: masterVessels.vesselType })
+    .from(masterVessels)
+    .where(eq(masterVessels.vesselUuid, vesselUuid))
+    .limit(1);
+  if (!vessel?.vesselType) return null;
+
+  const [vt] = await db
+    .select({
+      isTanker: masterVesselTypes.tanker,
+      isOil: masterVesselTypes.oilTanker,
+      isGas: masterVesselTypes.gasTanker,
+      isChemical: masterVesselTypes.chemicalTanker,
+      vesselType: masterVesselTypes.vesselType,
+    })
+    .from(masterVesselTypes)
+    .where(
+      and(
+        eq(masterVesselTypes.vesselType, vessel.vesselType),
+        eq(masterVesselTypes.isDeleted, false),
+        eq(masterVesselTypes.isActive, true)
+      )
+    )
+    .limit(1);
+
+  let isOil = !!vt?.isOil;
+  let isGas = !!vt?.isGas;
+  let isChemical = !!vt?.isChemical;
+  let isAnyTanker = !!vt?.isTanker || isOil || isGas || isChemical;
+
+  // Keyword fallback if master flags missing — use the vessel's stored type name.
+  if (!isAnyTanker) {
+    const name = (vt?.vesselType || vessel.vesselType || '').toLowerCase();
+    if (name.includes('lpg') || name.includes('lng') || name.includes('gas')) isGas = true;
+    if (name.includes('oil') || name.includes('crude') || name.includes('product')) isOil = true;
+    if (name.includes('chemical')) isChemical = true;
+    if (name.includes('tanker') || isOil || isGas || isChemical) isAnyTanker = true;
+  }
+
+  if (!isAnyTanker) return null;
+  return { isOil, isGas, isChemical, isAnyTanker };
+}
+
+/**
+ * Returns true if a sea-service row matches the assigned vessel's tanker
+ * category. Uses master flags first, then a constrained keyword fallback on
+ * the vessel-type name.
+ */
+export function seaServiceMatchesTankerCategory(
+  service: {
+    isTanker?: boolean | null;
+    isOilTanker?: boolean | null;
+    isGasTanker?: boolean | null;
+    isChemicalTanker?: boolean | null;
+    vesselTypeName?: string | null;
+    vesselTypeUuid?: string | null;
+  },
+  category: TankerCategory
+): boolean {
+  if (!category) return false;
+
+  if (category.isOil && service.isOilTanker === true) return true;
+  if (category.isGas && service.isGasTanker === true) return true;
+  if (category.isChemical && service.isChemicalTanker === true) return true;
+
+  // Generic tanker (no specific category set on either side)
+  const serviceHasAnyFlag =
+    service.isOilTanker === true || service.isGasTanker === true || service.isChemicalTanker === true;
+  if (
+    !serviceHasAnyFlag &&
+    !category.isOil &&
+    !category.isGas &&
+    !category.isChemical &&
+    category.isAnyTanker &&
+    service.isTanker === true
+  ) {
+    return true;
+  }
+
+  // Keyword fallback when specific category flags are missing on the service
+  // (it may be marked as a generic tanker only, with the actual category
+  // encoded in the vessel-type name).
+  if (!serviceHasAnyFlag) {
+    const name = (service.vesselTypeName || service.vesselTypeUuid || '').toLowerCase();
+    if (!name) return false;
+    if (category.isGas && (name.includes('lpg') || name.includes('lng') || name.includes('gas'))) return true;
+    if (category.isOil && (name.includes('oil') || name.includes('crude') || name.includes('product'))) return true;
+    if (category.isChemical && name.includes('chemical')) return true;
+  }
+
+  return false;
+}
+
+/**
  * Calculate experience metrics from V2 crew_sea_service table
  * Same logic as V1's calculateExperienceFromSeaService function
  */
-async function calculateExperienceMetricsV2(crewUuid: string | null, currentRank: string, signOnDate: string | null): Promise<{
+async function calculateExperienceMetricsV2(
+  crewUuid: string | null,
+  currentRank: string,
+  signOnDate: string | null,
+  tankerCategory: TankerCategory
+): Promise<{
   companyYears: number;
   rankYears: number;
   tankerTypeYears: number;
@@ -321,20 +439,21 @@ async function calculateExperienceMetricsV2(crewUuid: string | null, currentRank
         service.isGasTanker === true ||
         service.isChemicalTanker === true;
 
-      if (isTankerVessel) {
-        tankerTypeMonths += months;
+      const vesselTypeName = (service.vesselTypeName || "").toLowerCase();
+      const matchesAnyTankerByName =
+        vesselTypeName.includes("tanker") ||
+        vesselTypeName.includes("chemical") ||
+        vesselTypeName.includes("lpg") ||
+        vesselTypeName.includes("lng");
+
+      if (isTankerVessel || matchesAnyTankerByName) {
         allTankerMonths += months;
-      } else {
-        const vesselType = (service.vesselTypeName || "").toLowerCase();
-        if (
-          vesselType.includes("tanker") ||
-          vesselType.includes("chemical") ||
-          vesselType.includes("lpg") ||
-          vesselType.includes("lng")
-        ) {
-          tankerTypeMonths += months;
-          allTankerMonths += months;
-        }
+      }
+
+      // "Tanker Type" months: only sea services on the SAME tanker category as
+      // the assigned vessel.
+      if (tankerCategory && seaServiceMatchesTankerCategory(service, tankerCategory)) {
+        tankerTypeMonths += months;
       }
 
       const rank = (service.rank || "").toLowerCase().trim();
@@ -1199,9 +1318,16 @@ export const vesselPlanningService = {
     return { hasConflict: false };
   },
 
-  async getOfficerMatrixData(crewUuid: string, currentRank: string, signOnDate: string | null, department: 'deck' | 'engine') {
+  async getOfficerMatrixData(
+    crewUuid: string,
+    currentRank: string,
+    signOnDate: string | null,
+    department: 'deck' | 'engine',
+    vesselUuid: string | null
+  ) {
+    const tankerCategory = await getVesselTankerCategory(vesselUuid);
     const [experienceMetrics, certifications, englishProficiency] = await Promise.all([
-      calculateExperienceMetricsV2(crewUuid, currentRank, signOnDate),
+      calculateExperienceMetricsV2(crewUuid, currentRank, signOnDate, tankerCategory),
       getCertificationsV2(crewUuid, department),
       getEnglishProficiencyV2(crewUuid)
     ]);

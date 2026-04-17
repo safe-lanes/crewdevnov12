@@ -240,7 +240,7 @@ export const vesselPlanningController = {
   async getOfficerMatrixData(req: Request, res: Response) {
     try {
       const { crewUuid } = req.params;
-      const { rank, signOnDate, department } = req.query;
+      const { rank, signOnDate, department, vesselUuid } = req.query;
       
       if (!crewUuid) {
         return res.status(400).json({ error: "crewUuid is required" });
@@ -250,7 +250,8 @@ export const vesselPlanningController = {
         crewUuid,
         (rank as string) || '',
         (signOnDate as string) || null,
-        ((department as string) || 'deck') as 'deck' | 'engine'
+        ((department as string) || 'deck') as 'deck' | 'engine',
+        (vesselUuid as string) || null
       );
       
       res.json(data);

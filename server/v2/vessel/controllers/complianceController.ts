@@ -5,6 +5,7 @@ import { getDb } from "../../db";
 import { crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { masterVessels, masterVesselTypes, oilMajorRules as oilMajorRulesTable } from "../../../../shared/schema";
+import { getVesselTankerCategory, seaServiceMatchesTankerCategory, type TankerCategory } from "../services/vesselPlanningService";
 
 interface ComplianceRuleResult {
   category: string;
@@ -93,7 +94,8 @@ function calculateYearsFromSeaService(
   seaServices: any[],
   filterType: 'company' | 'all' | 'rank' | 'vesselType' | 'companyAndRank' | 'tanker',
   currentRank?: string,
-  vesselTypeCode?: string
+  vesselTypeCode?: string,
+  tankerCategory?: TankerCategory
 ): number {
   let totalMonths = 0;
   
@@ -111,8 +113,9 @@ function calculateYearsFromSeaService(
       const serviceRank = normalizeRankName(service.rank || '');
       const targetRank = normalizeRankName(currentRank);
       include = serviceRank.toLowerCase() === targetRank.toLowerCase();
-    } else if (filterType === 'vesselType' && vesselTypeCode) {
-      include = service.vesselTypeUuid === vesselTypeCode;
+    } else if (filterType === 'vesselType') {
+      // "Years on This Type of Tanker" — match by tanker category, not strict UUID
+      include = !!tankerCategory && seaServiceMatchesTankerCategory(service, tankerCategory);
     } else if (filterType === 'tanker') {
       const isTankerVessel =
         service.isTanker === true ||
@@ -197,7 +200,8 @@ async function getCrewExperienceForMember(
   crewUuid: string,
   rank: string,
   signOnDate: string | null,
-  vesselTypeUuid?: string
+  vesselTypeUuid?: string,
+  tankerCategory?: TankerCategory
 ): Promise<CrewExperience | null> {
   const db = getDb();
   
@@ -222,8 +226,8 @@ async function getCrewExperienceForMember(
   
   const yearsWithOperator = calculateYearsFromSeaService(seaServices, 'companyAndRank', currentRank);
   const yearsInRank = calculateYearsFromSeaService(seaServices, 'rank', currentRank);
-  const yearsOnTankerType = vesselTypeUuid
-    ? calculateYearsFromSeaService(seaServices, 'vesselType', undefined, vesselTypeUuid)
+  const yearsOnTankerType = tankerCategory
+    ? calculateYearsFromSeaService(seaServices, 'vesselType', undefined, vesselTypeUuid, tankerCategory)
     : 0;
   const yearsOnAllTankers = calculateYearsFromSeaService(seaServices, 'tanker');
   
@@ -283,6 +287,7 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
   const experiences: CrewExperience[] = [];
   
   const vesselTypeUuid = await getVesselTypeUuid(vesselUuid);
+  const tankerCategory = await getVesselTankerCategory(vesselUuid);
   
   const planningRecords = await db
     .select()
@@ -299,7 +304,7 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
   
   for (const record of activeRecords) {
     if (!record.crewUuid) continue;
-    const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate, vesselTypeUuid);
+    const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate, vesselTypeUuid, tankerCategory);
     if (exp) experiences.push(exp);
   }
   
@@ -313,6 +318,7 @@ async function getSimulatedCrewExperience(
   const db = getDb();
   
   const vesselTypeUuid = await getVesselTypeUuid(vesselUuid);
+  const tankerCategory = await getVesselTankerCategory(vesselUuid);
   
   const planningRecords = await db
     .select()
@@ -346,12 +352,13 @@ async function getSimulatedCrewExperience(
         simEntry.crewMemberId,
         record.rank,
         simEntry.joiningDate || null,
-        vesselTypeUuid
+        vesselTypeUuid,
+        tankerCategory
       );
       if (exp) experiences.push(exp);
       processedRanks.add(normalizedRank);
     } else {
-      const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate, vesselTypeUuid);
+      const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate, vesselTypeUuid, tankerCategory);
       if (exp) experiences.push(exp);
     }
   }
@@ -363,7 +370,8 @@ async function getSimulatedCrewExperience(
         sim.crewMemberId,
         sim.rank,
         sim.joiningDate || null,
-        vesselTypeUuid
+        vesselTypeUuid,
+        tankerCategory
       );
       if (exp) experiences.push(exp);
     }

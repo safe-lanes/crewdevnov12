@@ -230,11 +230,12 @@ export const vesselApiV2 = {
    * Get Officer Matrix data for a crew member
    * Returns experience metrics, certifications, and English proficiency
    */
-  async getOfficerMatrixData(crewUuid: string, rank: string, signOnDate: string | null, department: 'deck' | 'engine'): Promise<OfficerMatrixData> {
+  async getOfficerMatrixData(crewUuid: string, rank: string, signOnDate: string | null, department: 'deck' | 'engine', vesselUuid?: string | null): Promise<OfficerMatrixData> {
     const params = new URLSearchParams();
     if (rank) params.append('rank', rank);
     if (signOnDate) params.append('signOnDate', signOnDate);
     params.append('department', department);
+    if (vesselUuid) params.append('vesselUuid', vesselUuid);
     
     const response = await fetch(`${V2_BASE}/officer-matrix/${crewUuid}?${params.toString()}`);
     if (!response.ok) {
