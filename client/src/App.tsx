@@ -2,7 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { lazy, Suspense, useEffect } from "react";
 import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import HeaderComponent from "./components/Navbar/HeaderComponent";
@@ -150,30 +150,65 @@ function AuthenticatedApp() {
 }
 
 function ProtectedShell() {
-  const [, navigate] = useLocation();
-  const hasToken = !!getAuthToken();
-
-  useEffect(() => {
-    if (!isAuthRequired() || hasToken) return;
+  // Render-time guard: if there is no auth token we must NEVER render the
+  // protected app shell — not even for one frame. This protects against the
+  // browser's back/forward cache (BFCache) restoring a previously-rendered
+  // protected page after logout, because wouter's <Redirect> commits a route
+  // change synchronously during render rather than waiting for an effect to
+  // run (which BFCache restores skip).
+  if (isAuthRequired() && !getAuthToken()) {
     if (getAuthMode() === "parent") {
+      // Parent-app mode hands off to an external login URL.
       redirectToLogin();
-    } else {
-      const next = encodeURIComponent(window.location.pathname + window.location.search);
-      navigate(`/login?next=${next}`, { replace: true });
+      return <TenantLoader />;
     }
-  }, [hasToken, navigate]);
-
-  if (isAuthRequired() && !hasToken) return <TenantLoader />;
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    return <Redirect to={`/login?next=${next}`} replace />;
+  }
   return <AuthenticatedApp />;
+}
+
+function LoginGuard({ children }: { children: React.ReactNode }) {
+  // If an authenticated user lands on /login (e.g. by pressing Back to a
+  // BFCache-cached login page after signing in), send them straight to the
+  // app root instead of showing the sign-in form.
+  if (isAuthRequired() && !!getAuthToken()) {
+    return <Redirect to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+function BFCacheGuard() {
+  // When a page is restored from the browser's BFCache, React effects do
+  // NOT re-run and the in-memory component tree is shown as-is. If the user
+  // logged out in another tab (or in this tab and then pressed Back), we
+  // must evict the cached protected UI by forcing a fresh navigation.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return; // only react to BFCache restores
+      if (isAuthRequired() && !getAuthToken()) {
+        // Use the mode-aware redirect so parent-mode sessions are sent to
+        // the external login URL and the current path is preserved as
+        // `?next=` for standalone sessions.
+        redirectToLogin();
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+  return null;
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <BFCacheGuard />
         <Suspense fallback={<PageLoader />}>
           <Switch>
-            <Route path="/login" component={LoginPage} />
+            <Route path="/login">
+              <LoginGuard><LoginPage /></LoginGuard>
+            </Route>
             <Route path="/forgot-password" component={ForgotPasswordPage} />
             <Route path="/reset-password" component={ResetPasswordPage} />
             <Route component={ProtectedShell} />

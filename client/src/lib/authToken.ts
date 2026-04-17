@@ -152,10 +152,14 @@ export function logout(): void {
   if (AUTH_MODE === "parent" && PARENT_LOGIN_URL) {
     sessionStorage.clear();
     localStorage.clear();
-    window.location.href = PARENT_LOGIN_URL;
+    // Use replace() so the just-visited protected page is not left as a
+    // history entry the user can step back into.
+    window.location.replace(PARENT_LOGIN_URL);
     return;
   }
-  window.location.href = "/login";
+  // Replace (not assign) so pressing Back after logout cannot return to the
+  // previous protected page.
+  window.location.replace("/login");
 }
 
 export function redirectToLogin(): void {
@@ -164,14 +168,14 @@ export function redirectToLogin(): void {
     redirecting = true;
     sessionStorage.clear();
     localStorage.clear();
-    window.location.href = PARENT_LOGIN_URL;
+    window.location.replace(PARENT_LOGIN_URL);
     return;
   }
   redirecting = true;
   clearAuthSession();
   if (window.location.pathname !== "/login") {
     const next = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/login?next=${next}`;
+    window.location.replace(`/login?next=${next}`);
   }
 }
 

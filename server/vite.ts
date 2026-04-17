@@ -59,7 +59,18 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
       const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      // `no-store` on the SPA shell keeps modern browsers from putting this
+      // document into the back/forward cache, which (combined with the
+      // client-side guards) prevents a logged-out user from seeing a stale
+      // protected page after pressing Back.
+      res
+        .status(200)
+        .set({
+          "Content-Type": "text/html",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        })
+        .end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
@@ -76,10 +87,19 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Disable the implicit index.html lookup so that every request for the
+  // SPA shell (including bare `/`) flows through the catch-all below, which
+  // sets `Cache-Control: no-store`. Hashed JS/CSS assets remain cacheable.
+  app.use(express.static(distPath, { index: false }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    // Same `no-store` policy as the dev shell — see setupVite() for context.
+    res
+      .set({
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        Pragma: "no-cache",
+      })
+      .sendFile(path.resolve(distPath, "index.html"));
   });
 }
