@@ -8,7 +8,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { setAuthSession, getAuthToken } from "@/lib/authToken";
-import loginBgImage from "@assets/bg_image_1776412125963.jpg";
+import loginBgImage from "@/assets/bg_image_1776412125963.jpg";
 
 const loginSchema = z.object({
   username: z.string().trim().min(1, "Username is required"),
