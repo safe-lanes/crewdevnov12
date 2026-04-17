@@ -45,9 +45,16 @@ type ReqUser = {
   domain?: unknown;
 };
 
+const IS_DEV = process.env.NODE_ENV === "development";
+const AUTH_BYPASS = process.env.AUTH_BYPASS === "true" && IS_DEV;
+const DEV_DEFAULT_DOMAIN = process.env.DEV_DOMAIN || "dev.local";
+
 function callerDomain(req: Request): string | null {
   const u = (req.user ?? {}) as ReqUser;
   if (typeof u.domain === "string" && u.domain.trim()) return u.domain.trim();
+  // In dev with AUTH_BYPASS there's no authenticated user, so fall back to a
+  // single dev tenant domain so admin endpoints stay usable locally.
+  if (AUTH_BYPASS) return DEV_DEFAULT_DOMAIN;
   return null;
 }
 
