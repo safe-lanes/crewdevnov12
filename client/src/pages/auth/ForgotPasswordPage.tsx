@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import loginBgImage from "@assets/bg_image_1776412125963.jpg";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -46,10 +47,15 @@ export default function ForgotPasswordPage() {
   const domain = form.getValues("domain");
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4" data-testid="page-forgot-password">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 border border-gray-200">
-        <h1 className="text-xl font-semibold text-gray-900 mb-1">Forgot password</h1>
-        <p className="text-sm text-gray-500 mb-6">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${loginBgImage})` }}
+      data-testid="page-forgot-password"
+    >
+      <div className="absolute inset-0 bg-black/30 dark:bg-black/50" aria-hidden="true" />
+      <div className="relative w-full max-w-md bg-white/95 dark:bg-gray-900/90 backdrop-blur-md rounded-lg shadow-xl p-8 border border-white/40 dark:border-gray-700">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50 mb-1">Forgot password</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
           Enter your email and domain. If a matching account exists, we'll send you a reset link.
         </p>
 
