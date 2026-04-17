@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { tenants } from "@shared/v2/tenant/schema";
 import { runMigrationsForTenant } from "../migrationRunner";
 
@@ -160,7 +160,7 @@ class TenantConnectionManager {
       throw new Error("Multi-tenant is not configured");
     }
 
-    const lookupKey = domain.trim().toLowerCase();
+    const lookupKey = domain.trim();
     const cached = this.tenantCache.get(lookupKey);
     if (cached && cached.expiresAt > Date.now()) {
       return { tuid: cached.tuid, companyName: cached.companyName };
@@ -175,7 +175,7 @@ class TenantConnectionManager {
           isDeleted: tenants.isDeleted,
         })
         .from(tenants)
-        .where(sql`lower(${tenants.domain}) = ${lookupKey}`)
+        .where(eq(tenants.domain, lookupKey))
         .limit(1);
 
       if (result.length === 0) {
