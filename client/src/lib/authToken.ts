@@ -149,7 +149,10 @@ export function logout(): void {
     }).catch(() => {});
   }
   clearAuthSession();
-  if (AUTH_MODE === "parent" && PARENT_LOGIN_URL) {
+  // If a parent login URL is configured, hand off to it on logout regardless
+  // of VITE_AUTH_MODE. The presence of the env var is the single signal that
+  // tells us "there is a parent app to return the user to".
+  if (PARENT_LOGIN_URL) {
     sessionStorage.clear();
     localStorage.clear();
     // Use replace() so the just-visited protected page is not left as a
