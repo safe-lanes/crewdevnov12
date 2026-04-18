@@ -25,7 +25,7 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (getAuthToken()) navigate("/");
+    if (getAuthToken()) navigate("/recruitment");
   }, [navigate]);
 
   const onSubmit = async (values: LoginValues) => {
@@ -48,8 +48,8 @@ export default function LoginPage() {
         user: data.user,
       });
       const params = new URLSearchParams(window.location.search);
-      const rawNext = params.get("next") || "/";
-      const safeNext = /^\/(?!\/)/.test(rawNext) ? rawNext : "/";
+      const rawNext = params.get("next") || "/recruitment";
+      const safeNext = /^\/(?!\/)/.test(rawNext) ? rawNext : "/recruitment";
       window.location.href = safeNext;
     } catch (err) {
       form.setError("root", { message: (err instanceof Error ? err.message : null) || "Network error." });
