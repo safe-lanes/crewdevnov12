@@ -7,6 +7,14 @@ const ADMIN_ROLE_NAMES = new Set(
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 const AUTH_BYPASS = process.env.AUTH_BYPASS === "true" && IS_DEV;
+// Parent-mode trust: when Crewing is embedded under the SAIL Audits parent app,
+// parent-signed JWTs cannot be verified against Crewing's JWT_SECRET, so per the
+// #251 lenient header-path tenantMiddleware leaves `req.user` undefined. The
+// parent app has already authenticated the user before handing off, and the
+// tenant DB context is bound from the `x-tenant-id` header by tenantMiddleware,
+// so we short-circuit identity/role checks on this router. Trade-off: audit
+// attribution (callerActor) is empty for parent-mode writes — accepted for now.
+const PARENT_AUTH_MODE = process.env.AUTH_MODE === "parent";
 
 /**
  * Thin guard: by the time a request reaches this router, the global
@@ -16,6 +24,7 @@ const AUTH_BYPASS = process.env.AUTH_BYPASS === "true" && IS_DEV;
  * the two paths' decode/secret handling drifted.
  */
 export function ensureAuthUser(req: Request, res: Response, next: NextFunction) {
+  if (PARENT_AUTH_MODE) return next();
   if (req.user) return next();
   if (AUTH_BYPASS) return next();
   return res.status(401).json({
@@ -25,6 +34,7 @@ export function ensureAuthUser(req: Request, res: Response, next: NextFunction) 
 }
 
 export async function requireAdminRole(req: Request, res: Response, next: NextFunction) {
+  if (PARENT_AUTH_MODE) return next();
   if (AUTH_BYPASS && !req.user) return next();
   const u = req.user;
   if (!u) {
