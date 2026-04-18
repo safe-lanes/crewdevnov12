@@ -14,7 +14,7 @@ const AUTH_BYPASS = process.env.AUTH_BYPASS === "true" && IS_DEV;
 // tenant DB context is bound from the `x-tenant-id` header by tenantMiddleware,
 // so we short-circuit identity/role checks on this router. Trade-off: audit
 // attribution (callerActor) is empty for parent-mode writes — accepted for now.
-const PARENT_AUTH_MODE = process.env.AUTH_MODE === "parent";
+const PARENT_AUTH_MODE = process.env.VITE_AUTH_MODE === "parent";
 
 /**
  * Thin guard: by the time a request reaches this router, the global
