@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
-import loginBgImage from "@assets/bg_image_1776412125963.jpg";
+import loginBgImage from "@/assets/bg_image_1776412125963.jpg";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";

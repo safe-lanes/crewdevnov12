@@ -365,7 +365,7 @@ class TenantConnectionManager {
         } catch (migErr: any) {
           console.error(`❌ Tenant migration failed for '${maskTuid(tuid)}':`, migErr.message);
           this.migrationFailures.set(tuid, Date.now());
-          await pool.end().catch(() => {});
+          await pool.end().catch(() => { });
           throw new TenantDatabaseError(tuid, "Schema migration failed. Please contact your administrator.");
         }
       }
@@ -373,7 +373,7 @@ class TenantConnectionManager {
       const db = drizzle(pool);
 
       this.poolCache.set(tuid, { pool, db, lastUsed: Date.now() });
-      console.log(`🔗 Tenant pool created for '${maskTuid(tuid)}' (active pools: ${this.poolCache.size})`);
+      console.log(`🔗 Tenant pool created for '${tuid}' (active pools: ${this.poolCache.size})`);
 
       return db;
     } catch (err: any) {

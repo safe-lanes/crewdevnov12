@@ -68,9 +68,9 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-black/30 dark:bg-black/50" aria-hidden="true" />
       <div className="relative w-full max-w-md bg-white/95 dark:bg-gray-900/90 backdrop-blur-md rounded-lg shadow-xl p-8 border border-white/40 dark:border-gray-700">
         <div className="flex flex-col items-center mb-6">
-          <img src="/figmaAssets/group-2.png" alt="Logo" className="w-14 h-10 mb-2" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50">Sign in to Crewing</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter your credentials to continue</p>
+          <img src="/figmaAssets/group-2.svg" alt="Logo" className="w-15 h-15 mb-2" />
+          {/* <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50">Crewing</h1> */}
+          {/* <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter your credentials to continue</p> */}
         </div>
 
         {rootError && (
