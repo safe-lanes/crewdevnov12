@@ -327,7 +327,11 @@ Both middleware use a single shared `isExempt()` function from `server/middlewar
 
 ### Single JWT verification per request
 
-When the JWT domain fallback path is used (no `x-tenant-id` header), the tenant middleware verifies the JWT to extract the domain and attaches the decoded payload to `req.tokenData`. The auth middleware detects this and reuses the existing payload instead of calling `jwt.verify()` a second time. This ensures exactly one JWT verification per request regardless of the code path.
+`tenantMiddleware` is the canonical place where the JWT is verified — both in the `x-tenant-id` header path and in the JWT-only fallback path. It populates `req.user` / `req.tokenData` (and `req.jwtDomain` on the fallback path). Downstream middleware and routes simply read `req.user` instead of re-verifying the token.
+
+In dev (`server/index.ts`) the legacy `authMiddleware` still runs after `tenantMiddleware`; it detects the already-decoded payload via `req.tokenData` and skips a second `jwt.verify()`, so verification still happens exactly once.
+
+In production (`server/production.ts`) `authMiddleware` is **not** mounted globally — `tenantMiddleware` alone covers JWT verification for every non-exempt API request. Router-local guards (e.g. `server/v2/admin/users/middleware.ts → ensureAuthUser`) are thin pass-throughs that just check `req.user`; they do **not** re-verify the token, which previously caused `/admin/users`-only `401 → auto-logout` whenever the two verify paths drifted (e.g. parent vs child `JWT_SECRET` mismatch).
 
 ### Tenant middleware JWT domain fallback
 

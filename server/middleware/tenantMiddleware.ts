@@ -18,15 +18,14 @@ declare global {
   }
 }
 
-type JwtFallbackResult =
-  | { status: "domain"; domain: string; decoded: JwtPayload }
+type JwtDecodeResult =
+  | { status: "ok"; decoded: JwtPayload; domain?: string }
   | { status: "no_token" }
   | { status: "expired" }
   | { status: "invalid" }
-  | { status: "no_domain" }
   | { status: "no_secret" };
 
-function extractDomainFromJwt(req: Request): JwtFallbackResult {
+function decodeJwt(req: Request): JwtDecodeResult {
   const JWT_SECRET = process.env.JWT_SECRET;
   if (!JWT_SECRET) return { status: "no_secret" };
 
@@ -37,8 +36,8 @@ function extractDomainFromJwt(req: Request): JwtFallbackResult {
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
     const domain =
       typeof decoded.domain === "string" ? decoded.domain.trim() : undefined;
-    if (!domain) return { status: "no_domain" };
-    return { status: "domain", domain, decoded };
+    if (domain) decoded.domain = domain;
+    return { status: "ok", decoded, domain };
   } catch (err: unknown) {
     if (
       typeof err === "object" &&
@@ -49,6 +48,28 @@ function extractDomainFromJwt(req: Request): JwtFallbackResult {
       return { status: "expired" };
     }
     return { status: "invalid" };
+  }
+}
+
+function rejectForJwtStatus(
+  res: Response,
+  status: "expired" | "invalid" | "no_token",
+): void {
+  if (status === "expired") {
+    res.status(401).json({
+      error: "token_expired",
+      message: "Authorization token has expired",
+    });
+  } else if (status === "invalid") {
+    res.status(401).json({
+      error: "invalid_token",
+      message: "Invalid authorization token",
+    });
+  } else {
+    res.status(401).json({
+      error: "unauthorized",
+      message: "Missing authorization token",
+    });
   }
 }
 
@@ -72,57 +93,76 @@ export function tenantMiddleware(
     typeof rawTenantId === "string" ? rawTenantId.trim() : undefined;
 
   if (!tenantId) {
-    const jwtResult = extractDomainFromJwt(req);
+    // JWT-fallback path: derive tenant from the token's `domain` claim.
+    const jwtResult = decodeJwt(req);
 
-    if (jwtResult.status === "expired") {
-      res.status(401).json({
-        error: "token_expired",
-        message: "Authorization token has expired",
+    if (jwtResult.status === "expired" || jwtResult.status === "invalid") {
+      rejectForJwtStatus(res, jwtResult.status);
+      return;
+    }
+
+    if (jwtResult.status === "no_secret" || jwtResult.status === "no_token") {
+      res.status(400).json({
+        error: "Missing x-tenant-id header",
+        message: "Tenant identification is required for all API requests",
       });
       return;
     }
 
-    if (jwtResult.status === "invalid") {
-      res.status(401).json({
-        error: "invalid_token",
-        message: "Invalid authorization token",
+    if (!jwtResult.domain) {
+      res.status(400).json({
+        error: "Missing x-tenant-id header",
+        message: "Tenant identification is required for all API requests",
       });
       return;
     }
 
-    if (jwtResult.status === "domain") {
-      jwtResult.decoded.domain = jwtResult.domain;
-      req.tokenData = jwtResult.decoded;
-      req.user = jwtResult.decoded;
-      req.jwtDomain = jwtResult.domain;
+    req.tokenData = jwtResult.decoded;
+    req.user = jwtResult.decoded;
+    req.jwtDomain = jwtResult.domain;
 
-      tenantConnectionManager
-        .resolveTenant(jwtResult.domain)
-        .then((tenant) => {
-          req.tenantId = tenant.tuid;
-          return tenantConnectionManager.runInTenantContext(
-            tenant.tuid,
-            () => {
-              return new Promise<void>((resolve, reject) => {
-                res.on("finish", resolve);
-                res.on("error", reject);
-                next();
-              });
-            },
-          );
-        })
-        .catch((err) => {
-          if (res.headersSent) return;
-          handleTenantError(res, err);
-        });
-      return;
-    }
-
-    res.status(400).json({
-      error: "Missing x-tenant-id header",
-      message: "Tenant identification is required for all API requests",
-    });
+    tenantConnectionManager
+      .resolveTenant(jwtResult.domain)
+      .then((tenant) => {
+        req.tenantId = tenant.tuid;
+        return tenantConnectionManager.runInTenantContext(
+          tenant.tuid,
+          () => {
+            return new Promise<void>((resolve, reject) => {
+              res.on("finish", resolve);
+              res.on("error", reject);
+              next();
+            });
+          },
+        );
+      })
+      .catch((err) => {
+        if (res.headersSent) return;
+        handleTenantError(res, err);
+      });
     return;
+  }
+
+  // Header path: x-tenant-id present. Validate the tenant AND decode the JWT
+  // so `req.user` is populated for downstream routes — this gives production
+  // the same "JWT verified exactly once per request" guarantee that dev gets
+  // via the separate authMiddleware.
+  const jwtResult = decodeJwt(req);
+
+  if (jwtResult.status === "expired" || jwtResult.status === "invalid") {
+    rejectForJwtStatus(res, jwtResult.status);
+    return;
+  }
+
+  // `no_secret` means JWT_SECRET is not configured. In production
+  // server/v2/auth/tokens.ts already throws at boot, so this branch is only
+  // hit in dev. We pass through and let route-level guards decide.
+  // `no_token` means no Authorization header was sent — let route-level
+  // guards (e.g. ensureAuthUser) decide whether the route requires it.
+  if (jwtResult.status === "ok") {
+    req.tokenData = jwtResult.decoded;
+    req.user = jwtResult.decoded;
+    if (jwtResult.domain) req.jwtDomain = jwtResult.domain;
   }
 
   req.tenantId = tenantId;

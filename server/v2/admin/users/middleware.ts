@@ -1,5 +1,4 @@
 import type { Request, Response, NextFunction } from "express";
-import { verifyAccessToken, type AccessClaims } from "../../auth/tokens";
 import { adminUsersRepository } from "./repository";
 
 const ADMIN_ROLE_NAMES = new Set(
@@ -9,20 +8,20 @@ const ADMIN_ROLE_NAMES = new Set(
 const IS_DEV = process.env.NODE_ENV !== "production";
 const AUTH_BYPASS = process.env.AUTH_BYPASS === "true" && IS_DEV;
 
+/**
+ * Thin guard: by the time a request reaches this router, the global
+ * tenantMiddleware (production) or authMiddleware (development) should have
+ * already verified the JWT and populated `req.user`. We do not re-verify here
+ * — having two independent verifies caused subtle 401s in production whenever
+ * the two paths' decode/secret handling drifted.
+ */
 export function ensureAuthUser(req: Request, res: Response, next: NextFunction) {
   if (req.user) return next();
-  const auth = req.headers["authorization"];
-  if (auth && auth.toLowerCase().startsWith("bearer ")) {
-    try {
-      const claims: AccessClaims = verifyAccessToken(auth.slice(7).trim());
-      req.user = claims;
-      return next();
-    } catch {
-      // fall through
-    }
-  }
   if (AUTH_BYPASS) return next();
-  return res.status(401).json({ error: "unauthorized", message: "Missing or invalid authorization token" });
+  return res.status(401).json({
+    error: "unauthorized",
+    message: "Missing or invalid authorization token",
+  });
 }
 
 export async function requireAdminRole(req: Request, res: Response, next: NextFunction) {
