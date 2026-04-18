@@ -149,16 +149,21 @@ export function tenantMiddleware(
   // via the separate authMiddleware.
   const jwtResult = decodeJwt(req);
 
-  if (jwtResult.status === "expired" || jwtResult.status === "invalid") {
+  if (
+    jwtResult.status === "expired" ||
+    jwtResult.status === "invalid" ||
+    jwtResult.status === "no_token"
+  ) {
+    // Uniform with the JWT-fallback branch: a non-exempt request must carry
+    // a valid bearer token. Missing/expired/invalid all surface here as 401
+    // from a single canonical verifier instead of as a router-local 401.
     rejectForJwtStatus(res, jwtResult.status);
     return;
   }
 
-  // `no_secret` means JWT_SECRET is not configured. In production
-  // server/v2/auth/tokens.ts already throws at boot, so this branch is only
-  // hit in dev. We pass through and let route-level guards decide.
-  // `no_token` means no Authorization header was sent — let route-level
-  // guards (e.g. ensureAuthUser) decide whether the route requires it.
+  // `no_secret` only occurs in dev when JWT_SECRET is not configured;
+  // production boot in server/v2/auth/tokens.ts throws if it's missing.
+  // Pass through and let route-level / dev AUTH_BYPASS guards decide.
   if (jwtResult.status === "ok") {
     req.tokenData = jwtResult.decoded;
     req.user = jwtResult.decoded;

@@ -331,7 +331,13 @@ Both middleware use a single shared `isExempt()` function from `server/middlewar
 
 In dev (`server/index.ts`) the legacy `authMiddleware` still runs after `tenantMiddleware`; it detects the already-decoded payload via `req.tokenData` and skips a second `jwt.verify()`, so verification still happens exactly once.
 
-In production (`server/production.ts`) `authMiddleware` is **not** mounted globally — `tenantMiddleware` alone covers JWT verification for every non-exempt API request. Router-local guards (e.g. `server/v2/admin/users/middleware.ts → ensureAuthUser`) are thin pass-throughs that just check `req.user`; they do **not** re-verify the token, which previously caused `/admin/users`-only `401 → auto-logout` whenever the two verify paths drifted (e.g. parent vs child `JWT_SECRET` mismatch).
+In production (`server/production.ts`) `authMiddleware` is **not** mounted globally — `tenantMiddleware` alone covers JWT verification for every non-exempt API request. Both branches (`x-tenant-id` header and JWT-fallback) treat `missing`, `expired`, and `invalid` tokens uniformly:
+
+- Missing token → `401 unauthorized`
+- Expired token → `401 token_expired`
+- Invalid token → `401 invalid_token`
+
+Router-local guards (e.g. `server/v2/admin/users/middleware.ts → ensureAuthUser`) are thin pass-throughs that just check `req.user`; they do **not** re-verify the token, which previously caused `/admin/users`-only `401 → auto-logout` whenever the two verify paths drifted (e.g. parent vs child `JWT_SECRET` mismatch).
 
 ### Tenant middleware JWT domain fallback
 
