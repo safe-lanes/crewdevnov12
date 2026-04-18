@@ -165,9 +165,15 @@ export function logout(): void {
   window.location.replace("/login");
 }
 
+export function hasParentLoginUrl(): boolean {
+  return !!PARENT_LOGIN_URL;
+}
+
 export function redirectToLogin(): void {
   if (redirecting) return;
-  if (AUTH_MODE === "parent" && PARENT_LOGIN_URL) {
+  // Same single-env-var rule as logout(): if a parent login URL is configured,
+  // hand off to it regardless of VITE_AUTH_MODE.
+  if (PARENT_LOGIN_URL) {
     redirecting = true;
     sessionStorage.clear();
     localStorage.clear();

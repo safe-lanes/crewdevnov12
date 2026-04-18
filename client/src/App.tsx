@@ -9,7 +9,7 @@ import HeaderComponent from "./components/Navbar/HeaderComponent";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useTenantInit } from "@/hooks/useTenantInit";
-import { isAuthRequired, redirectToLogin, getAuthToken, getAuthMode } from "@/lib/authToken";
+import { isAuthRequired, redirectToLogin, getAuthToken, hasParentLoginUrl } from "@/lib/authToken";
 import { clearTenantData } from "@/lib/tenantStorage";
 
 const AdminRouter = lazy(() => import("./modules/admin/index"));
@@ -157,8 +157,12 @@ function ProtectedShell() {
   // change synchronously during render rather than waiting for an effect to
   // run (which BFCache restores skip).
   if (isAuthRequired() && !getAuthToken()) {
-    if (getAuthMode() === "parent") {
-      // Parent-app mode hands off to an external login URL.
+    // If a parent login URL is configured, hand off to it instead of
+    // committing a wouter SPA <Redirect to="/login">. This is the same
+    // single-env-var rule as logout(), and it prevents the render-time
+    // guard from racing logout()'s window.location.replace and "winning"
+    // with a stray /login navigation.
+    if (hasParentLoginUrl()) {
       redirectToLogin();
       return <TenantLoader />;
     }
