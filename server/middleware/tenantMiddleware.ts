@@ -143,32 +143,33 @@ export function tenantMiddleware(
     return;
   }
 
-  // Header path: x-tenant-id present. Validate the tenant AND decode the JWT
-  // so `req.user` is populated for downstream routes — this gives production
-  // the same "JWT verified exactly once per request" guarantee that dev gets
-  // via the separate authMiddleware.
+  // Header path: x-tenant-id present. Attempt to decode the JWT so `req.user`
+  // is populated when verification succeeds (standalone-login tokens signed
+  // with the local JWT_SECRET). On `expired` / `invalid` we DO NOT reject —
+  // this is the deliberate parent-mode tolerance restored from pre-#243
+  // production: parent SAIL Audits tokens fail to verify against Crewing's
+  // JWT_SECRET due to an unresolved operational secret/algorithm mismatch,
+  // and rejecting them here locks parent users out of the entire app.
+  // Routes that need an authenticated identity (e.g. /admin/users) will still
+  // 401 via their own `req.user` check; routes that don't need it work fine.
+  // The JWT-fallback branch above stays strict because it has no other way
+  // to identify the tenant.
   const jwtResult = decodeJwt(req);
 
-  if (
-    jwtResult.status === "expired" ||
-    jwtResult.status === "invalid" ||
-    jwtResult.status === "no_token"
-  ) {
-    // Uniform with the JWT-fallback branch: a non-exempt request must carry
-    // a valid bearer token. Missing/expired/invalid all surface here as 401
-    // from a single canonical verifier instead of as a router-local 401.
+  if (jwtResult.status === "no_token") {
+    // A request with no Authorization header at all is a real client bug —
+    // not a parent-secret-mismatch — and is worth surfacing.
     rejectForJwtStatus(res, jwtResult.status);
     return;
   }
 
-  // `no_secret` only occurs in dev when JWT_SECRET is not configured;
-  // production boot in server/v2/auth/tokens.ts throws if it's missing.
-  // Pass through and let route-level / dev AUTH_BYPASS guards decide.
   if (jwtResult.status === "ok") {
     req.tokenData = jwtResult.decoded;
     req.user = jwtResult.decoded;
     if (jwtResult.domain) req.jwtDomain = jwtResult.domain;
   }
+  // `expired` / `invalid` / `no_secret`: fall through with `req.user`
+  // undefined. Route-level guards decide.
 
   req.tenantId = tenantId;
 
