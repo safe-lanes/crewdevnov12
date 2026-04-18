@@ -69,6 +69,15 @@ function isoOrDash(unixSec: unknown): string {
   }
 }
 
+const TAIL_LEN = 6;
+function tokenTail(token: string): string {
+  // Always emit at most TAIL_LEN trailing chars so a short/garbage value
+  // can never log the full thing.
+  return token.length <= TAIL_LEN
+    ? `...${"*".repeat(token.length)}`
+    : `...${token.slice(-TAIL_LEN)}`;
+}
+
 function decodeForDiagnostics(token: string): TokenDiagnostics {
   const fallback: TokenDiagnostics = {
     alg: "-",
@@ -80,7 +89,7 @@ function decodeForDiagnostics(token: string): TokenDiagnostics {
     iat: "-",
     exp: "-",
     tokenLen: token.length,
-    tail: token.length >= 6 ? `...${token.slice(-6)}` : `...${token}`,
+    tail: tokenTail(token),
   };
   try {
     const decoded = jwt.decode(token, { complete: true }) as
@@ -105,7 +114,7 @@ function decodeForDiagnostics(token: string): TokenDiagnostics {
       iat: isoOrDash(payload.iat),
       exp: isoOrDash(payload.exp),
       tokenLen: token.length,
-      tail: token.length >= 6 ? `...${token.slice(-6)}` : `...${token}`,
+      tail: tokenTail(token),
     };
   } catch {
     return fallback;
