@@ -165,7 +165,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const presentRank = crewMemberData?.presentRank ?? '';
 
   const { data: promotionRecommendationsData } = useQuery<{ count: number; rank: string; crewMemberId: string }>({
-    queryKey: [`/api/appraisals/crew/${crewMemberId}/promotion-recommendations?rank=${encodeURIComponent(presentRank)}`],
+    queryKey: [`/api/v2/appraisals/crew/${crewMemberId}/promotion-recommendations?rank=${encodeURIComponent(presentRank)}`],
     enabled: !!crewMemberId && !!presentRank,
   });
 
