@@ -519,11 +519,12 @@ function evaluateEnglishProficiencyRules(
   return results;
 }
 
-function parseDateJoinedRankPair(rankPairStr: string): string[] {
-  const parts = rankPairStr.split(/\s*-\s*/);
+export function parseDateJoinedRankPair(rankPairStr: string): string[] {
+  if (!rankPairStr || typeof rankPairStr !== 'string') return [];
+  const parts = rankPairStr.split(/\s*[-+,]\s*/);
   const ranks: string[] = [];
   for (const part of parts) {
-    const cleaned = part.replace(/\s*joining\s*date\s*/i, '').trim();
+    const cleaned = part.replace(/\s*joining\s*date\s*/gi, '').trim();
     if (cleaned.length > 0) {
       ranks.push(cleaned);
     }
@@ -588,6 +589,18 @@ function evaluateDateJoinedRules(
     
     const date1 = new Date(crew1.signOnDate);
     const date2 = new Date(crew2.signOnDate);
+    if (isNaN(date1.getTime()) || isNaN(date2.getTime())) {
+      results.push({
+        category: 'Date Joined',
+        label: label || `A minimum of ${requiredDays} days shall lapse between replacement of ${ranks.join(' and ')}`,
+        rankPair: `${normalizeRankName(crew1.rank)} + ${normalizeRankName(crew2.rank)}`,
+        requiredValue: requiredDays,
+        actualValue: 0,
+        unit: 'days',
+        status: 'not_applicable'
+      });
+      continue;
+    }
     const daysDiff = Math.abs(Math.round((date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24)));
     
     results.push({
