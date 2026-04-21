@@ -328,11 +328,15 @@ export function inferDepartmentFromRank(rankName: string): CocDepartment | null 
   }
   
   // Engine department patterns - check BEFORE deck to handle "Engine Cadet" etc.
+  // Also catches "Electrical Officer" here so it isn't misrouted to 'deck'
+  // by the generic 'officer' rule below — the Officer Matrix groups Electrical
+  // Officer / ETO COCs under the engine priority list.
   if (
     lowerRank.includes('engineer') ||
     lowerRank.includes('engine') ||       // Catches "Engine Cadet", "Engine Room"
     lowerRank.includes('eng ') ||          // Catches "Eng Cadet", "Eng Rating"
     lowerRank.startsWith('eng') ||         // Catches "Eng" at start
+    lowerRank.includes('electrical') ||    // Catches "Electrical Officer"
     lowerRank.includes('motorman') ||
     lowerRank.includes('fitter') ||
     lowerRank.includes('oiler') ||
