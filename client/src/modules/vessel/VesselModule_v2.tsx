@@ -519,7 +519,9 @@ interface OfficerMatrixRowV2Props {
 function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, handleViewCrewClick, vesselUuid }: OfficerMatrixRowV2Props) {
     const crewUuid = rankPlanningData?.crewUuid;
     const fullRankName = rank.displayRole || rank.role || rank.rank;
-    
+    const baseRankName = (fullRankName || '').split('_')[0].trim().toLowerCase();
+    const oowNotApplicable = baseRankName === 'master' || baseRankName === 'chief engineer' || baseRankName === 'electrical officer';
+
     // Determine department: use inferred value, or derive from rank category if available
     const effectiveDepartment: 'deck' | 'engine' | null = rankDepartment ?? 
         (rank.category === 'Engine' ? 'engine' : 
@@ -563,6 +565,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.issuingCountry || ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-admin-accept-${index + 1}`}>
+                Yes
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-tanker-${index + 1}`}>
                 {officerData?.tankerCert || ''}
@@ -571,7 +574,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.splTankerTraining || ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-radio-${index + 1}`}>
-                {officerData?.radioQual ? 'Yes' : ''}
+                {officerData?.radioQual ? 'Yes' : '-'}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-company-${index + 1}`}>
                 {officerData?.companyYears && officerData.companyYears > 0 ? officerData.companyYears : ''}
@@ -586,7 +589,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.allTankersYears && officerData.allTankersYears > 0 ? officerData.allTankersYears : ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-dow-${index + 1}`}>
-                {officerData?.oowYears && officerData.oowYears > 0 ? officerData.oowYears : ''}
+                {oowNotApplicable ? 'NA' : (officerData?.oowYears && officerData.oowYears > 0 ? officerData.oowYears : '')}
             </TableCell>
             <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
                 {officerData?.timeOnBoardMonths && officerData.timeOnBoardMonths > 0 ? officerData.timeOnBoardMonths : ''}
