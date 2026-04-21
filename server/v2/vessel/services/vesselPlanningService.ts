@@ -519,6 +519,158 @@ async function calculateExperienceMetricsV2(
 /**
  * Get certification data from V2 crew_licenses table for Officer Matrix
  */
+/**
+ * Officer Matrix COC priority lists (low → high).
+ * Highest matching substring wins. Department-scoped so engine COCs are not
+ * compared against deck COCs.
+ *
+ * EXISTING entries (kept in their original relative order — do not reshuffle):
+ *   Deck:   third mate, second mate, oow, officer of the watch, chief officer,
+ *           chief mate, master.
+ *   Engine: fourth engineer, 4th engineer, third engineer, 3rd engineer,
+ *           second engineer, 2nd engineer, chief engineer,
+ *           electro-technical officer, eto.
+ *
+ * NEW entries added for ranks previously not matched. Each new pattern only
+ * fires on substrings that no currently-recognized cert text contains, so the
+ * existing label output for already-matched ranks is preserved.
+ */
+const COC_PRIORITY_DECK: ReadonlyArray<string> = [
+  'third officer',          // NEW — 3rd Officer tier
+  'third mate',
+  '3rd officer',            // NEW
+  '3/o',                    // NEW
+  'second officer',         // NEW — 2nd Officer tier
+  'second mate',
+  '2nd officer',            // NEW
+  '2/o',                    // NEW
+  'oicnw',                  // NEW — deck OOW alias
+  'oic nav watch',          // NEW
+  'oow',
+  'officer of the watch',
+  'chief officer',
+  'chief mate',
+  'master',
+];
+
+const COC_PRIORITY_ENGINE: ReadonlyArray<string> = [
+  'fifth engineer',         // NEW — 5th Engineer tier
+  '5th engineer',           // NEW
+  '5/e',                    // NEW
+  'gas engineer',           // NEW — specialty (low priority)
+  'fourth engineer',
+  '4th engineer',
+  '4/e',                    // NEW
+  'oicew',                  // NEW — engine OOW (~3rd Eng III/1)
+  'oic eng watch',          // NEW
+  'eoow',                   // NEW
+  'third engineer',
+  '3rd engineer',
+  '3/e',                    // NEW
+  'second engineer',
+  '2nd engineer',
+  '2/e',                    // NEW
+  'chief engineer',
+  'electrical officer',     // NEW — Electrical Officer ≈ ETO
+  'electro-technical officer',
+  'eto',
+];
+
+export function matchHighestCoc<T extends { certificateDocument: string | null }>(
+  licenses: ReadonlyArray<T>,
+  department: 'deck' | 'engine',
+): T | null {
+  const priority = department === 'deck' ? COC_PRIORITY_DECK : COC_PRIORITY_ENGINE;
+  let highest: T | null = null;
+  let highestIdx = -1;
+  for (const license of licenses) {
+    const certName = (license.certificateDocument || '').toLowerCase();
+    if (!certName) continue;
+    for (let i = 0; i < priority.length; i++) {
+      if (i > highestIdx && certName.includes(priority[i])) {
+        highestIdx = i;
+        highest = license;
+      }
+    }
+  }
+  return highest;
+}
+
+export function deriveCertCompLabel(
+  certificateDocument: string,
+  department: 'deck' | 'engine',
+): string {
+  const certName = (certificateDocument || '').toLowerCase();
+  if (!certName) return '';
+
+  // Engine-specific OOW variants must be checked BEFORE the generic deck 'oow'
+  // branch below, since "eoow" contains the substring "oow" and would otherwise
+  // be mislabelled as a deck OOW. This is the only departure from strict
+  // append-only ordering and does not affect any cert text recognized today
+  // (eoow / oicew / "oic eng watch" were not matched by the previous matcher).
+  if (department === 'engine') {
+    if (
+      certName.includes('eoow') ||
+      certName.includes('oicew') ||
+      certName.includes('oic eng watch')
+    ) {
+      return 'OOW Eng III/1';
+    }
+  }
+
+  // --- EXISTING branches (do not modify; preserve today's labels exactly) ---
+  if (certName.includes('master')) return 'Master II/2';
+  if (certName.includes('chief mate') || certName.includes('chief officer')) return 'Chief Mate II/2';
+  if (certName.includes('oow') || certName.includes('officer of the watch')) return 'OOW II/1';
+  if (certName.includes('chief engineer')) return 'Chief Engineer III/2';
+  if (certName.includes('second engineer') || certName.includes('2nd engineer')) return '2nd Engineer III/2';
+  if (certName.includes('third engineer') || certName.includes('3rd engineer')) return '3rd Engineer III/1';
+  if (certName.includes('electro') || certName.includes('eto')) return 'ETO III/6';
+
+  // --- NEW branches (appended; only fire on substrings the existing branches
+  //     above do not catch, so no currently-matched cert is reclassified) ---
+  if (
+    certName.includes('fourth engineer') ||
+    certName.includes('4th engineer') ||
+    certName.includes('4/e')
+  ) {
+    return '4th Engineer III/1';
+  }
+  if (
+    certName.includes('fifth engineer') ||
+    certName.includes('5th engineer') ||
+    certName.includes('5/e')
+  ) {
+    return '5th Engineer III/1';
+  }
+  if (
+    certName.includes('second officer') ||
+    certName.includes('second mate') ||
+    certName.includes('2nd officer') ||
+    certName.includes('2/o')
+  ) {
+    return '2nd Officer II/1';
+  }
+  if (
+    certName.includes('third officer') ||
+    certName.includes('third mate') ||
+    certName.includes('3rd officer') ||
+    certName.includes('3/o')
+  ) {
+    return '3rd Officer II/1';
+  }
+  if (certName.includes('oicnw') || certName.includes('oic nav watch')) {
+    return 'OOW II/1';
+  }
+  if (certName.includes('electrical officer')) {
+    return 'ETO III/6';
+  }
+  if (certName.includes('gas engineer')) {
+    return 'Gas Engineer III/1';
+  }
+  return '';
+}
+
 async function getCertificationsV2(crewUuid: string | null, department: 'deck' | 'engine'): Promise<{
   certComp: string;
   issuingCountry: string;
@@ -564,40 +716,12 @@ async function getCertificationsV2(crewUuid: string | null, department: 'deck' |
       ));
     
     // Find highest COC (Certificate of Competency)
-    const cocPatterns = department === 'deck' 
-      ? ['master', 'chief mate', 'chief officer', 'officer of the watch', 'oow', 'second mate', 'third mate']
-      : ['chief engineer', 'second engineer', '2nd engineer', 'third engineer', '3rd engineer', 'fourth engineer', '4th engineer', 'electro-technical officer', 'eto'];
-    
-    // Priority ranking for COCs (higher index = higher priority)
-    const cocPriority = department === 'deck'
-      ? ['third mate', 'second mate', 'oow', 'officer of the watch', 'chief officer', 'chief mate', 'master']
-      : ['fourth engineer', '4th engineer', 'third engineer', '3rd engineer', 'second engineer', '2nd engineer', 'chief engineer', 'electro-technical officer', 'eto'];
-    
-    let highestCoc: any = null;
-    let highestPriority = -1;
-    
-    for (const license of licenses) {
-      const certName = (license.certificateDocument || '').toLowerCase();
-      for (let i = 0; i < cocPriority.length; i++) {
-        if (certName.includes(cocPriority[i]) && i > highestPriority) {
-          highestPriority = i;
-          highestCoc = license;
-        }
-      }
-    }
-    
+    const highestCoc = matchHighestCoc(licenses, department);
+
     // Derive officerMatrixLabel from highest COC
-    let certComp = '';
-    if (highestCoc) {
-      const certName = (highestCoc.certificateDocument || '').toLowerCase();
-      if (certName.includes('master')) certComp = 'Master II/2';
-      else if (certName.includes('chief mate') || certName.includes('chief officer')) certComp = 'Chief Mate II/2';
-      else if (certName.includes('oow') || certName.includes('officer of the watch')) certComp = 'OOW II/1';
-      else if (certName.includes('chief engineer')) certComp = 'Chief Engineer III/2';
-      else if (certName.includes('second engineer') || certName.includes('2nd engineer')) certComp = '2nd Engineer III/2';
-      else if (certName.includes('third engineer') || certName.includes('3rd engineer')) certComp = '3rd Engineer III/1';
-      else if (certName.includes('electro') || certName.includes('eto')) certComp = 'ETO III/6';
-    }
+    const certComp = highestCoc
+      ? deriveCertCompLabel(highestCoc.certificateDocument || '', department)
+      : '';
     
     // Check for GMDSS (radio qualification)
     const hasGmdss = licenses.some((l: typeof licenses[0]) => {
@@ -677,7 +801,7 @@ async function getCertificationsV2(crewUuid: string | null, department: 'deck' |
 
     return {
       certComp,
-      issuingCountry: highestCoc?.issuingCountryName || '',
+      issuingCountry: (highestCoc as { issuingCountryName?: string | null } | null)?.issuingCountryName || '',
       tankerCert: tankerCertParts.join(', '),
       splTankerTraining: splTrainingParts.join(', '),
       radioQual: department === 'deck' && hasGmdss
