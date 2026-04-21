@@ -70,8 +70,10 @@ describe('Officer Matrix — deriveCertCompLabel (no-regression contract)', () =
       expect(deriveCertCompLabel('OICEW', 'engine')).toBe('OOW Eng III/1');
       expect(deriveCertCompLabel('OIC Eng Watch', 'engine')).toBe('OOW Eng III/1');
     });
-    it('Electrical Officer maps to ETO (synonym)', () => {
-      expect(deriveCertCompLabel('Electrical Officer', 'engine')).toBe('ETO III/6');
+    it('Electrical Officer (distinct from ETO)', () => {
+      expect(deriveCertCompLabel('Electrical Officer', 'engine')).toBe('Electrical Officer III/6');
+      // Confirm ETO label is unaffected
+      expect(deriveCertCompLabel('Electro-Technical Officer', 'engine')).toBe('ETO III/6');
     });
     it('Gas Engineer', () => {
       expect(deriveCertCompLabel('Gas Engineer', 'engine')).toBe('Gas Engineer III/1');

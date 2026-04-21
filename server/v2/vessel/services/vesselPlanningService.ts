@@ -571,7 +571,7 @@ const COC_PRIORITY_ENGINE: ReadonlyArray<string> = [
   '2nd engineer',
   '2/e',                    // NEW
   'chief engineer',
-  'electrical officer',     // NEW — Electrical Officer ≈ ETO
+  'electrical officer',     // NEW — distinct from ETO (Electrical Officer III/6)
   'electro-technical officer',
   'eto',
 ];
@@ -663,7 +663,7 @@ export function deriveCertCompLabel(
     return 'OOW II/1';
   }
   if (certName.includes('electrical officer')) {
-    return 'ETO III/6';
+    return 'Electrical Officer III/6';
   }
   if (certName.includes('gas engineer')) {
     return 'Gas Engineer III/1';
