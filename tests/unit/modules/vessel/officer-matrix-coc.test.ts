@@ -142,14 +142,13 @@ describe('Officer Matrix — matchHighestCoc (highest priority wins)', () => {
     expect(matchHighestCoc(licenses, 'engine')?.licUuid).toBe('a');
   });
 
-  it('engine OOW is NOT picked up by deck matcher', () => {
+  it('engine OOW (EOOW) is disambiguated by department at the label layer', () => {
     const licenses = [lic('a', 'EOOW')];
-    // 'eoow' contains 'oow' substring → deck matcher will pick it; this is
-    // expected since the wrong department being queried is a caller-side issue.
-    // The label derivation in deriveCertCompLabel is what disambiguates.
+    // 'eoow' contains the substring 'oow', so the deck matcher will also
+    // select it as a candidate. Disambiguation between deck/engine OOW is
+    // intentionally handled in deriveCertCompLabel, not in matchHighestCoc.
     expect(matchHighestCoc(licenses, 'deck')?.licUuid).toBe('a');
-    // But the deck label derivation gives the deck OOW label, while engine
-    // gives engine OOW — verifying disambiguation works at the label layer.
+    expect(matchHighestCoc(licenses, 'engine')?.licUuid).toBe('a');
     expect(deriveCertCompLabel('EOOW', 'deck')).toBe('OOW II/1');
     expect(deriveCertCompLabel('EOOW', 'engine')).toBe('OOW Eng III/1');
   });
