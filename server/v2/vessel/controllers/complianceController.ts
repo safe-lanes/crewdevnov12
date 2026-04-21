@@ -370,10 +370,16 @@ async function getSimulatedCrewExperience(
     
     const simEntry = simRankMap.get(normalizedRank);
     if (simEntry) {
+      // Effective replacement date precedence:
+      //   1. simulated joining date (when explicitly provided in the simulation)
+      //   2. existing planning sign-on date for this slot (so a one-sided
+      //      simulation that swaps the crew member but keeps the existing
+      //      join date still yields a real comparison instead of N/A).
+      const effectiveDate = simEntry.joiningDate || record.signOnDate || null;
       const exp = await getCrewExperienceForMember(
         simEntry.crewMemberId,
         record.rank,
-        simEntry.joiningDate || null,
+        effectiveDate,
         vesselTypeUuid,
         tankerCategory
       );
@@ -532,7 +538,22 @@ export function parseDateJoinedRankPair(rankPairStr: string): string[] {
   return ranks;
 }
 
-function evaluateDateJoinedRules(
+/**
+ * Returns the effective replacement date for a crew slot used by Date Joined
+ * rules. Precedence (highest first):
+ *   1. The crew experience's `signOnDate` — already populated by
+ *      getCrewExperienceForMember from either the simulated joining date or
+ *      the existing planning sign-on date (see getSimulatedCrewExperience).
+ *   2. (no further fallback — there is no separate joining_date column on
+ *      crew_members_v2; null here results in a not_applicable rule outcome.)
+ */
+export function getEffectiveReplacementDate(crew: { signOnDate: string | null } | null | undefined): Date | null {
+  if (!crew || !crew.signOnDate) return null;
+  const d = new Date(crew.signOnDate);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export function evaluateDateJoinedRules(
   ruleArray: any[],
   crewExperiences: CrewExperience[]
 ): ComplianceRuleResult[] {
@@ -574,22 +595,9 @@ function evaluateDateJoinedRules(
       continue;
     }
     
-    if (!crew1.signOnDate || !crew2.signOnDate) {
-      results.push({
-        category: 'Date Joined',
-        label: label || `A minimum of ${requiredDays} days shall lapse between replacement of ${ranks.join(' and ')}`,
-        rankPair: `${normalizeRankName(crew1.rank)} + ${normalizeRankName(crew2.rank)}`,
-        requiredValue: requiredDays,
-        actualValue: 0,
-        unit: 'days',
-        status: 'not_applicable'
-      });
-      continue;
-    }
-    
-    const date1 = new Date(crew1.signOnDate);
-    const date2 = new Date(crew2.signOnDate);
-    if (isNaN(date1.getTime()) || isNaN(date2.getTime())) {
+    const date1 = getEffectiveReplacementDate(crew1);
+    const date2 = getEffectiveReplacementDate(crew2);
+    if (!date1 || !date2) {
       results.push({
         category: 'Date Joined',
         label: label || `A minimum of ${requiredDays} days shall lapse between replacement of ${ranks.join(' and ')}`,
