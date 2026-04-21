@@ -4,9 +4,10 @@ import {
   deriveCertCompLabel,
 } from '@server/v2/vessel/services/vesselPlanningService';
 
-type Lic = { licUuid: string; certificateDocument: string };
+type Lic = { licUuid: string; certificateDocument: string; issuingAuthority?: string | null };
 
-const lic = (id: string, cert: string): Lic => ({ licUuid: id, certificateDocument: cert });
+const lic = (id: string, cert: string, issuingAuthority?: string | null): Lic =>
+  ({ licUuid: id, certificateDocument: cert, issuingAuthority: issuingAuthority ?? null });
 
 describe('Officer Matrix — deriveCertCompLabel (no-regression contract)', () => {
   describe('existing labels (must not change)', () => {
@@ -156,5 +157,40 @@ describe('Officer Matrix — matchHighestCoc (highest priority wins)', () => {
   it('case insensitive — lowercase cert text still matches', () => {
     const licenses = [lic('a', 'coc master')];
     expect(matchHighestCoc(licenses, 'deck')?.licUuid).toBe('a');
+  });
+});
+
+describe('Officer Matrix — issuingAuthority surfacing on selected COC', () => {
+  it('returns issuingAuthority of the highest-priority COC', () => {
+    const licenses = [
+      lic('oow', 'COC OOW', 'PHILIPPINES'),
+      lic('co', 'COC Chief Officer', 'INDIA'),
+      lic('m', 'COC Master', 'SINGAPORE'),
+    ];
+    const highest = matchHighestCoc(licenses, 'deck');
+    expect(highest?.licUuid).toBe('m');
+    expect(highest?.issuingAuthority).toBe('SINGAPORE');
+  });
+
+  it('blank issuingAuthority on the highest COC stays blank (no fallback)', () => {
+    const licenses = [
+      lic('oow', 'COC OOW', 'PHILIPPINES'),
+      lic('m', 'COC Master', null),
+    ];
+    const highest = matchHighestCoc(licenses, 'deck');
+    expect(highest?.licUuid).toBe('m');
+    expect(highest?.issuingAuthority ?? '').toBe('');
+  });
+
+  it('engine: returns issuingAuthority for newly recognized ranks (Task #267)', () => {
+    const licenses = [lic('e4', 'COC 4th Engineer', 'CROATIA')];
+    const highest = matchHighestCoc(licenses, 'engine');
+    expect(highest?.licUuid).toBe('e4');
+    expect(highest?.issuingAuthority).toBe('CROATIA');
+  });
+
+  it('returns null (and no authority) when no COC matches', () => {
+    const licenses = [lic('a', 'GMDSS GOC', 'INDIA')];
+    expect(matchHighestCoc(licenses, 'deck')).toBeNull();
   });
 });

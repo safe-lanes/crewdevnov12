@@ -3,7 +3,7 @@ import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachment
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { masterPorts, masterVessels, masterVesselTypes, masterCountries } from "../../../../shared/schema";
+import { masterPorts, masterVessels, masterVesselTypes } from "../../../../shared/schema";
 import { admCompanyTrainingsV2 } from "../../../../shared/v2/admin/schema";
 import { eq, and, sql, desc, or, isNull, aliasedTable } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
@@ -576,7 +576,7 @@ const COC_PRIORITY_ENGINE: ReadonlyArray<string> = [
   'eto',
 ];
 
-export function matchHighestCoc<T extends { certificateDocument: string | null }>(
+export function matchHighestCoc<T extends { certificateDocument: string | null; issuingAuthority?: string | null }>(
   licenses: ReadonlyArray<T>,
   department: 'deck' | 'engine',
 ): T | null {
@@ -692,14 +692,9 @@ async function getCertificationsV2(crewUuid: string | null, department: 'deck' |
         certificateDocument: crewLicenses.certificateDocument,
         abbr: crewLicenses.abbr,
         expiry: crewLicenses.expiry,
-        issuingCountryUuid: crewLicenses.issuingCountryUuid,
-        issuingCountryName: masterCountries.countryName,
+        issuingAuthority: crewLicenses.issuingAuthority,
       })
       .from(crewLicenses)
-      .leftJoin(
-        masterCountries,
-        eq(crewLicenses.issuingCountryUuid, masterCountries.countryUuid)
-      )
       .where(and(
         eq(crewLicenses.crewUuid, crewUuid),
         eq(crewLicenses.isDeleted, false),
@@ -801,7 +796,7 @@ async function getCertificationsV2(crewUuid: string | null, department: 'deck' |
 
     return {
       certComp,
-      issuingCountry: (highestCoc as { issuingCountryName?: string | null } | null)?.issuingCountryName || '',
+      issuingCountry: highestCoc?.issuingAuthority || '',
       tankerCert: tankerCertParts.join(', '),
       splTankerTraining: splTrainingParts.join(', '),
       radioQual: department === 'deck' && hasGmdss
