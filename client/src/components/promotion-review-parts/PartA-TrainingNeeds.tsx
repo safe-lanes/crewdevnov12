@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Plus, Trash2, MessageSquare } from 'lucide-react';
 import type { TrainingRow, Comment } from './types';
 
@@ -89,18 +90,13 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                   <TableCell className="text-sm" data-testid={`cell-training-sno-${training.id}`}>{index + 1}</TableCell>
                   <TableCell className="text-sm" data-testid={`cell-training-name-${training.id}`}>{training.training}</TableCell>
                   <TableCell>
-                    <Select 
+                    <Input
                       value={training.correspondingInDB}
-                      onValueChange={(value) => onUpdateTraining(training.id, 'correspondingInDB', value)}
-                    >
-                      <SelectTrigger className="h-8 text-xs" data-testid={`select-training-db-${training.id}`}>
-                        <SelectValue placeholder="Select Training from DB" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="training1">Training 1</SelectItem>
-                        <SelectItem value="training2">Training 2</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      onChange={(e) => onUpdateTraining(training.id, 'correspondingInDB', e.target.value)}
+                      placeholder="Enter corresponding DB entry..."
+                      className="h-8 text-xs"
+                      data-testid={`input-training-db-${training.id}`}
+                    />
                   </TableCell>
                   <TableCell>
                     <Select 
