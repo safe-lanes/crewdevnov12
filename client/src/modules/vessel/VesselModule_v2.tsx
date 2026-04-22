@@ -1352,6 +1352,7 @@ export function VesselModule_v2(): JSX.Element {
     };
 
     const handleDownloadIMOCrewList = async () => {
+        console.log('[crew-list-debug] IMO click fired', { vesselUuid: selectedVessel?.vesselUuid });
         if (!selectedVessel?.vesselUuid) return;
         try {
             const payload = await vesselApiV2.getCrewListExport(selectedVessel.vesselUuid);
@@ -1388,6 +1389,7 @@ export function VesselModule_v2(): JSX.Element {
     };
 
     const handleDownloadUSCrewList = async () => {
+        console.log('[crew-list-debug] US click fired', { vesselUuid: selectedVessel?.vesselUuid });
         if (!selectedVessel?.vesselUuid) return;
         try {
             const payload = await vesselApiV2.getCrewListExport(selectedVessel.vesselUuid);
