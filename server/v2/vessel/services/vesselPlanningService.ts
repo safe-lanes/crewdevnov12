@@ -3,9 +3,9 @@ import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachment
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { masterPorts, masterVessels, masterVesselTypes } from "../../../../shared/schema";
+import { masterPorts, masterVessels, masterVesselTypes, masterNationalities, masterCountries } from "../../../../shared/schema";
 import { admCompanyTrainingsV2 } from "../../../../shared/v2/admin/schema";
-import { eq, and, sql, desc, or, isNull, aliasedTable } from "drizzle-orm";
+import { eq, and, sql, desc, or, isNull, aliasedTable, inArray } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
 
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
@@ -1478,6 +1478,217 @@ export const vesselPlanningService = {
       ...experienceMetrics,
       ...certifications,
       englishProficiency
+    };
+  },
+
+  /**
+   * Build the payload consumed by IMO FAL Form 5 (.docx) and US CBP I-418 (.pdf)
+   * crew-list generators in the client. Returns vessel header info plus a list
+   * of crew members with personal details and a passport-first documents array.
+   */
+  async getCrewListExportPayload(vesselUuid: string): Promise<{
+    vessel: {
+      id: number | null;
+      vesselUuid: string;
+      name: string;
+      vesselType: string;
+      imoNumber: string;
+      flagState: string;
+      officialNumber: string;
+      callSign: string;
+    };
+    crewMembers: Array<{
+      id: string;
+      firstName: string;
+      middleName: string;
+      familyName: string;
+      presentRank: string;
+      nationality: string;
+      dateOfBirth: string;
+      placeOfBirth: string;
+      gender: string;
+      signOnDate: string;
+      documents: string;
+    }>;
+  }> {
+    const db = getDb();
+
+    // 1. Vessel header
+    const vesselRows = await db
+      .select()
+      .from(masterVessels)
+      .where(eq(masterVessels.vesselUuid, vesselUuid))
+      .limit(1);
+
+    if (vesselRows.length === 0) {
+      throw new Error(`Vessel not found: ${vesselUuid}`);
+    }
+    const vesselRow: any = vesselRows[0];
+
+    // 2. All non-archived crew assignments for this vessel, joined with crew core
+    //    and nationality name. Personal details (place of birth) are loaded
+    //    separately to avoid row-multiplication if a crew has multiple non-deleted
+    //    crew_personal_details rows.
+    const planningRows = await db
+      .select({
+        crewUuid: vesselPlanningV2.crewUuid,
+        rank: vesselPlanningV2.rank,
+        signOnDate: vesselPlanningV2.signOnDate,
+        createdAt: vesselPlanningV2.createdAt,
+        firstName: crewMembersV2.firstName,
+        middleName: crewMembersV2.middleName,
+        familyName: crewMembersV2.familyName,
+        gender: crewMembersV2.gender,
+        dob: crewMembersV2.dob,
+        nationality: masterNationalities.nationality,
+      })
+      .from(vesselPlanningV2)
+      .leftJoin(crewMembersV2, eq(vesselPlanningV2.crewUuid, crewMembersV2.crewUuid))
+      .leftJoin(masterNationalities, eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid))
+      .where(
+        and(
+          eq(vesselPlanningV2.vesselUuid, vesselUuid),
+          eq(vesselPlanningV2.isDeleted, false),
+          eq(vesselPlanningV2.isArchived, false),
+          sql`${vesselPlanningV2.crewUuid} IS NOT NULL`
+        )
+      )
+      .orderBy(vesselPlanningV2.rank, vesselPlanningV2.createdAt);
+
+    // 3. Bulk-load active documents for all crew, then group by crewUuid.
+    const crewUuidSet = new Set<string>();
+    for (const r of planningRows as any[]) {
+      if (r.crewUuid) crewUuidSet.add(r.crewUuid as string);
+    }
+    const crewUuids: string[] = Array.from(crewUuidSet);
+
+    // Bulk-load place of birth (city + country name) keyed by crewUuid. We use
+    // the latest non-deleted personal-details row per crew so duplicates in
+    // crew_personal_details cannot multiply downstream rows.
+    const placeCountry = aliasedTable(masterCountries, "place_country");
+    const personalRows: any[] = crewUuids.length === 0 ? [] : await db
+      .select({
+        crewUuid: crewPersonalDetails.crewUuid,
+        placeOfBirthCity: crewPersonalDetails.placeOfBirthCity,
+        placeOfBirthCountry: placeCountry.countryName,
+        updatedAt: crewPersonalDetails.updatedAt,
+      })
+      .from(crewPersonalDetails)
+      .leftJoin(placeCountry, eq(crewPersonalDetails.placeOfBirthCountryUuid, placeCountry.countryUuid))
+      .where(
+        and(
+          inArray(crewPersonalDetails.crewUuid, crewUuids),
+          eq(crewPersonalDetails.isDeleted, false)
+        )
+      )
+      .orderBy(desc(crewPersonalDetails.updatedAt));
+
+    const placeByCrew = new Map<string, string>();
+    for (const p of personalRows) {
+      if (placeByCrew.has(p.crewUuid)) continue; // keep newest only
+      const place = [p.placeOfBirthCity, p.placeOfBirthCountry].filter(Boolean).join(", ");
+      placeByCrew.set(p.crewUuid, place);
+    }
+
+    const issuingCountry = aliasedTable(masterCountries, "issuing_country");
+    const documentRows: any[] = crewUuids.length === 0 ? [] : await db
+      .select({
+        crewUuid: crewDocuments.crewUuid,
+        documentName: crewDocuments.documentName,
+        number: crewDocuments.number,
+        issuingAuthority: crewDocuments.issuingAuthority,
+        issuingCountryName: issuingCountry.countryName,
+        expiry: crewDocuments.expiry,
+        sortOrder: crewDocuments.sortOrder,
+      })
+      .from(crewDocuments)
+      .leftJoin(
+        issuingCountry,
+        eq(crewDocuments.issuingCountryUuid, issuingCountry.countryUuid)
+      )
+      .where(
+        and(
+          inArray(crewDocuments.crewUuid, crewUuids),
+          eq(crewDocuments.isDeleted, false)
+        )
+      );
+
+    type DocEntry = {
+      document: string;
+      number: string;
+      issuingAuthority: string;
+      expiry: string;
+      _sortOrder: number;
+    };
+    const docsByCrew = new Map<string, DocEntry[]>();
+
+    for (const d of documentRows as any[]) {
+      const list = docsByCrew.get(d.crewUuid) || [];
+      list.push({
+        document: d.documentName || "",
+        number: d.number || "",
+        // Generators read `issuingAuthority` for the "Issuing State" column;
+        // prefer the resolved country name, fall back to the free-text authority field.
+        issuingAuthority: d.issuingCountryName || d.issuingAuthority || "",
+        expiry: d.expiry || "",
+        _sortOrder: d.sortOrder ?? 0,
+      });
+      docsByCrew.set(d.crewUuid, list);
+    }
+
+    // Sort each crew's docs: passport first, seaman's book / CDC / identity next,
+    // rest after. Within a bucket, fall back to the document's stored sortOrder
+    // so multiple passports / seaman's books stay in their canonical order.
+    const docPriority = (name: string): number => {
+      const n = (name || "").toLowerCase();
+      if (n.includes("passport")) return 0;
+      if (n.includes("seaman") || n.includes("cdc") || n.includes("identity")) return 1;
+      return 2;
+    };
+    docsByCrew.forEach((list) => {
+      list.sort((a, b) => {
+        const pa = docPriority(a.document);
+        const pb = docPriority(b.document);
+        if (pa !== pb) return pa - pb;
+        return a._sortOrder - b._sortOrder;
+      });
+    });
+
+    // 4. Assemble crew payload — strip rank suffix (`MASTER_2` → `MASTER`).
+    const crewMembers = planningRows.map((r: any) => {
+      const placeOfBirth = r.crewUuid ? (placeByCrew.get(r.crewUuid) || "") : "";
+      const docs = r.crewUuid ? docsByCrew.get(r.crewUuid) || [] : [];
+      return {
+        id: r.crewUuid || "",
+        firstName: r.firstName || "",
+        middleName: r.middleName || "",
+        familyName: r.familyName || "",
+        presentRank: (r.rank || "").split("_")[0] || "",
+        nationality: r.nationality || "",
+        dateOfBirth: r.dob || "",
+        placeOfBirth,
+        gender: r.gender || "",
+        signOnDate: r.signOnDate || "",
+        documents: JSON.stringify(
+          docs.map(({ _sortOrder, ...rest }) => rest)
+        ),
+      };
+    });
+
+    return {
+      vessel: {
+        id: vesselRow.id ?? null,
+        vesselUuid: vesselRow.vesselUuid || vesselUuid,
+        name: vesselRow.vessel || "",
+        vesselType: vesselRow.vesselType || "",
+        imoNumber: vesselRow.imoNumber || "",
+        // These fields are not stored in master_vessels yet — left blank so the
+        // generator renders empty form fields the user can fill in afterwards.
+        flagState: "",
+        officialNumber: "",
+        callSign: "",
+      },
+      crewMembers,
     };
   },
 };

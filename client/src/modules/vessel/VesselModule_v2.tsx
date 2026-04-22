@@ -1352,80 +1352,73 @@ export function VesselModule_v2(): JSX.Element {
     };
 
     const handleDownloadIMOCrewList = async () => {
-        if (!selectedVessel) return;
-        
-        const vesselCrew = filteredVesselPlanning
-            .filter((planning: any) => {
-                if (!planning.crewMemberId) return false;
-                return !planning.isArchived;
-            })
-            .sort((a: any, b: any) => {
-                const aOrder = getSortOrder(a.rank);
-                const bOrder = getSortOrder(b.rank);
-                if (aOrder !== bOrder) return aOrder - bOrder;
-                const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
-                const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
-                return aSuffix - bSuffix;
+        if (!selectedVessel?.vesselUuid) return;
+        try {
+            const payload = await vesselApiV2.getCrewListExport(selectedVessel.vesselUuid);
+            await generateFALForm5Document({
+                vessel: {
+                    id: payload.vessel.id ?? 0,
+                    name: payload.vessel.name,
+                    vesselType: payload.vessel.vesselType,
+                },
+                crewMembers: payload.crewMembers.map(c => ({
+                    id: c.id,
+                    firstName: c.firstName,
+                    middleName: c.middleName,
+                    familyName: c.familyName,
+                    presentRank: c.presentRank,
+                    nationality: c.nationality,
+                    dateOfBirth: c.dateOfBirth,
+                    placeOfBirth: c.placeOfBirth,
+                    gender: c.gender,
+                    documents: c.documents,
+                })),
+                imoNumber: payload.vessel.imoNumber,
+                callSign: payload.vessel.callSign,
+                flagState: payload.vessel.flagState,
             });
-        
-        const headers = ['S.No', 'Rank', 'Surname, Given Name', 'Nationality', 'Certificate of Competency'];
-        const rows = vesselCrew.map((planning: any, index: number) => {
-            return [
-                (index + 1).toString(),
-                planning.rank?.split('_')[0] || '',
-                planning.crewName || '',
-                planning.nationality || '',
-                ''
-            ];
-        });
-        
-        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${selectedVessel.name}_IMO_Crew_List.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('IMO Crew List download failed:', error);
+            toast({
+                title: 'Could not generate crew list',
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive',
+            });
+        }
     };
 
     const handleDownloadUSCrewList = async () => {
-        if (!selectedVessel) return;
-        
-        const vesselCrew = filteredVesselPlanning
-            .filter((planning: any) => {
-                if (!planning.crewMemberId) return false;
-                return !planning.isArchived;
-            })
-            .sort((a: any, b: any) => {
-                const aOrder = getSortOrder(a.rank);
-                const bOrder = getSortOrder(b.rank);
-                if (aOrder !== bOrder) return aOrder - bOrder;
-                const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
-                const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
-                return aSuffix - bSuffix;
+        if (!selectedVessel?.vesselUuid) return;
+        try {
+            const payload = await vesselApiV2.getCrewListExport(selectedVessel.vesselUuid);
+            await generateUSCrewListDocument({
+                vessel: {
+                    id: payload.vessel.id ?? 0,
+                    name: payload.vessel.name,
+                    vesselType: payload.vessel.vesselType,
+                    nationality: payload.vessel.flagState,
+                    officialNumber: payload.vessel.officialNumber,
+                },
+                crewMembers: payload.crewMembers.map(c => ({
+                    id: c.id,
+                    firstName: c.firstName,
+                    middleName: c.middleName,
+                    familyName: c.familyName,
+                    presentRank: c.presentRank,
+                    nationality: c.nationality,
+                    dateOfBirth: c.dateOfBirth,
+                    documents: c.documents,
+                    signOnDate: c.signOnDate,
+                })),
             });
-        
-        const headers = ['S.No', 'Rank', 'Surname, Given Name', 'Nationality', 'Date of Birth', 'Place of Birth'];
-        const rows = vesselCrew.map((planning: any, index: number) => {
-            return [
-                (index + 1).toString(),
-                planning.rank?.split('_')[0] || '',
-                planning.crewName || '',
-                planning.nationality || '',
-                '',
-                ''
-            ];
-        });
-        
-        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${selectedVessel.name}_US_Crew_List.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('US Crew List download failed:', error);
+            toast({
+                title: 'Could not generate crew list',
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive',
+            });
+        }
     };
 
     const renderVesselDetail = () => {

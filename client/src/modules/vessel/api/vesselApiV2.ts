@@ -115,7 +115,42 @@ export interface UpdatePlanningInput {
   applicableDocsChecked?: boolean | null;
 }
 
+export interface CrewListExportPayload {
+  vessel: {
+    id: number | null;
+    vesselUuid: string;
+    name: string;
+    vesselType: string;
+    imoNumber: string;
+    flagState: string;
+    officialNumber: string;
+    callSign: string;
+  };
+  crewMembers: Array<{
+    id: string;
+    firstName: string;
+    middleName: string;
+    familyName: string;
+    presentRank: string;
+    nationality: string;
+    dateOfBirth: string;
+    placeOfBirth: string;
+    gender: string;
+    signOnDate: string;
+    documents: string;
+  }>;
+}
+
 export const vesselApiV2 = {
+  async getCrewListExport(vesselUuid: string): Promise<CrewListExportPayload> {
+    const response = await fetch(`${V2_BASE}/${encodeURIComponent(vesselUuid)}/crew-list-export`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Failed to fetch crew list export payload');
+    }
+    return response.json();
+  },
+
   async getVesselPlanning(vesselCode: string): Promise<VesselPlanningV2[]> {
     const response = await fetch(`${V2_BASE}/${encodeURIComponent(vesselCode)}/planning`);
     if (!response.ok) throw new Error('Failed to fetch vessel planning');

@@ -29,6 +29,20 @@ export const vesselPlanningController = {
     }
   },
 
+  async getCrewListExport(req: Request, res: Response) {
+    try {
+      const { vesselUuid } = req.params;
+      const payload = await vesselPlanningService.getCrewListExportPayload(vesselUuid);
+      res.json(payload);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error building crew list export payload:", error);
+      res.status(500).json({ error: "Failed to build crew list export" });
+    }
+  },
+
   async getByPlanUuid(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
