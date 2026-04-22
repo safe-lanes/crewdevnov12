@@ -4,7 +4,7 @@ import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterPorts, masterVessels, masterVesselTypes, masterNationalities, masterCountries } from "../../../../shared/schema";
-import { admCompanyTrainingsV2 } from "../../../../shared/v2/admin/schema";
+import { admCompanyTrainingsV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
 import { eq, and, sql, desc, or, isNull, aliasedTable, inArray } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
 
@@ -1523,13 +1523,26 @@ export const vesselPlanningService = {
     if (vesselRows.length === 0) {
       throw new Error(`Vessel not found: ${vesselUuid}`);
     }
-    const vesselRow: any = vesselRows[0];
+    const vesselRow = vesselRows[0];
 
     // 2. All non-archived crew assignments for this vessel, joined with crew core
     //    and nationality name. Personal details (place of birth) are loaded
     //    separately to avoid row-multiplication if a crew has multiple non-deleted
     //    crew_personal_details rows.
-    const planningRows = await db
+    type PlanningRow = {
+      crewUuid: string | null;
+      rank: string | null;
+      signOnDate: string | null;
+      createdAt: Date | null;
+      firstName: string | null;
+      middleName: string | null;
+      familyName: string | null;
+      gender: string | null;
+      dob: string | null;
+      nationality: string | null;
+    };
+
+    const planningRows: PlanningRow[] = await db
       .select({
         crewUuid: vesselPlanningV2.crewUuid,
         rank: vesselPlanningV2.rank,
@@ -1552,21 +1565,112 @@ export const vesselPlanningService = {
           eq(vesselPlanningV2.isArchived, false),
           sql`${vesselPlanningV2.crewUuid} IS NOT NULL`
         )
-      )
-      .orderBy(vesselPlanningV2.rank, vesselPlanningV2.createdAt);
+      );
 
-    // 3. Bulk-load active documents for all crew, then group by crewUuid.
+    // 3. Build crewUuid list (typed)
     const crewUuidSet = new Set<string>();
-    for (const r of planningRows as any[]) {
-      if (r.crewUuid) crewUuidSet.add(r.crewUuid as string);
+    for (const r of planningRows) {
+      if (r.crewUuid) crewUuidSet.add(r.crewUuid);
     }
     const crewUuids: string[] = Array.from(crewUuidSet);
 
-    // Bulk-load place of birth (city + country name) keyed by crewUuid. We use
-    // the latest non-deleted personal-details row per crew so duplicates in
-    // crew_personal_details cannot multiply downstream rows.
+    // 4. Rank ordering map — mirrors the UI's useRankOrdering hook so the
+    //    exported document lists crew in the same order as the on-screen table.
+    type RankRow = { name: string | null; sortOrder: number | null };
+    const rankRows: RankRow[] = await db
+      .select({ name: admAvailableRanksV2.name, sortOrder: admAvailableRanksV2.sortOrder })
+      .from(admAvailableRanksV2)
+      .where(eq(admAvailableRanksV2.isDeleted, false));
+
+    // Mirror of client/src/hooks/useRankNormalization.ts RANK_ALIASES so the
+    // server can resolve sort order for ranks stored as display variants
+    // (e.g. "2nd Engineer" -> "Second Engineer", "AB" -> "Able Bodied Seaman").
+    const RANK_ALIASES: Record<string, string> = {
+      "2nd officer": "Second Officer",
+      "3rd officer": "Third Officer",
+      "2nd engineer": "Second Engineer",
+      "3rd engineer": "Third Engineer",
+      "4th engineer": "Fourth Engineer",
+      "5th engineer": "Fifth Engineer",
+      "e/o": "Electrical Officer",
+      "e.o": "Electrical Officer",
+      "e.o.": "Electrical Officer",
+      "eto": "Electrical Officer",
+      "elect. officer": "Electrical Officer",
+      "boatswain": "Bosun",
+      "bosun/boatswain": "Bosun",
+      "bo'sun": "Bosun",
+      "ch. cook": "Chief Cook",
+      "chief steward": "Chief Cook",
+      "asst. electrician": "Electrician",
+      "assistant electrician": "Electrician",
+      "jr. electrician": "Electrician",
+      "ab": "Able Bodied Seaman",
+      "a/b": "Able Bodied Seaman",
+      "a.b": "Able Bodied Seaman",
+      "os": "Ordinary Seaman",
+      "o/s": "Ordinary Seaman",
+      "o.s": "Ordinary Seaman",
+    };
+    const addRankAliases = (map: Map<string, number>, rankName: string, sortOrder: number): void => {
+      map.set(rankName, sortOrder);
+      map.set(rankName.toLowerCase(), sortOrder);
+      map.set(rankName.toUpperCase(), sortOrder);
+      const lowerName = rankName.toLowerCase();
+      Object.entries(RANK_ALIASES).forEach(([alias, canonical]) => {
+        if (canonical.toLowerCase() === lowerName) {
+          map.set(alias, sortOrder);
+          map.set(alias.toUpperCase(), sortOrder);
+          const titleCase = alias.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          map.set(titleCase, sortOrder);
+        }
+      });
+    };
+
+    const rankOrderMap = new Map<string, number>();
+    for (const rr of rankRows) {
+      if (!rr.name || rr.sortOrder === null) continue;
+      addRankAliases(rankOrderMap, rr.name, rr.sortOrder);
+    }
+    const getSortOrder = (rankName: string | null | undefined): number => {
+      if (!rankName) return 999999;
+      if (rankOrderMap.has(rankName)) return rankOrderMap.get(rankName)!;
+      const lower = rankName.toLowerCase();
+      if (rankOrderMap.has(lower)) return rankOrderMap.get(lower)!;
+      const base = rankName.includes("_") ? rankName.split("_")[0] : null;
+      if (base) {
+        if (rankOrderMap.has(base)) return rankOrderMap.get(base)!;
+        const baseLower = base.toLowerCase();
+        if (rankOrderMap.has(baseLower)) return rankOrderMap.get(baseLower)!;
+      }
+      return 999999;
+    };
+
+    // Sort planning rows: rank priority first, then suffix (MASTER_2 after MASTER),
+    // then createdAt as a final tiebreaker. Same algorithm as the UI's sortCrewByRank.
+    planningRows.sort((a, b) => {
+      const ao = getSortOrder(a.rank);
+      const bo = getSortOrder(b.rank);
+      if (ao !== bo) return ao - bo;
+      const aSuffix = a.rank?.includes("_") ? parseInt(a.rank.split("_")[1]) || 0 : 0;
+      const bSuffix = b.rank?.includes("_") ? parseInt(b.rank.split("_")[1]) || 0 : 0;
+      if (aSuffix !== bSuffix) return aSuffix - bSuffix;
+      const at = a.createdAt ? a.createdAt.getTime() : 0;
+      const bt = b.createdAt ? b.createdAt.getTime() : 0;
+      return at - bt;
+    });
+
+    // 5. Bulk-load place of birth (city + country name) keyed by crewUuid. We use
+    //    the latest non-deleted personal-details row per crew so duplicates in
+    //    crew_personal_details cannot multiply downstream rows.
+    type PersonalRow = {
+      crewUuid: string | null;
+      placeOfBirthCity: string | null;
+      placeOfBirthCountry: string | null;
+      updatedAt: Date | null;
+    };
     const placeCountry = aliasedTable(masterCountries, "place_country");
-    const personalRows: any[] = crewUuids.length === 0 ? [] : await db
+    const personalRows: PersonalRow[] = crewUuids.length === 0 ? [] : await db
       .select({
         crewUuid: crewPersonalDetails.crewUuid,
         placeOfBirthCity: crewPersonalDetails.placeOfBirthCity,
@@ -1585,13 +1689,23 @@ export const vesselPlanningService = {
 
     const placeByCrew = new Map<string, string>();
     for (const p of personalRows) {
-      if (placeByCrew.has(p.crewUuid)) continue; // keep newest only
+      if (!p.crewUuid || placeByCrew.has(p.crewUuid)) continue; // keep newest only
       const place = [p.placeOfBirthCity, p.placeOfBirthCountry].filter(Boolean).join(", ");
       placeByCrew.set(p.crewUuid, place);
     }
 
+    // 6. Bulk-load active documents.
+    type DocumentRow = {
+      crewUuid: string | null;
+      documentName: string | null;
+      number: string | null;
+      issuingAuthority: string | null;
+      issuingCountryName: string | null;
+      expiry: string | null;
+      sortOrder: number | null;
+    };
     const issuingCountry = aliasedTable(masterCountries, "issuing_country");
-    const documentRows: any[] = crewUuids.length === 0 ? [] : await db
+    const documentRows: DocumentRow[] = crewUuids.length === 0 ? [] : await db
       .select({
         crewUuid: crewDocuments.crewUuid,
         documentName: crewDocuments.documentName,
@@ -1622,7 +1736,8 @@ export const vesselPlanningService = {
     };
     const docsByCrew = new Map<string, DocEntry[]>();
 
-    for (const d of documentRows as any[]) {
+    for (const d of documentRows) {
+      if (!d.crewUuid) continue;
       const list = docsByCrew.get(d.crewUuid) || [];
       list.push({
         document: d.documentName || "",
@@ -1654,10 +1769,10 @@ export const vesselPlanningService = {
       });
     });
 
-    // 4. Assemble crew payload — strip rank suffix (`MASTER_2` → `MASTER`).
-    const crewMembers = planningRows.map((r: any) => {
+    // 7. Assemble crew payload — strip rank suffix (`MASTER_2` → `MASTER`).
+    const crewMembers = planningRows.map((r) => {
       const placeOfBirth = r.crewUuid ? (placeByCrew.get(r.crewUuid) || "") : "";
-      const docs = r.crewUuid ? docsByCrew.get(r.crewUuid) || [] : [];
+      const docs: DocEntry[] = r.crewUuid ? docsByCrew.get(r.crewUuid) || [] : [];
       return {
         id: r.crewUuid || "",
         firstName: r.firstName || "",
