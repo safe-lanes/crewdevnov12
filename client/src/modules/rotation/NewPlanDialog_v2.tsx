@@ -366,7 +366,7 @@ function CrewFilterDialog({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-60 p-2" align="start">
-                    <ScrollArea className="max-h-60 overscroll-contain">
+                    <ScrollArea className="max-h-60 [&>[data-radix-scroll-area-viewport]]:overscroll-contain">
                       {isLoadingOilMajorRules ? (
                         <div className="text-sm text-gray-500 text-center py-2">
                           Loading…
