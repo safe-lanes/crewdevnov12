@@ -91,20 +91,20 @@ interface CrewFilters {
   higherCert: string[];
   performance: string[];
   availabilityDate: Date | null;
-  companyInternalCriteria: boolean;
   oilMajorCompliance: string[];
 }
 
-const OIL_MAJOR_COMPLIANCE_OPTIONS = [
-  'Shell',
-  'BP',
-  'ExxonMobil',
-  'Chevron',
-  'Total',
-  'ConocoPhillips',
-  'Equinor',
-  'Eni',
-];
+interface OilMajorRule {
+  id: number;
+  oilMajorName: string;
+  isActive: boolean;
+  rules: any;
+}
+
+// Underlying value of the "The Company (Internal)" row in oil_major_rules,
+// shown to users as "Company Internal Criteria" and pinned to the top.
+const COMPANY_INTERNAL_VALUE = 'The Company (Internal)';
+const COMPANY_INTERNAL_LABEL = 'Company Internal Criteria';
 
 interface ExistingCrew {
   crewUuid: string; // V2 uses crewUuid
@@ -181,6 +181,33 @@ function CrewFilterDialog({
     setLocalFilters(filters);
   }, [filters, open]);
 
+  // Fetch Compliance Check options from oil_major_rules
+  const { data: oilMajorRules = [], isLoading: isLoadingOilMajorRules } = useQuery<OilMajorRule[]>({
+    queryKey: ['/api/v2/vessel/oil-major-rules'],
+    enabled: open,
+  });
+
+  // Build the ordered list for the Compliance Check popover:
+  // "The Company (Internal)" pinned at the top (label remapped),
+  // remaining active rows alphabetised below.
+  const complianceOptions = useMemo(() => {
+    const active = oilMajorRules.filter(r => r.isActive && r.oilMajorName);
+    const internal = active.find(r => r.oilMajorName === COMPANY_INTERNAL_VALUE);
+    const others = active
+      .filter(r => r.oilMajorName !== COMPANY_INTERNAL_VALUE)
+      .map(r => r.oilMajorName)
+      .sort((a, b) => a.localeCompare(b));
+    const ordered: { value: string; label: string }[] = [];
+    if (internal) {
+      ordered.push({ value: internal.oilMajorName, label: COMPANY_INTERNAL_LABEL });
+    }
+    others.forEach(name => ordered.push({ value: name, label: name }));
+    return ordered;
+  }, [oilMajorRules]);
+
+  const labelForComplianceValue = (value: string) =>
+    value === COMPANY_INTERNAL_VALUE ? COMPANY_INTERNAL_LABEL : value;
+
   const handleApply = () => {
     onFiltersChange(localFilters);
     onOpenChange(false);
@@ -199,7 +226,6 @@ function CrewFilterDialog({
       higherCert: [],
       performance: [],
       availabilityDate: null,
-      companyInternalCriteria: false,
       oilMajorCompliance: [],
     };
     setLocalFilters(emptyFilters);
@@ -215,7 +241,7 @@ function CrewFilterDialog({
     });
   };
 
-  type ArrayFilterKeys = Exclude<keyof CrewFilters, 'availabilityDate' | 'companyInternalCriteria' | 'oilMajorCompliance'>;
+  type ArrayFilterKeys = Exclude<keyof CrewFilters, 'availabilityDate' | 'oilMajorCompliance'>;
   
   const toggleFilter = (category: ArrayFilterKeys, value: string) => {
     setLocalFilters(prev => {
@@ -299,17 +325,13 @@ function CrewFilterDialog({
         <div className="max-h-[60vh] overflow-y-auto pr-2">
           {/* Compliance Check - single multi-select dropdown at top */}
           {(() => {
-            const complianceSelectedCount =
-              (localFilters.companyInternalCriteria ? 1 : 0) +
-              localFilters.oilMajorCompliance.length;
+            const complianceSelectedCount = localFilters.oilMajorCompliance.length;
             const complianceHasSelection = complianceSelectedCount > 0;
             const complianceDisplayValue =
               complianceSelectedCount === 0
                 ? "Compliance Check"
                 : complianceSelectedCount === 1
-                ? localFilters.companyInternalCriteria
-                  ? "Company Internal Criteria"
-                  : localFilters.oilMajorCompliance[0]
+                ? labelForComplianceValue(localFilters.oilMajorCompliance[0])
                 : "Multiple Selection";
 
             return (
@@ -344,54 +366,42 @@ function CrewFilterDialog({
                   </PopoverTrigger>
                   <PopoverContent className="w-60 p-2" align="start">
                     <div className="max-h-60 overflow-y-auto">
-                      {/* Company Internal Criteria - first option at top */}
-                      <div
-                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                      >
-                        <Checkbox
-                          checked={localFilters.companyInternalCriteria}
-                          onCheckedChange={(checked) =>
-                            setLocalFilters(prev => ({
-                              ...prev,
-                              companyInternalCriteria: checked === true,
-                            }))
-                          }
-                          data-testid="checkbox-filter-companyInternalCriteria"
-                        />
-                        <label
-                          className="text-sm cursor-pointer flex-1"
-                          onClick={() =>
-                            setLocalFilters(prev => ({
-                              ...prev,
-                              companyInternalCriteria: !prev.companyInternalCriteria,
-                            }))
-                          }
-                        >
-                          Company Internal Criteria
-                        </label>
-                      </div>
-
-                      <div className="border-b my-1" />
-
-                      {/* Oil Major options follow */}
-                      {OIL_MAJOR_COMPLIANCE_OPTIONS.map((option) => (
-                        <div
-                          key={option}
-                          className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                        >
-                          <Checkbox
-                            checked={localFilters.oilMajorCompliance.includes(option)}
-                            onCheckedChange={() => toggleOilMajor(option)}
-                            data-testid={`checkbox-filter-oilMajorCompliance-${option}`}
-                          />
-                          <label
-                            className="text-sm cursor-pointer flex-1"
-                            onClick={() => toggleOilMajor(option)}
-                          >
-                            {option}
-                          </label>
+                      {isLoadingOilMajorRules ? (
+                        <div className="text-sm text-gray-500 text-center py-2">
+                          Loading…
                         </div>
-                      ))}
+                      ) : complianceOptions.length === 0 ? (
+                        <div className="text-sm text-gray-500 text-center py-2">
+                          No options available
+                        </div>
+                      ) : (
+                        complianceOptions.map((opt, idx) => {
+                          const isInternal = opt.value === COMPANY_INTERNAL_VALUE;
+                          const testIdSuffix = isInternal
+                            ? 'companyInternalCriteria'
+                            : `oilMajorCompliance-${opt.value}`;
+                          return (
+                            <div key={opt.value}>
+                              <div className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+                                <Checkbox
+                                  checked={localFilters.oilMajorCompliance.includes(opt.value)}
+                                  onCheckedChange={() => toggleOilMajor(opt.value)}
+                                  data-testid={`checkbox-filter-${testIdSuffix}`}
+                                />
+                                <label
+                                  className="text-sm cursor-pointer flex-1"
+                                  onClick={() => toggleOilMajor(opt.value)}
+                                >
+                                  {opt.label}
+                                </label>
+                              </div>
+                              {isInternal && idx < complianceOptions.length - 1 && (
+                                <div className="border-b my-1" />
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -533,7 +543,6 @@ function CrewColumn({
     higherCert: [],
     performance: [],
     availabilityDate: null,
-    companyInternalCriteria: false,
     oilMajorCompliance: [],
   });
 
@@ -900,9 +909,6 @@ function CrewColumn({
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
     if (key === 'availabilityDate') {
       return value !== null;
-    }
-    if (key === 'companyInternalCriteria') {
-      return value === true;
     }
     return Array.isArray(value) && value.length > 0;
   });
