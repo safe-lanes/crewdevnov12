@@ -297,98 +297,107 @@ function CrewFilterDialog({
         </DialogHeader>
         
         <div className="max-h-[60vh] overflow-y-auto pr-2">
-          {/* Compliance Check section - top of filter list */}
-          <div className="mb-4">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              Compliance Check
-            </div>
+          {/* Compliance Check - single multi-select dropdown at top */}
+          {(() => {
+            const complianceSelectedCount =
+              (localFilters.companyInternalCriteria ? 1 : 0) +
+              localFilters.oilMajorCompliance.length;
+            const complianceHasSelection = complianceSelectedCount > 0;
+            const complianceDisplayValue =
+              complianceSelectedCount === 0
+                ? "Compliance Check"
+                : complianceSelectedCount === 1
+                ? localFilters.companyInternalCriteria
+                  ? "Company Internal Criteria"
+                  : localFilters.oilMajorCompliance[0]
+                : "Multiple Selection";
 
-            {/* Company Internal Criteria - first selection */}
-            <div
-              className="flex items-center gap-2 py-2 px-3 mb-2 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-              onClick={() =>
-                setLocalFilters(prev => ({
-                  ...prev,
-                  companyInternalCriteria: !prev.companyInternalCriteria,
-                }))
-              }
-              data-testid="filter-companyInternalCriteria"
-            >
-              <Checkbox
-                checked={localFilters.companyInternalCriteria}
-                onCheckedChange={(checked) =>
-                  setLocalFilters(prev => ({
-                    ...prev,
-                    companyInternalCriteria: checked === true,
-                  }))
-                }
-                data-testid="checkbox-filter-companyInternalCriteria"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <label className="text-sm cursor-pointer flex-1">
-                Company Internal Criteria
-              </label>
-            </div>
-
-            {/* Oil Major Compliance - multi-select */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-between relative",
-                    localFilters.oilMajorCompliance.length > 0
-                      ? "text-foreground pt-5 h-auto min-h-9"
-                      : "text-gray-500"
-                  )}
-                  data-testid="filter-oilMajorCompliance"
-                >
-                  {localFilters.oilMajorCompliance.length > 0 && (
-                    <span className="absolute top-1 left-3 text-[10px] text-muted-foreground">
-                      Oil Major Compliance
-                    </span>
-                  )}
-                  <span
-                    className={cn(
-                      "truncate",
-                      localFilters.oilMajorCompliance.length > 0 && "text-sm"
-                    )}
-                  >
-                    {localFilters.oilMajorCompliance.length === 1
-                      ? localFilters.oilMajorCompliance[0]
-                      : localFilters.oilMajorCompliance.length > 1
-                      ? "Multiple Selection"
-                      : "Oil Major Compliance"}
-                  </span>
-                  <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-60 p-2" align="start">
-                <div className="max-h-48 overflow-y-auto">
-                  {OIL_MAJOR_COMPLIANCE_OPTIONS.map((option) => (
-                    <div
-                      key={option}
-                      className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+            return (
+              <div className="mb-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-between relative",
+                        complianceHasSelection
+                          ? "text-foreground pt-5 h-auto min-h-9"
+                          : "text-gray-500"
+                      )}
+                      data-testid="filter-complianceCheck"
                     >
-                      <Checkbox
-                        checked={localFilters.oilMajorCompliance.includes(option)}
-                        onCheckedChange={() => toggleOilMajor(option)}
-                        data-testid={`checkbox-filter-oilMajorCompliance-${option}`}
-                      />
-                      <label
-                        className="text-sm cursor-pointer flex-1"
-                        onClick={() => toggleOilMajor(option)}
+                      {complianceHasSelection && (
+                        <span className="absolute top-1 left-3 text-[10px] text-muted-foreground">
+                          Compliance Check
+                        </span>
+                      )}
+                      <span
+                        className={cn(
+                          "truncate",
+                          complianceHasSelection && "text-sm"
+                        )}
                       >
-                        {option}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+                        {complianceDisplayValue}
+                      </span>
+                      <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-60 p-2" align="start">
+                    <div className="max-h-60 overflow-y-auto">
+                      {/* Company Internal Criteria - first option at top */}
+                      <div
+                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                      >
+                        <Checkbox
+                          checked={localFilters.companyInternalCriteria}
+                          onCheckedChange={(checked) =>
+                            setLocalFilters(prev => ({
+                              ...prev,
+                              companyInternalCriteria: checked === true,
+                            }))
+                          }
+                          data-testid="checkbox-filter-companyInternalCriteria"
+                        />
+                        <label
+                          className="text-sm cursor-pointer flex-1"
+                          onClick={() =>
+                            setLocalFilters(prev => ({
+                              ...prev,
+                              companyInternalCriteria: !prev.companyInternalCriteria,
+                            }))
+                          }
+                        >
+                          Company Internal Criteria
+                        </label>
+                      </div>
 
-            <div className="border-b mt-4 mb-3" />
-          </div>
+                      <div className="border-b my-1" />
+
+                      {/* Oil Major options follow */}
+                      {OIL_MAJOR_COMPLIANCE_OPTIONS.map((option) => (
+                        <div
+                          key={option}
+                          className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                        >
+                          <Checkbox
+                            checked={localFilters.oilMajorCompliance.includes(option)}
+                            onCheckedChange={() => toggleOilMajor(option)}
+                            data-testid={`checkbox-filter-oilMajorCompliance-${option}`}
+                          />
+                          <label
+                            className="text-sm cursor-pointer flex-1"
+                            onClick={() => toggleOilMajor(option)}
+                          >
+                            {option}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            );
+          })()}
 
           <FilterSection title="Pool" options={availableOptions.pools} category="pools" />
           <FilterSection title="Manning Agent" options={availableOptions.manningAgents} category="manningAgents" />
