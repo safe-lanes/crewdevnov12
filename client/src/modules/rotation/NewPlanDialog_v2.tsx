@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover as DatePopover, PopoverContent as DatePopoverContent, PopoverTrigger as DatePopoverTrigger } from "@/components/ui/popover";
@@ -365,7 +366,7 @@ function CrewFilterDialog({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-60 p-2" align="start">
-                    <div className="max-h-60 overflow-y-auto">
+                    <ScrollArea className="max-h-60 overscroll-contain">
                       {isLoadingOilMajorRules ? (
                         <div className="text-sm text-gray-500 text-center py-2">
                           Loading…
@@ -402,7 +403,7 @@ function CrewFilterDialog({
                           );
                         })
                       )}
-                    </div>
+                    </ScrollArea>
                   </PopoverContent>
                 </Popover>
               </div>
