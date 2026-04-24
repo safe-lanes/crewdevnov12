@@ -799,10 +799,12 @@ function CrewColumn({
     });
     if (isActiveOnOtherVessel) return 'text-red-600';
 
-    // Second priority: Purple — crew is a deployed reliever with status Planned or Confirmed
+    // Second priority: Purple — crew is a deployed reliever with status Planned or Confirmed.
+    // Intentionally does NOT exclude the currently selected vessels: a planner needs to see
+    // that this candidate already has a Planned/Confirmed reliever assignment for the very
+    // vessel they are now planning, so they don't double-assign them.
     const isPurple = allDeployedAssignments.some(assignment => {
       if (assignment.relieverCrewId !== crewUuid) return false;
-      if (selectedVesselIds.includes(assignment.vesselUuid)) return false;
       return assignment.joiningStatus === 'Planned' || assignment.joiningStatus === 'Confirmed';
     });
     if (isPurple) return 'text-purple-600';
@@ -888,11 +890,12 @@ function CrewColumn({
       return `Deployed: ${activeVessels.join(', ')}`;
     }
 
-    // Check for Purple: crew is a deployed reliever with Planned or Confirmed status
+    // Check for Purple: crew is a deployed reliever with Planned or Confirmed status.
+    // Mirrors getCrewNameColor: do NOT skip selected vessels here, otherwise the tooltip
+    // would hide the very vessel that triggered the purple coloring.
     const purpleVessels: string[] = [];
     allDeployedAssignments.forEach(assignment => {
       if (assignment.relieverCrewId !== crewUuid) return;
-      if (selectedVesselIds.includes(assignment.vesselUuid)) return;
       if (assignment.joiningStatus === 'Planned' || assignment.joiningStatus === 'Confirmed') {
         const vesselName = getVesselName(assignment.vesselUuid);
         if (vesselName && !purpleVessels.includes(vesselName)) {
