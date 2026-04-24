@@ -2258,10 +2258,15 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     return new Set(existingCrew.map(crew => crew.crewUuid));
   }, [existingCrew]);
 
-  // Get vessel IDs for the selected vessels (for conflict detection)
+  // Vessel UUIDs currently picked in the planning area. `selectedVessels`
+  // already holds UUIDs (every setter — `toggleVessel`, draft loaders, the
+  // edit-plan loader — pushes UUIDs into it), so use it directly. The earlier
+  // `getVesselIds(selectedVessels)` call routed UUIDs through the name→UUID
+  // lookup and silently returned an empty array, which broke downstream
+  // consumers like the Compliance Check filter.
   const selectedVesselIds = useMemo(() => {
-    return getVesselIds(selectedVessels);
-  }, [selectedVessels, getVesselIds]);
+    return Array.from(new Set(selectedVessels.filter((v): v is string => typeof v === 'string' && v.length > 0)));
+  }, [selectedVessels]);
 
   // Determine if we're updating an existing plan (either from prop or from previous save)
   // V2 uses draftUuid instead of numeric id
