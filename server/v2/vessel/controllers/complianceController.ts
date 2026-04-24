@@ -857,33 +857,65 @@ interface VesselBatchContext {
   rosterCanonicalRanks: Set<string>;
 }
 
-function partnersExist(rankPair: string, parser: typeof parseRankPairString | typeof parseDateJoinedRankPair, rosterCanonicalRanks: Set<string>): boolean {
+// Shape of a single rule entry inside oil_major_rules.rules. The wider rule
+// payload is intentionally `any` to stay consistent with the existing helpers
+// in this file (the JSON shape is owned by the rule editor); we only need
+// `rankPair` here for partner-existence pruning.
+interface RuleEntry {
+  rankPair?: string;
+}
+
+interface ParsedRuleSet {
+  experienceRules?: {
+    yearsWithOperator?: RuleEntry[];
+    yearsInRank?: RuleEntry[];
+    yearsOnTankerType?: RuleEntry[];
+    yearsOnAllTankers?: RuleEntry[];
+  };
+  englishProficiencyRules?: RuleEntry[];
+  dateJoinedRules?: RuleEntry[];
+}
+
+function partnersExist(
+  rankPair: string,
+  parser: typeof parseRankPairString | typeof parseDateJoinedRankPair,
+  rosterCanonicalRanks: Set<string>
+): boolean {
   const ranks = parser(rankPair || '');
   if (ranks.length === 0) return false;
   return ranks.every((r) => rosterCanonicalRanks.has(canonicalRank(r)));
 }
 
-function pruneRulesForRoster(rulesObj: any, rosterCanonicalRanks: Set<string>): any {
-  if (!rulesObj || typeof rulesObj !== 'object') return rulesObj;
-  const out: any = {};
+function pruneRulesForRoster(
+  rulesObj: ParsedRuleSet | null | undefined,
+  rosterCanonicalRanks: Set<string>
+): ParsedRuleSet {
+  if (!rulesObj || typeof rulesObj !== 'object') return {};
+  const out: ParsedRuleSet = {};
   if (rulesObj.experienceRules) {
-    out.experienceRules = {};
-    for (const k of ['yearsWithOperator', 'yearsInRank', 'yearsOnTankerType', 'yearsOnAllTankers']) {
-      if (Array.isArray(rulesObj.experienceRules[k])) {
-        out.experienceRules[k] = rulesObj.experienceRules[k].filter((r: any) =>
-          partnersExist(r.rankPair, parseRankPairString, rosterCanonicalRanks)
-        );
+    const er: NonNullable<ParsedRuleSet['experienceRules']> = {};
+    const keys: Array<keyof NonNullable<ParsedRuleSet['experienceRules']>> = [
+      'yearsWithOperator',
+      'yearsInRank',
+      'yearsOnTankerType',
+      'yearsOnAllTankers',
+    ];
+    for (const k of keys) {
+      const arr = rulesObj.experienceRules[k];
+      if (Array.isArray(arr)) {
+        er[k] = arr.filter((r) => partnersExist(r.rankPair || '', parseRankPairString, rosterCanonicalRanks));
       }
     }
+    out.experienceRules = er;
   }
   if (Array.isArray(rulesObj.englishProficiencyRules)) {
-    out.englishProficiencyRules = rulesObj.englishProficiencyRules.filter((r: any) =>
-      partnersExist(r.rankPair, parseRankPairString, rosterCanonicalRanks)
+    out.englishProficiencyRules = rulesObj.englishProficiencyRules.filter((r) =>
+      partnersExist(r.rankPair || '', parseRankPairString, rosterCanonicalRanks)
     );
   }
   if (Array.isArray(rulesObj.dateJoinedRules)) {
-    out.dateJoinedRules = rulesObj.dateJoinedRules.filter((r: any) =>
-      partnersExist(r.rankPair, parseDateJoinedRankPair, rosterCanonicalRanks)
+    out.dateJoinedRules = rulesObj.dateJoinedRules.filter((r) =>
+      partnersExist(r.rankPair || '', parseDateJoinedRankPair, rosterCanonicalRanks)
     );
   }
   return out;
