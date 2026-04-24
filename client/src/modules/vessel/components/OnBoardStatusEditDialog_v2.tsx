@@ -41,9 +41,9 @@ const onBoardStatusFormSchema = z.object({
     takeOverDate: z.string().optional(),
     takeOverConfirmation: z.boolean().optional(),
     handOverDate: z.string().optional(),
-    contractPeriodMonths: z.coerce.number().optional(),
-    contractEndRangeStartMonths: z.coerce.number().optional(),
-    contractEndRangeEndMonths: z.coerce.number().optional(),
+    contractPeriodMonths: z.coerce.number().positive("Contract Period must be greater than 0").optional(),
+    contractEndRangeStartMonths: z.coerce.number().positive("Contract End - Range Start must be greater than 0").optional(),
+    contractEndRangeEndMonths: z.coerce.number().positive("Contract End - Range End must be greater than 0").optional(),
 }).refine((data) => {
     if (data.signOffDate && data.signOnDate) {
         const onDate = new Date(data.signOnDate);
@@ -141,9 +141,9 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 takeOverDate: planningData.takeOverDate || '',
                 takeOverConfirmation: planningData.takeOverConfirmation || false,
                 handOverDate: planningData.handOverDate || '',
-                contractPeriodMonths: planningData.contractPeriodMonths || undefined,
-                contractEndRangeStartMonths: planningData.contractEndRangeStartMonths || undefined,
-                contractEndRangeEndMonths: planningData.contractEndRangeEndMonths || undefined,
+                contractPeriodMonths: planningData.contractPeriodMonths ?? undefined,
+                contractEndRangeStartMonths: planningData.contractEndRangeStartMonths ?? undefined,
+                contractEndRangeEndMonths: planningData.contractEndRangeEndMonths ?? undefined,
             });
         } else if (open && !planningData) {
             form.reset({
@@ -379,6 +379,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             }
             
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/training', vesselUuid] });
             queryClient.invalidateQueries({ queryKey: ['v2-crew-pool'] });
             // Invalidate dashboard query so crew status updates immediately after sign-off
             if (planningData?.crewUuid) {
@@ -547,6 +548,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 <Input 
                                                     {...field}
                                                     type="number" 
+                                                    min={1}
                                                     className="bg-white"
                                                     data-testid="input-contract-period-onboard"
                                                     value={field.value ?? ''}
@@ -554,6 +556,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 />
                                             </FormControl>
                                         </div>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -569,6 +572,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 <Input 
                                                     {...field}
                                                     type="number" 
+                                                    min={1}
                                                     className="bg-white"
                                                     data-testid="input-contract-range-start-onboard"
                                                     value={field.value ?? ''}
@@ -576,6 +580,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 />
                                             </FormControl>
                                         </div>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -591,6 +596,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 <Input 
                                                     {...field}
                                                     type="number" 
+                                                    min={1}
                                                     className="bg-white"
                                                     data-testid="input-contract-range-end-onboard"
                                                     value={field.value ?? ''}
@@ -598,6 +604,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 />
                                             </FormControl>
                                         </div>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />

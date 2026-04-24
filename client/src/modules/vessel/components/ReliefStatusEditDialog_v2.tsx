@@ -15,7 +15,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -34,9 +34,9 @@ const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
     relieverNationality: z.string().optional(),
     signOnStatus: z.string().optional(),
-    relieverContractPeriodMonths: z.coerce.number().optional(),
-    relieverContractEndRangeStartMonths: z.coerce.number().optional(),
-    relieverContractEndRangeEndMonths: z.coerce.number().optional(),
+    relieverContractPeriodMonths: z.coerce.number().positive("Contract Period must be greater than 0").optional(),
+    relieverContractEndRangeStartMonths: z.coerce.number().positive("Contract End - Range Start must be greater than 0").optional(),
+    relieverContractEndRangeEndMonths: z.coerce.number().positive("Contract End - Range End must be greater than 0").optional(),
     relieverSignOnDate: z.string().optional(),
     relieverSignOnPort: z.string().optional(),
     deploymentChecklistCompleted: z.boolean().optional(),
@@ -487,6 +487,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                             <Input 
                                                 {...field}
                                                 type="number" 
+                                                min={1}
                                                 className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 data-testid="input-reliever-contract-period"
                                                 value={field.value ?? ''}
@@ -495,6 +496,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                             />
                                         </FormControl>
                                     </div>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
@@ -510,6 +512,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                             <Input 
                                                 {...field}
                                                 type="number" 
+                                                min={1}
                                                 className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 data-testid="input-reliever-contract-range-start"
                                                 value={field.value ?? ''}
@@ -518,6 +521,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                             />
                                         </FormControl>
                                     </div>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
@@ -533,6 +537,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                             <Input 
                                                 {...field}
                                                 type="number" 
+                                                min={1}
                                                 className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                 data-testid="input-reliever-contract-range-end"
                                                 value={field.value ?? ''}
@@ -541,6 +546,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                             />
                                         </FormControl>
                                     </div>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />

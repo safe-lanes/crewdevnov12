@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq, and, isNotNull } from "drizzle-orm";
+import { eq, and, isNotNull, isNull } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewTrainingCourses } from "../../../../shared/v2/crew-pool/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
@@ -21,7 +21,7 @@ export const trainingController = {
       const vesselUuid = req.params.vesselUuid;
       const db = getDb();
       
-      // Get crew from vessel_planning_v2 (primary crew with crewUuid assigned)
+      // Get active onboard crew from vessel_planning_v2.
       const planningEntries = await db
         .select({
           crewUuid: vesselPlanningV2.crewUuid,
@@ -32,7 +32,9 @@ export const trainingController = {
           and(
             eq(vesselPlanningV2.vesselUuid, vesselUuid),
             eq(vesselPlanningV2.isDeleted, false),
+            eq(vesselPlanningV2.isArchived, false),
             eq(vesselPlanningV2.crewStatus, 'primary'),
+            isNull(vesselPlanningV2.signOffDate),
             isNotNull(vesselPlanningV2.crewUuid)
           )
         );
