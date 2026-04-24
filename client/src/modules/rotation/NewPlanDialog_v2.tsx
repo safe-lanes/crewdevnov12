@@ -1427,9 +1427,6 @@ function VesselTimelineView({
     return vessel?.name || uuid;
   };
   
-  // Use vessel lookup hook for translating vessel names to IDs (for existing crew fetch)
-  const { getVesselIds } = useVesselLookup();
-  
   // Use custom date range from props
   const today = useMemo(() => new Date(), []);
   const startDate = dateRange.start;
@@ -2009,9 +2006,6 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   
   const { toast } = useToast();
   
-  // Vessel lookup hook for name↔ID translation
-  const { getVesselIds } = useVesselLookup();
-
   // Fetch vessels from V2 master_vessels table
   const { data: vessels = [], isLoading: vesselsLoading } = useQuery<any[]>({
     queryKey: ['/api/v2/vessel/list'],
