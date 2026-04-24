@@ -2230,16 +2230,22 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   // already points directly to autoSelectedRoleVariants (line above).
   // When hasManualVariants flips to true, user explicitly sets state via handlers.
 
-  // Fetch existing crew data to identify currently deployed crew
+  // Fetch existing crew data to identify currently deployed crew.
+  // `selectedVessels` already holds vessel UUIDs (every setter pushes UUIDs
+  // into it), so use them directly. The earlier `getVesselIds(selectedVessels)`
+  // call routed UUIDs through a name→UUID lookup and silently sent no
+  // `vessels=` params, leaving `currentlyDeployedCrewIds` empty and the
+  // current-incumbent red-coloring path unable to fire.
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     params.append('filterType', 'vessel');
-    // Translate vessel names to IDs for API call
-    const vesselIds = getVesselIds(selectedVessels);
+    const vesselIds = Array.from(
+      new Set(selectedVessels.filter((v): v is string => typeof v === 'string' && v.length > 0))
+    );
     vesselIds.forEach(id => params.append('vessels', id));
     selectedRoleVariants.forEach(r => params.append('rank', r));
     return params;
-  }, [selectedVessels, selectedRoleVariants, getVesselIds]);
+  }, [selectedVessels, selectedRoleVariants]);
 
   const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
     queryKey: ['/api/v2/rotation/due-crew', queryParams.toString()],
