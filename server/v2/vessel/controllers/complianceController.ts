@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq, and, or, isNull, sql, asc } from "drizzle-orm";
+import { eq, and, or, isNull, sql, asc, inArray } from "drizzle-orm";
 import { aliasedTable } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
@@ -817,3 +817,267 @@ export const complianceController = {
     }
   }
 };
+
+// =============================================================================
+// Batch compliance evaluator (Rotation Planning rank Filter)
+// -----------------------------------------------------------------------------
+// Reuses the same rule evaluators as the per-vessel matrix above. Given a rank,
+// a list of vessels, a list of selected oil-major / company rule names, and a
+// list of candidate crew UUIDs, returns the subset of candidates who pass
+// every selected rule on every selected vessel (strict AND). Combined-rank
+// rules use the on-board counterpart from each target vessel; a rule whose
+// partner ranks are not all present in the on-board roster is skipped (does
+// not exclude the candidate). Rules with `not_applicable` status are also
+// treated as pass.
+// =============================================================================
+
+export interface BatchComplianceRequest {
+  rank: string;
+  vesselUuids: string[];
+  ruleNames: string[];
+  candidateUuids: string[];
+}
+
+export interface BatchComplianceResponse {
+  compliantCrewUuids: string[];
+}
+
+interface CandidateBaseData {
+  seaServices: any[];
+  englishProficiency: number;
+  crewName: string;
+}
+
+interface VesselBatchContext {
+  vesselUuid: string;
+  vesselTypeUuid: string | undefined;
+  tankerCategory: TankerCategory;
+  onBoardExps: CrewExperience[];
+  targetSlotSignOnDate: string | null;
+  rosterCanonicalRanks: Set<string>;
+}
+
+function partnersExist(rankPair: string, parser: typeof parseRankPairString | typeof parseDateJoinedRankPair, rosterCanonicalRanks: Set<string>): boolean {
+  const ranks = parser(rankPair || '');
+  if (ranks.length === 0) return false;
+  return ranks.every((r) => rosterCanonicalRanks.has(canonicalRank(r)));
+}
+
+function pruneRulesForRoster(rulesObj: any, rosterCanonicalRanks: Set<string>): any {
+  if (!rulesObj || typeof rulesObj !== 'object') return rulesObj;
+  const out: any = {};
+  if (rulesObj.experienceRules) {
+    out.experienceRules = {};
+    for (const k of ['yearsWithOperator', 'yearsInRank', 'yearsOnTankerType', 'yearsOnAllTankers']) {
+      if (Array.isArray(rulesObj.experienceRules[k])) {
+        out.experienceRules[k] = rulesObj.experienceRules[k].filter((r: any) =>
+          partnersExist(r.rankPair, parseRankPairString, rosterCanonicalRanks)
+        );
+      }
+    }
+  }
+  if (Array.isArray(rulesObj.englishProficiencyRules)) {
+    out.englishProficiencyRules = rulesObj.englishProficiencyRules.filter((r: any) =>
+      partnersExist(r.rankPair, parseRankPairString, rosterCanonicalRanks)
+    );
+  }
+  if (Array.isArray(rulesObj.dateJoinedRules)) {
+    out.dateJoinedRules = rulesObj.dateJoinedRules.filter((r: any) =>
+      partnersExist(r.rankPair, parseDateJoinedRankPair, rosterCanonicalRanks)
+    );
+  }
+  return out;
+}
+
+async function loadCandidateBase(
+  crewUuid: string,
+  cache: Map<string, CandidateBaseData>
+): Promise<CandidateBaseData | null> {
+  const existing = cache.get(crewUuid);
+  if (existing) return existing;
+  const db = getDb();
+  const [crew] = await db.select().from(crewMembersV2).where(eq(crewMembersV2.crewUuid, crewUuid)).limit(1);
+  if (!crew) return null;
+  const seaServices = await getSeaServiceWithVesselTypes(crewUuid);
+  const personalDetails = await db
+    .select()
+    .from(crewPersonalDetails)
+    .where(eq(crewPersonalDetails.crewUuid, crewUuid))
+    .limit(1);
+  const englishProficiency =
+    personalDetails.length && personalDetails[0].englishProficiency
+      ? PROFICIENCY_MAP[personalDetails[0].englishProficiency] ?? -1
+      : -1;
+  const crewName = `${crew.firstName || ''} ${crew.familyName || ''}`.trim();
+  const data: CandidateBaseData = { seaServices, englishProficiency, crewName };
+  cache.set(crewUuid, data);
+  return data;
+}
+
+function buildExperienceFromBase(
+  rank: string,
+  signOnDate: string | null,
+  vesselTypeUuid: string | undefined,
+  tankerCategory: TankerCategory,
+  base: CandidateBaseData
+): CrewExperience {
+  const currentRank = normalizeRankName(rank);
+  return {
+    rank: currentRank,
+    yearsWithOperator: calculateYearsFromSeaService(base.seaServices, 'companyAndRank', currentRank),
+    yearsInRank: calculateYearsFromSeaService(base.seaServices, 'rank', currentRank),
+    yearsOnTankerType: tankerCategory
+      ? calculateYearsFromSeaService(base.seaServices, 'vesselType', undefined, vesselTypeUuid, tankerCategory)
+      : 0,
+    yearsOnAllTankers: calculateYearsFromSeaService(base.seaServices, 'tanker'),
+    englishProficiency: base.englishProficiency,
+    timeOnboardMonths: 0,
+    crewName: base.crewName,
+    signOnDate: signOnDate || null,
+    seaServices: base.seaServices,
+  };
+}
+
+export async function evaluateBatchCompliance(
+  request: BatchComplianceRequest
+): Promise<BatchComplianceResponse> {
+  const { rank, vesselUuids, ruleNames, candidateUuids } = request;
+
+  if (!rank || !vesselUuids?.length || !ruleNames?.length || !candidateUuids?.length) {
+    return { compliantCrewUuids: candidateUuids ?? [] };
+  }
+
+  const db = getDb();
+
+  // 1. Load selected oil major / company rules by name.
+  const ruleRows = await db
+    .select()
+    .from(oilMajorRulesTable)
+    .where(
+      and(
+        eq(oilMajorRulesTable.isActive, true),
+        inArray(oilMajorRulesTable.oilMajorName, ruleNames)
+      )
+    );
+
+  // No active rules match the requested names → nothing to filter against.
+  if (!ruleRows.length) return { compliantCrewUuids: candidateUuids };
+
+  const parsedRules = ruleRows.map((r: any) => {
+    let rules: any = r.rules;
+    if (typeof rules === 'string') {
+      try {
+        rules = JSON.parse(rules);
+      } catch {
+        rules = {};
+      }
+    }
+    return { oilMajorName: r.oilMajorName, rules };
+  });
+
+  // 2. Build per-vessel context once: vessel type, tanker category, on-board
+  //    crew experiences (with the target rank slot stripped out), and per-rule
+  //    pruned rule sets (combined-rank rules with missing partners removed).
+  const targetRankCanonical = canonicalRank(rank);
+  const candidateCache = new Map<string, CandidateBaseData>();
+
+  const vesselContexts: Array<VesselBatchContext & {
+    prunedByOilMajor: Map<string, any>;
+  }> = [];
+
+  for (const vesselUuid of vesselUuids) {
+    const vesselTypeUuid = await getVesselTypeUuid(vesselUuid);
+    const tankerCategory = await getVesselTankerCategory(vesselUuid);
+
+    const planning = await db
+      .select()
+      .from(vesselPlanningV2)
+      .where(
+        and(
+          eq(vesselPlanningV2.vesselUuid, vesselUuid),
+          eq(vesselPlanningV2.isDeleted, false),
+          eq(vesselPlanningV2.isArchived, false)
+        )
+      );
+
+    const onBoardExps: CrewExperience[] = [];
+    let targetSlotSignOnDate: string | null = null;
+
+    for (const rec of planning) {
+      if (!rec.crewUuid) continue;
+      const recCanon = canonicalRank(rec.rank);
+      if (recCanon === targetRankCanonical) {
+        // Capture the existing slot's sign-on date so a candidate evaluated as
+        // a same-day swap inherits the same effective replacement date.
+        if (!targetSlotSignOnDate) targetSlotSignOnDate = rec.signOnDate;
+        continue;
+      }
+      const base = await loadCandidateBase(rec.crewUuid, candidateCache);
+      if (!base) continue;
+      onBoardExps.push(
+        buildExperienceFromBase(rec.rank, rec.signOnDate, vesselTypeUuid, tankerCategory, base)
+      );
+    }
+
+    const rosterCanonicalRanks = new Set<string>([
+      targetRankCanonical,
+      ...onBoardExps.map((e) => canonicalRank(e.rank)),
+    ]);
+
+    const prunedByOilMajor = new Map<string, any>();
+    for (const { oilMajorName, rules } of parsedRules) {
+      prunedByOilMajor.set(oilMajorName, pruneRulesForRoster(rules, rosterCanonicalRanks));
+    }
+
+    vesselContexts.push({
+      vesselUuid,
+      vesselTypeUuid,
+      tankerCategory,
+      onBoardExps,
+      targetSlotSignOnDate,
+      rosterCanonicalRanks,
+      prunedByOilMajor,
+    });
+  }
+
+  // 3. For each candidate × vessel: build the simulated roster and walk every
+  //    selected oil-major rule set. AND across vessels and rules; a single
+  //    `fail` excludes the candidate. Rules pruned by step 2 (missing partners)
+  //    are absent from the pruned ruleset, so they neither pass nor fail —
+  //    effectively skipped per the spec.
+  const compliantCrewUuids: string[] = [];
+
+  for (const candidateUuid of candidateUuids) {
+    const base = await loadCandidateBase(candidateUuid, candidateCache);
+    if (!base) continue;
+
+    let allPass = true;
+
+    for (const ctx of vesselContexts) {
+      if (!allPass) break;
+
+      const candidateExp = buildExperienceFromBase(
+        rank,
+        ctx.targetSlotSignOnDate,
+        ctx.vesselTypeUuid,
+        ctx.tankerCategory,
+        base
+      );
+
+      const roster: CrewExperience[] = [candidateExp, ...ctx.onBoardExps];
+
+      for (const { oilMajorName } of parsedRules) {
+        const prunedRules = ctx.prunedByOilMajor.get(oilMajorName);
+        const result = checkComplianceForOilMajor(oilMajorName, prunedRules, roster);
+        if (result.results.some((r) => r.status === 'fail')) {
+          allPass = false;
+          break;
+        }
+      }
+    }
+
+    if (allPass) compliantCrewUuids.push(candidateUuid);
+  }
+
+  return { compliantCrewUuids };
+}

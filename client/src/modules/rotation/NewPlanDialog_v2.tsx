@@ -716,6 +716,67 @@ function CrewColumn({
     });
   }, [crewMembers, filters]);
 
+  // ---------------------------------------------------------------------------
+  // Compliance Check filter — Company / Oil-major rule evaluation against the
+  // selected vessels. Runs on the server via a single batch endpoint and
+  // intersects with the client-side filters above. Query key intentionally
+  // excludes `assignments` and `localFilters`-style state so this never
+  // re-fetches on timeline drags or unrelated filter toggles.
+  // ---------------------------------------------------------------------------
+  const sortedComplianceVesselIds = useMemo(
+    () => [...selectedVesselIds].sort(),
+    [selectedVesselIds]
+  );
+  const sortedComplianceRuleNames = useMemo(
+    () => [...filters.oilMajorCompliance].sort(),
+    [filters.oilMajorCompliance]
+  );
+  const complianceFilterActive = sortedComplianceRuleNames.length > 0;
+  const complianceFilterSkippedNoVessel =
+    complianceFilterActive && sortedComplianceVesselIds.length === 0;
+  const complianceCandidateUuids = useMemo(
+    () => crewMembers.map((c) => c.crewUuid).sort(),
+    [crewMembers]
+  );
+
+  const {
+    data: complianceFilterResult,
+    isFetching: isComplianceFiltering,
+  } = useQuery<{ compliantCrewUuids: string[] }>({
+    queryKey: [
+      '/api/v2/rotation/crew/compliance-filter',
+      normalizedRank,
+      sortedComplianceVesselIds,
+      sortedComplianceRuleNames,
+      complianceCandidateUuids,
+    ],
+    enabled:
+      complianceFilterActive &&
+      sortedComplianceVesselIds.length > 0 &&
+      complianceCandidateUuids.length > 0,
+    queryFn: async () => {
+      const response = await apiRequest('POST', '/api/v2/rotation/crew/compliance-filter', {
+        rank: normalizedRank,
+        vesselUuids: sortedComplianceVesselIds,
+        ruleNames: sortedComplianceRuleNames,
+        candidateUuids: complianceCandidateUuids,
+      });
+      return response.json();
+    },
+    staleTime: 30_000,
+  });
+
+  const compliantCrewUuidSet = useMemo(() => {
+    if (!complianceFilterActive || sortedComplianceVesselIds.length === 0) return null;
+    if (!complianceFilterResult) return null;
+    return new Set(complianceFilterResult.compliantCrewUuids);
+  }, [complianceFilterActive, sortedComplianceVesselIds.length, complianceFilterResult]);
+
+  const displayedCrewMembers = useMemo(() => {
+    if (!compliantCrewUuidSet) return filteredCrewMembers;
+    return filteredCrewMembers.filter((c) => compliantCrewUuidSet.has(c.crewUuid));
+  }, [filteredCrewMembers, compliantCrewUuidSet]);
+
   // Get count of vessels crew is assigned to
   const getCrewAssignmentCount = (crewUuid: string) => {
     const vesselCount = new Set(
@@ -930,7 +991,16 @@ function CrewColumn({
       <div className="w-64 flex-shrink-0">
         <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-t font-semibold flex items-center gap-2">
           <Checkbox data-testid={`checkbox-select-all-${rank}`} />
-          <span className="flex-1">{rank}</span>
+          <span className="flex-1 flex items-center gap-2">
+            <span>{rank}</span>
+            {isComplianceFiltering && (
+              <span
+                className="inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
+                data-testid={`spinner-compliance-${rank}`}
+                aria-label="Applying compliance filter"
+              />
+            )}
+          </span>
           <button
             onClick={() => setFilterDialogOpen(true)}
             className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${hasActiveFilters ? 'text-blue-600' : 'text-gray-600'}`}
@@ -940,12 +1010,20 @@ function CrewColumn({
           </button>
         </div>
         <div className="border-t">
-          {filteredCrewMembers.length === 0 ? (
+          {complianceFilterSkippedNoVessel && (
+            <div
+              className="px-3 py-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b"
+              data-testid={`hint-compliance-no-vessel-${rank}`}
+            >
+              Select a vessel to apply Compliance Check
+            </div>
+          )}
+          {displayedCrewMembers.length === 0 ? (
             <div className="p-4 text-center text-gray-500 text-sm">
               {hasActiveFilters ? 'No crew match the filters' : 'No crew available'}
             </div>
           ) : (
-            filteredCrewMembers.map((crew) => (
+            displayedCrewMembers.map((crew) => (
               <div
                 key={crew.crewUuid}
                 className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"

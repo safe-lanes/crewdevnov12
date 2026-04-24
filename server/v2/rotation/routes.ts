@@ -10,6 +10,7 @@ import {
 const router = Router();
 
 router.get("/crew/by-rank/:rank", rotationCrewController.getByRank);
+router.post("/crew/compliance-filter", rotationCrewController.complianceFilter);
 
 router.get("/proposals", rotationDraftsController.getProposals);
 router.get("/drafts", rotationDraftsController.getAll);
