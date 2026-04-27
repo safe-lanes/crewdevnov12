@@ -119,6 +119,8 @@ export function ViolationsOverviewDialog({
       return restHoursApiV2.crewRecords.getAll({
         vesselId: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
         monthValue,
+        complianceMode,
+        opaMode,
       });
     },
     enabled: open,

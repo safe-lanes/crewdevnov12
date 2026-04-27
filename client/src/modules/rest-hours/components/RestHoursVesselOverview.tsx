@@ -226,10 +226,10 @@ export const RestHoursVesselOverview = (): JSX.Element => {
 
   // Fetch crew records for export using V2 API (matching V1 pattern: vesselId, monthValue)
   const { data: crewRecordsForExport = [] } = useQuery({
-    queryKey: ['v2', 'rest-hours', 'crew-records-export', selectedVessel, periodValue],
+    queryKey: ['v2', 'rest-hours', 'crew-records-export', selectedVessel, periodValue, complianceMode, opaMode],
     queryFn: async () => {
       if (!selectedVessel || !periodValue) return [];
-      return restHoursApiV2.crewRecords.getAll({ vesselId: selectedVessel, monthValue: periodValue });
+      return restHoursApiV2.crewRecords.getAll({ vesselId: selectedVessel, monthValue: periodValue, complianceMode, opaMode });
     },
     enabled: !!selectedVessel && !!periodValue,
   });
@@ -284,8 +284,8 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         fetchDailyRecords,
         (current, total) => setExportProgress({ current, total }),
         {
-          complianceMode: 'Rest',
-          opaMode: false,
+          complianceMode,
+          opaMode,
           showPlanning: true,
         }
       );

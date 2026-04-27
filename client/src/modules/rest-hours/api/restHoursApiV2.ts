@@ -33,7 +33,7 @@ function withAuditUser<T>(data: T): T {
 
 export const restHoursApiV2 = {
   vesselRecords: {
-    async getAll(params?: { vesselUuid?: string; month?: string; year?: string; monthValue?: string }) {
+    async getAll(params?: { vesselUuid?: string; month?: string; year?: string; monthValue?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselUuid) searchParams.set('vesselUuid', params.vesselUuid);
       if (params?.monthValue) {
@@ -41,6 +41,8 @@ export const restHoursApiV2 = {
       } else if (params?.month && params?.year) {
         searchParams.set('monthValue', `${params.year}-${params.month.padStart(2, '0')}`);
       }
+      if (params?.complianceMode) searchParams.set('complianceMode', params.complianceMode);
+      if (params?.opaMode) searchParams.set('opaMode', 'true');
       const url = `${V2_BASE}/vessel-records${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch vessel records');
@@ -111,7 +113,7 @@ export const restHoursApiV2 = {
   },
 
   crewRecords: {
-    async getAll(params?: { vesselId?: string; monthValue?: string; ranks?: string[]; search?: string }) {
+    async getAll(params?: { vesselId?: string; monthValue?: string; ranks?: string[]; search?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
       if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
@@ -119,6 +121,8 @@ export const restHoursApiV2 = {
         params.ranks.forEach(rank => searchParams.append('ranks', rank));
       }
       if (params?.search) searchParams.set('search', params.search);
+      if (params?.complianceMode) searchParams.set('complianceMode', params.complianceMode);
+      if (params?.opaMode) searchParams.set('opaMode', 'true');
       const url = `${V2_BASE}/crew-records${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch crew records');
@@ -159,10 +163,12 @@ export const restHoursApiV2 = {
     },
 
     // V1 pattern: /api/rest-hours-violations-by-rank
-    async getViolationsByRank(params?: { vesselId?: string; monthValue?: string }) {
+    async getViolationsByRank(params?: { vesselId?: string; monthValue?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
       if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
+      if (params?.complianceMode) searchParams.set('complianceMode', params.complianceMode);
+      if (params?.opaMode) searchParams.set('opaMode', 'true');
       const url = `${V2_BASE}/violations-by-rank${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch violations by rank');
@@ -170,10 +176,12 @@ export const restHoursApiV2 = {
     },
 
     // V1 pattern: /api/rest-hours-ncs-by-rank
-    async getNcsByRank(params?: { vesselId?: string; monthValue?: string }) {
+    async getNcsByRank(params?: { vesselId?: string; monthValue?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
       if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
+      if (params?.complianceMode) searchParams.set('complianceMode', params.complianceMode);
+      if (params?.opaMode) searchParams.set('opaMode', 'true');
       const url = `${V2_BASE}/ncs-by-rank${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch NCs by rank');

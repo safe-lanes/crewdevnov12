@@ -106,7 +106,7 @@ export function VesselReviewDialog({
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
     queryKey: ['v2', 'rest-hours', 'crew-records', vesselId, monthValue, complianceMode, opaMode],
     queryFn: async () => {
-      return restHoursApiV2.crewRecords.getAll({ vesselId: vesselId, monthValue: monthValue });
+      return restHoursApiV2.crewRecords.getAll({ vesselId: vesselId, monthValue: monthValue, complianceMode, opaMode });
     },
     enabled: open,
   });

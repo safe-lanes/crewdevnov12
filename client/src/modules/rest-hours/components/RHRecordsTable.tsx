@@ -677,9 +677,9 @@ export function RHRecordsTable({ selectedVessels, selectedMonths, complianceMode
       .filter(m => m && m !== 'older')
       .map(m => {
         const [year, month] = m.split('-');
-        return { month, year };
+        return { month, year, complianceMode, opaMode };
       });
-  }, [selectedMonths]);
+  }, [selectedMonths, complianceMode, opaMode]);
 
   const { data: records = [], isLoading } = useQuery<RestHoursVesselRecord[]>({
     queryKey: ['v2', 'rest-hours', 'vessel-records', selectedMonths, complianceMode, opaMode],

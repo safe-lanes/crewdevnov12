@@ -5,16 +5,21 @@ import { enrichRecordWithReviewStatuses } from "../utils/reviewStatusUtils";
 export const vesselRecordsController = {
   async getAll(req: Request, res: Response) {
     try {
-      const { vesselId, monthValue } = req.query;
-      
+      const { vesselId, monthValue, complianceMode, opaMode } = req.query;
+
       const vesselIds = vesselId
         ? (vesselId as string).split(",").filter(Boolean)
         : undefined;
 
+      const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
+      const opa = opaMode === 'true' || opaMode === '1';
+
       if (vesselIds && vesselIds.length > 0) {
         const records = await vesselRecordsService.getByFilters(
           vesselIds,
-          monthValue as string | undefined
+          monthValue as string | undefined,
+          mode,
+          opa
         );
         return res.json(records.map(enrichRecordWithReviewStatuses));
       }
@@ -22,6 +27,8 @@ export const vesselRecordsController = {
       const records = await vesselRecordsService.getAll({
         vesselId: undefined,
         monthValue: monthValue as string | undefined,
+        complianceMode: mode,
+        opaMode: opa,
       });
       res.json(records.map(enrichRecordWithReviewStatuses));
     } catch (error) {
