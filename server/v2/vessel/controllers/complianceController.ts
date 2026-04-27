@@ -431,7 +431,8 @@ function evaluateExperienceRules(
   crewExperiences: CrewExperience[],
   category: string,
   getExperienceValue: (crew: CrewExperience) => number,
-  getExperienceForRank?: (crew: CrewExperience, ruleRank: string) => number
+  getExperienceForRank?: (crew: CrewExperience, ruleRank: string) => number,
+  targetRankCanonical?: string
 ): ComplianceRuleResult[] {
   const results: ComplianceRuleResult[] = [];
   
@@ -441,6 +442,9 @@ function evaluateExperienceRules(
     const label = rule.label || '';
     
     const ranks = parseRankPairString(rankPairStr);
+    const ruleMentionsTargetRank = targetRankCanonical
+      ? ranks.some((r) => canonicalRank(r) === targetRankCanonical)
+      : false;
     let totalYears = 0;
     const foundRanks: string[] = [];
     
@@ -454,7 +458,14 @@ function evaluateExperienceRules(
       }
     }
     
-    if (foundRanks.length > 0) {
+    // Strict-fail: if the rule mentions the candidate's target rank but at
+    // least one required partner rank is missing from the roster, the
+    // aggregate cannot be confirmed — fail outright (do not let a candidate
+    // pass by virtue of their own contribution alone).
+    const partnerMissingForRelevantRule =
+      ruleMentionsTargetRank && foundRanks.length < ranks.length;
+
+    if (foundRanks.length > 0 && !partnerMissingForRelevantRule) {
       results.push({
         category,
         label: label || `Combined aggregate for ${foundRanks.join(' and ')} shall not be less than ${requiredValue} years.`,
@@ -463,6 +474,16 @@ function evaluateExperienceRules(
         actualValue: Math.round(totalYears * 10) / 10,
         unit: 'years',
         status: totalYears >= requiredValue ? 'pass' : 'fail'
+      });
+    } else if (partnerMissingForRelevantRule) {
+      results.push({
+        category,
+        label: label || `Combined aggregate for ${rankPairStr} shall not be less than ${requiredValue} years.`,
+        rankPair: rankPairStr,
+        requiredValue,
+        actualValue: Math.round(totalYears * 10) / 10,
+        unit: 'years',
+        status: 'fail'
       });
     } else {
       results.push({
@@ -609,6 +630,10 @@ export function evaluateDateJoinedRules(
     const date1 = getEffectiveReplacementDate(crew1);
     const date2 = getEffectiveReplacementDate(crew2);
     if (!date1 || !date2) {
+      // Pure data-quality skip: both crew rows exist on the roster but
+      // one of them is missing/has-invalid sign-on date. Strict-fail does
+      // NOT apply here — that case is for missing partner ranks, not
+      // missing data on present partners. Keep `not_applicable`.
       results.push({
         category: 'Date Joined',
         label: label || `A minimum of ${requiredDays} days shall lapse between replacement of ${ranks.join(' and ')}`,
@@ -616,7 +641,7 @@ export function evaluateDateJoinedRules(
         requiredValue: requiredDays,
         actualValue: 0,
         unit: 'days',
-        status: ruleMentionsTargetRank ? 'fail' : 'not_applicable'
+        status: 'not_applicable'
       });
       continue;
     }
@@ -660,7 +685,8 @@ function checkComplianceForOilMajor(
       (crew, ruleRank) =>
         crew.seaServices
           ? calculateYearsFromSeaService(crew.seaServices, 'companyAndRank', ruleRank)
-          : crew.yearsWithOperator
+          : crew.yearsWithOperator,
+      targetRankCanonical
     ));
   }
   
@@ -669,7 +695,9 @@ function checkComplianceForOilMajor(
       experienceRules.yearsInRank,
       crewExperiences,
       'Years in Rank',
-      (crew) => crew.yearsInRank
+      (crew) => crew.yearsInRank,
+      undefined,
+      targetRankCanonical
     ));
   }
   
@@ -678,7 +706,9 @@ function checkComplianceForOilMajor(
       experienceRules.yearsOnTankerType,
       crewExperiences,
       'Years on This Type of Tanker',
-      (crew) => crew.yearsOnTankerType
+      (crew) => crew.yearsOnTankerType,
+      undefined,
+      targetRankCanonical
     ));
   }
   
@@ -687,7 +717,9 @@ function checkComplianceForOilMajor(
       experienceRules.yearsOnAllTankers,
       crewExperiences,
       'Years on All Tankers',
-      (crew) => crew.yearsOnAllTankers
+      (crew) => crew.yearsOnAllTankers,
+      undefined,
+      targetRankCanonical
     ));
   }
   
