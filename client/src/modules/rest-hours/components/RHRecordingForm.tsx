@@ -2245,7 +2245,8 @@ export const RHRecordingForm = ({
                           suppressContentEditableWarning
                           onBlur={(e) => {
                             if (isNonEditable) return;
-                            const value = e.currentTarget.textContent || '';
+                            const raw = e.currentTarget.textContent || '';
+                            const value = raw.slice(0, 1).toLowerCase();
                             handleHourCellEdit(baseIndex, hourIndex, value);
                           }}
                           onKeyDown={(e) => {
@@ -2302,6 +2303,30 @@ export const RHRecordingForm = ({
                               return;
                             }
                             
+                            // Block any printable keystroke when the cell already contains a character
+                            // (and the user is not about to overwrite a selection or use a modifier shortcut)
+                            if (
+                              e.key.length === 1 &&
+                              !e.ctrlKey &&
+                              !e.metaKey &&
+                              !e.altKey
+                            ) {
+                              const current = e.currentTarget.textContent || '';
+                              const selection = window.getSelection();
+                              const hasSelectionInCell = !!(
+                                selection &&
+                                !selection.isCollapsed &&
+                                selection.anchorNode &&
+                                selection.focusNode &&
+                                e.currentTarget.contains(selection.anchorNode) &&
+                                e.currentTarget.contains(selection.focusNode)
+                              );
+                              if (current.length >= 1 && !hasSelectionInCell) {
+                                e.preventDefault();
+                                return;
+                              }
+                            }
+
                             // Allow only w, d, a, backspace, delete
                             if (
                               e.key.length === 1 &&
