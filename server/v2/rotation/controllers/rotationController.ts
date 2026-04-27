@@ -46,9 +46,13 @@ export const rotationCrewController = {
   // Batch compliance filter for the Rotation Planning rank Filter dialog.
   // Returns the subset of candidate crew UUIDs that pass every selected
   // company / oil-major rule on every selected vessel (strict AND across
-  // all selected rules and vessels). Combined-rank rules with missing
-  // on-board partners are skipped (do not exclude). Rules with
-  // `not_applicable` status are treated as pass.
+  // all selected rules and vessels). For combined-rank rules, strict-fail
+  // semantics apply: a rule that mentions the candidate's target rank but
+  // whose other partner ranks are missing from the on-board roster
+  // produces a `fail` (excludes the candidate). Rules that do NOT mention
+  // the target rank with missing partners are skipped silently. Rules
+  // resolving to `not_applicable` (e.g. English level recorded as N/A,
+  // malformed rank pair) are treated as pass.
   async complianceFilter(req: Request, res: Response) {
     try {
       const parsed = batchComplianceSchema.safeParse(req.body);

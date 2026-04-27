@@ -482,7 +482,8 @@ function evaluateExperienceRules(
 
 function evaluateEnglishProficiencyRules(
   ruleArray: any[],
-  crewExperiences: CrewExperience[]
+  crewExperiences: CrewExperience[],
+  targetRankCanonical?: string
 ): ComplianceRuleResult[] {
   const results: ComplianceRuleResult[] = [];
   
@@ -493,6 +494,9 @@ function evaluateEnglishProficiencyRules(
     
     const requiredLevelNum = PROFICIENCY_MAP[requiredLevel] ?? 2;
     const ranks = parseRankPairString(rankPairStr);
+    const ruleMentionsTargetRank = targetRankCanonical
+      ? ranks.some((r) => canonicalRank(r) === targetRankCanonical)
+      : false;
     
     for (const rankName of ranks) {
       const crew = matchRankToCrewExperience(rankName, crewExperiences);
@@ -516,7 +520,7 @@ function evaluateEnglishProficiencyRules(
           requiredValue: requiredLevelNum,
           actualValue: 0,
           unit: 'level',
-          status: 'not_applicable'
+          status: ruleMentionsTargetRank ? 'fail' : 'not_applicable'
         });
       }
     }
@@ -555,7 +559,8 @@ export function getEffectiveReplacementDate(crew: { signOnDate: string | null } 
 
 export function evaluateDateJoinedRules(
   ruleArray: any[],
-  crewExperiences: CrewExperience[]
+  crewExperiences: CrewExperience[],
+  targetRankCanonical?: string
 ): ComplianceRuleResult[] {
   const results: ComplianceRuleResult[] = [];
   
@@ -565,8 +570,14 @@ export function evaluateDateJoinedRules(
     const label = rule.label || '';
     
     const ranks = parseDateJoinedRankPair(rankPairStr);
+    const ruleMentionsTargetRank = targetRankCanonical
+      ? ranks.some((r) => canonicalRank(r) === targetRankCanonical)
+      : false;
     
     if (ranks.length < 2) {
+      // Malformed rule (cannot identify both partners) — always skip silently;
+      // strict mode does not turn this into a fail because the rule itself is
+      // unusable, not the roster.
       results.push({
         category: 'Date Joined',
         label,
@@ -590,7 +601,7 @@ export function evaluateDateJoinedRules(
         requiredValue: requiredDays,
         actualValue: 0,
         unit: 'days',
-        status: 'not_applicable'
+        status: ruleMentionsTargetRank ? 'fail' : 'not_applicable'
       });
       continue;
     }
@@ -605,7 +616,7 @@ export function evaluateDateJoinedRules(
         requiredValue: requiredDays,
         actualValue: 0,
         unit: 'days',
-        status: 'not_applicable'
+        status: ruleMentionsTargetRank ? 'fail' : 'not_applicable'
       });
       continue;
     }
@@ -628,7 +639,8 @@ export function evaluateDateJoinedRules(
 function checkComplianceForOilMajor(
   oilMajorName: string,
   rules: any,
-  crewExperiences: CrewExperience[]
+  crewExperiences: CrewExperience[],
+  targetRankCanonical?: string
 ): ComplianceCheckResult {
   const allResults: ComplianceRuleResult[] = [];
   
@@ -682,14 +694,16 @@ function checkComplianceForOilMajor(
   if (rules?.englishProficiencyRules?.length) {
     allResults.push(...evaluateEnglishProficiencyRules(
       rules.englishProficiencyRules,
-      crewExperiences
+      crewExperiences,
+      targetRankCanonical
     ));
   }
   
   if (rules?.dateJoinedRules?.length) {
     allResults.push(...evaluateDateJoinedRules(
       rules.dateJoinedRules,
-      crewExperiences
+      crewExperiences,
+      targetRankCanonical
     ));
   }
   
@@ -824,11 +838,16 @@ export const complianceController = {
 // Reuses the same rule evaluators as the per-vessel matrix above. Given a rank,
 // a list of vessels, a list of selected oil-major / company rule names, and a
 // list of candidate crew UUIDs, returns the subset of candidates who pass
-// every selected rule on every selected vessel (strict AND). Combined-rank
-// rules use the on-board counterpart from each target vessel; a rule whose
-// partner ranks are not all present in the on-board roster is skipped (does
-// not exclude the candidate). Rules with `not_applicable` status are also
-// treated as pass.
+// every selected rule on every selected vessel (strict AND).
+//
+// Strict-fail semantics: a combined-rank rule that mentions the candidate's
+// target rank is always evaluated, even when the on-board partner rank is
+// missing from the roster — in which case the rule produces a `fail` result
+// (the candidate cannot be confirmed compliant, so they are excluded). Rules
+// that do NOT mention the target rank with missing partners are skipped
+// silently. Rules that legitimately resolve to `not_applicable` (e.g.
+// English level recorded as N/A, malformed rank pair) are still treated as
+// pass.
 // =============================================================================
 
 export interface BatchComplianceRequest {
@@ -886,11 +905,37 @@ function partnersExist(
   return ranks.every((r) => rosterCanonicalRanks.has(canonicalRank(r)));
 }
 
+/**
+ * Prune rules whose partner ranks are absent from the on-board roster.
+ *
+ * Strict mode (when `targetRankCanonical` is provided): a rule is kept
+ * whenever its rankPair mentions the candidate's target rank, even if other
+ * partner ranks are missing from the roster. Such rules are then evaluated
+ * downstream and produce a `fail` result (per the strict-fail semantics in
+ * the evaluators) so the candidate is excluded rather than silently passed.
+ * Rules that do NOT mention the target rank with missing partners continue
+ * to be pruned (treated as not-applicable to this candidate).
+ *
+ * When `targetRankCanonical` is omitted (e.g. matrix views), every rule with
+ * any missing partner is pruned — the legacy behavior.
+ */
 function pruneRulesForRoster(
   rulesObj: ParsedRuleSet | null | undefined,
-  rosterCanonicalRanks: Set<string>
+  rosterCanonicalRanks: Set<string>,
+  targetRankCanonical?: string
 ): ParsedRuleSet {
   if (!rulesObj || typeof rulesObj !== 'object') return {};
+
+  const keepRule = (
+    rankPair: string,
+    parser: typeof parseRankPairString | typeof parseDateJoinedRankPair,
+  ): boolean => {
+    if (partnersExist(rankPair, parser, rosterCanonicalRanks)) return true;
+    if (!targetRankCanonical) return false;
+    const ranks = parser(rankPair || '');
+    return ranks.some((r) => canonicalRank(r) === targetRankCanonical);
+  };
+
   const out: ParsedRuleSet = {};
   if (rulesObj.experienceRules) {
     const er: NonNullable<ParsedRuleSet['experienceRules']> = {};
@@ -903,19 +948,19 @@ function pruneRulesForRoster(
     for (const k of keys) {
       const arr = rulesObj.experienceRules[k];
       if (Array.isArray(arr)) {
-        er[k] = arr.filter((r) => partnersExist(r.rankPair || '', parseRankPairString, rosterCanonicalRanks));
+        er[k] = arr.filter((r) => keepRule(r.rankPair || '', parseRankPairString));
       }
     }
     out.experienceRules = er;
   }
   if (Array.isArray(rulesObj.englishProficiencyRules)) {
     out.englishProficiencyRules = rulesObj.englishProficiencyRules.filter((r) =>
-      partnersExist(r.rankPair || '', parseRankPairString, rosterCanonicalRanks)
+      keepRule(r.rankPair || '', parseRankPairString)
     );
   }
   if (Array.isArray(rulesObj.dateJoinedRules)) {
     out.dateJoinedRules = rulesObj.dateJoinedRules.filter((r) =>
-      partnersExist(r.rankPair || '', parseDateJoinedRankPair, rosterCanonicalRanks)
+      keepRule(r.rankPair || '', parseDateJoinedRankPair)
     );
   }
   return out;
@@ -1058,7 +1103,10 @@ export async function evaluateBatchCompliance(
 
     const prunedByOilMajor = new Map<string, any>();
     for (const { oilMajorName, rules } of parsedRules) {
-      prunedByOilMajor.set(oilMajorName, pruneRulesForRoster(rules, rosterCanonicalRanks));
+      prunedByOilMajor.set(
+        oilMajorName,
+        pruneRulesForRoster(rules, rosterCanonicalRanks, targetRankCanonical)
+      );
     }
 
     vesselContexts.push({
@@ -1100,7 +1148,12 @@ export async function evaluateBatchCompliance(
 
       for (const { oilMajorName } of parsedRules) {
         const prunedRules = ctx.prunedByOilMajor.get(oilMajorName);
-        const result = checkComplianceForOilMajor(oilMajorName, prunedRules, roster);
+        const result = checkComplianceForOilMajor(
+          oilMajorName,
+          prunedRules,
+          roster,
+          targetRankCanonical
+        );
         if (result.results.some((r) => r.status === 'fail')) {
           allPass = false;
           break;
