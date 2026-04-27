@@ -931,10 +931,12 @@ function partnersExist(
   return ranks.every((r) => rosterCanonicalRanks.has(canonicalRank(r)));
 }
 
-// Prune rules whose partner ranks are absent from the roster. In strict mode
-// (targetRankCanonical set) rules that mention the target rank are retained
-// so evaluators can fail them; legacy mode (no target rank) prunes any rule
-// with a missing partner.
+// Strict mode (targetRankCanonical set): keep ONLY rules whose rankPair
+// mentions the candidate's target rank — irrelevant rules cannot affect the
+// candidate's eligibility regardless of partner presence. Relevant rules
+// with missing partners are kept so evaluators can fail them.
+// Legacy mode (no target rank): keep any rule whose partner ranks are all
+// present in the roster.
 function pruneRulesForRoster(
   rulesObj: ParsedRuleSet | null | undefined,
   rosterCanonicalRanks: Set<string>,
@@ -946,10 +948,11 @@ function pruneRulesForRoster(
     rankPair: string,
     parser: typeof parseRankPairString | typeof parseDateJoinedRankPair,
   ): boolean => {
-    if (partnersExist(rankPair, parser, rosterCanonicalRanks)) return true;
-    if (!targetRankCanonical) return false;
-    const ranks = parser(rankPair || '');
-    return ranks.some((r) => canonicalRank(r) === targetRankCanonical);
+    if (targetRankCanonical) {
+      const ranks = parser(rankPair || '');
+      return ranks.some((r) => canonicalRank(r) === targetRankCanonical);
+    }
+    return partnersExist(rankPair, parser, rosterCanonicalRanks);
   };
 
   const out: ParsedRuleSet = {};
