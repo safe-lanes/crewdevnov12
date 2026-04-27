@@ -38,6 +38,11 @@ interface CrewExperience {
   timeOnboardMonths: number;
   crewName: string;
   signOnDate: string | null;
+  // Planned sign-off date of the currently onboard officer at this rank
+  // slot. Used by the Date Joined rule evaluator to measure the gap between
+  // replacement events. Null when no relief is scheduled for the active
+  // officer, in which case the rule reports not_applicable.
+  signOffDate: string | null;
   // Raw sea-service rows for this crew member, used by the rule evaluator
   // to recompute rank-strict aggregates (e.g. Years with Operator combined
   // for Master + C/O) using the rule's rank rather than the assigned rank.
@@ -222,7 +227,8 @@ async function getCrewExperienceForMember(
   rank: string,
   signOnDate: string | null,
   vesselTypeUuid?: string,
-  tankerCategory?: TankerCategory
+  tankerCategory?: TankerCategory,
+  signOffDate: string | null = null
 ): Promise<CrewExperience | null> {
   const db = getDb();
   
@@ -275,6 +281,7 @@ async function getCrewExperienceForMember(
     timeOnboardMonths,
     crewName: `${crewMember.firstName || ''} ${crewMember.familyName || ''}`.trim(),
     signOnDate: signOnDate || null,
+    signOffDate: signOffDate || null,
     seaServices,
   };
 }
@@ -326,7 +333,14 @@ async function getCrewExperienceFromV2(vesselUuid: string): Promise<CrewExperien
   
   for (const record of activeRecords) {
     if (!record.crewUuid) continue;
-    const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate, vesselTypeUuid, tankerCategory);
+    const exp = await getCrewExperienceForMember(
+      record.crewUuid,
+      record.rank,
+      record.signOnDate,
+      vesselTypeUuid,
+      tankerCategory,
+      record.signOffDate
+    );
     if (exp) experiences.push(exp);
   }
   
@@ -370,23 +384,34 @@ async function getSimulatedCrewExperience(
     
     const simEntry = simRankMap.get(normalizedRank);
     if (simEntry) {
-      // Effective replacement date precedence:
+      // Sign-on date used for capability rules (Years with Operator etc.):
       //   1. simulated joining date (when explicitly provided in the simulation)
       //   2. existing planning sign-on date for this slot (so a one-sided
       //      simulation that swaps the crew member but keeps the existing
       //      join date still yields a real comparison instead of N/A).
-      const effectiveDate = simEntry.joiningDate || record.signOnDate || null;
+      // Sign-off date for the Date Joined rule: always the existing onboard
+      // officer's planned sign-off — the relieving officer's joining date
+      // does not change when the outgoing officer is scheduled to leave.
+      const effectiveSignOn = simEntry.joiningDate || record.signOnDate || null;
       const exp = await getCrewExperienceForMember(
         simEntry.crewMemberId,
         record.rank,
-        effectiveDate,
+        effectiveSignOn,
         vesselTypeUuid,
-        tankerCategory
+        tankerCategory,
+        record.signOffDate
       );
       if (exp) experiences.push(exp);
       processedRanks.add(normalizedRank);
     } else {
-      const exp = await getCrewExperienceForMember(record.crewUuid, record.rank, record.signOnDate, vesselTypeUuid, tankerCategory);
+      const exp = await getCrewExperienceForMember(
+        record.crewUuid,
+        record.rank,
+        record.signOnDate,
+        vesselTypeUuid,
+        tankerCategory,
+        record.signOffDate
+      );
       if (exp) experiences.push(exp);
     }
   }
@@ -394,12 +419,16 @@ async function getSimulatedCrewExperience(
   for (const sim of simulatedCrew) {
     const normalizedRank = normalizeRankName(sim.rank).toLowerCase();
     if (!processedRanks.has(normalizedRank)) {
+      // Simulated rank that has no existing planning row — there is no
+      // active onboard officer to source a sign-off date from, so the Date
+      // Joined rule will be not_applicable for this side of the pair.
       const exp = await getCrewExperienceForMember(
         sim.crewMemberId,
         sim.rank,
         sim.joiningDate || null,
         vesselTypeUuid,
-        tankerCategory
+        tankerCategory,
+        null
       );
       if (exp) experiences.push(exp);
     }
@@ -565,16 +594,19 @@ export function parseDateJoinedRankPair(rankPairStr: string): string[] {
 
 /**
  * Returns the effective replacement date for a crew slot used by Date Joined
- * rules. Precedence (highest first):
- *   1. The crew experience's `signOnDate` — already populated by
- *      getCrewExperienceForMember from either the simulated joining date or
- *      the existing planning sign-on date (see getSimulatedCrewExperience).
- *   2. (no further fallback — there is no separate joining_date column on
- *      crew_members_v2; null here results in a not_applicable rule outcome.)
+ * rules. The "minimum N days between replacement" rule family measures the
+ * gap between the SCHEDULED SIGN-OFF dates of the currently onboard officers
+ * — i.e. when each existing officer is planned to leave the vessel. The
+ * relieving officer's joining date and the active officer's own sign-on date
+ * are not relevant here; only the planned departure of the active officer is.
+ *
+ * Returns null (which the evaluator surfaces as `not_applicable`) when the
+ * active officer has no scheduled sign-off, or when the stored value is not
+ * a parseable date.
  */
-export function getEffectiveReplacementDate(crew: { signOnDate: string | null } | null | undefined): Date | null {
-  if (!crew || !crew.signOnDate) return null;
-  const d = new Date(crew.signOnDate);
+export function getEffectiveReplacementDate(crew: { signOffDate?: string | null } | null | undefined): Date | null {
+  if (!crew || !crew.signOffDate) return null;
+  const d = new Date(crew.signOffDate);
   return isNaN(d.getTime()) ? null : d;
 }
 
@@ -899,6 +931,7 @@ interface VesselBatchContext {
   tankerCategory: TankerCategory;
   onBoardExps: CrewExperience[];
   targetSlotSignOnDate: string | null;
+  targetSlotSignOffDate: string | null;
   rosterCanonicalRanks: Set<string>;
 }
 
@@ -1015,7 +1048,8 @@ function buildExperienceFromBase(
   signOnDate: string | null,
   vesselTypeUuid: string | undefined,
   tankerCategory: TankerCategory,
-  base: CandidateBaseData
+  base: CandidateBaseData,
+  signOffDate: string | null = null
 ): CrewExperience {
   const currentRank = normalizeRankName(rank);
   return {
@@ -1030,6 +1064,7 @@ function buildExperienceFromBase(
     timeOnboardMonths: 0,
     crewName: base.crewName,
     signOnDate: signOnDate || null,
+    signOffDate: signOffDate || null,
     seaServices: base.seaServices,
   };
 }
@@ -1098,20 +1133,22 @@ export async function evaluateBatchCompliance(
 
     const onBoardExps: CrewExperience[] = [];
     let targetSlotSignOnDate: string | null = null;
+    let targetSlotSignOffDate: string | null = null;
 
     for (const rec of planning) {
       if (!rec.crewUuid) continue;
       const recCanon = canonicalRank(rec.rank);
       if (recCanon === targetRankCanonical) {
-        // Capture the existing slot's sign-on date so a candidate evaluated as
-        // a same-day swap inherits the same effective replacement date.
+        // Capture the existing slot's sign-on / sign-off dates so a candidate
+        // evaluated as a same-day swap inherits the same effective dates.
         if (!targetSlotSignOnDate) targetSlotSignOnDate = rec.signOnDate;
+        if (!targetSlotSignOffDate) targetSlotSignOffDate = rec.signOffDate;
         continue;
       }
       const base = await loadCandidateBase(rec.crewUuid, candidateCache);
       if (!base) continue;
       onBoardExps.push(
-        buildExperienceFromBase(rec.rank, rec.signOnDate, vesselTypeUuid, tankerCategory, base)
+        buildExperienceFromBase(rec.rank, rec.signOnDate, vesselTypeUuid, tankerCategory, base, rec.signOffDate)
       );
     }
 
@@ -1134,6 +1171,7 @@ export async function evaluateBatchCompliance(
       tankerCategory,
       onBoardExps,
       targetSlotSignOnDate,
+      targetSlotSignOffDate,
       rosterCanonicalRanks,
       prunedByOilMajor,
     });
@@ -1160,7 +1198,8 @@ export async function evaluateBatchCompliance(
         ctx.targetSlotSignOnDate,
         ctx.vesselTypeUuid,
         ctx.tankerCategory,
-        base
+        base,
+        ctx.targetSlotSignOffDate
       );
 
       const roster: CrewExperience[] = [candidateExp, ...ctx.onBoardExps];
