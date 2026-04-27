@@ -596,9 +596,8 @@ export function evaluateDateJoinedRules(
       : false;
     
     if (ranks.length < 2) {
-      // Malformed rule (cannot identify both partners) — always skip silently;
-      // strict mode does not turn this into a fail because the rule itself is
-      // unusable, not the roster.
+      // Malformed rule (unusable definition, not a roster gap) — skip silently
+      // in both strict and legacy modes.
       results.push({
         category: 'Date Joined',
         label,
@@ -867,19 +866,14 @@ export const complianceController = {
 // =============================================================================
 // Batch compliance evaluator (Rotation Planning rank Filter)
 // -----------------------------------------------------------------------------
-// Reuses the same rule evaluators as the per-vessel matrix above. Given a rank,
-// a list of vessels, a list of selected oil-major / company rule names, and a
-// list of candidate crew UUIDs, returns the subset of candidates who pass
-// every selected rule on every selected vessel (strict AND).
+// Returns the subset of candidates who pass every selected rule on every
+// selected vessel (strict AND). Reuses the same evaluators as the matrix.
 //
-// Strict-fail semantics: a combined-rank rule that mentions the candidate's
-// target rank is always evaluated, even when the on-board partner rank is
-// missing from the roster — in which case the rule produces a `fail` result
-// (the candidate cannot be confirmed compliant, so they are excluded). Rules
-// that do NOT mention the target rank with missing partners are skipped
-// silently. Rules that legitimately resolve to `not_applicable` (e.g.
-// English level recorded as N/A, malformed rank pair) are still treated as
-// pass.
+// Strict-fail: rules that mention the candidate's target rank are always
+// evaluated; missing partner ranks on the roster produce `fail`. Rules that
+// do NOT mention the target rank with missing partners are skipped. Rules
+// that legitimately resolve to `not_applicable` (English N/A, malformed
+// rank pair, missing sign-on date on a present partner) are treated as pass.
 // =============================================================================
 
 export interface BatchComplianceRequest {
@@ -937,20 +931,10 @@ function partnersExist(
   return ranks.every((r) => rosterCanonicalRanks.has(canonicalRank(r)));
 }
 
-/**
- * Prune rules whose partner ranks are absent from the on-board roster.
- *
- * Strict mode (when `targetRankCanonical` is provided): a rule is kept
- * whenever its rankPair mentions the candidate's target rank, even if other
- * partner ranks are missing from the roster. Such rules are then evaluated
- * downstream and produce a `fail` result (per the strict-fail semantics in
- * the evaluators) so the candidate is excluded rather than silently passed.
- * Rules that do NOT mention the target rank with missing partners continue
- * to be pruned (treated as not-applicable to this candidate).
- *
- * When `targetRankCanonical` is omitted (e.g. matrix views), every rule with
- * any missing partner is pruned — the legacy behavior.
- */
+// Prune rules whose partner ranks are absent from the roster. In strict mode
+// (targetRankCanonical set) rules that mention the target rank are retained
+// so evaluators can fail them; legacy mode (no target rank) prunes any rule
+// with a missing partner.
 function pruneRulesForRoster(
   rulesObj: ParsedRuleSet | null | undefined,
   rosterCanonicalRanks: Set<string>,
