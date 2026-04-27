@@ -592,8 +592,8 @@ export const RHRecordingForm = ({
       if (!selectedVesselId || !selectedPeriod) return null;
       try {
         const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselId: selectedVesselId, monthValue: selectedPeriod });
-        // Filter for the specific period
-        const periodAdjustment = adjustments.find((a: any) => a.monthYear === selectedPeriod || a.period === selectedPeriod);
+        // Filter for the specific period (schema field is monthValue)
+        const periodAdjustment = adjustments.find((a: any) => a.monthValue === selectedPeriod);
         return periodAdjustment || null;
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
@@ -616,8 +616,8 @@ export const RHRecordingForm = ({
       if (!selectedVesselId || !previousMonthPeriod) return null;
       try {
         const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselId: selectedVesselId, monthValue: previousMonthPeriod });
-        // Filter for the specific period
-        const periodAdjustment = adjustments.find((a: any) => a.monthYear === previousMonthPeriod || a.period === previousMonthPeriod);
+        // Filter for the specific period (schema field is monthValue)
+        const periodAdjustment = adjustments.find((a: any) => a.monthValue === previousMonthPeriod);
         return periodAdjustment || null;
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
