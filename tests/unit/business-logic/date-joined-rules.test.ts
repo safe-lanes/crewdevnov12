@@ -74,9 +74,10 @@ describe('getEffectiveReplacementDate', () => {
   it('does NOT fall back to signOnDate (rule is sign-off based only)', () => {
     // Even when a sign-on date is present, a missing sign-off must yield null
     // so the evaluator surfaces not_applicable rather than computing the
-    // gap from joining dates.
+    // gap from joining dates. The function only inspects signOffDate; extra
+    // properties on the input shape are ignored.
     expect(
-      getEffectiveReplacementDate({ signOffDate: null } as any),
+      getEffectiveReplacementDate({ signOffDate: null }),
     ).toBeNull();
   });
 });

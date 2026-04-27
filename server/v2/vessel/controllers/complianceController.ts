@@ -662,7 +662,7 @@ export function evaluateDateJoinedRules(
     const date2 = getEffectiveReplacementDate(crew2);
     if (!date1 || !date2) {
       // Pure data-quality skip: both crew rows exist on the roster but
-      // one of them is missing/has-invalid sign-on date. Strict-fail does
+      // one of them is missing/has-invalid sign-off date. Strict-fail does
       // NOT apply here — that case is for missing partner ranks, not
       // missing data on present partners. Keep `not_applicable`.
       results.push({
