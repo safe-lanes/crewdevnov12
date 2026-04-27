@@ -1906,7 +1906,7 @@ export const RHRecordingForm = ({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <div className="flex-1"></div>
             <DialogTitle className="text-lg font-semibold text-center flex-1">
               RH Recording Form
