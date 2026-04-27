@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileText, Lock } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { generateRestHoursPDF } from '@/lib/generateRestHoursPDF';
+import { generateRestHoursPDF, sanitizeRestHoursRecordsForExport } from '@/lib/generateRestHoursPDF';
 import { queryClient } from '@/lib/queryClient';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 import { useToast } from '@/hooks/use-toast';
@@ -254,6 +254,7 @@ export const RHRecordingForm = ({
     name: v.vessel ?? '',
     vesselType: v.vesselType ?? '',
     imoNumber: v.imoNumber ?? '',
+    flagState: v.flagState ?? '',
   })), [v2Vessels]);
   
   // Dropdown selections state
@@ -1635,12 +1636,19 @@ export const RHRecordingForm = ({
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthYearDisplay = `${monthNames[parseInt(month) - 1]}-${year}`;
       
+      const exportRecords = sanitizeRestHoursRecordsForExport(dailyRecords, {
+        monthYear: selectedPeriod,
+        signOnDate: effectiveSignOnDate,
+        signOffDate: effectiveSignOffDate,
+        dateLineAdjustment,
+      });
+
       await generateRestHoursPDF({
         vesselName,
         crewMemberName,
         rank,
         monthYear: monthYearDisplay,
-        records: dailyRecords,
+        records: exportRecords,
         imoNumber,
         flagOfShip,
         watchkeeper,

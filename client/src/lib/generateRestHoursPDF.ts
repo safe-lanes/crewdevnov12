@@ -27,6 +27,89 @@ export interface RestHoursPDFData {
   showPlanning?: boolean;
 }
 
+interface RestHoursExportSanitizeOptions {
+  monthYear: string;
+  signOnDate?: string | null;
+  signOffDate?: string | null;
+  dateLineAdjustment?: { adjustments?: unknown } | null;
+}
+
+function parseAdvancedDays(dateLineAdjustment?: { adjustments?: unknown } | null): Set<number> {
+  if (!dateLineAdjustment?.adjustments) return new Set();
+
+  try {
+    const adjustments = typeof dateLineAdjustment.adjustments === 'string'
+      ? JSON.parse(dateLineAdjustment.adjustments)
+      : dateLineAdjustment.adjustments;
+
+    if (!Array.isArray(adjustments)) return new Set();
+
+    return new Set(
+      adjustments
+        .filter((adj: any) => adj?.type === 'advanced' && Number.isFinite(Number(adj.day)))
+        .map((adj: any) => Number(adj.day))
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function getApplicableDayRange(monthYear: string, signOnDate?: string | null, signOffDate?: string | null): { from: number; to: number } {
+  const [year, month] = monthYear.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstDay = `${monthYear}-01`;
+  const lastDay = `${monthYear}-${String(daysInMonth).padStart(2, '0')}`;
+
+  let from = 1;
+  let to = daysInMonth;
+
+  if (signOnDate && signOnDate >= firstDay && signOnDate <= lastDay) {
+    from = parseInt(signOnDate.split('-')[2], 10);
+  }
+  if (signOffDate && signOffDate >= firstDay && signOffDate <= lastDay) {
+    to = parseInt(signOffDate.split('-')[2], 10);
+  }
+
+  return { from, to };
+}
+
+function blankRecordForExport(record: ExtendedDailyRecord): ExtendedDailyRecord {
+  return {
+    ...record,
+    hours: Array(48).fill(''),
+    comments: '',
+    violations: [],
+    violationDiagnostics: [],
+    hoursOfRest24hr: undefined as unknown as number,
+    hoursOfWork24hr: undefined as unknown as number,
+    hoursOfRest48hr: undefined as unknown as number,
+    hoursOfWork48hr: undefined as unknown as number,
+    hoursOfRest7day: undefined as unknown as number,
+    hoursOfWork7day: undefined as unknown as number,
+    hoursOfRest96hr: undefined as unknown as number,
+    hoursOfWork96hr: undefined as unknown as number,
+    anyPeriodRest24hr: undefined as unknown as number,
+    anyPeriodRest7day: undefined as unknown as number,
+    anyPeriodWork24hr: undefined as unknown as number,
+    anyPeriodWork7day: undefined as unknown as number,
+  };
+}
+
+export function sanitizeRestHoursRecordsForExport(
+  records: ExtendedDailyRecord[],
+  options: RestHoursExportSanitizeOptions
+): ExtendedDailyRecord[] {
+  const applicableDayRange = getApplicableDayRange(options.monthYear, options.signOnDate, options.signOffDate);
+  const advancedDays = parseAdvancedDays(options.dateLineAdjustment);
+
+  return records.map(record => {
+    const isOutOfRange = record.day < applicableDayRange.from || record.day > applicableDayRange.to;
+    const isAdvanced = advancedDays.has(record.day);
+
+    return isOutOfRange || isAdvanced ? blankRecordForExport(record) : record;
+  });
+}
+
 class RestHoursPDFGenerator {
   private pdfDoc!: PDFDocument;
   private currentPage!: PDFPage;
@@ -491,6 +574,8 @@ export async function exportAllRestHoursPDFs(
     name: string;
     rank: string;
     monthValue: string;
+    signOnDate?: string | null;
+    signOffDate?: string | null;
   }>,
   vesselInfo: {
     vesselName: string;
@@ -503,6 +588,7 @@ export async function exportAllRestHoursPDFs(
     complianceMode?: 'Rest' | 'Work';
     opaMode?: boolean;
     showPlanning?: boolean;
+    dateLineAdjustment?: { adjustments?: unknown } | null;
   }
 ): Promise<void> {
   try {
@@ -523,13 +609,19 @@ export async function exportAllRestHoursPDFs(
       const monthYear = crew.monthValue;
       const monthYearDisplay = formatMonthYearDisplay(monthYear);
       const records = await fetchDailyRecords(crew.crewMemberId, crew.vesselId, monthYear);
-      
+      const exportRecords = sanitizeRestHoursRecordsForExport(records, {
+        monthYear,
+        signOnDate: crew.signOnDate,
+        signOffDate: crew.signOffDate,
+        dateLineAdjustment: options?.dateLineAdjustment,
+      });
+
       const pdfData: RestHoursPDFData = {
         vesselName: vesselInfo.vesselName,
         crewMemberName: crew.name,
         rank: crew.rank,
         monthYear: monthYearDisplay,
-        records: records,
+        records: exportRecords,
         imoNumber: vesselInfo.imoNumber,
         flagOfShip: vesselInfo.flagOfShip,
         watchkeeper: false,

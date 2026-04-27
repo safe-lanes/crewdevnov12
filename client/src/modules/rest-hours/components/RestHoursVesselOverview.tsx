@@ -160,6 +160,10 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     return vessel?.vessel || 'Unknown Vessel';
   }, [vessels, selectedVessel]);
 
+  const selectedVesselInfo = useMemo(() => {
+    return vessels.find((v) => v.vesselUuid === selectedVessel);
+  }, [vessels, selectedVessel]);
+
   // Format month for title
   const monthDisplay = useMemo(() => {
     const option = periodOptions.find(opt => opt.value === periodValue);
@@ -274,12 +278,16 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         name: record.name || '',
         rank: record.rank || '',
         monthValue: record.monthValue || periodValue,
+        signOnDate: record.signOnDate ?? null,
+        signOffDate: record.signOffDate ?? null,
       }));
 
       await exportAllRestHoursPDFs(
         crewData,
         {
           vesselName: vesselName,
+          imoNumber: selectedVesselInfo?.imoNumber || '',
+          flagOfShip: selectedVesselInfo?.flagState || '',
         },
         fetchDailyRecords,
         (current, total) => setExportProgress({ current, total }),
@@ -287,6 +295,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
           complianceMode,
           opaMode,
           showPlanning: true,
+          dateLineAdjustment,
         }
       );
 

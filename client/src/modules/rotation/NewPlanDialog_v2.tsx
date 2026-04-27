@@ -1404,6 +1404,7 @@ function VesselTimelineView({
   vessels, 
   queryRanks,
   displayRanks,
+  perVesselPositions,
   selectedVessel,
   onVesselSelect,
   onAssignmentClick,
@@ -1415,6 +1416,7 @@ function VesselTimelineView({
   vessels: string[]; // Now contains UUIDs
   queryRanks: string[];
   displayRanks: string[];
+  perVesselPositions: Map<string, Set<string>>;
   selectedVessel: string; // UUID
   onVesselSelect: (vessel: string) => void; // vessel is UUID
   onAssignmentClick?: (assignment: Assignment) => void;
@@ -1473,6 +1475,28 @@ function VesselTimelineView({
     
     return mapping;
   }, [displayRanks]);
+
+  const vesselDisplayRanks = useMemo(() => {
+    const result = new Map<string, string[]>();
+
+    vessels.forEach(vesselUuid => {
+      const vesselPositions = perVesselPositions.get(vesselUuid);
+      const filteredRanks = displayRanks.filter(rank => {
+        if (!vesselPositions) return false;
+        if (rank.includes('_')) {
+          return vesselPositions.has(rank);
+        }
+
+        return Array.from(vesselPositions).some((position: string) =>
+          position === rank || (position.startsWith(`${rank}_`) && position.includes('_'))
+        );
+      });
+
+      result.set(vesselUuid, filteredRanks);
+    });
+
+    return result;
+  }, [vessels, displayRanks, perVesselPositions]);
   
   // Group data by vessel UUID and display rank (with smart mapping from base ranks to variants)
   const groupedData = useMemo(() => {
@@ -1574,8 +1598,12 @@ function VesselTimelineView({
     const cornerRadius = 8;
     
     // Compute total canvas height from content
-    const vesselSectionHeight = vesselHeaderHeight + monthHeaderHeight + (displayRanks.length * rowHeight);
-    const totalHeight = (vessels.length * vesselSectionHeight) + ((vessels.length - 1) * vesselGap);
+    const totalHeight = vessels.reduce((height, vesselUuid, vesselIdx) => {
+      const ranksForVessel = vesselDisplayRanks.get(vesselUuid) || [];
+      const vesselSectionHeight = vesselHeaderHeight + monthHeaderHeight + (ranksForVessel.length * rowHeight);
+      const gapHeight = vesselIdx < vessels.length - 1 ? vesselGap : 0;
+      return height + vesselSectionHeight + gapHeight;
+    }, 0);
     
     canvas.width = width;
     canvas.height = totalHeight;
@@ -1589,7 +1617,8 @@ function VesselTimelineView({
     vessels.forEach((vessel, vesselIdx) => {
       const isSelected = selectedVessel === vessel;
       const headerColor = isSelected ? '#52baf3' : '#b0b8c1';
-      const sectionHeight = vesselSectionHeight;
+      const ranksForVessel = vesselDisplayRanks.get(vessel) || [];
+      const sectionHeight = vesselHeaderHeight + monthHeaderHeight + (ranksForVessel.length * rowHeight);
       const sectionStartY = yOffset;
       
       // Clip to rounded rectangle for the entire vessel band
@@ -1696,7 +1725,7 @@ function VesselTimelineView({
       const vesselContentStartY = yOffset;
       
       // Draw rank rows
-      displayRanks.forEach((rank, rankIdx) => {
+      ranksForVessel.forEach((rank, rankIdx) => {
         const rowData = groupedData[vessel]?.[rank];
         if (!rowData) return;
         
@@ -1848,7 +1877,7 @@ function VesselTimelineView({
     ctx.lineTo(todayX, totalHeight);
     ctx.stroke();
     
-  }, [vessels, displayRanks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasWidth]);
+  }, [vessels, displayRanks, vesselDisplayRanks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasWidth]);
   
   // Handle canvas click for vessel selection and assignment editing
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1904,8 +1933,10 @@ function VesselTimelineView({
       yOffset += vesselHeaderHeight + monthHeaderHeight;
       
       // Check if clicked on an assignment bar in any rank row
-      for (let rankIdx = 0; rankIdx < displayRanks.length; rankIdx++) {
-        const rank = displayRanks[rankIdx];
+      const ranksForVessel = vesselDisplayRanks.get(vessel) || [];
+
+      for (let rankIdx = 0; rankIdx < ranksForVessel.length; rankIdx++) {
+        const rank = ranksForVessel[rankIdx];
         const rowY = yOffset + (rankIdx * rowHeight);
         const bottomBarY = rowY + 20;
         const bottomBarHeight = 15;
@@ -1934,7 +1965,7 @@ function VesselTimelineView({
         }
       }
       
-      yOffset += displayRanks.length * rowHeight;
+      yOffset += ranksForVessel.length * rowHeight;
       
       // Account for gap between vessels
       if (vi < vessels.length - 1) {
@@ -3195,6 +3226,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                 vessels={selectedVessels}
                 queryRanks={selectedRoleVariants}
                 displayRanks={timelineRoleVariants}
+                perVesselPositions={perVesselPositions}
                 selectedVessel={selectedVessel}
                 onVesselSelect={setSelectedVessel}
                 onAssignmentClick={handleAssignmentClick}
