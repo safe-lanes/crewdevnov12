@@ -1,5 +1,15 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -273,6 +283,9 @@ export const RHRecordingForm = ({
   
   // Track if user has made changes that need auto-save
   const [isDirty, setIsDirty] = useState(false);
+
+  // Confirmation dialog for the Clear button
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   
   // Ref to track if template has been applied (prevents re-running on recordMode changes)
   const templateAppliedRef = useRef(false);
@@ -1929,7 +1942,7 @@ export const RHRecordingForm = ({
               {!isLocked && (
                 <Button
                   variant="outline"
-                  onClick={handleClear}
+                  onClick={() => setClearConfirmOpen(true)}
                   className="h-8 px-3 text-xs"
                   data-testid="button-clear-form"
                 >
@@ -2527,6 +2540,28 @@ export const RHRecordingForm = ({
           </div>
         </div>
       </DialogContent>
+      <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <AlertDialogContent data-testid="dialog-confirm-clear">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear form?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear the form? All entered data will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-clear">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                handleClear();
+                setClearConfirmOpen(false);
+              }}
+              data-testid="button-confirm-clear"
+            >
+              Clear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
