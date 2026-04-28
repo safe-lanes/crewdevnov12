@@ -416,9 +416,10 @@ async function calculateExperienceMetricsV2(
       }
 
       // Fallback (legacy rows with missing/blank/unparseable periodMonths):
-      // recompute from dates. Returns 0 only when fromDate is absent/invalid.
-      // Active contracts (no toDate) and rows with an invalid toDate both
-      // count up to today.
+      // recompute from dates. Defensive returns of 0 are limited to the same
+      // cases the prior implementation handled: missing/invalid fromDate, or
+      // a present-but-invalid toDate. Active contracts (no toDate at all)
+      // continue to count up to today.
       const fromStr = service.fromDate;
       if (!fromStr) return 0;
 
@@ -430,7 +431,7 @@ async function calculateExperienceMetricsV2(
 
       if (toStr) {
         to = new Date(toStr);
-        if (isNaN(to.getTime())) to = today;
+        if (isNaN(to.getTime())) return 0;
       } else {
         to = today;
       }
