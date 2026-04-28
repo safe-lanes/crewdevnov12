@@ -406,19 +406,19 @@ async function calculateExperienceMetricsV2(
 
     const getServicePeriodMonths = (service: SeaServiceRow): number => {
       // Stored-first (matches Crew Pool dashboard, Rotation availability, and
-      // Compliance Engine): use the persisted periodMonths value when present
-      // and a positive finite number. The form's Period(M) column is read-only
-      // auto-calculated, so this is the same 1-decimal value the user sees in
-      // the sea-service grid. Mirrors the dashboard's
-      //   `parseFloat(record.periodMonths || "0") || calculatePeriodMonths(...)`
-      // semantics: a stored 0 (or NaN/negative) falls through to date math.
+      // Compliance Engine): use the persisted periodMonths value whenever it
+      // parses to a finite, non-negative number. The form's Period(M) column
+      // is read-only auto-calculated, so this is the same 1-decimal value the
+      // user sees in the sea-service grid.
       const stored = parseFloat(service.periodMonths || '');
-      if (Number.isFinite(stored) && stored > 0) {
+      if (Number.isFinite(stored) && stored >= 0) {
         return stored;
       }
 
-      // Fallback: legacy rows with missing/blank/zero/unparseable periodMonths
-      // fall through to date math. Active contracts (no toDate) count up to today.
+      // Fallback (legacy rows with missing/blank/unparseable periodMonths):
+      // recompute from dates. Returns 0 only when fromDate is absent/invalid.
+      // Active contracts (no toDate) and rows with an invalid toDate both
+      // count up to today.
       const fromStr = service.fromDate;
       if (!fromStr) return 0;
 
@@ -430,7 +430,7 @@ async function calculateExperienceMetricsV2(
 
       if (toStr) {
         to = new Date(toStr);
-        if (isNaN(to.getTime())) return 0;
+        if (isNaN(to.getTime())) to = today;
       } else {
         to = today;
       }
