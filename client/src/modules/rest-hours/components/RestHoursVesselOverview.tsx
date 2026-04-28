@@ -160,6 +160,10 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     return vessel?.vessel || 'Unknown Vessel';
   }, [vessels, selectedVessel]);
 
+  const selectedVesselInfo = useMemo(() => {
+    return vessels.find((v) => v.vesselUuid === selectedVessel);
+  }, [vessels, selectedVessel]);
+
   // Format month for title
   const monthDisplay = useMemo(() => {
     const option = periodOptions.find(opt => opt.value === periodValue);
@@ -226,10 +230,10 @@ export const RestHoursVesselOverview = (): JSX.Element => {
 
   // Fetch crew records for export using V2 API (matching V1 pattern: vesselId, monthValue)
   const { data: crewRecordsForExport = [] } = useQuery({
-    queryKey: ['v2', 'rest-hours', 'crew-records-export', selectedVessel, periodValue],
+    queryKey: ['v2', 'rest-hours', 'crew-records-export', selectedVessel, periodValue, complianceMode, opaMode],
     queryFn: async () => {
       if (!selectedVessel || !periodValue) return [];
-      return restHoursApiV2.crewRecords.getAll({ vesselId: selectedVessel, monthValue: periodValue });
+      return restHoursApiV2.crewRecords.getAll({ vesselId: selectedVessel, monthValue: periodValue, complianceMode, opaMode });
     },
     enabled: !!selectedVessel && !!periodValue,
   });
@@ -274,19 +278,24 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         name: record.name || '',
         rank: record.rank || '',
         monthValue: record.monthValue || periodValue,
+        signOnDate: record.signOnDate ?? null,
+        signOffDate: record.signOffDate ?? null,
       }));
 
       await exportAllRestHoursPDFs(
         crewData,
         {
           vesselName: vesselName,
+          imoNumber: selectedVesselInfo?.imoNumber || '',
+          flagOfShip: selectedVesselInfo?.flagState || '',
         },
         fetchDailyRecords,
         (current, total) => setExportProgress({ current, total }),
         {
-          complianceMode: 'Rest',
-          opaMode: false,
+          complianceMode,
+          opaMode,
           showPlanning: true,
+          dateLineAdjustment,
         }
       );
 

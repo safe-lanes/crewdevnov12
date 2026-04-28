@@ -519,7 +519,9 @@ interface OfficerMatrixRowV2Props {
 function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, handleViewCrewClick, vesselUuid }: OfficerMatrixRowV2Props) {
     const crewUuid = rankPlanningData?.crewUuid;
     const fullRankName = rank.displayRole || rank.role || rank.rank;
-    
+    const baseRankName = (fullRankName || '').split('_')[0].trim().toLowerCase();
+    const oowNotApplicable = baseRankName === 'master' || baseRankName === 'chief engineer' || baseRankName === 'electrical officer';
+
     // Determine department: use inferred value, or derive from rank category if available
     const effectiveDepartment: 'deck' | 'engine' | null = rankDepartment ?? 
         (rank.category === 'Engine' ? 'engine' : 
@@ -563,6 +565,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.issuingCountry || ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-admin-accept-${index + 1}`}>
+                Yes
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-tanker-${index + 1}`}>
                 {officerData?.tankerCert || ''}
@@ -571,7 +574,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.splTankerTraining || ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-radio-${index + 1}`}>
-                {officerData?.radioQual ? 'Yes' : ''}
+                {officerData?.radioQual ? 'Yes' : '-'}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-years-company-${index + 1}`}>
                 {officerData?.companyYears && officerData.companyYears > 0 ? officerData.companyYears : ''}
@@ -586,7 +589,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.allTankersYears && officerData.allTankersYears > 0 ? officerData.allTankersYears : ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-dow-${index + 1}`}>
-                {officerData?.oowYears && officerData.oowYears > 0 ? officerData.oowYears : ''}
+                {oowNotApplicable ? 'NA' : (officerData?.oowYears && officerData.oowYears > 0 ? officerData.oowYears : '')}
             </TableCell>
             <TableCell className="text-xs text-gray-700 border-r-2 border-gray-200" data-testid={`cell-officer-time-${index + 1}`}>
                 {officerData?.timeOnBoardMonths && officerData.timeOnBoardMonths > 0 ? officerData.timeOnBoardMonths : ''}
@@ -1349,80 +1352,73 @@ export function VesselModule_v2(): JSX.Element {
     };
 
     const handleDownloadIMOCrewList = async () => {
-        if (!selectedVessel) return;
-        
-        const vesselCrew = filteredVesselPlanning
-            .filter((planning: any) => {
-                if (!planning.crewMemberId) return false;
-                return !planning.isArchived;
-            })
-            .sort((a: any, b: any) => {
-                const aOrder = getSortOrder(a.rank);
-                const bOrder = getSortOrder(b.rank);
-                if (aOrder !== bOrder) return aOrder - bOrder;
-                const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
-                const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
-                return aSuffix - bSuffix;
+        if (!selectedVessel?.vesselId) return;
+        try {
+            const payload = await vesselApiV2.getCrewListExport(selectedVessel.vesselId);
+            await generateFALForm5Document({
+                vessel: {
+                    id: payload.vessel.id ?? 0,
+                    name: payload.vessel.name,
+                    vesselType: payload.vessel.vesselType,
+                },
+                crewMembers: payload.crewMembers.map(c => ({
+                    id: c.id,
+                    firstName: c.firstName,
+                    middleName: c.middleName,
+                    familyName: c.familyName,
+                    presentRank: c.presentRank,
+                    nationality: c.nationality,
+                    dateOfBirth: c.dateOfBirth,
+                    placeOfBirth: c.placeOfBirth,
+                    gender: c.gender,
+                    documents: c.documents,
+                })),
+                imoNumber: payload.vessel.imoNumber,
+                callSign: payload.vessel.callSign,
+                flagState: payload.vessel.flagState,
             });
-        
-        const headers = ['S.No', 'Rank', 'Surname, Given Name', 'Nationality', 'Certificate of Competency'];
-        const rows = vesselCrew.map((planning: any, index: number) => {
-            return [
-                (index + 1).toString(),
-                planning.rank?.split('_')[0] || '',
-                planning.crewName || '',
-                planning.nationality || '',
-                ''
-            ];
-        });
-        
-        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${selectedVessel.name}_IMO_Crew_List.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('IMO Crew List download failed:', error);
+            toast({
+                title: 'Could not generate crew list',
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive',
+            });
+        }
     };
 
     const handleDownloadUSCrewList = async () => {
-        if (!selectedVessel) return;
-        
-        const vesselCrew = filteredVesselPlanning
-            .filter((planning: any) => {
-                if (!planning.crewMemberId) return false;
-                return !planning.isArchived;
-            })
-            .sort((a: any, b: any) => {
-                const aOrder = getSortOrder(a.rank);
-                const bOrder = getSortOrder(b.rank);
-                if (aOrder !== bOrder) return aOrder - bOrder;
-                const aSuffix = a.rank?.includes('_') ? parseInt(a.rank.split('_')[1]) || 0 : 0;
-                const bSuffix = b.rank?.includes('_') ? parseInt(b.rank.split('_')[1]) || 0 : 0;
-                return aSuffix - bSuffix;
+        if (!selectedVessel?.vesselId) return;
+        try {
+            const payload = await vesselApiV2.getCrewListExport(selectedVessel.vesselId);
+            await generateUSCrewListDocument({
+                vessel: {
+                    id: payload.vessel.id ?? 0,
+                    name: payload.vessel.name,
+                    vesselType: payload.vessel.vesselType,
+                    nationality: payload.vessel.flagState,
+                    officialNumber: payload.vessel.officialNumber,
+                },
+                crewMembers: payload.crewMembers.map(c => ({
+                    id: c.id,
+                    firstName: c.firstName,
+                    middleName: c.middleName,
+                    familyName: c.familyName,
+                    presentRank: c.presentRank,
+                    nationality: c.nationality,
+                    dateOfBirth: c.dateOfBirth,
+                    documents: c.documents,
+                    signOnDate: c.signOnDate,
+                })),
             });
-        
-        const headers = ['S.No', 'Rank', 'Surname, Given Name', 'Nationality', 'Date of Birth', 'Place of Birth'];
-        const rows = vesselCrew.map((planning: any, index: number) => {
-            return [
-                (index + 1).toString(),
-                planning.rank?.split('_')[0] || '',
-                planning.crewName || '',
-                planning.nationality || '',
-                '',
-                ''
-            ];
-        });
-        
-        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${selectedVessel.name}_US_Crew_List.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('US Crew List download failed:', error);
+            toast({
+                title: 'Could not generate crew list',
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive',
+            });
+        }
     };
 
     const renderVesselDetail = () => {

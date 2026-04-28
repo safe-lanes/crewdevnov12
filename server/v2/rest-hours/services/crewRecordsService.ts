@@ -280,16 +280,21 @@ export const crewRecordsService = {
     vesselId?: string;
     crewMemberId?: string;
     monthValue?: string;
+    complianceMode?: 'Rest' | 'Work';
+    opaMode?: boolean;
   }): Promise<EnrichedCrewRecord[]> {
-    const records = await crewRecordsRepository.findAll(filters);
-    return enrichRecordsWithComputedFields(records);
+    const { complianceMode, opaMode, ...repoFilters } = filters || {};
+    const records = await crewRecordsRepository.findAll(repoFilters);
+    return enrichRecordsWithComputedFields(records, complianceMode, opaMode);
   },
 
   async getAllBulk(params: {
     vesselIds: string[];
     monthValue?: string;
+    complianceMode?: 'Rest' | 'Work';
+    opaMode?: boolean;
   }): Promise<EnrichedCrewRecord[]> {
-    const { vesselIds, monthValue } = params;
+    const { vesselIds, monthValue, complianceMode, opaMode } = params;
     if (!vesselIds || vesselIds.length === 0) return [];
 
     let allRecords: RecordWithAssignment[] = [];
@@ -366,7 +371,7 @@ export const crewRecordsService = {
       }
     }
 
-    return enrichRecordsWithComputedFields(allRecords);
+    return enrichRecordsWithComputedFields(allRecords, complianceMode, opaMode);
   },
 
   async getByUuid(rhCrewRecordUuid: string): Promise<RhCrewRecordV2> {
@@ -382,8 +387,10 @@ export const crewRecordsService = {
     monthValue?: string;
     ranks?: string[];
     search?: string;
+    complianceMode?: 'Rest' | 'Work';
+    opaMode?: boolean;
   }): Promise<EnrichedCrewRecord[]> {
-    const { vesselIds, monthValue, ranks, search } = params;
+    const { vesselIds, monthValue, ranks, search, complianceMode, opaMode } = params;
 
     let allRecords: RecordWithAssignment[] = [];
 
@@ -596,12 +603,14 @@ export const crewRecordsService = {
       );
     }
 
-    return enrichRecordsWithComputedFields(allRecords);
+    return enrichRecordsWithComputedFields(allRecords, complianceMode, opaMode);
   },
 
   async getViolationsByRank(params: {
     vesselId?: string;
     monthValue?: string;
+    complianceMode?: 'Rest' | 'Work';
+    opaMode?: boolean;
   }): Promise<Array<{ rank: string; violationDays: number }>> {
     const records = await this.getAll(params);
 
@@ -622,6 +631,8 @@ export const crewRecordsService = {
   async getNcsByRank(params: {
     vesselId?: string;
     monthValue?: string;
+    complianceMode?: 'Rest' | 'Work';
+    opaMode?: boolean;
   }): Promise<Array<{ rank: string; ncCount: number }>> {
     const records = await this.getAll(params);
 

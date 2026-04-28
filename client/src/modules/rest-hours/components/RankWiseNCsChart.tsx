@@ -48,8 +48,10 @@ export const RankWiseNCsChart = ({
     if (vesselIds && vesselIds.length > 0) {
       params.vesselIds = vesselIds;
     }
+    params.complianceMode = complianceMode;
+    params.opaMode = opaMode;
     return params;
-  }, [vesselIds, monthValue]);
+  }, [vesselIds, monthValue, complianceMode, opaMode]);
 
   const { data: ncsData = [], isLoading, error } = useQuery<NCByRank[]>({
     queryKey: ['v2', 'rest-hours', 'ncs-by-rank', queryParams],
@@ -74,6 +76,8 @@ export const RankWiseNCsChart = ({
           const ncsByRank = await restHoursApiV2.crewRecords.getNcsByRank({ 
             vesselId: vr.vesselId,
             monthValue: queryParams.monthValue,
+            complianceMode: queryParams.complianceMode,
+            opaMode: queryParams.opaMode,
           });
           
           ncsByRank.forEach((item: any) => {

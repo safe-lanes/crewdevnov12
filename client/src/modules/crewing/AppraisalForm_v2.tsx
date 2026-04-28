@@ -3582,15 +3582,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         />
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <select
+                                        <Input
                                           value={followup.correspondingInDB}
                                           onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
-                                          className="w-full p-1 border rounded text-[13px] h-6"
-                                        >
-                                          <option>Select Training from DB</option>
-                                          <option>Training Option 1</option>
-                                          <option>Training Option 2</option>
-                                        </select>
+                                          placeholder="Enter corresponding DB entry..."
+                                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                        />
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                         <select

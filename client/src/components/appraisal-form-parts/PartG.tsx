@@ -144,14 +144,12 @@ const PartGComponent: React.FC<PartGProps> = ({
                             <Input value={followup.training} onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)} placeholder="Training name" className="h-8" />
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select value={followup.correspondingInDB || ""} onValueChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}>
-                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Training from DB" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="training-1">Training 1</SelectItem>
-                                <SelectItem value="training-2">Training 2</SelectItem>
-                                <SelectItem value="training-3">Training 3</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <Input
+                              value={followup.correspondingInDB || ""}
+                              onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
+                              placeholder="Enter corresponding DB entry..."
+                              className="h-8"
+                            />
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <Select value={followup.category} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)}>

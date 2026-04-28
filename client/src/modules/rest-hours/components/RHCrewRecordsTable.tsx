@@ -432,7 +432,9 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
     monthValue: monthValue,
     ranks: selectedRanks,
     search: searchText,
-  }), [vesselId, monthValue, selectedRanks, searchText]);
+    complianceMode,
+    opaMode,
+  }), [vesselId, monthValue, selectedRanks, searchText, complianceMode, opaMode]);
 
   const { data: rawRecords = [], isLoading } = useQuery<RestHoursCrewRecord[]>({
     queryKey: ['v2', 'rest-hours', 'crew-records', vesselId, monthValue, selectedRanks, searchText, complianceMode, opaMode],

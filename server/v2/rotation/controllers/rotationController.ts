@@ -12,6 +12,14 @@ import {
   insertRotationEntriesV2Schema 
 } from "../../../../shared/v2/rotation/schema";
 import { z } from "zod";
+import { evaluateBatchCompliance } from "../../vessel/controllers/complianceController";
+
+const batchComplianceSchema = z.object({
+  rank: z.string().min(1),
+  vesselUuids: z.array(z.string().min(1)).default([]),
+  ruleNames: z.array(z.string().min(1)).default([]),
+  candidateUuids: z.array(z.string().min(1)).default([]),
+});
 
 export const rotationCrewController = {
   async getByRank(req: Request, res: Response) {
@@ -32,6 +40,26 @@ export const rotationCrewController = {
     } catch (error) {
       console.error("Error fetching crew by rank:", error);
       res.status(500).json({ error: "Failed to fetch crew by rank" });
+    }
+  },
+
+  // Batch compliance filter for the Rotation Planning rank Filter dialog.
+  // Returns the subset of candidates that pass every selected rule on every
+  // selected vessel (strict AND). Strict-fail: combined-rank rules that
+  // mention the target rank with a missing on-board partner exclude the
+  // candidate; rules not mentioning the target rank with missing partners
+  // skip silently. See evaluateBatchCompliance for full semantics.
+  async complianceFilter(req: Request, res: Response) {
+    try {
+      const parsed = batchComplianceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      }
+      const result = await evaluateBatchCompliance(parsed.data);
+      res.json(result);
+    } catch (error) {
+      console.error("Error evaluating batch compliance:", error);
+      res.status(500).json({ error: "Failed to evaluate compliance filter" });
     }
   },
 };

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileText, Lock } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { generateRestHoursPDF } from '@/lib/generateRestHoursPDF';
+import { generateRestHoursPDF, sanitizeRestHoursRecordsForExport } from '@/lib/generateRestHoursPDF';
 import { queryClient } from '@/lib/queryClient';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 import { useToast } from '@/hooks/use-toast';
@@ -254,6 +254,7 @@ export const RHRecordingForm = ({
     name: v.vessel ?? '',
     vesselType: v.vesselType ?? '',
     imoNumber: v.imoNumber ?? '',
+    flagState: v.flagState ?? '',
   })), [v2Vessels]);
   
   // Dropdown selections state
@@ -592,8 +593,8 @@ export const RHRecordingForm = ({
       if (!selectedVesselId || !selectedPeriod) return null;
       try {
         const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselId: selectedVesselId, monthValue: selectedPeriod });
-        // Filter for the specific period
-        const periodAdjustment = adjustments.find((a: any) => a.monthYear === selectedPeriod || a.period === selectedPeriod);
+        // Filter for the specific period (schema field is monthValue)
+        const periodAdjustment = adjustments.find((a: any) => a.monthValue === selectedPeriod);
         return periodAdjustment || null;
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
@@ -616,8 +617,8 @@ export const RHRecordingForm = ({
       if (!selectedVesselId || !previousMonthPeriod) return null;
       try {
         const adjustments = await restHoursApiV2.datelineAdjustments.getAll({ vesselId: selectedVesselId, monthValue: previousMonthPeriod });
-        // Filter for the specific period
-        const periodAdjustment = adjustments.find((a: any) => a.monthYear === previousMonthPeriod || a.period === previousMonthPeriod);
+        // Filter for the specific period (schema field is monthValue)
+        const periodAdjustment = adjustments.find((a: any) => a.monthValue === previousMonthPeriod);
         return periodAdjustment || null;
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
@@ -1635,12 +1636,19 @@ export const RHRecordingForm = ({
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthYearDisplay = `${monthNames[parseInt(month) - 1]}-${year}`;
       
+      const exportRecords = sanitizeRestHoursRecordsForExport(dailyRecords, {
+        monthYear: selectedPeriod,
+        signOnDate: effectiveSignOnDate,
+        signOffDate: effectiveSignOffDate,
+        dateLineAdjustment,
+      });
+
       await generateRestHoursPDF({
         vesselName,
         crewMemberName,
         rank,
         monthYear: monthYearDisplay,
-        records: dailyRecords,
+        records: exportRecords,
         imoNumber,
         flagOfShip,
         watchkeeper,
@@ -1898,7 +1906,7 @@ export const RHRecordingForm = ({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <div className="flex-1"></div>
             <DialogTitle className="text-lg font-semibold text-center flex-1">
               RH Recording Form
@@ -2237,7 +2245,8 @@ export const RHRecordingForm = ({
                           suppressContentEditableWarning
                           onBlur={(e) => {
                             if (isNonEditable) return;
-                            const value = e.currentTarget.textContent || '';
+                            const raw = e.currentTarget.textContent || '';
+                            const value = raw.slice(0, 1).toLowerCase();
                             handleHourCellEdit(baseIndex, hourIndex, value);
                           }}
                           onKeyDown={(e) => {
@@ -2294,6 +2303,30 @@ export const RHRecordingForm = ({
                               return;
                             }
                             
+                            // Block any printable keystroke when the cell already contains a character
+                            // (and the user is not about to overwrite a selection or use a modifier shortcut)
+                            if (
+                              e.key.length === 1 &&
+                              !e.ctrlKey &&
+                              !e.metaKey &&
+                              !e.altKey
+                            ) {
+                              const current = e.currentTarget.textContent || '';
+                              const selection = window.getSelection();
+                              const hasSelectionInCell = !!(
+                                selection &&
+                                !selection.isCollapsed &&
+                                selection.anchorNode &&
+                                selection.focusNode &&
+                                e.currentTarget.contains(selection.anchorNode) &&
+                                e.currentTarget.contains(selection.focusNode)
+                              );
+                              if (current.length >= 1 && !hasSelectionInCell) {
+                                e.preventDefault();
+                                return;
+                              }
+                            }
+
                             // Allow only w, d, a, backspace, delete
                             if (
                               e.key.length === 1 &&

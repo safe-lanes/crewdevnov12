@@ -91,7 +91,20 @@ interface CrewFilters {
   higherCert: string[];
   performance: string[];
   availabilityDate: Date | null;
+  oilMajorCompliance: string[];
 }
+
+interface OilMajorRule {
+  id: number;
+  oilMajorName: string;
+  isActive: boolean;
+  rules: any;
+}
+
+// Underlying value of the "The Company (Internal)" row in oil_major_rules,
+// shown to users as "Company Internal Criteria" and pinned to the top.
+const COMPANY_INTERNAL_VALUE = 'The Company (Internal)';
+const COMPANY_INTERNAL_LABEL = 'Company Internal Criteria';
 
 interface ExistingCrew {
   crewUuid: string; // V2 uses crewUuid
@@ -168,6 +181,33 @@ function CrewFilterDialog({
     setLocalFilters(filters);
   }, [filters, open]);
 
+  // Fetch Compliance Check options from oil_major_rules
+  const { data: oilMajorRules = [], isLoading: isLoadingOilMajorRules } = useQuery<OilMajorRule[]>({
+    queryKey: ['/api/v2/vessel/oil-major-rules'],
+    enabled: open,
+  });
+
+  // Build the ordered list for the Compliance Check popover:
+  // "The Company (Internal)" pinned at the top (label remapped),
+  // remaining active rows alphabetised below.
+  const complianceOptions = useMemo(() => {
+    const active = oilMajorRules.filter(r => r.isActive && r.oilMajorName);
+    const internal = active.find(r => r.oilMajorName === COMPANY_INTERNAL_VALUE);
+    const others = active
+      .filter(r => r.oilMajorName !== COMPANY_INTERNAL_VALUE)
+      .map(r => r.oilMajorName)
+      .sort((a, b) => a.localeCompare(b));
+    const ordered: { value: string; label: string }[] = [];
+    if (internal) {
+      ordered.push({ value: internal.oilMajorName, label: COMPANY_INTERNAL_LABEL });
+    }
+    others.forEach(name => ordered.push({ value: name, label: name }));
+    return ordered;
+  }, [oilMajorRules]);
+
+  const labelForComplianceValue = (value: string) =>
+    value === COMPANY_INTERNAL_VALUE ? COMPANY_INTERNAL_LABEL : value;
+
   const handleApply = () => {
     onFiltersChange(localFilters);
     onOpenChange(false);
@@ -186,11 +226,22 @@ function CrewFilterDialog({
       higherCert: [],
       performance: [],
       availabilityDate: null,
+      oilMajorCompliance: [],
     };
     setLocalFilters(emptyFilters);
   };
 
-  type ArrayFilterKeys = Exclude<keyof CrewFilters, 'availabilityDate'>;
+  const toggleOilMajor = (value: string) => {
+    setLocalFilters(prev => {
+      const current = prev.oilMajorCompliance;
+      const updated = current.includes(value)
+        ? current.filter(v => v !== value)
+        : [...current, value];
+      return { ...prev, oilMajorCompliance: updated };
+    });
+  };
+
+  type ArrayFilterKeys = Exclude<keyof CrewFilters, 'availabilityDate' | 'oilMajorCompliance'>;
   
   const toggleFilter = (category: ArrayFilterKeys, value: string) => {
     setLocalFilters(prev => {
@@ -272,6 +323,95 @@ function CrewFilterDialog({
         </DialogHeader>
         
         <div className="max-h-[60vh] overflow-y-auto pr-2">
+          {/* Compliance Check - single multi-select dropdown at top */}
+          {(() => {
+            const complianceSelectedCount = localFilters.oilMajorCompliance.length;
+            const complianceHasSelection = complianceSelectedCount > 0;
+            const complianceDisplayValue =
+              complianceSelectedCount === 0
+                ? "Compliance Check"
+                : complianceSelectedCount === 1
+                ? labelForComplianceValue(localFilters.oilMajorCompliance[0])
+                : "Multiple Selection";
+
+            return (
+              <div className="mb-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-between relative",
+                        complianceHasSelection
+                          ? "text-foreground pt-5 h-auto min-h-9"
+                          : "text-gray-500"
+                      )}
+                      data-testid="filter-complianceCheck"
+                    >
+                      {complianceHasSelection && (
+                        <span className="absolute top-1 left-3 text-[10px] text-muted-foreground">
+                          Compliance Check
+                        </span>
+                      )}
+                      <span
+                        className={cn(
+                          "truncate",
+                          complianceHasSelection && "text-sm"
+                        )}
+                      >
+                        {complianceDisplayValue}
+                      </span>
+                      <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-60 p-2" align="start">
+                    <div
+                      className="max-h-60 overflow-y-auto overscroll-contain"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      {isLoadingOilMajorRules ? (
+                        <div className="text-sm text-gray-500 text-center py-2">
+                          Loading…
+                        </div>
+                      ) : complianceOptions.length === 0 ? (
+                        <div className="text-sm text-gray-500 text-center py-2">
+                          No options available
+                        </div>
+                      ) : (
+                        complianceOptions.map((opt, idx) => {
+                          const isInternal = opt.value === COMPANY_INTERNAL_VALUE;
+                          const testIdSuffix = isInternal
+                            ? 'companyInternalCriteria'
+                            : `oilMajorCompliance-${opt.value}`;
+                          return (
+                            <div key={opt.value}>
+                              <div className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+                                <Checkbox
+                                  checked={localFilters.oilMajorCompliance.includes(opt.value)}
+                                  onCheckedChange={() => toggleOilMajor(opt.value)}
+                                  data-testid={`checkbox-filter-${testIdSuffix}`}
+                                />
+                                <label
+                                  className="text-sm cursor-pointer flex-1"
+                                  onClick={() => toggleOilMajor(opt.value)}
+                                >
+                                  {opt.label}
+                                </label>
+                              </div>
+                              {isInternal && idx < complianceOptions.length - 1 && (
+                                <div className="border-b my-1" />
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            );
+          })()}
+
           <FilterSection title="Pool" options={availableOptions.pools} category="pools" />
           <FilterSection title="Manning Agent" options={availableOptions.manningAgents} category="manningAgents" />
           <FilterSection title="Ship Type" options={availableOptions.shipTypes} category="shipTypes" />
@@ -406,6 +546,7 @@ function CrewColumn({
     higherCert: [],
     performance: [],
     availabilityDate: null,
+    oilMajorCompliance: [],
   });
 
   // Get vessel lookup for translating vessel IDs to names
@@ -578,6 +719,67 @@ function CrewColumn({
     });
   }, [crewMembers, filters]);
 
+  // ---------------------------------------------------------------------------
+  // Compliance Check filter — Company / Oil-major rule evaluation against the
+  // selected vessels. Runs on the server via a single batch endpoint and
+  // intersects with the client-side filters above. Query key intentionally
+  // excludes `assignments` and `localFilters`-style state so this never
+  // re-fetches on timeline drags or unrelated filter toggles.
+  // ---------------------------------------------------------------------------
+  const sortedComplianceVesselIds = useMemo(
+    () => [...selectedVesselIds].sort(),
+    [selectedVesselIds]
+  );
+  const sortedComplianceRuleNames = useMemo(
+    () => [...filters.oilMajorCompliance].sort(),
+    [filters.oilMajorCompliance]
+  );
+  const complianceFilterActive = sortedComplianceRuleNames.length > 0;
+  const complianceFilterSkippedNoVessel =
+    complianceFilterActive && sortedComplianceVesselIds.length === 0;
+  const complianceCandidateUuids = useMemo(
+    () => crewMembers.map((c) => c.crewUuid).sort(),
+    [crewMembers]
+  );
+
+  const {
+    data: complianceFilterResult,
+    isFetching: isComplianceFiltering,
+  } = useQuery<{ compliantCrewUuids: string[] }>({
+    queryKey: [
+      '/api/v2/rotation/crew/compliance-filter',
+      normalizedRank,
+      sortedComplianceVesselIds,
+      sortedComplianceRuleNames,
+      complianceCandidateUuids,
+    ],
+    enabled:
+      complianceFilterActive &&
+      sortedComplianceVesselIds.length > 0 &&
+      complianceCandidateUuids.length > 0,
+    queryFn: async () => {
+      const response = await apiRequest('POST', '/api/v2/rotation/crew/compliance-filter', {
+        rank: normalizedRank,
+        vesselUuids: sortedComplianceVesselIds,
+        ruleNames: sortedComplianceRuleNames,
+        candidateUuids: complianceCandidateUuids,
+      });
+      return response.json();
+    },
+    staleTime: 30_000,
+  });
+
+  const compliantCrewUuidSet = useMemo(() => {
+    if (!complianceFilterActive || sortedComplianceVesselIds.length === 0) return null;
+    if (!complianceFilterResult) return null;
+    return new Set(complianceFilterResult.compliantCrewUuids);
+  }, [complianceFilterActive, sortedComplianceVesselIds.length, complianceFilterResult]);
+
+  const displayedCrewMembers = useMemo(() => {
+    if (!compliantCrewUuidSet) return filteredCrewMembers;
+    return filteredCrewMembers.filter((c) => compliantCrewUuidSet.has(c.crewUuid));
+  }, [filteredCrewMembers, compliantCrewUuidSet]);
+
   // Get count of vessels crew is assigned to
   const getCrewAssignmentCount = (crewUuid: string) => {
     const vesselCount = new Set(
@@ -600,10 +802,12 @@ function CrewColumn({
     });
     if (isActiveOnOtherVessel) return 'text-red-600';
 
-    // Second priority: Purple — crew is a deployed reliever with status Planned or Confirmed
+    // Second priority: Purple — crew is a deployed reliever with status Planned or Confirmed.
+    // Intentionally does NOT exclude the currently selected vessels: a planner needs to see
+    // that this candidate already has a Planned/Confirmed reliever assignment for the very
+    // vessel they are now planning, so they don't double-assign them.
     const isPurple = allDeployedAssignments.some(assignment => {
       if (assignment.relieverCrewId !== crewUuid) return false;
-      if (selectedVesselIds.includes(assignment.vesselUuid)) return false;
       return assignment.joiningStatus === 'Planned' || assignment.joiningStatus === 'Confirmed';
     });
     if (isPurple) return 'text-purple-600';
@@ -689,11 +893,12 @@ function CrewColumn({
       return `Deployed: ${activeVessels.join(', ')}`;
     }
 
-    // Check for Purple: crew is a deployed reliever with Planned or Confirmed status
+    // Check for Purple: crew is a deployed reliever with Planned or Confirmed status.
+    // Mirrors getCrewNameColor: do NOT skip selected vessels here, otherwise the tooltip
+    // would hide the very vessel that triggered the purple coloring.
     const purpleVessels: string[] = [];
     allDeployedAssignments.forEach(assignment => {
       if (assignment.relieverCrewId !== crewUuid) return;
-      if (selectedVesselIds.includes(assignment.vesselUuid)) return;
       if (assignment.joiningStatus === 'Planned' || assignment.joiningStatus === 'Confirmed') {
         const vesselName = getVesselName(assignment.vesselUuid);
         if (vesselName && !purpleVessels.includes(vesselName)) {
@@ -792,7 +997,16 @@ function CrewColumn({
       <div className="w-64 flex-shrink-0">
         <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-t font-semibold flex items-center gap-2">
           <Checkbox data-testid={`checkbox-select-all-${rank}`} />
-          <span className="flex-1">{rank}</span>
+          <span className="flex-1 flex items-center gap-2">
+            <span>{rank}</span>
+            {isComplianceFiltering && (
+              <span
+                className="inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
+                data-testid={`spinner-compliance-${rank}`}
+                aria-label="Applying compliance filter"
+              />
+            )}
+          </span>
           <button
             onClick={() => setFilterDialogOpen(true)}
             className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${hasActiveFilters ? 'text-blue-600' : 'text-gray-600'}`}
@@ -802,12 +1016,20 @@ function CrewColumn({
           </button>
         </div>
         <div className="border-t">
-          {filteredCrewMembers.length === 0 ? (
+          {complianceFilterSkippedNoVessel && (
+            <div
+              className="px-3 py-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b"
+              data-testid={`hint-compliance-no-vessel-${rank}`}
+            >
+              Select a vessel to apply Compliance Check
+            </div>
+          )}
+          {displayedCrewMembers.length === 0 ? (
             <div className="p-4 text-center text-gray-500 text-sm">
               {hasActiveFilters ? 'No crew match the filters' : 'No crew available'}
             </div>
           ) : (
-            filteredCrewMembers.map((crew) => (
+            displayedCrewMembers.map((crew) => (
               <div
                 key={crew.crewUuid}
                 className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
@@ -1182,6 +1404,7 @@ function VesselTimelineView({
   vessels, 
   queryRanks,
   displayRanks,
+  perVesselPositions,
   selectedVessel,
   onVesselSelect,
   onAssignmentClick,
@@ -1193,6 +1416,7 @@ function VesselTimelineView({
   vessels: string[]; // Now contains UUIDs
   queryRanks: string[];
   displayRanks: string[];
+  perVesselPositions: Map<string, Set<string>>;
   selectedVessel: string; // UUID
   onVesselSelect: (vessel: string) => void; // vessel is UUID
   onAssignmentClick?: (assignment: Assignment) => void;
@@ -1210,9 +1434,6 @@ function VesselTimelineView({
     const vessel = vesselLookup.find(v => v.value === uuid);
     return vessel?.name || uuid;
   };
-  
-  // Use vessel lookup hook for translating vessel names to IDs (for existing crew fetch)
-  const { getVesselIds } = useVesselLookup();
   
   // Use custom date range from props
   const today = useMemo(() => new Date(), []);
@@ -1254,6 +1475,28 @@ function VesselTimelineView({
     
     return mapping;
   }, [displayRanks]);
+
+  const vesselDisplayRanks = useMemo(() => {
+    const result = new Map<string, string[]>();
+
+    vessels.forEach(vesselUuid => {
+      const vesselPositions = perVesselPositions.get(vesselUuid);
+      const filteredRanks = displayRanks.filter(rank => {
+        if (!vesselPositions) return false;
+        if (rank.includes('_')) {
+          return vesselPositions.has(rank);
+        }
+
+        return Array.from(vesselPositions).some((position: string) =>
+          position === rank || (position.startsWith(`${rank}_`) && position.includes('_'))
+        );
+      });
+
+      result.set(vesselUuid, filteredRanks);
+    });
+
+    return result;
+  }, [vessels, displayRanks, perVesselPositions]);
   
   // Group data by vessel UUID and display rank (with smart mapping from base ranks to variants)
   const groupedData = useMemo(() => {
@@ -1355,8 +1598,12 @@ function VesselTimelineView({
     const cornerRadius = 8;
     
     // Compute total canvas height from content
-    const vesselSectionHeight = vesselHeaderHeight + monthHeaderHeight + (displayRanks.length * rowHeight);
-    const totalHeight = (vessels.length * vesselSectionHeight) + ((vessels.length - 1) * vesselGap);
+    const totalHeight = vessels.reduce((height, vesselUuid, vesselIdx) => {
+      const ranksForVessel = vesselDisplayRanks.get(vesselUuid) || [];
+      const vesselSectionHeight = vesselHeaderHeight + monthHeaderHeight + (ranksForVessel.length * rowHeight);
+      const gapHeight = vesselIdx < vessels.length - 1 ? vesselGap : 0;
+      return height + vesselSectionHeight + gapHeight;
+    }, 0);
     
     canvas.width = width;
     canvas.height = totalHeight;
@@ -1370,7 +1617,8 @@ function VesselTimelineView({
     vessels.forEach((vessel, vesselIdx) => {
       const isSelected = selectedVessel === vessel;
       const headerColor = isSelected ? '#52baf3' : '#b0b8c1';
-      const sectionHeight = vesselSectionHeight;
+      const ranksForVessel = vesselDisplayRanks.get(vessel) || [];
+      const sectionHeight = vesselHeaderHeight + monthHeaderHeight + (ranksForVessel.length * rowHeight);
       const sectionStartY = yOffset;
       
       // Clip to rounded rectangle for the entire vessel band
@@ -1477,7 +1725,7 @@ function VesselTimelineView({
       const vesselContentStartY = yOffset;
       
       // Draw rank rows
-      displayRanks.forEach((rank, rankIdx) => {
+      ranksForVessel.forEach((rank, rankIdx) => {
         const rowData = groupedData[vessel]?.[rank];
         if (!rowData) return;
         
@@ -1629,7 +1877,7 @@ function VesselTimelineView({
     ctx.lineTo(todayX, totalHeight);
     ctx.stroke();
     
-  }, [vessels, displayRanks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasWidth]);
+  }, [vessels, displayRanks, vesselDisplayRanks, groupedData, selectedVessel, months, today, startDate, endDate, totalDays, canvasWidth]);
   
   // Handle canvas click for vessel selection and assignment editing
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1685,8 +1933,10 @@ function VesselTimelineView({
       yOffset += vesselHeaderHeight + monthHeaderHeight;
       
       // Check if clicked on an assignment bar in any rank row
-      for (let rankIdx = 0; rankIdx < displayRanks.length; rankIdx++) {
-        const rank = displayRanks[rankIdx];
+      const ranksForVessel = vesselDisplayRanks.get(vessel) || [];
+
+      for (let rankIdx = 0; rankIdx < ranksForVessel.length; rankIdx++) {
+        const rank = ranksForVessel[rankIdx];
         const rowY = yOffset + (rankIdx * rowHeight);
         const bottomBarY = rowY + 20;
         const bottomBarHeight = 15;
@@ -1715,7 +1965,7 @@ function VesselTimelineView({
         }
       }
       
-      yOffset += displayRanks.length * rowHeight;
+      yOffset += ranksForVessel.length * rowHeight;
       
       // Account for gap between vessels
       if (vi < vessels.length - 1) {
@@ -1793,9 +2043,6 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   
   const { toast } = useToast();
   
-  // Vessel lookup hook for name↔ID translation
-  const { getVesselIds } = useVesselLookup();
-
   // Fetch vessels from V2 master_vessels table
   const { data: vessels = [], isLoading: vesselsLoading } = useQuery<any[]>({
     queryKey: ['/api/v2/vessel/list'],
@@ -2014,16 +2261,22 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   // already points directly to autoSelectedRoleVariants (line above).
   // When hasManualVariants flips to true, user explicitly sets state via handlers.
 
-  // Fetch existing crew data to identify currently deployed crew
+  // Fetch existing crew data to identify currently deployed crew.
+  // `selectedVessels` already holds vessel UUIDs (every setter pushes UUIDs
+  // into it), so use them directly. The earlier `getVesselIds(selectedVessels)`
+  // call routed UUIDs through a name→UUID lookup and silently sent no
+  // `vessels=` params, leaving `currentlyDeployedCrewIds` empty and the
+  // current-incumbent red-coloring path unable to fire.
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
     params.append('filterType', 'vessel');
-    // Translate vessel names to IDs for API call
-    const vesselIds = getVesselIds(selectedVessels);
+    const vesselIds = Array.from(
+      new Set(selectedVessels.filter((v): v is string => typeof v === 'string' && v.length > 0))
+    );
     vesselIds.forEach(id => params.append('vessels', id));
     selectedRoleVariants.forEach(r => params.append('rank', r));
     return params;
-  }, [selectedVessels, selectedRoleVariants, getVesselIds]);
+  }, [selectedVessels, selectedRoleVariants]);
 
   const { data: existingCrew = [] } = useQuery<ExistingCrew[]>({
     queryKey: ['/api/v2/rotation/due-crew', queryParams.toString()],
@@ -2042,10 +2295,15 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     return new Set(existingCrew.map(crew => crew.crewUuid));
   }, [existingCrew]);
 
-  // Get vessel IDs for the selected vessels (for conflict detection)
+  // Vessel UUIDs currently picked in the planning area. `selectedVessels`
+  // already holds UUIDs (every setter — `toggleVessel`, draft loaders, the
+  // edit-plan loader — pushes UUIDs into it), so use it directly. The earlier
+  // `getVesselIds(selectedVessels)` call routed UUIDs through the name→UUID
+  // lookup and silently returned an empty array, which broke downstream
+  // consumers like the Compliance Check filter.
   const selectedVesselIds = useMemo(() => {
-    return getVesselIds(selectedVessels);
-  }, [selectedVessels, getVesselIds]);
+    return Array.from(new Set(selectedVessels.filter((v): v is string => typeof v === 'string' && v.length > 0)));
+  }, [selectedVessels]);
 
   // Determine if we're updating an existing plan (either from prop or from previous save)
   // V2 uses draftUuid instead of numeric id
@@ -2968,6 +3226,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                 vessels={selectedVessels}
                 queryRanks={selectedRoleVariants}
                 displayRanks={timelineRoleVariants}
+                perVesselPositions={perVesselPositions}
                 selectedVessel={selectedVessel}
                 onVesselSelect={setSelectedVessel}
                 onAssignmentClick={handleAssignmentClick}

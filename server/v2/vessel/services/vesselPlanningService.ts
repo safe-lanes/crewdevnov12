@@ -3,9 +3,9 @@ import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachment
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { masterPorts, masterVessels, masterVesselTypes, masterCountries } from "../../../../shared/schema";
-import { admCompanyTrainingsV2 } from "../../../../shared/v2/admin/schema";
-import { eq, and, sql, desc, or, isNull, aliasedTable } from "drizzle-orm";
+import { masterPorts, masterVessels, masterVesselTypes, masterNationalities, masterCountries } from "../../../../shared/schema";
+import { admCompanyTrainingsV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
+import { eq, and, sql, desc, or, isNull, aliasedTable, inArray } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
 
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
@@ -519,6 +519,158 @@ async function calculateExperienceMetricsV2(
 /**
  * Get certification data from V2 crew_licenses table for Officer Matrix
  */
+/**
+ * Officer Matrix COC priority lists (low → high).
+ * Highest matching substring wins. Department-scoped so engine COCs are not
+ * compared against deck COCs.
+ *
+ * EXISTING entries (kept in their original relative order — do not reshuffle):
+ *   Deck:   third mate, second mate, oow, officer of the watch, chief officer,
+ *           chief mate, master.
+ *   Engine: fourth engineer, 4th engineer, third engineer, 3rd engineer,
+ *           second engineer, 2nd engineer, chief engineer,
+ *           electro-technical officer, eto.
+ *
+ * NEW entries added for ranks previously not matched. Each new pattern only
+ * fires on substrings that no currently-recognized cert text contains, so the
+ * existing label output for already-matched ranks is preserved.
+ */
+const COC_PRIORITY_DECK: ReadonlyArray<string> = [
+  'third officer',          // NEW — 3rd Officer tier
+  'third mate',
+  '3rd officer',            // NEW
+  '3/o',                    // NEW
+  'second officer',         // NEW — 2nd Officer tier
+  'second mate',
+  '2nd officer',            // NEW
+  '2/o',                    // NEW
+  'oicnw',                  // NEW — deck OOW alias
+  'oic nav watch',          // NEW
+  'oow',
+  'officer of the watch',
+  'chief officer',
+  'chief mate',
+  'master',
+];
+
+const COC_PRIORITY_ENGINE: ReadonlyArray<string> = [
+  'fifth engineer',         // NEW — 5th Engineer tier
+  '5th engineer',           // NEW
+  '5/e',                    // NEW
+  'gas engineer',           // NEW — specialty (low priority)
+  'fourth engineer',
+  '4th engineer',
+  '4/e',                    // NEW
+  'oicew',                  // NEW — engine OOW (~3rd Eng III/1)
+  'oic eng watch',          // NEW
+  'eoow',                   // NEW
+  'third engineer',
+  '3rd engineer',
+  '3/e',                    // NEW
+  'second engineer',
+  '2nd engineer',
+  '2/e',                    // NEW
+  'chief engineer',
+  'electrical officer',     // NEW — distinct from ETO (Electrical Officer III/6)
+  'electro-technical officer',
+  'eto',
+];
+
+export function matchHighestCoc<T extends { certificateDocument: string | null; issuingAuthority?: string | null }>(
+  licenses: ReadonlyArray<T>,
+  department: 'deck' | 'engine',
+): T | null {
+  const priority = department === 'deck' ? COC_PRIORITY_DECK : COC_PRIORITY_ENGINE;
+  let highest: T | null = null;
+  let highestIdx = -1;
+  for (const license of licenses) {
+    const certName = (license.certificateDocument || '').toLowerCase();
+    if (!certName) continue;
+    for (let i = 0; i < priority.length; i++) {
+      if (i > highestIdx && certName.includes(priority[i])) {
+        highestIdx = i;
+        highest = license;
+      }
+    }
+  }
+  return highest;
+}
+
+export function deriveCertCompLabel(
+  certificateDocument: string,
+  department: 'deck' | 'engine',
+): string {
+  const certName = (certificateDocument || '').toLowerCase();
+  if (!certName) return '';
+
+  // Engine-specific OOW variants must be checked BEFORE the generic deck 'oow'
+  // branch below, since "eoow" contains the substring "oow" and would otherwise
+  // be mislabelled as a deck OOW. This is the only departure from strict
+  // append-only ordering and does not affect any cert text recognized today
+  // (eoow / oicew / "oic eng watch" were not matched by the previous matcher).
+  if (department === 'engine') {
+    if (
+      certName.includes('eoow') ||
+      certName.includes('oicew') ||
+      certName.includes('oic eng watch')
+    ) {
+      return 'OOW Eng III/1';
+    }
+  }
+
+  // --- EXISTING branches (do not modify; preserve today's labels exactly) ---
+  if (certName.includes('master')) return 'Master II/2';
+  if (certName.includes('chief mate') || certName.includes('chief officer')) return 'Chief Mate II/2';
+  if (certName.includes('oow') || certName.includes('officer of the watch')) return 'OOW II/1';
+  if (certName.includes('chief engineer')) return 'Chief Engineer III/2';
+  if (certName.includes('second engineer') || certName.includes('2nd engineer')) return '2nd Engineer III/2';
+  if (certName.includes('third engineer') || certName.includes('3rd engineer')) return '3rd Engineer III/1';
+  if (certName.includes('electro') || certName.includes('eto')) return 'ETO III/6';
+
+  // --- NEW branches (appended; only fire on substrings the existing branches
+  //     above do not catch, so no currently-matched cert is reclassified) ---
+  if (
+    certName.includes('fourth engineer') ||
+    certName.includes('4th engineer') ||
+    certName.includes('4/e')
+  ) {
+    return '4th Engineer III/1';
+  }
+  if (
+    certName.includes('fifth engineer') ||
+    certName.includes('5th engineer') ||
+    certName.includes('5/e')
+  ) {
+    return '5th Engineer III/1';
+  }
+  if (
+    certName.includes('second officer') ||
+    certName.includes('second mate') ||
+    certName.includes('2nd officer') ||
+    certName.includes('2/o')
+  ) {
+    return '2nd Officer II/1';
+  }
+  if (
+    certName.includes('third officer') ||
+    certName.includes('third mate') ||
+    certName.includes('3rd officer') ||
+    certName.includes('3/o')
+  ) {
+    return '3rd Officer II/1';
+  }
+  if (certName.includes('oicnw') || certName.includes('oic nav watch')) {
+    return 'OOW II/1';
+  }
+  if (certName.includes('electrical officer')) {
+    return 'Electrical Officer III/6';
+  }
+  if (certName.includes('gas engineer')) {
+    return 'Gas Engineer III/1';
+  }
+  return '';
+}
+
 async function getCertificationsV2(crewUuid: string | null, department: 'deck' | 'engine'): Promise<{
   certComp: string;
   issuingCountry: string;
@@ -540,14 +692,9 @@ async function getCertificationsV2(crewUuid: string | null, department: 'deck' |
         certificateDocument: crewLicenses.certificateDocument,
         abbr: crewLicenses.abbr,
         expiry: crewLicenses.expiry,
-        issuingCountryUuid: crewLicenses.issuingCountryUuid,
-        issuingCountryName: masterCountries.countryName,
+        issuingAuthority: crewLicenses.issuingAuthority,
       })
       .from(crewLicenses)
-      .leftJoin(
-        masterCountries,
-        eq(crewLicenses.issuingCountryUuid, masterCountries.countryUuid)
-      )
       .where(and(
         eq(crewLicenses.crewUuid, crewUuid),
         eq(crewLicenses.isDeleted, false),
@@ -564,40 +711,12 @@ async function getCertificationsV2(crewUuid: string | null, department: 'deck' |
       ));
     
     // Find highest COC (Certificate of Competency)
-    const cocPatterns = department === 'deck' 
-      ? ['master', 'chief mate', 'chief officer', 'officer of the watch', 'oow', 'second mate', 'third mate']
-      : ['chief engineer', 'second engineer', '2nd engineer', 'third engineer', '3rd engineer', 'fourth engineer', '4th engineer', 'electro-technical officer', 'eto'];
-    
-    // Priority ranking for COCs (higher index = higher priority)
-    const cocPriority = department === 'deck'
-      ? ['third mate', 'second mate', 'oow', 'officer of the watch', 'chief officer', 'chief mate', 'master']
-      : ['fourth engineer', '4th engineer', 'third engineer', '3rd engineer', 'second engineer', '2nd engineer', 'chief engineer', 'electro-technical officer', 'eto'];
-    
-    let highestCoc: any = null;
-    let highestPriority = -1;
-    
-    for (const license of licenses) {
-      const certName = (license.certificateDocument || '').toLowerCase();
-      for (let i = 0; i < cocPriority.length; i++) {
-        if (certName.includes(cocPriority[i]) && i > highestPriority) {
-          highestPriority = i;
-          highestCoc = license;
-        }
-      }
-    }
-    
+    const highestCoc = matchHighestCoc(licenses, department);
+
     // Derive officerMatrixLabel from highest COC
-    let certComp = '';
-    if (highestCoc) {
-      const certName = (highestCoc.certificateDocument || '').toLowerCase();
-      if (certName.includes('master')) certComp = 'Master II/2';
-      else if (certName.includes('chief mate') || certName.includes('chief officer')) certComp = 'Chief Mate II/2';
-      else if (certName.includes('oow') || certName.includes('officer of the watch')) certComp = 'OOW II/1';
-      else if (certName.includes('chief engineer')) certComp = 'Chief Engineer III/2';
-      else if (certName.includes('second engineer') || certName.includes('2nd engineer')) certComp = '2nd Engineer III/2';
-      else if (certName.includes('third engineer') || certName.includes('3rd engineer')) certComp = '3rd Engineer III/1';
-      else if (certName.includes('electro') || certName.includes('eto')) certComp = 'ETO III/6';
-    }
+    const certComp = highestCoc
+      ? deriveCertCompLabel(highestCoc.certificateDocument || '', department)
+      : '';
     
     // Check for GMDSS (radio qualification)
     const hasGmdss = licenses.some((l: typeof licenses[0]) => {
@@ -677,7 +796,7 @@ async function getCertificationsV2(crewUuid: string | null, department: 'deck' |
 
     return {
       certComp,
-      issuingCountry: highestCoc?.issuingCountryName || '',
+      issuingCountry: highestCoc?.issuingAuthority || '',
       tankerCert: tankerCertParts.join(', '),
       splTankerTraining: splTrainingParts.join(', '),
       radioQual: department === 'deck' && hasGmdss
@@ -1359,6 +1478,332 @@ export const vesselPlanningService = {
       ...experienceMetrics,
       ...certifications,
       englishProficiency
+    };
+  },
+
+  /**
+   * Build the payload consumed by IMO FAL Form 5 (.docx) and US CBP I-418 (.pdf)
+   * crew-list generators in the client. Returns vessel header info plus a list
+   * of crew members with personal details and a passport-first documents array.
+   */
+  async getCrewListExportPayload(vesselUuid: string): Promise<{
+    vessel: {
+      id: number | null;
+      vesselUuid: string;
+      name: string;
+      vesselType: string;
+      imoNumber: string;
+      flagState: string;
+      officialNumber: string;
+      callSign: string;
+    };
+    crewMembers: Array<{
+      id: string;
+      firstName: string;
+      middleName: string;
+      familyName: string;
+      presentRank: string;
+      nationality: string;
+      dateOfBirth: string;
+      placeOfBirth: string;
+      gender: string;
+      signOnDate: string;
+      documents: string;
+    }>;
+  }> {
+    const db = getDb();
+
+    // 1. Vessel header
+    const vesselRows = await db
+      .select()
+      .from(masterVessels)
+      .where(eq(masterVessels.vesselUuid, vesselUuid))
+      .limit(1);
+
+    if (vesselRows.length === 0) {
+      throw new Error(`Vessel not found: ${vesselUuid}`);
+    }
+    const vesselRow = vesselRows[0];
+
+    // 2. All non-archived crew assignments for this vessel, joined with crew core
+    //    and nationality name. Personal details (place of birth) are loaded
+    //    separately to avoid row-multiplication if a crew has multiple non-deleted
+    //    crew_personal_details rows.
+    type PlanningRow = {
+      crewUuid: string | null;
+      rank: string | null;
+      signOnDate: string | null;
+      createdAt: Date | null;
+      firstName: string | null;
+      middleName: string | null;
+      familyName: string | null;
+      gender: string | null;
+      dob: string | null;
+      nationality: string | null;
+    };
+
+    const planningRows: PlanningRow[] = await db
+      .select({
+        crewUuid: vesselPlanningV2.crewUuid,
+        rank: vesselPlanningV2.rank,
+        signOnDate: vesselPlanningV2.signOnDate,
+        createdAt: vesselPlanningV2.createdAt,
+        firstName: crewMembersV2.firstName,
+        middleName: crewMembersV2.middleName,
+        familyName: crewMembersV2.familyName,
+        gender: crewMembersV2.gender,
+        dob: crewMembersV2.dob,
+        nationality: masterNationalities.nationality,
+      })
+      .from(vesselPlanningV2)
+      .leftJoin(crewMembersV2, eq(vesselPlanningV2.crewUuid, crewMembersV2.crewUuid))
+      .leftJoin(masterNationalities, eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid))
+      .where(
+        and(
+          eq(vesselPlanningV2.vesselUuid, vesselUuid),
+          eq(vesselPlanningV2.isDeleted, false),
+          eq(vesselPlanningV2.isArchived, false),
+          sql`${vesselPlanningV2.crewUuid} IS NOT NULL`
+        )
+      );
+
+    // 3. Build crewUuid list (typed)
+    const crewUuidSet = new Set<string>();
+    for (const r of planningRows) {
+      if (r.crewUuid) crewUuidSet.add(r.crewUuid);
+    }
+    const crewUuids: string[] = Array.from(crewUuidSet);
+
+    // 4. Rank ordering map — mirrors the UI's useRankOrdering hook so the
+    //    exported document lists crew in the same order as the on-screen table.
+    type RankRow = { name: string | null; sortOrder: number | null };
+    const rankRows: RankRow[] = await db
+      .select({ name: admAvailableRanksV2.name, sortOrder: admAvailableRanksV2.sortOrder })
+      .from(admAvailableRanksV2)
+      .where(eq(admAvailableRanksV2.isDeleted, false));
+
+    // Mirror of client/src/hooks/useRankNormalization.ts RANK_ALIASES so the
+    // server can resolve sort order for ranks stored as display variants
+    // (e.g. "2nd Engineer" -> "Second Engineer", "AB" -> "Able Bodied Seaman").
+    const RANK_ALIASES: Record<string, string> = {
+      "2nd officer": "Second Officer",
+      "3rd officer": "Third Officer",
+      "2nd engineer": "Second Engineer",
+      "3rd engineer": "Third Engineer",
+      "4th engineer": "Fourth Engineer",
+      "5th engineer": "Fifth Engineer",
+      "e/o": "Electrical Officer",
+      "e.o": "Electrical Officer",
+      "e.o.": "Electrical Officer",
+      "eto": "Electrical Officer",
+      "elect. officer": "Electrical Officer",
+      "boatswain": "Bosun",
+      "bosun/boatswain": "Bosun",
+      "bo'sun": "Bosun",
+      "ch. cook": "Chief Cook",
+      "chief steward": "Chief Cook",
+      "asst. electrician": "Electrician",
+      "assistant electrician": "Electrician",
+      "jr. electrician": "Electrician",
+      "ab": "Able Bodied Seaman",
+      "a/b": "Able Bodied Seaman",
+      "a.b": "Able Bodied Seaman",
+      "os": "Ordinary Seaman",
+      "o/s": "Ordinary Seaman",
+      "o.s": "Ordinary Seaman",
+    };
+    const addRankAliases = (map: Map<string, number>, rankName: string, sortOrder: number): void => {
+      map.set(rankName, sortOrder);
+      map.set(rankName.toLowerCase(), sortOrder);
+      map.set(rankName.toUpperCase(), sortOrder);
+      const lowerName = rankName.toLowerCase();
+      Object.entries(RANK_ALIASES).forEach(([alias, canonical]) => {
+        if (canonical.toLowerCase() === lowerName) {
+          map.set(alias, sortOrder);
+          map.set(alias.toUpperCase(), sortOrder);
+          const titleCase = alias.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          map.set(titleCase, sortOrder);
+        }
+      });
+    };
+
+    const rankOrderMap = new Map<string, number>();
+    for (const rr of rankRows) {
+      if (!rr.name || rr.sortOrder === null) continue;
+      addRankAliases(rankOrderMap, rr.name, rr.sortOrder);
+    }
+    const getSortOrder = (rankName: string | null | undefined): number => {
+      if (!rankName) return 999999;
+      if (rankOrderMap.has(rankName)) return rankOrderMap.get(rankName)!;
+      const lower = rankName.toLowerCase();
+      if (rankOrderMap.has(lower)) return rankOrderMap.get(lower)!;
+      const base = rankName.includes("_") ? rankName.split("_")[0] : null;
+      if (base) {
+        if (rankOrderMap.has(base)) return rankOrderMap.get(base)!;
+        const baseLower = base.toLowerCase();
+        if (rankOrderMap.has(baseLower)) return rankOrderMap.get(baseLower)!;
+      }
+      return 999999;
+    };
+
+    // Sort planning rows: rank priority first, then suffix (MASTER_2 after MASTER),
+    // then createdAt as a final tiebreaker. Same algorithm as the UI's sortCrewByRank.
+    planningRows.sort((a, b) => {
+      const ao = getSortOrder(a.rank);
+      const bo = getSortOrder(b.rank);
+      if (ao !== bo) return ao - bo;
+      const aSuffix = a.rank?.includes("_") ? parseInt(a.rank.split("_")[1]) || 0 : 0;
+      const bSuffix = b.rank?.includes("_") ? parseInt(b.rank.split("_")[1]) || 0 : 0;
+      if (aSuffix !== bSuffix) return aSuffix - bSuffix;
+      const at = a.createdAt ? a.createdAt.getTime() : 0;
+      const bt = b.createdAt ? b.createdAt.getTime() : 0;
+      return at - bt;
+    });
+
+    // 5. Bulk-load place of birth (city + country name) keyed by crewUuid. We use
+    //    the latest non-deleted personal-details row per crew so duplicates in
+    //    crew_personal_details cannot multiply downstream rows.
+    type PersonalRow = {
+      crewUuid: string | null;
+      placeOfBirthCity: string | null;
+      placeOfBirthCountry: string | null;
+      updatedAt: Date | null;
+    };
+    const placeCountry = aliasedTable(masterCountries, "place_country");
+    const personalRows: PersonalRow[] = crewUuids.length === 0 ? [] : await db
+      .select({
+        crewUuid: crewPersonalDetails.crewUuid,
+        placeOfBirthCity: crewPersonalDetails.placeOfBirthCity,
+        placeOfBirthCountry: placeCountry.countryName,
+        updatedAt: crewPersonalDetails.updatedAt,
+      })
+      .from(crewPersonalDetails)
+      .leftJoin(placeCountry, eq(crewPersonalDetails.placeOfBirthCountryUuid, placeCountry.countryUuid))
+      .where(
+        and(
+          inArray(crewPersonalDetails.crewUuid, crewUuids),
+          eq(crewPersonalDetails.isDeleted, false)
+        )
+      )
+      .orderBy(desc(crewPersonalDetails.updatedAt));
+
+    const placeByCrew = new Map<string, string>();
+    for (const p of personalRows) {
+      if (!p.crewUuid || placeByCrew.has(p.crewUuid)) continue; // keep newest only
+      const place = [p.placeOfBirthCity, p.placeOfBirthCountry].filter(Boolean).join(", ");
+      placeByCrew.set(p.crewUuid, place);
+    }
+
+    // 6. Bulk-load active documents.
+    type DocumentRow = {
+      crewUuid: string | null;
+      documentName: string | null;
+      number: string | null;
+      issuingAuthority: string | null;
+      issuingCountryName: string | null;
+      expiry: string | null;
+      sortOrder: number | null;
+    };
+    const issuingCountry = aliasedTable(masterCountries, "issuing_country");
+    const documentRows: DocumentRow[] = crewUuids.length === 0 ? [] : await db
+      .select({
+        crewUuid: crewDocuments.crewUuid,
+        documentName: crewDocuments.documentName,
+        number: crewDocuments.number,
+        issuingAuthority: crewDocuments.issuingAuthority,
+        issuingCountryName: issuingCountry.countryName,
+        expiry: crewDocuments.expiry,
+        sortOrder: crewDocuments.sortOrder,
+      })
+      .from(crewDocuments)
+      .leftJoin(
+        issuingCountry,
+        eq(crewDocuments.issuingCountryUuid, issuingCountry.countryUuid)
+      )
+      .where(
+        and(
+          inArray(crewDocuments.crewUuid, crewUuids),
+          eq(crewDocuments.isDeleted, false)
+        )
+      );
+
+    type DocEntry = {
+      document: string;
+      number: string;
+      issuingAuthority: string;
+      expiry: string;
+      _sortOrder: number;
+    };
+    const docsByCrew = new Map<string, DocEntry[]>();
+
+    for (const d of documentRows) {
+      if (!d.crewUuid) continue;
+      const list = docsByCrew.get(d.crewUuid) || [];
+      list.push({
+        document: d.documentName || "",
+        number: d.number || "",
+        // Generators read `issuingAuthority` for the "Issuing State" column;
+        // prefer the resolved country name, fall back to the free-text authority field.
+        issuingAuthority: d.issuingCountryName || d.issuingAuthority || "",
+        expiry: d.expiry || "",
+        _sortOrder: d.sortOrder ?? 0,
+      });
+      docsByCrew.set(d.crewUuid, list);
+    }
+
+    // Sort each crew's docs: passport first, seaman's book / CDC / identity next,
+    // rest after. Within a bucket, fall back to the document's stored sortOrder
+    // so multiple passports / seaman's books stay in their canonical order.
+    const docPriority = (name: string): number => {
+      const n = (name || "").toLowerCase();
+      if (n.includes("passport")) return 0;
+      if (n.includes("seaman") || n.includes("cdc") || n.includes("identity")) return 1;
+      return 2;
+    };
+    docsByCrew.forEach((list) => {
+      list.sort((a, b) => {
+        const pa = docPriority(a.document);
+        const pb = docPriority(b.document);
+        if (pa !== pb) return pa - pb;
+        return a._sortOrder - b._sortOrder;
+      });
+    });
+
+    // 7. Assemble crew payload — strip rank suffix (`MASTER_2` → `MASTER`).
+    const crewMembers = planningRows.map((r) => {
+      const placeOfBirth = r.crewUuid ? (placeByCrew.get(r.crewUuid) || "") : "";
+      const docs: DocEntry[] = r.crewUuid ? docsByCrew.get(r.crewUuid) || [] : [];
+      return {
+        id: r.crewUuid || "",
+        firstName: r.firstName || "",
+        middleName: r.middleName || "",
+        familyName: r.familyName || "",
+        presentRank: (r.rank || "").split("_")[0] || "",
+        nationality: r.nationality || "",
+        dateOfBirth: r.dob || "",
+        placeOfBirth,
+        gender: r.gender || "",
+        signOnDate: r.signOnDate || "",
+        documents: JSON.stringify(
+          docs.map(({ _sortOrder, ...rest }) => rest)
+        ),
+      };
+    });
+
+    return {
+      vessel: {
+        id: vesselRow.id ?? null,
+        vesselUuid: vesselRow.vesselUuid || vesselUuid,
+        name: vesselRow.vessel || "",
+        vesselType: vesselRow.vesselType || "",
+        imoNumber: vesselRow.imoNumber || "",
+        // These fields are not stored in master_vessels yet — left blank so the
+        // generator renders empty form fields the user can fill in afterwards.
+        flagState: "",
+        officialNumber: "",
+        callSign: "",
+      },
+      crewMembers,
     };
   },
 };

@@ -109,6 +109,7 @@ export const dueCrewService = {
 
         return {
           id: row.planUuid,
+          crewUuid: row.crewUuid,
           vesselId: row.vesselUuid,
           vessel: vesselUuidToName.get(row.vesselUuid) || row.vesselUuid,
           rank: row.rank,

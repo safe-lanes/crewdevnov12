@@ -23,6 +23,7 @@ router.get("/training/:vesselUuid", trainingController.getVesselCrewTrainings);
 router.get("/oil-major-rules", oilMajorRulesController.getAll);
 
 router.get("/:vesselUuid/planning", vesselPlanningController.getByVesselUuid);
+router.get("/:vesselUuid/crew-list-export", vesselPlanningController.getCrewListExport);
 // Sign-on conflict check endpoint
 router.get("/planning/check-sign-on-conflict/:crewUuid", vesselPlanningController.checkSignOnConflict);
 

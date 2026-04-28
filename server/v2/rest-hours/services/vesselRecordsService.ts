@@ -96,7 +96,9 @@ function applyAuditUser<T extends object>(
 }
 
 async function enrichVesselRecordsWithLiveCounts(
-  records: RhVesselRecordV2[]
+  records: RhVesselRecordV2[],
+  complianceMode: 'Rest' | 'Work' = 'Rest',
+  opaMode: boolean = false
 ): Promise<RhVesselRecordV2[]> {
   if (records.length === 0) return [];
 
@@ -107,7 +109,12 @@ async function enrichVesselRecordsWithLiveCounts(
 
   const [crewCountsMap, allEnrichedCrew] = await Promise.all([
     getOnboardCrewCountsForMonths(recordKeys),
-    crewRecordsService.getAllBulk({ vesselIds, monthValue: monthValues.length === 1 ? monthValues[0] : undefined }),
+    crewRecordsService.getAllBulk({
+      vesselIds,
+      monthValue: monthValues.length === 1 ? monthValues[0] : undefined,
+      complianceMode,
+      opaMode,
+    }),
   ]);
 
   const crewByVesselMonth = new Map<string, typeof allEnrichedCrew>();
@@ -199,9 +206,12 @@ export const vesselRecordsService = {
   async getAll(filters?: {
     vesselId?: string;
     monthValue?: string;
+    complianceMode?: 'Rest' | 'Work';
+    opaMode?: boolean;
   }): Promise<RhVesselRecordV2[]> {
-    const records = await vesselRecordsRepository.findAll(filters);
-    return enrichVesselRecordsWithLiveCounts(records);
+    const { complianceMode, opaMode, ...repoFilters } = filters || {};
+    const records = await vesselRecordsRepository.findAll(repoFilters);
+    return enrichVesselRecordsWithLiveCounts(records, complianceMode, opaMode);
   },
 
   async getByUuid(rhVesselUuid: string): Promise<RhVesselRecordV2> {
@@ -214,7 +224,9 @@ export const vesselRecordsService = {
 
   async getByFilters(
     vesselIds: string[],
-    monthValue?: string
+    monthValue?: string,
+    complianceMode: 'Rest' | 'Work' = 'Rest',
+    opaMode: boolean = false
   ): Promise<RhVesselRecordV2[]> {
     if (!vesselIds || vesselIds.length === 0) {
       return [];
@@ -229,7 +241,7 @@ export const vesselRecordsService = {
       allRecords.push(...records);
     }
 
-    return enrichVesselRecordsWithLiveCounts(allRecords);
+    return enrichVesselRecordsWithLiveCounts(allRecords, complianceMode, opaMode);
   },
 
   async create(

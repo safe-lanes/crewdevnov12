@@ -4,7 +4,7 @@ import { crewRecordsService } from "../services";
 export const crewRecordsController = {
   async getAll(req: Request, res: Response) {
     try {
-      const { vesselId, monthValue, ranks, search } = req.query;
+      const { vesselId, monthValue, ranks, search, complianceMode, opaMode } = req.query;
 
       const vesselIds = vesselId
         ? (vesselId as string).split(",").filter(Boolean)
@@ -14,11 +14,16 @@ export const crewRecordsController = {
         ? (ranks as string).split(",").filter(Boolean)
         : undefined;
 
+      const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
+      const opa = opaMode === 'true' || opaMode === '1';
+
       const records = await crewRecordsService.getByFilters({
         vesselIds,
         monthValue: monthValue as string | undefined,
         ranks: rankList,
         search: search as string | undefined,
+        complianceMode: mode,
+        opaMode: opa,
       });
       res.json(records);
     } catch (error) {
@@ -84,10 +89,14 @@ export const crewRecordsController = {
 
   async getViolationsByRank(req: Request, res: Response) {
     try {
-      const { vesselId, monthValue } = req.query;
+      const { vesselId, monthValue, complianceMode, opaMode } = req.query;
+      const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
+      const opa = opaMode === 'true' || opaMode === '1';
       const result = await crewRecordsService.getViolationsByRank({
         vesselId: vesselId as string | undefined,
         monthValue: monthValue as string | undefined,
+        complianceMode: mode,
+        opaMode: opa,
       });
       res.json(result);
     } catch (error) {
@@ -98,10 +107,14 @@ export const crewRecordsController = {
 
   async getNcsByRank(req: Request, res: Response) {
     try {
-      const { vesselId, monthValue } = req.query;
+      const { vesselId, monthValue, complianceMode, opaMode } = req.query;
+      const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
+      const opa = opaMode === 'true' || opaMode === '1';
       const result = await crewRecordsService.getNcsByRank({
         vesselId: vesselId as string | undefined,
         monthValue: monthValue as string | undefined,
+        complianceMode: mode,
+        opaMode: opa,
       });
       res.json(result);
     } catch (error) {
