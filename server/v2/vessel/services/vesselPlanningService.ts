@@ -405,24 +405,36 @@ async function calculateExperienceMetricsV2(
     type SeaServiceRow = typeof seaServices[number];
 
     const getServicePeriodMonths = (service: SeaServiceRow): number => {
+      // Stored-first (matches Crew Pool dashboard, Rotation availability, and
+      // Compliance Engine): use the persisted periodMonths value when present
+      // and a positive finite number. The form's Period(M) column is read-only
+      // auto-calculated, so this is the same 1-decimal value the user sees in
+      // the sea-service grid. Mirrors the dashboard's
+      //   `parseFloat(record.periodMonths || "0") || calculatePeriodMonths(...)`
+      // semantics: a stored 0 (or NaN/negative) falls through to date math.
+      const stored = parseFloat(service.periodMonths || '');
+      if (Number.isFinite(stored) && stored > 0) {
+        return stored;
+      }
+
+      // Fallback: legacy rows with missing/blank/zero/unparseable periodMonths
+      // fall through to date math. Active contracts (no toDate) count up to today.
       const fromStr = service.fromDate;
       if (!fromStr) return 0;
-      
+
       const from = new Date(fromStr);
       if (isNaN(from.getTime())) return 0;
-      
+
       const toStr = service.toDate;
       let to: Date;
-      
+
       if (toStr) {
         to = new Date(toStr);
-        if (isNaN(to.getTime())) {
-          return parseFloat(service.periodMonths || '') || 0;
-        }
+        if (isNaN(to.getTime())) return 0;
       } else {
         to = today;
       }
-      
+
       const diffMs = to.getTime() - from.getTime();
       return diffMs / (1000 * 60 * 60 * 24 * 30.44);
     };
