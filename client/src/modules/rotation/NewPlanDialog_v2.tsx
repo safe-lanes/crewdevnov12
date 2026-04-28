@@ -740,16 +740,23 @@ function CrewColumn({
   // Guard against a one-render window where the focused vessel UUID is no
   // longer in `selectedVesselIds` (e.g. the planner just removed it from the
   // dropdown but the parent's auto-select effect hasn't promoted a new focus
-  // yet). Treat focus as valid only when it points to a still-selected vessel
-  // — otherwise fall through to the strict-AND default for that single render.
+  // yet). Treat focus as valid only when it points to a still-selected vessel.
   const hasValidMultiVesselFocus =
     selectedVesselIds.length > 1 &&
     !!focusedVesselId &&
     selectedVesselIds.includes(focusedVesselId);
-  const effectiveComplianceVesselIds = useMemo(
-    () => (hasValidMultiVesselFocus ? [focusedVesselId] : selectedVesselIds),
-    [hasValidMultiVesselFocus, focusedVesselId, selectedVesselIds]
-  );
+  // When 2+ vessels are selected we *must* have a valid focus to evaluate
+  // compliance — otherwise we'd revert to the old strict-AND behavior across
+  // every selected vessel and recreate the exact "empty crew list" failure
+  // mode this task fixes. In that brief no-focus window we yield an empty
+  // list, which disables the query and surfaces the existing
+  // "Select a vessel to apply Compliance Check" hint.
+  const effectiveComplianceVesselIds = useMemo(() => {
+    if (selectedVesselIds.length > 1) {
+      return hasValidMultiVesselFocus ? [focusedVesselId] : [];
+    }
+    return selectedVesselIds;
+  }, [hasValidMultiVesselFocus, focusedVesselId, selectedVesselIds]);
   const sortedComplianceVesselIds = useMemo(
     () => [...effectiveComplianceVesselIds].sort(),
     [effectiveComplianceVesselIds]
