@@ -523,7 +523,8 @@ function CrewColumn({
   currentlyDeployedCrewIds,
   allDeployedAssignments,
   planDateRange,
-  selectedVesselIds
+  selectedVesselIds,
+  focusedVesselId
 }: { 
   rank: string; 
   onCrewSelect: (crew: { crewUuid: string; name: string; rank: string }) => void; // V2 uses crewUuid
@@ -532,6 +533,7 @@ function CrewColumn({
   allDeployedAssignments: DeployedCrewAssignment[];
   planDateRange: { start: Date; end: Date };
   selectedVesselIds: string[]; // V2 uses vessel UUIDs
+  focusedVesselId: string; // UUID of the vessel currently radio-selected in the timeline
 }) {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [filters, setFilters] = useState<CrewFilters>({
@@ -725,10 +727,32 @@ function CrewColumn({
   // intersects with the client-side filters above. Query key intentionally
   // excludes `assignments` and `localFilters`-style state so this never
   // re-fetches on timeline drags or unrelated filter toggles.
+  //
+  // When more than one vessel is picked in the dropdown, the timeline shows
+  // one card per vessel with a radio button so planners focus on a single
+  // vessel at a time. Evaluating compliance against every selected vessel
+  // (strict-AND) is too aggressive in that case — it hides candidates that
+  // are perfectly valid for the focused vessel just because they fail on
+  // another vessel. So when multi-select is active, narrow the filter to
+  // the focused vessel only. With exactly one vessel selected the focused
+  // vessel is identical to that vessel, so behavior is unchanged.
   // ---------------------------------------------------------------------------
+  // Guard against a one-render window where the focused vessel UUID is no
+  // longer in `selectedVesselIds` (e.g. the planner just removed it from the
+  // dropdown but the parent's auto-select effect hasn't promoted a new focus
+  // yet). Treat focus as valid only when it points to a still-selected vessel
+  // — otherwise fall through to the strict-AND default for that single render.
+  const hasValidMultiVesselFocus =
+    selectedVesselIds.length > 1 &&
+    !!focusedVesselId &&
+    selectedVesselIds.includes(focusedVesselId);
+  const effectiveComplianceVesselIds = useMemo(
+    () => (hasValidMultiVesselFocus ? [focusedVesselId] : selectedVesselIds),
+    [hasValidMultiVesselFocus, focusedVesselId, selectedVesselIds]
+  );
   const sortedComplianceVesselIds = useMemo(
-    () => [...selectedVesselIds].sort(),
-    [selectedVesselIds]
+    () => [...effectiveComplianceVesselIds].sort(),
+    [effectiveComplianceVesselIds]
   );
   const sortedComplianceRuleNames = useMemo(
     () => [...filters.oilMajorCompliance].sort(),
@@ -737,6 +761,11 @@ function CrewColumn({
   const complianceFilterActive = sortedComplianceRuleNames.length > 0;
   const complianceFilterSkippedNoVessel =
     complianceFilterActive && sortedComplianceVesselIds.length === 0;
+  const focusedVesselName = hasValidMultiVesselFocus
+    ? getVesselName(focusedVesselId)
+    : undefined;
+  const showFocusedVesselHint =
+    complianceFilterActive && hasValidMultiVesselFocus && !!focusedVesselName;
   const complianceCandidateUuids = useMemo(
     () => crewMembers.map((c) => c.crewUuid).sort(),
     [crewMembers]
@@ -1022,6 +1051,15 @@ function CrewColumn({
               data-testid={`hint-compliance-no-vessel-${rank}`}
             >
               Select a vessel to apply Compliance Check
+            </div>
+          )}
+          {showFocusedVesselHint && (
+            <div
+              className="px-3 py-2 text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 border-b"
+              data-testid={`hint-compliance-focused-vessel-${rank}`}
+            >
+              Compliance Check: filtering against{' '}
+              <span className="font-semibold">{focusedVesselName}</span>
             </div>
           )}
           {displayedCrewMembers.length === 0 ? (
@@ -3205,6 +3243,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                     allDeployedAssignments={allVesselPlanning}
                     planDateRange={dateRange}
                     selectedVesselIds={selectedVesselIds}
+                    focusedVesselId={selectedVessel}
                   />
                 ))}
               </div>
