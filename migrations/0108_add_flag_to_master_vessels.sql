@@ -1,0 +1,1 @@
+ALTER TABLE master_vessels ADD COLUMN IF NOT EXISTS flag text DEFAULT NULL;

@@ -1433,6 +1433,7 @@ export const masterVessels = pgTable(
     vesselUuid: text("vessel_uuid"),
     vessel: text("vessel"),
     imoNumber: text("imo_number"),
+    flag: text("flag"),
     vesselType: text("vessel_type"),
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
