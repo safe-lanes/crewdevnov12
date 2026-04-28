@@ -2557,7 +2557,7 @@ export const RHRecordingForm = ({
               }}
               data-testid="button-confirm-clear"
             >
-              Clear
+              Yes, clear
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
