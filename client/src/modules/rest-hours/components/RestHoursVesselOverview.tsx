@@ -287,7 +287,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         {
           vesselName: vesselName,
           imoNumber: selectedVesselInfo?.imoNumber || '',
-          flagOfShip: selectedVesselInfo?.flagState || '',
+          flagOfShip: selectedVesselInfo?.flag || '',
         },
         fetchDailyRecords,
         (current, total) => setExportProgress({ current, total }),

@@ -14,6 +14,7 @@ export const masterDataController = {
           vesselUuid: masterVessels.vesselUuid,
           vessel: masterVessels.vessel,
           imoNumber: masterVessels.imoNumber,
+          flag: masterVessels.flag,
           vesselType: masterVessels.vesselType,
         })
         .from(masterVessels)

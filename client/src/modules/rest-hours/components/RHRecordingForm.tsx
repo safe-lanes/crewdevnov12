@@ -254,7 +254,7 @@ export const RHRecordingForm = ({
     name: v.vessel ?? '',
     vesselType: v.vesselType ?? '',
     imoNumber: v.imoNumber ?? '',
-    flagState: v.flagState ?? '',
+    flag: v.flag ?? '',
   })), [v2Vessels]);
   
   // Dropdown selections state
@@ -1616,7 +1616,7 @@ export const RHRecordingForm = ({
       const selectedVessel = vessels.find((v: any) => v.entryId === selectedVesselId) as any;
       const vesselName = selectedVessel?.name || '';
       const imoNumber = selectedVessel?.description || selectedVessel?.imoNumber || '';
-      const flagOfShip = selectedVessel?.countryName || selectedVessel?.country || selectedVessel?.flagState || '';
+      const flagOfShip = selectedVessel?.flag || selectedVessel?.countryName || selectedVessel?.country || selectedVessel?.flagState || '';
       
       // Get crew member data
       const selectedCrewMember = filteredCrewMembers.find((cm: any) => cm.crewMemberId === selectedCrewMemberId || cm.empNo === selectedCrewMemberId);
