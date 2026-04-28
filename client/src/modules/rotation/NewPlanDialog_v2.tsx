@@ -1065,7 +1065,7 @@ function CrewColumn({
               className="px-3 py-2 text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 border-b"
               data-testid={`hint-compliance-focused-vessel-${rank}`}
             >
-              Compliance Check: filtering against{' '}
+              Compliance Check: for{' '}
               <span className="font-semibold">{focusedVesselName}</span>
             </div>
           )}
