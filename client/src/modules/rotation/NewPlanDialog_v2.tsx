@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useManningAgentsV2, useCrewPoolsV2, useVesselTypesV2, useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 import { ComplianceMatrixDialog_v2 as ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog_v2';
 
 // Format date as DD-MMM-YY (e.g., "15 Dec 25")
@@ -583,6 +583,12 @@ function CrewColumn({
   // Fetch Crew Pools from V2 dedicated table
   const { data: crewPoolsData } = useCrewPoolsV2();
 
+  // Fetch Vessel Types and Nationalities masters so the Ship Type and
+  // Nationality dropdowns are populated from master data (not from the
+  // crew result set, which only contains values for the current rank).
+  const { data: vesselTypesData } = useVesselTypesV2();
+  const { data: nationalitiesData } = useNationalitiesV2();
+
   // Extract unique values for filter options
   const availableOptions = useMemo(() => {
     // Use Crew Pools from Master 022 instead of extracting from crew data
@@ -596,9 +602,20 @@ function CrewColumn({
       .filter((agent: any) => agent.name && !agent.isDeleted)
       .map((agent: any) => agent.country ? `${agent.name} (${agent.country})` : agent.name)
       .sort() as string[];
-    
-    const shipTypes = Array.from(new Set(crewMembers.map(c => c.shipType).filter(Boolean))).sort() as string[];
-    const nationalities = Array.from(new Set(crewMembers.map(c => c.nationality).filter(Boolean))).sort() as string[];
+
+    // Source Ship Type from Vessel Types master (not from crew rows)
+    const shipTypes = Array.from(new Set(
+      (vesselTypesData || [])
+        .filter((vt: any) => vt.vesselType && !vt.isDeleted)
+        .map((vt: any) => vt.vesselType as string)
+    )).sort() as string[];
+
+    // Source Nationality from Nationalities master (not from crew rows)
+    const nationalities = Array.from(new Set(
+      (nationalitiesData || [])
+        .filter((n: any) => n.nationality && !n.isDeleted)
+        .map((n: any) => n.nationality as string)
+    )).sort() as string[];
     const travelStatuses = Array.from(new Set(crewMembers.map(c => c.travelStatus).filter(Boolean))).sort() as string[];
     const higherCerts = Array.from(new Set(crewMembers.map(c => c.higherCert).filter(Boolean))).sort() as string[];
     const performances = Array.from(new Set(crewMembers.map(c => c.performance).filter(Boolean))).sort() as string[];
@@ -620,7 +637,7 @@ function CrewColumn({
       higherCerts,
       performances,
     };
-  }, [crewMembers, manningAgentsData, crewPoolsData]);
+  }, [crewMembers, manningAgentsData, crewPoolsData, vesselTypesData, nationalitiesData]);
 
   // Apply filters to crew members
   const filteredCrewMembers = useMemo(() => {
@@ -629,14 +646,14 @@ function CrewColumn({
       if (filters.pools.length > 0 && !filters.pools.includes(crew.crewPool || crew.pool || '')) return false;
       
       // Manning agent filter - compare agent names (filter options are "Name (Country)" format)
+      // Tolerant compare: trim, lowercase, accept both display ("Name (Country)") and bare name forms.
       if (filters.manningAgents.length > 0) {
-        const crewAgent = crew.manningAgent || '';
-        // Check if any selected filter matches the crew's manning agent
-        // Filter format is "Name (Country)", crew data might just be the name
+        const crewAgent = (crew.manningAgent || '').trim().toLowerCase();
+        if (!crewAgent) return false;
         const matches = filters.manningAgents.some(filterAgent => {
-          // Extract just the name from "Name (Country)" format if present
-          const agentName = filterAgent.replace(/\s*\([^)]*\)$/, '');
-          return crewAgent === filterAgent || crewAgent === agentName;
+          const fullForm = filterAgent.trim().toLowerCase();
+          const nameOnly = filterAgent.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+          return crewAgent === fullForm || crewAgent === nameOnly;
         });
         if (!matches) return false;
       }

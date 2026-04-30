@@ -282,7 +282,7 @@ export function mapV2CrewToLegacyFormat(crew: RotationCrewV2): {
     name: crew.fullName || `${crew.firstName} ${crew.familyName}`.trim(),
     rank: crew.presentRank,
     pool: crew.pool || undefined,
-    nationality: undefined,
+    nationality: crew.nationality || undefined,
     nextAvailability: crew.nextAvailability,
     manningAgent: crew.manningAgent || undefined,
     experience: crew.experience || { company: 0, rank: 0, tankers: 0, oow: 0, endorsements: '' },

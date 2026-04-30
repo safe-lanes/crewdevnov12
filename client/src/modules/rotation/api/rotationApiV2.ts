@@ -23,6 +23,8 @@ export interface RotationCrewV2 {
   nextAvailability: string | null;
   nationalityUuid: string | null;
   vesselTypeUuid: string | null;
+  shipType: string | null;
+  nationality: string | null;
   currentVesselUuid: string | null;
   currentSignOnDate: string | null;
   reliefDue: string | null;

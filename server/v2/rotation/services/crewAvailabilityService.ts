@@ -1,8 +1,8 @@
-import { eq, and, isNull, ilike, inArray, sql } from "drizzle-orm";
+import { eq, and, isNull, ilike, inArray, or, sql } from "drizzle-orm";
 import { aliasedTable } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewMembersV2, crewAssignments, crewSeaService, crewPersonalDetails, crewLicenses } from "../../../../shared/v2/crew-pool/schema";
-import { masterVesselTypes } from "../../../../shared/schema";
+import { masterVesselTypes, masterNationalities } from "../../../../shared/schema";
 import { crewSeaServiceService } from "../../crew-pool/services/crewSeaServiceService";
 
 interface CrewExperience {
@@ -179,12 +179,76 @@ export const crewAvailabilityService = {
           )
         )
       : Promise.resolve([]);
-    
-    const [seaServiceRecords, personalDetailsRecords, licensesRecords] = await Promise.all([
+
+    // Collect unique vessel-type and nationality refs from crew rows.
+    // Some legacy crew rows may store the raw name in the *_uuid column
+    // instead of the master UUID, so we look up by either column and
+    // build a single ref->name map.
+    const vesselTypeRefs: string[] = Array.from(new Set<string>(
+      results.map((r: any) => r.crew.vesselTypeUuid).filter((v: any): v is string => !!v)
+    ));
+    const nationalityRefs: string[] = Array.from(new Set<string>(
+      results.map((r: any) => r.crew.nationalityUuid).filter((v: any): v is string => !!v)
+    ));
+
+    const vesselTypeMastersPromise = vesselTypeRefs.length > 0
+      ? db.select({
+          vtUuid: masterVesselTypes.vtUuid,
+          vesselType: masterVesselTypes.vesselType,
+        })
+        .from(masterVesselTypes)
+        .where(
+          and(
+            eq(masterVesselTypes.isDeleted, false),
+            or(
+              inArray(masterVesselTypes.vtUuid, vesselTypeRefs),
+              inArray(masterVesselTypes.vesselType, vesselTypeRefs)
+            )
+          )
+        )
+      : Promise.resolve([] as Array<{ vtUuid: string | null; vesselType: string | null }>);
+
+    const nationalityMastersPromise = nationalityRefs.length > 0
+      ? db.select({
+          natUuid: masterNationalities.natUuid,
+          nationality: masterNationalities.nationality,
+        })
+        .from(masterNationalities)
+        .where(
+          and(
+            eq(masterNationalities.isDeleted, false),
+            or(
+              inArray(masterNationalities.natUuid, nationalityRefs),
+              inArray(masterNationalities.nationality, nationalityRefs)
+            )
+          )
+        )
+      : Promise.resolve([] as Array<{ natUuid: string | null; nationality: string | null }>);
+
+    const [seaServiceRecords, personalDetailsRecords, licensesRecords, vesselTypeMasters, nationalityMasters] = await Promise.all([
       seaServiceByCrewPromise,
       personalDetailsByCrewPromise,
       licensesByCrewPromise,
+      vesselTypeMastersPromise,
+      nationalityMastersPromise,
     ]);
+
+    // Index ref -> resolved name. Map both UUID and name keys so the same
+    // map serves rows that store either form.
+    const vesselTypeNameByRef = new Map<string, string>();
+    for (const v of vesselTypeMasters) {
+      if (v.vesselType) {
+        if (v.vtUuid) vesselTypeNameByRef.set(v.vtUuid, v.vesselType);
+        vesselTypeNameByRef.set(v.vesselType, v.vesselType);
+      }
+    }
+    const nationalityNameByRef = new Map<string, string>();
+    for (const n of nationalityMasters) {
+      if (n.nationality) {
+        if (n.natUuid) nationalityNameByRef.set(n.natUuid, n.nationality);
+        nationalityNameByRef.set(n.nationality, n.nationality);
+      }
+    }
     
     const seaServiceByCrewMap = new Map<string, any[]>();
     for (const record of seaServiceRecords) {
@@ -231,6 +295,8 @@ export const crewAvailabilityService = {
         nextAvailability: row.crew.nextAvailability,
         nationalityUuid: row.crew.nationalityUuid,
         vesselTypeUuid: row.crew.vesselTypeUuid,
+        shipType: row.crew.vesselTypeUuid ? (vesselTypeNameByRef.get(row.crew.vesselTypeUuid) || null) : null,
+        nationality: row.crew.nationalityUuid ? (nationalityNameByRef.get(row.crew.nationalityUuid) || null) : null,
         currentVesselUuid: row.currentVesselUuid,
         currentSignOnDate: row.currentSignOnDate,
         reliefDue: row.reliefDue,
