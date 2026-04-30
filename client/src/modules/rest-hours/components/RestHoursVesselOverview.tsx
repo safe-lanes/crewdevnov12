@@ -238,11 +238,11 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     enabled: !!selectedVessel && !!periodValue,
   });
 
-  const fetchDailyRecords = async (crewMemberId: string, vesselId: string, monthYear: string): Promise<ExtendedDailyRecord[]> => {
+  const fetchDailyRecords = async (crewMemberId: string, vesselId: string, monthYear: string): Promise<{ records: ExtendedDailyRecord[]; watchkeeper: boolean }> => {
     try {
       const response = await fetch(`/api/v2/rest-hours/daily-records/by-key/${crewMemberId}/${vesselId}/${monthYear}`);
       if (!response.ok) {
-        if (response.status === 404) return [];
+        if (response.status === 404) return { records: [], watchkeeper: false };
         throw new Error('Failed to fetch daily records');
       }
       const container = await response.json();
@@ -250,10 +250,13 @@ export const RestHoursVesselOverview = (): JSX.Element => {
       const dailyRecords = typeof dailyRecordsData === 'string' 
         ? JSON.parse(dailyRecordsData) 
         : dailyRecordsData || [];
-      return dailyRecords.map(ensureDailyRecordDefaults);
+      return {
+        records: dailyRecords.map(ensureDailyRecordDefaults),
+        watchkeeper: container?.watchkeeper === true,
+      };
     } catch (error) {
       console.error('Failed to fetch daily records:', error);
-      return [];
+      return { records: [], watchkeeper: false };
     }
   };
 

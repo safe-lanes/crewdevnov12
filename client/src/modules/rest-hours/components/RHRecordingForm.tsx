@@ -277,6 +277,7 @@ export const RHRecordingForm = ({
   const [showPlanning, setShowPlanning] = useState(true);
   const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
   const [opaMode, setOpaMode] = useState(false);
+  const [watchkeeper, setWatchkeeper] = useState(false);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
   const [previousMonthRecords, setPreviousMonthRecords] = useState<DailyRecord[]>([]);
   const [formId, setFormId] = useState<string | null>(null);
@@ -496,6 +497,7 @@ export const RHRecordingForm = ({
     setRecordMode('Rec');
     setShowPlanning(true);
     setOpaMode(false);
+    setWatchkeeper(false);
     setIsDirty(false); // Reset dirty flag on form initialization
     
     // Reset template applied flag so template can be re-applied for new crew/vessel/month
@@ -868,6 +870,7 @@ export const RHRecordingForm = ({
       setFormId((existingRecord as any).rhDailyUuid || (existingRecord as any).rh_daily_uuid);
       setShowPlanning(true); // Always show planning by default
       setOpaMode(existingRecord.opaMode || false);
+      setWatchkeeper((existingRecord as any).watchkeeper || false);
       
       lastViolationsHashRef.current = '';
       
@@ -1536,6 +1539,7 @@ export const RHRecordingForm = ({
       dailyRecords: JSON.stringify(recordsWithViolations),
       showPlanning,
       opaMode,
+      watchkeeper,
     };
     
     saveMutation.mutate(payload);
@@ -1579,6 +1583,7 @@ export const RHRecordingForm = ({
         dailyRecords: JSON.stringify(recordsWithViolations),
         showPlanning,
         opaMode,
+        watchkeeper,
       };
       
       saveMutation.mutate(payload);
@@ -1586,7 +1591,7 @@ export const RHRecordingForm = ({
       // No unsaved changes, just close
       onOpenChange(false);
     }
-  }, [isDirty, dailyRecords, timelineViolations, selectedCrewMemberId, selectedVesselId, rank, crewMemberName, selectedPeriod, showPlanning, opaMode, saveMutation, onOpenChange]);
+  }, [isDirty, dailyRecords, timelineViolations, selectedCrewMemberId, selectedVesselId, rank, crewMemberName, selectedPeriod, showPlanning, opaMode, watchkeeper, saveMutation, onOpenChange]);
   
   // Handle Dialog's onOpenChange - intercept close requests to trigger auto-save
   const handleDialogOpenChange = useCallback((isOpen: boolean) => {
@@ -1639,10 +1644,6 @@ export const RHRecordingForm = ({
       const familyName = selectedCrewMember?.familyName || '';
       const fullName = `${firstName}${middleName ? ' ' + middleName : ''} ${familyName}`.toUpperCase();
       const seafarerFullName = `${rank}-${fullName}`;
-      
-      // Determine if watchkeeper based on rank (officers typically are)
-      const watchkeeperRanks = ['Master', 'Chief Officer', 'Second Officer', 'Third Officer', 'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer', 'Electrical Officer'];
-      const watchkeeper = watchkeeperRanks.some(r => rank.toLowerCase().includes(r.toLowerCase()));
       
       // Format month/year display (e.g., "Dec-2025")
       const [year, month] = selectedPeriod.split('-');
@@ -2095,6 +2096,30 @@ export const RHRecordingForm = ({
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs text-sm">
               Click to enable 'OPA' category Violations.
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 cursor-help">
+                <Checkbox
+                  id="watchkeeper"
+                  checked={watchkeeper}
+                  disabled={isLocked}
+                  onCheckedChange={(checked) => {
+                    if (isLocked) return;
+                    setWatchkeeper(checked as boolean);
+                    setIsDirty(true);
+                  }}
+                  data-testid="checkbox-watchkeeper"
+                />
+                <Label htmlFor="watchkeeper" className="text-xs cursor-pointer">
+                  Watchkeeper
+                </Label>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              Mark this seafarer as a watchkeeper. Reflected on the exported PDF.
             </TooltipContent>
           </Tooltip>
 

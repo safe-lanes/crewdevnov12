@@ -582,7 +582,11 @@ export async function exportAllRestHoursPDFs(
     imoNumber?: string;
     flagOfShip?: string;
   },
-  fetchDailyRecords: (crewMemberId: string, vesselId: string, monthYear: string) => Promise<ExtendedDailyRecord[]>,
+  fetchDailyRecords: (
+    crewMemberId: string,
+    vesselId: string,
+    monthYear: string
+  ) => Promise<ExtendedDailyRecord[] | { records: ExtendedDailyRecord[]; watchkeeper?: boolean }>,
   onProgress?: (current: number, total: number) => void,
   options?: {
     complianceMode?: 'Rest' | 'Work';
@@ -608,7 +612,9 @@ export async function exportAllRestHoursPDFs(
       
       const monthYear = crew.monthValue;
       const monthYearDisplay = formatMonthYearDisplay(monthYear);
-      const records = await fetchDailyRecords(crew.crewMemberId, crew.vesselId, monthYear);
+      const fetched = await fetchDailyRecords(crew.crewMemberId, crew.vesselId, monthYear);
+      const records = Array.isArray(fetched) ? fetched : fetched.records;
+      const watchkeeper = Array.isArray(fetched) ? false : (fetched.watchkeeper ?? false);
       const exportRecords = sanitizeRestHoursRecordsForExport(records, {
         monthYear,
         signOnDate: crew.signOnDate,
@@ -624,7 +630,7 @@ export async function exportAllRestHoursPDFs(
         records: exportRecords,
         imoNumber: vesselInfo.imoNumber,
         flagOfShip: vesselInfo.flagOfShip,
-        watchkeeper: false,
+        watchkeeper,
         seafarerFullName: `${crew.rank}-${crew.name.toUpperCase()}`,
         complianceMode,
         opaMode,

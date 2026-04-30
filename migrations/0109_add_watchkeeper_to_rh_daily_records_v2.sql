@@ -1,0 +1,1 @@
+ALTER TABLE rh_daily_records_v2 ADD COLUMN IF NOT EXISTS watchkeeper BOOLEAN DEFAULT FALSE;
