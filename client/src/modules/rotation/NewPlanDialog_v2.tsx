@@ -284,7 +284,10 @@ function CrewFilterDialog({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-60 p-2" align="start">
-          <div className="max-h-48 overflow-y-auto">
+          <div
+            className="max-h-60 overflow-y-auto overscroll-contain"
+            onWheel={(e) => e.stopPropagation()}
+          >
             {options.length === 0 ? (
               <div className="text-sm text-gray-500 text-center py-2">No options available</div>
             ) : (
