@@ -137,7 +137,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
     const stampWidth = textWidth + paddingX * 2;
     const stampHeight = textHeight + paddingY * 2;
     const stampX = pageWidth - margin - stampWidth - 5;
-    const stampY = pageHeight - margin - stampHeight - 5;
+    const stampY = pageHeight - margin - stampHeight - 45;
     const redColor = rgb(0.8, 0, 0);
     
     page.drawRectangle({
@@ -639,7 +639,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   }
   
   // I-418 Receipt Number at bottom of page 2
-  y -= 3;
+  y -= 10;
   const receiptLabelX2 = margin + contentWidth / 2;
   drawText(page2, 'I-418 Receipt Number (DHS Use Only)', receiptLabelX2, y, font, 6);
   drawLine(page2, receiptLabelX2 + 145, y - 2, margin + contentWidth, y - 2);
@@ -743,7 +743,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   }
   
   // I-418 Receipt Number at bottom of page 3
-  y -= 3;
+  y -= 10;
   const receiptLabelX3 = margin + contentWidth / 2;
   drawText(page3, 'I-418 Receipt Number (DHS Use Only)', receiptLabelX3, y, font, 6);
   drawLine(page3, receiptLabelX3 + 145, y - 2, margin + contentWidth, y - 2);
