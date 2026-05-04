@@ -640,9 +640,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   
   // I-418 Receipt Number at bottom of page 2
   y -= 3;
-  const receiptLabelX2 = margin + contentWidth - 220;
+  const receiptLabelX2 = margin + contentWidth / 2;
   drawText(page2, 'I-418 Receipt Number (DHS Use Only)', receiptLabelX2, y, font, 6);
-  drawLine(page2, receiptLabelX2 + 140, y - 2, margin + contentWidth, y - 2);
+  drawLine(page2, receiptLabelX2 + 145, y - 2, margin + contentWidth, y - 2);
   
   // Page 2 footer
   drawText(page2, 'CBP Form I-418 (09/24)', margin, margin - 5, font, 6);
@@ -744,9 +744,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   
   // I-418 Receipt Number at bottom of page 3
   y -= 3;
-  const receiptLabelX3 = margin + contentWidth - 220;
+  const receiptLabelX3 = margin + contentWidth / 2;
   drawText(page3, 'I-418 Receipt Number (DHS Use Only)', receiptLabelX3, y, font, 6);
-  drawLine(page3, receiptLabelX3 + 140, y - 2, margin + contentWidth, y - 2);
+  drawLine(page3, receiptLabelX3 + 145, y - 2, margin + contentWidth, y - 2);
   
   // Page 3 footer
   drawText(page3, 'CBP Form I-418 (09/24)', margin, margin - 5, font, 6);
