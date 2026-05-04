@@ -583,8 +583,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   }
   y -= tableHeaderHeight;
   
-  // Continuation crew rows
-  const page2CrewRows = 20;
+  // Continuation crew rows — calculate how many fit above footer
+  const page2FooterReserve = margin + 15;
+  const page2CrewRows = Math.floor((y - page2FooterReserve) / rowHeight);
   for (let row = 0; row < page2CrewRows; row++) {
     drawRect(page2, margin, y - rowHeight, contentWidth, rowHeight);
     
@@ -685,8 +686,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   }
   y -= tableHeaderHeight;
   
-  // Page 3 crew rows
-  const page3CrewRows = 35;
+  // Page 3 crew rows — calculate how many fit above footer
+  const page3FooterReserve = margin + 15;
+  const page3CrewRows = Math.floor((y - page3FooterReserve) / rowHeight);
   for (let row = 0; row < page3CrewRows; row++) {
     drawRect(page3, margin, y - rowHeight, contentWidth, rowHeight);
     
