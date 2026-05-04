@@ -525,20 +525,20 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   y -= 30;
   
   // CERTIFICATION OF COPY
-  drawRect(page2, margin, y - 45, contentWidth, 45);
+  const certBoxHeight = 55;
+  drawRect(page2, margin, y - certBoxHeight, contentWidth, certBoxHeight);
   drawText(page2, 'CERTIFICATION OF COPY OF CREW LIST OF UNITED STATES FLAG VESSEL', pageWidth / 2 - 140, y - 10, fontBold, 7);
-  y -= 18;
   
   const certCopyText1 = 'I certify that this is a true copy of the original crew list of the named American vessel, which original crew list is on file in this office. Given under my hand and seal of office at the customhouse at';
-  drawText(page2, certCopyText1, margin + 2, y - 5, font, 5.5);
+  drawText(page2, certCopyText1, margin + 2, y - 22, font, 5.5);
   const certLocationField = form.createTextField('certLocation');
-  certLocationField.addToPage(page2, { x: margin + 2, y: y - 30, width: 200, height: 12 });
-  drawText(page2, 'on', margin + 210, y - 22, font, 6);
+  certLocationField.addToPage(page2, { x: margin + 2, y: y - certBoxHeight + 2, width: 200, height: 12 });
+  drawText(page2, 'on', margin + 210, y - 40, font, 6);
   const certDateField = form.createTextField('certDate');
-  certDateField.addToPage(page2, { x: margin + 225, y: y - 30, width: 80, height: 12 });
-  drawText(page2, '.', margin + 310, y - 22, font, 6);
+  certDateField.addToPage(page2, { x: margin + 225, y: y - certBoxHeight + 2, width: 150, height: 12 });
+  drawText(page2, '.', margin + 380, y - 40, font, 6);
   
-  y -= 55;
+  y -= certBoxHeight + 5;
   
   drawText(page2, 'Signature of CBP Officer:', pageWidth / 2 - 60, y, font, 7);
   drawLine(page2, pageWidth / 2, y - 2, pageWidth / 2 + 150, y - 2);
