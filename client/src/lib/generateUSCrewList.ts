@@ -531,12 +531,17 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   
   const certCopyText1 = 'I certify that this is a true copy of the original crew list of the named American vessel, which original crew list is on file in this office. Given under my hand and seal of office at the customhouse at';
   drawText(page2, certCopyText1, margin + 2, y - 22, font, 5.5);
+  const certFieldY = y - certBoxHeight + 2;
+  const certFieldH = 12;
+  const certLocWidth = 200;
+  const certGap = 30;
+  const certDateWidth = 150;
   const certLocationField = form.createTextField('certLocation');
-  certLocationField.addToPage(page2, { x: margin + 2, y: y - certBoxHeight + 2, width: 200, height: 12 });
-  drawText(page2, 'on', margin + 210, y - 40, font, 6);
+  certLocationField.addToPage(page2, { x: margin + 2, y: certFieldY, width: certLocWidth, height: certFieldH });
+  drawText(page2, 'on', margin + 2 + certLocWidth + (certGap - 8) / 2, certFieldY + 3, font, 6);
   const certDateField = form.createTextField('certDate');
-  certDateField.addToPage(page2, { x: margin + 225, y: y - certBoxHeight + 2, width: 150, height: 12 });
-  drawText(page2, '.', margin + 380, y - 40, font, 6);
+  certDateField.addToPage(page2, { x: margin + 2 + certLocWidth + certGap, y: certFieldY, width: certDateWidth, height: certFieldH });
+  drawText(page2, '.', margin + 2 + certLocWidth + certGap + certDateWidth + 3, certFieldY + 3, font, 6);
   
   y -= certBoxHeight + 5;
   
