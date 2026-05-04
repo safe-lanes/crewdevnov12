@@ -283,12 +283,12 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   y -= row4Height;
   
   // Proposed Itinerary Section
-  y -= 5;
+  y -= 8;
   drawText(page1, 'PROPOSED ITINERARY', pageWidth / 2 - 40, y, fontBold, 7);
-  y -= 10;
+  y -= 4;
   
-  const itineraryHeaderHeight = 14;
-  const itineraryRowHeight = 14;
+  const itineraryHeaderHeight = 16;
+  const itineraryRowHeight = 16;
   const itineraryRows = 3;
   const nextPortWidth = contentWidth * 0.30;
   const arrivalDateWidth = contentWidth * 0.15;
@@ -296,13 +296,13 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   
   // Itinerary header
   drawRect(page1, margin, y - itineraryHeaderHeight, nextPortWidth, itineraryHeaderHeight);
-  drawText(page1, 'Next U.S. Port(s)', margin + 20, y - 10, fontBold, 6);
+  drawText(page1, 'Next U.S. Port(s)', margin + 20, y - 11, fontBold, 6);
   
   drawRect(page1, margin + nextPortWidth, y - itineraryHeaderHeight, arrivalDateWidth, itineraryHeaderHeight);
-  drawText(page1, 'Arrival Date', margin + nextPortWidth + 15, y - 10, fontBold, 6);
+  drawText(page1, 'Arrival Date', margin + nextPortWidth + 15, y - 11, fontBold, 6);
   
   drawRect(page1, margin + nextPortWidth + arrivalDateWidth, y - itineraryHeaderHeight, vesselAgentWidth, itineraryHeaderHeight);
-  drawText(page1, 'Vessel Agent (Name and Address)', margin + nextPortWidth + arrivalDateWidth + 80, y - 10, fontBold, 6);
+  drawText(page1, 'Vessel Agent (Name and Address)', margin + nextPortWidth + arrivalDateWidth + 80, y - 11, fontBold, 6);
   
   y -= itineraryHeaderHeight;
   
@@ -311,31 +311,31 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
     drawRect(page1, margin, y - itineraryRowHeight, nextPortWidth, itineraryRowHeight);
     const nextPortFieldName = `nextPort_${i}`;
     const nextPortF = form.createTextField(nextPortFieldName);
-    nextPortF.addToPage(page1, { x: margin + 2, y: y - itineraryRowHeight + 2, width: nextPortWidth - 6, height: 10 });
+    nextPortF.addToPage(page1, { x: margin + 2, y: y - itineraryRowHeight + 2, width: nextPortWidth - 6, height: 12 });
     
     drawRect(page1, margin + nextPortWidth, y - itineraryRowHeight, arrivalDateWidth, itineraryRowHeight);
     const arrDateFieldName = `arrivalDate_${i}`;
     const arrDateF = form.createTextField(arrDateFieldName);
-    arrDateF.addToPage(page1, { x: margin + nextPortWidth + 2, y: y - itineraryRowHeight + 2, width: arrivalDateWidth - 6, height: 10 });
+    arrDateF.addToPage(page1, { x: margin + nextPortWidth + 2, y: y - itineraryRowHeight + 2, width: arrivalDateWidth - 6, height: 12 });
     
     drawRect(page1, margin + nextPortWidth + arrivalDateWidth, y - itineraryRowHeight, vesselAgentWidth, itineraryRowHeight);
     const vesselAgentFieldName = `vesselAgent_${i}`;
     const vesselAgentF = form.createTextField(vesselAgentFieldName);
-    vesselAgentF.addToPage(page1, { x: margin + nextPortWidth + arrivalDateWidth + 2, y: y - itineraryRowHeight + 2, width: vesselAgentWidth - 6, height: 10 });
+    vesselAgentF.addToPage(page1, { x: margin + nextPortWidth + arrivalDateWidth + 2, y: y - itineraryRowHeight + 2, width: vesselAgentWidth - 6, height: 12 });
     
     y -= itineraryRowHeight;
   }
   
-  y -= 8;
+  y -= 10;
   
   // PASSENGER LIST / CREW LIST checkboxes
-  drawText(page1, 'PASSENGER LIST', margin + 20, y, fontBold, 7);
   drawCheckbox(page1, margin + 5, y - 2, 10, false);
+  drawText(page1, 'PASSENGER LIST', margin + 20, y, fontBold, 7);
   
-  drawText(page1, 'CREW LIST', margin + 120, y, fontBold, 7);
   drawCheckbox(page1, margin + 105, y - 2, 10, true);
+  drawText(page1, 'CREW LIST', margin + 120, y, fontBold, 7);
   
-  y -= 12;
+  y -= 14;
   
   // List instruction text
   const listInstr1 = 'List individuals alphabetically. Crew who join the vessel subsequent to its arrival while in the United States must be added to the original list and the appropriate date recorded in the "Date Joined" column.';
