@@ -455,9 +455,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   drawText(page1, 'I-418 Receipt Number (POE - YYMMDD - Badge # - Military Time):', margin + 380, y - 7, font, 5);
   const receiptField = form.createTextField('receiptNumber');
   receiptField.addToPage(page1, { x: margin + 380, y: y - receiptBoxHeight + 14, width: contentWidth - 380 - 5, height: 10 });
-  drawText(page1, 'CBP Port of Arrival (address):', margin + 3, y - 25, font, 6);
+  drawText(page1, 'CBP Port of Arrival (address):', margin + 3, y - receiptBoxHeight + 4, font, 6);
   const cbpPortField = form.createTextField('cbpPortAddress');
-  cbpPortField.addToPage(page1, { x: margin + 120, y: y - receiptBoxHeight + 2, width: contentWidth - 120 - 5, height: 10 });
+  cbpPortField.addToPage(page1, { x: margin + 120, y: y - receiptBoxHeight + 2, width: 250, height: 10 });
   y -= receiptBoxHeight + 3;
   
   // SUMMARY OF DEPARTURE section
