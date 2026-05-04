@@ -543,7 +543,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   certDateField.addToPage(page2, { x: margin + 2 + certLocWidth + certGap, y: certFieldY, width: certDateWidth, height: certFieldH });
   drawText(page2, '.', margin + 2 + certLocWidth + certGap + certDateWidth + 3, certFieldY + 3, font, 6);
   
-  y -= certBoxHeight + 5;
+  y -= certBoxHeight + 15;
   
   drawText(page2, 'Signature of CBP Officer:', pageWidth / 2 - 60, y, font, 7);
   drawLine(page2, pageWidth / 2, y - 2, pageWidth / 2 + 150, y - 2);
