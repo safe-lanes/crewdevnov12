@@ -11,6 +11,7 @@ import {
   BorderStyle,
   HeightRule,
   VerticalAlign,
+  PageOrientation,
 } from "docx";
 import { saveAs } from "file-saver";
 
@@ -45,6 +46,14 @@ interface FALFormData {
   lastPortOfCall?: string;
   isDeparture?: boolean;
 }
+
+const FONT = "Arial";
+const HEADER_LABEL_SIZE = 14;
+const HEADER_VALUE_SIZE = 14;
+const TABLE_HEADER_SIZE = 13;
+const TABLE_DATA_SIZE = 13;
+const TITLE_SIZE = 22;
+const SUBTITLE_SIZE = 16;
 
 function createTableBorders() {
   return {
@@ -83,7 +92,6 @@ function getIdentityDocumentData(documentsData: string | object | undefined): {
       return emptyResult;
     }
     
-    // Priority 1: Look for passport
     const passport = documents.find((doc: any) => {
       const docName = (doc.document || '').toLowerCase();
       return docName.includes("passport");
@@ -98,7 +106,6 @@ function getIdentityDocumentData(documentsData: string | object | undefined): {
       };
     }
     
-    // Priority 2: Look for seaman's book or CDC
     const seamansBook = documents.find((doc: any) => {
       const docName = (doc.document || '').toLowerCase();
       return docName.includes("seaman") || docName.includes("cdc") || docName.includes("identity");
@@ -113,7 +120,6 @@ function getIdentityDocumentData(documentsData: string | object | undefined): {
       };
     }
     
-    // Fallback: Use first available document
     const firstDoc = documents[0];
     if (firstDoc) {
       return {
@@ -141,85 +147,106 @@ function formatDate(dateString: string | undefined): string {
   }
 }
 
+function cellMargins() {
+  return {
+    top: 20,
+    bottom: 20,
+    left: 40,
+    right: 40,
+  };
+}
+
 export async function generateFALForm5Document(data: FALFormData): Promise<void> {
   const { vessel, crewMembers, imoNumber, callSign, voyageNumber, portOfArrival, dateOfArrival, flagState, lastPortOfCall, isDeparture } = data;
 
   const headerRow = new TableRow({
     children: [
       new TableCell({
-        width: { size: 500, type: WidthType.DXA },
+        width: { size: 4, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "6. No.", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "6.\nNo.", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 1200, type: WidthType.DXA },
+        width: { size: 10, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "7. Family name", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "7. Family name", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 1200, type: WidthType.DXA },
+        width: { size: 9, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "8. Given names", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "8. Given names", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 1000, type: WidthType.DXA },
+        width: { size: 8, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "9. Rank or rating", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "9. Rank or rating", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 900, type: WidthType.DXA },
+        width: { size: 9, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "10. Nationality", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "10. Nationality", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 900, type: WidthType.DXA },
+        width: { size: 8, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "11. Date of birth", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "11. Date of birth", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 1000, type: WidthType.DXA },
+        width: { size: 12, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "12. Place of birth", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "12. Place of birth", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 600, type: WidthType.DXA },
+        width: { size: 5, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "13. Gender", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "13. Gender", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 1000, type: WidthType.DXA },
+        width: { size: 8, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "14. Nature of identity document", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "14. Nature of identity document", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 1000, type: WidthType.DXA },
+        width: { size: 9, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "15. Number of identity document", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "15. Number of identity document", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 1000, type: WidthType.DXA },
+        width: { size: 9, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "16. Issuing State of identity document", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "16. Issuing State of identity document", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
       new TableCell({
-        width: { size: 900, type: WidthType.DXA },
+        width: { size: 9, type: WidthType.PERCENTAGE },
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ children: [new TextRun({ text: "17. Expiry date of identity document", size: 16, bold: true })] })],
+        margins: cellMargins(),
+        children: [new Paragraph({ children: [new TextRun({ text: "17. Expiry date of identity document", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
       }),
     ],
-    height: { value: 600, rule: HeightRule.ATLEAST },
+    height: { value: 400, rule: HeightRule.ATLEAST },
   });
 
   const crewRows = crewMembers.map((crew, index) => {
@@ -231,65 +258,77 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(index + 1), size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(index + 1), size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: crew.familyName || "", size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: crew.familyName || "", size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: givenNames, size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: givenNames, size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: crew.presentRank || "", size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: crew.presentRank || "", size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: crew.nationality || "", size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: crew.nationality || "", size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: formatDate(crew.dateOfBirth), size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: formatDate(crew.dateOfBirth), size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: crew.placeOfBirth || "", size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: crew.placeOfBirth || "", size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: crew.gender || "", size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: crew.gender || "", size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: identityDoc.documentType, size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: identityDoc.documentType, size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: identityDoc.number, size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: identityDoc.number, size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: identityDoc.issuingState, size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: identityDoc.issuingState, size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: formatDate(identityDoc.expiryDate), size: 18 })] })],
+          margins: cellMargins(),
+          children: [new Paragraph({ children: [new TextRun({ text: formatDate(identityDoc.expiryDate), size: TABLE_DATA_SIZE, font: FONT })] })],
         }),
       ],
-      height: { value: 400, rule: HeightRule.ATLEAST },
+      height: { value: 300, rule: HeightRule.ATLEAST },
     });
   });
 
@@ -300,10 +339,10 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ children: [new TextRun({ text: "", size: 18 })] })],
+          children: [new Paragraph({ children: [new TextRun({ text: "", size: TABLE_DATA_SIZE, font: FONT })] })],
         })
       ),
-      height: { value: 400, rule: HeightRule.ATLEAST },
+      height: { value: 300, rule: HeightRule.ATLEAST },
     })
   );
 
@@ -319,21 +358,27 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
           new TableCell({
             columnSpan: 2,
             borders: createTableBorders(),
+            verticalAlign: VerticalAlign.CENTER,
+            margins: cellMargins(),
             children: [
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "CREW LIST", size: 28, bold: true })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(IMO FAL Form 5)", size: 20 })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "CREW LIST", size: TITLE_SIZE, bold: true, font: FONT })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(IMO FAL Form 5)", size: SUBTITLE_SIZE, font: FONT })] }),
             ],
           }),
           new TableCell({
             borders: createTableBorders(),
+            verticalAlign: VerticalAlign.CENTER,
+            margins: cellMargins(),
             children: [
-              new Paragraph({ children: [new TextRun({ text: isDeparture ? "" : "X", size: 20 }), new TextRun({ text: "  Arrival", size: 18 })] }),
-              new Paragraph({ children: [new TextRun({ text: isDeparture ? "X" : "", size: 20 }), new TextRun({ text: "  Departure", size: 18 })] }),
+              new Paragraph({ children: [new TextRun({ text: isDeparture ? "" : "X", size: HEADER_VALUE_SIZE, bold: true, font: FONT }), new TextRun({ text: "  Arrival", size: HEADER_VALUE_SIZE, font: FONT })] }),
+              new Paragraph({ children: [new TextRun({ text: isDeparture ? "X" : "", size: HEADER_VALUE_SIZE, bold: true, font: FONT }), new TextRun({ text: "  Departure", size: HEADER_VALUE_SIZE, font: FONT })] }),
             ],
           }),
           new TableCell({
             borders: createTableBorders(),
-            children: [new Paragraph({ children: [new TextRun({ text: "Page Number", size: 18 })] })],
+            verticalAlign: VerticalAlign.CENTER,
+            margins: cellMargins(),
+            children: [new Paragraph({ children: [new TextRun({ text: "Page Number", size: HEADER_LABEL_SIZE, font: FONT })] })],
           }),
         ],
       }),
@@ -341,30 +386,34 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
         children: [
           new TableCell({
             borders: createTableBorders(),
+            margins: cellMargins(),
             children: [
-              new Paragraph({ children: [new TextRun({ text: "1.1 Name of ship", size: 16, bold: true })] }),
-              new Paragraph({ children: [new TextRun({ text: vessel.name || "", size: 18 })] }),
+              new Paragraph({ children: [new TextRun({ text: "1.1 Name of ship", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
+              new Paragraph({ children: [new TextRun({ text: vessel.name || "", size: HEADER_VALUE_SIZE, font: FONT })] }),
             ],
           }),
           new TableCell({
             borders: createTableBorders(),
+            margins: cellMargins(),
             children: [
-              new Paragraph({ children: [new TextRun({ text: "1.2 IMO number", size: 16, bold: true })] }),
-              new Paragraph({ children: [new TextRun({ text: imoNumber || "", size: 18 })] }),
+              new Paragraph({ children: [new TextRun({ text: "1.2 IMO number", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
+              new Paragraph({ children: [new TextRun({ text: imoNumber || "", size: HEADER_VALUE_SIZE, font: FONT })] }),
             ],
           }),
           new TableCell({
             borders: createTableBorders(),
+            margins: cellMargins(),
             children: [
-              new Paragraph({ children: [new TextRun({ text: "1.3 Call sign", size: 16, bold: true })] }),
-              new Paragraph({ children: [new TextRun({ text: callSign || "", size: 18 })] }),
+              new Paragraph({ children: [new TextRun({ text: "1.3 Call sign", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
+              new Paragraph({ children: [new TextRun({ text: callSign || "", size: HEADER_VALUE_SIZE, font: FONT })] }),
             ],
           }),
           new TableCell({
             borders: createTableBorders(),
+            margins: cellMargins(),
             children: [
-              new Paragraph({ children: [new TextRun({ text: "1.4 Voyage number", size: 16, bold: true })] }),
-              new Paragraph({ children: [new TextRun({ text: voyageNumber || "", size: 18 })] }),
+              new Paragraph({ children: [new TextRun({ text: "1.4 Voyage number", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
+              new Paragraph({ children: [new TextRun({ text: voyageNumber || "", size: HEADER_VALUE_SIZE, font: FONT })] }),
             ],
           }),
         ],
@@ -373,30 +422,34 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
         children: [
           new TableCell({
             borders: createTableBorders(),
+            margins: cellMargins(),
             children: [
-              new Paragraph({ children: [new TextRun({ text: "2. Port of arrival/departure", size: 16, bold: true })] }),
-              new Paragraph({ children: [new TextRun({ text: portOfArrival || "", size: 18 })] }),
+              new Paragraph({ children: [new TextRun({ text: "2. Port of arrival/departure", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
+              new Paragraph({ children: [new TextRun({ text: portOfArrival || "", size: HEADER_VALUE_SIZE, font: FONT })] }),
             ],
           }),
           new TableCell({
             borders: createTableBorders(),
+            margins: cellMargins(),
             children: [
-              new Paragraph({ children: [new TextRun({ text: "3. Date of arrival/departure", size: 16, bold: true })] }),
-              new Paragraph({ children: [new TextRun({ text: formatDate(dateOfArrival), size: 18 })] }),
+              new Paragraph({ children: [new TextRun({ text: "3. Date of arrival/departure", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
+              new Paragraph({ children: [new TextRun({ text: formatDate(dateOfArrival), size: HEADER_VALUE_SIZE, font: FONT })] }),
             ],
           }),
           new TableCell({
             borders: createTableBorders(),
+            margins: cellMargins(),
             children: [
-              new Paragraph({ children: [new TextRun({ text: "4. Flag State of ship", size: 16, bold: true })] }),
-              new Paragraph({ children: [new TextRun({ text: flagState || "", size: 18 })] }),
+              new Paragraph({ children: [new TextRun({ text: "4. Flag State of ship", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
+              new Paragraph({ children: [new TextRun({ text: flagState || "", size: HEADER_VALUE_SIZE, font: FONT })] }),
             ],
           }),
           new TableCell({
             borders: createTableBorders(),
+            margins: cellMargins(),
             children: [
-              new Paragraph({ children: [new TextRun({ text: "5. Last port of call", size: 16, bold: true })] }),
-              new Paragraph({ children: [new TextRun({ text: lastPortOfCall || "", size: 18 })] }),
+              new Paragraph({ children: [new TextRun({ text: "5. Last port of call", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
+              new Paragraph({ children: [new TextRun({ text: lastPortOfCall || "", size: HEADER_VALUE_SIZE, font: FONT })] }),
             ],
           }),
         ],
@@ -411,9 +464,10 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
         children: [
           new TableCell({
             borders: createTableBorders(),
+            margins: cellMargins(),
             children: [
               new Paragraph({ children: [] }),
-              new Paragraph({ children: [new TextRun({ text: "18. Date and signature by master, authorized agent or officer", size: 18, bold: true })] }),
+              new Paragraph({ children: [new TextRun({ text: "18. Date and signature by master, authorized agent or officer", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
               new Paragraph({ children: [] }),
               new Paragraph({ children: [] }),
               new Paragraph({ children: [] }),
@@ -430,19 +484,22 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
       {
         properties: {
           page: {
+            size: {
+              orientation: PageOrientation.LANDSCAPE,
+            },
             margin: {
-              top: 720,
-              right: 720,
-              bottom: 720,
-              left: 720,
+              top: 500,
+              right: 500,
+              bottom: 500,
+              left: 500,
             },
           },
         },
         children: [
           headerInfoTable,
-          new Paragraph({ children: [] }),
+          new Paragraph({ spacing: { after: 80 }, children: [] }),
           crewTable,
-          new Paragraph({ children: [] }),
+          new Paragraph({ spacing: { after: 80 }, children: [] }),
           signatureSection,
         ],
       },
