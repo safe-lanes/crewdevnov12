@@ -350,8 +350,23 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
     })
   );
 
+  const signatureRow = new TableRow({
+    height: { value: 800, rule: HeightRule.ATLEAST },
+    children: [
+      new TableCell({
+        columnSpan: 12,
+        borders: createTableBorders(),
+        margins: cellMargins(),
+        verticalAlign: VerticalAlign.TOP,
+        children: [
+          new Paragraph({ children: [new TextRun({ text: "18. Date and signature by master, authorized agent or officer", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
+        ],
+      }),
+    ],
+  });
+
   const crewTable = new Table({
-    rows: [headerRow, ...crewRows, ...emptyRows],
+    rows: [headerRow, ...crewRows, ...emptyRows, signatureRow],
     width: { size: 100, type: WidthType.PERCENTAGE },
   });
 
@@ -462,25 +477,6 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
     width: { size: 100, type: WidthType.PERCENTAGE },
   });
 
-  const signatureSection = new Table({
-    rows: [
-      new TableRow({
-        height: { value: 800, rule: HeightRule.ATLEAST },
-        children: [
-          new TableCell({
-            borders: createTableBorders(),
-            margins: cellMargins(),
-            verticalAlign: VerticalAlign.TOP,
-            children: [
-              new Paragraph({ children: [new TextRun({ text: "18. Date and signature by master, authorized agent or officer", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
-            ],
-          }),
-        ],
-      }),
-    ],
-    width: { size: 100, type: WidthType.PERCENTAGE },
-  });
-
   const doc = new Document({
     sections: [
       {
@@ -501,8 +497,6 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
           headerInfoTable,
           new Paragraph({ spacing: { after: 80 }, children: [] }),
           crewTable,
-          new Paragraph({ spacing: { after: 80 }, children: [] }),
-          signatureSection,
         ],
       },
     ],
