@@ -166,7 +166,10 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
         borders: createTableBorders(),
         verticalAlign: VerticalAlign.CENTER,
         margins: cellMargins(),
-        children: [new Paragraph({ children: [new TextRun({ text: "6.\nNo.", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] })],
+        children: [
+          new Paragraph({ children: [new TextRun({ text: "6.", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] }),
+          new Paragraph({ children: [new TextRun({ text: "No.", size: TABLE_HEADER_SIZE, bold: true, font: FONT })] }),
+        ],
       }),
       new TableCell({
         width: { size: 10, type: WidthType.PERCENTAGE },
@@ -339,6 +342,7 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
         new TableCell({
           borders: createTableBorders(),
           verticalAlign: VerticalAlign.CENTER,
+          margins: cellMargins(),
           children: [new Paragraph({ children: [new TextRun({ text: "", size: TABLE_DATA_SIZE, font: FONT })] })],
         })
       ),
