@@ -457,7 +457,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   receiptField.addToPage(page1, { x: margin + 380, y: y - receiptBoxHeight + 14, width: contentWidth - 380 - 5, height: 10 });
   drawText(page1, 'CBP Port of Arrival (address):', margin + 3, y - 25, font, 6);
   const cbpPortField = form.createTextField('cbpPortAddress');
-  cbpPortField.addToPage(page1, { x: margin + 120, y: y - receiptBoxHeight + 2, width: 250, height: 10 });
+  cbpPortField.addToPage(page1, { x: margin + 120, y: y - receiptBoxHeight + 2, width: contentWidth - 120 - 5, height: 10 });
   y -= receiptBoxHeight + 3;
   
   // SUMMARY OF DEPARTURE section
