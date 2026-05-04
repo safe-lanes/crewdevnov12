@@ -278,7 +278,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   drawCheckbox(page1, margin + 325, y - 14, 8, false);
   drawText(page1, '(Provide applicable INA Section 258 Exemption):', margin + 345, y - 12, font, 5);
   const exemptionField = form.createTextField('inaExemption');
-  exemptionField.addToPage(page1, { x: margin + 530, y: y - row4Height + 3, width: contentWidth - 530 + margin - 5, height: 12 });
+  exemptionField.addToPage(page1, { x: margin + 530, y: y - row4Height + 3, width: contentWidth - 530 - 5, height: 12 });
   
   y -= row4Height;
   
@@ -454,7 +454,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   drawText(page1, 'has received the CREW LIST containing the names of all members of crew, including Master, on board said vessel at time of its arrival.', margin + 3, y - 15, font, 5.5);
   drawText(page1, 'I-418 Receipt Number (POE - YYMMDD - Badge # - Military Time):', margin + 380, y - 7, font, 5);
   const receiptField = form.createTextField('receiptNumber');
-  receiptField.addToPage(page1, { x: margin + 380, y: y - receiptBoxHeight + 14, width: contentWidth - 380 + margin - 10, height: 10 });
+  receiptField.addToPage(page1, { x: margin + 380, y: y - receiptBoxHeight + 14, width: contentWidth - 380 - 5, height: 10 });
   drawText(page1, 'CBP Port of Arrival (address):', margin + 3, y - 25, font, 6);
   const cbpPortField = form.createTextField('cbpPortAddress');
   cbpPortField.addToPage(page1, { x: margin + 120, y: y - receiptBoxHeight + 2, width: 250, height: 10 });
@@ -471,11 +471,11 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   
   drawText(page1, 'Date of Departure:', margin + 400, y - 16, font, 5);
   const depDateField = form.createTextField('departureDate');
-  depDateField.addToPage(page1, { x: margin + 470, y: y - 19, width: contentWidth - 470 + margin - 5, height: 10 });
+  depDateField.addToPage(page1, { x: margin + 470, y: y - 19, width: contentWidth - 470 - 5, height: 10 });
   
   drawText(page1, 'Port of Departure:', margin + 400, y - 28, font, 5);
   const depPortField = form.createTextField('departurePort');
-  depPortField.addToPage(page1, { x: margin + 470, y: y - 31, width: contentWidth - 470 + margin - 5, height: 10 });
+  depPortField.addToPage(page1, { x: margin + 470, y: y - 31, width: contentWidth - 470 - 5, height: 10 });
   
   drawText(page1, 'Agent at Departure (Name & Address):', margin + 3, y - 36, font, 5);
   const agentDepartureField = form.createTextField('agentAtDeparture');
