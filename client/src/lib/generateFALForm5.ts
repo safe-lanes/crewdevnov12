@@ -465,16 +465,14 @@ export async function generateFALForm5Document(data: FALFormData): Promise<void>
   const signatureSection = new Table({
     rows: [
       new TableRow({
+        height: { value: 800, rule: HeightRule.ATLEAST },
         children: [
           new TableCell({
             borders: createTableBorders(),
             margins: cellMargins(),
+            verticalAlign: VerticalAlign.TOP,
             children: [
-              new Paragraph({ children: [] }),
               new Paragraph({ children: [new TextRun({ text: "18. Date and signature by master, authorized agent or officer", size: HEADER_LABEL_SIZE, bold: true, font: FONT })] }),
-              new Paragraph({ children: [] }),
-              new Paragraph({ children: [] }),
-              new Paragraph({ children: [] }),
             ],
           }),
         ],
