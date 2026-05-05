@@ -1,9 +1,13 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Pencil, Trash2, Check, ChevronsUpDown, FilterIcon, PlusIcon } from "lucide-react";
+import type { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from "ag-grid-community";
+import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTableActions from "@/components/AgGrid/AgGridTableActions";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,6 +99,60 @@ type DialogMode =
 const STATUS_OPTIONS = ["Pending", "Scheduled", "In Progress", "Completed", "Cancelled"];
 const CATEGORY_OPTIONS = ["Mandatory", "Recommended", "Optional", "Other"];
 
+// ----- Cell renderers (defined outside component to avoid hooks issues) -----
+const sourceColor = (s: string): string => {
+  if (s === "Recruitment") return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200";
+  if (s === "Appraisal") return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200";
+  if (s === "Promotion") return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200";
+  return "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200";
+};
+
+const SourceCellRenderer = (params: ICellRendererParams) => {
+  if (!params.colDef || !params.data) return null;
+  const s = (params.value as string) || "";
+  return <Badge className={`${sourceColor(s)} text-xs font-medium`}>{s}</Badge>;
+};
+
+type ActionsContext = {
+  onEdit: (row: AggregatedRow) => void;
+  onDelete: (uuid: string) => void;
+};
+
+const ActionsCellRenderer = (
+  params: ICellRendererParams & { context: ActionsContext }
+) => {
+  if (!params.colDef || !params.data) return null;
+  const r = params.data as AggregatedRow;
+  return (
+    <div className="flex gap-1 justify-end items-center h-full">
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-7 w-7"
+        onClick={() => params.context.onEdit(r)}
+        data-testid={`button-edit-${r.sourceRefUuid}`}
+      >
+        <Pencil className="h-4 w-4 text-gray-500" />
+      </Button>
+      {r.editable === "full" && (
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7"
+          onClick={() => {
+            if (confirm("Delete this training need?")) {
+              params.context.onDelete(r.sourceRefUuid);
+            }
+          }}
+          data-testid={`button-delete-${r.sourceRefUuid}`}
+        >
+          <Trash2 className="h-4 w-4 text-red-500" />
+        </Button>
+      )}
+    </div>
+  );
+};
+
 export const Training = (): JSX.Element => {
   const { toast } = useToast();
 
@@ -165,13 +223,6 @@ export const Training = (): JSX.Element => {
     });
   }, [rows, appliedFilters]);
 
-  const sourceColor = (s: string): string => {
-    if (s === "Recruitment") return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200";
-    if (s === "Appraisal") return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200";
-    if (s === "Promotion") return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200";
-    return "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200";
-  };
-
   const setDraft = <K extends keyof FilterState>(k: K, v: FilterState[K]) =>
     setDraftFilters((p) => ({ ...p, [k]: v }));
 
@@ -180,6 +231,141 @@ export const Training = (): JSX.Element => {
     setDraftFilters(EMPTY_FILTER);
     setAppliedFilters(EMPTY_FILTER);
   };
+
+  // ----- AG Grid setup -----
+  const [gridApi, setGridApi] = useState<GridApi | null>(null);
+
+  const onGridReady = useCallback((params: GridReadyEvent) => {
+    setGridApi(params.api);
+    params.api.sizeColumnsToFit();
+  }, []);
+
+  const handleEditClick = useCallback(
+    (row: AggregatedRow) => setDialog({ kind: "edit", row }),
+    []
+  );
+
+  const handleDeleteClick = useCallback(
+    (uuid: string) => deleteMutation.mutate(uuid),
+    [deleteMutation]
+  );
+
+  const columnDefs: ColDef[] = useMemo(
+    () => [
+      {
+        headerName: "S No.",
+        valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+        flex: 0.35,
+        minWidth: 60,
+        cellStyle: { fontSize: "13px", color: "#4f5863" },
+        sortable: false,
+        filter: false,
+        resizable: false,
+      },
+      {
+        headerName: "Source",
+        field: "source",
+        flex: 0.7,
+        cellRenderer: SourceCellRenderer,
+        cellClass: "flex items-center",
+        filter: "agSetColumnFilter",
+        sortable: true,
+        resizable: true,
+      },
+      {
+        headerName: "Name",
+        field: "name",
+        flex: 1,
+        valueFormatter: (p) => p.value || "-",
+        cellStyle: { fontSize: "13px", color: "#4f5863" },
+        filter: "agTextColumnFilter",
+        sortable: true,
+        resizable: true,
+      },
+      {
+        headerName: "Rank",
+        field: "rank",
+        flex: 0.7,
+        valueFormatter: (p) => p.value || "-",
+        cellStyle: { fontSize: "13px", color: "#4f5863" },
+        filter: "agSetColumnFilter",
+        sortable: true,
+        resizable: true,
+      },
+      {
+        headerName: "Training",
+        field: "training",
+        flex: 1.2,
+        valueFormatter: (p) => p.value || "-",
+        cellStyle: { fontSize: "13px", color: "#4f5863" },
+        filter: "agTextColumnFilter",
+        sortable: true,
+        resizable: true,
+      },
+      {
+        headerName: "Training (DB)",
+        field: "correspondingInDb",
+        flex: 1.2,
+        valueFormatter: (p) => p.value || "-",
+        cellStyle: { fontSize: "13px", color: "#4f5863" },
+        filter: "agTextColumnFilter",
+        sortable: true,
+        resizable: true,
+      },
+      {
+        headerName: "Identified By",
+        field: "identifiedBy",
+        flex: 0.9,
+        valueFormatter: (p) => p.value || "-",
+        cellStyle: { fontSize: "13px", color: "#4f5863" },
+        filter: "agSetColumnFilter",
+        sortable: true,
+        resizable: true,
+      },
+      {
+        headerName: "Category",
+        field: "category",
+        flex: 0.8,
+        valueFormatter: (p) => p.value || "-",
+        cellStyle: { fontSize: "13px", color: "#4f5863" },
+        filter: "agSetColumnFilter",
+        sortable: true,
+        resizable: true,
+      },
+      {
+        headerName: "Target or Compl. Date",
+        field: "targetDate",
+        flex: 0.9,
+        valueFormatter: (p) => p.value || "-",
+        cellStyle: { fontSize: "13px", color: "#4f5863" },
+        filter: "agDateColumnFilter",
+        sortable: true,
+        resizable: true,
+      },
+      {
+        headerName: "Status",
+        field: "status",
+        flex: 0.8,
+        valueFormatter: (p) => p.value || "-",
+        cellStyle: { fontSize: "13px", color: "#4f5863" },
+        filter: "agSetColumnFilter",
+        sortable: true,
+        resizable: true,
+      },
+      {
+        headerName: "Actions",
+        field: "actions",
+        flex: 0.5,
+        minWidth: 90,
+        cellRenderer: ActionsCellRenderer,
+        cellClass: "flex items-center justify-end",
+        sortable: false,
+        filter: false,
+        resizable: false,
+      },
+    ],
+    []
+  );
 
   return (
     <div className="flex flex-col h-full" data-testid="page-training">
@@ -276,86 +462,49 @@ export const Training = (): JSX.Element => {
             >
               Clear
             </Button>
-
-            <div className="text-xs text-gray-500 ml-auto" data-testid="text-row-count">
-              {filtered.length} of {rows.length}
-            </div>
           </div>
         </div>
       )}
 
-      {/* Table — column order per spec ends with Target/Compl. Date, Status, Actions */}
-      <div className="flex-1 overflow-auto bg-white border border-[#e1e8ed] rounded-md">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800 text-xs uppercase text-gray-600 dark:text-gray-300">
-            <tr>
-              <th className="px-3 py-2 text-left w-12">S No.</th>
-              <th className="px-3 py-2 text-left">Source</th>
-              <th className="px-3 py-2 text-left">Name</th>
-              <th className="px-3 py-2 text-left">Rank</th>
-              <th className="px-3 py-2 text-left">Training</th>
-              <th className="px-3 py-2 text-left">Training (DB)</th>
-              <th className="px-3 py-2 text-left">Identified By</th>
-              <th className="px-3 py-2 text-left">Category</th>
-              <th className="px-3 py-2 text-left">Target or Compl. Date</th>
-              <th className="px-3 py-2 text-left">Status</th>
-              <th className="px-3 py-2 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr><td colSpan={11} className="p-8 text-center text-gray-400">Loading...</td></tr>
-            )}
-            {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={11} className="p-8 text-center text-gray-400" data-testid="text-empty">No training needs found.</td></tr>
-            )}
-            {filtered.map((r, idx) => (
-              <tr
-                key={`${r.source}-${r.sourceRefUuid}`}
-                className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30"
-                data-testid={`row-need-${r.sourceRefUuid}`}
-              >
-                <td className="px-3 py-2 text-gray-500" data-testid={`text-sno-${r.sourceRefUuid}`}>{idx + 1}</td>
-                <td className="px-3 py-2">
-                  <Badge className={`${sourceColor(r.source)} text-xs font-medium`}>{r.source}</Badge>
-                </td>
-                <td className="px-3 py-2" data-testid={`text-name-${r.sourceRefUuid}`}>{r.name || "-"}</td>
-                <td className="px-3 py-2">{r.rank || "-"}</td>
-                <td className="px-3 py-2">{r.training || "-"}</td>
-                <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{r.correspondingInDb || "-"}</td>
-                <td className="px-3 py-2">{r.identifiedBy || "-"}</td>
-                <td className="px-3 py-2">{r.category || "-"}</td>
-                <td className="px-3 py-2">{r.targetDate || "-"}</td>
-                <td className="px-3 py-2">{r.status || "-"}</td>
-                <td className="px-3 py-2 text-right whitespace-nowrap">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setDialog({ kind: "edit", row: r })}
-                    data-testid={`button-edit-${r.sourceRefUuid}`}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  {r.editable === "full" && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => {
-                        if (confirm("Delete this training need?")) {
-                          deleteMutation.mutate(r.sourceRefUuid);
-                        }
-                      }}
-                      data-testid={`button-delete-${r.sourceRefUuid}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* AG Grid Enterprise Table with Actions */}
+      <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg flex flex-col flex-1">
+        <CardContent className="p-4 pl-0 bg-[#f7fafc] flex flex-col flex-1">
+          <AgGridTable
+            rowData={filtered}
+            columnDefs={columnDefs}
+            onGridReady={onGridReady}
+            context={{ onEdit: handleEditClick, onDelete: handleDeleteClick }}
+            fillAvailableHeight={true}
+            bottomPadding={80}
+            width="100%"
+            enableExport={true}
+            enableSideBar={true}
+            enableStatusBar={false}
+            enableRowGrouping={true}
+            enablePivoting={true}
+            enableAdvancedFilter={false}
+            rowSelection={false}
+            theme="alpine"
+          />
+
+          {/* Footer with row count + AG Grid actions */}
+          <div className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center" style={{ marginTop: "-1px" }}>
+            <div className="text-xs font-normal font-['Mulish',Helvetica] text-black" data-testid="text-row-count">
+              Rows: {filtered.length}
+            </div>
+            <div>
+              <AgGridTableActions
+                gridApi={gridApi}
+                exportFilename="training-needs"
+                showExportButtons={true}
+                showFilterButtons={true}
+                showGroupButtons={true}
+                showSelectionButtons={false}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {dialog.kind !== "closed" && (
         <TrainingNeedDialog
