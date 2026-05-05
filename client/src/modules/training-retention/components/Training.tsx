@@ -38,6 +38,35 @@ type AggregatedRow = {
   editable: "limited" | "full";
 };
 
+type CompanyTrainingLookup = {
+  ctUuid: string;
+  trainingLabel: string;
+};
+
+type RankLookup = {
+  id: number;
+  arUuid: string;
+  rankId: string | null;
+  name: string;
+};
+
+type CrewLookup = {
+  crewUuid: string;
+  empNo: string;
+  firstName: string | null;
+  familyName: string | null;
+  presentRank: string | null;
+};
+
+type FilterState = {
+  searchName: string;
+  source: string;
+  rank: string;
+  status: string;
+};
+
+const EMPTY_FILTER: FilterState = { searchName: "", source: "all", rank: "all", status: "all" };
+
 type DialogMode =
   | { kind: "closed" }
   | { kind: "new" }
@@ -48,24 +77,25 @@ const CATEGORY_OPTIONS = ["Mandatory", "Recommended", "Optional", "Other"];
 
 export const Training = (): JSX.Element => {
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Two filter states: draft = what the user is editing, applied = what filters the table.
+  const [draftFilters, setDraftFilters] = useState<FilterState>(EMPTY_FILTER);
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTER);
   const [dialog, setDialog] = useState<DialogMode>({ kind: "closed" });
 
   const { data: rows = [], isLoading } = useQuery<AggregatedRow[]>({
     queryKey: ["/api/v2/training-needs"],
   });
 
-  const { data: companyTrainings = [] } = useQuery<any[]>({
+  const { data: companyTrainings = [] } = useQuery<CompanyTrainingLookup[]>({
     queryKey: ["/api/v2/admin/company-trainings"],
   });
 
-  const { data: ranks = [] } = useQuery<any[]>({
+  const { data: ranks = [] } = useQuery<RankLookup[]>({
     queryKey: ["/api/v2/admin/available-ranks"],
   });
 
-  const { data: crew = [] } = useQuery<any[]>({
+  const { data: crew = [] } = useQuery<CrewLookup[]>({
     queryKey: ["/api/v2/crew-pool/crew"],
   });
 
@@ -77,31 +107,52 @@ export const Training = (): JSX.Element => {
       queryClient.invalidateQueries({ queryKey: ["/api/v2/training-needs"] });
       toast({ title: "Deleted", description: "Training need removed." });
     },
-    onError: (err: any) => {
-      toast({ title: "Failed to delete", description: err.message, variant: "destructive" });
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast({ title: "Failed to delete", description: message, variant: "destructive" });
     },
   });
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (sourceFilter !== "all" && r.source !== sourceFilter) return false;
-      if (statusFilter !== "all" && (r.status || "") !== statusFilter) return false;
-      if (!q) return true;
-      return (
-        (r.name || "").toLowerCase().includes(q) ||
-        (r.rank || "").toLowerCase().includes(q) ||
-        (r.training || "").toLowerCase().includes(q) ||
-        (r.correspondingInDb || "").toLowerCase().includes(q)
-      );
-    });
-  }, [rows, search, sourceFilter, statusFilter]);
+  // Distinct source labels (built-in + any custom Others labels) and ranks present in the data
+  const distinctSources = useMemo<string[]>(() => {
+    const set = new Set<string>(["Recruitment", "Appraisal", "Promotion", "Others"]);
+    rows.forEach((r) => set.add(r.source));
+    return Array.from(set);
+  }, [rows]);
 
-  const sourceColor = (s: string) => {
+  const distinctRanks = useMemo<string[]>(() => {
+    const set = new Set<string>();
+    rows.forEach((r) => {
+      if (r.rank) set.add(r.rank);
+    });
+    return Array.from(set).sort();
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    const q = appliedFilters.searchName.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (appliedFilters.source !== "all" && r.source !== appliedFilters.source) return false;
+      if (appliedFilters.rank !== "all" && (r.rank || "") !== appliedFilters.rank) return false;
+      if (appliedFilters.status !== "all" && (r.status || "") !== appliedFilters.status) return false;
+      if (!q) return true;
+      return (r.name || "").toLowerCase().includes(q);
+    });
+  }, [rows, appliedFilters]);
+
+  const sourceColor = (s: string): string => {
     if (s === "Recruitment") return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200";
     if (s === "Appraisal") return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200";
     if (s === "Promotion") return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200";
     return "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200";
+  };
+
+  const setDraft = <K extends keyof FilterState>(k: K, v: FilterState[K]) =>
+    setDraftFilters((p) => ({ ...p, [k]: v }));
+
+  const handleApply = () => setAppliedFilters(draftFilters);
+  const handleClear = () => {
+    setDraftFilters(EMPTY_FILTER);
+    setAppliedFilters(EMPTY_FILTER);
   };
 
   return (
@@ -126,42 +177,84 @@ export const Training = (): JSX.Element => {
           </Button>
         </div>
 
-        {/* Filter bar */}
-        <div className="flex items-center gap-3 px-6 py-3 border-b bg-gray-50 dark:bg-gray-800/40">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search name, rank, training..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              data-testid="input-search"
-            />
+        {/* Filter bar — Search Name, Source, Rank, Status, Apply, Clear */}
+        <div className="flex flex-wrap items-end gap-3 px-6 py-3 border-b bg-gray-50 dark:bg-gray-800/40">
+          <div className="flex-1 min-w-[220px] max-w-md">
+            <Label className="text-xs text-gray-600 dark:text-gray-300">Search Name</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Crew name..."
+                className="pl-9"
+                value={draftFilters.searchName}
+                onChange={(e) => setDraft("searchName", e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleApply(); }}
+                data-testid="input-search-name"
+              />
+            </div>
           </div>
-          <Select value={sourceFilter} onValueChange={setSourceFilter}>
-            <SelectTrigger className="w-[180px]" data-testid="select-source-filter">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="Recruitment">Recruitment</SelectItem>
-              <SelectItem value="Appraisal">Appraisal</SelectItem>
-              <SelectItem value="Promotion">Promotion</SelectItem>
-              <SelectItem value="Others">Others</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]" data-testid="select-status-filter">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {STATUS_OPTIONS.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="text-xs text-gray-500 ml-auto" data-testid="text-row-count">
+
+          <div className="w-[180px]">
+            <Label className="text-xs text-gray-600 dark:text-gray-300">Source</Label>
+            <Select value={draftFilters.source} onValueChange={(v) => setDraft("source", v)}>
+              <SelectTrigger data-testid="select-source-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                {distinctSources.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-[180px]">
+            <Label className="text-xs text-gray-600 dark:text-gray-300">Rank</Label>
+            <Select value={draftFilters.rank} onValueChange={(v) => setDraft("rank", v)}>
+              <SelectTrigger data-testid="select-rank-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-[280px]">
+                <SelectItem value="all">All Ranks</SelectItem>
+                {distinctRanks.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-[180px]">
+            <Label className="text-xs text-gray-600 dark:text-gray-300">Status</Label>
+            <Select value={draftFilters.status} onValueChange={(v) => setDraft("status", v)}>
+              <SelectTrigger data-testid="select-status-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            onClick={handleApply}
+            className="bg-[#16569e] hover:bg-[#114a87] text-white"
+            data-testid="button-apply-filters"
+          >
+            Apply
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleClear}
+            data-testid="button-clear-filters"
+          >
+            Clear
+          </Button>
+
+          <div className="text-xs text-gray-500 ml-auto self-end" data-testid="text-row-count">
             {filtered.length} of {rows.length}
           </div>
         </div>
@@ -171,6 +264,7 @@ export const Training = (): JSX.Element => {
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800 text-xs uppercase text-gray-600 dark:text-gray-300">
               <tr>
+                <th className="px-3 py-2 text-left w-12">S No.</th>
                 <th className="px-3 py-2 text-left">Source</th>
                 <th className="px-3 py-2 text-left">Name</th>
                 <th className="px-3 py-2 text-left">Rank</th>
@@ -179,24 +273,25 @@ export const Training = (): JSX.Element => {
                 <th className="px-3 py-2 text-left">Identified By</th>
                 <th className="px-3 py-2 text-left">Category</th>
                 <th className="px-3 py-2 text-left">Status</th>
-                <th className="px-3 py-2 text-left">Target Date</th>
+                <th className="px-3 py-2 text-left">Target or Compl. Date</th>
                 <th className="px-3 py-2 text-left">Comments</th>
                 <th className="px-3 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={11} className="p-8 text-center text-gray-400">Loading...</td></tr>
+                <tr><td colSpan={12} className="p-8 text-center text-gray-400">Loading...</td></tr>
               )}
               {!isLoading && filtered.length === 0 && (
-                <tr><td colSpan={11} className="p-8 text-center text-gray-400" data-testid="text-empty">No training needs found.</td></tr>
+                <tr><td colSpan={12} className="p-8 text-center text-gray-400" data-testid="text-empty">No training needs found.</td></tr>
               )}
-              {filtered.map((r) => (
+              {filtered.map((r, idx) => (
                 <tr
                   key={`${r.source}-${r.sourceRefUuid}`}
                   className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30"
                   data-testid={`row-need-${r.sourceRefUuid}`}
                 >
+                  <td className="px-3 py-2 text-gray-500" data-testid={`text-sno-${r.sourceRefUuid}`}>{idx + 1}</td>
                   <td className="px-3 py-2">
                     <Badge className={`${sourceColor(r.source)} text-xs font-medium`}>{r.source}</Badge>
                   </td>
@@ -209,7 +304,7 @@ export const Training = (): JSX.Element => {
                   <td className="px-3 py-2">{r.status || "-"}</td>
                   <td className="px-3 py-2">{r.targetDate || "-"}</td>
                   <td className="px-3 py-2 max-w-[200px] truncate" title={r.comments || ""}>{r.comments || "-"}</td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
                     <Button
                       size="icon"
                       variant="ghost"
@@ -264,15 +359,30 @@ export const Training = (): JSX.Element => {
 };
 
 // ============================================================================
-// Dialog (handles both New and Edit)
+// Dialog (handles both New and Edit) — 3-column layout per spec
 // ============================================================================
 
 type DialogProps = {
   mode: { kind: "new" } | { kind: "edit"; row: AggregatedRow };
   onClose: () => void;
-  companyTrainings: any[];
-  ranks: any[];
-  crew: any[];
+  companyTrainings: CompanyTrainingLookup[];
+  ranks: RankLookup[];
+  crew: CrewLookup[];
+};
+
+type FormState = {
+  sourceLabel: string;
+  crewMemberId: string;
+  name: string;
+  rank: string;
+  rankId: string;
+  training: string;
+  correspondingInDb: string;
+  identifiedBy: string;
+  category: string;
+  status: string;
+  targetDate: string;
+  comments: string;
 };
 
 function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: DialogProps) {
@@ -281,7 +391,8 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
   const row = mode.kind === "edit" ? mode.row : null;
   const isLimited = !!row && row.editable === "limited";
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
+    sourceLabel: row?.source || "Others",
     crewMemberId: "",
     name: row?.name || "",
     rank: row?.rank || "",
@@ -295,14 +406,14 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
     comments: row?.comments || "",
   });
 
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
+  const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (isNew) {
         await apiRequest("POST", "/api/v2/training-needs/others", {
-          sourceLabel: "Others",
+          sourceLabel: form.sourceLabel || "Others",
           crewMemberId: form.crewMemberId || null,
           name: form.name || null,
           rank: form.rank || null,
@@ -317,6 +428,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
         });
       } else if (row && row.editable === "full") {
         await apiRequest("PATCH", `/api/v2/training-needs/others/${row.sourceRefUuid}`, {
+          sourceLabel: form.sourceLabel || "Others",
           crewMemberId: form.crewMemberId || null,
           name: form.name || null,
           rank: form.rank || null,
@@ -347,23 +459,36 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
       toast({ title: "Saved", description: "Training need saved." });
       onClose();
     },
-    onError: (err: any) => {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast({ title: "Save failed", description: message, variant: "destructive" });
     },
   });
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl" data-testid="dialog-training-need">
+      <DialogContent className="max-w-3xl" data-testid="dialog-training-need">
         <DialogHeader>
           <DialogTitle>
             {isNew ? "New Training Need" : `Edit Training Need (${row?.source})`}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-4 py-2">
+        <div className="grid grid-cols-3 gap-4 py-2">
+          {/* Source label — editable on Others, read-only otherwise */}
+          <div>
+            <Label className="text-xs">Source</Label>
+            <Input
+              value={form.sourceLabel}
+              onChange={(e) => set("sourceLabel", e.target.value)}
+              disabled={isLimited}
+              placeholder="Others / Supt Visit / ..."
+              data-testid="input-source-label"
+            />
+          </div>
+
           {/* Name */}
-          <div className="col-span-1">
+          <div>
             <Label className="text-xs">Name</Label>
             {isLimited ? (
               <Input value={form.name} disabled data-testid="input-name" />
@@ -375,38 +500,30 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
                     set("crewMemberId", "");
                     return;
                   }
-                  const c = crew.find((x: any) => x.empNo === v || x.crewUuid === v);
+                  const c = crew.find((x) => x.empNo === v);
                   if (c) {
-                    set("crewMemberId", c.empNo || c.crewUuid);
-                    set("name", `${c.firstName || ""} ${c.familyName || ""}`.trim());
+                    set("crewMemberId", c.empNo);
+                    const fullName = `${c.firstName || ""} ${c.familyName || ""}`.trim();
+                    set("name", fullName);
                     set("rank", c.presentRank || "");
                   }
                 }}
               >
-                <SelectTrigger data-testid="select-name"><SelectValue placeholder="Select crew member" /></SelectTrigger>
+                <SelectTrigger data-testid="select-name"><SelectValue placeholder="Select crew" /></SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="__manual">— Enter manually —</SelectItem>
-                  {crew.map((c: any) => (
-                    <SelectItem key={c.empNo || c.crewUuid} value={c.empNo || c.crewUuid}>
+                  {crew.map((c) => (
+                    <SelectItem key={c.empNo} value={c.empNo}>
                       {`${c.firstName || ""} ${c.familyName || ""}`.trim()} ({c.empNo})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
-            {!isLimited && !form.crewMemberId && (
-              <Input
-                className="mt-2"
-                placeholder="Or type a name"
-                value={form.name}
-                onChange={(e) => set("name", e.target.value)}
-                data-testid="input-name-manual"
-              />
-            )}
           </div>
 
           {/* Rank */}
-          <div className="col-span-1">
+          <div>
             <Label className="text-xs">Rank</Label>
             {isLimited ? (
               <Input value={form.rank} disabled data-testid="input-rank" />
@@ -414,25 +531,42 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
               <Select
                 value={form.rankId || form.rank || "__none"}
                 onValueChange={(v) => {
-                  if (v === "__none") return;
-                  const r = ranks.find((x: any) => x.rankId === v || x.name === v);
-                  set("rankId", r?.rankId || v);
+                  if (v === "__none") {
+                    set("rankId", "");
+                    set("rank", "");
+                    return;
+                  }
+                  const r = ranks.find((x) => (x.rankId || x.name) === v);
+                  set("rankId", r?.rankId || "");
                   set("rank", r?.name || v);
                 }}
               >
                 <SelectTrigger data-testid="select-rank"><SelectValue placeholder="Select rank" /></SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="__none">— None —</SelectItem>
-                  {ranks.map((r: any) => (
-                    <SelectItem key={r.id || r.arUuid} value={r.rankId || r.name}>{r.name}</SelectItem>
+                  {ranks.map((r) => (
+                    <SelectItem key={r.arUuid} value={r.rankId || r.name}>{r.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
           </div>
 
+          {/* Manual name field appears when not bound to a crew member */}
+          {!isLimited && !form.crewMemberId && (
+            <div className="col-span-3">
+              <Label className="text-xs">Name (manual)</Label>
+              <Input
+                placeholder="Type a name"
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                data-testid="input-name-manual"
+              />
+            </div>
+          )}
+
           {/* Training (free text) */}
-          <div className="col-span-1">
+          <div>
             <Label className="text-xs">Training</Label>
             <Input
               value={form.training}
@@ -443,7 +577,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
           </div>
 
           {/* Training (DB) */}
-          <div className="col-span-1">
+          <div>
             <Label className="text-xs">Training (in DB)</Label>
             {isLimited ? (
               <Input value={form.correspondingInDb} disabled data-testid="input-training-db" />
@@ -455,7 +589,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
                 <SelectTrigger data-testid="select-training-db"><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="__none">— None —</SelectItem>
-                  {companyTrainings.map((t: any) => (
+                  {companyTrainings.map((t) => (
                     <SelectItem key={t.ctUuid} value={t.trainingLabel}>{t.trainingLabel}</SelectItem>
                   ))}
                 </SelectContent>
@@ -464,7 +598,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
           </div>
 
           {/* Identified By */}
-          <div className="col-span-1">
+          <div>
             <Label className="text-xs">Identified By</Label>
             <Input
               value={form.identifiedBy}
@@ -475,7 +609,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
           </div>
 
           {/* Category */}
-          <div className="col-span-1">
+          <div>
             <Label className="text-xs">Category</Label>
             <Select
               value={form.category || "__none"}
@@ -493,7 +627,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
           </div>
 
           {/* Status — editable for all */}
-          <div className="col-span-1">
+          <div>
             <Label className="text-xs">Status</Label>
             <Select
               value={form.status || "__none"}
@@ -509,9 +643,9 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             </Select>
           </div>
 
-          {/* Target Date — editable for all */}
-          <div className="col-span-1">
-            <Label className="text-xs">Target Date</Label>
+          {/* Target or Compl. Date — editable for all */}
+          <div>
+            <Label className="text-xs">Target or Compl. Date</Label>
             <Input
               type="date"
               value={form.targetDate}
@@ -520,8 +654,11 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             />
           </div>
 
+          {/* Spacer to keep grid even on the row holding date */}
+          <div />
+
           {/* Comments — editable for all */}
-          <div className="col-span-2">
+          <div className="col-span-3">
             <Label className="text-xs">Comments</Label>
             <Textarea
               value={form.comments}
@@ -534,7 +671,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
 
         {isLimited && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            This row comes from {row?.source}. Only Status, Target Date and Comments can be edited here.
+            This row comes from {row?.source}. Only Status, Target / Compl. Date and Comments can be edited here.
             {row?.source === "Recruitment" && " (Recruitment source has no Status field — Status changes will not be saved.)"}
             {row?.source === "Promotion" && " (Promotion source has no Comments field — Comments will not be saved.)"}
           </p>

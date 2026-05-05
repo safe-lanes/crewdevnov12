@@ -8,7 +8,7 @@ import { apprTrainingFollowupsV2 } from "../../../shared/v2/appraisals/schema";
 import { promoTrainingNeedsV2 } from "../../../shared/v2/promotions/schema";
 
 export type AggregatedTrainingNeed = {
-  source: "Recruitment" | "Appraisal" | "Promotion" | string;
+  source: string;
   sourceRefUuid: string;
   name: string | null;
   rank: string | null;
@@ -22,12 +22,52 @@ export type AggregatedTrainingNeed = {
   editable: "limited" | "full";
 };
 
+type RawRecruitmentRow = {
+  source_ref_uuid: string;
+  training: string | null;
+  identified_by: string | null;
+  category: string | null;
+  target_date: string | null;
+  comments: string | null;
+  name: string | null;
+  rank: string | null;
+};
+
+type RawAppraisalRow = {
+  source_ref_uuid: string;
+  training: string | null;
+  corresponding_in_db: string | null;
+  category: string | null;
+  status: string | null;
+  target_date: string | null;
+  comments: string | null;
+  name: string | null;
+  rank: string | null;
+};
+
+type RawPromotionRow = {
+  source_ref_uuid: string;
+  training: string | null;
+  corresponding_in_db: string | null;
+  category: string | null;
+  status: string | null;
+  target_date: string | null;
+  name: string | null;
+  rank: string | null;
+};
+
+export type SourcePatchInput = {
+  status?: string | null;
+  targetDate?: string | null;
+  comments?: string | null;
+};
+
 export class TrainingNeedsRepository {
   // ---- Aggregation ----
   async aggregateAll(): Promise<AggregatedTrainingNeed[]> {
     const db = getDb();
 
-    const recruitmentRows = await db.execute(sql`
+    const recruitmentResult = await db.execute(sql`
       SELECT
         b7i.train_item_uuid AS source_ref_uuid,
         b7i.training,
@@ -42,8 +82,9 @@ export class TrainingNeedsRepository {
       JOIN recruitment_candidates_v2 rc ON b7.rec_can_uuid = rc.rec_can_uuid AND rc.is_deleted = FALSE
       WHERE b7i.is_deleted = FALSE
     `);
+    const recruitmentRows = recruitmentResult.rows as RawRecruitmentRow[];
 
-    const appraisalRows = await db.execute(sql`
+    const appraisalResult = await db.execute(sql`
       SELECT
         tf.training_followup_uuid AS source_ref_uuid,
         tf.training,
@@ -58,8 +99,9 @@ export class TrainingNeedsRepository {
       JOIN appraisal_results_v2 ar ON tf.appraisal_uuid = ar.appraisal_uuid AND ar.is_deleted = FALSE
       WHERE tf.is_deleted = FALSE
     `);
+    const appraisalRows = appraisalResult.rows as RawAppraisalRow[];
 
-    const promotionRows = await db.execute(sql`
+    const promotionResult = await db.execute(sql`
       SELECT
         tn.tn_uuid AS source_ref_uuid,
         tn.training,
@@ -74,6 +116,7 @@ export class TrainingNeedsRepository {
       LEFT JOIN crew_members_v2 cm ON pr.crew_member_id = cm.emp_no AND cm.is_deleted = FALSE
       WHERE tn.is_deleted = FALSE
     `);
+    const promotionRows = promotionResult.rows as RawPromotionRow[];
 
     const otherRows = await db
       .select()
@@ -82,52 +125,52 @@ export class TrainingNeedsRepository {
 
     const result: AggregatedTrainingNeed[] = [];
 
-    for (const r of (recruitmentRows as any).rows ?? recruitmentRows ?? []) {
+    for (const r of recruitmentRows) {
       result.push({
         source: "Recruitment",
         sourceRefUuid: r.source_ref_uuid,
         name: r.name || null,
         rank: r.rank || null,
-        training: r.training || null,
+        training: r.training,
         correspondingInDb: null,
-        identifiedBy: r.identified_by || null,
-        category: r.category || null,
+        identifiedBy: r.identified_by,
+        category: r.category,
         status: null,
-        targetDate: r.target_date || null,
-        comments: r.comments || null,
+        targetDate: r.target_date,
+        comments: r.comments,
         editable: "limited",
       });
     }
 
-    for (const r of (appraisalRows as any).rows ?? appraisalRows ?? []) {
+    for (const r of appraisalRows) {
       result.push({
         source: "Appraisal",
         sourceRefUuid: r.source_ref_uuid,
         name: r.name || null,
         rank: r.rank || null,
-        training: r.training || null,
-        correspondingInDb: r.corresponding_in_db || null,
+        training: r.training,
+        correspondingInDb: r.corresponding_in_db,
         identifiedBy: null,
-        category: r.category || null,
-        status: r.status || null,
-        targetDate: r.target_date || null,
-        comments: r.comments || null,
+        category: r.category,
+        status: r.status,
+        targetDate: r.target_date,
+        comments: r.comments,
         editable: "limited",
       });
     }
 
-    for (const r of (promotionRows as any).rows ?? promotionRows ?? []) {
+    for (const r of promotionRows) {
       result.push({
         source: "Promotion",
         sourceRefUuid: r.source_ref_uuid,
         name: r.name || null,
         rank: r.rank || null,
-        training: r.training || null,
-        correspondingInDb: r.corresponding_in_db || null,
+        training: r.training,
+        correspondingInDb: r.corresponding_in_db,
         identifiedBy: null,
-        category: r.category || null,
-        status: r.status || null,
-        targetDate: r.target_date || null,
+        category: r.category,
+        status: r.status,
+        targetDate: r.target_date,
         comments: null,
         editable: "limited",
       });
@@ -154,9 +197,11 @@ export class TrainingNeedsRepository {
   }
 
   // ---- Source PATCHes (limited fields) ----
-  async patchRecruitment(trainItemUuid: string, data: { targetDate?: string | null; comments?: string | null }): Promise<boolean> {
+  async patchRecruitment(trainItemUuid: string, data: SourcePatchInput): Promise<boolean> {
     const db = getDb();
-    const sets: any = { updatedAt: new Date() };
+    const sets: Partial<typeof screeningB7TrainingItems.$inferInsert> & { updatedAt: Date } = {
+      updatedAt: new Date(),
+    };
     if (data.targetDate !== undefined) sets.dueDate = data.targetDate;
     if (data.comments !== undefined) sets.comments = data.comments;
     const r = await db
@@ -167,9 +212,11 @@ export class TrainingNeedsRepository {
     return r.length > 0;
   }
 
-  async patchAppraisal(trainingFollowupUuid: string, data: { status?: string | null; targetDate?: string | null; comments?: string | null }): Promise<boolean> {
+  async patchAppraisal(trainingFollowupUuid: string, data: SourcePatchInput): Promise<boolean> {
     const db = getDb();
-    const sets: any = { updatedAt: new Date() };
+    const sets: Partial<typeof apprTrainingFollowupsV2.$inferInsert> & { updatedAt: Date } = {
+      updatedAt: new Date(),
+    };
     if (data.status !== undefined) sets.status = data.status;
     if (data.targetDate !== undefined) sets.targetDate = data.targetDate;
     if (data.comments !== undefined) sets.comment = data.comments;
@@ -181,9 +228,11 @@ export class TrainingNeedsRepository {
     return r.length > 0;
   }
 
-  async patchPromotion(tnUuid: string, data: { status?: string | null; targetDate?: string | null }): Promise<boolean> {
+  async patchPromotion(tnUuid: string, data: SourcePatchInput): Promise<boolean> {
     const db = getDb();
-    const sets: any = { updatedAt: new Date() };
+    const sets: Partial<typeof promoTrainingNeedsV2.$inferInsert> & { updatedAt: Date } = {
+      updatedAt: new Date(),
+    };
     if (data.status !== undefined) sets.status = data.status;
     if (data.targetDate !== undefined) sets.completionDate = data.targetDate;
     const r = await db
