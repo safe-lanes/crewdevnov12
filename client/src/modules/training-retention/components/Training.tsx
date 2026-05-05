@@ -208,7 +208,7 @@ export const Training = (): JSX.Element => {
 
       {/* Filter bar — Crew-Database compact style */}
       {filtersOpen && (
-        <div className="bg-white border border-[#e1e8ed] rounded-md px-3 py-2 mb-3" data-testid="filter-bar">
+        <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg" data-testid="filter-bar">
           <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Search Name..."
