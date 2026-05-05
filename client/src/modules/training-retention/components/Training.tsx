@@ -71,6 +71,13 @@ type CrewLookup = {
   presentRank: string | null;
 };
 
+type UserLookup = {
+  userUuid: string | null;
+  fullname: string | null;
+  displayName: string | null;
+  designation: string | null;
+};
+
 type FilterState = {
   searchName: string;
   source: string;
@@ -113,6 +120,10 @@ export const Training = (): JSX.Element => {
 
   const { data: crew = [] } = useQuery<CrewLookup[]>({
     queryKey: ["/api/v2/crew-pool/crew"],
+  });
+
+  const { data: users = [] } = useQuery<UserLookup[]>({
+    queryKey: ["/api/v2/masters/users"],
   });
 
   const deleteMutation = useMutation({
@@ -353,6 +364,7 @@ export const Training = (): JSX.Element => {
           companyTrainings={companyTrainings}
           ranks={ranks}
           crew={crew}
+          users={users}
         />
       )}
     </div>
@@ -444,6 +456,7 @@ type DialogProps = {
   companyTrainings: CompanyTrainingLookup[];
   ranks: RankLookup[];
   crew: CrewLookup[];
+  users: UserLookup[];
 };
 
 type FormState = {
@@ -461,7 +474,7 @@ type FormState = {
   comments: string;
 };
 
-function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: DialogProps) {
+function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, users }: DialogProps) {
   const { toast } = useToast();
   const isNew = mode.kind === "new";
   const row = mode.kind === "edit" ? mode.row : null;
@@ -688,12 +701,35 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
           {/* Row 3: Identified By | Category | Source label */}
           <div>
             <Label className="text-xs">Identified By</Label>
-            <Input
-              value={form.identifiedBy}
-              onChange={(e) => set("identifiedBy", e.target.value)}
-              disabled={isLimited}
-              data-testid="input-identified-by"
-            />
+            {isLimited ? (
+              <Input value={form.identifiedBy} disabled data-testid="input-identified-by" />
+            ) : (
+              <Select
+                value={form.identifiedBy || "__none"}
+                onValueChange={(v) => set("identifiedBy", v === "__none" ? "" : v)}
+              >
+                <SelectTrigger data-testid="select-identified-by">
+                  <SelectValue placeholder="Select user" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px]">
+                  <SelectItem value="__none">— None —</SelectItem>
+                  {form.identifiedBy &&
+                    !users.some((u) => (u.fullname || u.displayName) === form.identifiedBy) && (
+                      <SelectItem value={form.identifiedBy}>{form.identifiedBy}</SelectItem>
+                    )}
+                  {users
+                    .filter((u) => u.fullname || u.displayName)
+                    .map((u) => {
+                      const label = u.fullname || u.displayName || "";
+                      return (
+                        <SelectItem key={u.userUuid || label} value={label}>
+                          {u.designation ? `${label}, ${u.designation}` : label}
+                        </SelectItem>
+                      );
+                    })}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div>

@@ -80,7 +80,7 @@ export class TrainingNeedsRepository {
       SELECT
         b7i.train_item_uuid AS source_ref_uuid,
         b7i.training,
-        b7i.identified_by_uuid AS identified_by,
+        COALESCE(mu.fullname, mu.display_name, b7i.identified_by_uuid) AS identified_by,
         b7i.category,
         b7i.due_date AS target_date,
         b7i.comments,
@@ -91,6 +91,7 @@ export class TrainingNeedsRepository {
       FROM screening_b7_training_items b7i
       JOIN screening_b7_training b7 ON b7i.b7_uuid = b7.b7_uuid AND b7.is_deleted = FALSE
       JOIN recruitment_candidates_v2 rc ON b7.rec_can_uuid = rc.rec_can_uuid AND rc.is_deleted = FALSE
+      LEFT JOIN master_users mu ON mu.user_uuid = b7i.identified_by_uuid
       LEFT JOIN training_needs_source_overlay_v2 ov
         ON ov.source_type = 'recruitment'
        AND ov.source_ref_uuid = b7i.train_item_uuid
