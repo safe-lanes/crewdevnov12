@@ -125,6 +125,12 @@ function AuthenticatedApp() {
                   <Route path="/rest-hours">
                     <ProtectedRoute menuName="Rest Hours"><RestHoursModuleComponent /></ProtectedRoute>
                   </Route>
+                  <Route path="/training-retention/training">
+                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+                  </Route>
+                  <Route path="/training-retention/retention">
+                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+                  </Route>
                   <Route path="/training-retention/:rest*">
                     <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
                   </Route>

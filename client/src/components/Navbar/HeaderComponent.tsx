@@ -117,7 +117,7 @@ const navItems = [
         inactiveText: "#4f5863",
     },
     {
-        label: "Training/ Ret.",
+        label: "Training & Ret.",
         href: "/training-retention",
         menuName: "Training & Ret.",
         icon: UsersRound,
