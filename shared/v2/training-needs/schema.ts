@@ -25,6 +25,26 @@ export const trainingNeedsOtherV2 = pgTable("training_needs_other_v2", {
   isSync: boolean("is_sync").default(false),
 });
 
+// Overlay table — stores Status/Comments for sourced rows whose source
+// tables physically lack those columns (e.g. Recruitment status, Promotion
+// comments). This avoids modifying any source-module schemas.
+export const trainingNeedsSourceOverlayV2 = pgTable("training_needs_source_overlay_v2", {
+  id: serial("id").primaryKey(),
+  soUuid: text("so_uuid").notNull().unique(),
+  sourceType: text("source_type").notNull(), // 'recruitment' | 'appraisal' | 'promotion'
+  sourceRefUuid: text("source_ref_uuid").notNull(),
+  status: text("status"),
+  comments: text("comments"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdByUuid: text("created_by_uuid"),
+  updatedByUuid: text("updated_by_uuid"),
+  isDeleted: boolean("is_deleted").default(false),
+  isSync: boolean("is_sync").default(false),
+});
+
+export type TrainingNeedSourceOverlay = typeof trainingNeedsSourceOverlayV2.$inferSelect;
+
 export const insertTrainingNeedOtherSchema = createInsertSchema(trainingNeedsOtherV2).omit({
   id: true,
   tnoUuid: true,

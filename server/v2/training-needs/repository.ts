@@ -1,11 +1,13 @@
 import { eq, and, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../db";
-import { trainingNeedsOtherV2 } from "../../../shared/v2/training-needs/schema";
+import { trainingNeedsOtherV2, trainingNeedsSourceOverlayV2 } from "../../../shared/v2/training-needs/schema";
 import type { TrainingNeedOther, InsertTrainingNeedOther } from "../../../shared/v2/training-needs/schema";
 import { screeningB7TrainingItems } from "../../../shared/v2/recruitment/schema";
 import { apprTrainingFollowupsV2 } from "../../../shared/v2/appraisals/schema";
 import { promoTrainingNeedsV2 } from "../../../shared/v2/promotions/schema";
+
+type SourceType = "recruitment" | "appraisal" | "promotion";
 
 export type AggregatedTrainingNeed = {
   source: string;
@@ -34,6 +36,8 @@ type RawRecruitmentRow = {
   comments: string | null;
   name: string | null;
   rank: string | null;
+  overlay_status: string | null;
+  overlay_comments: string | null;
 };
 
 type RawAppraisalRow = {
@@ -57,6 +61,8 @@ type RawPromotionRow = {
   target_date: string | null;
   name: string | null;
   rank: string | null;
+  overlay_status: string | null;
+  overlay_comments: string | null;
 };
 
 export type SourcePatchInput = {
@@ -79,10 +85,16 @@ export class TrainingNeedsRepository {
         b7i.due_date AS target_date,
         b7i.comments,
         TRIM(CONCAT_WS(' ', rc.first_name, rc.family_name)) AS name,
-        rc.present_rank AS rank
+        rc.present_rank AS rank,
+        ov.status AS overlay_status,
+        ov.comments AS overlay_comments
       FROM screening_b7_training_items b7i
       JOIN screening_b7_training b7 ON b7i.b7_uuid = b7.b7_uuid AND b7.is_deleted = FALSE
       JOIN recruitment_candidates_v2 rc ON b7.rec_can_uuid = rc.rec_can_uuid AND rc.is_deleted = FALSE
+      LEFT JOIN training_needs_source_overlay_v2 ov
+        ON ov.source_type = 'recruitment'
+       AND ov.source_ref_uuid = b7i.train_item_uuid
+       AND ov.is_deleted = FALSE
       WHERE b7i.is_deleted = FALSE
     `);
     const recruitmentRows = recruitmentResult.rows as RawRecruitmentRow[];
@@ -113,10 +125,16 @@ export class TrainingNeedsRepository {
         tn.status,
         tn.completion_date AS target_date,
         TRIM(CONCAT_WS(' ', cm.first_name, cm.family_name)) AS name,
-        cm.present_rank AS rank
+        cm.present_rank AS rank,
+        ov.status AS overlay_status,
+        ov.comments AS overlay_comments
       FROM promo_training_needs_v2 tn
       JOIN promotion_reviews_v2 pr ON tn.review_uuid = pr.review_uuid AND pr.is_deleted = FALSE
       LEFT JOIN crew_members_v2 cm ON pr.crew_member_id = cm.emp_no AND cm.is_deleted = FALSE
+      LEFT JOIN training_needs_source_overlay_v2 ov
+        ON ov.source_type = 'promotion'
+       AND ov.source_ref_uuid = tn.tn_uuid
+       AND ov.is_deleted = FALSE
       WHERE tn.is_deleted = FALSE
     `);
     const promotionRows = promotionResult.rows as RawPromotionRow[];
@@ -138,9 +156,11 @@ export class TrainingNeedsRepository {
         correspondingInDb: null,
         identifiedBy: r.identified_by,
         category: r.category,
-        status: null,
+        // status comes from overlay (source table has no status column)
+        status: r.overlay_status,
         targetDate: r.target_date,
-        comments: r.comments,
+        // comments come from source (b7i.comments) — overlay is fallback
+        comments: r.comments ?? r.overlay_comments,
         editable: "limited",
         crewMemberId: null,
         rankId: null,
@@ -176,9 +196,11 @@ export class TrainingNeedsRepository {
         correspondingInDb: r.corresponding_in_db,
         identifiedBy: null,
         category: r.category,
-        status: r.status,
+        // status from source; overlay is fallback if source is null
+        status: r.status ?? r.overlay_status,
         targetDate: r.target_date,
-        comments: null,
+        // comments come from overlay (source table has no comments column)
+        comments: r.overlay_comments,
         editable: "limited",
         crewMemberId: null,
         rankId: null,
@@ -207,14 +229,55 @@ export class TrainingNeedsRepository {
     return result;
   }
 
-  // ---- Source PATCHes (limited fields) ----
-  async patchRecruitment(trainItemUuid: string, data: SourcePatchInput): Promise<boolean> {
+  // ---- Source PATCHes (limited fields: status / targetDate / comments) ----
+  // Where the source table cannot persist a field, we upsert it into
+  // training_needs_source_overlay_v2 instead — no source-module schema changes.
+
+  private async upsertOverlay(
+    sourceType: SourceType,
+    sourceRefUuid: string,
+    fields: { status?: string | null; comments?: string | null },
+    auditUserUuid?: string | null,
+  ): Promise<void> {
+    if (Object.keys(fields).length === 0) return;
+    const db = getDb();
+    const existing = await db
+      .select()
+      .from(trainingNeedsSourceOverlayV2)
+      .where(
+        and(
+          eq(trainingNeedsSourceOverlayV2.sourceType, sourceType),
+          eq(trainingNeedsSourceOverlayV2.sourceRefUuid, sourceRefUuid),
+          eq(trainingNeedsSourceOverlayV2.isDeleted, false),
+        ),
+      );
+    if (existing.length > 0) {
+      await db
+        .update(trainingNeedsSourceOverlayV2)
+        .set({ ...fields, updatedAt: new Date(), updatedByUuid: auditUserUuid || null })
+        .where(eq(trainingNeedsSourceOverlayV2.soUuid, existing[0].soUuid));
+    } else {
+      await db.insert(trainingNeedsSourceOverlayV2).values({
+        soUuid: uuidv4(),
+        sourceType,
+        sourceRefUuid,
+        status: fields.status ?? null,
+        comments: fields.comments ?? null,
+        createdByUuid: auditUserUuid || null,
+        updatedByUuid: auditUserUuid || null,
+      });
+    }
+  }
+
+  async patchRecruitment(
+    trainItemUuid: string,
+    data: SourcePatchInput,
+    auditUserUuid?: string | null,
+  ): Promise<boolean> {
     const db = getDb();
     const sets: Partial<typeof screeningB7TrainingItems.$inferInsert> & { updatedAt: Date } = {
       updatedAt: new Date(),
     };
-    // NOTE: screening_b7_training_items has no `status` column — silently
-    // no-op'd per task constraint (no schema changes to source modules).
     if (data.targetDate !== undefined) sets.dueDate = data.targetDate;
     if (data.comments !== undefined) sets.comments = data.comments;
     const r = await db
@@ -222,10 +285,19 @@ export class TrainingNeedsRepository {
       .set(sets)
       .where(and(eq(screeningB7TrainingItems.trainItemUuid, trainItemUuid), eq(screeningB7TrainingItems.isDeleted, false)))
       .returning();
-    return r.length > 0;
+    if (r.length === 0) return false;
+    // Status has no column on the source — overlay it.
+    if (data.status !== undefined) {
+      await this.upsertOverlay("recruitment", trainItemUuid, { status: data.status }, auditUserUuid);
+    }
+    return true;
   }
 
-  async patchAppraisal(trainingFollowupUuid: string, data: SourcePatchInput): Promise<boolean> {
+  async patchAppraisal(
+    trainingFollowupUuid: string,
+    data: SourcePatchInput,
+    _auditUserUuid?: string | null,
+  ): Promise<boolean> {
     const db = getDb();
     const sets: Partial<typeof apprTrainingFollowupsV2.$inferInsert> & { updatedAt: Date } = {
       updatedAt: new Date(),
@@ -241,21 +313,28 @@ export class TrainingNeedsRepository {
     return r.length > 0;
   }
 
-  async patchPromotion(tnUuid: string, data: SourcePatchInput): Promise<boolean> {
+  async patchPromotion(
+    tnUuid: string,
+    data: SourcePatchInput,
+    auditUserUuid?: string | null,
+  ): Promise<boolean> {
     const db = getDb();
     const sets: Partial<typeof promoTrainingNeedsV2.$inferInsert> & { updatedAt: Date } = {
       updatedAt: new Date(),
     };
     if (data.status !== undefined) sets.status = data.status;
     if (data.targetDate !== undefined) sets.completionDate = data.targetDate;
-    // NOTE: promo_training_needs_v2 has no `comments` column — silently
-    // no-op'd per task constraint (no schema changes to source modules).
     const r = await db
       .update(promoTrainingNeedsV2)
       .set(sets)
       .where(and(eq(promoTrainingNeedsV2.tnUuid, tnUuid), eq(promoTrainingNeedsV2.isDeleted, false)))
       .returning();
-    return r.length > 0;
+    if (r.length === 0) return false;
+    // Comments has no column on the source — overlay it.
+    if (data.comments !== undefined) {
+      await this.upsertOverlay("promotion", tnUuid, { comments: data.comments }, auditUserUuid);
+    }
+    return true;
   }
 
   // ---- Others CRUD ----

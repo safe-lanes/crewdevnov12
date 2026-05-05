@@ -25,11 +25,11 @@ router.get("/", async (_req: Request, res: Response) => {
   }
 });
 
-router.patch("/source/recruitment/:uuid", async (req: Request, res: Response) => {
+router.patch("/source/recruitment/:uuid", async (req: AuthedRequest, res: Response) => {
   try {
     const parsed = sourcePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const ok = await repo.patchRecruitment(req.params.uuid, parsed.data);
+    const ok = await repo.patchRecruitment(req.params.uuid, parsed.data, req.user?.uuid ?? null);
     if (!ok) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
   } catch (err) {
@@ -38,11 +38,11 @@ router.patch("/source/recruitment/:uuid", async (req: Request, res: Response) =>
   }
 });
 
-router.patch("/source/appraisal/:uuid", async (req: Request, res: Response) => {
+router.patch("/source/appraisal/:uuid", async (req: AuthedRequest, res: Response) => {
   try {
     const parsed = sourcePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const ok = await repo.patchAppraisal(req.params.uuid, parsed.data);
+    const ok = await repo.patchAppraisal(req.params.uuid, parsed.data, req.user?.uuid ?? null);
     if (!ok) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
   } catch (err) {
@@ -51,11 +51,11 @@ router.patch("/source/appraisal/:uuid", async (req: Request, res: Response) => {
   }
 });
 
-router.patch("/source/promotion/:uuid", async (req: Request, res: Response) => {
+router.patch("/source/promotion/:uuid", async (req: AuthedRequest, res: Response) => {
   try {
     const parsed = sourcePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const ok = await repo.patchPromotion(req.params.uuid, parsed.data);
+    const ok = await repo.patchPromotion(req.params.uuid, parsed.data, req.user?.uuid ?? null);
     if (!ok) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
   } catch (err) {
