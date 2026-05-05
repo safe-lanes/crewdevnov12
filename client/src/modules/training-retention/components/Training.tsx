@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Search, SlidersHorizontal, Check, ChevronsUpDown } from "lucide-react";
+import { Pencil, Trash2, Check, ChevronsUpDown, FilterIcon, PlusIcon } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -170,60 +171,47 @@ export const Training = (): JSX.Element => {
   };
 
   return (
-    <div className="flex w-full h-[calc(100vh-67px)]" data-testid="page-training">
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header — title, Filters button, + New Entry */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-white dark:bg-gray-900">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100" data-testid="text-page-title">
-              Training Needs
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Aggregated from Recruitment, Appraisal, Promotion and Others
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setFiltersOpen((v) => !v)}
-              data-testid="button-toggle-filters"
-            >
-              <SlidersHorizontal className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-            <Button
-              onClick={() => setDialog({ kind: "new" })}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              data-testid="button-new-entry"
-            >
-              <Plus className="h-4 w-4 mr-2" /> New Entry
-            </Button>
-          </div>
+    <div className="flex flex-col h-full" data-testid="page-training">
+      {/* Header — standard SectionTitleComponents (matches Crew Database) */}
+      <SectionTitleComponents title="Training Needs">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
+            onClick={() => setFiltersOpen((v) => !v)}
+            data-testid="button-toggle-filters"
+          >
+            <FilterIcon className="h-3 w-3 mr-1" />
+            Filters
+          </Button>
+          <Button
+            className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
+            onClick={() => setDialog({ kind: "new" })}
+            data-testid="button-new-entry"
+          >
+            <PlusIcon className="h-3 w-3 mr-1" />
+            New Entry
+          </Button>
         </div>
+      </SectionTitleComponents>
 
-        {/* Filter bar — Search Name, Source, Rank, Status, Apply, Clear */}
-        {filtersOpen && (
-          <div className="flex flex-wrap items-end gap-3 px-6 py-3 border-b bg-gray-50 dark:bg-gray-800/40" data-testid="filter-bar">
-            <div className="flex-1 min-w-[220px] max-w-md">
-              <Label className="text-xs text-gray-600 dark:text-gray-300">Search Name</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Crew name..."
-                  className="pl-9"
-                  value={draftFilters.searchName}
-                  onChange={(e) => setDraft("searchName", e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleApply(); }}
-                  data-testid="input-search-name"
-                />
-              </div>
-            </div>
+      {/* Filter bar — Crew-Database compact style */}
+      {filtersOpen && (
+        <div className="bg-white border border-[#e1e8ed] rounded-md px-3 py-2 mb-3" data-testid="filter-bar">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search Name..."
+              className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] flex-1 min-w-[180px] max-w-[260px]"
+              value={draftFilters.searchName}
+              onChange={(e) => setDraft("searchName", e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleApply(); }}
+              data-testid="input-search-name"
+            />
 
-            <div className="w-[180px]">
-              <Label className="text-xs text-gray-600 dark:text-gray-300">Source</Label>
+            <div className="shrink-0 w-[140px]">
               <Select value={draftFilters.source} onValueChange={(v) => setDraft("source", v)}>
-                <SelectTrigger data-testid="select-source-filter">
-                  <SelectValue />
+                <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-source-filter">
+                  <SelectValue placeholder="All Sources" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sources</SelectItem>
@@ -234,11 +222,10 @@ export const Training = (): JSX.Element => {
               </Select>
             </div>
 
-            <div className="w-[180px]">
-              <Label className="text-xs text-gray-600 dark:text-gray-300">Rank</Label>
+            <div className="shrink-0 w-[140px]">
               <Select value={draftFilters.rank} onValueChange={(v) => setDraft("rank", v)}>
-                <SelectTrigger data-testid="select-rank-filter">
-                  <SelectValue />
+                <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-rank-filter">
+                  <SelectValue placeholder="All Ranks" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="all">All Ranks</SelectItem>
@@ -249,11 +236,10 @@ export const Training = (): JSX.Element => {
               </Select>
             </div>
 
-            <div className="w-[180px]">
-              <Label className="text-xs text-gray-600 dark:text-gray-300">Status</Label>
+            <div className="shrink-0 w-[140px]">
               <Select value={draftFilters.status} onValueChange={(v) => setDraft("status", v)}>
-                <SelectTrigger data-testid="select-status-filter">
-                  <SelectValue />
+                <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-status-filter">
+                  <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
@@ -265,108 +251,99 @@ export const Training = (): JSX.Element => {
             </div>
 
             <Button
+              className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] px-4 shrink-0"
               onClick={handleApply}
-              className="bg-[#16569e] hover:bg-[#114a87] text-white"
               data-testid="button-apply-filters"
             >
               Apply
             </Button>
             <Button
               variant="outline"
+              className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
               onClick={handleClear}
               data-testid="button-clear-filters"
             >
               Clear
             </Button>
 
-            <div className="text-xs text-gray-500 ml-auto self-end" data-testid="text-row-count">
+            <div className="text-xs text-gray-500 ml-auto" data-testid="text-row-count">
               {filtered.length} of {rows.length}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Table — column order per spec ends with Target/Compl. Date, Status, Actions */}
-        <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800 text-xs uppercase text-gray-600 dark:text-gray-300">
-              <tr>
-                <th className="px-3 py-2 text-left w-12">S No.</th>
-                <th className="px-3 py-2 text-left">Source</th>
-                <th className="px-3 py-2 text-left">Name</th>
-                <th className="px-3 py-2 text-left">Rank</th>
-                <th className="px-3 py-2 text-left">Training</th>
-                <th className="px-3 py-2 text-left">Training (DB)</th>
-                <th className="px-3 py-2 text-left">Identified By</th>
-                <th className="px-3 py-2 text-left">Category</th>
-                <th className="px-3 py-2 text-left">Target or Compl. Date</th>
-                <th className="px-3 py-2 text-left">Status</th>
-                <th className="px-3 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading && (
-                <tr><td colSpan={11} className="p-8 text-center text-gray-400">Loading...</td></tr>
-              )}
-              {!isLoading && filtered.length === 0 && (
-                <tr><td colSpan={11} className="p-8 text-center text-gray-400" data-testid="text-empty">No training needs found.</td></tr>
-              )}
-              {filtered.map((r, idx) => (
-                <tr
-                  key={`${r.source}-${r.sourceRefUuid}`}
-                  className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30"
-                  data-testid={`row-need-${r.sourceRefUuid}`}
-                >
-                  <td className="px-3 py-2 text-gray-500" data-testid={`text-sno-${r.sourceRefUuid}`}>{idx + 1}</td>
-                  <td className="px-3 py-2">
-                    <Badge className={`${sourceColor(r.source)} text-xs font-medium`}>{r.source}</Badge>
-                  </td>
-                  <td className="px-3 py-2" data-testid={`text-name-${r.sourceRefUuid}`}>{r.name || "-"}</td>
-                  <td className="px-3 py-2">{r.rank || "-"}</td>
-                  <td className="px-3 py-2">{r.training || "-"}</td>
-                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{r.correspondingInDb || "-"}</td>
-                  <td className="px-3 py-2">{r.identifiedBy || "-"}</td>
-                  <td className="px-3 py-2">{r.category || "-"}</td>
-                  <td className="px-3 py-2">{r.targetDate || "-"}</td>
-                  <td className="px-3 py-2">{r.status || "-"}</td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
+      {/* Table — column order per spec ends with Target/Compl. Date, Status, Actions */}
+      <div className="flex-1 overflow-auto bg-white border border-[#e1e8ed] rounded-md">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800 text-xs uppercase text-gray-600 dark:text-gray-300">
+            <tr>
+              <th className="px-3 py-2 text-left w-12">S No.</th>
+              <th className="px-3 py-2 text-left">Source</th>
+              <th className="px-3 py-2 text-left">Name</th>
+              <th className="px-3 py-2 text-left">Rank</th>
+              <th className="px-3 py-2 text-left">Training</th>
+              <th className="px-3 py-2 text-left">Training (DB)</th>
+              <th className="px-3 py-2 text-left">Identified By</th>
+              <th className="px-3 py-2 text-left">Category</th>
+              <th className="px-3 py-2 text-left">Target or Compl. Date</th>
+              <th className="px-3 py-2 text-left">Status</th>
+              <th className="px-3 py-2 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading && (
+              <tr><td colSpan={11} className="p-8 text-center text-gray-400">Loading...</td></tr>
+            )}
+            {!isLoading && filtered.length === 0 && (
+              <tr><td colSpan={11} className="p-8 text-center text-gray-400" data-testid="text-empty">No training needs found.</td></tr>
+            )}
+            {filtered.map((r, idx) => (
+              <tr
+                key={`${r.source}-${r.sourceRefUuid}`}
+                className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30"
+                data-testid={`row-need-${r.sourceRefUuid}`}
+              >
+                <td className="px-3 py-2 text-gray-500" data-testid={`text-sno-${r.sourceRefUuid}`}>{idx + 1}</td>
+                <td className="px-3 py-2">
+                  <Badge className={`${sourceColor(r.source)} text-xs font-medium`}>{r.source}</Badge>
+                </td>
+                <td className="px-3 py-2" data-testid={`text-name-${r.sourceRefUuid}`}>{r.name || "-"}</td>
+                <td className="px-3 py-2">{r.rank || "-"}</td>
+                <td className="px-3 py-2">{r.training || "-"}</td>
+                <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{r.correspondingInDb || "-"}</td>
+                <td className="px-3 py-2">{r.identifiedBy || "-"}</td>
+                <td className="px-3 py-2">{r.category || "-"}</td>
+                <td className="px-3 py-2">{r.targetDate || "-"}</td>
+                <td className="px-3 py-2">{r.status || "-"}</td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setDialog({ kind: "edit", row: r })}
+                    data-testid={`button-edit-${r.sourceRefUuid}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  {r.editable === "full" && (
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={() => setDialog({ kind: "edit", row: r })}
-                      data-testid={`button-edit-${r.sourceRefUuid}`}
+                      onClick={() => {
+                        if (confirm("Delete this training need?")) {
+                          deleteMutation.mutate(r.sourceRefUuid);
+                        }
+                      }}
+                      data-testid={`button-delete-${r.sourceRefUuid}`}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
-                    {r.editable === "full" && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          if (confirm("Delete this training need?")) {
-                            deleteMutation.mutate(r.sourceRefUuid);
-                          }
-                        }}
-                        data-testid={`button-delete-${r.sourceRefUuid}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Right vertical static tabs */}
-      <div className="w-12 border-l bg-gray-50 dark:bg-gray-800/40 flex flex-col items-center pt-4 gap-2">
-        <div className="rotate-180 [writing-mode:vertical-rl] text-xs font-medium text-gray-600 dark:text-gray-300 px-1 py-2 cursor-default" data-testid="tab-columns">
-          Columns
-        </div>
-        <div className="rotate-180 [writing-mode:vertical-rl] text-xs font-medium text-gray-600 dark:text-gray-300 px-1 py-2 cursor-default" data-testid="tab-filters">
-          Filters
-        </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {dialog.kind !== "closed" && (
