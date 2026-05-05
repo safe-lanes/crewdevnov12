@@ -46,6 +46,8 @@ type AggregatedRow = {
   targetDate: string | null;
   comments: string | null;
   editable: "limited" | "full";
+  crewMemberId: string | null;
+  rankId: string | null;
 };
 
 type CompanyTrainingLookup = {
@@ -488,16 +490,13 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
   const row = mode.kind === "edit" ? mode.row : null;
   const isLimited = !!row && row.editable === "limited";
 
-  // Source-specific hard disables for sourced rows (deterministic — no silent drops)
-  const statusDisabled = isLimited && row?.source === "Recruitment";
-  const commentsDisabled = isLimited && row?.source === "Promotion";
-
   const [form, setForm] = useState<FormState>({
     sourceLabel: row?.source || "Others",
-    crewMemberId: "",
+    // Preserve linkage fields on edit so PATCH does not null them
+    crewMemberId: row?.crewMemberId || "",
     name: row?.name || "",
     rank: row?.rank || "",
-    rankId: "",
+    rankId: row?.rankId || "",
     training: row?.training || "",
     correspondingInDb: row?.correspondingInDb || "",
     identifiedBy: row?.identifiedBy || "",
@@ -554,14 +553,12 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
           row.source === "Promotion" ? "promotion" : null;
         if (!sourceKey) throw new Error("Unknown source");
 
-        // Only send fields actually persisted by the source — disabled fields are omitted
-        const payload: { status?: string | null; targetDate?: string | null; comments?: string | null } = {
+        // All three sourced types persist Status, Target/Compl. Date and Comments
+        await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, {
+          status: form.status || null,
           targetDate: form.targetDate || null,
-        };
-        if (!statusDisabled) payload.status = form.status || null;
-        if (!commentsDisabled) payload.comments = form.comments || null;
-
-        await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, payload);
+          comments: form.comments || null,
+        });
       }
     },
     onSuccess: () => {
@@ -699,7 +696,6 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             <Select
               value={form.status || "__none"}
               onValueChange={(v) => set("status", v === "__none" ? "" : v)}
-              disabled={statusDisabled}
             >
               <SelectTrigger data-testid="select-status"><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>
@@ -757,7 +753,6 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
               value={form.comments}
               onChange={(e) => set("comments", e.target.value)}
               rows={3}
-              disabled={commentsDisabled}
               data-testid="input-comments"
             />
           </div>
@@ -765,9 +760,9 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
 
         {isLimited && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            This row is sourced from {row?.source}. Editable fields are limited to
-            {statusDisabled ? "" : " Status,"} Target / Compl. Date{commentsDisabled ? "" : " and Comments"}.
-            Other fields are disabled and must be edited at the source record.
+            This row is sourced from {row?.source}. Only Status, Target / Compl. Date and Comments
+            are editable here — they are written back to the source record. Other fields must be
+            edited at the source.
           </p>
         )}
 

@@ -97,6 +97,7 @@ export const promoTrainingNeedsV2 = pgTable("promo_training_needs_v2", {
   category: text("category"),
   status: text("status"),
   completionDate: text("completion_date"),
+  comments: text("comments"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
