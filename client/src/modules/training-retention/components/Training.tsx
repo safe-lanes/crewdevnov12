@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, SlidersHorizontal, Check, ChevronsUpDown } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 type AggregatedRow = {
   source: string;
@@ -78,6 +88,9 @@ const CATEGORY_OPTIONS = ["Mandatory", "Recommended", "Optional", "Other"];
 export const Training = (): JSX.Element => {
   const { toast } = useToast();
 
+  // Filter visibility (Filters button in header)
+  const [filtersOpen, setFiltersOpen] = useState(true);
+
   // Two filter states: draft = what the user is editing, applied = what filters the table.
   const [draftFilters, setDraftFilters] = useState<FilterState>(EMPTY_FILTER);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTER);
@@ -113,7 +126,6 @@ export const Training = (): JSX.Element => {
     },
   });
 
-  // Distinct source labels (built-in + any custom Others labels) and ranks present in the data
   const distinctSources = useMemo<string[]>(() => {
     const set = new Set<string>(["Recruitment", "Appraisal", "Promotion", "Others"]);
     rows.forEach((r) => set.add(r.source));
@@ -158,7 +170,7 @@ export const Training = (): JSX.Element => {
   return (
     <div className="flex w-full h-[calc(100vh-67px)]" data-testid="page-training">
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
+        {/* Header — title, Filters button, + New Entry */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-white dark:bg-gray-900">
           <div>
             <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100" data-testid="text-page-title">
@@ -168,98 +180,110 @@ export const Training = (): JSX.Element => {
               Aggregated from Recruitment, Appraisal, Promotion and Others
             </p>
           </div>
-          <Button
-            onClick={() => setDialog({ kind: "new" })}
-            className="bg-[#16569e] hover:bg-[#114a87] text-white"
-            data-testid="button-new-entry"
-          >
-            <Plus className="h-4 w-4 mr-2" /> New Entry
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setFiltersOpen((v) => !v)}
+              data-testid="button-toggle-filters"
+            >
+              <SlidersHorizontal className="h-4 w-4 mr-2" />
+              Filters
+            </Button>
+            <Button
+              onClick={() => setDialog({ kind: "new" })}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              data-testid="button-new-entry"
+            >
+              <Plus className="h-4 w-4 mr-2" /> New Entry
+            </Button>
+          </div>
         </div>
 
         {/* Filter bar — Search Name, Source, Rank, Status, Apply, Clear */}
-        <div className="flex flex-wrap items-end gap-3 px-6 py-3 border-b bg-gray-50 dark:bg-gray-800/40">
-          <div className="flex-1 min-w-[220px] max-w-md">
-            <Label className="text-xs text-gray-600 dark:text-gray-300">Search Name</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Crew name..."
-                className="pl-9"
-                value={draftFilters.searchName}
-                onChange={(e) => setDraft("searchName", e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleApply(); }}
-                data-testid="input-search-name"
-              />
+        {filtersOpen && (
+          <div className="flex flex-wrap items-end gap-3 px-6 py-3 border-b bg-gray-50 dark:bg-gray-800/40" data-testid="filter-bar">
+            <div className="flex-1 min-w-[220px] max-w-md">
+              <Label className="text-xs text-gray-600 dark:text-gray-300">Search Name</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Crew name..."
+                  className="pl-9"
+                  value={draftFilters.searchName}
+                  onChange={(e) => setDraft("searchName", e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleApply(); }}
+                  data-testid="input-search-name"
+                />
+              </div>
+            </div>
+
+            <div className="w-[180px]">
+              <Label className="text-xs text-gray-600 dark:text-gray-300">Source</Label>
+              <Select value={draftFilters.source} onValueChange={(v) => setDraft("source", v)}>
+                <SelectTrigger data-testid="select-source-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  {distinctSources.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-[180px]">
+              <Label className="text-xs text-gray-600 dark:text-gray-300">Rank</Label>
+              <Select value={draftFilters.rank} onValueChange={(v) => setDraft("rank", v)}>
+                <SelectTrigger data-testid="select-rank-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px]">
+                  <SelectItem value="all">All Ranks</SelectItem>
+                  {distinctRanks.map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-[180px]">
+              <Label className="text-xs text-gray-600 dark:text-gray-300">Status</Label>
+              <Select value={draftFilters.status} onValueChange={(v) => setDraft("status", v)}>
+                <SelectTrigger data-testid="select-status-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {STATUS_OPTIONS.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              onClick={handleApply}
+              className="bg-[#16569e] hover:bg-[#114a87] text-white"
+              data-testid="button-apply-filters"
+            >
+              Apply
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleClear}
+              data-testid="button-clear-filters"
+            >
+              Clear
+            </Button>
+
+            <div className="text-xs text-gray-500 ml-auto self-end" data-testid="text-row-count">
+              {filtered.length} of {rows.length}
             </div>
           </div>
+        )}
 
-          <div className="w-[180px]">
-            <Label className="text-xs text-gray-600 dark:text-gray-300">Source</Label>
-            <Select value={draftFilters.source} onValueChange={(v) => setDraft("source", v)}>
-              <SelectTrigger data-testid="select-source-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sources</SelectItem>
-                {distinctSources.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="w-[180px]">
-            <Label className="text-xs text-gray-600 dark:text-gray-300">Rank</Label>
-            <Select value={draftFilters.rank} onValueChange={(v) => setDraft("rank", v)}>
-              <SelectTrigger data-testid="select-rank-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-[280px]">
-                <SelectItem value="all">All Ranks</SelectItem>
-                {distinctRanks.map((r) => (
-                  <SelectItem key={r} value={r}>{r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="w-[180px]">
-            <Label className="text-xs text-gray-600 dark:text-gray-300">Status</Label>
-            <Select value={draftFilters.status} onValueChange={(v) => setDraft("status", v)}>
-              <SelectTrigger data-testid="select-status-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {STATUS_OPTIONS.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button
-            onClick={handleApply}
-            className="bg-[#16569e] hover:bg-[#114a87] text-white"
-            data-testid="button-apply-filters"
-          >
-            Apply
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleClear}
-            data-testid="button-clear-filters"
-          >
-            Clear
-          </Button>
-
-          <div className="text-xs text-gray-500 ml-auto self-end" data-testid="text-row-count">
-            {filtered.length} of {rows.length}
-          </div>
-        </div>
-
-        {/* Table */}
+        {/* Table — column order per spec ends with Target/Compl. Date, Status, Actions */}
         <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800 text-xs uppercase text-gray-600 dark:text-gray-300">
@@ -272,18 +296,17 @@ export const Training = (): JSX.Element => {
                 <th className="px-3 py-2 text-left">Training (DB)</th>
                 <th className="px-3 py-2 text-left">Identified By</th>
                 <th className="px-3 py-2 text-left">Category</th>
-                <th className="px-3 py-2 text-left">Status</th>
                 <th className="px-3 py-2 text-left">Target or Compl. Date</th>
-                <th className="px-3 py-2 text-left">Comments</th>
+                <th className="px-3 py-2 text-left">Status</th>
                 <th className="px-3 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={12} className="p-8 text-center text-gray-400">Loading...</td></tr>
+                <tr><td colSpan={11} className="p-8 text-center text-gray-400">Loading...</td></tr>
               )}
               {!isLoading && filtered.length === 0 && (
-                <tr><td colSpan={12} className="p-8 text-center text-gray-400" data-testid="text-empty">No training needs found.</td></tr>
+                <tr><td colSpan={11} className="p-8 text-center text-gray-400" data-testid="text-empty">No training needs found.</td></tr>
               )}
               {filtered.map((r, idx) => (
                 <tr
@@ -301,9 +324,8 @@ export const Training = (): JSX.Element => {
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{r.correspondingInDb || "-"}</td>
                   <td className="px-3 py-2">{r.identifiedBy || "-"}</td>
                   <td className="px-3 py-2">{r.category || "-"}</td>
-                  <td className="px-3 py-2">{r.status || "-"}</td>
                   <td className="px-3 py-2">{r.targetDate || "-"}</td>
-                  <td className="px-3 py-2 max-w-[200px] truncate" title={r.comments || ""}>{r.comments || "-"}</td>
+                  <td className="px-3 py-2">{r.status || "-"}</td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
                     <Button
                       size="icon"
@@ -359,7 +381,82 @@ export const Training = (): JSX.Element => {
 };
 
 // ============================================================================
-// Dialog (handles both New and Edit) — 3-column layout per spec
+// Searchable Combobox for Training (DB)
+// ============================================================================
+
+type ComboboxProps = {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  disabled?: boolean;
+  testId?: string;
+};
+
+function SearchableCombobox({ value, onChange, options, placeholder, disabled, testId }: ComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className="w-full justify-between font-normal"
+          data-testid={testId}
+        >
+          <span className={cn("truncate", !selected && "text-muted-foreground")}>
+            {selected ? selected.label : placeholder || "Select..."}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search..." data-testid={testId ? `${testId}-input` : undefined} />
+          <CommandList>
+            <CommandEmpty>No results.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__none"
+                onSelect={() => {
+                  onChange("");
+                  setOpen(false);
+                }}
+              >
+                <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                — None —
+              </CommandItem>
+              {options.map((o) => (
+                <CommandItem
+                  key={o.value}
+                  value={o.label}
+                  onSelect={() => {
+                    onChange(o.value);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn("mr-2 h-4 w-4", value === o.value ? "opacity-100" : "opacity-0")} />
+                  {o.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ============================================================================
+// Add / Edit dialog
+// Layout:
+//   Row 1: Name | Rank | Target or Compl. Date
+//   Row 2: Training | Training (DB, searchable) | Status
+//   Row 3: Identified By | Category | Source label
+//   Row 4: Comments (full width)
 // ============================================================================
 
 type DialogProps = {
@@ -391,6 +488,10 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
   const row = mode.kind === "edit" ? mode.row : null;
   const isLimited = !!row && row.editable === "limited";
 
+  // Source-specific hard disables for sourced rows (deterministic — no silent drops)
+  const statusDisabled = isLimited && row?.source === "Recruitment";
+  const commentsDisabled = isLimited && row?.source === "Promotion";
+
   const [form, setForm] = useState<FormState>({
     sourceLabel: row?.source || "Others",
     crewMemberId: "",
@@ -408,6 +509,11 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
+
+  const trainingDbOptions = useMemo(
+    () => companyTrainings.map((t) => ({ value: t.trainingLabel, label: t.trainingLabel })),
+    [companyTrainings]
+  );
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -447,11 +553,15 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
           row.source === "Appraisal" ? "appraisal" :
           row.source === "Promotion" ? "promotion" : null;
         if (!sourceKey) throw new Error("Unknown source");
-        await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, {
-          status: form.status || null,
+
+        // Only send fields actually persisted by the source — disabled fields are omitted
+        const payload: { status?: string | null; targetDate?: string | null; comments?: string | null } = {
           targetDate: form.targetDate || null,
-          comments: form.comments || null,
-        });
+        };
+        if (!statusDisabled) payload.status = form.status || null;
+        if (!commentsDisabled) payload.comments = form.comments || null;
+
+        await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, payload);
       }
     },
     onSuccess: () => {
@@ -470,24 +580,12 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
       <DialogContent className="max-w-3xl" data-testid="dialog-training-need">
         <DialogHeader>
           <DialogTitle>
-            {isNew ? "New Training Need" : `Edit Training Need (${row?.source})`}
+            {isNew ? "Add New Training" : `Edit Training (${row?.source})`}
           </DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-4 py-2">
-          {/* Source label — editable on Others, read-only otherwise */}
-          <div>
-            <Label className="text-xs">Source</Label>
-            <Input
-              value={form.sourceLabel}
-              onChange={(e) => set("sourceLabel", e.target.value)}
-              disabled={isLimited}
-              placeholder="Others / Supt Visit / ..."
-              data-testid="input-source-label"
-            />
-          </div>
-
-          {/* Name */}
+          {/* Row 1: Name | Rank | Target or Compl. Date */}
           <div>
             <Label className="text-xs">Name</Label>
             {isLimited ? (
@@ -503,8 +601,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
                   const c = crew.find((x) => x.empNo === v);
                   if (c) {
                     set("crewMemberId", c.empNo);
-                    const fullName = `${c.firstName || ""} ${c.familyName || ""}`.trim();
-                    set("name", fullName);
+                    set("name", `${c.firstName || ""} ${c.familyName || ""}`.trim());
                     set("rank", c.presentRank || "");
                   }
                 }}
@@ -522,7 +619,6 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             )}
           </div>
 
-          {/* Rank */}
           <div>
             <Label className="text-xs">Rank</Label>
             {isLimited ? (
@@ -552,7 +648,17 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             )}
           </div>
 
-          {/* Manual name field appears when not bound to a crew member */}
+          <div>
+            <Label className="text-xs">Target or Compl. Date</Label>
+            <Input
+              type="date"
+              value={form.targetDate}
+              onChange={(e) => set("targetDate", e.target.value)}
+              data-testid="input-target-date"
+            />
+          </div>
+
+          {/* Manual name field — appears only when not bound to a crew member */}
           {!isLimited && !form.crewMemberId && (
             <div className="col-span-3">
               <Label className="text-xs">Name (manual)</Label>
@@ -565,7 +671,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             </div>
           )}
 
-          {/* Training (free text) */}
+          {/* Row 2: Training | Training (DB, searchable) | Status */}
           <div>
             <Label className="text-xs">Training</Label>
             <Input
@@ -576,28 +682,36 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             />
           </div>
 
-          {/* Training (DB) */}
           <div>
             <Label className="text-xs">Training (in DB)</Label>
-            {isLimited ? (
-              <Input value={form.correspondingInDb} disabled data-testid="input-training-db" />
-            ) : (
-              <Select
-                value={form.correspondingInDb || "__none"}
-                onValueChange={(v) => set("correspondingInDb", v === "__none" ? "" : v)}
-              >
-                <SelectTrigger data-testid="select-training-db"><SelectValue placeholder="Select" /></SelectTrigger>
-                <SelectContent className="max-h-[280px]">
-                  <SelectItem value="__none">— None —</SelectItem>
-                  {companyTrainings.map((t) => (
-                    <SelectItem key={t.ctUuid} value={t.trainingLabel}>{t.trainingLabel}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <SearchableCombobox
+              value={form.correspondingInDb}
+              onChange={(v) => set("correspondingInDb", v)}
+              options={trainingDbOptions}
+              placeholder="Search trainings..."
+              disabled={isLimited}
+              testId="combobox-training-db"
+            />
           </div>
 
-          {/* Identified By */}
+          <div>
+            <Label className="text-xs">Status</Label>
+            <Select
+              value={form.status || "__none"}
+              onValueChange={(v) => set("status", v === "__none" ? "" : v)}
+              disabled={statusDisabled}
+            >
+              <SelectTrigger data-testid="select-status"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— None —</SelectItem>
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Row 3: Identified By | Category | Source label */}
           <div>
             <Label className="text-xs">Identified By</Label>
             <Input
@@ -608,7 +722,6 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             />
           </div>
 
-          {/* Category */}
           <div>
             <Label className="text-xs">Category</Label>
             <Select
@@ -626,44 +739,25 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             </Select>
           </div>
 
-          {/* Status — editable for all */}
           <div>
-            <Label className="text-xs">Status</Label>
-            <Select
-              value={form.status || "__none"}
-              onValueChange={(v) => set("status", v === "__none" ? "" : v)}
-            >
-              <SelectTrigger data-testid="select-status"><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">— None —</SelectItem>
-                {STATUS_OPTIONS.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Target or Compl. Date — editable for all */}
-          <div>
-            <Label className="text-xs">Target or Compl. Date</Label>
+            <Label className="text-xs">Source</Label>
             <Input
-              type="date"
-              value={form.targetDate}
-              onChange={(e) => set("targetDate", e.target.value)}
-              data-testid="input-target-date"
+              value={form.sourceLabel}
+              onChange={(e) => set("sourceLabel", e.target.value)}
+              disabled={isLimited}
+              placeholder="Others / Supt Visit / ..."
+              data-testid="input-source-label"
             />
           </div>
 
-          {/* Spacer to keep grid even on the row holding date */}
-          <div />
-
-          {/* Comments — editable for all */}
+          {/* Row 4: Comments (full width) */}
           <div className="col-span-3">
             <Label className="text-xs">Comments</Label>
             <Textarea
               value={form.comments}
               onChange={(e) => set("comments", e.target.value)}
               rows={3}
+              disabled={commentsDisabled}
               data-testid="input-comments"
             />
           </div>
@@ -671,9 +765,9 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
 
         {isLimited && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            This row comes from {row?.source}. Only Status, Target / Compl. Date and Comments can be edited here.
-            {row?.source === "Recruitment" && " (Recruitment source has no Status field — Status changes will not be saved.)"}
-            {row?.source === "Promotion" && " (Promotion source has no Comments field — Comments will not be saved.)"}
+            This row is sourced from {row?.source}. Editable fields are limited to
+            {statusDisabled ? "" : " Status,"} Target / Compl. Date{commentsDisabled ? "" : " and Comments"}.
+            Other fields are disabled and must be edited at the source record.
           </p>
         )}
 
