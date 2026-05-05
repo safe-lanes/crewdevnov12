@@ -820,6 +820,46 @@ export const RHRecordingForm = ({
     return cellsMap;
   }, [crewVariableTasks, selectedPeriod]);
 
+  // Compute variable task comments map for each day
+  // This extracts comments from variable tasks to display in the RH Recording Form
+  const variableTaskCommentsMap = useMemo(() => {
+    if (!selectedPeriod || crewVariableTasks.length === 0) return new Map<number, string[]>();
+
+    const commentsMap = new Map<number, string[]>();
+    const tasksInCommentOrder = [...crewVariableTasks].sort((a, b) => {
+      const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+      if (aCreated !== bCreated) {
+        return aCreated - bCreated;
+      }
+
+      return String(a.startDateTimeSort || '').localeCompare(String(b.startDateTimeSort || ''));
+    });
+
+    for (const task of tasksInCommentOrder) {
+      // Parse the task to get the day(s) it applies to
+      const cells = parseVariableTaskToCells(task, selectedPeriod);
+      for (const cell of cells) {
+        const comment = task.comments?.trim();
+        if (comment) {
+          const existing = commentsMap.get(cell.day) || [];
+          const alreadyExists = existing.some(c => c.trim().toLowerCase() === comment.toLowerCase());
+          if (!alreadyExists) {
+            commentsMap.set(cell.day, [...existing, comment]);
+          }
+        }
+      }
+    }
+    return commentsMap;
+  }, [crewVariableTasks, selectedPeriod]);
+
+  // Helper to safely extract day without timezone issues
+  const getDay = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    return parseInt(dateStr.split('-')[2], 10);
+  };
+
   // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms)
   // Note: isPlan is set to true (Plan mode) since new records default to planning mode
   useEffect(() => {
@@ -850,16 +890,47 @@ export const RHRecordingForm = ({
         
         const restHours = newHours.filter(h => h === '').length / 2;
         const workHours = 24 - restHours;
+
+        // Get comments from variable tasks if available
+        const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
+
+        // derive valid date range
+        const signOnDay = getDay(signOnDate) ?? 1;
+        const signOffDay = getDay(signOffDate) ?? 31;
+
+        // check if this day is within range
+        const isWithinRange = record.day >= signOnDay && record.day <= signOffDay;
+
+        // apply strict isolation
+        const baseComments = (record.comments || '')
+          .split(',')
+          .map(c => c.trim())
+          .filter(Boolean);
+
+        // Remove variable task comments if already present (case-insensitive)
+        const normalizedVars = new Set(variableTaskComments.map(c => c.trim().toLowerCase()));
+
+        const cleanedBase = normalizedVars.size > 0
+          ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
+          : baseComments;
+
+        const finalComments = isWithinRange
+          ? [...cleanedBase, ...variableTaskComments]
+            .filter(Boolean)
+            .join(', ')
+          : '';
+
         return {
           ...record,
           hours: newHours,
           isPlan: true,
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
+          comments: finalComments,
         };
       });
     });
-  }, [fixedTask, open, existingRecord, variableTaskCellsMap]);
+  }, [fixedTask, open, existingRecord, variableTaskCellsMap, variableTaskCommentsMap, signOnDate, signOffDate]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
@@ -905,7 +976,36 @@ export const RHRecordingForm = ({
           
           const restHours = hours ? hours.filter((h: string) => h === '').length / 2 : 24;
           const workHours = 24 - restHours;
-          
+
+          // Get comments from variable tasks if available
+          const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
+
+          // derive valid date range
+          const signOnDay = getDay(signOnDate) ?? 1;
+          const signOffDay = getDay(signOffDate) ?? 31;
+
+          // check if this day is within range
+          const isWithinRange = record.day >= signOnDay && record.day <= signOffDay;
+
+          // apply strict isolation
+          const baseComments = (record.comments || '')
+            .split(',')
+            .map(c => c.trim())
+            .filter(Boolean);
+
+          // Remove variable task comments if already present (case-insensitive)
+          const normalizedVars = new Set(variableTaskComments.map(c => c.trim().toLowerCase()));
+
+          const cleanedBase = normalizedVars.size > 0
+            ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
+            : baseComments;
+
+          const finalComments = isWithinRange
+            ? [...cleanedBase, ...variableTaskComments]
+              .filter(Boolean)
+              .join(', ')
+            : '';
+
           return {
             ...record,
             hours,
@@ -919,6 +1019,7 @@ export const RHRecordingForm = ({
             anyPeriodWork7day: 0,
             violations: [],
             violationDiagnostics: [],
+            comments: finalComments,
           };
         });
         
@@ -930,7 +1031,7 @@ export const RHRecordingForm = ({
     } else if (isError || existingRecord === undefined) {
       console.log('No existing record found - using clean initialized state');
     }
-  }, [existingRecord, isError, open, parsedDateLineAdjustments, fixedTask, variableTaskCellsMap]);
+  }, [existingRecord, isError, open, parsedDateLineAdjustments, fixedTask, variableTaskCellsMap, variableTaskCommentsMap, signOnDate, signOffDate]);
 
   // Helper function to compute violatingRanges for hover highlighting
   const computeViolatingRanges = (
@@ -2449,7 +2550,7 @@ export const RHRecordingForm = ({
                   <td className="border border-gray-300" style={{ padding: '2px' }}>
                     <input
                       type="text"
-                      value={record.comments}
+                      value={isDisabled ? '' : record.comments}
                       onChange={(e) => !isNonEditable && handleCommentsChange(baseIndex, e.target.value)}
                       className={`w-full outline-none bg-transparent px-1 ${isDisabled ? 'cursor-not-allowed' : ''}`}
                       disabled={isNonEditable}

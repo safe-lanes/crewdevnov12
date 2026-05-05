@@ -2166,6 +2166,7 @@ export function VesselModule_v2(): JSX.Element {
                                                         const rankHasSuffix = fullRankName?.includes('_');
                                                         const rankPlanningData = vesselPlanning.find((p: any) => {
                                                             if (p.crewStatus !== 'primary') return false;
+                                                            if (p.isArchived) return false;
                                                             if (rankHasSuffix) {
                                                                 return p.rank === fullRankName;
                                                             }
