@@ -26,7 +26,14 @@ Pattern: **Repository + Service + Controller**. V2 routes under `server/v2/`, sh
 
 ### Client Modules
 All under `client/src/modules/`:
-- `admin/`, `crewing/`, `crew-pool/`, `drugs-alcohol/`, `promotions/`, `recruitment/`, `rest-hours/`, `rotation/`, `vessel/`, `accounts/`
+- `admin/`, `crewing/`, `crew-pool/`, `drugs-alcohol/`, `promotions/`, `recruitment/`, `rest-hours/`, `rotation/`, `vessel/`, `accounts/`, `training-retention/`
+
+### Training Needs Aggregator (Training & Ret. > Training)
+- Backend: `server/v2/training-needs/` (single repository.ts + routes.ts) — mounted at `/api/v2/training-needs`
+- Schema: `shared/v2/training-needs/schema.ts` — `training_needs_other_v2` table for free-form entries
+- Aggregator GET `/` joins 4 sources: `screening_b7_training_items` (Recruitment), `appr_training_followups_v2` (Appraisal), `promo_training_needs_v2` (Promotion), `training_needs_other_v2` (Others)
+- Sourced rows: limited PATCH (status/targetDate/comments only) — Recruitment lacks status column, Promotion lacks comments column (silently dropped)
+- Others rows: full CRUD via `/others` endpoints
 
 ## User Preferences
 - Functional components with hooks, TypeScript strict mode
