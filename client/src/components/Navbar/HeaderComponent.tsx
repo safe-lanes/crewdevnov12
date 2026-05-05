@@ -20,7 +20,8 @@ import {
     Menu,
     X,
     PanelLeft,
-    LogOut
+    LogOut,
+    UsersRound
 } from "lucide-react";
 
 const navItems = [
@@ -110,6 +111,16 @@ const navItems = [
         href: "/rest-hours",
         menuName: "Rest Hours",
         icon: Clock,
+        activeBg: "#5DADE2",
+        activeText: "white",
+        inactiveBg: "#f1f1f1",
+        inactiveText: "#4f5863",
+    },
+    {
+        label: "Training/ Ret.",
+        href: "/training-retention",
+        menuName: "Training & Ret.",
+        icon: UsersRound,
         activeBg: "#5DADE2",
         activeText: "white",
         inactiveBg: "#f1f1f1",
