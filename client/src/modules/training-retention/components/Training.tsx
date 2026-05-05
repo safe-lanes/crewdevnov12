@@ -490,6 +490,12 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
   const row = mode.kind === "edit" ? mode.row : null;
   const isLimited = !!row && row.editable === "limited";
 
+  // Source-specific: per task constraint we do NOT modify source table schemas.
+  //  - screening_b7_training_items has no `status` column → disable for Recruitment.
+  //  - promo_training_needs_v2 has no `comments` column → disable for Promotion.
+  const statusDisabled = isLimited && row?.source === "Recruitment";
+  const commentsDisabled = isLimited && row?.source === "Promotion";
+
   const [form, setForm] = useState<FormState>({
     sourceLabel: row?.source || "Others",
     // Preserve linkage fields on edit so PATCH does not null them
@@ -553,12 +559,14 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
           row.source === "Promotion" ? "promotion" : null;
         if (!sourceKey) throw new Error("Unknown source");
 
-        // All three sourced types persist Status, Target/Compl. Date and Comments
-        await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, {
-          status: form.status || null,
+        // Only send fields the source table can actually persist.
+        const payload: { status?: string | null; targetDate?: string | null; comments?: string | null } = {
           targetDate: form.targetDate || null,
-          comments: form.comments || null,
-        });
+        };
+        if (!statusDisabled) payload.status = form.status || null;
+        if (!commentsDisabled) payload.comments = form.comments || null;
+
+        await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, payload);
       }
     },
     onSuccess: () => {
@@ -696,6 +704,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
             <Select
               value={form.status || "__none"}
               onValueChange={(v) => set("status", v === "__none" ? "" : v)}
+              disabled={statusDisabled}
             >
               <SelectTrigger data-testid="select-status"><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>
@@ -753,6 +762,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
               value={form.comments}
               onChange={(e) => set("comments", e.target.value)}
               rows={3}
+              disabled={commentsDisabled}
               data-testid="input-comments"
             />
           </div>
@@ -760,9 +770,9 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew }: Di
 
         {isLimited && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            This row is sourced from {row?.source}. Only Status, Target / Compl. Date and Comments
-            are editable here — they are written back to the source record. Other fields must be
-            edited at the source.
+            This row is sourced from {row?.source}. Editable fields are limited to
+            {statusDisabled ? "" : " Status,"} Target / Compl. Date{commentsDisabled ? "" : " and Comments"}
+            {" "}— they are written back to the source record. Other fields must be edited at the source.
           </p>
         )}
 

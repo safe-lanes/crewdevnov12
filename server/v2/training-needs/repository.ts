@@ -30,7 +30,6 @@ type RawRecruitmentRow = {
   training: string | null;
   identified_by: string | null;
   category: string | null;
-  status: string | null;
   target_date: string | null;
   comments: string | null;
   name: string | null;
@@ -56,7 +55,6 @@ type RawPromotionRow = {
   category: string | null;
   status: string | null;
   target_date: string | null;
-  comments: string | null;
   name: string | null;
   rank: string | null;
 };
@@ -78,7 +76,6 @@ export class TrainingNeedsRepository {
         b7i.training,
         b7i.identified_by_uuid AS identified_by,
         b7i.category,
-        b7i.status,
         b7i.due_date AS target_date,
         b7i.comments,
         TRIM(CONCAT_WS(' ', rc.first_name, rc.family_name)) AS name,
@@ -115,7 +112,6 @@ export class TrainingNeedsRepository {
         tn.category,
         tn.status,
         tn.completion_date AS target_date,
-        tn.comments,
         TRIM(CONCAT_WS(' ', cm.first_name, cm.family_name)) AS name,
         cm.present_rank AS rank
       FROM promo_training_needs_v2 tn
@@ -142,7 +138,7 @@ export class TrainingNeedsRepository {
         correspondingInDb: null,
         identifiedBy: r.identified_by,
         category: r.category,
-        status: r.status,
+        status: null,
         targetDate: r.target_date,
         comments: r.comments,
         editable: "limited",
@@ -182,7 +178,7 @@ export class TrainingNeedsRepository {
         category: r.category,
         status: r.status,
         targetDate: r.target_date,
-        comments: r.comments,
+        comments: null,
         editable: "limited",
         crewMemberId: null,
         rankId: null,
@@ -217,7 +213,8 @@ export class TrainingNeedsRepository {
     const sets: Partial<typeof screeningB7TrainingItems.$inferInsert> & { updatedAt: Date } = {
       updatedAt: new Date(),
     };
-    if (data.status !== undefined) sets.status = data.status;
+    // NOTE: screening_b7_training_items has no `status` column — silently
+    // no-op'd per task constraint (no schema changes to source modules).
     if (data.targetDate !== undefined) sets.dueDate = data.targetDate;
     if (data.comments !== undefined) sets.comments = data.comments;
     const r = await db
@@ -251,7 +248,8 @@ export class TrainingNeedsRepository {
     };
     if (data.status !== undefined) sets.status = data.status;
     if (data.targetDate !== undefined) sets.completionDate = data.targetDate;
-    if (data.comments !== undefined) sets.comments = data.comments;
+    // NOTE: promo_training_needs_v2 has no `comments` column — silently
+    // no-op'd per task constraint (no schema changes to source modules).
     const r = await db
       .update(promoTrainingNeedsV2)
       .set(sets)

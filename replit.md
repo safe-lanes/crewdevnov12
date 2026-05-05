@@ -32,7 +32,7 @@ All under `client/src/modules/`:
 - Backend: `server/v2/training-needs/` (single repository.ts + routes.ts) — mounted at `/api/v2/training-needs`
 - Schema: `shared/v2/training-needs/schema.ts` — `training_needs_other_v2` table for free-form entries
 - Aggregator GET `/` joins 4 sources: `screening_b7_training_items` (Recruitment), `appr_training_followups_v2` (Appraisal), `promo_training_needs_v2` (Promotion), `training_needs_other_v2` (Others)
-- Sourced rows: limited PATCH (status/targetDate/comments only) — Recruitment lacks status column, Promotion lacks comments column (silently dropped)
+- Sourced rows: limited PATCH (status/targetDate/comments only). Per task constraint, source-table schemas are NOT modified — Recruitment lacks a `status` column and Promotion lacks a `comments` column, so those fields are disabled in the UI for the affected source and are no-op'd server-side.
 - Others rows: full CRUD via `/others` endpoints
 
 ## User Preferences

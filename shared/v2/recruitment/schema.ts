@@ -633,7 +633,6 @@ export const screeningB7TrainingItems = pgTable("screening_b7_training_items", {
   training: text("training"),
   identifiedByUuid: text("identified_by_uuid"),
   category: text("category"),
-  status: text("status"),
   dueDate: text("due_date"),
   comments: text("comments"),
   sortOrder: integer("sort_order").default(0),
