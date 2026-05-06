@@ -532,7 +532,7 @@ function CrewColumn({
   rank: string; 
   onCrewSelect: (crew: { crewUuid: string; name: string; rank: string }) => void; // V2 uses crewUuid
   assignments: Assignment[];
-  currentlyDeployedCrewIds: Set<string>;
+  currentlyDeployedCrewIds: Map<string, string[]>;
   allDeployedAssignments: DeployedCrewAssignment[];
   planDateRange: { start: Date; end: Date };
   selectedVesselIds: string[]; // V2 uses vessel UUIDs
@@ -1021,7 +1021,8 @@ function CrewColumn({
     // suppressed by the `vesselInfo && hasColoredStatus` guard. Re-scan
     // `allDeployedAssignments` for an active sign-on on any selected vessel
     // and surface those vessel names.
-    if (currentlyDeployedCrewIds.has(crewUuid)) {
+    const incumbentMapVessels = currentlyDeployedCrewIds.get(crewUuid);
+    if (incumbentMapVessels) {
       const incumbentVessels: string[] = [];
       allDeployedAssignments.forEach(assignment => {
         if (!selectedVesselIds.includes(assignment.vesselUuid)) return;
@@ -1035,13 +1036,10 @@ function CrewColumn({
       if (incumbentVessels.length > 0) {
         return incumbentVessels.join(', ');
       }
-      // Fall back to whatever vessel names we can resolve from the selected
-      // set so the tooltip never returns null for a colored row.
-      const fallbackNames = selectedVesselIds
-        .map(id => getVesselName(id))
-        .filter((n): n is string => !!n);
-      if (fallbackNames.length > 0) {
-        return fallbackNames.join(', ');
+      // Fall back to the crew-specific vessel names already returned by the
+      // /due-crew endpoint (keyed on this crewUuid), not every selected vessel.
+      if (incumbentMapVessels.length > 0) {
+        return incumbentMapVessels.join(', ');
       }
       return 'Currently deployed';
     }
@@ -2403,9 +2401,22 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     queryKey: ['/api/v2/vessel/planning'],
   });
 
-  // Create Set of currently deployed crew UUIDs for O(1) lookup
+  // Map currently deployed crew UUID → vessel name(s) on the selected vessels.
+  // A Map (instead of a plain Set) lets the tooltip branch in `CrewColumn`
+  // surface the *specific* vessel(s) a red incumbent is on, not just the
+  // fact that they are deployed somewhere among the selected vessels.
+  // `Map.has` works like `Set.has`, so the existing red-coloring lookup
+  // in `getCrewNameColor` is unchanged.
   const currentlyDeployedCrewIds = useMemo(() => {
-    return new Set(existingCrew.map(crew => crew.crewUuid));
+    const map = new Map<string, string[]>();
+    existingCrew.forEach(crew => {
+      const vessels = map.get(crew.crewUuid) ?? [];
+      if (crew.vessel && !vessels.includes(crew.vessel)) {
+        vessels.push(crew.vessel);
+      }
+      map.set(crew.crewUuid, vessels);
+    });
+    return map;
   }, [existingCrew]);
 
   // Vessel UUIDs currently picked in the planning area. `selectedVessels`
