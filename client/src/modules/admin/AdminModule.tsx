@@ -106,6 +106,7 @@ import {
 } from "@/utils/portMasterMapping";
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
 import AccessControlPage from "./AccessControlPage";
+import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
 import { 
   getCategoryLabel,
   getGroupLabel,
@@ -6835,18 +6836,7 @@ const AdminModuleInner = (): JSX.Element => {
     </div>
   );
 
-  const renderApprovalWorkflowModule = () => (
-    <div>
-      <div className="mb-4">
-        <h1
-          className={`font-bold text-black ${currentBreakpoint === 'mobile' ? 'text-xl' : currentBreakpoint === 'tablet' ? 'text-xl' : 'text-2xl'}`}
-          data-testid="text-approval-workflow-title"
-        >
-          Approval Workflow
-        </h1>
-      </div>
-    </div>
-  );
+  const renderApprovalWorkflowModule = () => <ApprovalWorkflowPage />;
 
   const renderDataMastersModule = () => (
     <div>
