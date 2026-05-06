@@ -210,10 +210,8 @@ function computeFilter(query: string): FilterResult | null {
         visible.add(t2.id);
         expanded.add(t2.id);
         anyChildMatch = true;
-        if (anyT3Match && !t2Match) {
-          // Ensure all t3 visible if t2 itself doesn't match; only matched leaves shown
-        } else if (t2Match) {
-          // If t2 matches, show all its t3 children
+        if (t2Match) {
+          // If the sub-module label itself matches, show all its leaves
           t2.children.forEach((t3) => visible.add(t3.id));
         }
       }
