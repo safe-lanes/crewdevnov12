@@ -537,9 +537,9 @@ const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
   const adminAllowedPages = useMemo(() => {
-    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control"];
+    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow"];
     if (permissions.length === 0) return all;
-    const pageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control" };
+    const pageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
     return all.filter(p => canView(pageToMenu[p] || p));
   }, [permissions, canView]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
@@ -6835,6 +6835,19 @@ const AdminModuleInner = (): JSX.Element => {
     </div>
   );
 
+  const renderApprovalWorkflowModule = () => (
+    <div>
+      <div className="mb-4">
+        <h1
+          className={`font-bold text-black ${currentBreakpoint === 'mobile' ? 'text-xl' : currentBreakpoint === 'tablet' ? 'text-xl' : 'text-2xl'}`}
+          data-testid="text-approval-workflow-title"
+        >
+          Approval Workflow
+        </h1>
+      </div>
+    </div>
+  );
+
   const renderDataMastersModule = () => (
     <div>
       {/* Responsive Header Layout */}
@@ -8415,6 +8428,7 @@ const AdminModuleInner = (): JSX.Element => {
         {selectedAdminPage === "masters" && renderDataMastersModule()}
         {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
         {selectedAdminPage === "access-control" && <AccessControlPage />}
+        {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
       </MainLayout>
 
       {/* Main content */}
