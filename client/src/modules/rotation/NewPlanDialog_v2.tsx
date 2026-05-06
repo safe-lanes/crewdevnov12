@@ -1014,15 +1014,23 @@ function CrewColumn({
       return vesselNames.join(', ');
     }
 
-    // Check draft assignments (blue color reason)
-    const draftVessels = new Set(
-      assignments
-        .filter(a => a.crewUuid === crewUuid)
-        .map(a => a.vessel)
-    );
-    
-    if (draftVessels.size > 0) {
-      return Array.from(draftVessels).join(', ');
+    // Check draft assignments (blue/brown color reason).
+    // Fall back to the vessel master lookup when `a.vessel` is missing/empty
+    // so a colored row never produces a null tooltip and gets silently
+    // suppressed by the `vesselInfo && hasColoredStatus` guard below.
+    const draftAssignments = assignments.filter(a => a.crewUuid === crewUuid);
+    if (draftAssignments.length > 0) {
+      const draftVesselNames = new Set<string>();
+      draftAssignments.forEach(a => {
+        const name = (a.vessel && a.vessel.trim()) || (a.vesselUuid ? getVesselName(a.vesselUuid) : '');
+        if (name) draftVesselNames.add(name);
+      });
+      if (draftVesselNames.size > 0) {
+        return Array.from(draftVesselNames).join(', ');
+      }
+      // Colored because of a draft assignment but we couldn't resolve a vessel
+      // name — still return a non-null label so the tooltip renders.
+      return 'Assigned in current draft';
     }
 
     return null;
@@ -1094,74 +1102,82 @@ function CrewColumn({
               {hasActiveFilters ? 'No crew match the filters' : 'No crew available'}
             </div>
           ) : (
-            displayedCrewMembers.map((crew) => (
-              <div
-                key={crew.crewUuid}
-                className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
-                onClick={() => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank })}
-              >
-                <Checkbox 
-                  data-testid={`checkbox-crew-${crew.crewUuid}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank });
-                  }}
-                />
-                <div className="flex-1">
-                  {(() => {
-                    const nameColor = getCrewNameColor(crew.crewUuid);
-                    const vesselInfo = getCrewVesselInfo(crew.crewUuid);
-                    // Show tooltip for purple (deployed awaiting sign on), red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
-                    const hasColoredStatus = nameColor === 'text-purple-600' || nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
-                    const showVesselTooltip = vesselInfo && hasColoredStatus;
-                    
-                    if (showVesselTooltip) {
-                      return (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className={`font-medium text-sm cursor-help ${nameColor}`}>
-                                {crew.fullName}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs">
-                              <div className="text-xs">
-                                <span className="font-medium">Vessel: </span>{vesselInfo}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      );
-                    }
-                    
-                    return (
-                      <div className={`font-medium text-sm ${nameColor}`}>
-                        {crew.fullName}
-                      </div>
-                    );
-                  })()}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="text-xs text-gray-500 mt-1 cursor-help">
-                          {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
+            // Single TooltipProvider for the whole crew list. Previously each
+            // row mounted its own provider, which caused inconsistent open/close
+            // behaviour when hovering between adjacent colored rows of the same
+            // rank (e.g. tooltip would fire for the first colored row but not
+            // for the next one). Hoisting to one provider lets Radix manage
+            // shared delay/skip-delay state across all triggers in the column.
+            <TooltipProvider delayDuration={300} skipDelayDuration={100}>
+              {displayedCrewMembers.map((crew) => {
+                const nameColor = getCrewNameColor(crew.crewUuid);
+                const vesselInfo = getCrewVesselInfo(crew.crewUuid);
+                // Show tooltip for purple (deployed awaiting sign on), red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
+                const hasColoredStatus = nameColor === 'text-purple-600' || nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
+                const showVesselTooltip = !!vesselInfo && hasColoredStatus;
+                const selectCrew = () => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank });
+                return (
+                  <div
+                    key={crew.crewUuid}
+                    className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
+                    onClick={selectCrew}
+                  >
+                    <Checkbox
+                      data-testid={`checkbox-crew-${crew.crewUuid}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        selectCrew();
+                      }}
+                    />
+                    <div className="flex-1">
+                      {showVesselTooltip ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                selectCrew();
+                              }}
+                              data-testid={`button-crew-name-${crew.crewUuid}`}
+                              className={`block w-full text-left font-medium text-sm cursor-help bg-transparent p-0 m-0 border-0 ${nameColor}`}
+                            >
+                              {crew.fullName}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-xs">
+                            <div className="text-xs">
+                              <span className="font-medium">Vessel: </span>{vesselInfo}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <div className={`font-medium text-sm ${nameColor}`}>
+                          {crew.fullName}
                         </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs">
-                        <div className="text-xs space-y-1">
-                          <div><span className="font-medium">Company (Yrs):</span> {crew.experience.company}</div>
-                          <div><span className="font-medium">Rank (Yrs):</span> {crew.experience.rank}</div>
-                          <div><span className="font-medium">Tankers (Yrs):</span> {crew.experience.tankers}</div>
-                          <div><span className="font-medium">OOW (Yrs):</span> {crew.experience.oow}</div>
-                          <div><span className="font-medium">Endorsements:</span> {crew.experience.endorsements || '—'}</div>
-                          <div><span className="font-medium">Next Availability:</span> {crew.nextAvailability ? formatAvailabilityDate(crew.nextAvailability) : '—'}</div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-            ))
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="text-xs text-gray-500 mt-1 cursor-help">
+                            {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs">
+                          <div className="text-xs space-y-1">
+                            <div><span className="font-medium">Company (Yrs):</span> {crew.experience.company}</div>
+                            <div><span className="font-medium">Rank (Yrs):</span> {crew.experience.rank}</div>
+                            <div><span className="font-medium">Tankers (Yrs):</span> {crew.experience.tankers}</div>
+                            <div><span className="font-medium">OOW (Yrs):</span> {crew.experience.oow}</div>
+                            <div><span className="font-medium">Endorsements:</span> {crew.experience.endorsements || '—'}</div>
+                            <div><span className="font-medium">Next Availability:</span> {crew.nextAvailability ? formatAvailabilityDate(crew.nextAvailability) : '—'}</div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                );
+              })}
+            </TooltipProvider>
           )}
         </div>
       </div>
