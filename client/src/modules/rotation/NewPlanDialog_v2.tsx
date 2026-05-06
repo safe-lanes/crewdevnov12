@@ -1014,6 +1014,38 @@ function CrewColumn({
       return vesselNames.join(', ');
     }
 
+    // Current-incumbent on a selected vessel (red color reason).
+    // `getCrewNameColor` paints this row red via `currentlyDeployedCrewIds`,
+    // but every branch above this point explicitly skips selected vessels —
+    // so without this branch the tooltip would be `null` and silently
+    // suppressed by the `vesselInfo && hasColoredStatus` guard. Re-scan
+    // `allDeployedAssignments` for an active sign-on on any selected vessel
+    // and surface those vessel names.
+    if (currentlyDeployedCrewIds.has(crewUuid)) {
+      const incumbentVessels: string[] = [];
+      allDeployedAssignments.forEach(assignment => {
+        if (!selectedVesselIds.includes(assignment.vesselUuid)) return;
+        const isSignedOn = assignment.crewMemberId === crewUuid && assignment.signOnDate && !assignment.joiningStatus;
+        if (!isSignedOn) return;
+        const vesselName = getVesselName(assignment.vesselUuid);
+        if (vesselName && !incumbentVessels.includes(vesselName)) {
+          incumbentVessels.push(vesselName);
+        }
+      });
+      if (incumbentVessels.length > 0) {
+        return incumbentVessels.join(', ');
+      }
+      // Fall back to whatever vessel names we can resolve from the selected
+      // set so the tooltip never returns null for a colored row.
+      const fallbackNames = selectedVesselIds
+        .map(id => getVesselName(id))
+        .filter((n): n is string => !!n);
+      if (fallbackNames.length > 0) {
+        return fallbackNames.join(', ');
+      }
+      return 'Currently deployed';
+    }
+
     // Check draft assignments (blue/brown color reason).
     // Fall back to the vessel master lookup when `a.vessel` is missing/empty
     // so a colored row never produces a null tooltip and gets silently
