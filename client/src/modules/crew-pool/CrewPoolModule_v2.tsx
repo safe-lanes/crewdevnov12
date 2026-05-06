@@ -114,9 +114,9 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent } = usePermissions();
     const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
     const allowedPages = useMemo(() => {
-        const all = ["crew-database"];
+        const all = ["crew-database", "terminated"];
         if (permissions.length === 0) return all;
-        const pageToMenu: Record<string, string> = { "crew-database": "Crew Database" };
+        const pageToMenu: Record<string, string> = { "crew-database": "Crew Database", "terminated": "Terminated" };
         return all.filter(p => canView(pageToMenu[p] || p));
     }, [permissions, canView]);
 
@@ -582,6 +582,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         switch (selectedCrewPoolPage) {
             case "crew-database":
                 return "Crew Database";
+            case "terminated":
+                return "Crew - Terminated & NFR";
             default:
                 return "Crew Database";
         }
@@ -1044,7 +1046,11 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         if (selectedCrewPoolPage === "crew-database") {
             return renderFiltersAndTable();
         }
-        
+
+        if (selectedCrewPoolPage === "terminated") {
+            return <div className="flex-1" data-testid="page-terminated" />;
+        }
+
         return (
             <div className="p-6 text-center text-gray-600" data-testid="default-content">
                 <div className="mt-20">
@@ -1073,7 +1079,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                             <FilterIcon className="h-3 w-3 mr-1" />
                             Filters
                         </Button>
-                        {(permissions.length === 0 || canCreate("Crew Database")) && (
+                        {selectedCrewPoolPage === "crew-database" && (permissions.length === 0 || canCreate("Crew Database")) && (
                         <Button
                             className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
                             onClick={() => {
