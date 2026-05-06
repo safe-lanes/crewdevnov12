@@ -1023,6 +1023,13 @@ function CrewColumn({
     // and surface those vessel names.
     const incumbentMapVessels = currentlyDeployedCrewIds.get(crewUuid);
     if (incumbentMapVessels) {
+      // Prefer the crew-specific vessel name(s) already returned by the
+      // /due-crew endpoint (keyed on this crewUuid) — O(1) lookup, no scan.
+      if (incumbentMapVessels.length > 0) {
+        return incumbentMapVessels.join(', ');
+      }
+      // Fall back to scanning `allDeployedAssignments` for an active sign-on
+      // on any selected vessel if the map entry exists but carries no name.
       const incumbentVessels: string[] = [];
       allDeployedAssignments.forEach(assignment => {
         if (!selectedVesselIds.includes(assignment.vesselUuid)) return;
@@ -1035,11 +1042,6 @@ function CrewColumn({
       });
       if (incumbentVessels.length > 0) {
         return incumbentVessels.join(', ');
-      }
-      // Fall back to the crew-specific vessel names already returned by the
-      // /due-crew endpoint (keyed on this crewUuid), not every selected vessel.
-      if (incumbentMapVessels.length > 0) {
-        return incumbentMapVessels.join(', ');
       }
       return 'Currently deployed';
     }
