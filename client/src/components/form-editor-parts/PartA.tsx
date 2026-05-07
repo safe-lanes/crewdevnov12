@@ -176,7 +176,7 @@ const PartAComponent: React.FC<PartAProps> = ({
         </div>
       </div>
 
-      {fieldVisibility.personalityIndexCategory && (
+      {(isConfigMode || fieldVisibility.personalityIndexCategory) && (
         <div className="space-y-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <Label htmlFor="personalityIndexCategory" className="text-sm">
@@ -208,27 +208,6 @@ const PartAComponent: React.FC<PartAProps> = ({
               ))}
             </SelectContent>
           </Select>
-        </div>
-      )}
-      {false && isConfigMode && !fieldVisibility.personalityIndexCategory && (
-        <div className="space-y-2 opacity-50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <Label htmlFor="personalityIndexCategory" className="text-gray-400 text-sm">Personality Index (PI) Category (Hidden)</Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => toggleFieldVisibility('personalityIndexCategory')}
-              className="text-xs sm:text-sm px-2 sm:px-3 py-1 h-6 sm:h-7"
-              style={{ borderColor: '#52baf3', color: '#52baf3' }}
-              data-testid="button-show-pi-field"
-            >
-              Show Field
-            </Button>
-          </div>
-          <div className="p-3 bg-gray-100 rounded border-2 border-dashed border-gray-300">
-            <div className="text-gray-400 text-xs sm:text-sm">Field is hidden</div>
-          </div>
         </div>
       )}
     </div>
