@@ -918,6 +918,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       | 'officeReviews'
       | 'trainingFollowups';
     const hiddenSectionArrayKeys: Record<string, ArrayFieldKey[]> = {
+      partB: ['trainings', 'targets'],
       partB1: ['trainings'],
       partB2: ['targets'],
       partC: ['competenceAssessments'],
