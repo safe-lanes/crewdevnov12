@@ -8147,6 +8147,19 @@ const AdminModuleInner = (): JSX.Element => {
     <div>
       <SectionTitleComponents title={"Forms Configuration"}>
         <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
+          {/* Create Form button hidden per Task #333. Kept commented in case
+              this entry point is restored later.
+          {(permissions.length === 0 || canCreate("Forms")) && (
+          <Button
+            variant="outline"
+            onClick={() => setShowCreateFormDialog(true)}
+            className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="text-xs">Create Form</span>
+          </Button>
+          )}
+          */}
           <Button
             variant="outline"
             className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
