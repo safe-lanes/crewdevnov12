@@ -716,7 +716,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
           question: rec.question || rec.recommendation || '',
           answer: (rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes')) as 'Yes' | 'No' | 'NA',
           comment: rec.comment || '',
-          isCustom: rec.isCustom !== undefined ? rec.isCustom : false,
+          isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
         })));
       }
       
