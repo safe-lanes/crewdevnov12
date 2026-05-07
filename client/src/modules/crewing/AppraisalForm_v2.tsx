@@ -161,12 +161,12 @@ const partASchema = z.object({
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
   nationality: z.string().min(1, "Nationality is required"),
   vessel: z.string().min(1, "Vessel is required"),
-  signOn: z.string().nullish(),
+  signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
-  appraisalPeriodFrom: z.string().nullish(),
-  appraisalPeriodTo: z.string().nullish(),
-  personalityIndexCategory: z.string().nullish(),
-  primaryAppraiser: z.string().nullish(),
+  appraisalPeriodFrom: z.string().optional(),
+  appraisalPeriodTo: z.string().optional(),
+  personalityIndexCategory: z.string().optional(),
+  primaryAppraiser: z.string().optional(),
 });
 
 // Part B schema (for full form validation)
@@ -233,12 +233,12 @@ const appraisalSchema = z.object({
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
   nationality: z.string().min(1, "Nationality is required"),
   vessel: z.string().min(1, "Vessel is required"),
-  signOn: z.string().nullish(),
+  signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
-  appraisalPeriodFrom: z.string().nullish(),
-  appraisalPeriodTo: z.string().nullish(),
-  personalityIndexCategory: z.string().nullish(),
-  primaryAppraiser: z.string().nullish(),
+  appraisalPeriodFrom: z.string().optional(),
+  appraisalPeriodTo: z.string().optional(),
+  personalityIndexCategory: z.string().optional(),
+  primaryAppraiser: z.string().optional(),
   
   // Part B: Information at Start of Appraisal Period
   trainings: z.array(trainingSchema).default([]),
@@ -904,30 +904,46 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const formData = getFormDataWithSyncedComments();
 
     // Build a sanitized copy for client-side validation that respects the
-    // active form config: skip fields/sections hidden by the rank group.
-    const sectionToArrayKey: Record<string, keyof AppraisalFormData> = {
-      partB1: 'trainings',
-      partB2: 'targets',
-      partC: 'competenceAssessments',
-      partD: 'behaviouralAssessments',
-      partE: 'trainingNeeds',
-      partF: 'recommendations',
+    // active form config: clear all array payloads belonging to hidden
+    // sections so their per-row schemas don't block submission.
+    type ArrayFieldKey =
+      | 'trainings'
+      | 'targets'
+      | 'competenceAssessments'
+      | 'behaviouralAssessments'
+      | 'trainingNeeds'
+      | 'recommendations'
+      | 'appraiserComments'
+      | 'seafarerComments'
+      | 'officeReviews'
+      | 'trainingFollowups';
+    const hiddenSectionArrayKeys: Record<string, ArrayFieldKey[]> = {
+      partB1: ['trainings'],
+      partB2: ['targets'],
+      partC: ['competenceAssessments'],
+      partD: ['behaviouralAssessments'],
+      partE: ['trainingNeeds'],
+      partF: ['recommendations', 'appraiserComments', 'seafarerComments'],
+      partG: ['officeReviews', 'trainingFollowups'],
     };
-    const dataForValidation: any = { ...formData };
+    const dataForValidation: AppraisalFormData = { ...formData };
     for (const section of hiddenSections) {
-      const key = sectionToArrayKey[section];
-      if (key) dataForValidation[key] = [];
+      const keys = hiddenSectionArrayKeys[section];
+      if (!keys) continue;
+      for (const key of keys) {
+        (dataForValidation[key] as unknown[]) = [];
+      }
     }
 
     // Build a stage schema that omits any hidden Part A field (so required
     // fields in `hiddenFields` like appraisalType don't trip min(1) errors).
-    const omitForStage = (baseSchema: z.ZodObject<any>) => {
+    const omitForStage = (baseSchema: z.AnyZodObject): z.AnyZodObject => {
       const shapeKeys = Object.keys(baseSchema.shape);
-      const omitObj: Record<string, true> = {};
+      const mask: { [key: string]: true } = {};
       for (const f of hiddenFields) {
-        if (shapeKeys.includes(f)) omitObj[f] = true;
+        if (shapeKeys.includes(f)) mask[f] = true;
       }
-      return Object.keys(omitObj).length ? baseSchema.omit(omitObj as any) : baseSchema;
+      return Object.keys(mask).length ? baseSchema.omit(mask) : baseSchema;
     };
 
     // Validate stage-specific data
@@ -939,10 +955,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       } else if (stage === 'stage3') {
         omitForStage(stage3Schema).parse(dataForValidation);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { errors?: Array<{ message?: string }> };
       toast({ 
         title: 'Validation Error', 
-        description: error.errors?.[0]?.message || 'Please complete all required fields for this stage.', 
+        description: err.errors?.[0]?.message || 'Please complete all required fields for this stage.', 
         variant: 'destructive' 
       });
       return;
