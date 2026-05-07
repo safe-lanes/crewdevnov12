@@ -516,7 +516,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         }});
       }
       setHasSavedDraft(false);
-      setActiveVersion("00");
+      setIsConfigMode(false);
+      setVersionExplicitlySelected(false);
+      // The latest-released auto-select effect will pick up the newly released version
+      // once versionsData refreshes; clear the active version so it doesn't stick.
+      setActiveVersion("");
       toast({ title: "Version released", description: "The version has been released successfully." });
     },
     onError: (error: Error) => {
@@ -1926,8 +1930,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   if (existingDraft) {
                     if (existingDraft.versionNo !== activeVersion) {
                       toast({
-                        title: "Draft already exists",
-                        description: `A draft (v${existingDraft.versionNo}) already exists for this rank group. Switching you to that draft — release or discard it before starting another.`,
+                        title: "Draft already exists for this rank group",
+                        description: `Opening existing draft v${existingDraft.versionNo}. Release or discard it before starting a new one.`,
                         variant: "destructive",
                       });
                     }
@@ -1947,8 +1951,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               size="sm"
             >
               <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">{isConfigMode ? "Exit Config" : "Configure Fields"}</span>
-              <span className="sm:hidden">{isConfigMode ? "Exit" : "Config"}</span>
+              <span className="hidden sm:inline">{isConfigMode ? "Exit Config" : "Edit as new draft"}</span>
+              <span className="sm:hidden">{isConfigMode ? "Exit" : "Edit Draft"}</span>
             </Button>
             {(() => {
               const activeVersionStatus = versions.find(v => v.versionNo === activeVersion)?.status;
@@ -2118,7 +2122,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                           value={v.versionNo}
                           data-testid={`option-version-${v.versionNo}`}
                         >
-                          v{v.versionNo} · {v.status} · {v.versionDate || '—'}
+                          v{v.versionNo} — {v.versionDate || '—'} ({v.status})
                         </SelectItem>
                       ))}
                     </SelectContent>
