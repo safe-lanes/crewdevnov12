@@ -24,6 +24,11 @@ const PartAComponent: React.FC<PartAProps> = ({
       <div className="pb-3 sm:pb-4 mb-4 sm:mb-6">
         <h3 className="text-lg sm:text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A: Seafarer's Information</h3>
         <div style={{ color: '#16569e' }} className="text-xs sm:text-sm">Enter details as applicable</div>
+        {isConfigMode && (
+          <p className="text-xs text-gray-500 italic mt-2" data-testid="text-part-a-runtime-only-note">
+            Runtime-only — filled at appraisal time
+          </p>
+        )}
         <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
       </div>
       
@@ -36,6 +41,8 @@ const PartAComponent: React.FC<PartAProps> = ({
             {...formMethods.register("seafarersName")}
             className="text-sm"
             data-testid="input-seafarers-name"
+            disabled={isConfigMode}
+            aria-disabled={isConfigMode}
           />
         </div>
         
@@ -44,8 +51,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("seafarersRank") || ""}
             onValueChange={(value) => formMethods.setValue("seafarersRank", value)}
+            disabled={isConfigMode}
           >
-            <SelectTrigger className="text-sm" data-testid="select-seafarers-rank">
+            <SelectTrigger className="text-sm" data-testid="select-seafarers-rank" aria-disabled={isConfigMode}>
               <SelectValue placeholder="Select rank" />
             </SelectTrigger>
             <SelectContent>
@@ -70,8 +78,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("nationality") || ""}
             onValueChange={(value) => formMethods.setValue("nationality", value)}
+            disabled={isConfigMode}
           >
-            <SelectTrigger className="text-sm" data-testid="select-nationality">
+            <SelectTrigger className="text-sm" data-testid="select-nationality" aria-disabled={isConfigMode}>
               <SelectValue placeholder="Select nationality..." />
             </SelectTrigger>
             <SelectContent>
@@ -91,8 +100,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("vessel") || ""}
             onValueChange={(value) => formMethods.setValue("vessel", value)}
+            disabled={isConfigMode}
           >
-            <SelectTrigger className="text-sm" data-testid="select-vessel">
+            <SelectTrigger className="text-sm" data-testid="select-vessel" aria-disabled={isConfigMode}>
               <SelectValue placeholder="Select vessel" />
             </SelectTrigger>
             <SelectContent>
@@ -112,6 +122,8 @@ const PartAComponent: React.FC<PartAProps> = ({
             {...formMethods.register("signOn")}
             className="text-sm"
             data-testid="input-sign-on"
+            disabled={isConfigMode}
+            aria-disabled={isConfigMode}
           />
         </div>
         
@@ -120,8 +132,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("appraisalType") || ""}
             onValueChange={(value) => formMethods.setValue("appraisalType", value)}
+            disabled={isConfigMode}
           >
-            <SelectTrigger className="text-sm" data-testid="select-appraisal-type">
+            <SelectTrigger className="text-sm" data-testid="select-appraisal-type" aria-disabled={isConfigMode}>
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -144,6 +157,8 @@ const PartAComponent: React.FC<PartAProps> = ({
             {...formMethods.register("appraisalPeriodFrom")}
             className="text-sm"
             data-testid="input-appraisal-period-from"
+            disabled={isConfigMode}
+            aria-disabled={isConfigMode}
           />
         </div>
         
@@ -155,6 +170,8 @@ const PartAComponent: React.FC<PartAProps> = ({
             {...formMethods.register("appraisalPeriodTo")}
             className="text-sm"
             data-testid="input-appraisal-period-to"
+            disabled={isConfigMode}
+            aria-disabled={isConfigMode}
           />
         </div>
         
@@ -163,8 +180,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("primaryAppraiser") || ""}
             onValueChange={(value) => formMethods.setValue("primaryAppraiser", value)}
+            disabled={isConfigMode}
           >
-            <SelectTrigger className="text-sm" data-testid="select-primary-appraiser">
+            <SelectTrigger className="text-sm" data-testid="select-primary-appraiser" aria-disabled={isConfigMode}>
               <SelectValue placeholder="Select appraiser" />
             </SelectTrigger>
             <SelectContent>
@@ -176,28 +194,31 @@ const PartAComponent: React.FC<PartAProps> = ({
         </div>
       </div>
 
-      {(isConfigMode || fieldVisibility.personalityIndexCategory) && (
+      {fieldVisibility.personalityIndexCategory && (
         <div className="space-y-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <Label htmlFor="personalityIndexCategory" className="text-sm">
               Personality Index (PI) Category
             </Label>
+            {isConfigMode && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => toggleFieldVisibility('personalityIndexCategory')}
+                className="text-xs sm:text-sm px-2 sm:px-3 py-1 h-6 sm:h-7"
+                style={{ borderColor: '#52baf3', color: '#52baf3' }}
+                data-testid="button-hide-pi-field"
+              >
+                Hide Field
+              </Button>
+            )}
           </div>
-          {isConfigMode && (
-            <p className="text-xs text-gray-500 italic" data-testid="text-pi-runtime-only-note">
-              Runtime-only — filled at appraisal time
-            </p>
-          )}
           <Select
             value={formMethods.watch("personalityIndexCategory") || ""}
             onValueChange={(value) => formMethods.setValue("personalityIndexCategory", value)}
-            disabled={isConfigMode}
           >
-            <SelectTrigger
-              className="w-full text-sm"
-              data-testid="select-pi-category"
-              aria-disabled={isConfigMode}
-            >
+            <SelectTrigger className="w-full text-sm" data-testid="select-pi-category">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
@@ -208,6 +229,27 @@ const PartAComponent: React.FC<PartAProps> = ({
               ))}
             </SelectContent>
           </Select>
+        </div>
+      )}
+      {isConfigMode && !fieldVisibility.personalityIndexCategory && (
+        <div className="space-y-2 opacity-50">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <Label htmlFor="personalityIndexCategory" className="text-gray-400 text-sm">Personality Index (PI) Category (Hidden)</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => toggleFieldVisibility('personalityIndexCategory')}
+              className="text-xs sm:text-sm px-2 sm:px-3 py-1 h-6 sm:h-7"
+              style={{ borderColor: '#52baf3', color: '#52baf3' }}
+              data-testid="button-show-pi-field"
+            >
+              Show Field
+            </Button>
+          </div>
+          <div className="p-3 bg-gray-100 rounded border-2 border-dashed border-gray-300">
+            <div className="text-gray-400 text-xs sm:text-sm">Field is hidden</div>
+          </div>
         </div>
       )}
     </div>
