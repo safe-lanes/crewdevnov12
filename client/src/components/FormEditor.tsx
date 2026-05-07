@@ -707,14 +707,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         })));
       }
       
-      // Load recommendations from rank group config
+      // Load recommendations from rank group config.
+      // Accept both the legacy shape ({recommendation, yes/no/na}) and the
+      // current FormEditor save shape ({question, answer, isCustom}).
       if (rankGroupConfig.recommendations && rankGroupConfig.recommendations.length > 0) {
-        formMethods.setValue('recommendations', rankGroupConfig.recommendations.map(rec => ({
+        formMethods.setValue('recommendations', rankGroupConfig.recommendations.map((rec: any) => ({
           id: rec.id,
-          question: rec.recommendation,
-          answer: (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes') as 'Yes' | 'No' | 'NA',
+          question: rec.question || rec.recommendation || '',
+          answer: (rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes')) as 'Yes' | 'No' | 'NA',
           comment: rec.comment || '',
-          isCustom: true,
+          isCustom: rec.isCustom !== undefined ? rec.isCustom : false,
         })));
       }
       
