@@ -1945,24 +1945,18 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                     // Persist the seed draft right away so the grid + dropdown reflect
                     // it immediately and the "one draft per rank group" guarantee is
                     // enforced server-side from the moment the user enters edit mode.
+                    // Seed strictly from the immutable latest released version's
+                    // configuration (not the on-screen form state) so released remains
+                    // the canonical baseline.
                     if (currentRankGroup) {
-                      const seedFormData = formMethods.getValues();
-                      const seedHiddenFields = Object.entries(fieldVisibility)
-                        .filter(([, visible]) => !visible)
-                        .map(([field]) => field);
-                      const seedHiddenSections = Object.entries(sectionVisibility)
-                        .filter(([, visible]) => !visible)
-                        .map(([section]) => section);
-                      const seedSharedConfig = { appraisalTypeOptions };
+                      const releasedSrc = latestReleasedVersion as
+                        | { configuration?: string | null; sharedConfig?: string | null }
+                        | null;
                       createDraftMutation.mutate({
                         versionNo: nextVersionNo,
                         versionDate: format(new Date(), "dd-MMM-yyyy"),
-                        configuration: JSON.stringify({
-                          ...seedFormData,
-                          hiddenFields: seedHiddenFields,
-                          hiddenSections: seedHiddenSections,
-                        }),
-                        sharedConfig: JSON.stringify(seedSharedConfig),
+                        configuration: releasedSrc?.configuration ?? '{}',
+                        sharedConfig: releasedSrc?.sharedConfig ?? JSON.stringify({ appraisalTypeOptions }),
                       });
                       setHasSavedDraft(true);
                     }
@@ -2289,7 +2283,19 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
           <div className="flex-1 overflow-hidden bg-[#f8fafc]">
             <div className="p-3 sm:p-4 md:p-6 h-full">
               <div ref={continuousScrollContainerRef} className="h-full overflow-y-auto">
-                {renderContinuousScroll()}
+                {(() => {
+                  const activeVersionStatus = versions.find(v => v.versionNo === activeVersion)?.status;
+                  const isViewingReleased = !isConfigMode && activeVersionStatus === 'Released';
+                  return (
+                    <fieldset
+                      disabled={isViewingReleased}
+                      className={isViewingReleased ? 'opacity-90 pointer-events-none' : ''}
+                      data-testid={isViewingReleased ? 'fieldset-readonly-released' : 'fieldset-editable'}
+                    >
+                      {renderContinuousScroll()}
+                    </fieldset>
+                  );
+                })()}
               </div>
             </div>
           </div>
