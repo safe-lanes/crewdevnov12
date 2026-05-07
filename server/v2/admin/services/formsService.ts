@@ -115,7 +115,7 @@ export const formsService = {
       }
 
       if (!rankGroupConfig) {
-        console.log(`ℹ️ [V2 getFormForRank] No released form version found for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}". Runtime form will use defaults until a version is released.`);
+        console.warn(`🚫 [V2 getFormForRank] No released form version for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}". Appraisal start blocked until a version is released.`);
       }
 
       break;
@@ -123,10 +123,26 @@ export const formsService = {
 
     if (!matchedForm) {
       console.log(`ℹ️ [V2 getFormForRank] No active rank groups found for rank "${rankLabel}" across ${candidateForms.length} form(s)`);
-      return { ...candidateForms[0], rankGroupName: null, rankGroupConfig: null };
+      return {
+        ...candidateForms[0],
+        rankGroupName: null,
+        rankGroupConfig: null,
+        noReleasedVersion: true,
+        noReleasedVersionReason: `No active rank group covers rank "${rankLabel}".`,
+      };
     }
 
-    return { ...matchedForm, rankGroupName, rankGroupConfig };
+    if (!rankGroupConfig) {
+      return {
+        ...matchedForm,
+        rankGroupName,
+        rankGroupConfig: null,
+        noReleasedVersion: true,
+        noReleasedVersionReason: `No released form version exists for rank group "${rankGroupName}". Release a draft before starting an appraisal.`,
+      };
+    }
+
+    return { ...matchedForm, rankGroupName, rankGroupConfig, noReleasedVersion: false };
   },
 
   async cleanupDuplicates(): Promise<{ message: string; kept?: number; deletedCount?: number; totalOriginal?: number }> {
@@ -164,18 +180,27 @@ export const formsService = {
     if (!data.rankGroupId) {
       throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
     }
-    const requestedStatus = (data.status ?? "draft").toLowerCase();
+    // Server-controlled metadata: ignore client-supplied versionNo / versionDate / releasedAt / status.
+    // All new versions are drafts; release happens via releaseVersionById.
+    const today = new Date();
+    const todayStr = today.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).replace(/ /g, "-");
+
     const existingDraft = await formVersionsRepo.findDraftByRankGroupId(data.rankGroupId);
     if (existingDraft) {
-      if (requestedStatus === "draft") {
-        const updated = await formVersionsRepo.updateById(
-          existingDraft.id,
-          applyAuditUser({ configuration: data.configuration ?? null, sharedConfig: data.sharedConfig ?? null }),
-        );
-        if (!updated) throw new Error(`Form version not found: ${existingDraft.id}`);
-        return updated;
-      }
-      throw new Error("A draft already exists for this rank group. Release or discard it before creating another draft.");
+      const updated = await formVersionsRepo.updateById(
+        existingDraft.id,
+        applyAuditUser({
+          configuration: data.configuration ?? null,
+          sharedConfig: data.sharedConfig ?? null,
+          versionDate: todayStr,
+        }),
+      );
+      if (!updated) throw new Error(`Form version not found: ${existingDraft.id}`);
+      return updated;
     }
     const rgVersions = await formVersionsRepo.findByFormId(form.id, data.rankGroupId);
     const maxVersionNo = rgVersions.reduce((max, v) => {
@@ -184,10 +209,14 @@ export const formsService = {
     }, 0);
     const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
     return formVersionsRepo.create(applyAuditUser({
-      ...data,
+      configuration: data.configuration ?? null,
+      sharedConfig: data.sharedConfig ?? null,
+      rankGroupId: data.rankGroupId,
       formId: form.id,
       versionNo: nextVersionNo,
+      versionDate: todayStr,
       status: "draft",
+      releasedAt: null,
     }, true));
   },
 

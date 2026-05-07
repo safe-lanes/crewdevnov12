@@ -1904,23 +1904,25 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   setIsConfigMode(false);
                 } else {
                   // Entering config mode = "Edit as new draft".
-                  // One draft per rank group: if a draft exists and the user is viewing
-                  // a released version, block with toast. If they are already viewing the
-                  // draft row, allow them to resume editing it.
+                  // One draft per rank group:
+                  //  - If a draft exists and the user is viewing a different (released)
+                  //    version, jump selection to that draft and surface a toast so they
+                  //    know they're editing the existing one (not creating a new draft).
+                  //  - If they're already on the draft row, resume editing silently.
+                  //  - Otherwise create a new draft from the next version number.
                   const existingDraft = versionsData?.find(v => v.status === 'draft');
-                  if (existingDraft && existingDraft.versionNo !== activeVersion) {
-                    toast({
-                      title: "Draft already exists",
-                      description: `A draft (v${existingDraft.versionNo}) already exists for this rank group. Release or discard it before creating a new draft from v${activeVersion}.`,
-                      variant: "destructive",
-                    });
-                    return;
-                  }
                   if (existingDraft) {
-                    // Resume editing the existing draft.
+                    if (existingDraft.versionNo !== activeVersion) {
+                      toast({
+                        title: "Draft already exists",
+                        description: `A draft (v${existingDraft.versionNo}) already exists for this rank group. Switching you to that draft — release or discard it before starting another.`,
+                        variant: "destructive",
+                      });
+                    }
                     setSelectedVersionNo(existingDraft.versionNo);
                     setSelectedVersionDate(existingDraft.versionDate ? new Date(existingDraft.versionDate) : new Date());
                     setActiveVersion(existingDraft.versionNo);
+                    setVersionExplicitlySelected(true);
                   } else {
                     setSelectedVersionNo(nextVersionNo);
                     setSelectedVersionDate(new Date());
@@ -2064,9 +2066,44 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 </div>
               </div>
             </div>
-          ) : (
-            // Outside configuration mode, show version history (both draft and released if draft exists)
-            versions.map((version, index) => (
+          ) : versions.length > 0 ? (
+            <div>
+              <div className="px-3 sm:px-4 py-3 bg-white border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-medium text-gray-700">Viewing version:</span>
+                  <Select
+                    value={activeVersion}
+                    onValueChange={(val) => {
+                      setActiveVersion(val);
+                      setVersionExplicitlySelected(true);
+                    }}
+                  >
+                    <SelectTrigger
+                      className="w-40 sm:w-52 h-8 text-xs sm:text-sm"
+                      data-testid="select-form-version"
+                    >
+                      <SelectValue placeholder="Select version" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {versions.map(v => (
+                        <SelectItem
+                          key={`${v.versionNo}-${v.status}`}
+                          value={v.versionNo}
+                          data-testid={`option-version-${v.versionNo}`}
+                        >
+                          v{v.versionNo} · {v.status === 'draft' ? 'Draft' : 'Released'} · {v.versionDate || '—'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {latestReleasedVersion && (
+                  <span className="text-xs text-gray-500">
+                    Latest released: v{latestReleasedVersion.versionNo}
+                  </span>
+                )}
+              </div>
+              {versions.map((version, index) => (
               <div
                 key={version.id ?? `${version.versionNo}-${version.status}-${index}`}
                 className={`px-3 sm:px-4 py-3 cursor-pointer transition-colors hover:bg-gray-100 ${
@@ -2097,8 +2134,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   </div>
                 </div>
               </div>
-            ))
-          )}
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {/* Mobile Horizontal Stepper */}

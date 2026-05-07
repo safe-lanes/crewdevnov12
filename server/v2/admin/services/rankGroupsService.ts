@@ -19,9 +19,16 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
     const form = await formsRepo.findById(formId);
     if (!form) return;
 
+    const now = new Date();
+    const versionDate = now.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).replace(/ /g, "-");
+
     const existingDraft = await formVersionsRepo.findDraftByRankGroupId(rankGroupId);
     if (existingDraft) {
-      await formVersionsRepo.updateById(existingDraft.id, applyAuditUser({ configuration }));
+      await formVersionsRepo.updateById(existingDraft.id, applyAuditUser({ configuration, versionDate }));
       console.log(`✏️  [V2 DRAFT] Updated existing draft v${existingDraft.versionNo} for form ${formId}, rankGroup ${rankGroupId}`);
       return;
     }
@@ -33,13 +40,6 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
     }, 0);
     const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
 
-    const now = new Date();
-    const versionDate = now.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).replace(/ /g, "-");
-
     await formVersionsRepo.create(applyAuditUser({
       formId,
       rankGroupId,
@@ -47,6 +47,7 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
       versionDate,
       status: "draft",
       configuration,
+      releasedAt: null,
     }, true));
 
     console.log(`✅ [V2 DRAFT] Created draft v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
@@ -199,21 +200,20 @@ export const rankGroupsService = {
 
   async updateConfigurationById(id: number, configuration: string): Promise<AdmRankGroupV2> {
     console.log(`📝 [V2 CONFIG SAVE] Saving draft configuration for rank group id=${id}, config length=${configuration.length}`);
-    // Keep adm_rank_groups_v2.configuration in sync as a working copy for legacy consumers
-    // (PromotionFormEditor, PromotionsTable, AdminModule's editor seed). Released form
-    // versions remain the source of truth for runtime appraisal.
-    const result = await rankGroupsRepo.updateById(id, applyAuditUser({ configuration }));
-    if (!result) throw new Error(`Rank group not found: ${id}`);
-    await upsertDraftVersion(result.formId, id, configuration);
-    console.log(`✅ [V2 CONFIG SAVE] Draft saved for rank group "${result.name}" (id=${id}, formId=${result.formId})`);
-    return result;
+    // Per spec: draft path must NOT write to adm_rank_groups_v2.configuration.
+    // Released form versions are the sole source of truth for runtime.
+    const existing = await rankGroupsRepo.findById(id);
+    if (!existing) throw new Error(`Rank group not found: ${id}`);
+    await upsertDraftVersion(existing.formId, id, configuration);
+    console.log(`✅ [V2 CONFIG SAVE] Draft saved for rank group "${existing.name}" (id=${id}, formId=${existing.formId})`);
+    return existing;
   },
 
   async updateConfiguration(rgUuid: string, configuration: string): Promise<AdmRankGroupV2> {
-    const result = await rankGroupsRepo.update(rgUuid, applyAuditUser({ configuration }));
-    if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
-    await upsertDraftVersion(result.formId, result.id, configuration);
-    return result;
+    const existing = await rankGroupsRepo.findByUuid(rgUuid);
+    if (!existing) throw new Error(`Rank group not found: ${rgUuid}`);
+    await upsertDraftVersion(existing.formId, existing.id, configuration);
+    return existing;
   },
 
   async archiveById(id: number): Promise<AdmRankGroupV2> {

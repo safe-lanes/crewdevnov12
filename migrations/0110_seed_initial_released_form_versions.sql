@@ -19,10 +19,10 @@ SELECT
   rg.form_id,
   rg.id,
   '01',
-  to_char(COALESCE(rg.updated_at, rg.created_at, NOW()), 'DD-Mon-YYYY'),
+  to_char(NOW(), 'DD-Mon-YYYY'),
   'released',
   rg.configuration,
-  COALESCE(rg.updated_at, rg.created_at, NOW()),
+  NOW(),
   NOW(),
   NOW(),
   FALSE

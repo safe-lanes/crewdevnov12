@@ -3379,6 +3379,14 @@ const AdminModuleInner = (): JSX.Element => {
       return { versionNo: latest.versionNo, versionDate: latest.versionDate };
     };
 
+    const hasDraftForRankGroup = (rankGroupName: string, formId: number): boolean => {
+      const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
+      if (!rg) return false;
+      return allFormVersions.some(
+        v => v.formId === formId && v.rankGroupId === rg.id && v.status === 'draft'
+      );
+    };
+
     // Group forms by category first
     const formsByCategory = formsData.reduce((acc, form) => {
       const category = form.category || 'appraisal';
@@ -3431,6 +3439,7 @@ const AdminModuleInner = (): JSX.Element => {
           if (activeRankGroups.length > 0) {
             activeRankGroups.forEach((rankGroup, index) => {
               const rgVersion = getLatestVersionForRankGroup(rankGroup, form.id);
+              const hasDraft = hasDraftForRankGroup(rankGroup, form.id);
               expanded.push({
                 ...form,
                 id: form.id * 1000 + index,
@@ -3439,6 +3448,7 @@ const AdminModuleInner = (): JSX.Element => {
                 rankGroup: rankGroup,
                 versionNo: rgVersion?.versionNo || form.versionNo,
                 versionDate: rgVersion?.versionDate || form.versionDate,
+                hasDraft,
                 isFirstInGroup: index === 0,
                 groupSize: activeRankGroups.length,
                 category: form.category || 'appraisal',
@@ -8289,7 +8299,17 @@ const AdminModuleInner = (): JSX.Element => {
                       </div>
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
-                      {form.versionNo}
+                      <div className="flex items-center gap-2">
+                        <span>{form.versionNo}</span>
+                        {(form as any).hasDraft && (
+                          <span
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
+                            data-testid={`badge-draft-${form.id}`}
+                          >
+                            Draft
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
                       {form.versionDate}

@@ -1944,6 +1944,30 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     );
   };
 
+  const noReleasedVersion = !!(formConfig as any)?.noReleasedVersion;
+  if (noReleasedVersion && !appraisalId) {
+    const reason = (formConfig as any)?.noReleasedVersionReason || 'No released form version is available for this rank.';
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+        <div className="bg-white rounded-lg w-full max-w-md p-6 flex flex-col gap-4" data-testid="banner-no-released-version">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Form Not Available</h2>
+            <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-no-released">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-sm text-gray-700">{reason}</p>
+          <p className="text-xs text-gray-500">
+            An administrator must release a form version for this rank group before appraisals can be started.
+          </p>
+          <div className="flex justify-end">
+            <Button onClick={onClose} data-testid="button-dismiss-no-released">Close</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
       <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
