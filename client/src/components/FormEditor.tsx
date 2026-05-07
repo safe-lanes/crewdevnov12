@@ -1976,7 +1976,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                     if (existingDraft.versionNo !== activeVersion) {
                       toast({
                         title: "Draft already exists",
-                        description: `A draft (v${existingDraft.versionNo}) already exists for this rank group. Release or discard it before starting a new one.`,
+                        description: `A draft already exists for this rank group. Release or discard it before creating a new draft from v${existingDraft.versionNo}.`,
                         variant: "destructive",
                       });
                     }
