@@ -3367,7 +3367,9 @@ const AdminModuleInner = (): JSX.Element => {
     const getLatestVersionForRankGroup = (rankGroupName: string, formId: number): { versionNo: string; versionDate: string } | null => {
       const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
       if (!rg) return null;
-      const versions = allFormVersions.filter(v => v.formId === formId && v.rankGroupId === rg.id);
+      const versions = allFormVersions.filter(
+        v => v.formId === formId && v.rankGroupId === rg.id && v.status === 'released'
+      );
       if (versions.length === 0) return null;
       const latest = versions.reduce((max, v) => {
         const vNo = parseInt(v.versionNo, 10);

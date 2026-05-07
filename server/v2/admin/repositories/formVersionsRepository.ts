@@ -78,6 +78,21 @@ export class FormVersionsRepository {
     return results.length > 0;
   }
 
+  async findDraftByRankGroupId(rankGroupId: number): Promise<AdmFormVersionV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(admFormVersionsV2)
+      .where(and(
+        eq(admFormVersionsV2.rankGroupId, rankGroupId),
+        eq(admFormVersionsV2.status, 'draft'),
+        eq(admFormVersionsV2.isDeleted, false),
+      ))
+      .orderBy(desc(admFormVersionsV2.createdAt))
+      .limit(1);
+    return results[0];
+  }
+
   async findLatestReleasedByRankGroupId(rankGroupId: number): Promise<AdmFormVersionV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -87,10 +102,24 @@ export class FormVersionsRepository {
         eq(admFormVersionsV2.rankGroupId, rankGroupId),
         eq(admFormVersionsV2.status, 'released'),
         eq(admFormVersionsV2.isDeleted, false),
-      ))
-      .orderBy(desc(admFormVersionsV2.createdAt))
-      .limit(1);
-    return results[0];
+      ));
+    if (results.length === 0) return undefined;
+    return results.reduce((latest, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      const latestNo = parseInt(latest.versionNo, 10);
+      const vNumValid = !isNaN(vNo);
+      const latestNumValid = !isNaN(latestNo);
+      if (vNumValid && latestNumValid) {
+        if (vNo !== latestNo) return vNo > latestNo ? v : latest;
+      } else if (vNumValid) {
+        return v;
+      } else if (!latestNumValid) {
+        // both invalid — fall through to releasedAt comparison
+      }
+      const vReleasedAt = v.releasedAt ? new Date(v.releasedAt).getTime() : 0;
+      const latestReleasedAt = latest.releasedAt ? new Date(latest.releasedAt).getTime() : 0;
+      return vReleasedAt > latestReleasedAt ? v : latest;
+    }, results[0]);
   }
 
   async softDelete(fvUuid: string): Promise<boolean> {

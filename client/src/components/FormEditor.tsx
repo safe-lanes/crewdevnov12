@@ -349,7 +349,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const [selectedVersionDate, setSelectedVersionDate] = useState<Date | undefined>(
     form.versionDate ? new Date(form.versionDate) : undefined
   );
-  const [activeVersion, setActiveVersion] = useState<string>(form.versionNo || "00"); // Track which version is currently being viewed
+  // activeVersion = the version row currently being viewed in the editor.
+  // Defaults to the latest released version once versionsData loads (see effect below).
+  const [activeVersion, setActiveVersion] = useState<string>(form.versionNo || "00");
   const [versionExplicitlySelected, setVersionExplicitlySelected] = useState(false); // Track if user explicitly clicked a version
   
   // Confirmation dialog state
@@ -420,6 +422,28 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const hasDraftVersion = React.useMemo(() => {
     return versionsData?.some(v => v.status === 'draft') ?? false;
   }, [versionsData]);
+
+  // Latest released version (highest numeric versionNo with status=released)
+  const latestReleasedVersion = React.useMemo(() => {
+    const released = (versionsData || []).filter(v => v.status === 'released');
+    if (released.length === 0) return null;
+    return released.reduce((max, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      const maxNo = parseInt(max.versionNo, 10);
+      if (isNaN(vNo)) return max;
+      if (isNaN(maxNo)) return v;
+      return vNo > maxNo ? v : max;
+    }, released[0]);
+  }, [versionsData]);
+
+  // Default activeVersion to the latest released version once data loads.
+  // Skipped if the user has explicitly clicked a version row, or while in config mode.
+  useEffect(() => {
+    if (versionExplicitlySelected || isConfigMode) return;
+    if (latestReleasedVersion && activeVersion !== latestReleasedVersion.versionNo) {
+      setActiveVersion(latestReleasedVersion.versionNo);
+    }
+  }, [latestReleasedVersion, versionExplicitlySelected, isConfigMode]);
   
   // Compute next version number and available options dynamically
   const { nextVersionNo, availableVersionOptions } = React.useMemo(() => {
@@ -1879,10 +1903,29 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   }
                   setIsConfigMode(false);
                 } else {
-                  // Entering config mode - use pre-computed next version number
-                  setSelectedVersionNo(nextVersionNo);
-                  setSelectedVersionDate(new Date());
-                  setActiveVersion(nextVersionNo);
+                  // Entering config mode = "Edit as new draft".
+                  // One draft per rank group: if a draft exists and the user is viewing
+                  // a released version, block with toast. If they are already viewing the
+                  // draft row, allow them to resume editing it.
+                  const existingDraft = versionsData?.find(v => v.status === 'draft');
+                  if (existingDraft && existingDraft.versionNo !== activeVersion) {
+                    toast({
+                      title: "Draft already exists",
+                      description: `A draft (v${existingDraft.versionNo}) already exists for this rank group. Release or discard it before creating a new draft from v${activeVersion}.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  if (existingDraft) {
+                    // Resume editing the existing draft.
+                    setSelectedVersionNo(existingDraft.versionNo);
+                    setSelectedVersionDate(existingDraft.versionDate ? new Date(existingDraft.versionDate) : new Date());
+                    setActiveVersion(existingDraft.versionNo);
+                  } else {
+                    setSelectedVersionNo(nextVersionNo);
+                    setSelectedVersionDate(new Date());
+                    setActiveVersion(nextVersionNo);
+                  }
                   setIsConfigMode(true);
                 }
               }}

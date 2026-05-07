@@ -146,8 +146,12 @@ export const formsController = {
       const version = await formsService.createVersionByFormId(formId, result.data);
       res.json(version);
     } catch (error: any) {
-      if (error.message?.includes("not found") || error.message?.includes("required")) {
-        return res.status(400).json({ error: error.message });
+      const msg: string = error.message || "";
+      if (msg.includes("draft already exists")) {
+        return res.status(409).json({ error: msg });
+      }
+      if (msg.includes("not found") || msg.includes("required")) {
+        return res.status(400).json({ error: msg });
       }
       console.error("Error creating form version:", error);
       res.status(500).json({ error: "Failed to create form version" });
@@ -204,8 +208,12 @@ export const formsController = {
       const version = await formsService.releaseVersionById(id);
       res.json(version);
     } catch (error: any) {
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
+      const msg: string = error.message || "";
+      if (msg.includes("not found")) {
+        return res.status(404).json({ error: msg });
+      }
+      if (msg.includes("Only draft versions can be released")) {
+        return res.status(400).json({ error: msg });
       }
       console.error("Error releasing form version:", error);
       res.status(500).json({ error: "Failed to release form version" });

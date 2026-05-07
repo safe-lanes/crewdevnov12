@@ -14,13 +14,19 @@ async function syncFormRankGroup(formId: number): Promise<void> {
   await formsRepo.updateById(formId, { rankGroup: rankGroupNames || "" });
 }
 
-async function createFormVersionOnConfigSave(formId: number, rankGroupId: number, configuration: string): Promise<void> {
+async function upsertDraftVersion(formId: number, rankGroupId: number, configuration: string): Promise<void> {
   try {
     const form = await formsRepo.findById(formId);
     if (!form) return;
 
-    const existingVersions = await formVersionsRepo.findByFormId(formId);
-    const rgVersions = existingVersions.filter(v => v.rankGroupId === rankGroupId);
+    const existingDraft = await formVersionsRepo.findDraftByRankGroupId(rankGroupId);
+    if (existingDraft) {
+      await formVersionsRepo.updateById(existingDraft.id, applyAuditUser({ configuration }));
+      console.log(`✏️  [V2 DRAFT] Updated existing draft v${existingDraft.versionNo} for form ${formId}, rankGroup ${rankGroupId}`);
+      return;
+    }
+
+    const rgVersions = await formVersionsRepo.findByFormId(formId, rankGroupId);
     const maxVersionNo = rgVersions.reduce((max, v) => {
       const vNo = parseInt(v.versionNo, 10);
       return isNaN(vNo) ? max : Math.max(max, vNo);
@@ -34,29 +40,18 @@ async function createFormVersionOnConfigSave(formId: number, rankGroupId: number
       year: "numeric",
     }).replace(/ /g, "-");
 
-    await formVersionsRepo.create({
+    await formVersionsRepo.create(applyAuditUser({
       formId,
       rankGroupId,
       versionNo: nextVersionNo,
       versionDate,
-      status: "released",
+      status: "draft",
       configuration,
-      releasedAt: now,
-    });
+    }, true));
 
-    const globalMax = existingVersions.reduce((max, v) => {
-      const vNo = parseInt(v.versionNo, 10);
-      return isNaN(vNo) ? max : Math.max(max, vNo);
-    }, 0);
-    const globalNextVersion = String(Math.max(globalMax + 1, parseInt(nextVersionNo, 10))).padStart(2, "0");
-    await formsRepo.updateById(formId, {
-      versionNo: globalNextVersion,
-      versionDate,
-    });
-
-    console.log(`✅ [V2 VERSION] Created version ${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId} (global form version: ${globalNextVersion})`);
+    console.log(`✅ [V2 DRAFT] Created draft v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
   } catch (error) {
-    console.error(`⚠️ [V2 VERSION] Failed to create version for form ${formId}:`, error);
+    console.error(`⚠️ [V2 DRAFT] Failed to upsert draft for form ${formId}, rankGroup ${rankGroupId}:`, error);
   }
 }
 
@@ -203,18 +198,21 @@ export const rankGroupsService = {
   },
 
   async updateConfigurationById(id: number, configuration: string): Promise<AdmRankGroupV2> {
-    console.log(`📝 [V2 CONFIG SAVE] Saving configuration for rank group id=${id}, config length=${configuration.length}`);
+    console.log(`📝 [V2 CONFIG SAVE] Saving draft configuration for rank group id=${id}, config length=${configuration.length}`);
+    // Keep adm_rank_groups_v2.configuration in sync as a working copy for legacy consumers
+    // (PromotionFormEditor, PromotionsTable, AdminModule's editor seed). Released form
+    // versions remain the source of truth for runtime appraisal.
     const result = await rankGroupsRepo.updateById(id, applyAuditUser({ configuration }));
     if (!result) throw new Error(`Rank group not found: ${id}`);
-    console.log(`✅ [V2 CONFIG SAVE] Configuration saved for rank group "${result.name}" (id=${id}, formId=${result.formId})`);
-    await createFormVersionOnConfigSave(result.formId, id, configuration);
+    await upsertDraftVersion(result.formId, id, configuration);
+    console.log(`✅ [V2 CONFIG SAVE] Draft saved for rank group "${result.name}" (id=${id}, formId=${result.formId})`);
     return result;
   },
 
   async updateConfiguration(rgUuid: string, configuration: string): Promise<AdmRankGroupV2> {
     const result = await rankGroupsRepo.update(rgUuid, applyAuditUser({ configuration }));
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
-    await createFormVersionOnConfigSave(result.formId, result.id, configuration);
+    await upsertDraftVersion(result.formId, result.id, configuration);
     return result;
   },
 

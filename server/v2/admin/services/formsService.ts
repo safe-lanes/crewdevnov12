@@ -114,17 +114,8 @@ export const formsService = {
         }
       }
 
-      if (!rankGroupConfig && selectedGroup.configuration) {
-        try {
-          rankGroupConfig = JSON.parse(selectedGroup.configuration);
-          console.log(`ℹ️ [V2 getFormForRank] Fallback to rank group config for "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}"`);
-        } catch (e) {
-          console.warn(`⚠️ [V2 getFormForRank] Failed to parse rank group config:`, e);
-        }
-      }
-
       if (!rankGroupConfig) {
-        console.log(`ℹ️ [V2 getFormForRank] No configuration found for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}"`);
+        console.log(`ℹ️ [V2 getFormForRank] No released form version found for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}". Runtime form will use defaults until a version is released.`);
       }
 
       break;
@@ -173,16 +164,37 @@ export const formsService = {
     if (!data.rankGroupId) {
       throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
     }
-    return formVersionsRepo.create(applyAuditUser({ ...data, formId: form.id }, true));
+    const requestedStatus = (data.status ?? "draft").toLowerCase();
+    const existingDraft = await formVersionsRepo.findDraftByRankGroupId(data.rankGroupId);
+    if (existingDraft) {
+      if (requestedStatus === "draft") {
+        const updated = await formVersionsRepo.updateById(
+          existingDraft.id,
+          applyAuditUser({ configuration: data.configuration ?? null, sharedConfig: data.sharedConfig ?? null }),
+        );
+        if (!updated) throw new Error(`Form version not found: ${existingDraft.id}`);
+        return updated;
+      }
+      throw new Error("A draft already exists for this rank group. Release or discard it before creating another draft.");
+    }
+    const rgVersions = await formVersionsRepo.findByFormId(form.id, data.rankGroupId);
+    const maxVersionNo = rgVersions.reduce((max, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      return isNaN(vNo) ? max : Math.max(max, vNo);
+    }, 0);
+    const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
+    return formVersionsRepo.create(applyAuditUser({
+      ...data,
+      formId: form.id,
+      versionNo: nextVersionNo,
+      status: "draft",
+    }, true));
   },
 
   async createVersion(formUuid: string, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {
     const form = await formsRepo.findByUuid(formUuid);
     if (!form) throw new Error(`Form not found: ${formUuid}`);
-    if (!data.rankGroupId) {
-      throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
-    }
-    return formVersionsRepo.create(applyAuditUser({ ...data, formId: form.id }, true));
+    return this.createVersionByFormId(form.id, data);
   },
 
   async getVersionById(id: number): Promise<AdmFormVersionV2> {
@@ -198,11 +210,44 @@ export const formsService = {
   },
 
   async releaseVersionById(id: number): Promise<AdmFormVersionV2> {
-    const version = await formVersionsRepo.updateById(id, {
+    const existing = await formVersionsRepo.findById(id);
+    if (!existing) throw new Error(`Form version not found: ${id}`);
+    if (existing.status !== "draft") {
+      throw new Error("Only draft versions can be released.");
+    }
+    const now = new Date();
+    const versionDate = now.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).replace(/ /g, "-");
+    const version = await formVersionsRepo.updateById(id, applyAuditUser({
       status: "released",
-      releasedAt: new Date(),
-    });
+      versionDate,
+      releasedAt: now,
+    }));
     if (!version) throw new Error(`Form version not found: ${id}`);
+
+    try {
+      const allVersions = await formVersionsRepo.findByFormId(version.formId);
+      const released = allVersions.filter(v => v.status === "released");
+      if (released.length > 0) {
+        const latest = released.reduce((max, v) => {
+          const vNo = parseInt(v.versionNo, 10);
+          const maxNo = parseInt(max.versionNo, 10);
+          if (isNaN(vNo)) return max;
+          if (isNaN(maxNo)) return v;
+          return vNo > maxNo ? v : max;
+        }, released[0]);
+        await formsRepo.updateById(version.formId, {
+          versionNo: latest.versionNo,
+          versionDate: latest.versionDate,
+        });
+      }
+    } catch (err) {
+      console.error(`⚠️ [V2 RELEASE] Failed to sync parent form version for form ${version.formId}:`, err);
+    }
+
     return version;
   },
 
