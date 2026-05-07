@@ -207,6 +207,11 @@ const PartFComponent: React.FC<PartFProps> = ({
 
       <div className="space-y-4">
         <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F3. Appraiser Comments</h3>
+        {isConfigMode && (
+          <p className="text-xs text-gray-500 italic" data-testid="text-f3-runtime-only-note">
+            Runtime-only — filled at appraisal time
+          </p>
+        )}
         <div className="space-y-2">
           <Label htmlFor="appraiserComments">Appraiser Comments</Label>
           <Textarea
@@ -215,12 +220,19 @@ const PartFComponent: React.FC<PartFProps> = ({
             {...formMethods.register("appraiserComments")}
             rows={4}
             data-testid="textarea-appraiser-comments"
+            disabled={isConfigMode}
+            aria-disabled={isConfigMode}
           />
         </div>
       </div>
 
       <div className="space-y-4">
         <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>F4. Seafarer Comments</h3>
+        {isConfigMode && (
+          <p className="text-xs text-gray-500 italic" data-testid="text-f4-runtime-only-note">
+            Runtime-only — filled at appraisal time
+          </p>
+        )}
         <div className="space-y-2">
           <Label htmlFor="seafarerComments">Seafarer Comments</Label>
           <Textarea
@@ -229,6 +241,8 @@ const PartFComponent: React.FC<PartFProps> = ({
             {...formMethods.register("seafarerComments")}
             rows={4}
             data-testid="textarea-seafarer-comments"
+            disabled={isConfigMode}
+            aria-disabled={isConfigMode}
           />
         </div>
       </div>

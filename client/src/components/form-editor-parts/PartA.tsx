@@ -182,25 +182,22 @@ const PartAComponent: React.FC<PartAProps> = ({
             <Label htmlFor="personalityIndexCategory" className="text-sm">
               Personality Index (PI) Category
             </Label>
-            {isConfigMode && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => toggleFieldVisibility('personalityIndexCategory')}
-                className="text-xs sm:text-sm px-2 sm:px-3 py-1 h-6 sm:h-7"
-                style={{ borderColor: '#52baf3', color: '#52baf3' }}
-                data-testid="button-hide-pi-field"
-              >
-                Hide Field
-              </Button>
-            )}
           </div>
+          {isConfigMode && (
+            <p className="text-xs text-gray-500 italic" data-testid="text-pi-runtime-only-note">
+              Runtime-only — filled at appraisal time
+            </p>
+          )}
           <Select
             value={formMethods.watch("personalityIndexCategory") || ""}
             onValueChange={(value) => formMethods.setValue("personalityIndexCategory", value)}
+            disabled={isConfigMode}
           >
-            <SelectTrigger className="w-full text-sm" data-testid="select-pi-category">
+            <SelectTrigger
+              className="w-full text-sm"
+              data-testid="select-pi-category"
+              aria-disabled={isConfigMode}
+            >
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
@@ -213,7 +210,7 @@ const PartAComponent: React.FC<PartAProps> = ({
           </Select>
         </div>
       )}
-      {isConfigMode && !fieldVisibility.personalityIndexCategory && (
+      {false && isConfigMode && !fieldVisibility.personalityIndexCategory && (
         <div className="space-y-2 opacity-50">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <Label htmlFor="personalityIndexCategory" className="text-gray-400 text-sm">Personality Index (PI) Category (Hidden)</Label>

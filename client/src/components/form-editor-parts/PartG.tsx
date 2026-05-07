@@ -37,6 +37,11 @@ const PartGComponent: React.FC<PartGProps> = ({
       
       <div className="space-y-4">
         <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G1. Office Review</h3>
+        {isConfigMode && (
+          <p className="text-xs text-gray-500 italic" data-testid="text-g1-runtime-only-note">
+            Runtime-only — filled at appraisal time
+          </p>
+        )}
         <div className="space-y-2">
           <Label htmlFor="officeReviewComments">Office Review Comments</Label>
           <Textarea
@@ -45,13 +50,20 @@ const PartGComponent: React.FC<PartGProps> = ({
             {...formMethods.register("officeReviewComments")}
             rows={4}
             data-testid="textarea-office-review-comments"
+            disabled={isConfigMode}
+            aria-disabled={isConfigMode}
           />
         </div>
       </div>
 
       <div className="space-y-4">
         <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G2. Training Follow-up</h3>
-        
+        {isConfigMode && (
+          <p className="text-xs text-gray-500 italic" data-testid="text-g2-runtime-only-note">
+            Runtime-only — filled at appraisal time
+          </p>
+        )}
+
         <div className="space-y-4">
           {!isConfigMode && (
             <div className="flex items-center justify-between">
