@@ -1873,23 +1873,23 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
             )}
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {!isConfigMode ? (
-              <Button
-                variant={(hasSavedDraft || hasDraftVersion) ? "default" : "outline"}
-                size="sm"
-                className={`flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
-                  (hasSavedDraft || hasDraftVersion)
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-                disabled={!(hasSavedDraft || hasDraftVersion) || releaseVersionMutation.isPending}
-                onClick={handleReleaseVersion}
-                data-testid="button-release-version"
-              >
-                <span className="hidden sm:inline">{releaseVersionMutation.isPending ? 'Releasing...' : 'Release Ver'}</span>
-                <span className="sm:hidden">{releaseVersionMutation.isPending ? '...' : 'Release'}</span>
-              </Button>
-            ) : (
+            {/* Release Ver is always available when a draft exists (in or out of config mode). */}
+            <Button
+              variant={(hasSavedDraft || hasDraftVersion) ? "default" : "outline"}
+              size="sm"
+              className={`flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
+                (hasSavedDraft || hasDraftVersion)
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+              disabled={!(hasSavedDraft || hasDraftVersion) || releaseVersionMutation.isPending}
+              onClick={handleReleaseVersion}
+              data-testid="button-release-version"
+            >
+              <span className="hidden sm:inline">{releaseVersionMutation.isPending ? 'Releasing...' : 'Release Ver'}</span>
+              <span className="sm:hidden">{releaseVersionMutation.isPending ? '...' : 'Release'}</span>
+            </Button>
+            {isConfigMode && (
               <Button
                 variant="destructive"
                 size="sm"
@@ -1899,8 +1899,10 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   setHasSavedDraft(false);
                   setSelectedVersionNo("");
                   setSelectedVersionDate(undefined);
-                  setActiveVersion("00"); // Return to released version
+                  setVersionExplicitlySelected(false);
+                  setActiveVersion("");
                 }}
+                data-testid="button-discard-ver"
               >
                 <span className="hidden sm:inline">Discard Ver</span>
                 <span className="sm:hidden">Discard</span>
@@ -1929,8 +1931,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   if (existingDraft) {
                     if (existingDraft.versionNo !== activeVersion) {
                       toast({
-                        title: "Draft already exists for this rank group",
-                        description: `Opening existing draft v${existingDraft.versionNo}. Release or discard it before starting a new one.`,
+                        title: "Draft already exists",
+                        description: `A draft (v${existingDraft.versionNo}) already exists for this rank group. Release or discard it before starting a new one.`,
                         variant: "destructive",
                       });
                     }
@@ -1949,7 +1951,13 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                     // configuration (not the on-screen form state) so released remains
                     // the canonical baseline.
                     if (currentRankGroup) {
-                      const releasedSrc = latestReleasedVersion as
+                      // Seed strictly from the currently selected released version
+                      // (the one the user is viewing), falling back to latest released
+                      // if no specific row is selected yet.
+                      const selectedReleased = (versionsData || []).find(
+                        v => v.versionNo === activeVersion && v.status === 'released',
+                      ) || latestReleasedVersion;
+                      const releasedSrc = selectedReleased as
                         | { configuration?: string | null; sharedConfig?: string | null }
                         | null;
                       createDraftMutation.mutate({
