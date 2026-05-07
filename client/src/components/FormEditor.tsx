@@ -436,14 +436,26 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     }, released[0]);
   }, [versionsData]);
 
-  // Default activeVersion to the latest released version once data loads.
-  // Skipped if the user has explicitly clicked a version row, or while in config mode.
+  // Default activeVersion once data loads:
+  //  - prefer the latest released version
+  //  - if none exists but a draft does, select the draft and enter edit mode
+  // Skipped once the user has explicitly clicked a version row.
   useEffect(() => {
-    if (versionExplicitlySelected || isConfigMode) return;
-    if (latestReleasedVersion && activeVersion !== latestReleasedVersion.versionNo) {
-      setActiveVersion(latestReleasedVersion.versionNo);
+    if (versionExplicitlySelected) return;
+    if (latestReleasedVersion) {
+      if (activeVersion !== latestReleasedVersion.versionNo) {
+        setActiveVersion(latestReleasedVersion.versionNo);
+      }
+      return;
     }
-  }, [latestReleasedVersion, versionExplicitlySelected, isConfigMode]);
+    const draft = (versionsData || []).find(v => v.status === 'draft');
+    if (draft && activeVersion !== draft.versionNo) {
+      setActiveVersion(draft.versionNo);
+      setSelectedVersionNo(draft.versionNo);
+      setSelectedVersionDate(draft.versionDate ? new Date(draft.versionDate) : new Date());
+      setIsConfigMode(true);
+    }
+  }, [latestReleasedVersion, versionsData, versionExplicitlySelected]);
   
   // Compute next version number and available options dynamically
   const { nextVersionNo, availableVersionOptions } = React.useMemo(() => {

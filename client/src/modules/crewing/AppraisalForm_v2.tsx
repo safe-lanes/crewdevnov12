@@ -396,7 +396,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Fetch form configuration based on crew member's rank
   // Note: queryKey[0] is used as the URL by the default fetcher, so include full URL path
-  const { data: formConfig, isLoading: isLoadingFormConfig } = useQuery({
+  type FormForRankResponse = {
+    rankGroupConfig?: any;
+    noReleasedVersion?: boolean;
+    noReleasedVersionReason?: string;
+  };
+  const { data: formConfig, isLoading: isLoadingFormConfig } = useQuery<FormForRankResponse>({
     queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(crewMember?.rank || '')}?category=appraisal`],
     enabled: !!crewMember?.rank,
   });
@@ -1944,9 +1949,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     );
   };
 
-  const noReleasedVersion = !!(formConfig as any)?.noReleasedVersion;
+  const noReleasedVersion = !!formConfig?.noReleasedVersion;
   if (noReleasedVersion && !appraisalId) {
-    const reason = (formConfig as any)?.noReleasedVersionReason || 'No released form version is available for this rank.';
+    const reason = formConfig?.noReleasedVersionReason || 'No released form version is available for this rank.';
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
         <div className="bg-white rounded-lg w-full max-w-md p-6 flex flex-col gap-4" data-testid="banner-no-released-version">

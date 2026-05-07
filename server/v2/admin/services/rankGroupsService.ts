@@ -15,45 +15,41 @@ async function syncFormRankGroup(formId: number): Promise<void> {
 }
 
 async function upsertDraftVersion(formId: number, rankGroupId: number, configuration: string): Promise<void> {
-  try {
-    const form = await formsRepo.findById(formId);
-    if (!form) return;
+  const form = await formsRepo.findById(formId);
+  if (!form) throw new Error(`Form not found: ${formId}`);
 
-    const now = new Date();
-    const versionDate = now.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).replace(/ /g, "-");
+  const now = new Date();
+  const versionDate = now.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).replace(/ /g, "-");
 
-    const existingDraft = await formVersionsRepo.findDraftByRankGroupId(rankGroupId);
-    if (existingDraft) {
-      await formVersionsRepo.updateById(existingDraft.id, applyAuditUser({ configuration, versionDate }));
-      console.log(`✏️  [V2 DRAFT] Updated existing draft v${existingDraft.versionNo} for form ${formId}, rankGroup ${rankGroupId}`);
-      return;
-    }
-
-    const rgVersions = await formVersionsRepo.findByFormId(formId, rankGroupId);
-    const maxVersionNo = rgVersions.reduce((max, v) => {
-      const vNo = parseInt(v.versionNo, 10);
-      return isNaN(vNo) ? max : Math.max(max, vNo);
-    }, 0);
-    const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
-
-    await formVersionsRepo.create(applyAuditUser({
-      formId,
-      rankGroupId,
-      versionNo: nextVersionNo,
-      versionDate,
-      status: "draft",
-      configuration,
-      releasedAt: null,
-    }, true));
-
-    console.log(`✅ [V2 DRAFT] Created draft v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
-  } catch (error) {
-    console.error(`⚠️ [V2 DRAFT] Failed to upsert draft for form ${formId}, rankGroup ${rankGroupId}:`, error);
+  const existingDraft = await formVersionsRepo.findDraftByRankGroupId(rankGroupId);
+  if (existingDraft) {
+    await formVersionsRepo.updateById(existingDraft.id, applyAuditUser({ configuration, versionDate }));
+    console.log(`✏️  [V2 DRAFT] Updated existing draft v${existingDraft.versionNo} for form ${formId}, rankGroup ${rankGroupId}`);
+    return;
   }
+
+  const rgVersions = await formVersionsRepo.findByFormId(formId, rankGroupId);
+  const maxVersionNo = rgVersions.reduce((max, v) => {
+    const vNo = parseInt(v.versionNo, 10);
+    return isNaN(vNo) ? max : Math.max(max, vNo);
+  }, 0);
+  const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
+
+  await formVersionsRepo.create(applyAuditUser({
+    formId,
+    rankGroupId,
+    versionNo: nextVersionNo,
+    versionDate,
+    status: "draft",
+    configuration,
+    releasedAt: null,
+  }, true));
+
+  console.log(`✅ [V2 DRAFT] Created draft v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
 }
 
 function checkRankConflicts(
