@@ -2115,19 +2115,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 w-full sm:w-auto">
                   <div className="flex items-center gap-2">
                     <span className="text-xs sm:text-sm font-medium text-gray-700">Version No:</span>
-                    <Select
-                      value={selectedVersionNo || nextVersionNo}
-                      onValueChange={setSelectedVersionNo}
+                    <span
+                      className="text-xs sm:text-sm font-semibold text-gray-900"
+                      data-testid="text-draft-version-no"
                     >
-                      <SelectTrigger className="w-20 sm:w-24 h-8 text-xs sm:text-sm">
-                        <SelectValue placeholder={nextVersionNo} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableVersionOptions.map(option => (
-                          <SelectItem key={option} value={option}>{option}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {selectedVersionNo || nextVersionNo}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs sm:text-sm font-medium text-gray-700">Version Date:</span>
