@@ -30,6 +30,17 @@ export class FormVersionsRepository {
     return results[0];
   }
 
+  // Pinned appraisals must always be able to render their saved version,
+  // even if that version was later soft-deleted in the Form Editor.
+  async findByIdIncludingDeleted(id: number): Promise<AdmFormVersionV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(admFormVersionsV2)
+      .where(eq(admFormVersionsV2.id, id));
+    return results[0];
+  }
+
   async findByUuid(fvUuid: string): Promise<AdmFormVersionV2 | undefined> {
     const db = getDb();
     const results = await db

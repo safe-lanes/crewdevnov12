@@ -31,6 +31,7 @@ router.delete("/forms/:id", formsController.delete);
 router.get("/forms/:id/versions", formsController.getVersions);
 router.post("/forms/:id/versions", formsController.createVersion);
 
+router.get("/form-versions/:versionId/configuration", formsController.getVersionConfiguration);
 router.get("/form-versions/:id", formsController.getVersionById);
 router.put("/form-versions/:id", formsController.updateVersion);
 router.post("/form-versions/:id/release", formsController.releaseVersion);

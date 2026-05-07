@@ -269,6 +269,8 @@ interface ExistingAppraisal {
   id: number;
   appraisalData: string | AppraisalFormData;
   status: 'draft' | 'preliminary' | 'submitted' | 'reviewed';
+  formVersionId?: number | null;
+  formVersionUuid?: string | null;
 }
 
 interface AppraisalFormProps {
@@ -394,31 +396,65 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }));
   }, [appraisalTypesRaw]);
 
-  // Fetch form configuration based on crew member's rank
-  // Note: queryKey[0] is used as the URL by the default fetcher, so include full URL path
-  type FormForRankResponse = {
-    rankGroupConfig?: any;
-    noReleasedVersion?: boolean;
-    noReleasedVersionReason?: string;
-  };
-  const { data: formConfig, isLoading: isLoadingFormConfig } = useQuery<FormForRankResponse>({
-    queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(crewMember?.rank || '')}?category=appraisal`],
-    enabled: !!crewMember?.rank,
-  });
-
-  // Log form configuration for debugging
-  useEffect(() => {
-    if (formConfig) {
-      console.log('✅ Form configuration loaded for rank:', crewMember?.rank, formConfig);
-    }
-  }, [formConfig, crewMember?.rank]);
-
   // Fetch existing appraisal data when editing
   // Note: queryKey must include full URL since default fetcher uses queryKey[0] as the URL
   const { data: existingAppraisal } = useQuery<ExistingAppraisal | undefined>({
     queryKey: [`/api/v2/appraisals/${appraisalId}`],
     enabled: !!appraisalId,
   });
+
+  // Form-config fetching strategy:
+  // - New appraisal (no appraisalId): load the latest released version for the rank.
+  // - Existing appraisal with a pinned formVersionId: load that exact version's
+  //   configuration so layout matches the version it was saved against.
+  // - Existing appraisal with NO pinned formVersionId (historical row): fall back
+  //   to the latest released version for the rank.
+  type FormForRankResponse = {
+    rankGroupConfig?: any;
+    noReleasedVersion?: boolean;
+    noReleasedVersionReason?: string;
+  };
+  type FormVersionConfigResponse = {
+    rankGroupName: string | null;
+    rankGroupConfig: any | null;
+    formVersionId: number;
+    formVersionUuid: string;
+  };
+
+  const isEditing = !!appraisalId;
+  const pinnedFormVersionId = existingAppraisal?.formVersionId ?? null;
+  // Wait for existingAppraisal before deciding whether to fall back to latest.
+  const useLatestForEditing = isEditing && existingAppraisal !== undefined && !pinnedFormVersionId;
+  const useLatestForNew = !isEditing;
+  const useLatest = useLatestForNew || useLatestForEditing;
+  const usePinned = isEditing && !!pinnedFormVersionId;
+
+  const { data: latestFormConfig, isLoading: isLoadingLatestConfig } = useQuery<FormForRankResponse>({
+    queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(crewMember?.rank || '')}?category=appraisal`],
+    enabled: !!crewMember?.rank && useLatest,
+  });
+
+  const { data: pinnedFormConfig, isLoading: isLoadingPinnedConfig } = useQuery<FormVersionConfigResponse>({
+    queryKey: [`/api/v2/admin/form-versions/${pinnedFormVersionId}/configuration`],
+    enabled: usePinned,
+  });
+
+  const formConfig: FormForRankResponse | undefined = usePinned
+    ? (pinnedFormConfig
+        ? { rankGroupConfig: pinnedFormConfig.rankGroupConfig, noReleasedVersion: false }
+        : undefined)
+    : latestFormConfig;
+  const isLoadingFormConfig = usePinned ? isLoadingPinnedConfig : isLoadingLatestConfig;
+
+  // Log form configuration for debugging
+  useEffect(() => {
+    if (formConfig) {
+      console.log('✅ Form configuration loaded for rank:', crewMember?.rank, {
+        source: usePinned ? `pinned version ${pinnedFormVersionId}` : 'latest released',
+        formConfig,
+      });
+    }
+  }, [formConfig, crewMember?.rank, usePinned, pinnedFormVersionId]);
 
   const { toast } = useToast();
 

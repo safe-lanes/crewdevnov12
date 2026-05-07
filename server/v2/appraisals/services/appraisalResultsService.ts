@@ -13,6 +13,7 @@ import {
 } from "../repositories";
 import { assembleV1Response } from "../utils/responseAssembler";
 import { applyAuditUser } from "../../admin/utils/auditUser";
+import { formsService } from "../../admin/services";
 import { v4 as uuidv4 } from "uuid";
 
 const appraisalResultsRepo = new AppraisalResultsRepository();
@@ -126,11 +127,31 @@ export class AppraisalResultsService {
       : JSON.parse(auditData.appraisalData || "{}");
 
     const appraisalUuid = uuidv4();
+
+    // Pin the appraisal to the latest released form version for the seafarer's
+    // rank at creation time so later releases don't re-skin saved appraisals.
+    let formVersionId: number | null = null;
+    let formVersionUuid: string | null = null;
+    const seafarersRank: string | undefined = appraisalData?.seafarersRank;
+    if (seafarersRank) {
+      try {
+        const formForRank = await formsService.getFormForRank(seafarersRank, "appraisal");
+        if (formForRank && !formForRank.noReleasedVersion) {
+          formVersionId = formForRank.formVersionId ?? null;
+          formVersionUuid = formForRank.formVersionUuid ?? null;
+        }
+      } catch (e) {
+        console.warn(`[Appraisals V2] Failed to resolve form version for rank "${seafarersRank}":`, e);
+      }
+    }
+
     const created = await appraisalResultsRepo.createWithUuid({
       appraisalUuid,
       crewMemberId: auditData.crewMemberId,
       formUuid: auditData.formId?.toString() || null,
       formIdLegacy: typeof auditData.formId === "number" ? auditData.formId : (parseInt(auditData.formId) || null),
+      formVersionId,
+      formVersionUuid,
       appraisalType: auditData.appraisalType || "",
       appraisalDate: auditData.appraisalDate || new Date().toISOString(),
       seafarersName: appraisalData.seafarersName || null,

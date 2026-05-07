@@ -74,6 +74,7 @@ export const formsService = {
     let matchedForm = null;
     let rankGroupConfig = null;
     let rankGroupName = null;
+    let matchedReleasedVersion: { id: number; fvUuid: string } | null = null;
 
     for (const form of candidateForms) {
       const activeRankGroups = await rankGroupsRepo.findByFormId(form.id, false);
@@ -122,6 +123,7 @@ export const formsService = {
           rankGroupConfig = typeof latestReleasedVersion.configuration === 'string'
             ? JSON.parse(latestReleasedVersion.configuration)
             : latestReleasedVersion.configuration;
+          matchedReleasedVersion = { id: latestReleasedVersion.id, fvUuid: latestReleasedVersion.fvUuid };
           console.log(`✅ [V2 getFormForRank] Using latest released version ${latestReleasedVersion.versionNo} config for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}"`);
         } catch (e) {
           console.warn(`⚠️ [V2 getFormForRank] Failed to parse version config, falling back to rank group config:`, e);
@@ -151,12 +153,49 @@ export const formsService = {
         ...matchedForm,
         rankGroupName,
         rankGroupConfig: null,
+        formVersionId: null,
+        formVersionUuid: null,
         noReleasedVersion: true,
         noReleasedVersionReason: `No released form version exists for rank group "${rankGroupName}". Release a draft before starting an appraisal.`,
       };
     }
 
-    return { ...matchedForm, rankGroupName, rankGroupConfig, noReleasedVersion: false };
+    return {
+      ...matchedForm,
+      rankGroupName,
+      rankGroupConfig,
+      formVersionId: matchedReleasedVersion?.id ?? null,
+      formVersionUuid: matchedReleasedVersion?.fvUuid ?? null,
+      noReleasedVersion: false,
+    };
+  },
+
+  async getVersionConfiguration(versionId: number): Promise<{ rankGroupName: string | null; rankGroupConfig: any | null; formVersionId: number; formVersionUuid: string }> {
+    // Include soft-deleted versions: appraisals pinned to a version that was
+    // later deleted in the Form Editor must still resolve their frozen config.
+    const version = await formVersionsRepo.findByIdIncludingDeleted(versionId);
+    if (!version) throw new Error(`Form version not found: ${versionId}`);
+    let rankGroupName: string | null = null;
+    if (version.rankGroupId != null) {
+      const rg = await rankGroupsRepo.findById(version.rankGroupId);
+      rankGroupName = rg?.name ?? null;
+    }
+    let rankGroupConfig: any = null;
+    if (version.configuration) {
+      try {
+        rankGroupConfig = typeof version.configuration === "string"
+          ? JSON.parse(version.configuration)
+          : version.configuration;
+      } catch (e) {
+        console.warn(`⚠️ [V2 getVersionConfiguration] Failed to parse configuration for version id ${versionId}:`, e);
+      }
+    }
+    return {
+      rankGroupName,
+      rankGroupConfig,
+      formVersionId: version.id,
+      formVersionUuid: version.fvUuid,
+    };
   },
 
   async cleanupDuplicates(): Promise<{ message: string; kept?: number; deletedCount?: number; totalOriginal?: number }> {

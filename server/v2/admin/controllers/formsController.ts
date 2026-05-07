@@ -103,6 +103,23 @@ export const formsController = {
     }
   },
 
+  async getVersionConfiguration(req: Request, res: Response) {
+    try {
+      const versionId = parseInt(req.params.versionId);
+      if (isNaN(versionId)) {
+        return res.status(400).json({ error: "Invalid version ID" });
+      }
+      const result = await formsService.getVersionConfiguration(versionId);
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error fetching form version configuration:", error);
+      res.status(500).json({ error: "Failed to fetch form version configuration" });
+    }
+  },
+
   async cleanupDuplicates(req: Request, res: Response) {
     try {
       const result = await formsService.cleanupDuplicates();
