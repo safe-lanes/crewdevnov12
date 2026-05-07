@@ -3447,8 +3447,12 @@ const AdminModuleInner = (): JSX.Element => {
                 originalFormId: form.id,
                 expandedRankGroup: rankGroup,
                 rankGroup: rankGroup,
-                versionNo: rgVersion?.versionNo || form.versionNo,
-                versionDate: rgVersion?.versionDate || form.versionDate,
+                versionNo: rgVersion?.versionNo || '00',
+                versionDate: rgVersion?.versionDate || (() => {
+                  const d = new Date();
+                  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                  return `${String(d.getDate()).padStart(2,'0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
+                })(),
                 hasDraft,
                 isFirstInGroup: index === 0,
                 groupSize: activeRankGroups.length,

@@ -475,6 +475,34 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   }, [versionsData]);
   
   const versionsPostUrl = useV2 ? `/api/v2/admin/forms/${realFormId}/versions` : `/api/forms/${realFormId}/versions`;
+  const deleteDraftMutation = useMutation({
+    mutationFn: async (draftId: number) => {
+      const url = useV2
+        ? `/api/v2/admin/form-versions/${draftId}`
+        : `/api/form-versions/${draftId}`;
+      const response = await apiRequest('DELETE', url);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
+      if (useV2) {
+        queryClient.invalidateQueries({ predicate: (q) => {
+          const key = q.queryKey[0];
+          return typeof key === 'string' && key === '/api/v2/admin/form-versions-all';
+        }});
+      }
+      setHasSavedDraft(false);
+      setIsConfigMode(false);
+      setSelectedVersionNo("");
+      setSelectedVersionDate(undefined);
+      setVersionExplicitlySelected(false);
+      setActiveVersion("");
+      toast({ title: "Draft discarded", description: "The draft has been deleted." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
   const createDraftMutation = useMutation({
     mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string }) => {
       const response = await apiRequest('POST', versionsPostUrl, {
@@ -562,11 +590,14 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       });
     });
     
-    // If no versions exist, show a default released version placeholder
+    // If no released version exists yet for this rank group, show the
+    // canonical "00 / today" placeholder (NOT the parent form's versionDate,
+    // which mirrors the max released across all rank groups and would leak
+    // an unrelated number/date onto a fresh rank group).
     if (result.length === 0 || !result.some(v => v.status === 'Released')) {
       result.push({
         versionNo: "00",
-        versionDate: form.versionDate || "01-Jan-2025",
+        versionDate: format(new Date(), "dd-MMM-yyyy"),
         status: "Released"
       });
     }
@@ -575,7 +606,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     result.sort((a, b) => b.versionNo.localeCompare(a.versionNo));
     
     return result;
-  }, [versionsData, hasSavedDraft, hasDraftVersion, selectedVersionNo, selectedVersionDate, form.versionDate]);
+  }, [versionsData, hasSavedDraft, hasDraftVersion, selectedVersionNo, selectedVersionDate]);
   
   // Handler to release the current draft version
   const handleReleaseVersion = () => {
@@ -1894,18 +1925,31 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 variant="destructive"
                 size="sm"
                 className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                disabled={deleteDraftMutation.isPending}
                 onClick={() => {
-                  setIsConfigMode(false);
-                  setHasSavedDraft(false);
-                  setSelectedVersionNo("");
-                  setSelectedVersionDate(undefined);
-                  setVersionExplicitlySelected(false);
-                  setActiveVersion("");
+                  // If a real draft row exists on the server for this rank group,
+                  // confirm + DELETE it. Otherwise (user just entered edit mode
+                  // and never persisted anything) just exit locally.
+                  const persistedDraft = (versionsData || []).find(v => v.status === 'draft');
+                  if (persistedDraft?.id) {
+                    showConfirmDialog(
+                      `Discard draft v${persistedDraft.versionNo}?`,
+                      "This will permanently delete the unreleased draft for this rank group. This cannot be undone.",
+                      () => deleteDraftMutation.mutate(persistedDraft.id as number),
+                    );
+                  } else {
+                    setIsConfigMode(false);
+                    setHasSavedDraft(false);
+                    setSelectedVersionNo("");
+                    setSelectedVersionDate(undefined);
+                    setVersionExplicitlySelected(false);
+                    setActiveVersion("");
+                  }
                 }}
                 data-testid="button-discard-ver"
               >
-                <span className="hidden sm:inline">Discard Ver</span>
-                <span className="sm:hidden">Discard</span>
+                <span className="hidden sm:inline">{deleteDraftMutation.isPending ? 'Discarding...' : 'Discard Ver'}</span>
+                <span className="sm:hidden">{deleteDraftMutation.isPending ? '...' : 'Discard'}</span>
               </Button>
             )}
             <Button
