@@ -8,6 +8,20 @@ const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
 const rankGroupsRepo = new RankGroupsRepository();
 
+// DD-MMM-YYYY (e.g. 07-May-2026). Reject anything that isn't a real calendar date.
+const VERSION_DATE_RE = /^(\d{2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})$/;
+function isValidVersionDate(value: string | null | undefined): value is string {
+  if (!value || typeof value !== "string") return false;
+  const m = VERSION_DATE_RE.exec(value);
+  if (!m) return false;
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const day = parseInt(m[1], 10);
+  const monthIdx = months.indexOf(m[2]);
+  const year = parseInt(m[3], 10);
+  const d = new Date(Date.UTC(year, monthIdx, day));
+  return d.getUTCFullYear() === year && d.getUTCMonth() === monthIdx && d.getUTCDate() === day;
+}
+
 export const formsService = {
   async getAll(): Promise<AdmFormV2[]> {
     return formsRepo.findAll();
@@ -180,14 +194,16 @@ export const formsService = {
     if (!data.rankGroupId) {
       throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
     }
-    // Server-controlled metadata: ignore client-supplied versionNo / versionDate / releasedAt / status.
+    // Server-controlled metadata: ignore client-supplied versionNo / releasedAt / status.
     // All new versions are drafts; release happens via releaseVersionById.
+    // versionDate IS honored when supplied (admin-picked date); falls back to today.
     const today = new Date();
     const todayStr = today.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     }).replace(/ /g, "-");
+    const pickedVersionDate = isValidVersionDate(data.versionDate) ? data.versionDate! : todayStr;
 
     const existingDraft = await formVersionsRepo.findDraftByRankGroupId(data.rankGroupId);
     if (existingDraft) {
@@ -196,7 +212,7 @@ export const formsService = {
         applyAuditUser({
           configuration: data.configuration ?? null,
           sharedConfig: data.sharedConfig ?? null,
-          versionDate: todayStr,
+          versionDate: pickedVersionDate,
         }),
       );
       if (!updated) throw new Error(`Form version not found: ${existingDraft.id}`);
@@ -214,7 +230,7 @@ export const formsService = {
       rankGroupId: data.rankGroupId,
       formId: form.id,
       versionNo: nextVersionNo,
-      versionDate: todayStr,
+      versionDate: pickedVersionDate,
       status: "draft",
       releasedAt: null,
     }, true));
@@ -244,12 +260,15 @@ export const formsService = {
     if (existing.status !== "draft") {
       throw new Error("Only draft versions can be released.");
     }
+    // Preserve the draft's versionDate (admin-picked at Save Draft time).
+    // Fall back to today only if the draft somehow lacks a valid date.
     const now = new Date();
-    const versionDate = now.toLocaleDateString("en-GB", {
+    const todayStr = now.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     }).replace(/ /g, "-");
+    const versionDate = isValidVersionDate(existing.versionDate) ? existing.versionDate! : todayStr;
     const version = await formVersionsRepo.updateById(id, applyAuditUser({
       status: "released",
       versionDate,

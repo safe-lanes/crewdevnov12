@@ -2203,7 +2203,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   </span>
                 )}
               </div>
-              {versions.map((version, index) => (
+              {/* Per-version stacked rows hidden — dropdown above already shows
+                  "vNN — DD-MMM-YYYY (Status)" for each version, making this list redundant. */}
+              {/* {versions.map((version, index) => (
               <div
                 key={version.id ?? `${version.versionNo}-${version.status}-${index}`}
                 className={`px-3 sm:px-4 py-3 cursor-pointer transition-colors hover:bg-gray-100 ${
@@ -2234,7 +2236,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   </div>
                 </div>
               </div>
-              ))}
+              ))} */}
             </div>
           ) : null}
         </div>
