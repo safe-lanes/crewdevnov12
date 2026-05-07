@@ -161,12 +161,12 @@ const partASchema = z.object({
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
   nationality: z.string().min(1, "Nationality is required"),
   vessel: z.string().min(1, "Vessel is required"),
-  signOn: z.string().optional(),
+  signOn: z.string().nullish(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
-  appraisalPeriodFrom: z.string().optional(),
-  appraisalPeriodTo: z.string().optional(),
-  personalityIndexCategory: z.string().optional(),
-  primaryAppraiser: z.string().optional(),
+  appraisalPeriodFrom: z.string().nullish(),
+  appraisalPeriodTo: z.string().nullish(),
+  personalityIndexCategory: z.string().nullish(),
+  primaryAppraiser: z.string().nullish(),
 });
 
 // Part B schema (for full form validation)
@@ -233,12 +233,12 @@ const appraisalSchema = z.object({
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
   nationality: z.string().min(1, "Nationality is required"),
   vessel: z.string().min(1, "Vessel is required"),
-  signOn: z.string().optional(),
+  signOn: z.string().nullish(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
-  appraisalPeriodFrom: z.string().optional(),
-  appraisalPeriodTo: z.string().optional(),
-  personalityIndexCategory: z.string().optional(),
-  primaryAppraiser: z.string().optional(),
+  appraisalPeriodFrom: z.string().nullish(),
+  appraisalPeriodTo: z.string().nullish(),
+  personalityIndexCategory: z.string().nullish(),
+  primaryAppraiser: z.string().nullish(),
   
   // Part B: Information at Start of Appraisal Period
   trainings: z.array(trainingSchema).default([]),
@@ -902,15 +902,34 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const handleStageSubmission = async (stage: 'stage1' | 'stage2' | 'stage3') => {
     // Get form data with synced comments from useState hooks
     const formData = getFormDataWithSyncedComments();
-    
+
+    // Build a sanitized copy for client-side validation that respects the
+    // active form config: skip fields/sections hidden by the rank group.
+    const sectionToArrayKey: Record<string, keyof AppraisalFormData> = {
+      partB1: 'trainings',
+      partB2: 'targets',
+      partC: 'competenceAssessments',
+      partD: 'behaviouralAssessments',
+      partE: 'trainingNeeds',
+      partF: 'recommendations',
+    };
+    const dataForValidation: any = { ...formData };
+    for (const field of hiddenFields) {
+      delete dataForValidation[field];
+    }
+    for (const section of hiddenSections) {
+      const key = sectionToArrayKey[section];
+      if (key) dataForValidation[key] = [];
+    }
+
     // Validate stage-specific data
     try {
       if (stage === 'stage1') {
-        stage1Schema.parse(formData);
+        stage1Schema.parse(dataForValidation);
       } else if (stage === 'stage2') {
-        stage2Schema.parse(formData);
+        stage2Schema.parse(dataForValidation);
       } else if (stage === 'stage3') {
-        stage3Schema.parse(formData);
+        stage3Schema.parse(dataForValidation);
       }
     } catch (error: any) {
       toast({ 
@@ -1321,6 +1340,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
     return {
       ...data,
+      signOn: data.signOn ?? "",
+      appraisalPeriodFrom: data.appraisalPeriodFrom ?? "",
+      appraisalPeriodTo: data.appraisalPeriodTo ?? "",
+      personalityIndexCategory: data.personalityIndexCategory ?? "",
+      primaryAppraiser: data.primaryAppraiser ?? "",
       trainings: updatedTrainings,
       targets: updatedTargets,
       competenceAssessments: updatedCompetenceAssessments,
