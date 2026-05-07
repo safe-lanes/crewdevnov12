@@ -914,22 +914,30 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       partF: 'recommendations',
     };
     const dataForValidation: any = { ...formData };
-    for (const field of hiddenFields) {
-      delete dataForValidation[field];
-    }
     for (const section of hiddenSections) {
       const key = sectionToArrayKey[section];
       if (key) dataForValidation[key] = [];
     }
 
+    // Build a stage schema that omits any hidden Part A field (so required
+    // fields in `hiddenFields` like appraisalType don't trip min(1) errors).
+    const omitForStage = (baseSchema: z.ZodObject<any>) => {
+      const shapeKeys = Object.keys(baseSchema.shape);
+      const omitObj: Record<string, true> = {};
+      for (const f of hiddenFields) {
+        if (shapeKeys.includes(f)) omitObj[f] = true;
+      }
+      return Object.keys(omitObj).length ? baseSchema.omit(omitObj as any) : baseSchema;
+    };
+
     // Validate stage-specific data
     try {
       if (stage === 'stage1') {
-        stage1Schema.parse(dataForValidation);
+        omitForStage(stage1Schema).parse(dataForValidation);
       } else if (stage === 'stage2') {
-        stage2Schema.parse(dataForValidation);
+        omitForStage(stage2Schema).parse(dataForValidation);
       } else if (stage === 'stage3') {
-        stage3Schema.parse(dataForValidation);
+        omitForStage(stage3Schema).parse(dataForValidation);
       }
     } catch (error: any) {
       toast({ 
