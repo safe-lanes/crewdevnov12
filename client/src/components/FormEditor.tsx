@@ -1938,6 +1938,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               <span className="hidden sm:inline">{isConfigMode ? "Exit Config" : "Configure Fields"}</span>
               <span className="sm:hidden">{isConfigMode ? "Exit" : "Config"}</span>
             </Button>
+            {(() => {
+              const activeVersionStatus = versions.find(v => v.versionNo === activeVersion)?.status;
+              const isViewingReleased = !isConfigMode && activeVersionStatus === 'Released';
+              if (isViewingReleased) return null;
+              return (
             <Button 
               onClick={() => {
                 // Validate assessment criteria fields
@@ -2011,6 +2016,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               <span className="hidden sm:inline">{createDraftMutation.isPending ? 'Saving...' : 'Save Draft'}</span>
               <span className="sm:hidden">{createDraftMutation.isPending ? '...' : 'Save'}</span>
             </Button>
+              );
+            })()}
           </div>
         </div>
 
@@ -2076,6 +2083,14 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                     onValueChange={(val) => {
                       setActiveVersion(val);
                       setVersionExplicitlySelected(true);
+                      const picked = versions.find(v => v.versionNo === val);
+                      if (picked?.status === 'Draft') {
+                        setSelectedVersionNo(picked.versionNo);
+                        setSelectedVersionDate(picked.versionDate ? new Date(picked.versionDate) : new Date());
+                        setIsConfigMode(true);
+                      } else {
+                        setIsConfigMode(false);
+                      }
                     }}
                   >
                     <SelectTrigger
@@ -2091,7 +2106,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                           value={v.versionNo}
                           data-testid={`option-version-${v.versionNo}`}
                         >
-                          v{v.versionNo} · {v.status === 'draft' ? 'Draft' : 'Released'} · {v.versionDate || '—'}
+                          v{v.versionNo} · {v.status} · {v.versionDate || '—'}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -3405,6 +3405,7 @@ const AdminModuleInner = (): JSX.Element => {
       categoryRowSpan?: number;
       isFirstInCategory?: boolean;
       isPlaceholderRow?: boolean;
+      hasDraft?: boolean;
     }> = [];
 
     // Process each category in order (appraisal first, then promotion)
@@ -8301,7 +8302,7 @@ const AdminModuleInner = (): JSX.Element => {
                     <TableCell className="text-[#4f5863] text-xs font-normal">
                       <div className="flex items-center gap-2">
                         <span>{form.versionNo}</span>
-                        {(form as any).hasDraft && (
+                        {form.hasDraft && (
                           <span
                             className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
                             data-testid={`badge-draft-${form.id}`}
