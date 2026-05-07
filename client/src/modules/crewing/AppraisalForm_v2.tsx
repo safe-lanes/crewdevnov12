@@ -1625,7 +1625,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       if (!canViewSection(section.id)) return false;
       const hiddenKey = sectionIdToHiddenKey[section.id];
       if (hiddenKey) {
-        return isSectionVisible(hiddenKey);
+        if (!isSectionVisible(hiddenKey)) return false;
+      }
+      // Part B is also effectively hidden if both B1 and B2 sub-sections are hidden
+      if (section.id === "B" && !isSectionVisible('partB1') && !isSectionVisible('partB2')) {
+        return false;
       }
       return true;
     });
@@ -1828,7 +1832,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         )}
 
         {/* Stage 1 Action Buttons - kept in parent for form-level control */}
-        {isSectionVisible('partB') && (
+        {isSectionVisible('partB') && (isSectionVisible('partB1') || isSectionVisible('partB2')) && (
           <div className="flex justify-end gap-4">
             <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
               Save Draft

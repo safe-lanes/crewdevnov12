@@ -57,6 +57,9 @@ const PartBComponent: React.FC<PartBProps> = ({
   };
 
   if (!isSectionVisible('partB')) return null;
+  const showB1 = isSectionVisible('partB1');
+  const showB2 = isSectionVisible('partB2');
+  if (!showB1 && !showB2) return null;
 
   return (
     <div ref={partRef} data-section-id="B">
@@ -68,7 +71,8 @@ const PartBComponent: React.FC<PartBProps> = ({
             <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
           </div>
           <div className="space-y-8">
-            <div>
+            {showB1 && (
+            <div data-testid="section-b1">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
                 <Button type="button" onClick={addTraining} variant="outline" size="sm" className="text-gray-600 border-gray-300">
@@ -171,8 +175,10 @@ const PartBComponent: React.FC<PartBProps> = ({
                 </div>
               </div>
             </div>
+            )}
 
-            <div>
+            {showB2 && (
+            <div data-testid="section-b2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B2. Target Setting</h3>
                 <Button type="button" onClick={addTarget} variant="outline" size="sm" className="text-gray-600 border-gray-300">
@@ -273,6 +279,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                 </table>
               </div>
             </div>
+            )}
           </div>
         </CardContent>
       </Card>
