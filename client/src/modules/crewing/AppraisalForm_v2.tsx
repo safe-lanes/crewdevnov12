@@ -2485,7 +2485,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 )}
 
                 {/* Part B: Information at Start of Appraisal Period */}
-                {activeSection === "information" && isSectionVisible('partB') && (
+                {activeSection === "information" && isSectionVisible('partB') && (isSectionVisible('partB1') || isSectionVisible('partB2')) && (
                   <Card className="bg-white">
                     <CardContent className="p-6">
                       <div className="pb-4 mb-6">
@@ -2495,6 +2495,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
                       <div className="space-y-8">
                       {/* B1. Trainings conducted prior joining vessel */}
+                      {isSectionVisible('partB1') && (
                       <div>
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
@@ -2637,8 +2638,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           </div>
                         </div>
                       </div>
+                      )}
 
                       {/* B2. Target Setting */}
+                      {isSectionVisible('partB2') && (
                       <div>
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B2. Target Setting</h3>
@@ -2779,6 +2782,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           </table>
                         </div>
                       </div>
+                      )}
 
                       <div className="flex justify-end gap-4 mt-6">
                         <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
