@@ -257,24 +257,23 @@ export const formsService = {
     }));
     if (!version) throw new Error(`Form version not found: ${id}`);
 
-    try {
-      const allVersions = await formVersionsRepo.findByFormId(version.formId);
-      const released = allVersions.filter(v => v.status === "released");
-      if (released.length > 0) {
-        const latest = released.reduce((max, v) => {
-          const vNo = parseInt(v.versionNo, 10);
-          const maxNo = parseInt(max.versionNo, 10);
-          if (isNaN(vNo)) return max;
-          if (isNaN(maxNo)) return v;
-          return vNo > maxNo ? v : max;
-        }, released[0]);
-        await formsRepo.updateById(version.formId, {
-          versionNo: latest.versionNo,
-          versionDate: latest.versionDate,
-        });
-      }
-    } catch (err) {
-      console.error(`⚠️ [V2 RELEASE] Failed to sync parent form version for form ${version.formId}:`, err);
+    // Parent form metadata MUST stay in sync with the latest released version.
+    // Errors here propagate so the API surfaces a 500 rather than returning success
+    // with a divergent parent record.
+    const allVersions = await formVersionsRepo.findByFormId(version.formId);
+    const released = allVersions.filter(v => v.status === "released");
+    if (released.length > 0) {
+      const latest = released.reduce((max, v) => {
+        const vNo = parseInt(v.versionNo, 10);
+        const maxNo = parseInt(max.versionNo, 10);
+        if (isNaN(vNo)) return max;
+        if (isNaN(maxNo)) return v;
+        return vNo > maxNo ? v : max;
+      }, released[0]);
+      await formsRepo.updateById(version.formId, {
+        versionNo: latest.versionNo,
+        versionDate: latest.versionDate,
+      });
     }
 
     return version;

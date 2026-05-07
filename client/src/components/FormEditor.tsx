@@ -1919,13 +1919,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   }
                   setIsConfigMode(false);
                 } else {
-                  // Entering config mode = "Edit as new draft".
+                  // Entering edit mode = "Edit as new draft".
                   // One draft per rank group:
-                  //  - If a draft exists and the user is viewing a different (released)
-                  //    version, jump selection to that draft and surface a toast so they
-                  //    know they're editing the existing one (not creating a new draft).
-                  //  - If they're already on the draft row, resume editing silently.
-                  //  - Otherwise create a new draft from the next version number.
+                  //  - If a draft exists, jump selection to it (with toast if user was
+                  //    viewing a different version) and resume editing.
+                  //  - Otherwise immediately POST to seed a new draft from the currently
+                  //    loaded configuration (released config if viewing released).
                   const existingDraft = versionsData?.find(v => v.status === 'draft');
                   if (existingDraft) {
                     if (existingDraft.versionNo !== activeVersion) {
@@ -1943,6 +1942,30 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                     setSelectedVersionNo(nextVersionNo);
                     setSelectedVersionDate(new Date());
                     setActiveVersion(nextVersionNo);
+                    // Persist the seed draft right away so the grid + dropdown reflect
+                    // it immediately and the "one draft per rank group" guarantee is
+                    // enforced server-side from the moment the user enters edit mode.
+                    if (currentRankGroup) {
+                      const seedFormData = formMethods.getValues();
+                      const seedHiddenFields = Object.entries(fieldVisibility)
+                        .filter(([, visible]) => !visible)
+                        .map(([field]) => field);
+                      const seedHiddenSections = Object.entries(sectionVisibility)
+                        .filter(([, visible]) => !visible)
+                        .map(([section]) => section);
+                      const seedSharedConfig = { appraisalTypeOptions };
+                      createDraftMutation.mutate({
+                        versionNo: nextVersionNo,
+                        versionDate: format(new Date(), "dd-MMM-yyyy"),
+                        configuration: JSON.stringify({
+                          ...seedFormData,
+                          hiddenFields: seedHiddenFields,
+                          hiddenSections: seedHiddenSections,
+                        }),
+                        sharedConfig: JSON.stringify(seedSharedConfig),
+                      });
+                      setHasSavedDraft(true);
+                    }
                   }
                   setIsConfigMode(true);
                 }
