@@ -435,8 +435,9 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
       }
 
       // Rating filter
-      if (filters.rating && crew.overallRating.value !== "N/A") {
+      if (filters.rating) {
         const rating = parseFloat(crew.overallRating.value);
+        if (crew.overallRating.value === "N/A" || Number.isNaN(rating)) return false;
         if (filters.rating === "high" && rating < 4.0) return false;
         if (filters.rating === "medium" && (rating < 3.0 || rating >= 4.0)) return false;
         if (filters.rating === "low" && rating >= 3.0) return false;
