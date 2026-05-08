@@ -72,77 +72,90 @@ export const formsService = {
     });
     if (candidateForms.length === 0) return null;
 
-    let matchedForm = null;
-    let rankGroupConfig = null;
-    let rankGroupName = null;
+    let matchedForm: typeof candidateForms[number] | null = null;
+    let rankGroupConfig: any = null;
+    let rankGroupName: string | null = null;
     let matchedReleasedVersion: { id: number; fvUuid: string } | null = null;
 
     const literal = rankLabel.toLowerCase();
     const baseRank = getBaseRank(rankLabel).toLowerCase();
 
-    for (const form of candidateForms) {
-      const activeRankGroups = await rankGroupsRepo.findByFormId(form.id, false);
+    // Two-pass match: literal (case-insensitive exact) wins over base-rank
+    // fallback. This preserves Task #362 precedence — admins who explicitly
+    // listed a suffixed rank like "AB_3" keep their mapping even if another
+    // active group covers the base "AB".
+    type MatchPass = { label: string; predicate: (lowerRanks: string[]) => boolean };
+    const passes: MatchPass[] = [
+      { label: 'literal', predicate: (lr) => lr.includes(literal) },
+    ];
+    if (baseRank && baseRank !== literal) {
+      passes.push({ label: 'base', predicate: (lr) => lr.includes(baseRank) });
+    }
 
-      const matchingGroups: Array<{ id: number; name: string; configuration: string | null; rgUuid: string }> = [];
-      for (const rg of activeRankGroups) {
-        try {
-          const ranks = JSON.parse(rg.ranks);
-          if (!Array.isArray(ranks)) continue;
-          const lowerRanks = ranks.map((r: unknown) => String(r).toLowerCase());
-          const literalMatch = lowerRanks.includes(literal);
-          const baseMatch = !literalMatch && !!baseRank && baseRank !== literal && lowerRanks.includes(baseRank);
-          if (literalMatch || baseMatch) {
-            matchingGroups.push({ id: rg.id, name: rg.name, configuration: rg.configuration, rgUuid: rg.rgUuid });
+    passLoop:
+    for (const pass of passes) {
+      for (const form of candidateForms) {
+        const activeRankGroups = await rankGroupsRepo.findByFormId(form.id, false);
+
+        const matchingGroups: Array<{ id: number; name: string; configuration: string | null; rgUuid: string }> = [];
+        for (const rg of activeRankGroups) {
+          try {
+            const ranks = JSON.parse(rg.ranks);
+            if (!Array.isArray(ranks)) continue;
+            const lowerRanks = ranks.map((r: unknown) => String(r).toLowerCase());
+            if (pass.predicate(lowerRanks)) {
+              matchingGroups.push({ id: rg.id, name: rg.name, configuration: rg.configuration, rgUuid: rg.rgUuid });
+            }
+          } catch (e) {}
+        }
+
+        if (matchingGroups.length === 0) continue;
+
+        matchedForm = form;
+
+        if (matchingGroups.length > 1) {
+          console.warn(`⚠️ [V2 getFormForRank] Rank "${rankLabel}" (${pass.label} match) found in ${matchingGroups.length} ACTIVE rank groups under form "${form.name}" (id:${form.id}): ${matchingGroups.map(g => `"${g.name}" (id:${g.id}, hasConfig:${!!g.configuration})`).join(', ')}`);
+        }
+
+        let selectedGroup: typeof matchingGroups[number] | null = null;
+        let latestReleasedVersion: Awaited<ReturnType<typeof formVersionsRepo.findLatestReleasedByRankGroupId>> | null = null;
+
+        const sortedGroups = matchingGroups.sort((a, b) => a.id - b.id);
+
+        for (const group of sortedGroups) {
+          const releasedVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(group.id);
+          if (releasedVersion?.configuration) {
+            selectedGroup = group;
+            latestReleasedVersion = releasedVersion;
+            break;
           }
-        } catch (e) {}
-      }
-
-      if (matchingGroups.length === 0) continue;
-
-      matchedForm = form;
-
-      if (matchingGroups.length > 1) {
-        console.warn(`⚠️ [V2 getFormForRank] Rank "${rankLabel}" found in ${matchingGroups.length} ACTIVE rank groups under form "${form.name}" (id:${form.id}): ${matchingGroups.map(g => `"${g.name}" (id:${g.id}, hasConfig:${!!g.configuration})`).join(', ')}`);
-      }
-
-      let selectedGroup = null;
-      let latestReleasedVersion = null;
-
-      const sortedGroups = matchingGroups.sort((a, b) => a.id - b.id);
-
-      for (const group of sortedGroups) {
-        const releasedVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(group.id);
-        if (releasedVersion?.configuration) {
-          selectedGroup = group;
-          latestReleasedVersion = releasedVersion;
-          break;
         }
-      }
 
-      if (!selectedGroup) {
-        const groupsWithConfig = sortedGroups.filter(g => g.configuration);
-        selectedGroup = groupsWithConfig.length > 0 ? groupsWithConfig[0] : sortedGroups[0];
-      }
-
-      rankGroupName = selectedGroup.name;
-
-      if (latestReleasedVersion?.configuration) {
-        try {
-          rankGroupConfig = typeof latestReleasedVersion.configuration === 'string'
-            ? JSON.parse(latestReleasedVersion.configuration)
-            : latestReleasedVersion.configuration;
-          matchedReleasedVersion = { id: latestReleasedVersion.id, fvUuid: latestReleasedVersion.fvUuid };
-          console.log(`✅ [V2 getFormForRank] Using latest released version ${latestReleasedVersion.versionNo} config for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}"`);
-        } catch (e) {
-          console.warn(`⚠️ [V2 getFormForRank] Failed to parse version config, falling back to rank group config:`, e);
+        if (!selectedGroup) {
+          const groupsWithConfig = sortedGroups.filter(g => g.configuration);
+          selectedGroup = groupsWithConfig.length > 0 ? groupsWithConfig[0] : sortedGroups[0];
         }
-      }
 
-      if (!rankGroupConfig) {
-        console.warn(`🚫 [V2 getFormForRank] No released form version for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}". Appraisal start blocked until a version is released.`);
-      }
+        rankGroupName = selectedGroup.name;
 
-      break;
+        if (latestReleasedVersion?.configuration) {
+          try {
+            rankGroupConfig = typeof latestReleasedVersion.configuration === 'string'
+              ? JSON.parse(latestReleasedVersion.configuration)
+              : latestReleasedVersion.configuration;
+            matchedReleasedVersion = { id: latestReleasedVersion.id, fvUuid: latestReleasedVersion.fvUuid };
+            console.log(`✅ [V2 getFormForRank] Using latest released version ${latestReleasedVersion.versionNo} config for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}" (${pass.label} match)`);
+          } catch (e) {
+            console.warn(`⚠️ [V2 getFormForRank] Failed to parse version config, falling back to rank group config:`, e);
+          }
+        }
+
+        if (!rankGroupConfig) {
+          console.warn(`🚫 [V2 getFormForRank] No released form version for rank group "${selectedGroup.name}" (id:${selectedGroup.id}), form "${form.name}" (id:${form.id}), rank "${rankLabel}". Appraisal start blocked until a version is released.`);
+        }
+
+        break passLoop;
+      }
     }
 
     if (!matchedForm) {
