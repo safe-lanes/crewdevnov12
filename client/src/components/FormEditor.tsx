@@ -437,25 +437,36 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   }, [versionsData]);
 
   // Default activeVersion once data loads:
-  //  - prefer the latest released version
-  //  - if none exists but a draft does, select the draft and enter edit mode
+  //  - prefer the LATEST SAVED version overall (highest versionNo across
+  //    drafts and releases) so reopen always lands on the most recent
+  //    saved content. If the latest is a draft, also enter edit mode.
+  //  - tie-break: when a draft and a released share the same versionNo,
+  //    prefer the draft (it has the newer in-progress edits).
   // Skipped once the user has explicitly clicked a version row.
   useEffect(() => {
     if (versionExplicitlySelected) return;
-    if (latestReleasedVersion) {
-      if (activeVersion !== latestReleasedVersion.versionNo) {
-        setActiveVersion(latestReleasedVersion.versionNo);
-      }
-      return;
+    const all = versionsData || [];
+    if (all.length === 0) return;
+
+    const latest = all.reduce((best, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      const bNo = parseInt(best.versionNo, 10);
+      if (isNaN(vNo)) return best;
+      if (isNaN(bNo)) return v;
+      if (vNo > bNo) return v;
+      if (vNo === bNo && v.status === 'draft' && best.status !== 'draft') return v;
+      return best;
+    }, all[0]);
+
+    if (activeVersion !== latest.versionNo) {
+      setActiveVersion(latest.versionNo);
     }
-    const draft = (versionsData || []).find(v => v.status === 'draft');
-    if (draft && activeVersion !== draft.versionNo) {
-      setActiveVersion(draft.versionNo);
-      setSelectedVersionNo(draft.versionNo);
-      setSelectedVersionDate(draft.versionDate ? new Date(draft.versionDate) : new Date());
+    if (latest.status === 'draft') {
+      setSelectedVersionNo(latest.versionNo);
+      setSelectedVersionDate(latest.versionDate ? new Date(latest.versionDate) : new Date());
       setIsConfigMode(true);
     }
-  }, [latestReleasedVersion, versionsData, versionExplicitlySelected]);
+  }, [versionsData, versionExplicitlySelected]);
   
   // Compute next version number and available options dynamically
   const { nextVersionNo, availableVersionOptions } = React.useMemo(() => {
