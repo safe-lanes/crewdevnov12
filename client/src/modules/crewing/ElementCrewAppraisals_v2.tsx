@@ -5,7 +5,21 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { appraisalsApiV2 } from "./api/appraisalsApiV2";
+import { AppraisalView } from "./AppraisalView_v2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useViewport } from "@/hooks/useViewport";
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
@@ -128,12 +142,19 @@ const RatingCellRenderer = (params: ICellRendererParams) => {
   return <RatingBadge value={params.value} color={params.data.competenceRating.color} />;
 };
 
-const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void; canEditPerm: boolean; canDeletePerm: boolean } }) => {
+const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void; handleViewClick: (data: CrewAppraisalData) => void; handleDeleteClick: (data: CrewAppraisalData) => void; canEditPerm: boolean; canDeletePerm: boolean } }) => {
   if (!params.colDef || !params.data) return null;
-  
+  const appraisalId = params.data.appraisalId;
+
   return (
     <div className="flex gap-2 justify-center">
-      <Button variant="ghost" size="icon" className="h-6 w-6">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={() => params.context.handleViewClick(params.data)}
+        data-testid={`button-view-appraisal-${appraisalId}`}
+      >
         <EyeIcon className="h-[18px] w-[18px] text-gray-500" />
       </Button>
       {params.context.canEditPerm && (
@@ -142,12 +163,19 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
         size="icon"
         className="h-6 w-6"
         onClick={() => params.context.handleEditClick(params.data)}
+        data-testid={`button-edit-appraisal-${appraisalId}`}
       >
         <EditIcon className="h-[18px] w-[18px] text-gray-500" />
       </Button>
       )}
       {params.context.canDeletePerm && (
-      <Button variant="ghost" size="icon" className="h-6 w-6">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={() => params.context.handleDeleteClick(params.data)}
+        data-testid={`button-delete-appraisal-${appraisalId}`}
+      >
         <Trash2Icon className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
       </Button>
       )}
@@ -163,9 +191,12 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   const isTablet = viewport === 'tablet';
   const isSmallScreen = isPhone || isTablet;
 
+  const { toast } = useToast();
   const [selectedAdminPage, setSelectedAdminPage] = useState("all");
   const [selectedCrewMember, setSelectedCrewMember] = useState<CrewAppraisalData | null>(null);
   const [showAppraisalForm, setShowAppraisalForm] = useState(false);
+  const [viewingAppraisal, setViewingAppraisal] = useState<CrewAppraisalData | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CrewAppraisalData | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -304,6 +335,44 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     setShowAppraisalForm(false);
     setSelectedCrewMember(null);
   }, []);
+
+  const handleViewClick = useCallback((crewMember: CrewAppraisalData) => {
+    setViewingAppraisal(crewMember);
+  }, []);
+
+  const handleDeleteClick = useCallback((crewMember: CrewAppraisalData) => {
+    setDeleteTarget(crewMember);
+  }, []);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (vars: { id: number; name: string }) => {
+      await appraisalsApiV2.delete(vars.id);
+      return vars;
+    },
+    onSuccess: (vars) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
+      toast({
+        title: 'Appraisal deleted',
+        description: vars.name ? `Removed appraisal for ${vars.name}.` : 'The appraisal was removed.',
+      });
+      setDeleteTarget(null);
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Failed to delete appraisal',
+        description: (err?.message as string) || 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+      setDeleteTarget(null);
+    },
+  });
+
+  const confirmDelete = useCallback(() => {
+    if (deleteTarget?.appraisalId == null) return;
+    const name = `${deleteTarget.name.first} ${deleteTarget.name.middle} ${deleteTarget.name.last}`
+      .replace(/\s+/g, ' ').trim();
+    deleteMutation.mutate({ id: deleteTarget.appraisalId, name });
+  }, [deleteTarget, deleteMutation]);
 
 
   // Helper function to get rating color based on value
@@ -975,7 +1044,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
               rowData={crewData}
               columnDefs={columnDefs}
               onGridReady={onGridReady}
-              context={{ handleEditClick, canEditPerm: permissions.length === 0 || canEdit("Crewing"), canDeletePerm: permissions.length === 0 || canDelete("Crewing") }}
+              context={{ handleEditClick, handleViewClick, handleDeleteClick, canEditPerm: permissions.length === 0 || canEdit("Crewing"), canDeletePerm: permissions.length === 0 || canDelete("Crewing") }}
               fillAvailableHeight={true}
               bottomPadding={80}
               width="100%"
@@ -1016,6 +1085,46 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
             onClose={handleCloseForm}
           />
         )}
+
+        {/* Read-only View Modal */}
+        {viewingAppraisal && viewingAppraisal.appraisalId != null && (
+          <AppraisalView
+            appraisalId={viewingAppraisal.appraisalId}
+            rank={viewingAppraisal.rank}
+            seafarerNameFallback={`${viewingAppraisal.name.first} ${viewingAppraisal.name.middle} ${viewingAppraisal.name.last}`.replace(/\s+/g, ' ').trim()}
+            onClose={() => setViewingAppraisal(null)}
+          />
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog
+          open={!!deleteTarget || deleteMutation.isPending}
+          onOpenChange={(open) => { if (!open && !deleteMutation.isPending) setDeleteTarget(null); }}
+        >
+          <AlertDialogContent data-testid="dialog-delete-appraisal">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete appraisal</AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteTarget
+                  ? `Delete the ${deleteTarget.appraisalType || 'appraisal'} for ${`${deleteTarget.name.first} ${deleteTarget.name.middle} ${deleteTarget.name.last}`.replace(/\s+/g, ' ').trim() || 'this seafarer'}? This action cannot be undone.`
+                  : 'This action cannot be undone.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteMutation.isPending} data-testid="button-cancel-delete">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+                disabled={deleteMutation.isPending}
+                className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                data-testid="button-confirm-delete"
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </MainLayout>
     </div>
   );

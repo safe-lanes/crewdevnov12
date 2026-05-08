@@ -1,0 +1,488 @@
+import { useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { X, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+interface AppraisalDataShape {
+  seafarersName?: string;
+  seafarersRank?: string;
+  nationality?: string;
+  vessel?: string;
+  signOn?: string;
+  appraisalType?: string;
+  appraisalPeriodFrom?: string;
+  appraisalPeriodTo?: string;
+  personalityIndexCategory?: string;
+  primaryAppraiser?: string;
+  trainings?: Array<{ id: string; training?: string; evaluation?: string; comment?: string }>;
+  targets?: Array<{ id: string; targetSetting?: string; evaluation?: string; comment?: string }>;
+  competenceAssessments?: Array<{ id: string; assessmentCriteria?: string; weight?: number; effectiveness?: string; comment?: string }>;
+  behaviouralAssessments?: Array<{ id: string; assessmentCriteria?: string; weight?: number; effectiveness?: string; comment?: string }>;
+  trainingNeeds?: Array<{ id: string; training?: string; comment?: string }>;
+  recommendations?: Array<{ id: string; question?: string; answer?: string; comment?: string }>;
+  appraiserComments?: Array<{ id: string; name?: string; rank?: string; comment?: string }>;
+  seafarerComments?: Array<{ id: string; name?: string; rank?: string; comment?: string }>;
+  officeReviews?: Array<{ id: string; name?: string; position?: string; feedback?: string }>;
+  trainingFollowups?: Array<{ id: string; training?: string; correspondingInDB?: string; category?: string; status?: string; targetDate?: string; comment?: string }>;
+}
+
+interface ExistingAppraisal {
+  id: number;
+  appraisalData: string | AppraisalDataShape;
+  status: 'draft' | 'preliminary' | 'submitted' | 'reviewed';
+  appraisalType?: string;
+  appraisalDate?: string;
+  formVersionId?: number | null;
+  formVersionUuid?: string | null;
+  competenceRating?: string;
+  behavioralRating?: string;
+  overallRating?: string;
+}
+
+interface AppraisalViewProps {
+  appraisalId: number;
+  rank?: string;
+  seafarerNameFallback?: string;
+  onClose: () => void;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DASH = "—";
+
+function formatDate(value?: string): string {
+  if (!value) return DASH;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  const day = String(d.getDate()).padStart(2, "0");
+  const mon = MONTHS[d.getMonth()];
+  const yr = d.getFullYear();
+  return `${day}-${mon}-${yr}`;
+}
+
+function valueOr(v?: string | number | null): string {
+  if (v === undefined || v === null || v === "") return DASH;
+  return String(v);
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    preliminary: "bg-blue-100 text-blue-700",
+    submitted: "bg-amber-100 text-amber-700",
+    reviewed: "bg-green-100 text-green-700",
+    draft: "bg-gray-100 text-gray-700",
+  };
+  const cls = map[status] || "bg-gray-100 text-gray-700";
+  const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : "N/A";
+  return <Badge className={`rounded-md px-2.5 py-1 font-semibold ${cls}`}>{label}</Badge>;
+}
+
+function SectionHeader({ id, title }: { id: string; title: string }) {
+  return (
+    <h2
+      className="mt-8 mb-4 pb-1.5 border-b border-[#16569e]/40 text-[15px] font-semibold uppercase tracking-wide text-[#16569e]"
+      data-testid={`section-${id}`}
+    >
+      {title}
+    </h2>
+  );
+}
+
+function SubHeader({ title }: { title: string }) {
+  return (
+    <h3 className="mt-5 mb-3 text-[13px] font-semibold text-[#16569e] underline underline-offset-4 decoration-[#16569e]/50">
+      {title}
+    </h3>
+  );
+}
+
+function Field({ label, value, testId }: { label: string; value: React.ReactNode; testId?: string }) {
+  return (
+    <div className="grid grid-cols-12 gap-3 py-1.5">
+      <div className="col-span-5 md:col-span-4 text-[13px] text-[#16569e] underline underline-offset-2 decoration-[#16569e]/40">
+        {label}
+      </div>
+      <div className="col-span-7 md:col-span-8 text-[13px] text-gray-900" data-testid={testId}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+interface Col<T> {
+  header: string;
+  width?: string;
+  render: (row: T) => React.ReactNode;
+}
+
+function DataTable<T extends { id: string }>({
+  rows,
+  columns,
+  testIdPrefix,
+  emptyText = "No entries.",
+}: {
+  rows: T[] | undefined;
+  columns: Col<T>[];
+  testIdPrefix: string;
+  emptyText?: string;
+}) {
+  if (!rows || rows.length === 0) {
+    return <div className="text-[12px] italic text-gray-400 py-2">{emptyText}</div>;
+  }
+  return (
+    <table className="w-full text-[12.5px] border-collapse">
+      <thead>
+        <tr className="border-b border-[#16569e]/30">
+          {columns.map((c, i) => (
+            <th
+              key={i}
+              className="text-left font-semibold text-[#16569e] py-2 pr-3 align-bottom"
+              style={c.width ? { width: c.width } : undefined}
+            >
+              {c.header}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.id} className="border-b border-gray-100 align-top" data-testid={`${testIdPrefix}-${row.id}`}>
+            {columns.map((c, i) => (
+              <td key={i} className="py-2 pr-3 text-gray-900">
+                {c.render(row) || <span className="text-gray-400">{DASH}</span>}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export const AppraisalView: React.FC<AppraisalViewProps> = ({
+  appraisalId,
+  rank,
+  seafarerNameFallback,
+  onClose,
+}) => {
+  const { data: existingAppraisal, isLoading, error } = useQuery<ExistingAppraisal | undefined>({
+    queryKey: [`/api/v2/appraisals/${appraisalId}`],
+    enabled: !!appraisalId,
+  });
+
+  const formVersionId = existingAppraisal?.formVersionId ?? null;
+
+  const { data: pinnedFormConfig } = useQuery<{ rankGroupConfig: any | null }>({
+    queryKey: [`/api/v2/admin/form-versions/${formVersionId}/configuration`],
+    enabled: !!formVersionId,
+  });
+
+  const { data: latestFormConfig } = useQuery<{ rankGroupConfig: any | null }>({
+    queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(rank || "")}?category=appraisal`],
+    enabled: !!rank && !formVersionId && existingAppraisal !== undefined,
+  });
+
+  const rankGroupConfig: any = formVersionId
+    ? pinnedFormConfig?.rankGroupConfig
+    : latestFormConfig?.rankGroupConfig;
+
+  const hiddenFields: string[] = Array.isArray(rankGroupConfig?.hiddenFields) ? rankGroupConfig.hiddenFields : [];
+  const hiddenSections: string[] = Array.isArray(rankGroupConfig?.hiddenSections) ? rankGroupConfig.hiddenSections : [];
+  const isFieldVisible = (k: string) => !hiddenFields.includes(k);
+  const isSectionVisible = (k: string) => !hiddenSections.includes(k);
+
+  const data: AppraisalDataShape = useMemo(() => {
+    if (!existingAppraisal) return {};
+    const raw = existingAppraisal.appraisalData;
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw || "{}"); } catch { return {}; }
+    }
+    return (raw || {}) as AppraisalDataShape;
+  }, [existingAppraisal]);
+
+  // Inject print stylesheet that hides everything except the view sheet
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.id = "appraisal-view-print-style";
+    style.innerHTML = `
+      @media print {
+        body * { visibility: hidden !important; }
+        .appraisal-view-print, .appraisal-view-print * { visibility: visible !important; }
+        .appraisal-view-print {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 100% !important;
+          max-height: none !important;
+          overflow: visible !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          padding: 16px !important;
+        }
+        .print\\:hidden { display: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { style.remove(); };
+  }, []);
+
+  const fullName = data.seafarersName || seafarerNameFallback || "";
+  const appraisalDateLabel = formatDate(existingAppraisal?.appraisalDate);
+  const appraisalNo = existingAppraisal ? `#${existingAppraisal.id}` : DASH;
+  const appraisalTypeLabel = existingAppraisal?.appraisalType || data.appraisalType || DASH;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
+      data-testid="appraisal-view-modal"
+    >
+      <div className="appraisal-view-print bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto p-8 shadow-xl">
+        {/* Header */}
+        <div className="flex items-start justify-between print:hidden">
+          <div className="text-[11px] text-gray-400 uppercase tracking-wider">Read-only view</div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 -mt-2 -mr-2"
+            onClick={onClose}
+            data-testid="button-close-view"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="py-20 text-center text-gray-500" data-testid="text-view-loading">Loading appraisal…</div>
+        ) : error || !existingAppraisal ? (
+          <div className="py-20 text-center">
+            <div className="text-red-600 mb-4" data-testid="text-view-error">Failed to load appraisal.</div>
+            <Button onClick={onClose} variant="outline">Close</Button>
+          </div>
+        ) : (
+          <>
+            <div className="text-center mb-2">
+              <div className="text-[18px] font-semibold text-gray-900" data-testid="text-view-title">
+                Appraisal {fullName ? `— ${fullName}` : ""} {appraisalDateLabel !== DASH ? `— ${appraisalDateLabel}` : ""}
+              </div>
+            </div>
+            <div className="flex items-end justify-between mt-3 mb-1">
+              <div className="text-[13px] font-semibold uppercase tracking-wide text-[#16569e] underline underline-offset-4">
+                Crew Appraisal
+              </div>
+              <div className="text-[12px] text-gray-500">
+                APPRAISAL NO: <span className="text-gray-700 font-medium" data-testid="text-appraisal-no">{appraisalNo}</span>
+              </div>
+            </div>
+
+            {/* Section A */}
+            <SectionHeader id="A" title="A. Seafarer Information" />
+            <SubHeader title="A1. Basic" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+              <Field label="Seafarer's Name" value={valueOr(data.seafarersName)} testId="text-seafarersName" />
+              <Field label="Rank" value={valueOr(data.seafarersRank)} testId="text-seafarersRank" />
+              <Field label="Nationality" value={valueOr(data.nationality)} testId="text-nationality" />
+              <Field label="Vessel" value={valueOr(data.vessel)} testId="text-vessel" />
+              <Field label="Sign On" value={formatDate(data.signOn)} testId="text-signOn" />
+              <Field label="Appraisal Type" value={valueOr(data.appraisalType || appraisalTypeLabel)} testId="text-appraisalType" />
+              <Field label="Appraisal Period (From)" value={formatDate(data.appraisalPeriodFrom)} testId="text-appraisalPeriodFrom" />
+              <Field label="Appraisal Period (To)" value={formatDate(data.appraisalPeriodTo)} testId="text-appraisalPeriodTo" />
+              {isFieldVisible("personalityIndexCategory") && (
+                <Field label="Personality Index Category" value={valueOr(data.personalityIndexCategory)} testId="text-personalityIndexCategory" />
+              )}
+              {isFieldVisible("primaryAppraiser") && (
+                <Field label="Primary Appraiser" value={valueOr(data.primaryAppraiser)} testId="text-primaryAppraiser" />
+              )}
+            </div>
+
+            <SubHeader title="A2. Status" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+              <Field
+                label="Current Status"
+                value={<StatusBadge status={existingAppraisal.status || "draft"} />}
+                testId="text-status"
+              />
+              <Field label="Last Appraisal Date" value={formatDate(existingAppraisal.appraisalDate)} testId="text-appraisalDate" />
+              {existingAppraisal.competenceRating && (
+                <Field label="Competence Rating" value={valueOr(existingAppraisal.competenceRating)} testId="text-competenceRating" />
+              )}
+              {existingAppraisal.behavioralRating && (
+                <Field label="Behavioural Rating" value={valueOr(existingAppraisal.behavioralRating)} testId="text-behavioralRating" />
+              )}
+              {existingAppraisal.overallRating && (
+                <Field label="Overall Rating" value={valueOr(existingAppraisal.overallRating)} testId="text-overallRating" />
+              )}
+            </div>
+
+            {/* Section B */}
+            {isSectionVisible("partB") && (
+              <>
+                <SectionHeader id="B" title="B. Information at Start of Appraisal Period" />
+                {isSectionVisible("partB1") && (
+                  <>
+                    <SubHeader title="B1. Trainings" />
+                    <DataTable
+                      rows={data.trainings}
+                      testIdPrefix="row-training"
+                      columns={[
+                        { header: "Training", render: (r) => r.training, width: "40%" },
+                        { header: "Evaluation", render: (r) => r.evaluation, width: "25%" },
+                        { header: "Comment", render: (r) => r.comment },
+                      ]}
+                    />
+                  </>
+                )}
+                {isSectionVisible("partB2") && (
+                  <>
+                    <SubHeader title="B2. Targets" />
+                    <DataTable
+                      rows={data.targets}
+                      testIdPrefix="row-target"
+                      columns={[
+                        { header: "Target Setting", render: (r) => r.targetSetting, width: "40%" },
+                        { header: "Evaluation", render: (r) => r.evaluation, width: "25%" },
+                        { header: "Comment", render: (r) => r.comment },
+                      ]}
+                    />
+                  </>
+                )}
+              </>
+            )}
+
+            {/* Section C */}
+            {isSectionVisible("partC") && (
+              <>
+                <SectionHeader id="C" title="C. Competence Assessment" />
+                <DataTable
+                  rows={data.competenceAssessments}
+                  testIdPrefix="row-competence"
+                  columns={[
+                    { header: "Assessment Criteria", render: (r) => r.assessmentCriteria, width: "45%" },
+                    { header: "Weight", render: (r) => (r.weight !== undefined ? String(r.weight) : ""), width: "10%" },
+                    { header: "Effectiveness", render: (r) => r.effectiveness, width: "20%" },
+                    { header: "Comment", render: (r) => r.comment },
+                  ]}
+                />
+              </>
+            )}
+
+            {/* Section D */}
+            {isSectionVisible("partD") && (
+              <>
+                <SectionHeader id="D" title="D. Behavioural Assessment" />
+                <DataTable
+                  rows={data.behaviouralAssessments}
+                  testIdPrefix="row-behavioural"
+                  columns={[
+                    { header: "Assessment Criteria", render: (r) => r.assessmentCriteria, width: "45%" },
+                    { header: "Weight", render: (r) => (r.weight !== undefined ? String(r.weight) : ""), width: "10%" },
+                    { header: "Effectiveness", render: (r) => r.effectiveness, width: "20%" },
+                    { header: "Comment", render: (r) => r.comment },
+                  ]}
+                />
+              </>
+            )}
+
+            {/* Section E */}
+            {isSectionVisible("partE") && (
+              <>
+                <SectionHeader id="E" title="E. Training Needs & Development" />
+                <DataTable
+                  rows={data.trainingNeeds}
+                  testIdPrefix="row-trainingNeed"
+                  columns={[
+                    { header: "Training", render: (r) => r.training, width: "45%" },
+                    { header: "Comment", render: (r) => r.comment },
+                  ]}
+                />
+              </>
+            )}
+
+            {/* Section F */}
+            {isSectionVisible("partF") && (
+              <>
+                <SectionHeader id="F" title="F. Comments & Recommendations" />
+                <SubHeader title="F1. Recommendations" />
+                <DataTable
+                  rows={data.recommendations}
+                  testIdPrefix="row-recommendation"
+                  columns={[
+                    { header: "Question", render: (r) => r.question, width: "55%" },
+                    { header: "Answer", render: (r) => r.answer, width: "15%" },
+                    { header: "Comment", render: (r) => r.comment },
+                  ]}
+                />
+                <SubHeader title="F2. Appraiser Comments" />
+                <DataTable
+                  rows={data.appraiserComments}
+                  testIdPrefix="row-appraiserComment"
+                  columns={[
+                    { header: "Name", render: (r) => r.name, width: "25%" },
+                    { header: "Rank", render: (r) => r.rank, width: "20%" },
+                    { header: "Comment", render: (r) => r.comment },
+                  ]}
+                />
+                <SubHeader title="F3. Seafarer Comments" />
+                <DataTable
+                  rows={data.seafarerComments}
+                  testIdPrefix="row-seafarerComment"
+                  columns={[
+                    { header: "Name", render: (r) => r.name, width: "25%" },
+                    { header: "Rank", render: (r) => r.rank, width: "20%" },
+                    { header: "Comment", render: (r) => r.comment },
+                  ]}
+                />
+              </>
+            )}
+
+            {/* Section G */}
+            {isSectionVisible("partG") && (
+              <>
+                <SectionHeader id="G" title="G. Office Review & Followup" />
+                <SubHeader title="G1. Office Reviews" />
+                <DataTable
+                  rows={data.officeReviews}
+                  testIdPrefix="row-officeReview"
+                  columns={[
+                    { header: "Name", render: (r) => r.name, width: "25%" },
+                    { header: "Position", render: (r) => r.position, width: "20%" },
+                    { header: "Feedback", render: (r) => r.feedback },
+                  ]}
+                />
+                <SubHeader title="G2. Training Followups" />
+                <DataTable
+                  rows={data.trainingFollowups}
+                  testIdPrefix="row-trainingFollowup"
+                  columns={[
+                    { header: "Training", render: (r) => r.training, width: "25%" },
+                    { header: "DB Mapping", render: (r) => r.correspondingInDB, width: "20%" },
+                    { header: "Category", render: (r) => r.category, width: "15%" },
+                    { header: "Status", render: (r) => r.status, width: "12%" },
+                    { header: "Target Date", render: (r) => formatDate(r.targetDate), width: "15%" },
+                    { header: "Comment", render: (r) => r.comment },
+                  ]}
+                />
+              </>
+            )}
+
+            {/* Footer toolbar */}
+            <div className="mt-10 pt-4 border-t border-gray-200 flex justify-end gap-2 print:hidden">
+              <Button
+                variant="outline"
+                onClick={() => window.print()}
+                data-testid="button-print-view"
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Print
+              </Button>
+              <Button onClick={onClose} className="bg-[#16569e] hover:bg-[#0d4a8f]" data-testid="button-close-view-footer">
+                Close
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AppraisalView;
