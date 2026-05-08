@@ -633,7 +633,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
               onClick={() => setShowFilters(!showFilters)}
             >
               <FilterIcon className="h-3 w-3 mr-1" />
-              Toggle Filters
+              Filters
             </Button>
           </div>
         </SectionTitleComponents>
