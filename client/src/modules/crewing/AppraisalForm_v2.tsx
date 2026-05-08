@@ -2280,7 +2280,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="seafarersName"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name<span className="text-red-500 ml-0.5" aria-hidden="true">*</span></FormLabel>
                               <FormControl>
                                 <Input {...field} placeholder="Enter seafarer's name" className="bg-[#ffffff]" />
                               </FormControl>
@@ -2293,7 +2293,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="seafarersRank"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank<span className="text-red-500 ml-0.5" aria-hidden="true">*</span></FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="bg-[#ffffff]">
@@ -2322,7 +2322,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="nationality"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality<span className="text-red-500 ml-0.5" aria-hidden="true">*</span></FormLabel>
                               <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
                                 <PopoverTrigger asChild>
                                   <FormControl>
@@ -2387,7 +2387,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="vessel"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel<span className="text-red-500 ml-0.5" aria-hidden="true">*</span></FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="bg-[#ffffff]">
@@ -2429,7 +2429,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="appraisalType"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type<span className="text-red-500 ml-0.5" aria-hidden="true">*</span></FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="bg-[#ffffff]">
@@ -2886,7 +2886,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<span className="text-red-500 ml-0.5">*</span></th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<span className="text-red-500 ml-0.5" aria-hidden="true">*</span></th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
                             </tr>
                           </thead>
@@ -3023,7 +3023,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<span className="text-red-500 ml-0.5">*</span></th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<span className="text-red-500 ml-0.5" aria-hidden="true">*</span></th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
                             </tr>
                           </thead>
@@ -3179,7 +3179,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           <thead className="bg-gray-100">
                             <tr>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training<span className="text-red-500 ml-0.5">*</span></th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training<span className="text-red-500 ml-0.5" aria-hidden="true">*</span></th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
                             </tr>
                           </thead>
@@ -3315,12 +3315,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             <table className="w-full">
                               <thead className="bg-gray-100">
                                 <tr>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Yes<span className="text-red-500 ml-0.5">*</span></th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">No<span className="text-red-500 ml-0.5">*</span></th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">NA<span className="text-red-500 ml-0.5">*</span></th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                                  <th rowSpan={2} className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                                  <th rowSpan={2} className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
+                                  <th colSpan={3} className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Recommendation Answer<span className="text-red-500 ml-0.5" aria-hidden="true">*</span></th>
+                                  <th rowSpan={2} className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                                </tr>
+                                <tr>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Yes</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">No</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">NA</th>
                                 </tr>
                               </thead>
                               <tbody>

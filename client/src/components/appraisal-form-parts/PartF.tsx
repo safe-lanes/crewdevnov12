@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, MessageSquare } from "lucide-react";
 import { PartFProps } from "./types";
+import { RequiredMark } from "./RequiredMark";
 
 const PartFComponent: React.FC<PartFProps> = ({
   form,
@@ -103,12 +104,15 @@ const PartFComponent: React.FC<PartFProps> = ({
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-12">S.No</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">Yes<span className="text-red-500 ml-0.5">*</span></th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">No<span className="text-red-500 ml-0.5">*</span></th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">NA<span className="text-red-500 ml-0.5">*</span></th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center w-20">Actions</th>
+                      <th rowSpan={2} className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-12">S.No</th>
+                      <th rowSpan={2} className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
+                      <th colSpan={3} className="text-gray-600 text-xs font-normal py-2 px-2 text-center">Recommendation Answer<RequiredMark /></th>
+                      <th rowSpan={2} className="text-gray-600 text-xs font-normal py-2 px-4 text-center w-20">Actions</th>
+                    </tr>
+                    <tr className="bg-gray-50">
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">Yes</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">NA</th>
                     </tr>
                   </thead>
                   <tbody>

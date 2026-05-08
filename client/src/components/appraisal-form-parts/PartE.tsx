@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartEProps } from "./types";
+import { RequiredMark } from "./RequiredMark";
 
 const PartEComponent: React.FC<PartEProps> = ({
   form,
@@ -71,7 +72,7 @@ const PartEComponent: React.FC<PartEProps> = ({
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training<span className="text-red-500 ml-0.5">*</span></th>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training<RequiredMark /></th>
                     <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
                   </tr>
                 </thead>
