@@ -61,7 +61,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank<RequiredMark /></FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled>
+                    <Select onValueChange={field.onChange} value={hasLegacyRank ? "" : field.value} disabled>
                       <FormControl>
                         <SelectTrigger className="bg-gray-50 text-gray-700 cursor-not-allowed disabled:opacity-100" data-testid="select-seafarers-rank">
                           <SelectValue placeholder={hasLegacyRank ? currentRank : "Select rank"} />
