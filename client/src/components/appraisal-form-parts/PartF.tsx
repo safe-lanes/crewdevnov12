@@ -104,7 +104,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                   <thead>
                     <tr className="bg-gray-50">
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-12">S.No</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations<span className="text-red-500 ml-0.5">*</span></th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">Yes</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">No</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-2 text-center w-16">NA</th>

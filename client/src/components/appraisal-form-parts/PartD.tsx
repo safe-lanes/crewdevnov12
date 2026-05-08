@@ -57,7 +57,7 @@ const PartDComponent: React.FC<PartDProps> = ({
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<span className="text-red-500 ml-0.5">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
                 </tr>
               </thead>
