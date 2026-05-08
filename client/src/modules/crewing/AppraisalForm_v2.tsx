@@ -1932,21 +1932,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         )}
 
         {/* Stage 1 Action Buttons - kept in parent for form-level control */}
-        {isStage1Available && (
-          <div className="flex justify-end gap-4">
-            <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
-              Save Draft
-            </Button>
-            <Button 
-              type="button"
-              className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
-              onClick={() => handleStageSubmission('stage1')}
-              disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
-            >
-              {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
-            </Button>
-          </div>
-        )}
+        <div className="flex justify-end gap-4">
+          <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+            Save Draft
+          </Button>
+          <Button 
+            type="button"
+            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+            onClick={() => handleStageSubmission('stage1')}
+            disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
+          >
+            {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
+          </Button>
+        </div>
       </div>
     );
   };
