@@ -28,9 +28,6 @@ const PartAComponent: React.FC<PartAProps> = ({
   isFieldVisible,
 }) => {
   const { isLoading: ranksLoading, error: ranksError, rankOptions } = useCompanyRanks();
-  const currentRank = form.watch("seafarersRank");
-  const hasLegacyRank =
-    !!currentRank && !rankOptions.some((option) => option.value === currentRank);
   return (
     <div ref={partRef} data-section-id="A">
       <Card className="bg-white">
@@ -75,18 +72,11 @@ const PartAComponent: React.FC<PartAProps> = ({
                         ) : rankOptions.length === 0 ? (
                           <SelectItem value="empty" disabled>No ranks available</SelectItem>
                         ) : (
-                          <>
-                            {hasLegacyRank && (
-                              <SelectItem key={`legacy-${currentRank}`} value={currentRank}>
-                                {currentRank}
-                              </SelectItem>
-                            )}
-                            {rankOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </>
+                          rankOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))
                         )}
                       </SelectContent>
                     </Select>
