@@ -3,6 +3,24 @@ import { useQuery } from "@tanstack/react-query";
 import { X, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface TrainingEntry { id: string; training?: string; evaluation?: string; comment?: string }
+interface TargetEntry { id: string; targetSetting?: string; evaluation?: string; comment?: string }
+interface AssessmentEntry { id: string; assessmentCriteria?: string; weight?: number; effectiveness?: string; comment?: string }
+interface TrainingNeedEntry { id: string; training?: string; comment?: string }
+interface RecommendationEntry { id: string; question?: string; answer?: string; comment?: string }
+interface CommentEntry { id: string; name?: string; rank?: string; comment?: string }
+interface OfficeReviewEntry { id: string; name?: string; position?: string; feedback?: string }
+interface TrainingFollowupEntry {
+  id: string;
+  training?: string;
+  correspondingInDB?: string;
+  category?: string;
+  status?: string;
+  targetDate?: string;
+  comment?: string;
+}
 
 interface AppraisalDataShape {
   seafarersName?: string;
@@ -15,16 +33,16 @@ interface AppraisalDataShape {
   appraisalPeriodTo?: string;
   personalityIndexCategory?: string;
   primaryAppraiser?: string;
-  trainings?: Array<{ id: string; training?: string; evaluation?: string; comment?: string }>;
-  targets?: Array<{ id: string; targetSetting?: string; evaluation?: string; comment?: string }>;
-  competenceAssessments?: Array<{ id: string; assessmentCriteria?: string; weight?: number; effectiveness?: string; comment?: string }>;
-  behaviouralAssessments?: Array<{ id: string; assessmentCriteria?: string; weight?: number; effectiveness?: string; comment?: string }>;
-  trainingNeeds?: Array<{ id: string; training?: string; comment?: string }>;
-  recommendations?: Array<{ id: string; question?: string; answer?: string; comment?: string }>;
-  appraiserComments?: Array<{ id: string; name?: string; rank?: string; comment?: string }>;
-  seafarerComments?: Array<{ id: string; name?: string; rank?: string; comment?: string }>;
-  officeReviews?: Array<{ id: string; name?: string; position?: string; feedback?: string }>;
-  trainingFollowups?: Array<{ id: string; training?: string; correspondingInDB?: string; category?: string; status?: string; targetDate?: string; comment?: string }>;
+  trainings?: TrainingEntry[];
+  targets?: TargetEntry[];
+  competenceAssessments?: AssessmentEntry[];
+  behaviouralAssessments?: AssessmentEntry[];
+  trainingNeeds?: TrainingNeedEntry[];
+  recommendations?: RecommendationEntry[];
+  appraiserComments?: CommentEntry[];
+  seafarerComments?: CommentEntry[];
+  officeReviews?: OfficeReviewEntry[];
+  trainingFollowups?: TrainingFollowupEntry[];
 }
 
 interface ExistingAppraisal {
@@ -40,11 +58,34 @@ interface ExistingAppraisal {
   overallRating?: string;
 }
 
+interface RankGroupConfig {
+  hiddenFields?: string[];
+  hiddenSections?: string[];
+}
+
+interface PinnedFormConfigResponse {
+  rankGroupName: string | null;
+  rankGroupConfig: RankGroupConfig | null;
+  formVersionId: number;
+  formVersionUuid: string;
+}
+
+interface LatestFormConfigResponse {
+  rankGroupName?: string | null;
+  rankGroupConfig?: RankGroupConfig | null;
+  noReleasedVersion?: boolean;
+  noReleasedVersionReason?: string;
+}
+
 interface AppraisalViewProps {
   appraisalId: number;
   rank?: string;
   seafarerNameFallback?: string;
   onClose: () => void;
+}
+
+interface ApiError extends Error {
+  status?: number;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -118,12 +159,12 @@ interface Col<T> {
 function DataTable<T extends { id: string }>({
   rows,
   columns,
-  testIdPrefix,
+  sectionId,
   emptyText = "No entries.",
 }: {
   rows: T[] | undefined;
   columns: Col<T>[];
-  testIdPrefix: string;
+  sectionId: string;
   emptyText?: string;
 }) {
   if (!rows || rows.length === 0) {
@@ -146,7 +187,11 @@ function DataTable<T extends { id: string }>({
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.id} className="border-b border-gray-100 align-top" data-testid={`${testIdPrefix}-${row.id}`}>
+          <tr
+            key={row.id}
+            className="border-b border-gray-100 align-top"
+            data-testid={`row-${sectionId}-${row.id}`}
+          >
             {columns.map((c, i) => (
               <td key={i} className="py-2 pr-3 text-gray-900">
                 {c.render(row) || <span className="text-gray-400">{DASH}</span>}
@@ -156,6 +201,28 @@ function DataTable<T extends { id: string }>({
         ))}
       </tbody>
     </table>
+  );
+}
+
+function ViewSkeleton() {
+  return (
+    <div className="space-y-6" data-testid="text-view-loading">
+      <Skeleton className="h-6 w-2/3 mx-auto" />
+      <div className="flex justify-between">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-4 w-24" />
+      </div>
+      <Skeleton className="h-5 w-full" />
+      <div className="grid grid-cols-2 gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-4 w-full" />
+        ))}
+      </div>
+      <Skeleton className="h-5 w-full mt-8" />
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-5 w-full mt-4" />
+      <Skeleton className="h-32 w-full" />
+    </div>
   );
 }
 
@@ -172,22 +239,30 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
 
   const formVersionId = existingAppraisal?.formVersionId ?? null;
 
-  const { data: pinnedFormConfig } = useQuery<{ rankGroupConfig: any | null }>({
+  const { data: pinnedFormConfig } = useQuery<PinnedFormConfigResponse>({
     queryKey: [`/api/v2/admin/form-versions/${formVersionId}/configuration`],
     enabled: !!formVersionId,
   });
 
-  const { data: latestFormConfig } = useQuery<{ rankGroupConfig: any | null }>({
+  const { data: latestFormConfig } = useQuery<LatestFormConfigResponse>({
     queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(rank || "")}?category=appraisal`],
     enabled: !!rank && !formVersionId && existingAppraisal !== undefined,
   });
 
-  const rankGroupConfig: any = formVersionId
+  const rankGroupConfig: RankGroupConfig | null | undefined = formVersionId
     ? pinnedFormConfig?.rankGroupConfig
     : latestFormConfig?.rankGroupConfig;
 
-  const hiddenFields: string[] = Array.isArray(rankGroupConfig?.hiddenFields) ? rankGroupConfig.hiddenFields : [];
-  const hiddenSections: string[] = Array.isArray(rankGroupConfig?.hiddenSections) ? rankGroupConfig.hiddenSections : [];
+  const rankGroupName: string | null | undefined = formVersionId
+    ? pinnedFormConfig?.rankGroupName
+    : latestFormConfig?.rankGroupName;
+
+  const hiddenFields: string[] = Array.isArray(rankGroupConfig?.hiddenFields)
+    ? (rankGroupConfig?.hiddenFields as string[])
+    : [];
+  const hiddenSections: string[] = Array.isArray(rankGroupConfig?.hiddenSections)
+    ? (rankGroupConfig?.hiddenSections as string[])
+    : [];
   const isFieldVisible = (k: string) => !hiddenFields.includes(k);
   const isSectionVisible = (k: string) => !hiddenSections.includes(k);
 
@@ -195,7 +270,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
     if (!existingAppraisal) return {};
     const raw = existingAppraisal.appraisalData;
     if (typeof raw === "string") {
-      try { return JSON.parse(raw || "{}"); } catch { return {}; }
+      try { return JSON.parse(raw || "{}") as AppraisalDataShape; } catch { return {}; }
     }
     return (raw || {}) as AppraisalDataShape;
   }, [existingAppraisal]);
@@ -230,6 +305,9 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
   const appraisalDateLabel = formatDate(existingAppraisal?.appraisalDate);
   const appraisalNo = existingAppraisal ? `#${existingAppraisal.id}` : DASH;
   const appraisalTypeLabel = existingAppraisal?.appraisalType || data.appraisalType || DASH;
+  const headerFormName = (rankGroupName && rankGroupName.trim()) || "Crew Appraisal";
+
+  const apiError = error as ApiError | null;
 
   return (
     <div
@@ -252,8 +330,8 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
         </div>
 
         {isLoading ? (
-          <div className="py-20 text-center text-gray-500" data-testid="text-view-loading">Loading appraisal…</div>
-        ) : error || !existingAppraisal ? (
+          <ViewSkeleton />
+        ) : apiError || !existingAppraisal ? (
           <div className="py-20 text-center">
             <div className="text-red-600 mb-4" data-testid="text-view-error">Failed to load appraisal.</div>
             <Button onClick={onClose} variant="outline">Close</Button>
@@ -266,8 +344,11 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
               </div>
             </div>
             <div className="flex items-end justify-between mt-3 mb-1">
-              <div className="text-[13px] font-semibold uppercase tracking-wide text-[#16569e] underline underline-offset-4">
-                Crew Appraisal
+              <div
+                className="text-[13px] font-semibold uppercase tracking-wide text-[#16569e] underline underline-offset-4"
+                data-testid="text-form-name"
+              >
+                {headerFormName}
               </div>
               <div className="text-[12px] text-gray-500">
                 APPRAISAL NO: <span className="text-gray-700 font-medium" data-testid="text-appraisal-no">{appraisalNo}</span>
@@ -278,14 +359,30 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
             <SectionHeader id="A" title="A. Seafarer Information" />
             <SubHeader title="A1. Basic" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
-              <Field label="Seafarer's Name" value={valueOr(data.seafarersName)} testId="text-seafarersName" />
-              <Field label="Rank" value={valueOr(data.seafarersRank)} testId="text-seafarersRank" />
-              <Field label="Nationality" value={valueOr(data.nationality)} testId="text-nationality" />
-              <Field label="Vessel" value={valueOr(data.vessel)} testId="text-vessel" />
-              <Field label="Sign On" value={formatDate(data.signOn)} testId="text-signOn" />
-              <Field label="Appraisal Type" value={valueOr(data.appraisalType || appraisalTypeLabel)} testId="text-appraisalType" />
-              <Field label="Appraisal Period (From)" value={formatDate(data.appraisalPeriodFrom)} testId="text-appraisalPeriodFrom" />
-              <Field label="Appraisal Period (To)" value={formatDate(data.appraisalPeriodTo)} testId="text-appraisalPeriodTo" />
+              {isFieldVisible("seafarersName") && (
+                <Field label="Seafarer's Name" value={valueOr(data.seafarersName)} testId="text-seafarersName" />
+              )}
+              {isFieldVisible("seafarersRank") && (
+                <Field label="Rank" value={valueOr(data.seafarersRank)} testId="text-seafarersRank" />
+              )}
+              {isFieldVisible("nationality") && (
+                <Field label="Nationality" value={valueOr(data.nationality)} testId="text-nationality" />
+              )}
+              {isFieldVisible("vessel") && (
+                <Field label="Vessel" value={valueOr(data.vessel)} testId="text-vessel" />
+              )}
+              {isFieldVisible("signOn") && (
+                <Field label="Sign On" value={formatDate(data.signOn)} testId="text-signOn" />
+              )}
+              {isFieldVisible("appraisalType") && (
+                <Field label="Appraisal Type" value={valueOr(data.appraisalType || appraisalTypeLabel)} testId="text-appraisalType" />
+              )}
+              {isFieldVisible("appraisalPeriodFrom") && (
+                <Field label="Appraisal Period (From)" value={formatDate(data.appraisalPeriodFrom)} testId="text-appraisalPeriodFrom" />
+              )}
+              {isFieldVisible("appraisalPeriodTo") && (
+                <Field label="Appraisal Period (To)" value={formatDate(data.appraisalPeriodTo)} testId="text-appraisalPeriodTo" />
+              )}
               {isFieldVisible("personalityIndexCategory") && (
                 <Field label="Personality Index Category" value={valueOr(data.personalityIndexCategory)} testId="text-personalityIndexCategory" />
               )}
@@ -322,7 +419,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                     <SubHeader title="B1. Trainings" />
                     <DataTable
                       rows={data.trainings}
-                      testIdPrefix="row-training"
+                      sectionId="B1"
                       columns={[
                         { header: "Training", render: (r) => r.training, width: "40%" },
                         { header: "Evaluation", render: (r) => r.evaluation, width: "25%" },
@@ -336,7 +433,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                     <SubHeader title="B2. Targets" />
                     <DataTable
                       rows={data.targets}
-                      testIdPrefix="row-target"
+                      sectionId="B2"
                       columns={[
                         { header: "Target Setting", render: (r) => r.targetSetting, width: "40%" },
                         { header: "Evaluation", render: (r) => r.evaluation, width: "25%" },
@@ -354,7 +451,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <SectionHeader id="C" title="C. Competence Assessment" />
                 <DataTable
                   rows={data.competenceAssessments}
-                  testIdPrefix="row-competence"
+                  sectionId="C"
                   columns={[
                     { header: "Assessment Criteria", render: (r) => r.assessmentCriteria, width: "45%" },
                     { header: "Weight", render: (r) => (r.weight !== undefined ? String(r.weight) : ""), width: "10%" },
@@ -371,7 +468,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <SectionHeader id="D" title="D. Behavioural Assessment" />
                 <DataTable
                   rows={data.behaviouralAssessments}
-                  testIdPrefix="row-behavioural"
+                  sectionId="D"
                   columns={[
                     { header: "Assessment Criteria", render: (r) => r.assessmentCriteria, width: "45%" },
                     { header: "Weight", render: (r) => (r.weight !== undefined ? String(r.weight) : ""), width: "10%" },
@@ -388,7 +485,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <SectionHeader id="E" title="E. Training Needs & Development" />
                 <DataTable
                   rows={data.trainingNeeds}
-                  testIdPrefix="row-trainingNeed"
+                  sectionId="E"
                   columns={[
                     { header: "Training", render: (r) => r.training, width: "45%" },
                     { header: "Comment", render: (r) => r.comment },
@@ -404,7 +501,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <SubHeader title="F1. Recommendations" />
                 <DataTable
                   rows={data.recommendations}
-                  testIdPrefix="row-recommendation"
+                  sectionId="F1"
                   columns={[
                     { header: "Question", render: (r) => r.question, width: "55%" },
                     { header: "Answer", render: (r) => r.answer, width: "15%" },
@@ -414,7 +511,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <SubHeader title="F2. Appraiser Comments" />
                 <DataTable
                   rows={data.appraiserComments}
-                  testIdPrefix="row-appraiserComment"
+                  sectionId="F2"
                   columns={[
                     { header: "Name", render: (r) => r.name, width: "25%" },
                     { header: "Rank", render: (r) => r.rank, width: "20%" },
@@ -424,7 +521,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <SubHeader title="F3. Seafarer Comments" />
                 <DataTable
                   rows={data.seafarerComments}
-                  testIdPrefix="row-seafarerComment"
+                  sectionId="F3"
                   columns={[
                     { header: "Name", render: (r) => r.name, width: "25%" },
                     { header: "Rank", render: (r) => r.rank, width: "20%" },
@@ -441,7 +538,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <SubHeader title="G1. Office Reviews" />
                 <DataTable
                   rows={data.officeReviews}
-                  testIdPrefix="row-officeReview"
+                  sectionId="G1"
                   columns={[
                     { header: "Name", render: (r) => r.name, width: "25%" },
                     { header: "Position", render: (r) => r.position, width: "20%" },
@@ -451,7 +548,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <SubHeader title="G2. Training Followups" />
                 <DataTable
                   rows={data.trainingFollowups}
-                  testIdPrefix="row-trainingFollowup"
+                  sectionId="G2"
                   columns={[
                     { header: "Training", render: (r) => r.training, width: "25%" },
                     { header: "DB Mapping", render: (r) => r.correspondingInDB, width: "20%" },

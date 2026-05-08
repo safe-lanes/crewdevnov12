@@ -357,10 +357,11 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
       });
       setDeleteTarget(null);
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
       toast({
         title: 'Failed to delete appraisal',
-        description: (err?.message as string) || 'An unexpected error occurred.',
+        description: message,
         variant: 'destructive',
       });
       setDeleteTarget(null);
