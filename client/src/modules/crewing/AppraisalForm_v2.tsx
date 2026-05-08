@@ -583,7 +583,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           evaluation: t.evaluation ?? '',
           comment: t.comment ?? '',
         }));
-        console.log('📋 Will set trainings:', updates.trainings.length, 'items');
+        console.log('📋 Will set trainings:', updates.trainings!.length, 'items');
       }
 
       // Load Part B targets from rank group config
@@ -594,7 +594,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           evaluation: t.evaluation ?? '',
           comment: t.comment ?? '',
         }));
-        console.log('📋 Will set targets:', updates.targets.length, 'items');
+        console.log('📋 Will set targets:', updates.targets!.length, 'items');
       }
 
       // Load Part E training needs from rank group config
@@ -604,7 +604,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           training: t.training ?? '',
           comment: t.comment ?? '',
         }));
-        console.log('📋 Will set trainingNeeds:', updates.trainingNeeds.length, 'items');
+        console.log('📋 Will set trainingNeeds:', updates.trainingNeeds!.length, 'items');
       }
 
       // Load competence assessments from rank group config

@@ -43,7 +43,39 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+interface RankGroupTraining {
+  id: string;
+  training: string;
+  evaluation: string;
+  comment?: string;
+}
+
+interface RankGroupTarget {
+  id: string;
+  targetSetting: string;
+  evaluation: string;
+  comment?: string;
+}
+
+interface RankGroupTrainingNeed {
+  id: string;
+  training: string;
+  comment?: string;
+}
+
+interface RankGroupTrainingFollowup {
+  id: string;
+  training: string;
+  correspondingInDB: string;
+  category: string;
+  status: 'Proposed' | 'Approved' | 'Planned' | 'Declined' | 'Completed';
+  targetDate?: string;
+  comment?: string;
+}
+
 interface RankGroupConfiguration {
+  trainings?: RankGroupTraining[];
+  targets?: RankGroupTarget[];
   competenceAssessments?: Array<{
     id: string;
     assessmentCriteria: string;
@@ -58,14 +90,21 @@ interface RankGroupConfiguration {
     effectiveness: string;
     comment?: string;
   }>;
+  trainingNeeds?: RankGroupTrainingNeed[];
+  // Recommendations accept both legacy ({recommendation, yes/no/na}) and
+  // current FormEditor save shape ({question, answer, isCustom}).
   recommendations?: Array<{
     id: string;
-    recommendation: string;
+    recommendation?: string;
+    question?: string;
+    answer?: 'Yes' | 'No' | 'NA';
     yes?: boolean;
     no?: boolean;
     na?: boolean;
+    isCustom?: boolean;
     comment?: string;
   }>;
+  trainingFollowups?: RankGroupTrainingFollowup[];
   hiddenFields?: string[];
   hiddenSections?: string[];
 }
@@ -704,56 +743,36 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     if (rankGroupConfig && !versionExplicitlySelected && !hasAnyVersion) {
       console.log('[FormEditor] Loading rank group configuration (fallback):', rankGroupConfig);
 
-      // Load Part B trainings from rank group config
-      if (Array.isArray((rankGroupConfig as any).trainings) && (rankGroupConfig as any).trainings.length > 0) {
-        formMethods.setValue('trainings', (rankGroupConfig as any).trainings);
-      }
+      // Always set all configurable arrays (default to []) so reopening
+      // the editor accurately reflects the persisted state — including
+      // intentional deletions that empty a section.
+      formMethods.setValue('trainings', rankGroupConfig.trainings ?? []);
+      formMethods.setValue('targets', rankGroupConfig.targets ?? []);
 
-      // Load Part B targets from rank group config
-      if (Array.isArray((rankGroupConfig as any).targets) && (rankGroupConfig as any).targets.length > 0) {
-        formMethods.setValue('targets', (rankGroupConfig as any).targets);
-      }
+      formMethods.setValue('competenceAssessments', (rankGroupConfig.competenceAssessments ?? []).map(ca => ({
+        ...ca,
+        effectiveness: ca.effectiveness || '',
+        comment: ca.comment || '',
+      })));
 
-      // Load competence assessments from rank group config
-      if (rankGroupConfig.competenceAssessments && rankGroupConfig.competenceAssessments.length > 0) {
-        formMethods.setValue('competenceAssessments', rankGroupConfig.competenceAssessments.map(ca => ({
-          ...ca,
-          effectiveness: ca.effectiveness || '',
-          comment: ca.comment || '',
-        })));
-      }
-      
-      // Load behavioural assessments from rank group config
-      if (rankGroupConfig.behaviouralAssessments && rankGroupConfig.behaviouralAssessments.length > 0) {
-        formMethods.setValue('behaviouralAssessments', rankGroupConfig.behaviouralAssessments.map(ba => ({
-          ...ba,
-          effectiveness: ba.effectiveness || '',
-          comment: ba.comment || '',
-        })));
-      }
-      
-      // Load recommendations from rank group config.
-      // Accept both the legacy shape ({recommendation, yes/no/na}) and the
-      // current FormEditor save shape ({question, answer, isCustom}).
-      if (rankGroupConfig.recommendations && rankGroupConfig.recommendations.length > 0) {
-        formMethods.setValue('recommendations', rankGroupConfig.recommendations.map((rec: any) => ({
-          id: rec.id,
-          question: rec.question || rec.recommendation || '',
-          answer: (rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes')) as 'Yes' | 'No' | 'NA',
-          comment: rec.comment || '',
-          isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
-        })));
-      }
+      formMethods.setValue('behaviouralAssessments', (rankGroupConfig.behaviouralAssessments ?? []).map(ba => ({
+        ...ba,
+        effectiveness: ba.effectiveness || '',
+        comment: ba.comment || '',
+      })));
 
-      // Load Part E training needs from rank group config
-      if (Array.isArray((rankGroupConfig as any).trainingNeeds) && (rankGroupConfig as any).trainingNeeds.length > 0) {
-        formMethods.setValue('trainingNeeds', (rankGroupConfig as any).trainingNeeds);
-      }
+      // Recommendations: accept both legacy ({recommendation, yes/no/na})
+      // and current ({question, answer, isCustom}) shapes.
+      formMethods.setValue('recommendations', (rankGroupConfig.recommendations ?? []).map(rec => ({
+        id: rec.id,
+        question: rec.question || rec.recommendation || '',
+        answer: (rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes')) as 'Yes' | 'No' | 'NA',
+        comment: rec.comment || '',
+        isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+      })));
 
-      // Load Training Followups from rank group config
-      if (Array.isArray((rankGroupConfig as any).trainingFollowups) && (rankGroupConfig as any).trainingFollowups.length > 0) {
-        formMethods.setValue('trainingFollowups', (rankGroupConfig as any).trainingFollowups);
-      }
+      formMethods.setValue('trainingNeeds', rankGroupConfig.trainingNeeds ?? []);
+      formMethods.setValue('trainingFollowups', rankGroupConfig.trainingFollowups ?? []);
 
       // Load hidden fields/sections
       if (rankGroupConfig.hiddenFields) {
@@ -801,41 +820,36 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       if (config.primaryAppraiser !== undefined) formMethods.setValue('primaryAppraiser', config.primaryAppraiser || '');
       if (config.officeReviewComments !== undefined) formMethods.setValue('officeReviewComments', config.officeReviewComments || '');
       
-      if (config.trainings && Array.isArray(config.trainings)) {
-        formMethods.setValue('trainings', config.trainings);
-      }
-      if (config.targets && Array.isArray(config.targets)) {
-        formMethods.setValue('targets', config.targets);
-      }
-      if (config.competenceAssessments && Array.isArray(config.competenceAssessments)) {
-        formMethods.setValue('competenceAssessments', config.competenceAssessments.map((ca: any) => ({
-          ...ca,
-          effectiveness: ca.effectiveness || '',
-          comment: ca.comment || '',
-        })));
-      }
-      if (config.behaviouralAssessments && Array.isArray(config.behaviouralAssessments)) {
-        formMethods.setValue('behaviouralAssessments', config.behaviouralAssessments.map((ba: any) => ({
-          ...ba,
-          effectiveness: ba.effectiveness || '',
-          comment: ba.comment || '',
-        })));
-      }
-      if (config.trainingNeeds && Array.isArray(config.trainingNeeds)) {
-        formMethods.setValue('trainingNeeds', config.trainingNeeds);
-      }
-      if (config.recommendations && Array.isArray(config.recommendations)) {
-        formMethods.setValue('recommendations', config.recommendations.map((rec: any) => ({
-          id: rec.id,
-          question: rec.question || rec.recommendation || '',
-          answer: rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes'),
-          comment: rec.comment || '',
-          isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
-        })));
-      }
-      if (config.trainingFollowups && Array.isArray(config.trainingFollowups)) {
-        formMethods.setValue('trainingFollowups', config.trainingFollowups);
-      }
+      // Always set arrays from version config (default to []) so switching
+      // versions accurately reflects each revision's content — including
+      // versions that intentionally have empty sections.
+      formMethods.setValue('trainings', Array.isArray(config.trainings) ? config.trainings : []);
+      formMethods.setValue('targets', Array.isArray(config.targets) ? config.targets : []);
+      formMethods.setValue('competenceAssessments', Array.isArray(config.competenceAssessments)
+        ? config.competenceAssessments.map((ca: any) => ({
+            ...ca,
+            effectiveness: ca.effectiveness || '',
+            comment: ca.comment || '',
+          }))
+        : []);
+      formMethods.setValue('behaviouralAssessments', Array.isArray(config.behaviouralAssessments)
+        ? config.behaviouralAssessments.map((ba: any) => ({
+            ...ba,
+            effectiveness: ba.effectiveness || '',
+            comment: ba.comment || '',
+          }))
+        : []);
+      formMethods.setValue('trainingNeeds', Array.isArray(config.trainingNeeds) ? config.trainingNeeds : []);
+      formMethods.setValue('recommendations', Array.isArray(config.recommendations)
+        ? config.recommendations.map((rec: any) => ({
+            id: rec.id,
+            question: rec.question || rec.recommendation || '',
+            answer: rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes'),
+            comment: rec.comment || '',
+            isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+          }))
+        : []);
+      formMethods.setValue('trainingFollowups', Array.isArray(config.trainingFollowups) ? config.trainingFollowups : []);
       
       // Restore field visibility - reset to defaults then apply hidden from config
       const defaultFieldVis = { personalityIndexCategory: true };
