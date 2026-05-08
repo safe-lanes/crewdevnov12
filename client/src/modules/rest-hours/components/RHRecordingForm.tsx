@@ -854,12 +854,6 @@ export const RHRecordingForm = ({
     return commentsMap;
   }, [crewVariableTasks, selectedPeriod]);
 
-  // Helper to safely extract day without timezone issues
-  const getDay = (dateStr?: string | null) => {
-    if (!dateStr) return null;
-    return parseInt(dateStr.split('-')[2], 10);
-  };
-
   // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms)
   // Note: isPlan is set to true (Plan mode) since new records default to planning mode
   useEffect(() => {
@@ -894,13 +888,6 @@ export const RHRecordingForm = ({
         // Get comments from variable tasks if available
         const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
 
-        // derive valid date range
-        const signOnDay = getDay(signOnDate) ?? 1;
-        const signOffDay = getDay(signOffDate) ?? 31;
-
-        // check if this day is within range
-        const isWithinRange = record.day >= signOnDay && record.day <= signOffDay;
-
         // apply strict isolation
         const baseComments = (record.comments || '')
           .split(',')
@@ -914,11 +901,9 @@ export const RHRecordingForm = ({
           ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
           : baseComments;
 
-        const finalComments = isWithinRange
-          ? [...cleanedBase, ...variableTaskComments]
-            .filter(Boolean)
-            .join(', ')
-          : '';
+        const finalComments = [...cleanedBase, ...variableTaskComments]
+          .filter(Boolean)
+          .join(', ');
 
         return {
           ...record,
@@ -980,13 +965,6 @@ export const RHRecordingForm = ({
           // Get comments from variable tasks if available
           const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
 
-          // derive valid date range
-          const signOnDay = getDay(signOnDate) ?? 1;
-          const signOffDay = getDay(signOffDate) ?? 31;
-
-          // check if this day is within range
-          const isWithinRange = record.day >= signOnDay && record.day <= signOffDay;
-
           // apply strict isolation
           const baseComments = (record.comments || '')
             .split(',')
@@ -1000,11 +978,9 @@ export const RHRecordingForm = ({
             ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
             : baseComments;
 
-          const finalComments = isWithinRange
-            ? [...cleanedBase, ...variableTaskComments]
-              .filter(Boolean)
-              .join(', ')
-            : '';
+          const finalComments = [...cleanedBase, ...variableTaskComments]
+            .filter(Boolean)
+            .join(', ');
 
           return {
             ...record,
