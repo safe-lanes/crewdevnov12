@@ -575,37 +575,38 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const currentValues = form.getValues();
       const updates: Partial<AppraisalFormData> = {};
       
-      // Load Part B trainings from rank group config
-      if (Array.isArray(config.rankGroupConfig.trainings) && config.rankGroupConfig.trainings.length > 0) {
-        updates.trainings = config.rankGroupConfig.trainings.map((t: any) => ({
-          id: t.id,
-          training: t.training ?? '',
-          evaluation: t.evaluation ?? '',
-          comment: t.comment ?? '',
-        }));
-        console.log('📋 Will set trainings:', updates.trainings!.length, 'items');
-      }
+      // Load Part B trainings from rank group config (always set to guarantee
+      // clear-on-empty semantics even if form state is reused across navigations)
+      updates.trainings = Array.isArray(config.rankGroupConfig.trainings)
+        ? config.rankGroupConfig.trainings.map((t: any) => ({
+            id: t.id,
+            training: t.training ?? '',
+            evaluation: t.evaluation ?? '',
+            comment: t.comment ?? '',
+          }))
+        : [];
+      console.log('📋 Will set trainings:', updates.trainings.length, 'items');
 
       // Load Part B targets from rank group config
-      if (Array.isArray(config.rankGroupConfig.targets) && config.rankGroupConfig.targets.length > 0) {
-        updates.targets = config.rankGroupConfig.targets.map((t: any) => ({
-          id: t.id,
-          targetSetting: t.targetSetting ?? '',
-          evaluation: t.evaluation ?? '',
-          comment: t.comment ?? '',
-        }));
-        console.log('📋 Will set targets:', updates.targets!.length, 'items');
-      }
+      updates.targets = Array.isArray(config.rankGroupConfig.targets)
+        ? config.rankGroupConfig.targets.map((t: any) => ({
+            id: t.id,
+            targetSetting: t.targetSetting ?? '',
+            evaluation: t.evaluation ?? '',
+            comment: t.comment ?? '',
+          }))
+        : [];
+      console.log('📋 Will set targets:', updates.targets.length, 'items');
 
       // Load Part E training needs from rank group config
-      if (Array.isArray(config.rankGroupConfig.trainingNeeds) && config.rankGroupConfig.trainingNeeds.length > 0) {
-        updates.trainingNeeds = config.rankGroupConfig.trainingNeeds.map((t: any) => ({
-          id: t.id,
-          training: t.training ?? '',
-          comment: t.comment ?? '',
-        }));
-        console.log('📋 Will set trainingNeeds:', updates.trainingNeeds!.length, 'items');
-      }
+      updates.trainingNeeds = Array.isArray(config.rankGroupConfig.trainingNeeds)
+        ? config.rankGroupConfig.trainingNeeds.map((t: any) => ({
+            id: t.id,
+            training: t.training ?? '',
+            comment: t.comment ?? '',
+          }))
+        : [];
+      console.log('📋 Will set trainingNeeds:', updates.trainingNeeds.length, 'items');
 
       // Load competence assessments from rank group config
       if (config.rankGroupConfig.competenceAssessments && config.rankGroupConfig.competenceAssessments.length > 0) {
