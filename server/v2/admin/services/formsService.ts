@@ -3,6 +3,7 @@ import { FormVersionsRepository } from "../repositories/formVersionsRepository";
 import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { applyAuditUser } from "../utils/auditUser";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
+import { getBaseRank } from "../../../../shared/crew-mapping";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
@@ -76,6 +77,9 @@ export const formsService = {
     let rankGroupName = null;
     let matchedReleasedVersion: { id: number; fvUuid: string } | null = null;
 
+    const literal = rankLabel.toLowerCase();
+    const baseRank = getBaseRank(rankLabel).toLowerCase();
+
     for (const form of candidateForms) {
       const activeRankGroups = await rankGroupsRepo.findByFormId(form.id, false);
 
@@ -83,7 +87,11 @@ export const formsService = {
       for (const rg of activeRankGroups) {
         try {
           const ranks = JSON.parse(rg.ranks);
-          if (Array.isArray(ranks) && ranks.includes(rankLabel)) {
+          if (!Array.isArray(ranks)) continue;
+          const lowerRanks = ranks.map((r: unknown) => String(r).toLowerCase());
+          const literalMatch = lowerRanks.includes(literal);
+          const baseMatch = !literalMatch && !!baseRank && baseRank !== literal && lowerRanks.includes(baseRank);
+          if (literalMatch || baseMatch) {
             matchingGroups.push({ id: rg.id, name: rg.name, configuration: rg.configuration, rgUuid: rg.rgUuid });
           }
         } catch (e) {}
@@ -144,7 +152,7 @@ export const formsService = {
         rankGroupName: null,
         rankGroupConfig: null,
         noReleasedVersion: true,
-        noReleasedVersionReason: `No active rank group covers rank "${rankLabel}".`,
+        noReleasedVersionReason: `No active rank group covers rank "${getBaseRank(rankLabel) || rankLabel}".`,
       };
     }
 
