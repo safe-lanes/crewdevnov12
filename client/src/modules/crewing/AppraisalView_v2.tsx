@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, Printer } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -570,14 +570,6 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
 
             {/* Footer toolbar */}
             <div className="mt-10 pt-4 border-t border-gray-200 flex justify-end gap-2 print:hidden">
-              <Button
-                variant="outline"
-                onClick={() => window.print()}
-                data-testid="button-print-view"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Print
-              </Button>
               <Button onClick={onClose} className="bg-[#16569e] hover:bg-[#0d4a8f]" data-testid="button-close-view-footer">
                 Close
               </Button>
