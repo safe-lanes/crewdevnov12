@@ -658,14 +658,74 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     return result;
   }, [versionsData, hasSavedDraft, hasDraftVersion, selectedVersionNo, selectedVersionDate]);
   
-  // Handler to release the current draft version
-  const handleReleaseVersion = () => {
-    const draftVersion = versions.find(v => v.status === 'Draft' && v.id);
-    if (draftVersion && draftVersion.id) {
-      releaseVersionMutation.mutate(draftVersion.id);
-    } else {
-      toast({ title: "No draft to release", description: "Save a draft first before releasing.", variant: "destructive" });
+  // Build the Save Draft payload from the current in-memory form state.
+  // Single source of truth shared by the "Save Draft" button and the
+  // save-then-release flow so the two paths can never drift.
+  const buildDraftPayload = () => {
+    const formData = formMethods.getValues();
+    const sharedConfig = { appraisalTypeOptions };
+    const hiddenFields = Object.entries(fieldVisibility)
+      .filter(([, visible]) => !visible)
+      .map(([field]) => field);
+    const hiddenSections = Object.entries(sectionVisibility)
+      .filter(([, visible]) => !visible)
+      .map(([section]) => section);
+    const versionNo = selectedVersionNo || "01";
+    const versionDate = selectedVersionDate
+      ? format(selectedVersionDate, "dd-MMM-yyyy")
+      : format(new Date(), "dd-MMM-yyyy");
+    return {
+      versionNo,
+      versionDate,
+      configuration: JSON.stringify({ ...formData, hiddenFields, hiddenSections }),
+      sharedConfig: JSON.stringify(sharedConfig),
+    };
+  };
+
+  // Run the same gates that Save Draft enforces in config mode.
+  // Returns true if the form is OK to persist; false if a dialog was raised.
+  const runConfigModeValidation = (): boolean => {
+    const validationResult = validateAssessmentCriteria();
+    if (!validationResult.isValid) {
+      setValidationErrors(validationResult.errors);
+      setShowValidationDialog(true);
+      return false;
     }
+    const competenceAssessments = formMethods.getValues("competenceAssessments");
+    const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
+    if (competenceAssessments.length > 0 && calculateTotalWeight() !== 100) {
+      setShowWeightWarning(true);
+      return false;
+    }
+    if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
+      setShowWeightWarning(true);
+      return false;
+    }
+    return true;
+  };
+
+  // Handler to release the current draft version.
+  // When the editor is in config mode we MUST first persist the in-memory
+  // form state to the draft — otherwise rows just added in Parts B–F1 are
+  // lost because /release only flips status on whatever the server holds.
+  const handleReleaseVersion = async () => {
+    const draftVersion = versions.find(v => v.status === 'Draft' && v.id);
+    if (!draftVersion?.id) {
+      toast({ title: "No draft to release", description: "Save a draft first before releasing.", variant: "destructive" });
+      return;
+    }
+    if (isConfigMode) {
+      if (!runConfigModeValidation()) return;
+      try {
+        const saved = await createDraftMutation.mutateAsync(buildDraftPayload());
+        const draftId = (saved && typeof saved.id === 'number') ? saved.id : draftVersion.id;
+        releaseVersionMutation.mutate(draftId);
+      } catch {
+        // createDraftMutation.onError already surfaced a toast; abort release.
+      }
+      return;
+    }
+    releaseVersionMutation.mutate(draftVersion.id);
   };
 
   // Configuration helper functions
@@ -1962,12 +2022,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   ? 'bg-green-600 hover:bg-green-700 text-white'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
-              disabled={!(hasSavedDraft || hasDraftVersion) || releaseVersionMutation.isPending}
+              disabled={!(hasSavedDraft || hasDraftVersion) || releaseVersionMutation.isPending || (isConfigMode && createDraftMutation.isPending)}
               onClick={handleReleaseVersion}
               data-testid="button-release-version"
             >
-              <span className="hidden sm:inline">{releaseVersionMutation.isPending ? 'Releasing...' : 'Release Ver'}</span>
-              <span className="sm:hidden">{releaseVersionMutation.isPending ? '...' : 'Release'}</span>
+              <span className="hidden sm:inline">{(releaseVersionMutation.isPending || (isConfigMode && createDraftMutation.isPending)) ? 'Releasing...' : 'Release Ver'}</span>
+              <span className="sm:hidden">{(releaseVersionMutation.isPending || (isConfigMode && createDraftMutation.isPending)) ? '...' : 'Release'}</span>
             </Button>
             {isConfigMode && (
               <Button
@@ -2079,65 +2139,20 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               return (
             <Button 
               onClick={() => {
-                // Validate assessment criteria fields
-                const validationResult = validateAssessmentCriteria();
-                if (!validationResult.isValid) {
-                  setValidationErrors(validationResult.errors);
-                  setShowValidationDialog(true);
-                  return;
-                }
-                
-                // Manual weight validation check before submitting
-                if (isConfigMode) {
-                  const competenceAssessments = formMethods.getValues("competenceAssessments");
-                  const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
-                  
-                  if (competenceAssessments.length > 0) {
-                    const totalWeight = calculateTotalWeight();
-                    console.log("Manual validation - Competence total weight:", totalWeight, "Assessments:", competenceAssessments);
-                    if (totalWeight !== 100) {
-                      setShowWeightWarning(true);
-                      return;
-                    }
-                  }
-                  
-                  if (behaviouralAssessments.length > 0) {
-                    const totalWeight = calculateBehaviouralTotalWeight();
-                    console.log("Manual validation - Behavioural total weight:", totalWeight, "Assessments:", behaviouralAssessments);
-                    if (totalWeight !== 100) {
-                      setShowWeightWarning(true);
-                      return;
-                    }
+                // Same validation gates as the save-then-release flow.
+                if (isConfigMode && !runConfigModeValidation()) return;
+                if (!isConfigMode) {
+                  const validationResult = validateAssessmentCriteria();
+                  if (!validationResult.isValid) {
+                    setValidationErrors(validationResult.errors);
+                    setShowValidationDialog(true);
+                    return;
                   }
                 }
-                // Create draft version via API
-                const versionNo = selectedVersionNo || "01";
-                const versionDate = selectedVersionDate 
-                  ? format(selectedVersionDate, "dd-MMM-yyyy") 
-                  : format(new Date(), "dd-MMM-yyyy");
-                
-                // Get the current form data for the version
-                const formData = formMethods.getValues();
-                const sharedConfig = {
-                  appraisalTypeOptions: appraisalTypeOptions,
-                };
-                
-                const hiddenFields = Object.entries(fieldVisibility)
-                  .filter(([, visible]) => !visible)
-                  .map(([field]) => field);
-                const hiddenSections = Object.entries(sectionVisibility)
-                  .filter(([, visible]) => !visible)
-                  .map(([section]) => section);
-                
-                createDraftMutation.mutate({
-                  versionNo,
-                  versionDate,
-                  configuration: JSON.stringify({ ...formData, hiddenFields, hiddenSections }),
-                  sharedConfig: JSON.stringify(sharedConfig),
-                });
-                
+                const payload = buildDraftPayload();
+                createDraftMutation.mutate(payload);
                 setHasSavedDraft(true);
-                setActiveVersion(versionNo);
+                setActiveVersion(payload.versionNo);
                 formMethods.handleSubmit(onSubmit)();
               }}
               className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
