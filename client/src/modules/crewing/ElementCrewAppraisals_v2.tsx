@@ -629,7 +629,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
-              className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
+              className="h-8 w-32 text-[#16569e] text-sm border-[#e1e8ed]"
               onClick={() => setShowFilters(!showFilters)}
             >
               <FilterIcon className="h-3 w-3 mr-1" />
