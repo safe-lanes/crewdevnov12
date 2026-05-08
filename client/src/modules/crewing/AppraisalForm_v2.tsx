@@ -380,6 +380,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     return !hiddenSections.includes(sectionName);
   }, [hiddenSections]);
 
+  // Stage 1 captures Part B data only. If Part B (or all of its sub-sections)
+  // is hidden by admin config, hide every Stage 1 control (header Save Draft
+  // and the floating Save Draft / Submit Stage 1 row).
+  const isStage1Available = isSectionVisible('partB')
+    && (isSectionVisible('partB1') || isSectionVisible('partB2'));
+
   // Fetch vessels and ranks from persistent storage
   const { vessels } = useVesselLookup();
   const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
@@ -1926,7 +1932,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         )}
 
         {/* Stage 1 Action Buttons - kept in parent for form-level control */}
-        {isSectionVisible('partB') && (isSectionVisible('partB1') || isSectionVisible('partB2')) && (
+        {isStage1Available && (
           <div className="flex justify-end gap-4">
             <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
               Save Draft
@@ -2083,23 +2089,29 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             <h1 className="text-lg sm:text-xl font-bold">Crew Appraisal Form</h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleSaveDraft}
-              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Draft
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleSaveDraft}
-              className="sm:hidden"
-            >
-              <Save className="h-4 w-4" />
-            </Button>
+            {isStage1Available && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+                  data-testid="button-save-draft-header"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Draft
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  className="sm:hidden"
+                  data-testid="button-save-draft-header-mobile"
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
