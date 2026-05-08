@@ -70,6 +70,46 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     queryKey: ['/api/v2/masters/licenses-dce'],
   });
 
+  const actualFormId = 'originalFormId' in form ? (form as any).originalFormId : form.id;
+
+  // Resolve the rank-group id for the currently edited rank-group name so we
+  // can fetch its latest released form-version below. Until the Promotion
+  // editor adopts a full draft/release UI (follow-up task), each Save creates
+  // a new released version directly.
+  const { data: allRankGroups = [] } = useQuery<Array<{ id: number; name: string; formId: number; archivedAt: string | null; configuration: string | null }>>({
+    queryKey: ['/api/v2/admin/rank-groups'],
+    enabled: !!rankGroupName,
+  });
+  const editedRankGroupId = React.useMemo(() => {
+    if (!rankGroupName) return null;
+    const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === actualFormId);
+    return rg?.id ?? null;
+  }, [allRankGroups, rankGroupName, actualFormId]);
+
+  const { data: formVersions = [] } = useQuery<Array<{ id: number; rankGroupId: number | null; versionNo: string; status: string; configuration: string | null; releasedAt: string | null }>>({
+    queryKey: [`/api/v2/admin/forms/${actualFormId}/versions`],
+    enabled: !!actualFormId,
+  });
+  const latestReleasedConfig = React.useMemo<any>(() => {
+    if (!editedRankGroupId) return null;
+    const released = formVersions.filter(v => v.rankGroupId === editedRankGroupId && v.status === 'released' && v.configuration);
+    if (released.length === 0) return null;
+    const latest = released.reduce((max, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      const maxNo = parseInt(max.versionNo, 10);
+      if (!isNaN(vNo) && !isNaN(maxNo) && vNo !== maxNo) return vNo > maxNo ? v : max;
+      const vAt = v.releasedAt ? new Date(v.releasedAt).getTime() : 0;
+      const maxAt = max.releasedAt ? new Date(max.releasedAt).getTime() : 0;
+      return vAt > maxAt ? v : max;
+    }, released[0]);
+    try {
+      return latest.configuration ? JSON.parse(latest.configuration) : null;
+    } catch (e) {
+      console.warn('[PromotionFormEditor] Failed to parse released form-version configuration:', e);
+      return null;
+    }
+  }, [formVersions, editedRankGroupId]);
+
   const formMethods = useForm<PromotionA2Config>({
     resolver: zodResolver(promotionA2ConfigSchema),
     defaultValues: {
@@ -93,7 +133,11 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
   const { handleSubmit, watch, setValue, reset } = formMethods;
 
-  // Load saved configuration on mount - prioritize rank group config over form config
+  // Load saved configuration on mount.
+  // Source-of-truth precedence:
+  //   1. Latest released form-version for this rank group (preferred)
+  //   2. rankGroupConfig prop (legacy adm_rank_groups_v2.configuration mirror)
+  //   3. form.configuration (legacy shared form config)
   useEffect(() => {
     // Normalize legacy configs to ensure new fields have proper null values
     const normalizeConfig = (config: any) => ({
@@ -106,22 +150,26 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
       },
       minChecklistCompletionPercent: config.minChecklistCompletionPercent ?? null,
     });
-    
-    // First try to load from rank group configuration (passed as prop)
+
+    if (latestReleasedConfig && latestReleasedConfig.higherLicenseIds !== undefined) {
+      console.log('[PromotionFormEditor] Loading from latest released form-version:', latestReleasedConfig);
+      reset(normalizeConfig(latestReleasedConfig));
+      setSelectedLicenseIds(latestReleasedConfig.higherLicenseIds || []);
+      return;
+    }
+
     if (rankGroupConfig && rankGroupConfig.higherLicenseIds !== undefined) {
-      console.log('[PromotionFormEditor] Loading from rank group configuration:', rankGroupConfig);
+      console.log('[PromotionFormEditor] No released version yet, loading from rank group configuration (legacy):', rankGroupConfig);
       reset(normalizeConfig(rankGroupConfig));
       setSelectedLicenseIds(rankGroupConfig.higherLicenseIds || []);
       return;
     }
-    
-    // Fallback to form.configuration for backward compatibility
+
     if (form.configuration) {
       try {
         const savedConfig = JSON.parse(form.configuration);
-        // Check if it's the new A2 config format
         if (savedConfig.higherLicenseIds !== undefined) {
-          console.log('[PromotionFormEditor] Loading from form configuration:', savedConfig);
+          console.log('[PromotionFormEditor] Falling back to form configuration:', savedConfig);
           reset(normalizeConfig(savedConfig));
           setSelectedLicenseIds(savedConfig.higherLicenseIds || []);
         }
@@ -129,7 +177,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
         console.error('Failed to parse form configuration:', error);
       }
     }
-  }, [rankGroupConfig, form.configuration, reset]);
+  }, [latestReleasedConfig, rankGroupConfig, form.configuration, reset]);
 
   const otherCriteria = watch('otherCriteria') ?? [];
   const cesTests = watch('cesTests') ?? [];
@@ -143,9 +191,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
       rankGroupName,
       savedAt: new Date().toISOString(),
     });
-    
-    const actualFormId = 'originalFormId' in form ? (form as any).originalFormId : form.id;
-    
+
     console.log('[PromotionFormEditor] Saving A2 config:', { formId: actualFormId, config: data });
     
     onSave({
