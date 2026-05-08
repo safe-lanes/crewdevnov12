@@ -28,6 +28,9 @@ const PartAComponent: React.FC<PartAProps> = ({
   isFieldVisible,
 }) => {
   const { isLoading: ranksLoading, error: ranksError, rankOptions } = useCompanyRanks();
+  const currentRank = form.watch("seafarersRank");
+  const hasLegacyRank =
+    !!currentRank && !rankOptions.some((option) => option.value === currentRank);
   return (
     <div ref={partRef} data-section-id="A">
       <Card className="bg-white">
@@ -61,7 +64,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                     <Select onValueChange={field.onChange} value={field.value} disabled>
                       <FormControl>
                         <SelectTrigger className="bg-gray-50 text-gray-700 cursor-not-allowed disabled:opacity-100" data-testid="select-seafarers-rank">
-                          <SelectValue placeholder="Select rank" />
+                          <SelectValue placeholder={hasLegacyRank ? currentRank : "Select rank"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="max-h-[200px]">
