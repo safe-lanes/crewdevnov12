@@ -636,8 +636,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         updates.recommendations = config.rankGroupConfig.recommendations.map((rec: any) => ({
           id: rec.id,
           question: rec.recommendation || rec.question,
-          answer: rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : '',
+          answer: rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : ''),
           comment: rec.comment || '',
+          isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
         }));
         console.log('📋 Will set recommendations:', updates.recommendations.length, 'items');
       }
