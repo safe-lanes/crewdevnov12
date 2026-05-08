@@ -741,8 +741,6 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   useEffect(() => {
     const hasAnyVersion = (versionsData || []).length > 0;
     if (rankGroupConfig && !versionExplicitlySelected && !hasAnyVersion) {
-      console.log('[FormEditor] Loading rank group configuration (fallback):', rankGroupConfig);
-
       // Always set all configurable arrays (default to []) so reopening
       // the editor accurately reflects the persisted state — including
       // intentional deletions that empty a section.
