@@ -120,18 +120,17 @@ function StatusBadge({ status }: { status: string }) {
 
 function SectionHeader({ id, title }: { id: string; title: string }) {
   return (
-    <h2
-      className="mt-8 mb-4 pb-1.5 border-b border-[#16569e]/40 text-[15px] font-semibold uppercase tracking-wide text-[#16569e]"
-      data-testid={`section-${id}`}
-    >
-      {title}
-    </h2>
+    <div className="mt-10 mb-5" data-testid={`section-${id}`}>
+      <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-gray-900 pb-2 border-b-2 border-gray-800">
+        {title}
+      </h2>
+    </div>
   );
 }
 
 function SubHeader({ title }: { title: string }) {
   return (
-    <h3 className="mt-5 mb-3 text-[13px] font-semibold text-[#16569e] underline underline-offset-4 decoration-[#16569e]/50">
+    <h3 className="mt-6 mb-3 text-[12.5px] font-semibold text-gray-800 tracking-wide">
       {title}
     </h3>
   );
@@ -139,11 +138,11 @@ function SubHeader({ title }: { title: string }) {
 
 function Field({ label, value, testId }: { label: string; value: React.ReactNode; testId?: string }) {
   return (
-    <div className="grid grid-cols-12 gap-3 py-1.5">
-      <div className="col-span-5 md:col-span-4 text-[13px] text-[#16569e] underline underline-offset-2 decoration-[#16569e]/40">
+    <div className="grid grid-cols-12 gap-4 py-2 border-b border-gray-100 last:border-0">
+      <div className="col-span-5 md:col-span-5 text-[12.5px] text-gray-600">
         {label}
       </div>
-      <div className="col-span-7 md:col-span-8 text-[13px] text-gray-900" data-testid={testId}>
+      <div className="col-span-7 md:col-span-7 text-[12.5px] text-gray-900 font-medium" data-testid={testId}>
         {value}
       </div>
     </div>
@@ -171,36 +170,38 @@ function DataTable<T extends { id: string }>({
     return <div className="text-[12px] italic text-gray-400 py-2">{emptyText}</div>;
   }
   return (
-    <table className="w-full text-[12.5px] border-collapse">
-      <thead>
-        <tr className="border-b border-[#16569e]/30">
-          {columns.map((c, i) => (
-            <th
-              key={i}
-              className="text-left font-semibold text-[#16569e] py-2 pr-3 align-bottom"
-              style={c.width ? { width: c.width } : undefined}
-            >
-              {c.header}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr
-            key={row.id}
-            className="border-b border-gray-100 align-top"
-            data-testid={`row-${sectionId}-${row.id}`}
-          >
+    <div className="border border-gray-300 rounded-sm overflow-hidden">
+      <table className="w-full text-[12px] border-collapse">
+        <thead>
+          <tr className="bg-gray-50">
             {columns.map((c, i) => (
-              <td key={i} className="py-2 pr-3 text-gray-900">
-                {c.render(row) || <span className="text-gray-400">{DASH}</span>}
-              </td>
+              <th
+                key={i}
+                className="text-left font-semibold text-gray-700 uppercase tracking-wider text-[11px] py-2.5 px-3 border-b border-gray-300 align-bottom"
+                style={c.width ? { width: c.width } : undefined}
+              >
+                {c.header}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row, idx) => (
+            <tr
+              key={row.id}
+              className={`align-top ${idx % 2 === 1 ? "bg-gray-50/40" : "bg-white"}`}
+              data-testid={`row-${sectionId}-${row.id}`}
+            >
+              {columns.map((c, i) => (
+                <td key={i} className="py-2.5 px-3 text-gray-900 border-t border-gray-100">
+                  {c.render(row) || <span className="text-gray-400">{DASH}</span>}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -314,14 +315,14 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
       className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
       data-testid="appraisal-view-modal"
     >
-      <div className="appraisal-view-print bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto p-8 shadow-xl">
-        {/* Header */}
-        <div className="flex items-start justify-between print:hidden">
-          <div className="text-[11px] text-gray-400 uppercase tracking-wider">Read-only view</div>
+      <div className="appraisal-view-print bg-white rounded-md w-full max-w-5xl max-h-[92vh] overflow-y-auto shadow-2xl">
+        {/* Sticky toolbar (non-print) */}
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-2.5 border-b border-gray-200 bg-white print:hidden">
+          <div className="text-[11px] text-gray-500 uppercase tracking-wider">Read-only view</div>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 -mt-2 -mr-2"
+            className="h-8 w-8"
             onClick={onClose}
             data-testid="button-close-view"
           >
@@ -329,6 +330,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
           </Button>
         </div>
 
+        <div className="px-10 pt-8 pb-10">
         {isLoading ? (
           <ViewSkeleton />
         ) : apiError || !existingAppraisal ? (
@@ -338,21 +340,26 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
           </div>
         ) : (
           <>
-            <div className="text-center mb-2">
-              <div className="text-[18px] font-semibold text-gray-900" data-testid="text-view-title">
-                Appraisal {fullName ? `— ${fullName}` : ""} {appraisalDateLabel !== DASH ? `— ${appraisalDateLabel}` : ""}
+            {/* Document header (matches MoC-style printed doc) */}
+            <div className="flex items-start justify-between text-[11px] text-gray-500 uppercase tracking-wider mb-4">
+              <div data-testid="text-doc-context">
+                {fullName || DASH}
+                {appraisalDateLabel !== DASH ? ` · ${appraisalDateLabel}` : ""}
+              </div>
+              <div>
+                APPRAISAL NO:{" "}
+                <span className="text-gray-800 font-semibold tracking-wide" data-testid="text-appraisal-no">
+                  {appraisalNo}
+                </span>
               </div>
             </div>
-            <div className="flex items-end justify-between mt-3 mb-1">
-              <div
-                className="text-[13px] font-semibold uppercase tracking-wide text-[#16569e] underline underline-offset-4"
+            <div className="border-y-2 border-gray-800 py-3 text-center">
+              <h1
+                className="text-[16px] font-bold uppercase tracking-[0.18em] text-gray-900"
                 data-testid="text-form-name"
               >
                 {headerFormName}
-              </div>
-              <div className="text-[12px] text-gray-500">
-                APPRAISAL NO: <span className="text-gray-700 font-medium" data-testid="text-appraisal-no">{appraisalNo}</span>
-              </div>
+              </h1>
             </div>
 
             {/* Section A */}
@@ -577,6 +584,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   );
