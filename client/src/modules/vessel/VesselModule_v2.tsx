@@ -44,6 +44,7 @@ import { format, addMonths, parseISO } from "date-fns";
 import { ComplianceMatrixDialog_v2 } from './ComplianceMatrixDialog_v2';
 import { AppraisalForm } from '@/modules/crewing/AppraisalForm_v2';
 import { CrewInfoForm_v2 as CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm_v2';
+import { getBaseRank } from '@shared/crew-mapping';
 import { HandoverAttachmentsDialog, getHandoverAttachmentCount } from '@/components/HandoverAttachmentsDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
@@ -1292,7 +1293,8 @@ export function VesselModule_v2(): JSX.Element {
 
     const handleAppraisalClick = async (crew: any, buttonConfig: { text: string; appraisalId?: number; status?: string }) => {
         const crewRank = crew.presentRank || crew.rank || '';
-        
+        const displayRank = getBaseRank(crewRank) || crewRank;
+
         try {
             const response = await fetch(`/api/v2/admin/rank-groups/check-assignment?rank=${encodeURIComponent(crewRank)}&formName=${encodeURIComponent('Crew Appraisal Form')}`);
             const result = await response.json();
@@ -1300,7 +1302,7 @@ export function VesselModule_v2(): JSX.Element {
             if (!result.hasAssignment) {
                 toast({
                     title: "Cannot Open Appraisal Form",
-                    description: `No Appraisal Rank Group assigned from Admin Module for rank "${crewRank}". Please configure rank groups in Admin > Forms Configuration.`,
+                    description: `No Appraisal Rank Group assigned from Admin Module for rank "${displayRank}". Please configure rank groups in Admin > Forms Configuration.`,
                     variant: "destructive",
                 });
                 return;

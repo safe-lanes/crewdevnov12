@@ -7,6 +7,7 @@ import { FormsRepository } from "../repositories/formsRepository";
 import { FormVersionsRepository } from "../repositories/formVersionsRepository";
 import { applyAuditUser } from "../utils/auditUser";
 import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2/admin/types";
+import { getBaseRank } from "../../../../shared/crew-mapping";
 
 const rankGroupsRepo = new RankGroupsRepository();
 const formsRepo = new FormsRepository();
@@ -189,23 +190,41 @@ export const rankGroupsService = {
     if (!form) return { hasAssignment: false };
 
     const activeGroups = await rankGroupsRepo.findByFormId(form.id, false);
-    for (const group of activeGroups) {
-      let ranks: string[] = [];
-      try {
-        ranks = typeof group.ranks === "string" ? JSON.parse(group.ranks) : group.ranks;
-      } catch (e) { ranks = []; }
-      if (ranks.some(r => r.toLowerCase() === rankLabel.toLowerCase())) {
-        return {
-          hasAssignment: true,
-          rankGroupId: group.id,
-          rankGroupUuid: group.rgUuid,
-          rankGroupName: group.name,
-          formId: form.id,
-          formUuid: form.formUuid,
-          formName: form.name,
-        };
+    const literal = rankLabel.toLowerCase();
+    const baseRank = getBaseRank(rankLabel).toLowerCase();
+
+    const matchGroup = (predicate: (rank: string) => boolean) => {
+      for (const group of activeGroups) {
+        let ranks: string[] = [];
+        try {
+          ranks = typeof group.ranks === "string" ? JSON.parse(group.ranks) : group.ranks;
+        } catch (e) { ranks = []; }
+        if (ranks.some(r => predicate(r.toLowerCase()))) {
+          return {
+            hasAssignment: true,
+            rankGroupId: group.id,
+            rankGroupUuid: group.rgUuid,
+            rankGroupName: group.name,
+            formId: form.id,
+            formUuid: form.formUuid,
+            formName: form.name,
+          };
+        }
       }
+      return null;
+    };
+
+    // Prefer an exact (literal) match so admins who explicitly listed a
+    // suffixed rank (e.g. "AB_1") keep their current behavior.
+    const literalMatch = matchGroup(r => r === literal);
+    if (literalMatch) return literalMatch;
+
+    // Fall back to base-rank match: crew "AB_1" matches a group containing "AB".
+    if (baseRank && baseRank !== literal) {
+      const baseMatch = matchGroup(r => r === baseRank);
+      if (baseMatch) return baseMatch;
     }
+
     return { hasAssignment: false };
   },
 
