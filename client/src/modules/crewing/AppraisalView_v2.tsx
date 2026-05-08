@@ -121,7 +121,7 @@ function StatusBadge({ status }: { status: string }) {
 function SectionHeader({ id, title }: { id: string; title: string }) {
   return (
     <div className="mt-10 mb-5" data-testid={`section-${id}`}>
-      <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-gray-900 pb-2 border-b-2 border-gray-800">
+      <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-[#16569e] pb-2 border-b-2 border-[#16569e]">
         {title}
       </h2>
     </div>
@@ -130,7 +130,7 @@ function SectionHeader({ id, title }: { id: string; title: string }) {
 
 function SubHeader({ title }: { title: string }) {
   return (
-    <h3 className="mt-6 mb-3 text-[12.5px] font-semibold text-gray-800 tracking-wide">
+    <h3 className="mt-6 mb-3 text-[12.5px] font-semibold text-[#16569e] tracking-wide">
       {title}
     </h3>
   );
@@ -353,9 +353,9 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 </span>
               </div>
             </div>
-            <div className="border-y-2 border-gray-800 py-3 text-center">
+            <div className="border-y-2 border-[#16569e] py-3 text-center">
               <h1
-                className="text-[16px] font-bold uppercase tracking-[0.18em] text-gray-900"
+                className="text-[16px] font-bold uppercase tracking-[0.18em] text-[#16569e]"
                 data-testid="text-form-name"
               >
                 {headerFormName}
