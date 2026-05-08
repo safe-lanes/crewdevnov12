@@ -186,10 +186,11 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
 
   // Appraisal Types for filter dropdown (sourced from same master as the form)
   const { data: appraisalTypesRaw = [], isLoading: isLoadingAppraisalTypes } = useAppraisalTypesV2();
-  const appraisalTypeOptions = useMemo(() => {
-    const names = (appraisalTypesRaw as any[])
-      .map((entry: any) => entry?.name)
-      .filter((name: any): name is string => typeof name === "string" && name.length > 0);
+  const appraisalTypeOptions = useMemo<{ value: string; label: string }[]>(() => {
+    const entries = appraisalTypesRaw as Array<{ name?: unknown }>;
+    const names = entries
+      .map((entry) => entry?.name)
+      .filter((name): name is string => typeof name === "string" && name.length > 0);
     if (names.length > 0) {
       return names.map((name) => ({ value: name, label: name }));
     }
