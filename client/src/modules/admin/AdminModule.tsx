@@ -3816,6 +3816,39 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
+  // Promotion Review Form does not yet have a draft → release UI. Each Save
+  // creates a new released form-version directly and mirrors the config back
+  // onto the rank group so existing runtime readers keep working.
+  const releaseRankGroupConfigMutation = useMutation({
+    mutationFn: async ({rankGroupId, configuration}: {rankGroupId: number; configuration: string}) => {
+      return apiRequest('POST', `/api/v2/admin/rank-groups/${rankGroupId}/release-configuration`, { configuration });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
+      queryClient.invalidateQueries({ predicate: (query) => {
+        const key = query.queryKey[0];
+        return typeof key === 'string' && (
+          key.startsWith('/api/v2/admin/forms/for-rank') ||
+          key === '/api/v2/admin/form-versions-all'
+        );
+      }});
+      toast({
+        title: "Success",
+        description: "Form configuration released successfully",
+      });
+      setEditingForm(null);
+      setEditingRankGroup(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to release form configuration: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFormSave = (formData: any) => {
     if (!formData.formId) return;
 
@@ -3825,9 +3858,9 @@ const AdminModuleInner = (): JSX.Element => {
 
     // Check if this is a Promotion form (has pre-serialized configuration)
     if (formData.configuration && typeof formData.configuration === 'string') {
-      // Promotion form data - save directly to rank group
+      // Promotion form data - save as a released form version directly
       if (rankGroup) {
-        updateRankGroupConfigMutation.mutate({
+        releaseRankGroupConfigMutation.mutate({
           rankGroupId: rankGroup.id,
           configuration: formData.configuration,
         });

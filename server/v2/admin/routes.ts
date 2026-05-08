@@ -45,6 +45,7 @@ router.get("/rank-groups/:id", rankGroupsController.getById);
 router.post("/rank-groups", rankGroupsController.create);
 router.put("/rank-groups/:id", rankGroupsController.update);
 router.put("/rank-groups/:id/configuration", rankGroupsController.updateConfiguration);
+router.post("/rank-groups/:id/release-configuration", rankGroupsController.releaseConfiguration);
 router.post("/rank-groups/:id/archive", rankGroupsController.archive);
 router.post("/rank-groups/:id/unarchive", rankGroupsController.unarchive);
 router.delete("/rank-groups/:id", rankGroupsController.delete);
