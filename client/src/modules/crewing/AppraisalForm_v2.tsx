@@ -678,7 +678,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Mutation for saving appraisal (uses PUT for existing, POST for new)
   const saveAppraisalMutation = useMutation({
-    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null }) => {
+    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean }) => {
       if (!crewMember?.id) {
         throw new Error('Crew member ID is required to save appraisal');
       }
@@ -770,7 +770,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           ? 'Your appraisal draft has been saved successfully. You can now submit stages.' 
           : 'Your appraisal has been submitted successfully.',
       });
-      if (variables.status !== 'draft') {
+      if (variables.closeAfter) {
         onClose();
       }
     },
@@ -1016,7 +1016,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // If no appraisalId, save as draft first
     if (!idToUse) {
       try {
-        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft' });
+        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false });
         if (result && result.id) {
           idToUse = result.id;
           setAppraisalId(result.id);
@@ -1051,7 +1051,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     console.log('🔵 Mutation isPending:', saveAppraisalMutation.isPending);
     // Get form data with synced comments from useState hooks
     const syncedData = getFormDataWithSyncedComments();
-    saveAppraisalMutation.mutate({ data: syncedData, status: 'draft' });
+    saveAppraisalMutation.mutate({ data: syncedData, status: 'draft', closeAfter: false });
   };
 
   const handleSaveDraft = () => {
@@ -1064,7 +1064,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // Only use 'draft' status before Stage 1 has been submitted
     const statusToSave = appraisalStatus === 'draft' ? 'draft' : appraisalStatus;
     console.log('💾 Preserving status:', statusToSave);
-    saveAppraisalMutation.mutate({ data, status: statusToSave });
+    saveAppraisalMutation.mutate({ data, status: statusToSave, closeAfter: false });
   };
 
   const onSubmitAppraisal = () => {
@@ -1074,7 +1074,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       // Get form data with synced comments from useState hooks
       const syncedData = getFormDataWithSyncedComments();
       console.log('🟢 Submit handler called with synced data:', syncedData);
-      saveAppraisalMutation.mutate({ data: syncedData, status: 'submitted' });
+      saveAppraisalMutation.mutate({ data: syncedData, status: 'submitted', closeAfter: true });
     })();
   };
 
