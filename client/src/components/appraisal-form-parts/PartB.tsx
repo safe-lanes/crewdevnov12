@@ -89,7 +89,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                         <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                         <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
                         {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white">
@@ -194,7 +194,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
                       {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white">

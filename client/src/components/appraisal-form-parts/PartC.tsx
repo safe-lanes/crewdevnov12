@@ -56,7 +56,7 @@ const PartCComponent: React.FC<PartCProps> = ({
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<RequiredMark /></th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>

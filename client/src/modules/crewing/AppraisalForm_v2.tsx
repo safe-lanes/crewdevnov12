@@ -2587,7 +2587,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
                                   {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                                 </tr>
                               </thead>
                               <tbody className="bg-white">
@@ -2732,7 +2732,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                 <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                                 <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
                                 {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white">
@@ -2887,7 +2887,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<RequiredMark /></th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -3024,7 +3024,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<RequiredMark /></th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -3180,7 +3180,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             <tr>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training<RequiredMark /></th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                             </tr>
                           </thead>
                           <tbody>

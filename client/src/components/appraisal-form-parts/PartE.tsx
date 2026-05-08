@@ -73,7 +73,7 @@ const PartEComponent: React.FC<PartEProps> = ({
                   <tr>
                     <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                     <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training<RequiredMark /></th>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
