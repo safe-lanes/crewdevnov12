@@ -684,11 +684,25 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const recommendations = useWatch({ control: formMethods.control, name: "recommendations" });
   const trainingFollowups = useWatch({ control: formMethods.control, name: "trainingFollowups" });
 
-  // Load rank group configuration when available (only if no version explicitly selected)
+  // Load rank group configuration when available.
+  // Acts as a FALLBACK only — when there are no saved versions (released or draft)
+  // for this form/rank-group. When versions exist, the version-load effect below
+  // is the source of truth so adds/deletes in Parts B–F1 are not overwritten.
   useEffect(() => {
-    if (rankGroupConfig && !versionExplicitlySelected) {
-      console.log('[FormEditor] Loading rank group configuration:', rankGroupConfig);
-      
+    const hasAnyVersion = (versionsData || []).length > 0;
+    if (rankGroupConfig && !versionExplicitlySelected && !hasAnyVersion) {
+      console.log('[FormEditor] Loading rank group configuration (fallback):', rankGroupConfig);
+
+      // Load Part B trainings from rank group config
+      if (Array.isArray((rankGroupConfig as any).trainings) && (rankGroupConfig as any).trainings.length > 0) {
+        formMethods.setValue('trainings', (rankGroupConfig as any).trainings);
+      }
+
+      // Load Part B targets from rank group config
+      if (Array.isArray((rankGroupConfig as any).targets) && (rankGroupConfig as any).targets.length > 0) {
+        formMethods.setValue('targets', (rankGroupConfig as any).targets);
+      }
+
       // Load competence assessments from rank group config
       if (rankGroupConfig.competenceAssessments && rankGroupConfig.competenceAssessments.length > 0) {
         formMethods.setValue('competenceAssessments', rankGroupConfig.competenceAssessments.map(ca => ({
@@ -719,7 +733,17 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
           isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
         })));
       }
-      
+
+      // Load Part E training needs from rank group config
+      if (Array.isArray((rankGroupConfig as any).trainingNeeds) && (rankGroupConfig as any).trainingNeeds.length > 0) {
+        formMethods.setValue('trainingNeeds', (rankGroupConfig as any).trainingNeeds);
+      }
+
+      // Load Training Followups from rank group config
+      if (Array.isArray((rankGroupConfig as any).trainingFollowups) && (rankGroupConfig as any).trainingFollowups.length > 0) {
+        formMethods.setValue('trainingFollowups', (rankGroupConfig as any).trainingFollowups);
+      }
+
       // Load hidden fields/sections
       if (rankGroupConfig.hiddenFields) {
         const newFieldVisibility = { ...fieldVisibility };
@@ -741,7 +765,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         setSectionVisibility(newSectionVisibility);
       }
     }
-  }, [rankGroupConfig, versionExplicitlySelected]);
+  }, [rankGroupConfig, versionExplicitlySelected, versionsData]);
 
   // Load version configuration when activeVersion changes
   useEffect(() => {

@@ -3876,9 +3876,13 @@ const AdminModuleInner = (): JSX.Element => {
 
     // Appraisal form data - assemble rank group config
     const rankGroupConfig = {
+      trainings: formData.trainings || [],
+      targets: formData.targets || [],
       competenceAssessments: formData.competenceAssessments || [],
       behaviouralAssessments: formData.behaviouralAssessments || [],
+      trainingNeeds: formData.trainingNeeds || [],
       recommendations: formData.recommendations || [],
+      trainingFollowups: formData.trainingFollowups || [],
       hiddenFields: formData.hiddenFields || [],
       hiddenSections: formData.hiddenSections || [],
     };
