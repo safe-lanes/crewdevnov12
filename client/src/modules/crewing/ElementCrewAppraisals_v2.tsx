@@ -28,7 +28,7 @@ import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { useVesselLookup } from "@/hooks/useVesselLookup";
-import { useVesselsV2, useVesselTypesV2, useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
+import { useVesselsV2, useVesselTypesV2, useNationalitiesV2, useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
 import { useCompanyRanksV2 } from "@/modules/admin/hooks/useAdminV2";
 
 
@@ -183,6 +183,33 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
 
   // Vessel lookup for ID to name translation
   const { getVesselName } = useVesselLookup();
+
+  // Appraisal Types for filter dropdown (sourced from same master as the form)
+  const { data: appraisalTypesRaw = [], isLoading: isLoadingAppraisalTypes } = useAppraisalTypesV2();
+  const appraisalTypeOptions = useMemo(() => {
+    const names = (appraisalTypesRaw as any[])
+      .map((entry: any) => entry?.name)
+      .filter((name: any): name is string => typeof name === "string" && name.length > 0);
+    if (names.length > 0) {
+      return names.map((name) => ({ value: name, label: name }));
+    }
+    // Fallback mirrors the appraisal form (PartA.tsx) when master is empty
+    return [
+      { value: "End of Contract", label: "End of Contract" },
+      { value: "Mid Term", label: "Mid Term" },
+      { value: "Special", label: "Special" },
+      { value: "Probation", label: "Probation" },
+    ];
+  }, [appraisalTypesRaw]);
+
+  const renderAppraisalTypeOptions = () => {
+    if (isLoadingAppraisalTypes) {
+      return <SelectItem value="loading" disabled>Loading...</SelectItem>;
+    }
+    return appraisalTypeOptions.map((option) => (
+      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+    ));
+  };
 
   const { data: appraisalResults = [], isLoading: isLoadingAppraisals } = useQuery<AppraisalResult[]>({
     queryKey: ["/api/v2/appraisals"],
@@ -708,10 +735,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                     <SelectValue placeholder="Appraisal Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                    <SelectItem value="End-Contract">End-Contract</SelectItem>
-                    <SelectItem value="Annual">Annual</SelectItem>
-                    <SelectItem value="Promotion">Promotion</SelectItem>
+                    {renderAppraisalTypeOptions()}
                   </SelectContent>
                 </Select>
 
@@ -808,10 +832,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                       <SelectValue placeholder="Appraisal Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                      <SelectItem value="End-Contract">End-Contract</SelectItem>
-                      <SelectItem value="Annual">Annual</SelectItem>
-                      <SelectItem value="Promotion">Promotion</SelectItem>
+                      {renderAppraisalTypeOptions()}
                     </SelectContent>
                   </Select>
                 </div>
@@ -913,10 +934,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                       <SelectValue placeholder="App. Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                      <SelectItem value="End-Contract">End-Contract</SelectItem>
-                      <SelectItem value="Annual">Annual</SelectItem>
-                      <SelectItem value="Promotion">Promotion</SelectItem>
+                      {renderAppraisalTypeOptions()}
                     </SelectContent>
                   </Select>
 
