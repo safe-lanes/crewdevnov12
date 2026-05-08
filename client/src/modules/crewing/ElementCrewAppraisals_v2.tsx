@@ -148,7 +148,7 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
       )}
       {params.context.canDeletePerm && (
       <Button variant="ghost" size="icon" className="h-6 w-6">
-        <Trash2Icon className="h-[18px] w-[18px] text-gray-500" />
+        <Trash2Icon className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
       </Button>
       )}
     </div>

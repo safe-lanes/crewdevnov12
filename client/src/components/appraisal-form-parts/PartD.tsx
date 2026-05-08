@@ -112,7 +112,7 @@ const PartDComponent: React.FC<PartDProps> = ({
                               </div>
                               <div className="ml-2">
                                 <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteBehaviouralComment(assessment.id); }}>
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                 </Button>
                               </div>
                             </div>

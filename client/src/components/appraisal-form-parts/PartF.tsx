@@ -207,7 +207,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                                         );
                                       }}
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                     </Button>
                                   </div>
                                 </div>
@@ -285,7 +285,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                                 onClick={() => deleteAppraiserComment(comment.id)}
                                 data-testid={`button-delete-appraiser-${comment.id}`}
                               >
-                                <Trash2 className="h-4 w-4 text-gray-400" />
+                                <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                               </Button>
                             )}
                           </div>
@@ -326,7 +326,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                                   onClick={() => deleteAppraiserComment(comment.id)}
                                   data-testid={`button-delete-appraiser-${comment.id}`}
                                 >
-                                  <Trash2 className="h-3.5 w-3.5 text-gray-400" />
+                                  <Trash2 className="h-3.5 w-3.5 text-red-600 hover:text-red-700" />
                                 </Button>
                               )}
                             </div>

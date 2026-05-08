@@ -81,7 +81,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                         <Input value={review.position} onChange={(e) => updateOfficeReview(review.id, "position", e.target.value)} placeholder="Enter position" />
                       </div>
                       <Button type="button" variant="ghost" size="icon" onClick={() => deleteOfficeReview(review.id)}>
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                       </Button>
                     </div>
                     <Textarea value={review.feedback} onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)} placeholder="Enter feedback..." rows={3} />
@@ -181,7 +181,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                                 <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                               </Button>
                               <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTrainingFollowup(followup.id)}>
-                                <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                               </Button>
                             </div>
                           </td>
@@ -207,7 +207,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                                   </div>
                                   <div className="ml-2">
                                     <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingFollowupComment(followup.id); }}>
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                     </Button>
                                   </div>
                                 </div>

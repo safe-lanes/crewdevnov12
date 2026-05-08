@@ -127,7 +127,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                   <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                                 </Button>
                                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTraining(training.id)}>
-                                  <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                  <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                                 </Button>
                               </div>
                             </td>
@@ -153,7 +153,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                     </div>
                                     <div className="ml-2">
                                       <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }}>
-                                        <Trash2 className="h-4 w-4" />
+                                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                       </Button>
                                     </div>
                                   </div>
@@ -232,7 +232,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                 <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                               </Button>
                               <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTarget(target.id)}>
-                                <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                               </Button>
                             </div>
                           </td>
@@ -258,7 +258,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                   </div>
                                   <div className="ml-2">
                                     <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }}>
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                     </Button>
                                   </div>
                                 </div>
