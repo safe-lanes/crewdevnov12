@@ -484,13 +484,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         { id: "seafarer", name: "", rank: "", comment: "" }
       ],
       officeReviews: [],
-      trainingFollowups: [
-        { id: "1", training: "Training 1", correspondingInDB: "Select Training from DB", category: "Select Rating", status: "Proposed", targetDate: "", comment: "" },
-        { id: "2", training: "Training 2", correspondingInDB: "Select Training from DB", category: "1. Competence", status: "Approved", targetDate: "", comment: "" },
-        { id: "3", training: "Training 3", correspondingInDB: "Select Training from DB", category: "2- Soft Skills", status: "Planned", targetDate: "", comment: "" },
-        { id: "4", training: "Training 4", correspondingInDB: "Select Training from DB", category: "1. Competence", status: "Declined", targetDate: "", comment: "The officer will no longer be sent on this type of vessel, so this training is not required." },
-        { id: "5", training: "Training 5", correspondingInDB: "Select Training from DB", category: "2- Soft Skills", status: "Completed", targetDate: "", comment: "" }
-      ],
+      trainingFollowups: [],
     },
   });
 
@@ -609,7 +603,21 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         }));
         console.log('📋 Will set recommendations:', updates.recommendations.length, 'items');
       }
-      
+
+      // Load training followups (G2) from rank group config
+      if (Array.isArray(config.rankGroupConfig.trainingFollowups) && config.rankGroupConfig.trainingFollowups.length > 0) {
+        updates.trainingFollowups = config.rankGroupConfig.trainingFollowups.map((f: any) => ({
+          id: f.id,
+          training: f.training ?? '',
+          correspondingInDB: f.correspondingInDB ?? 'Select Training from DB',
+          category: f.category ?? 'Select Rating',
+          status: f.status ?? 'Proposed',
+          targetDate: f.targetDate ?? '',
+          comment: f.comment ?? '',
+        }));
+        console.log('📋 Will set trainingFollowups:', updates.trainingFollowups.length, 'items');
+      }
+
       // Use form.reset() to apply all updates at once - this triggers proper re-renders
       if (Object.keys(updates).length > 0) {
         console.log('📋 Resetting form with config values');
@@ -3821,6 +3829,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     )}
                                   </React.Fragment>
                                 ))}
+                                {form.watch("trainingFollowups").length === 0 && (
+                                  <tr>
+                                    <td colSpan={7} className="p-8 text-center text-gray-500 text-[13px]">
+                                      No training followups added yet. Click "Add New Training" to get started.
+                                    </td>
+                                  </tr>
+                                )}
                               </tbody>
                             </table>
                           </div>
