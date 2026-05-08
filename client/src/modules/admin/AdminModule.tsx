@@ -3830,7 +3830,8 @@ const AdminModuleInner = (): JSX.Element => {
         const key = query.queryKey[0];
         return typeof key === 'string' && (
           key.startsWith('/api/v2/admin/forms/for-rank') ||
-          key === '/api/v2/admin/form-versions-all'
+          key === '/api/v2/admin/form-versions-all' ||
+          /^\/api\/v2\/admin\/forms\/\d+\/versions$/.test(key)
         );
       }});
       toast({
