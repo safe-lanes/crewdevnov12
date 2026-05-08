@@ -609,54 +609,54 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       console.log('📋 Will set trainingNeeds:', updates.trainingNeeds.length, 'items');
 
       // Load competence assessments from rank group config
-      if (config.rankGroupConfig.competenceAssessments && config.rankGroupConfig.competenceAssessments.length > 0) {
-        updates.competenceAssessments = config.rankGroupConfig.competenceAssessments.map((ca: any) => ({
-          id: ca.id,
-          assessmentCriteria: ca.assessmentCriteria,
-          weight: ca.weight,
-          effectiveness: ca.effectiveness || '',
-          comment: ca.comment || '',
-        }));
-        console.log('📋 Will set competenceAssessments:', updates.competenceAssessments.length, 'items');
-      }
-      
+      updates.competenceAssessments = Array.isArray(config.rankGroupConfig.competenceAssessments)
+        ? config.rankGroupConfig.competenceAssessments.map((ca: any) => ({
+            id: ca.id,
+            assessmentCriteria: ca.assessmentCriteria,
+            weight: ca.weight,
+            effectiveness: ca.effectiveness || '',
+            comment: ca.comment || '',
+          }))
+        : [];
+      console.log('📋 Will set competenceAssessments:', updates.competenceAssessments.length, 'items');
+
       // Load behavioural assessments from rank group config
-      if (config.rankGroupConfig.behaviouralAssessments && config.rankGroupConfig.behaviouralAssessments.length > 0) {
-        updates.behaviouralAssessments = config.rankGroupConfig.behaviouralAssessments.map((ba: any) => ({
-          id: ba.id,
-          assessmentCriteria: ba.assessmentCriteria,
-          weight: ba.weight,
-          effectiveness: ba.effectiveness || '',
-          comment: ba.comment || '',
-        }));
-        console.log('📋 Will set behaviouralAssessments:', updates.behaviouralAssessments.length, 'items');
-      }
-      
+      updates.behaviouralAssessments = Array.isArray(config.rankGroupConfig.behaviouralAssessments)
+        ? config.rankGroupConfig.behaviouralAssessments.map((ba: any) => ({
+            id: ba.id,
+            assessmentCriteria: ba.assessmentCriteria,
+            weight: ba.weight,
+            effectiveness: ba.effectiveness || '',
+            comment: ba.comment || '',
+          }))
+        : [];
+      console.log('📋 Will set behaviouralAssessments:', updates.behaviouralAssessments.length, 'items');
+
       // Load recommendations from rank group config
-      if (config.rankGroupConfig.recommendations && config.rankGroupConfig.recommendations.length > 0) {
-        updates.recommendations = config.rankGroupConfig.recommendations.map((rec: any) => ({
-          id: rec.id,
-          question: rec.recommendation || rec.question,
-          answer: rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : ''),
-          comment: rec.comment || '',
-          isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
-        }));
-        console.log('📋 Will set recommendations:', updates.recommendations.length, 'items');
-      }
+      updates.recommendations = Array.isArray(config.rankGroupConfig.recommendations)
+        ? config.rankGroupConfig.recommendations.map((rec: any) => ({
+            id: rec.id,
+            question: rec.recommendation || rec.question,
+            answer: rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : ''),
+            comment: rec.comment || '',
+            isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+          }))
+        : [];
+      console.log('📋 Will set recommendations:', updates.recommendations.length, 'items');
 
       // Load training followups (G2) from rank group config
-      if (Array.isArray(config.rankGroupConfig.trainingFollowups) && config.rankGroupConfig.trainingFollowups.length > 0) {
-        updates.trainingFollowups = config.rankGroupConfig.trainingFollowups.map((f: any) => ({
-          id: f.id,
-          training: f.training ?? '',
-          correspondingInDB: f.correspondingInDB ?? 'Select Training from DB',
-          category: f.category ?? 'Select Rating',
-          status: f.status ?? 'Proposed',
-          targetDate: f.targetDate ?? '',
-          comment: f.comment ?? '',
-        }));
-        console.log('📋 Will set trainingFollowups:', updates.trainingFollowups.length, 'items');
-      }
+      updates.trainingFollowups = Array.isArray(config.rankGroupConfig.trainingFollowups)
+        ? config.rankGroupConfig.trainingFollowups.map((f: any) => ({
+            id: f.id,
+            training: f.training ?? '',
+            correspondingInDB: f.correspondingInDB ?? 'Select Training from DB',
+            category: f.category ?? 'Select Rating',
+            status: f.status ?? 'Proposed',
+            targetDate: f.targetDate ?? '',
+            comment: f.comment ?? '',
+          }))
+        : [];
+      console.log('📋 Will set trainingFollowups:', updates.trainingFollowups.length, 'items');
 
       // Use form.reset() to apply all updates at once - this triggers proper re-renders
       if (Object.keys(updates).length > 0) {
