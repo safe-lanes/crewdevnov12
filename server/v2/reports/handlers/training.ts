@@ -3,8 +3,6 @@ import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import { crewLicenses, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
-import { masterVessels } from "../../../../shared/schema";
 import type { ReportHandler } from "../types";
 import type { ReportColumn } from "../../../../shared/v2/reports/types";
 import { dateExpr, fullNameExpr } from "./_shared";

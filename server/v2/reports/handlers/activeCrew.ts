@@ -7,7 +7,6 @@ import {
   masterNationalities,
   masterVessels,
 } from "../../../../shared/schema";
-import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import type { ReportHandler } from "../types";
 import type {
   ReportColumn,

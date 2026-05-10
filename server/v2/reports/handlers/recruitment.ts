@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, inArray, notInArray, notExists, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import {

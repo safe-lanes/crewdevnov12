@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { and, asc, desc, eq, isNull, isNotNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, isNotNull, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
-import { crewMembersV2, crewAddresses } from "../../../../shared/v2/crew-pool/schema";
+import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterNationalities, masterVessels } from "../../../../shared/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import type { ReportHandler } from "../types";
