@@ -32,6 +32,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import MainLayout from "@/components/main/MainLayout";
 import { useViewport, getLayoutConfig } from "@/hooks/useViewport";
 import { useToast } from "@/hooks/use-toast";
+import { useCompanyRanks } from "@/hooks/useCompanyRanks";
+import { useNationalitiesV2, useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 
 interface ReportLeaf {
   id: string;
@@ -331,11 +333,20 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   ],
 };
 
-const RANK_OPTIONS = ["Master", "Chief Officer", "2nd Officer", "Chief Engineer", "2nd Engineer", "AB", "OS", "Cook"];
-const VESSEL_OPTIONS = ["MV Atlantic Star", "MV Pacific Pearl", "MV Northern Light", "MV Southern Cross"];
-const NATIONALITY_OPTIONS = ["Indian", "Filipino", "Ukrainian", "Russian", "British", "Greek"];
+// Static fallback option lists for filter kinds without a master data source.
+// Rank / vessel / nationality lists are loaded from the live master data hooks
+// (see ReportsContent) and supplied to FilterControl via the `options` prop.
 const SOURCE_OPTIONS = ["Direct", "Agency", "Referral", "Job Portal", "Walk-in"];
 const STATUS_OPTIONS = ["All", "Pending", "In Progress", "Completed"];
+
+interface DynamicOptions {
+  ranks: string[];
+  vessels: string[];
+  nationalities: string[];
+  ranksLoading: boolean;
+  vesselsLoading: boolean;
+  nationalitiesLoading: boolean;
+}
 
 function findReport(id: string): { leaf: ReportLeaf; category: ReportCategory } | null {
   for (const cat of REPORT_TREE) {
@@ -430,33 +441,51 @@ interface FilterControlProps {
   filter: FilterDescriptor;
   reportId: string;
   index: number;
+  options: DynamicOptions;
 }
 
-function FilterControl({ filter, reportId, index }: FilterControlProps): JSX.Element {
+function FilterControl({ filter, reportId, index, options }: FilterControlProps): JSX.Element {
   const testIdBase = `filter-${reportId}-${index}`;
 
-  const renderSelect = (placeholder: string, options: string[]) => (
-    <Select>
-      <SelectTrigger className="h-9 w-[180px]" data-testid={testIdBase}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((opt) => (
-          <SelectItem key={opt} value={opt}>
-            {opt}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
+  const renderSelect = (
+    placeholder: string,
+    items: string[],
+    loading: boolean = false,
+    emptyLabel?: string,
+  ) => {
+    const isEmpty = !loading && items.length === 0;
+    const computedPlaceholder = loading
+      ? "Loading…"
+      : isEmpty
+        ? (emptyLabel ?? "No options available")
+        : placeholder;
+    return (
+      <Select disabled={loading || isEmpty}>
+        <SelectTrigger className="h-9 w-[180px]" data-testid={testIdBase}>
+          <SelectValue placeholder={computedPlaceholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((opt) => (
+            <SelectItem
+              key={opt}
+              value={opt}
+              data-testid={`${testIdBase}-option-${opt}`}
+            >
+              {opt}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  };
 
   switch (filter.kind) {
     case "rank":
-      return renderSelect(filter.label, RANK_OPTIONS);
+      return renderSelect(filter.label, options.ranks, options.ranksLoading, "No ranks");
     case "vessel":
-      return renderSelect(filter.label, VESSEL_OPTIONS);
+      return renderSelect(filter.label, options.vessels, options.vesselsLoading, "No vessels");
     case "nationality":
-      return renderSelect(filter.label, NATIONALITY_OPTIONS);
+      return renderSelect(filter.label, options.nationalities, options.nationalitiesLoading, "No nationalities");
     case "source":
       return renderSelect(filter.label, SOURCE_OPTIONS);
     case "status":
@@ -544,6 +573,65 @@ function ReportsContent(): JSX.Element {
 
   const handleExpandAll = () => setExpandedIds(getAllCategoryIds());
   const handleCollapseAll = () => setExpandedIds(new Set());
+
+  // Live master data for filter dropdowns. These same hooks are used across
+  // Recruitment / Crew Pool / Vessel / D&A modules.
+  const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
+  const { data: vesselsRaw, isLoading: vesselsLoading } = useVesselsV2();
+  const { data: nationalitiesRaw, isLoading: nationalitiesLoading } = useNationalitiesV2();
+
+  const dynamicOptions = useMemo<DynamicOptions>(() => {
+    const ranks = Array.from(
+      new Set(
+        (rankOptions ?? [])
+          .map((r) => r.label)
+          .filter((s): s is string => !!s && s.trim().length > 0),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+
+    const vesselsArr =
+      ((vesselsRaw as any)?.vessels as any[]) ||
+      ((vesselsRaw as any[]) ?? []);
+    const vessels = Array.from(
+      new Set(
+        vesselsArr
+          .map((v: any) => (v?.vessel ?? v?.name ?? "") as string)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+
+    const nationalitiesArr =
+      ((nationalitiesRaw as any)?.nationalities as any[]) ||
+      ((nationalitiesRaw as any[]) ?? []);
+    const nationalities = Array.from(
+      new Set(
+        nationalitiesArr
+          .map(
+            (n: any) =>
+              (n?.nationality ?? n?.name ?? n?.label ?? "") as string,
+          )
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+
+    return {
+      ranks,
+      vessels,
+      nationalities,
+      ranksLoading,
+      vesselsLoading,
+      nationalitiesLoading,
+    };
+  }, [
+    rankOptions,
+    vesselsRaw,
+    nationalitiesRaw,
+    ranksLoading,
+    vesselsLoading,
+    nationalitiesLoading,
+  ]);
 
   // Clear selection if the active search hides the currently selected report,
   // so the right pane never shows a report missing from the filtered tree.
@@ -754,6 +842,7 @@ function ReportsContent(): JSX.Element {
                     filter={f}
                     reportId={selected.leaf.id}
                     index={idx}
+                    options={dynamicOptions}
                   />
                 ))}
                 <div className="ml-auto">
