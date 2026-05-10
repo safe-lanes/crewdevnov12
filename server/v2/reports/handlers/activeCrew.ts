@@ -2,9 +2,7 @@ import { z } from "zod";
 import { and, asc, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
-import {
-  crewMembersV2,
-} from "../../../../shared/v2/crew-pool/schema";
+import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import {
   masterNationalities,
   masterVessels,
@@ -34,12 +32,25 @@ const COLUMNS: ReportColumn[] = [
   { key: "status", label: "Status", type: "status", width: 110 },
 ];
 
-const SORT_COLUMNS: Record<string, PgColumn> = {
+// Correlated subquery: pick a single vessel name per crew (no row fan-out).
+// Whitespace formatting kept tight for readability of the generated SQL.
+const vesselNameExpr = sql<string | null>`(
+  SELECT ${masterVessels.vessel}
+  FROM ${vesselPlanningV2}
+  LEFT JOIN ${masterVessels}
+    ON ${masterVessels.vesselUuid} = ${vesselPlanningV2.vesselUuid}
+  WHERE ${vesselPlanningV2.crewUuid} = ${crewMembersV2.crewUuid}
+    AND ${vesselPlanningV2.isDeleted} = FALSE
+    AND ${vesselPlanningV2.isArchived} = FALSE
+  LIMIT 1
+)`;
+
+const SORT_COLUMNS: Record<string, PgColumn | SQL> = {
   empNo: crewMembersV2.empNo,
   name: crewMembersV2.firstName,
   presentRank: crewMembersV2.presentRank,
   nationalityName: masterNationalities.nationality,
-  vesselName: masterVessels.vessel,
+  vesselName: vesselNameExpr,
 };
 
 export const activeCrewReport: ReportHandler<Filters> = {
@@ -64,25 +75,13 @@ export const activeCrewReport: ReportHandler<Filters> = {
 
     const whereClause = and(...conditions);
 
-    // Distinct count of crew (the join to vesselPlanningV2 can fan out rows).
+    // Without the planning fan-out join, COUNT(*) is the exact crew count.
     const totalResult = await db
-      .select({ c: sql<number>`count(distinct ${crewMembersV2.crewUuid})` })
+      .select({ c: sql<number>`count(*)` })
       .from(crewMembersV2)
       .leftJoin(
         masterNationalities,
         eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid),
-      )
-      .leftJoin(
-        vesselPlanningV2,
-        and(
-          eq(vesselPlanningV2.crewUuid, crewMembersV2.crewUuid),
-          eq(vesselPlanningV2.isDeleted, false),
-          eq(vesselPlanningV2.isArchived, false),
-        ),
-      )
-      .leftJoin(
-        masterVessels,
-        eq(vesselPlanningV2.vesselUuid, masterVessels.vesselUuid),
       )
       .where(whereClause);
     const total = Number(totalResult[0]?.c ?? 0);
@@ -91,38 +90,24 @@ export const activeCrewReport: ReportHandler<Filters> = {
     const sortColumn = SORT_COLUMNS[sortKey] ?? SORT_COLUMNS.empNo;
     const orderFn = ctx.sort?.direction === "desc" ? desc : asc;
 
-    // distinctOn(crewUuid) eliminates row fan-out from the planning join.
     const rows = await db
-      .selectDistinctOn([crewMembersV2.crewUuid], {
+      .select({
         empNo: crewMembersV2.empNo,
         firstName: crewMembersV2.firstName,
         middleName: crewMembersV2.middleName,
         familyName: crewMembersV2.familyName,
         presentRank: crewMembersV2.presentRank,
         nationalityName: masterNationalities.nationality,
-        vesselName: masterVessels.vessel,
+        vesselName: vesselNameExpr,
         isActive: crewMembersV2.isActive,
-        crewUuid: crewMembersV2.crewUuid,
       })
       .from(crewMembersV2)
       .leftJoin(
         masterNationalities,
         eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid),
       )
-      .leftJoin(
-        vesselPlanningV2,
-        and(
-          eq(vesselPlanningV2.crewUuid, crewMembersV2.crewUuid),
-          eq(vesselPlanningV2.isDeleted, false),
-          eq(vesselPlanningV2.isArchived, false),
-        ),
-      )
-      .leftJoin(
-        masterVessels,
-        eq(vesselPlanningV2.vesselUuid, masterVessels.vesselUuid),
-      )
       .where(whereClause)
-      .orderBy(crewMembersV2.crewUuid, orderFn(sortColumn))
+      .orderBy(orderFn(sortColumn), asc(crewMembersV2.crewUuid))
       .limit(ctx.pageSize)
       .offset((ctx.page - 1) * ctx.pageSize);
 
