@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -9,41 +9,40 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { downloadCsv, rowsToCsv } from "@/lib/csvExport";
+import type {
+  ReportColumn,
+  ReportColumnType,
+  ReportResultRow,
+  ReportSort,
+} from "@shared/v2/reports/types";
 
-export type ReportColumnType =
-  | "text"
-  | "number"
-  | "date"
-  | "boolean"
-  | "status";
-
-export interface ReportColumn {
-  key: string;
-  label: string;
-  type?: ReportColumnType;
-  width?: number;
-  align?: "left" | "right" | "center";
-}
-
-export type ReportRow = Record<string, string | number | boolean | null | undefined>;
+export type { ReportColumn, ReportColumnType, ReportResultRow } from "@shared/v2/reports/types";
 
 interface ReportResultsTableProps {
   title: string;
   columns: ReportColumn[];
-  rows: ReportRow[];
+  rows: ReportResultRow[];
   total: number;
   page: number;
   pageSize: number;
   onPageChange: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
-  sort: { key: string; direction: "asc" | "desc" } | null;
-  onSortChange: (sort: { key: string; direction: "asc" | "desc" } | null) => void;
+  sort: ReportSort | null;
+  onSortChange: (sort: ReportSort | null) => void;
   isLoading?: boolean;
   isFetching?: boolean;
   exportFilename?: string;
 }
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+
+const PLACEHOLDER_COLUMNS: ReportColumn[] = [
+  { key: "__sk1", label: "—" },
+  { key: "__sk2", label: "—" },
+  { key: "__sk3", label: "—" },
+  { key: "__sk4", label: "—" },
+  { key: "__sk5", label: "—" },
+];
 
 function formatCell(value: unknown, type?: ReportColumnType): string {
   if (value === null || value === undefined || value === "") return "—";
@@ -94,6 +93,12 @@ export function ReportResultsTable({
     downloadCsv(fname, csv);
   };
 
+  // When loading without known columns, show placeholder skeleton columns
+  // so the table outline (header + rows) is always visible.
+  const displayColumns =
+    isLoading && columns.length === 0 ? PLACEHOLDER_COLUMNS : columns;
+  const showHeaderInteractions = !isLoading && columns.length > 0;
+
   const skeletonRows = useMemo(
     () => Array.from({ length: Math.min(8, pageSize) }, (_, i) => i),
     [pageSize],
@@ -137,34 +142,46 @@ export function ReportResultsTable({
         <table className="w-full text-sm" data-testid="table-report-results">
           <thead className="bg-[#f4f8fb] text-gray-700">
             <tr>
-              {columns.map((col) => {
-                const isSorted = sort?.key === col.key;
+              {displayColumns.map((col) => {
+                const isSorted = showHeaderInteractions && sort?.key === col.key;
                 const Icon = !isSorted
                   ? ArrowUpDown
-                  : sort.direction === "asc"
+                  : sort?.direction === "asc"
                     ? ArrowUp
                     : ArrowDown;
                 return (
                   <th
                     key={col.key}
                     style={col.width ? { width: col.width } : undefined}
-                    className={`px-3 py-2 font-semibold border-b border-gray-200 select-none cursor-pointer ${
+                    className={`px-3 py-2 font-semibold border-b border-gray-200 select-none ${
+                      showHeaderInteractions ? "cursor-pointer" : ""
+                    } ${
                       col.align === "right"
                         ? "text-right"
                         : col.align === "center"
                           ? "text-center"
                           : "text-left"
                     }`}
-                    onClick={() => handleSort(col.key)}
+                    onClick={
+                      showHeaderInteractions
+                        ? () => handleSort(col.key)
+                        : undefined
+                    }
                     data-testid={`th-report-${col.key}`}
                   >
-                    <span className="inline-flex items-center gap-1">
-                      <span>{col.label}</span>
-                      <Icon
-                        size={12}
-                        className={isSorted ? "text-[#16569e]" : "text-gray-400"}
-                      />
-                    </span>
+                    {isLoading && columns.length === 0 ? (
+                      <div className="h-4 bg-gray-200 rounded w-20 animate-pulse" />
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        <span>{col.label}</span>
+                        {showHeaderInteractions && (
+                          <Icon
+                            size={12}
+                            className={isSorted ? "text-[#16569e]" : "text-gray-400"}
+                          />
+                        )}
+                      </span>
+                    )}
                   </th>
                 );
               })}
@@ -174,7 +191,7 @@ export function ReportResultsTable({
             {isLoading ? (
               skeletonRows.map((i) => (
                 <tr key={`sk-${i}`} className="border-b border-gray-100">
-                  {columns.map((col) => (
+                  {displayColumns.map((col) => (
                     <td key={col.key} className="px-3 py-2">
                       <div className="h-4 bg-gray-100 rounded w-3/4 animate-pulse" />
                     </td>
@@ -184,7 +201,7 @@ export function ReportResultsTable({
             ) : rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length}
+                  colSpan={Math.max(1, displayColumns.length)}
                   className="px-3 py-12 text-center text-gray-500"
                   data-testid="text-report-empty"
                 >

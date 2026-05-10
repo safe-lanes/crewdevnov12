@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import {
-  ReportResultsTable,
-  type ReportColumn as ReportTableColumn,
-  type ReportRow as ReportTableRow,
-} from "@/components/reports/ReportResultsTable";
+import { ReportResultsTable } from "@/components/reports/ReportResultsTable";
+import type { ReportRunResponse } from "@shared/v2/reports/types";
 import {
   ChevronDown,
   ChevronRight,
@@ -628,16 +625,6 @@ function buildFiltersPayload(
   return out;
 }
 
-interface RunReportResponse {
-  reportId: string;
-  title: string;
-  columns: ReportTableColumn[];
-  rows: ReportTableRow[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
 function ReportsContent(): JSX.Element {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -649,7 +636,7 @@ function ReportsContent(): JSX.Element {
   >({});
   // Per-report results cache so switching back to a report keeps its last result.
   const [resultsByReport, setResultsByReport] = useState<
-    Record<string, RunReportResponse>
+    Record<string, ReportRunResponse>
   >({});
   // Per-report sort + pagination, persisted across runs of the same report.
   const [tableStateByReport, setTableStateByReport] = useState<
@@ -798,7 +785,7 @@ function ReportsContent(): JSX.Element {
   };
 
   const runReportMutation = useMutation<
-    RunReportResponse,
+    ReportRunResponse,
     Error,
     {
       reportId: string;
@@ -810,7 +797,7 @@ function ReportsContent(): JSX.Element {
   >({
     mutationFn: async (payload) => {
       const res = await apiRequest("POST", "/api/v2/reports/run", payload);
-      return (await res.json()) as RunReportResponse;
+      return (await res.json()) as ReportRunResponse;
     },
     onSuccess: (data) => {
       setResultsByReport((prev) => ({ ...prev, [data.reportId]: data }));

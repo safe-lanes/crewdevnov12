@@ -1,7 +1,13 @@
 import { z } from "zod";
-import { crewMembersService } from "../../crew-pool/services";
+import { and, asc, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
+import { getDb } from "../../db";
+import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { masterNationalities } from "../../../../shared/schema";
 import type { ReportHandler } from "../types";
-import { applySortAndPaginate, pickColumns } from "../utils";
+import type {
+  ReportColumn,
+  ReportResultRow,
+} from "../../../../shared/v2/reports/types";
 
 const filterSchema = z
   .object({
@@ -11,42 +17,76 @@ const filterSchema = z
 
 type Filters = z.infer<typeof filterSchema>;
 
+const COLUMNS: ReportColumn[] = [
+  { key: "nationality", label: "Nationality", type: "text" },
+  { key: "active", label: "Active", type: "number", align: "right", width: 110 },
+  { key: "inactive", label: "Inactive", type: "number", align: "right", width: 110 },
+  { key: "total", label: "Total", type: "number", align: "right", width: 110 },
+];
+
+const nationalityExpr = sql<string>`COALESCE(NULLIF(TRIM(${masterNationalities.nationality}), ''), '—')`;
+const activeCountExpr = sql<number>`COUNT(*) FILTER (WHERE ${crewMembersV2.isActive} = TRUE)`;
+const inactiveCountExpr = sql<number>`COUNT(*) FILTER (WHERE ${crewMembersV2.isActive} = FALSE)`;
+const totalCountExpr = sql<number>`COUNT(*)`;
+const totalGroupsExpr = sql<number>`COUNT(*) OVER ()`;
+
 export const crewByNationalityReport: ReportHandler<Filters> = {
   reportId: "cp-by-nationality",
   title: "Crew by Nationality",
-  columns: [
-    { key: "nationality", label: "Nationality", type: "text" },
-    { key: "active", label: "Active", type: "number", align: "right", width: 110 },
-    { key: "inactive", label: "Inactive", type: "number", align: "right", width: 110 },
-    { key: "total", label: "Total", type: "number", align: "right", width: 110 },
-  ],
+  columns: COLUMNS,
   filterSchema,
   async run(filters, ctx) {
-    const enriched = await crewMembersService.getAllEnriched({});
+    const db = getDb();
 
-    const counts = new Map<string, { active: number; inactive: number }>();
-    for (const c of enriched as any[]) {
-      const nat = (c.nationalityName ?? "—").trim() || "—";
-      if (
-        filters.nationality &&
-        nat.toLowerCase() !== filters.nationality.toLowerCase()
-      ) {
-        continue;
-      }
-      const entry = counts.get(nat) ?? { active: 0, inactive: 0 };
-      if (c.isActive === false) entry.inactive += 1;
-      else entry.active += 1;
-      counts.set(nat, entry);
+    const conditions: SQL[] = [
+      eq(crewMembersV2.isDeleted, false),
+      isNull(crewMembersV2.archivedAt),
+    ];
+    if (filters.nationality) {
+      conditions.push(
+        eq(masterNationalities.nationality, filters.nationality),
+      );
     }
 
-    const rows = Array.from(counts.entries()).map(([nationality, v]) => ({
-      nationality,
-      active: v.active,
-      inactive: v.inactive,
-      total: v.active + v.inactive,
+    const sortKey = ctx.sort?.key ?? "nationality";
+    const orderFn = ctx.sort?.direction === "desc" ? desc : asc;
+    const orderByExpr =
+      sortKey === "active"
+        ? orderFn(activeCountExpr)
+        : sortKey === "inactive"
+          ? orderFn(inactiveCountExpr)
+          : sortKey === "total"
+            ? orderFn(totalCountExpr)
+            : orderFn(nationalityExpr);
+
+    const rows = await db
+      .select({
+        nationality: nationalityExpr,
+        active: activeCountExpr,
+        inactive: inactiveCountExpr,
+        total: totalCountExpr,
+        totalGroups: totalGroupsExpr,
+      })
+      .from(crewMembersV2)
+      .leftJoin(
+        masterNationalities,
+        eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid),
+      )
+      .where(and(...conditions))
+      .groupBy(nationalityExpr)
+      .orderBy(orderByExpr)
+      .limit(ctx.pageSize)
+      .offset((ctx.page - 1) * ctx.pageSize);
+
+    const total = Number(rows[0]?.totalGroups ?? 0);
+    type Row = (typeof rows)[number];
+    const mapped: ReportResultRow[] = rows.map((r: Row) => ({
+      nationality: r.nationality,
+      active: Number(r.active),
+      inactive: Number(r.inactive),
+      total: Number(r.total),
     }));
 
-    const picked = pickColumns(rows, crewByNationalityReport.columns);
-    return applySortAndPaginate(picked, ctx, "nationality");
+    return { rows: mapped, total };
   },
 };

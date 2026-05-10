@@ -2,14 +2,17 @@ import { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
 import { getReport } from "./registry";
 import { registerAllReports } from "./handlers";
-import { reportRunRequestSchema, type ReportRunResponse } from "./types";
+import {
+  reportRunRequestSchema,
+  type ReportRunResponse,
+} from "../../../shared/v2/reports/types";
 
 registerAllReports();
 
 const router = Router();
 
 router.post("/run", async (req: Request, res: Response) => {
-  let parsed;
+  let parsed: ReturnType<typeof reportRunRequestSchema.parse>;
   try {
     parsed = reportRunRequestSchema.parse(req.body ?? {});
   } catch (err) {
@@ -31,7 +34,7 @@ router.post("/run", async (req: Request, res: Response) => {
     });
   }
 
-  let filters;
+  let filters: unknown;
   try {
     filters = handler.filterSchema.parse(parsed.filters ?? {});
   } catch (err) {
@@ -62,11 +65,12 @@ router.post("/run", async (req: Request, res: Response) => {
       pageSize: parsed.pageSize,
     };
     return res.json(response);
-  } catch (err: any) {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to run report";
     console.error(`[reports] handler "${parsed.reportId}" failed:`, err);
     return res.status(500).json({
       error: "report_failed",
-      message: err?.message ?? "Failed to run report",
+      message,
     });
   }
 });
