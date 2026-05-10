@@ -216,7 +216,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             setIsCrewInfoFormOpen(true);
         };
 
-        if (permissions.length > 0 && !canEdit("Crew Database")) return null;
+        if (permissions.length > 0 && !canEdit("Crew Database") && !canEdit("Terminated")) return null;
 
         return (
             <div className="flex items-center justify-center gap-1 h-full">
@@ -1056,6 +1056,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             lastVessel: 'Vessel 7', signOffDate: '2026-03-04',
             terminationDate: '2026-03-04', terminationInitiatedBy: 'Company',
             terminationReason: 'Poor Performance', notForHire: true,
+            crewPool: 'Pool A', manningAgent: '',
         },
         {
             id: 'term-002', employeeId: 'A000456', firstName: 'Dattatray', familyName: 'Khade',
@@ -1063,6 +1064,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             lastVessel: 'Vessel 7', signOffDate: '2026-04-06',
             terminationDate: '2026-04-06', terminationInitiatedBy: 'Crew Member (resignation)',
             terminationReason: 'Resignation', notForHire: false,
+            crewPool: 'Pool B', manningAgent: '',
         },
         {
             id: 'term-003', employeeId: 'A000789', firstName: 'test', familyName: 'Naveel',
@@ -1070,6 +1072,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             lastVessel: '', signOffDate: '',
             terminationDate: '2026-02-18', terminationInitiatedBy: 'Company',
             terminationReason: 'Disciplinary', notForHire: true,
+            crewPool: 'Pool A', manningAgent: '',
         },
         {
             id: 'term-004', employeeId: 'A000234', firstName: '4unhtn', familyName: 'yhu6j',
@@ -1077,6 +1080,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             lastVessel: '', signOffDate: '',
             terminationDate: '2025-12-01', terminationInitiatedBy: 'Crew Member (resignation)',
             terminationReason: 'Resignation', notForHire: false,
+            crewPool: 'Pool B', manningAgent: '',
         },
         {
             id: 'term-005', employeeId: 'A000345', firstName: 'TestName', familyName: 'gdfg',
@@ -1084,6 +1088,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             lastVessel: '', signOffDate: '',
             terminationDate: '2025-11-12', terminationInitiatedBy: 'Company',
             terminationReason: 'No suitable vessel', notForHire: false,
+            crewPool: 'Pool A', manningAgent: '',
         },
         {
             id: 'term-006', employeeId: 'A000567', firstName: 'Ghazi', familyName: 'Test',
@@ -1091,6 +1096,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             lastVessel: '', signOffDate: '',
             terminationDate: '2025-10-04', terminationInitiatedBy: 'Company',
             terminationReason: 'Unresponsive', notForHire: true,
+            crewPool: 'Pool C', manningAgent: '',
         },
         {
             id: 'term-007', employeeId: 'A000678', firstName: 'E2E', familyName: 'User',
@@ -1098,6 +1104,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             lastVessel: '', signOffDate: '',
             terminationDate: '2025-09-21', terminationInitiatedBy: 'Crew Member (resignation)',
             terminationReason: 'Resignation', notForHire: false,
+            crewPool: 'Pool B', manningAgent: '',
         },
         {
             id: 'term-008', employeeId: 'A000890', firstName: 'ki', familyName: 'kh',
@@ -1105,6 +1112,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             lastVessel: '', signOffDate: '',
             terminationDate: '2025-08-15', terminationInitiatedBy: 'Company',
             terminationReason: 'Other', notForHire: false,
+            crewPool: 'Pool C', manningAgent: '',
         },
     ].map(r => ({ ...r, status: r.notForHire ? 'Terminated - NFR' : 'Terminated' })), []);
 
@@ -1120,6 +1128,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     });
 
     const [terminatedGridApi, setTerminatedGridApi] = useState<GridApi | null>(null);
+
+    useEffect(() => {
+        if (isManningAgentUser) {
+            setTerminatedFilters(prev => ({ ...prev, manningAgent: userManningAgent }));
+        }
+    }, [isManningAgentUser, userManningAgent]);
 
     const terminatedRowData = useMemo(() => {
         return MOCK_TERMINATED_CREW.filter((row: any) => {
@@ -1137,27 +1151,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             return matchesName && matchesVessel && matchesRank && matchesNationality && matchesPool && matchesManningAgent && matchesTerminationBy && matchesNfr;
         });
     }, [MOCK_TERMINATED_CREW, terminatedFilters]);
-
-    const TerminatedActionsCellRenderer = useCallback((params: ICellRendererParams) => {
-        const handleEditClick = () => {
-            setSelectedCrewMember(params.data);
-            setIsCrewInfoFormOpen(true);
-        };
-        if (permissions.length > 0 && !canEdit("Terminated") && !canEdit("Crew Database")) return null;
-        return (
-            <div className="flex items-center justify-center gap-1 h-full">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 hover:bg-gray-100"
-                    onClick={handleEditClick}
-                    data-testid={`button-edit-terminated-${params.data.id}`}
-                >
-                    <EditIcon className="h-4 w-4 text-gray-600" />
-                </Button>
-            </div>
-        );
-    }, [permissions, canEdit]);
 
     const terminatedColumnDefs: ColDef[] = useMemo(() => [
         {
@@ -1218,12 +1211,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         },
         {
             headerName: '', field: 'actions', width: 45, minWidth: 45, maxWidth: 50,
-            cellRenderer: TerminatedActionsCellRenderer,
+            cellRenderer: ActionsCellRenderer,
             sortable: false, filter: false,
             cellClass: 'flex items-center justify-center',
             suppressHeaderMenuButton: true, suppressColumnsToolPanel: true,
         },
-    ], [TerminatedActionsCellRenderer, viewportConfig, getVesselName]);
+    ], [ActionsCellRenderer, viewportConfig, getVesselName]);
 
     const onTerminatedGridReady = useCallback((params: GridReadyEvent) => {
         setTerminatedGridApi(params.api);
