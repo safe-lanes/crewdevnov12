@@ -66,7 +66,13 @@ function makeStatusReport(
       const lowered = matchStatuses.map((s) => s.toLowerCase());
       const conds: SQL[] = [
         eq(recruitmentCandidatesV2.isDeleted, false),
-        sql`LOWER(COALESCE(${recruitmentCandidatesV2.status}, '')) IN ${sql.raw(`(${lowered.map((s) => `'${s}'`).join(", ")})`)}`,
+        // Parameterized IN-list: every value is bound, never interpolated
+        // into the SQL text. Safe even if matchStatuses ever becomes
+        // user-controlled in the future.
+        inArray(
+          sql<string>`LOWER(COALESCE(${recruitmentCandidatesV2.status}, ''))`,
+          lowered,
+        ),
       ];
       if (filters.rank) conds.push(eq(recruitmentCandidatesV2.rankAppliedFor, filters.rank));
       if (filters.dateFrom) conds.push(sql`${recruitmentCandidatesV2.updatedAt} >= ${filters.dateFrom}::date`);

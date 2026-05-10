@@ -184,7 +184,6 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   ],
   "rec-waitlist": [
     { kind: "rank", label: "Filter by Rank" },
-    { kind: "vessel", label: "Intended Vessel" },
   ],
   "rec-rejected": [
     { kind: "rank", label: "Filter by Rank" },
@@ -204,7 +203,6 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   ],
   "rec-joining-status": [
     { kind: "rank", label: "Filter by Rank" },
-    { kind: "vessel", label: "Filter by Vessel" },
   ],
   "rec-medical-pending": [
     { kind: "rank", label: "Filter by Rank" },
